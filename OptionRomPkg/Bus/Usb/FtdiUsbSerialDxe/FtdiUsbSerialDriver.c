@@ -20,8 +20,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "FtdiUsbSerial.h"
 
-//#define VERBOSE_TRANSFER_DEBUG
-//#define ENABLE_SERIAL_READS
+#define VERBOSE_TRANSFER_DEBUG
+#define ENABLE_SERIAL_READS
 
 #define USB_IS_ERROR(Result, Error)           (((Result) & (Error)) != 0)
 
@@ -546,12 +546,18 @@ UsbSerialDataTransfer (
   //
   if (DataDir == EfiUsbDataIn) {
     Endpoint = &UsbBot->InEndpointDescriptor;
+    DEBUG ((EFI_D_INFO,"Input Transfer\n"));
   } else {
     Endpoint = &UsbBot->OutEndpointDescriptor;
+    DEBUG ((EFI_D_INFO,"Output Transfer\n"));
   }
 
   Result  = 0;
   Data32 = Endpoint->EndpointAddress;
+  if (DataDir == EfiUsbDataIn) {
+    DEBUG ((EFI_D_INFO,"check1\n"));
+    DEBUG ((EFI_D_INFO,"Timeout = %d\n", Timeout));
+  }
   Status = UsbBot->UsbIo->UsbBulkTransfer (
     UsbBot->UsbIo,
     Endpoint->EndpointAddress,
@@ -560,6 +566,10 @@ UsbSerialDataTransfer (
     Timeout,
     &Result
     );
+
+  if (DataDir == EfiUsbDataIn) {
+    DEBUG ((EFI_D_INFO,"check2\n"));
+  }
 
   if (EFI_ERROR (Status)) {
     if (USB_IS_ERROR (Result, EFI_USB_ERR_STALL)) {
@@ -603,12 +613,15 @@ WriteSerialIo (
 {
   EFI_STATUS           Status;
   USB_SER_DEV          *UsbSerialDevice;
+  EFI_TPL              Tpl;
 
   UsbSerialDevice = USB_SER_DEV_FROM_THIS (This);
 
   if (UsbSerialDevice->Shutdown) {
     return EFI_DEVICE_ERROR;
   }
+
+  Tpl     = gBS->RaiseTPL (TPL_NOTIFY);
 
   Status = UsbSerialDataTransfer (
     UsbSerialDevice,
@@ -617,6 +630,7 @@ WriteSerialIo (
     BufferSize,
     40000
     );
+  gBS->RestoreTPL (Tpl);
   if (EFI_ERROR (Status)) {
     return EFI_DEVICE_ERROR;
   }
@@ -652,6 +666,17 @@ ReadSerialIo (
   UINTN           ReadBufferSize;
   UINT8           *ReadBuffer = NULL;
   UINTN           Index;
+  EFI_TPL         Tpl;
+
+  if (*BufferSize == 0) {
+    return EFI_SUCCESS;
+  }
+
+  if (Buffer == NULL) {
+    return EFI_DEVICE_ERROR;
+  }
+  
+  DEBUG ((EFI_D_INFO, "BufferSize = %d\n", *BufferSize));
 
   Index = 0;
   ReadBuffer = AllocateZeroPool (512);
@@ -663,29 +688,38 @@ ReadSerialIo (
     return EFI_DEVICE_ERROR;
   }
 
+  Tpl     = gBS->RaiseTPL (TPL_NOTIFY);
+
   Status = UsbSerialDataTransfer (
     UsbSerialDevice,
     EfiUsbDataIn,
     ReadBuffer,
     &ReadBufferSize,
-    40000
+    1
     );
   if (EFI_ERROR(Status)) {
-    return EFI_DEVICE_ERROR;
+    gBS->RestoreTPL (Tpl);
+    if (Status == EFI_TIMEOUT) {
+      DEBUG ((EFI_D_INFO, "Return Timeout\n"));
+      return EFI_TIMEOUT;
+    } else {
+      DEBUG ((EFI_D_INFO, "Return Device Error\n"));
+      return EFI_DEVICE_ERROR;
+    }
   }
   Index = 0;
 
 #ifdef VERBOSE_TRANSFER_DEBUG
-  Print(L"ReadBuffer (as hex bytes): {");
+  DEBUG ((EFI_D_INFO,"ReadBuffer (as hex bytes): {"));
   for (Index=0; Index < ReadBufferSize; Index++) {
-    Print(L"%02x", ReadBuffer[Index]);
+    DEBUG ((EFI_D_INFO,"%02x", ReadBuffer[Index]));
     if (Index != ReadBufferSize-1) {
-      Print(L", ");
+      DEBUG ((EFI_D_INFO,", "));
     }
   }
-  Print(L"}\n");
+  DEBUG ((EFI_D_INFO,"}\n"));
 
-  Print(L"ReadBuffer (as characters, including status bytes):");
+  DEBUG ((EFI_D_INFO,"ReadBuffer (as characters, including status bytes):"));
   for (Index=0; Index < ReadBufferSize; Index++) {
     //
     // Uncomment this to exclude status bytes
@@ -693,12 +727,12 @@ ReadSerialIo (
     //if (ReadBuffer[Index] > 0x7F || ReadBuffer[Index] < 0x02) {
     //  Index+=2;
     //}
-    Print(L"%c", ReadBuffer[Index]);
+    DEBUG ((EFI_D_INFO,"%c", ReadBuffer[Index]));
     if (Index != ReadBufferSize-1) {
-      Print(L", ");
+      DEBUG ((EFI_D_INFO,", "));
     }
   }
-  Print(L"\n");
+  DEBUG ((EFI_D_INFO,"\n"));
 #endif
 
   //
@@ -729,7 +763,7 @@ ReadSerialIo (
   //
   for (Index=0; Index < *BufferSize; Index++) {
     if ( UsbSerialDevice->DataBufferHead == UsbSerialDevice->DataBufferTail) {
-      //Print(L"No characters to return!");
+      //DEBUG ((EFI_D_INFO,"No characters to return!"));
       break;
     }
 
@@ -745,8 +779,11 @@ ReadSerialIo (
   //
   *BufferSize = Index;
 
+  gBS->RestoreTPL (Tpl);
+
   return EFI_SUCCESS;
 #else
+  DEBUG ((EFI_D_INFO, "Returning Timeout because not implemented\n"));
   return EFI_TIMEOUT;
 #endif
 }
@@ -789,7 +826,7 @@ SetControlBits (
   IN UINT32                         Control
   )
 {
-  return EFI_UNSUPPORTED;
+  return EFI_SUCCESS;
 }
 
 /**
