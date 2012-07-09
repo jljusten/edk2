@@ -281,7 +281,7 @@ UsbSerialDriverBindingStart (
   DevReq.RequestType  = REQ_TYPE,
   DevReq.Value = SET_DATA_BITS_8;
   DevReq.Index = 0;
-  DevReq.Length = 1;
+  DevReq.Length = 0;
   Status = UsbIo->UsbControlTransfer (
     UsbIo,
     &DevReq,
@@ -299,7 +299,7 @@ UsbSerialDriverBindingStart (
   DevReq.RequestType  = REQ_TYPE,
   DevReq.Value = NO_FLOW_CTRL;
   DevReq.Index = 0;
-  DevReq.Length = 1;
+  DevReq.Length = 0;
   Status = UsbIo->UsbControlTransfer (
     UsbIo,
     &DevReq,
@@ -317,7 +317,7 @@ UsbSerialDriverBindingStart (
   DevReq.RequestType  = REQ_TYPE,
   DevReq.Value = SET_BAUDRATE_115200;
   DevReq.Index = 0;
-  DevReq.Length = 1;
+  DevReq.Length = 0;
   Status = UsbIo->UsbControlTransfer (
     UsbIo,
     &DevReq,
@@ -549,7 +549,7 @@ UsbSerialDataTransfer (
     DEBUG ((EFI_D_INFO,"Input Transfer\n"));
   } else {
     Endpoint = &UsbBot->OutEndpointDescriptor;
-    DEBUG ((EFI_D_INFO,"Output Transfer\n"));
+    //DEBUG ((EFI_D_INFO,"Output Transfer\n"));
   }
 
   Result  = 0;
@@ -577,6 +577,8 @@ UsbSerialDataTransfer (
       DEBUG ((EFI_D_INFO, "UsbSerialDataTransferInfo: DataIn Stall\n"));
     } else if (USB_IS_ERROR (Result, EFI_USB_ERR_NAK)) {
       Status = EFI_NOT_READY;
+    } else if (Status == EFI_TIMEOUT) {
+      DEBUG ((EFI_D_INFO, "Transfer Timed Out\n"));
     } else {
       UsbBot->Shutdown = TRUE; //Fixes infinite loop in older EFI
       DEBUG ((EFI_D_ERROR, "UsbSerialDataTransferErr: (%r)\n", Status));
@@ -618,6 +620,7 @@ WriteSerialIo (
   UsbSerialDevice = USB_SER_DEV_FROM_THIS (This);
 
   if (UsbSerialDevice->Shutdown) {
+    DEBUG ((EFI_D_INFO, "Shutdown is set\n"));
     return EFI_DEVICE_ERROR;
   }
 
@@ -632,6 +635,7 @@ WriteSerialIo (
     );
   gBS->RestoreTPL (Tpl);
   if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_INFO, "Write returning device error\n"));
     return EFI_DEVICE_ERROR;
   }
   //ASSERT_EFI_ERROR (Status);
@@ -676,7 +680,7 @@ ReadSerialIo (
     return EFI_DEVICE_ERROR;
   }
   
-  DEBUG ((EFI_D_INFO, "BufferSize = %d\n", *BufferSize));
+  //DEBUG ((EFI_D_INFO, "BufferSize = %d\n", *BufferSize));
 
   Index = 0;
   ReadBuffer = AllocateZeroPool (512);
@@ -695,7 +699,7 @@ ReadSerialIo (
     EfiUsbDataIn,
     ReadBuffer,
     &ReadBufferSize,
-    1
+    40
     );
   if (EFI_ERROR(Status)) {
     gBS->RestoreTPL (Tpl);
@@ -746,7 +750,7 @@ ReadSerialIo (
     //
     // Ignore status bytes.
     //
-    if (ReadBuffer[Index] > 0x7F || ReadBuffer[Index] == 0x01)
+    if (ReadBuffer[Index] > 0x7F || ReadBuffer[Index] == 0x01)      ///< This looks wrong
       Index+=2;
     if (ReadBuffer[Index] == 0x00) {
       //
@@ -901,7 +905,7 @@ SerialReset (
   DevReq.RequestType = REQ_TYPE,
   DevReq.Value = 0x0;
   DevReq.Index = 0;
-  DevReq.Length = 1;
+  DevReq.Length = 0;
   Status = UsbSerialDevice->UsbIo->UsbControlTransfer (
     UsbSerialDevice->UsbIo,
     &DevReq,
@@ -920,7 +924,7 @@ SerialReset (
   DevReq.RequestType = REQ_TYPE,
   DevReq.Value = 0x1;
   DevReq.Index = 0;
-  DevReq.Length = 1;
+  DevReq.Length = 0;
   Status = UsbSerialDevice->UsbIo->UsbControlTransfer (
     UsbSerialDevice->UsbIo,
     &DevReq,
@@ -939,7 +943,7 @@ SerialReset (
   DevReq.RequestType = REQ_TYPE,
   DevReq.Value = 0x2;
   DevReq.Index = 0;
-  DevReq.Length = 1;
+  DevReq.Length = 0;
   Status = UsbSerialDevice->UsbIo->UsbControlTransfer (
     UsbSerialDevice->UsbIo,
     &DevReq,
