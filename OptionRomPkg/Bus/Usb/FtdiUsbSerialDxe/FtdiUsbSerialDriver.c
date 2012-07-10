@@ -809,7 +809,9 @@ GetControlBits (
   OUT UINT32                        *Control
   )
 {
-  return EFI_UNSUPPORTED;
+  *Control = 0;
+  *Control |= EFI_SERIAL_INPUT_BUFFER_EMPTY;
+  return EFI_SUCCESS;
 }
 
 /**
