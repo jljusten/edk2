@@ -169,6 +169,7 @@ UsbSerialDriverBindingStart (
   EFI_USB_DEVICE_REQUEST      DevReq;
   UINT32                      ReturnValue;
   UINT8                       ConfigurationValue;
+  UINT64                      CheckInputTriggerTime;
                  
   OldTpl = gBS->RaiseTPL (TPL_CALLBACK);
 
@@ -387,7 +388,26 @@ UsbSerialDriverBindingStart (
     L"Generic Usb Serial2",
     FALSE
     );
-
+    
+  //
+  // Create a polling loop to check for input
+  //
+  gBS->CreateEvent (
+    EVT_TIMER | EVT_NOTIFY_SIGNAL,
+    TPL_NOTIFY,
+    UsbSerialDriverCheckInput,
+    UsbSerialDevice,
+    &(UsbSerialDevice->PollingLoop)
+    );
+  // add code to set trigger time based on baud rate
+  // since at this time the baud rate is fixed at 115200 the trigger time will be fixed as well
+  // the trigger time will be 1.5 times the baud rate 
+  CheckInputTriggerTime = 120; // 100 nano seconds is .1 microsecond
+  gBS->SetTimer (
+    UsbSerialDevice->PollingLoop,
+    TimerPeriodic,
+    CheckInputTriggerTime
+    );
   gBS->RestoreTPL (OldTpl);
 
   UsbSerialDevice->Shutdown = FALSE;
@@ -485,6 +505,14 @@ UsbSerialDriverBindingStop (
     NULL
     );
 
+  gBS->SetTimer (
+    UsbSerialDevice->PollingLoop,
+    TimerCancel,
+    0
+    );
+  gBS->CloseEvent(
+    UsbSerialDevice->PollingLoop
+    );
 
   UsbSerialDevice->Shutdown = TRUE;
 
@@ -960,5 +988,14 @@ SerialReset (
   }
 
   return Status;
+}
+
+VOID
+EFIAPI
+UsbSerialDriverCheckInput (
+  IN  EFI_EVENT  Event,
+  IN  VOID       *Context
+  )
+{
 }
 

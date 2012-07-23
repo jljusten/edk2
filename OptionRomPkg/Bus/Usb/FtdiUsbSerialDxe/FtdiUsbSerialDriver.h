@@ -58,6 +58,7 @@ typedef struct {
   UINT8                         *DataBuffer;
   EFI_SERIAL_IO_PROTOCOL        SerialIo;
   BOOLEAN                       Shutdown;
+  EFI_EVENT                     PollingLoop;
 } USB_SER_DEV;
 
 //
@@ -397,6 +398,18 @@ UsbSerialComponentNameGetControllerName (
   IN  EFI_HANDLE                                      ChildHandle        OPTIONAL,
   IN  CHAR8                                           *Language,
   OUT CHAR16                                          **ControllerName
+  );
+
+/**
+  UsbSerialDriverCheckInput 
+  attempts to read data in from the device periodically, stores any read data and
+  updates the control attributes.
+**/
+VOID
+EFIAPI
+UsbSerialDriverCheckInput (
+  IN  EFI_EVENT  Event,
+  IN  VOID       *Context
   );
 
 #endif
