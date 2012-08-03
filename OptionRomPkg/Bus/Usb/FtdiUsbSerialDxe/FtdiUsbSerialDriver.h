@@ -59,6 +59,7 @@ typedef struct {
   EFI_SERIAL_IO_PROTOCOL        SerialIo;
   BOOLEAN                       Shutdown;
   EFI_EVENT                     PollingLoop;
+  UINT32                        ControlBits;
 } USB_SER_DEV;
 
 //
@@ -191,6 +192,28 @@ EFI_STATUS
 EFIAPI
 ReadSerialIo (
   IN EFI_SERIAL_IO_PROTOCOL         *This,
+  IN OUT UINTN                      *BufferSize,
+  OUT VOID                          *Buffer
+  );
+
+/**
+  Initiates a read operation on the Usb Serial Device.
+
+  @param  UsbSerialDevice   Handle to the USB device to read
+  @param  BufferSize        On input, the size of the Buffer. On output, the amount of
+                            data returned in Buffer.
+                            Setting this to zero will initiate a read and store all data returned in the internal buffer.
+  @param  Buffer            The buffer to return the data into.
+
+  @retval EFI_SUCCESS       The data was read.
+  @retval EFI_DEVICE_ERROR  The device reported an error.
+  @retval EFI_TIMEOUT       The data write was stopped due to a timeout.
+
+**/
+EFI_STATUS
+EFIAPI
+ReadDataFromUsb (
+  IN USB_SER_DEV                    *UsbSerialDevice,
   IN OUT UINTN                      *BufferSize,
   OUT VOID                          *Buffer
   );

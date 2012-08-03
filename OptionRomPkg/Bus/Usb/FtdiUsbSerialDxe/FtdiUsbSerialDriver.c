@@ -28,7 +28,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define WDR_TIMEOUT 5000 /* default urb timeout */
 #define WDR_SHORT_TIMEOUT 1000 /* shorter urb timeout */
 
-#define MAX_BUFFER_SIZE 256
+#define MAX_BUFFER_SIZE 1024
 
 //
 // USB USB Serial Driver Global Variables
@@ -401,8 +401,8 @@ UsbSerialDriverBindingStart (
     );
   // add code to set trigger time based on baud rate
   // since at this time the baud rate is fixed at 115200 the trigger time will be fixed as well
-  // the trigger time will be 1.5 times the baud rate 
-  CheckInputTriggerTime = 120; // 100 nano seconds is .1 microsecond
+  // the trigger time will be 1.5 times the baud rate.  <- Not sure if we should do this, setting to 0.5ms for now
+  CheckInputTriggerTime = 5000000; // 100 nano seconds is 0.1 microseconds
   gBS->SetTimer (
     UsbSerialDevice->PollingLoop,
     TimerPeriodic,
@@ -692,13 +692,10 @@ ReadSerialIo (
   OUT VOID                          *Buffer
   )
 {
-#ifdef ENABLE_SERIAL_READS
-  EFI_STATUS      Status;
-  USB_SER_DEV     *UsbSerialDevice;
-  UINTN           ReadBufferSize;
-  UINT8           *ReadBuffer = NULL;
-  UINTN           Index;
-  EFI_TPL         Tpl;
+  UINTN        Index;
+  UINTN        RemainingCallerBufferSize;
+  USB_SER_DEV  *UsbSerialDevice;
+  EFI_STATUS   Status;
 
   if (*BufferSize == 0) {
     return EFI_SUCCESS;
@@ -707,14 +704,70 @@ ReadSerialIo (
   if (Buffer == NULL) {
     return EFI_DEVICE_ERROR;
   }
-  
+
+  Status          = EFI_SUCCESS;
+  UsbSerialDevice = USB_SER_DEV_FROM_THIS (This);
+
+  //return ReadDataFromUsb (UsbSerialDevice, BufferSize, Buffer);
+  ///
+  /// Clear out any data that we already have in our internal buffer
+  ///
+  for (Index=0; Index < *BufferSize; Index++) {
+    if ( UsbSerialDevice->DataBufferHead == UsbSerialDevice->DataBufferTail) {
+      break;
+    }
+
+    //
+    // Still have characters in the buffer to return
+    //
+    ((UINT8 *)Buffer)[Index] = UsbSerialDevice->DataBuffer[UsbSerialDevice->DataBufferHead];
+    UsbSerialDevice->DataBufferHead = (UsbSerialDevice->DataBufferHead + 1) % MAX_BUFFER_SIZE;
+  }
+
+  ///
+  /// If we haven't filled the caller's buffer using data that we already had on hand
+  /// We need to generate an additional USB request to try and fill the caller's buffer
+  ///
+  if (Index != *BufferSize) {
+    RemainingCallerBufferSize = *BufferSize - Index;
+    Status = ReadDataFromUsb (UsbSerialDevice, &RemainingCallerBufferSize, (VOID*)(((CHAR8*)Buffer) + Index));
+    *BufferSize = RemainingCallerBufferSize + Index;
+  }
+
+  if (UsbSerialDevice->DataBufferHead == UsbSerialDevice->DataBufferTail) {
+    ///
+    /// Data buffer has no data, set the EFI_SERIAL_INPUT_BUFFER_EMPTY flag
+    ///
+    UsbSerialDevice->ControlBits |= EFI_SERIAL_INPUT_BUFFER_EMPTY;
+  } else {
+    ///
+    /// There is some leftover data, clear the EFI_SERIAL_INPUT_BUFFER_EMPTY flag
+    ///
+    UsbSerialDevice->ControlBits &= ~(EFI_SERIAL_INPUT_BUFFER_EMPTY);
+  }
+  return Status;
+}
+
+EFI_STATUS
+EFIAPI
+ReadDataFromUsb (
+  IN USB_SER_DEV                    *UsbSerialDevice,
+  IN OUT UINTN                      *BufferSize,
+  OUT VOID                          *Buffer
+  )
+{
+#ifdef ENABLE_SERIAL_READS
+  EFI_STATUS      Status;
+  UINTN           ReadBufferSize;
+  UINT8           *ReadBuffer = NULL;
+  UINTN           Index;
+  EFI_TPL         Tpl;
+
   //DEBUG ((EFI_D_INFO, "BufferSize = %d\n", *BufferSize));
 
   Index = 0;
   ReadBuffer = AllocateZeroPool (512);
   ReadBufferSize = 512;
-
-  UsbSerialDevice = USB_SER_DEV_FROM_THIS (This);
 
   if (UsbSerialDevice->Shutdown) {
     return EFI_DEVICE_ERROR;
@@ -997,5 +1050,32 @@ UsbSerialDriverCheckInput (
   IN  VOID       *Context
   )
 {
-}
+  UINTN          BufferSize;
+  USB_SER_DEV    *UsbSerialDevice;
 
+  UsbSerialDevice = (USB_SER_DEV*)Context;
+  
+  if (UsbSerialDevice->DataBufferHead == UsbSerialDevice->DataBufferTail) {
+    ///
+    /// Data buffer is empty, try to read from device
+    ///
+    BufferSize = 0;
+    ReadDataFromUsb (UsbSerialDevice, &BufferSize, NULL);
+    if (UsbSerialDevice->DataBufferHead == UsbSerialDevice->DataBufferTail) {
+      ///
+      /// Data buffer still has no data, set the EFI_SERIAL_INPUT_BUFFER_EMPTY flag
+      ///
+      UsbSerialDevice->ControlBits |= EFI_SERIAL_INPUT_BUFFER_EMPTY;
+    } else {
+      ///
+      /// Read has returned some data, clear the EFI_SERIAL_INPUT_BUFFER_EMPTY flag
+      ///
+      UsbSerialDevice->ControlBits &= ~(EFI_SERIAL_INPUT_BUFFER_EMPTY);
+    }
+  } else {
+    ///
+    /// Data buffer has data, no read attempt required
+    ///
+    UsbSerialDevice->ControlBits &= ~(EFI_SERIAL_INPUT_BUFFER_EMPTY);
+  }
+}
