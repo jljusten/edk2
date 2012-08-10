@@ -890,8 +890,10 @@ GetControlBits (
   OUT UINT32                        *Control
   )
 {
-  *Control = 0;
-  *Control |= EFI_SERIAL_INPUT_BUFFER_EMPTY;
+  USB_SER_DEV  *UsbSerialDevice;
+
+  UsbSerialDevice = USB_SER_DEV_FROM_THIS (This);
+  *Control = UsbSerialDevice->ControlBits;
   return EFI_SUCCESS;
 }
 
