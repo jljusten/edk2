@@ -21,9 +21,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "FtdiUsbSerial.h"
 
-#define VERBOSE_TRANSFER_DEBUG
-#define ENABLE_SERIAL_READS
-
 #define USB_IS_ERROR(Result, Error)           (((Result) & (Error)) != 0)
 
 #define WDR_TIMEOUT 5000 /* default urb timeout */
@@ -379,14 +376,14 @@ UsbSerialDriverBindingStart (
     "eng",
     gUsbSerialComponentName.SupportedLanguages,
     &UsbSerialDevice->ControllerNameTable,
-    L"Generic Usb Serial1",
+    L"FTDI USB Serial Adapter",
     TRUE
     );
   AddUnicodeString2 (
     "en",
     gUsbSerialComponentName2.SupportedLanguages,
     &UsbSerialDevice->ControllerNameTable,
-    L"Generic Usb Serial2",
+    L"FTDI USB Serial Adapter",
     FALSE
     );
     
@@ -708,7 +705,6 @@ ReadSerialIo (
   Status          = EFI_SUCCESS;
   UsbSerialDevice = USB_SER_DEV_FROM_THIS (This);
 
-  //return ReadDataFromUsb (UsbSerialDevice, BufferSize, Buffer);
   ///
   /// Clear out any data that we already have in our internal buffer
   ///
@@ -731,7 +727,11 @@ ReadSerialIo (
   if (Index != *BufferSize) {
     RemainingCallerBufferSize = *BufferSize - Index;
     Status = ReadDataFromUsb (UsbSerialDevice, &RemainingCallerBufferSize, (VOID*)(((CHAR8*)Buffer) + Index));
-    *BufferSize = RemainingCallerBufferSize + Index;
+    if (!EFI_ERROR (Status)) {
+      *BufferSize = RemainingCallerBufferSize + Index;
+    } else {
+      *BufferSize = Index;
+    }
   }
 
   if (UsbSerialDevice->DataBufferHead == UsbSerialDevice->DataBufferTail) {
@@ -756,14 +756,11 @@ ReadDataFromUsb (
   OUT VOID                          *Buffer
   )
 {
-#ifdef ENABLE_SERIAL_READS
   EFI_STATUS      Status;
   UINTN           ReadBufferSize;
   UINT8           *ReadBuffer = NULL;
   UINTN           Index;
   EFI_TPL         Tpl;
-
-  //DEBUG ((EFI_D_INFO, "BufferSize = %d\n", *BufferSize));
 
   Index = 0;
   ReadBuffer = AllocateZeroPool (512);
@@ -794,7 +791,7 @@ ReadDataFromUsb (
   }
   Index = 0;
 
-#ifdef VERBOSE_TRANSFER_DEBUG
+/*#ifdef VERBOSE_TRANSFER_DEBUG
   DEBUG ((EFI_D_INFO,"ReadBuffer (as hex bytes): {"));
   for (Index=0; Index < ReadBufferSize; Index++) {
     DEBUG ((EFI_D_INFO,"%02x", ReadBuffer[Index]));
@@ -818,21 +815,16 @@ ReadDataFromUsb (
     }
   }
   DEBUG ((EFI_D_INFO,"\n"));
-#endif
+#endif*/
 
   //
-  // Store the read data in the read buffer
+  // Store the read data in the read buffer, start at 2 to ignore status bytes
   //
-  for (Index = 0; Index < ReadBufferSize; Index++) {
+  for (Index = 2; Index < ReadBufferSize; Index++) {
     if (((UsbSerialDevice->DataBufferTail + 1) % MAX_BUFFER_SIZE) == UsbSerialDevice->DataBufferHead) {
       break;
     }
 
-    //
-    // Ignore status bytes.
-    //
-    if (ReadBuffer[Index] > 0x7F || ReadBuffer[Index] == 0x01)      ///< This looks wrong
-      Index+=2;
     if (ReadBuffer[Index] == 0x00) {
       //
       // This is null, do not add
@@ -867,10 +859,6 @@ ReadDataFromUsb (
   gBS->RestoreTPL (Tpl);
 
   return EFI_SUCCESS;
-#else
-  DEBUG ((EFI_D_INFO, "Returning Timeout because not implemented\n"));
-  return EFI_TIMEOUT;
-#endif
 }
 
 /**
