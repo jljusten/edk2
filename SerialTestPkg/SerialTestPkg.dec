@@ -1,0 +1,34 @@
+##  @file  SerialTestPkg.dec
+#
+# Build description file to generate Serial Test application.
+#
+# Copyright (c) 2012, Ashley DeSimone
+# Portions Copyright (c) 2007 - 2008, Intel Corporation.
+#
+# All rights reserved.
+# This program and the accompanying materials are licensed and made available under
+# the terms and conditions of the BSD License which accompanies this distribution.
+# The full text of the license may be found at
+# http://opensource.org/licenses/bsd-license.php
+#
+# THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+# WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#
+##
+
+
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = SerialTestPkg
+  PACKAGE_GUID                   = 5DA705EB-3259-4B86-94BC-E556C8AE880C
+  PACKAGE_VERSION                = 0.1
+
+[Protocols]
+
+[Includes]
+
+[Includes.Ia32]
+
+[Includes.X64]
+
+[LibraryClasses]
