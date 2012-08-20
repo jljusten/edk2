@@ -1,6 +1,7 @@
 /** @file
   USB Serial Driver that manages USB to Serial and produces Serial IO Protocol.
 
+Portions Copyright 2012 Ashley DeSimone
 Copyright (c) 2004 - 2012, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
@@ -170,6 +171,7 @@ UsbSerialDriverBindingStart (
   UINT32                      ReturnValue;
   UINT8                       ConfigurationValue;
   UINT64                      CheckInputTriggerTime;
+  UINT16                      EncodedBaudRate;
                  
   OldTpl = gBS->RaiseTPL (TPL_CALLBACK);
 
@@ -277,11 +279,10 @@ UsbSerialDriverBindingStart (
     goto ErrorExit;
   }
 
-  DevReq.Value = 0;
-  DevReq.Request      = SET_DATA_BITS,
+  DevReq.Request      = FTDI_COMMAND_SET_DATA_BITS,
   DevReq.RequestType  = REQ_TYPE,
   DevReq.Value = SET_DATA_BITS_8;
-  DevReq.Index = 0;
+  DevReq.Index = 1;
   DevReq.Length = 0;
   Status = UsbIo->UsbControlTransfer (
     UsbIo,
@@ -295,11 +296,10 @@ UsbSerialDriverBindingStart (
   ASSERT_EFI_ERROR (Status);
   Data32 = ReturnValue;
 
-  DevReq.Value = 0;
-  DevReq.Request      = SET_FLOW_CTRL,
+  DevReq.Request      = FTDI_COMMAND_SET_FLOW_CTRL,
   DevReq.RequestType  = REQ_TYPE,
   DevReq.Value = NO_FLOW_CTRL;
-  DevReq.Index = 0;
+  DevReq.Index = 0x0001;
   DevReq.Length = 0;
   Status = UsbIo->UsbControlTransfer (
     UsbIo,
@@ -313,11 +313,12 @@ UsbSerialDriverBindingStart (
   ASSERT_EFI_ERROR (Status);
   Data32 = ReturnValue;
 
-  DevReq.Value = 0;
-  DevReq.Request      = SET_BAUDRATE,
-  DevReq.RequestType  = REQ_TYPE,
-  DevReq.Value = SET_BAUDRATE_115200;
-  DevReq.Index = 0;
+  DevReq.Request      = FTDI_COMMAND_SET_BAUDRATE;
+  DevReq.RequestType  = REQ_TYPE;
+  Status = EncodeBaudRateForFtdi(115200, &EncodedBaudRate);
+  ASSERT_EFI_ERROR(Status);
+  DevReq.Value = EncodedBaudRate;
+  DevReq.Index = 1;
   DevReq.Length = 0;
   Status = UsbIo->UsbControlTransfer (
     UsbIo,
@@ -400,8 +401,7 @@ UsbSerialDriverBindingStart (
     &(UsbSerialDevice->PollingLoop)
     );
   // add code to set trigger time based on baud rate
-  // since at this time the baud rate is fixed at 115200 the trigger time will be fixed as well
-  // the trigger time will be 1.5 times the baud rate.  <- Not sure if we should do this, setting to 0.5ms for now
+  // setting to 0.5ms for now
   CheckInputTriggerTime = 5000000; // 100 nano seconds is 0.1 microseconds
   gBS->SetTimer (
     UsbSerialDevice->PollingLoop,
@@ -915,6 +915,10 @@ SetControlBits (
   IN UINT32                         Control
   )
 {
+  USB_SER_DEV  *UsbSerialDevice;
+
+  UsbSerialDevice = USB_SER_DEV_FROM_THIS (This);
+  UsbSerialDevice->ControlBits = Control;
   return EFI_SUCCESS;
 }
 
@@ -985,11 +989,10 @@ SerialReset (
 
   UsbSerialDevice = USB_SER_DEV_FROM_THIS (This);
 
-  DevReq.Value = 0;
-  DevReq.Request = RESET_PORT,
+  DevReq.Request = FTDI_COMMAND_RESET_PORT,
   DevReq.RequestType = REQ_TYPE,
   DevReq.Value = 0x0;
-  DevReq.Index = 0;
+  DevReq.Index = 1;
   DevReq.Length = 0;
   Status = UsbSerialDevice->UsbIo->UsbControlTransfer (
     UsbSerialDevice->UsbIo,
@@ -1004,11 +1007,10 @@ SerialReset (
     return Status;
   }
 
-  DevReq.Value = 0;
-  DevReq.Request = RESET_PORT,
+  DevReq.Request = FTDI_COMMAND_RESET_PORT,
   DevReq.RequestType = REQ_TYPE,
   DevReq.Value = 0x1;
-  DevReq.Index = 0;
+  DevReq.Index = 1;
   DevReq.Length = 0;
   Status = UsbSerialDevice->UsbIo->UsbControlTransfer (
     UsbSerialDevice->UsbIo,
@@ -1023,11 +1025,10 @@ SerialReset (
     return Status;
   }
 
-  DevReq.Value = 0;
-  DevReq.Request = RESET_PORT,
+  DevReq.Request = FTDI_COMMAND_RESET_PORT,
   DevReq.RequestType = REQ_TYPE,
   DevReq.Value = 0x2;
-  DevReq.Index = 0;
+  DevReq.Index = 1;
   DevReq.Length = 0;
   Status = UsbSerialDevice->UsbIo->UsbControlTransfer (
     UsbSerialDevice->UsbIo,
@@ -1080,4 +1081,88 @@ UsbSerialDriverCheckInput (
     ///
     UsbSerialDevice->ControlBits &= ~(EFI_SERIAL_INPUT_BUFFER_EMPTY);
   }
+}
+
+EFI_STATUS
+EFIAPI
+EncodeBaudRateForFtdi (
+  IN  UINT64  BaudRate,
+  OUT UINT16  *EncodedBaudRate
+  )
+{
+  UINT32 Divisor;
+  UINT32 AdjustedFrequency;
+  UINT16 Result;
+
+  ///
+  /// Table with the nearest power of 2 for the numbers 0-15
+  ///
+  UINT8 RoundedPowersOf2[16] = { 0, 2, 2, 4, 4, 4, 8, 8, 8, 8, 8, 8, 16, 16, 16, 16 };
+
+  ///
+  /// Check to make sure we won't get an integer overflow
+  ///
+  if ( (BaudRate < 178) || ( BaudRate > ((FTDI_UART_FREQUENCY * 100) / 97) )) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  ///
+  /// Baud Rates of 2000000 and 3000000 are special cases
+  ///
+  if ( (BaudRate >= ((3000000 * 100) / 103)) && (BaudRate <= ((3000000 * 100) / 97))) {
+    *EncodedBaudRate = 0;
+    return EFI_SUCCESS;
+  }
+  if ( (BaudRate >= ((2000000 * 100) / 103)) && (BaudRate <= ((2000000 * 100) / 97))) {
+    *EncodedBaudRate = 1;
+    return EFI_SUCCESS;
+  }
+
+  ///
+  /// Compute divisor
+  ///
+  Divisor = (FTDI_UART_FREQUENCY << 4) / (UINT32)BaudRate;
+
+  ///
+  /// Round the last 4 bits to the nearest power of 2
+  ///
+  Divisor = (Divisor & ~(0xF)) + (RoundedPowersOf2 [Divisor & 0xF]);
+
+  ///
+  /// Check to make sure computed divisor is within 
+  /// the min and max that FTDI controller will accept
+  ///
+  if (Divisor < FTDI_MIN_DIVISOR) {
+    Divisor = FTDI_MIN_DIVISOR;
+  } else if (Divisor > FTDI_MAX_DIVISOR) {
+    Divisor = FTDI_MAX_DIVISOR;
+  }
+
+  ///
+  /// Check to make sure the frequency that the FTDI chip will need to
+  /// generate to attain the requested Baud Rate is within 3% of the
+  /// 3MHz clock frequency that the FTDI chip runs at.
+  ///
+  /// (3MHz * 1600) / 103 = 46601941
+  /// (3MHz * 1600) / 97  = 49484536
+  ///
+  AdjustedFrequency = (((UINT32)BaudRate) * Divisor);
+  if ((AdjustedFrequency < 46601941) || (AdjustedFrequency > 49484536)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  ///
+  /// Encode the Divisor into the format FTDI expects
+  ///
+  Result = (UINT16)(Divisor >> 4);
+  if        ((Divisor & 0x8) != 0) {
+    Result |= 0x4000;
+  } else if ((Divisor & 0x4) != 0) {
+    Result |= 0x8000;
+  } else if ((Divisor & 0x2) != 0) {
+    Result |= 0xC000;
+  }
+
+  *EncodedBaudRate = Result;
+  return EFI_SUCCESS;
 }
