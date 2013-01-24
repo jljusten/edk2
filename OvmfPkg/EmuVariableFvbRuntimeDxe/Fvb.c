@@ -2,7 +2,7 @@
   Firmware Block Services to support emulating non-volatile variables
   by pretending that a memory buffer is storage for the NV variables.
 
-  Copyright (c) 2006 - 2012, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -846,7 +846,9 @@ FvbInitialize (
   EFI_STATUS                          Status;
   VOID                                *Ptr;
   VOID                                *SubPtr;
+  VOID                                *FdPtr;
   BOOLEAN                             Initialize;
+  BOOLEAN                             InitializeFromFd;
   EFI_HANDLE                          Handle;
   EFI_PHYSICAL_ADDRESS                Address;
 
@@ -864,6 +866,8 @@ FvbInitialize (
     DEBUG ((EFI_D_ERROR, "EMU Variable invalid PCD sizes\n"));
     return EFI_INVALID_PARAMETER;
   }
+
+  FdPtr = (VOID*)(UINTN) PcdGet64 (PcdFlashNvStorageVariableBase64);
 
   //
   // By default we will initialize the FV contents.  But, if
@@ -896,11 +900,28 @@ FvbInitialize (
   mEmuVarsFvb.BufferPtr = Ptr;
 
   //
+  // Check to see if Initialize the main FV header and variable store header
+  //
+  InitializeFromFd = FALSE;
+  if (Initialize) {
+    if ((FdPtr != NULL) && !EFI_ERROR (ValidateFvHeader (FdPtr))) {
+      DEBUG ((EFI_D_INFO, "EMU Variable FVB: Found valid pre-existing FV in FD\n"));
+      InitializeFromFd = TRUE;
+    }
+  }
+
+  //
   // Initialize the main FV header and variable store header
   //
   if (Initialize) {
-    SetMem (Ptr, EMU_FVB_SIZE, ERASED_UINT8);
-    InitializeFvAndVariableStoreHeaders (Ptr);
+    if (InitializeFromFd) {
+      DEBUG ((EFI_D_INFO, "EMU Variable FVB: Copying FV from FD\n"));
+      CopyMem (Ptr, FdPtr, EMU_FVB_BLOCK_SIZE);
+    } else {
+      DEBUG ((EFI_D_INFO, "EMU Variable FVB: Initialing blank FV\n"));
+      SetMem (Ptr, EMU_FVB_SIZE, ERASED_UINT8);
+      InitializeFvAndVariableStoreHeaders (Ptr);
+    }
   }
   PcdSet64 (PcdFlashNvStorageVariableBase64, (UINT32)(UINTN) Ptr);
 
@@ -908,7 +929,7 @@ FvbInitialize (
   // Initialize the Fault Tolerant Write data area
   //
   SubPtr = (VOID*) ((UINT8*) Ptr + PcdGet32 (PcdVariableStoreSize));
-  if (Initialize) {
+  if (Initialize && !InitializeFromFd) {
     InitializeFtwState (SubPtr);
   }
   PcdSet32 (PcdFlashNvStorageFtwWorkingBase, (UINT32)(UINTN) SubPtr);
