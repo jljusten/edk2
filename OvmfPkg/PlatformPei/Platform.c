@@ -1,7 +1,7 @@
 /**@file
   Platform PEI driver
 
-  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
   Copyright (c) 2011, Andrei Warkentin <andreiw@motorola.com>
 
   This program and the accompanying materials
@@ -278,6 +278,7 @@ ReserveEmuVariableNvStore (
   )
 {
   EFI_PHYSICAL_ADDRESS VariableStore;
+  UINT32               FdNvVariables;
 
   //
   // Allocate storage for NV variables early on so it will be
@@ -296,6 +297,9 @@ ReserveEmuVariableNvStore (
           (2 * PcdGet32 (PcdFlashNvStorageFtwSpareSize)) / 1024
         ));
   PcdSet64 (PcdEmuVariableNvStoreReserved, VariableStore);
+
+  FdNvVariables = PcdGet32 (PcdOvmfFlashNvStorageVariableBase);
+  PcdSet64 (PcdFlashNvStorageVariableBase64, (UINT64) FdNvVariables);
 }
 
 
