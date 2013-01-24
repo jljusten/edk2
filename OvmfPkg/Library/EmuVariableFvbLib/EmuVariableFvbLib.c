@@ -1,7 +1,7 @@
 /** @file
   OVMF platform customization for EMU Variable FVB driver
 
-  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2013, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -19,6 +19,7 @@
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeLib.h>
 
+#include "QemuFlash.h"
 
 /**
   This function will be called following a call to the
@@ -69,12 +70,16 @@ PlatformFvbDataWritten (
 {
   STATIC EFI_EVENT EventToSignal = NULL;
 
-  if (!EfiAtRuntime ()) {
-    if (EventToSignal == NULL) {
-      EventToSignal = (EFI_EVENT)(UINTN) PcdGet64 (PcdEmuVariableEvent);
-    }
-    if (EventToSignal != NULL) {
-      gBS->SignalEvent (EventToSignal);
+  if (QemuFlashDetected ()) {
+    QemuFlashFvbDataWritten(Lba, Offset, NumBytes, Buffer);
+  } else {
+    if (!EfiAtRuntime ()) {
+      if (EventToSignal == NULL) {
+        EventToSignal = (EFI_EVENT)(UINTN) PcdGet64 (PcdEmuVariableEvent);
+      }
+      if (EventToSignal != NULL) {
+        gBS->SignalEvent (EventToSignal);
+      }
     }
   }
 }
@@ -98,6 +103,16 @@ PlatformFvbBlocksErased (
   IN  VA_LIST       List
   )
 {
+  QemuFlashFvbBlocksErased(List);
 }
 
+
+EFI_STATUS
+EFIAPI
+PlatformFvbLibInitialize (
+  VOID
+  )
+{
+  return QemuFlashFvbInitialize ();
+}
 

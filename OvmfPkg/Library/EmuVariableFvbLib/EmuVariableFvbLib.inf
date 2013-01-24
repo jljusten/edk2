@@ -3,7 +3,7 @@
 #
 #  This library handles hooks for the EMU Variable FVB driver.
 #
-#  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -22,6 +22,7 @@
   MODULE_TYPE                    = BASE
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = PlatformFvbLib|DXE_RUNTIME_DRIVER
+  CONSTRUCTOR                    = PlatformFvbLibInitialize
 
 #
 # The following information is for reference only and not required by the build tools.
@@ -31,6 +32,7 @@
 
 [Sources]
   EmuVariableFvbLib.c
+  QemuFlash.c
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -45,4 +47,7 @@
 
 [Pcd]
   gUefiOvmfPkgTokenSpaceGuid.PcdEmuVariableEvent
+  gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFlashNvStorageVariableBase
+  gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFirmwareBlockSize
+  gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFirmwareFdSize
 
