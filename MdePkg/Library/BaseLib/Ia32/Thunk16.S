@@ -40,7 +40,8 @@ L_Base1:
     push    %fs
     push    %es
     push    %ds
-    pushaw                              # pushad actually
+    .byte   0x66
+    pusha                               # pushad actually
     .byte   0x66, 0xba                  # mov edx, imm32
 ASM_PFX(ThunkAttr): .space  4
     testb   $THUNK_ATTRIBUTE_DISABLE_A20_MASK_INT_15, %dl
@@ -109,7 +110,8 @@ L_RealMode:
     mov     %edx, %cs:0xffffffc5(%esi)
     mov     %bx, %cs:0xffffffcb(%esi)
     lidtw   %cs:0xffffffd7(%esi)
-    popaw                               # popad actually
+    .byte   0x66
+    popa                                # popad actually
     pop     %ds
     pop     %es
     pop     %fs
