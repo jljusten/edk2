@@ -132,8 +132,13 @@ PcRtcInit (
 
   //
   // Clear RTC register D
+  // Modification of "read only" bit VRT considered harmful.
+  // Peculiar RTC implementations have VRT bit writable.
+  // Writing 0 to VRT bit produce a bunch of hardware
+  // events.
   //
-  RegisterD.Data = RTC_INIT_REGISTER_D;
+  RegisterD.Data = RtcRead (RTC_ADDRESS_REGISTER_D);
+  RegisterD.Bits.Reserved = RTC_INIT_REGISTER_D;
   RtcWrite (RTC_ADDRESS_REGISTER_D, RegisterD.Data);
 
   //
