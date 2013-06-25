@@ -4,7 +4,7 @@
 #
 # The Emulation Platform can be used to debug individual modules, prior to creating
 #       a real platform. This also provides an example for how an DSC is created.
-# Copyright (c) 2006 - 2012, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
 #
 #    This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -244,6 +244,7 @@
   IntelFrameworkModulePkg/Universal/StatusCode/Pei/StatusCodePei.inf
   UnixPkg/BootModePei/BootModePei.inf
   UnixPkg/UnixFlashMapPei/FlashMap.inf
+  MdeModulePkg/Universal/FaultTolerantWritePei/FaultTolerantWritePei.inf
   MdeModulePkg/Universal/Variable/Pei/VariablePei.inf
   UnixPkg/UnixAutoScanPei/UnixAutoScan.inf
   UnixPkg/UnixFirmwareVolumePei/UnixFwh.inf
