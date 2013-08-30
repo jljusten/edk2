@@ -48,6 +48,7 @@ PLATFORMFILE=
 THREADNUMBER=1
 LAST_ARG=
 RUN_QEMU=no
+ENABLE_FLASH=no
 
 #
 # Pick a default tool type for a given OS
@@ -105,6 +106,9 @@ do
         RUN_QEMU=yes
         shift
         break
+        ;;
+      --enable-flash)
+        ENABLE_FLASH=yes
         ;;
       *)
         BUILD_OPTIONS="$BUILD_OPTIONS $arg"
@@ -165,16 +169,26 @@ if [ -z "$PLATFORMFILE" ]; then
   PLATFORMFILE=$WORKSPACE/OvmfPkg/OvmfPkg$Processor.dsc
 fi
 
-ADD_QEMU_HDA=yes
-for arg in "$@"
-do
-  case $arg in
-    -hd[a-d]|-fd[ab]|-cdrom)
-      ADD_QEMU_HDA=no
-      break
+if [[ "$RUN_QEMU" == "yes" ]]; then
+  qemu_version=$($QEMU_COMMAND -version 2>&1 | tail -1 | awk '{print $4}')
+  case $qemu_version in
+    1.[6-9].*|1.[1-9][0-9].*|2.*.*)
+      ENABLE_FLASH=yes
       ;;
   esac
+
+  ADD_QEMU_HDA=yes
+  for arg in "$@"
+  do
+    case $arg in
+      -hd[a-d]|-fd[ab]|-cdrom)
+        ADD_QEMU_HDA=no
+        break
+        ;;
+  esac
 done
+
+fi
 
 #
 # Uncomment this block for parameter parsing debug
@@ -208,16 +222,20 @@ fi
 
 
 if [[ "$RUN_QEMU" == "yes" ]]; then
+  qemu_version=$($QEMU_COMMAND -version 2>&1 | tail -1 | awk '{print $4}')
   if [[ ! -d $QEMU_FIRMWARE_DIR ]]; then
     mkdir $QEMU_FIRMWARE_DIR
   fi
   ln -sf $FV_DIR/OVMF.fd $QEMU_FIRMWARE_DIR/bios.bin
-  if [[ "$ADD_QEMU_HDA" == "yes" ]]; then
-    AUTO_QEMU_HDA="-hda fat:$BUILD_ROOT_ARCH"
+  if [[ "$ENABLE_FLASH" == "yes" ]]; then
+    QEMU_COMMAND="$QEMU_COMMAND -pflash $QEMU_FIRMWARE_DIR/bios.bin"
   else
-    AUTO_QEMU_HDA=
+    QEMU_COMMAND="$QEMU_COMMAND -L $QEMU_FIRMWARE_DIR"
   fi
-  QEMU_COMMAND="$QEMU_COMMAND -L $QEMU_FIRMWARE_DIR $AUTO_QEMU_HDA $*"
+  if [[ "$ADD_QEMU_HDA" == "yes" ]]; then
+    QEMU_COMMAND="$QEMU_COMMAND -hda fat:$BUILD_ROOT_ARCH"
+  fi
+  QEMU_COMMAND="$QEMU_COMMAND $*"
   echo Running: $QEMU_COMMAND
   $QEMU_COMMAND
   exit $?
