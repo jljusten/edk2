@@ -1,6 +1,7 @@
 /** @file
   Header file for USB Serial Driver's Data Structures.
 
+Portions Copyright 2012 Ashley DeSimone
 Copyright (c) 2004 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
@@ -29,20 +30,42 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #define REQ_TYPE            0x40
 
-#define SET_DATA_BITS       4
-#define SET_DATA_BITS_8     0x08
+///
+/// FTDI Commands
+///
+#define FTDI_COMMAND_RESET_PORT          0
+#define FTDI_COMMAND_MODEM_CTRL          1
+#define FTDI_COMMAND_SET_FLOW_CTRL       2
+#define FTDI_COMMAND_SET_BAUDRATE        3
+#define FTDI_COMMAND_SET_DATA_BITS       4
+#define FTDI_COMMAND_GET_MODEM_STATUS    5
+#define FTDI_COMMAND_SET_EVENT_CHAR      6
+#define FTDI_COMMAND_SET_ERROR_CHAR      7
+#define FTDI_COMMAND_SET_LATENCY_TIMER   9
+#define FTDI_COMMAND_GET_LATENCY_TIMER   10
 
-#define SET_BAUDRATE        3
-#define SET_BAUDRATE_115200 26
-
-#define SET_FLOW_CTRL       2
+///
+/// SET_FLOW_CONTROL
+///
 #define NO_FLOW_CTRL        0x0
 
-#define RESET_PORT          0
+///
+/// SET_BAUD_RATE
+/// To set baud rate, one must calculate an encoding of the baud rate from UINT32 to UINT16.
+/// See EncodeBaudRateForFtdi() for details
+///
+#define FTDI_UART_FREQUENCY 3000000
+#define FTDI_MIN_DIVISOR    0x20
+#define FTDI_MAX_DIVISOR    0x3FFF8
 
-//
-// Structure to describe USB serial device
-//
+///
+/// SET_DATA_BITS
+///
+#define SET_DATA_BITS_8     0x08
+
+///
+/// Structure to describe USB serial device
+///
 
 typedef struct {
   UINTN                         Signature;
@@ -58,6 +81,8 @@ typedef struct {
   UINT8                         *DataBuffer;
   EFI_SERIAL_IO_PROTOCOL        SerialIo;
   BOOLEAN                       Shutdown;
+  EFI_EVENT                     PollingLoop;
+  UINT32                        ControlBits;
 } USB_SER_DEV;
 
 //
@@ -190,6 +215,28 @@ EFI_STATUS
 EFIAPI
 ReadSerialIo (
   IN EFI_SERIAL_IO_PROTOCOL         *This,
+  IN OUT UINTN                      *BufferSize,
+  OUT VOID                          *Buffer
+  );
+
+/**
+  Initiates a read operation on the Usb Serial Device.
+
+  @param  UsbSerialDevice   Handle to the USB device to read
+  @param  BufferSize        On input, the size of the Buffer. On output, the amount of
+                            data returned in Buffer.
+                            Setting this to zero will initiate a read and store all data returned in the internal buffer.
+  @param  Buffer            The buffer to return the data into.
+
+  @retval EFI_SUCCESS       The data was read.
+  @retval EFI_DEVICE_ERROR  The device reported an error.
+  @retval EFI_TIMEOUT       The data write was stopped due to a timeout.
+
+**/
+EFI_STATUS
+EFIAPI
+ReadDataFromUsb (
+  IN USB_SER_DEV                    *UsbSerialDevice,
   IN OUT UINTN                      *BufferSize,
   OUT VOID                          *Buffer
   );
@@ -397,6 +444,29 @@ UsbSerialComponentNameGetControllerName (
   IN  EFI_HANDLE                                      ChildHandle        OPTIONAL,
   IN  CHAR8                                           *Language,
   OUT CHAR16                                          **ControllerName
+  );
+
+/**
+  UsbSerialDriverCheckInput 
+  attempts to read data in from the device periodically, stores any read data and
+  updates the control attributes.
+**/
+VOID
+EFIAPI
+UsbSerialDriverCheckInput (
+  IN  EFI_EVENT  Event,
+  IN  VOID       *Context
+  );
+
+/**
+  EncodeBaudRateForFtdi
+  Encodes a BaudRate for transmission to the serial device
+**/
+EFI_STATUS
+EFIAPI
+EncodeBaudRateForFtdi (
+  IN  UINT64  BaudRate,
+  OUT UINT16  *EncodedBaudRate
   );
 
 #endif

@@ -1280,8 +1280,10 @@ IsaSerialSetAttributes (
   }
 
   if (Timeout == 0) {
+	DEBUG ((EFI_D_INFO, "Use Default Timeout\n"));
     Timeout = SERIAL_PORT_DEFAULT_TIMEOUT;
   }
+  DEBUG ((EFI_D_INFO, "Serial Timeout = %d\n", Timeout));
 
   if (Parity == DefaultParity) {
     Parity = (EFI_PARITY_TYPE)PcdGet8 (PcdUartDefaultParity);
@@ -1868,7 +1870,7 @@ IsaSerialRead (
   if (Buffer == NULL) {
     return EFI_DEVICE_ERROR;
   }
-
+  DEBUG ((EFI_D_INFO, "Reading Serial...\n"));
   Tpl     = gBS->RaiseTPL (TPL_NOTIFY);
 
   Status  = IsaSerialReceiveTransmit (SerialDevice);
@@ -1898,9 +1900,13 @@ IsaSerialRead (
       if (Elapsed >= This->Mode->Timeout) {
         *BufferSize = Index;
         gBS->RestoreTPL (Tpl);
+		DEBUG ((EFI_D_INFO, "Timeout = %d\n", This->Mode->Timeout));
+		DEBUG ((EFI_D_INFO, "Stall Interval = %d\n", TIMEOUT_STALL_INTERVAL));
+		DEBUG ((EFI_D_INFO, "Return Timeout\n"));
         return EFI_TIMEOUT;
       }
-
+      
+	  DEBUG ((EFI_D_INFO, "Serial Stalling\n"));
       gBS->Stall (TIMEOUT_STALL_INTERVAL);
       Elapsed += TIMEOUT_STALL_INTERVAL;
 
@@ -1920,7 +1926,7 @@ IsaSerialRead (
   IsaSerialReceiveTransmit (SerialDevice);
 
   gBS->RestoreTPL (Tpl);
-
+  DEBUG ((EFI_D_INFO, "Serial Read Successful\n"));
   return EFI_SUCCESS;
 }
 

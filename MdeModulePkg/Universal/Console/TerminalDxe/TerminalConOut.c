@@ -453,6 +453,7 @@ TerminalConOutSetMode (
   EFI_STATUS    Status;
   TERMINAL_DEV  *TerminalDevice;
 
+  //DEBUG ((EFI_D_INFO, "SetMode() Check1\n"));
   //
   //  get Terminal device data structure pointer.
   //
@@ -462,28 +463,30 @@ TerminalConOutSetMode (
     return EFI_UNSUPPORTED;
   }
 
+  //DEBUG ((EFI_D_INFO, "SetMode() Check2\n"));
   //
   // Set the current mode
   //
   This->Mode->Mode = (INT32) ModeNumber;
 
+  //DEBUG ((EFI_D_INFO, "SetMode() Check3\n"));
   This->ClearScreen (This);
-
+  //DEBUG ((EFI_D_INFO, "SetMode() Check4\n"));
   TerminalDevice->OutputEscChar = TRUE;
   Status                        = This->OutputString (This, mSetModeString);
   TerminalDevice->OutputEscChar = FALSE;
-
+  //DEBUG ((EFI_D_INFO, "SetMode() Check5\n"));
   if (EFI_ERROR (Status)) {
     return EFI_DEVICE_ERROR;
   }
-
+  //DEBUG ((EFI_D_INFO, "SetMode() Check6\n"));
   This->Mode->Mode  = (INT32) ModeNumber;
-
+  //DEBUG ((EFI_D_INFO, "SetMode() Check7\n"));
   Status            = This->ClearScreen (This);
   if (EFI_ERROR (Status)) {
     return EFI_DEVICE_ERROR;
   }
-
+  //DEBUG ((EFI_D_INFO, "SetMode() Check8\n"));
   return EFI_SUCCESS;
 
 }
@@ -684,20 +687,21 @@ TerminalConOutClearScreen (
   TERMINAL_DEV  *TerminalDevice;
 
   TerminalDevice = TERMINAL_CON_OUT_DEV_FROM_THIS (This);
-
+  //DEBUG ((EFI_D_INFO, "ClearScreen() Check1\n"));
   //
   //  control sequence for clear screen request
   //
+  
   TerminalDevice->OutputEscChar = TRUE;
   Status                        = This->OutputString (This, mClearScreenString);
   TerminalDevice->OutputEscChar = FALSE;
-
+  //DEBUG ((EFI_D_INFO, "ClearScreen() Check2\n"));
   if (EFI_ERROR (Status)) {
     return EFI_DEVICE_ERROR;
   }
-
+  //DEBUG ((EFI_D_INFO, "ClearScreen() Check3\n"));
   Status = This->SetCursorPosition (This, 0, 0);
-
+  //DEBUG ((EFI_D_INFO, "ClearScreen() Check4\n"));
   return Status;
 }
 
