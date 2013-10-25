@@ -1,7 +1,7 @@
 /** @file
   OVMF ACPI QEMU support
 
-  Copyright (c) 2008 - 2012, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2008 - 2013, Intel Corporation. All rights reserved.<BR>
 
   Copyright (C) 2012, Red Hat, Inc.
 
@@ -232,16 +232,12 @@ PopulateFwData(
 
   Status = gDS->GetMemorySpaceMap (&NumDesc, &AllDesc);
   if (Status == EFI_SUCCESS) {
-    UINT64 NonMmio32MaxExclTop;
-    UINT64 Mmio32MinBase;
-    UINT64 Mmio32MaxExclTop;
     UINTN CurDesc;
+    CONST EFI_GCD_MEMORY_SPACE_DESCRIPTOR *Mmio32Desc;
 
     Status = EFI_UNSUPPORTED;
 
-    NonMmio32MaxExclTop = 0;
-    Mmio32MinBase = BASE_4GB;
-    Mmio32MaxExclTop = 0;
+    Mmio32Desc = NULL;
 
     for (CurDesc = 0; CurDesc < NumDesc; ++CurDesc) {
       CONST EFI_GCD_MEMORY_SPACE_DESCRIPTOR *Desc;
@@ -253,21 +249,16 @@ PopulateFwData(
       if (ExclTop <= BASE_4GB) {
         switch (Desc->GcdMemoryType) {
           case EfiGcdMemoryTypeNonExistent:
-            break;
-
           case EfiGcdMemoryTypeReserved:
           case EfiGcdMemoryTypeSystemMemory:
-            if (NonMmio32MaxExclTop < ExclTop) {
-              NonMmio32MaxExclTop = ExclTop;
-            }
             break;
 
           case EfiGcdMemoryTypeMemoryMappedIo:
-            if (Mmio32MinBase > Desc->BaseAddress) {
-              Mmio32MinBase = Desc->BaseAddress;
-            }
-            if (Mmio32MaxExclTop < ExclTop) {
-              Mmio32MaxExclTop = ExclTop;
+            if (Mmio32Desc == NULL ||
+                Desc->Length > Mmio32Desc->Length ||
+                (Desc->Length == Mmio32Desc->Length &&
+                 Desc->BaseAddress > Mmio32Desc->BaseAddress)) {
+              Mmio32Desc = Desc;
             }
             break;
 
@@ -277,14 +268,10 @@ PopulateFwData(
       }
     }
 
-    if (Mmio32MinBase < NonMmio32MaxExclTop) {
-      Mmio32MinBase = NonMmio32MaxExclTop;
-    }
-
-    if (Mmio32MinBase < Mmio32MaxExclTop) {
-      FwData->PciWindow32.Base   = Mmio32MinBase;
-      FwData->PciWindow32.End    = Mmio32MaxExclTop - 1;
-      FwData->PciWindow32.Length = Mmio32MaxExclTop - Mmio32MinBase;
+    if (Mmio32Desc != NULL) {
+      FwData->PciWindow32.Base   = Mmio32Desc->BaseAddress;
+      FwData->PciWindow32.End    = Mmio32Desc->BaseAddress + Mmio32Desc->Length - 1;
+      FwData->PciWindow32.Length = Mmio32Desc->Length;
 
       FwData->PciWindow64.Base   = 0;
       FwData->PciWindow64.End    = 0;
