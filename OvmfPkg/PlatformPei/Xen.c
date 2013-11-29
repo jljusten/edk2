@@ -29,9 +29,35 @@
 #include <Guid/XenInfo.h>
 
 #include "Platform.h"
+#include "Xen.h"
 
 EFI_XEN_INFO mXenInfo;
 
+/**
+  Returns E820 map provided by Xen
+
+  @param Entries      Pointer to E820 map
+  @param Count        Number of entries
+
+  @return EFI_STATUS
+**/
+EFI_STATUS
+XenGetE820Map (
+  EFI_E820_ENTRY64 **Entries,
+  UINT32 *Count
+  )
+{
+ EFI_XEN_OVMF_INFO *Info = (EFI_XEN_OVMF_INFO *) OVMF_INFO_PHYSICAL_ADDRESS;
+
+ if (AsciiStrCmp ((CHAR8 *) Info->Signature, "XenHVMOVMF")) {
+   return EFI_NOT_FOUND;
+ }
+
+ *Entries = (EFI_E820_ENTRY64 *) Info->E820;
+ *Count = Info->E820EntriesCount;
+
+ return EFI_SUCCESS;
+}
 
 /**
   Connects to the Hypervisor.
