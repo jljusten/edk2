@@ -176,6 +176,17 @@ MemDetect (
       (UINT64)(UINTN) PcdGet32 (PcdS3AcpiReservedMemorySize),
       EfiACPIMemoryNVS
       );
+
+    //
+    // Cover the initial RAM area used as stack and temporary PEI heap.
+    //
+    // This is reserved as ACPI NVS so it can be used on S3 resume.
+    //
+    BuildMemoryAllocationHob (
+      PcdGet32 (PcdOvmfSecPeiTempRamBase),
+      PcdGet32 (PcdOvmfSecPeiTempRamSize),
+      EfiACPIMemoryNVS
+      );
   }
 
   return LowerMemorySize;
