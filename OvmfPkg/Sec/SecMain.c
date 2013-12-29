@@ -319,8 +319,8 @@ FindFfsFileAndSection (
 
 **/
 EFI_STATUS
-DecompressGuidedFv (
-  IN OUT EFI_FIRMWARE_VOLUME_HEADER       **Fv
+DecompressMemFvs (
+  IN OUT EFI_FIRMWARE_VOLUME_HEADER       **PeiFv
   )
 {
   EFI_STATUS                        Status;
@@ -331,13 +331,14 @@ DecompressGuidedFv (
   UINT32                            AuthenticationStatus;
   VOID                              *OutputBuffer;
   VOID                              *ScratchBuffer;
-  EFI_FIRMWARE_VOLUME_IMAGE_SECTION *NewFvSection;
-  EFI_FIRMWARE_VOLUME_HEADER        *NewFv;
+  EFI_FIRMWARE_VOLUME_IMAGE_SECTION *FvSection;
+  EFI_FIRMWARE_VOLUME_HEADER        *PeiMemFv;
+  EFI_FIRMWARE_VOLUME_HEADER        *DxeMemFv;
 
-  NewFvSection = (EFI_FIRMWARE_VOLUME_IMAGE_SECTION*) NULL;
+  FvSection = (EFI_FIRMWARE_VOLUME_IMAGE_SECTION*) NULL;
 
   Status = FindFfsFileAndSection (
-             *Fv,
+             *PeiFv,
              EFI_FV_FILETYPE_FIRMWARE_VOLUME_IMAGE,
              EFI_SECTION_GUID_DEFINED,
              (EFI_COMMON_SECTION_HEADER**) &Section
@@ -358,8 +359,7 @@ DecompressGuidedFv (
     return Status;
   }
 
-  //PcdGet32 (PcdOvmfMemFvBase), PcdGet32 (PcdOvmfMemFvSize)
-  OutputBuffer = (VOID*) ((UINT8*)(UINTN) PcdGet32 (PcdOvmfMemFvBase) + SIZE_1MB);
+  OutputBuffer = (VOID*) ((UINT8*)(UINTN) PcdGet32 (PcdOvmfDxeMemFvBase) + SIZE_1MB);
   ScratchBuffer = ALIGN_POINTER ((UINT8*) OutputBuffer + OutputBufferSize, SIZE_1MB);
   Status = ExtractGuidedSectionDecode (
              Section,
@@ -372,27 +372,57 @@ DecompressGuidedFv (
     return Status;
   }
 
-  Status = FindFfsSectionInSections (
+  Status = FindFfsSectionInstance (
              OutputBuffer,
              OutputBufferSize,
              EFI_SECTION_FIRMWARE_VOLUME_IMAGE,
-             (EFI_COMMON_SECTION_HEADER**) &NewFvSection
+             0,
+             (EFI_COMMON_SECTION_HEADER**) &FvSection
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((EFI_D_ERROR, "Unable to find FV image in extracted data\n"));
+    DEBUG ((EFI_D_ERROR, "Unable to find PEI FV section\n"));
     return Status;
   }
 
-  NewFv = (EFI_FIRMWARE_VOLUME_HEADER*)(UINTN) PcdGet32 (PcdOvmfMemFvBase);
-  CopyMem (NewFv, (VOID*) (NewFvSection + 1), PcdGet32 (PcdOvmfMemFvSize));
+  ASSERT (SECTION_SIZE (FvSection) ==
+          (PcdGet32 (PcdOvmfPeiMemFvSize) + sizeof (*FvSection)));
+  ASSERT (FvSection->Type == EFI_SECTION_FIRMWARE_VOLUME_IMAGE);
 
-  if (NewFv->Signature != EFI_FVH_SIGNATURE) {
-    DEBUG ((EFI_D_ERROR, "Extracted FV at %p does not have FV header signature\n", NewFv));
+  PeiMemFv = (EFI_FIRMWARE_VOLUME_HEADER*)(UINTN) PcdGet32 (PcdOvmfPeiMemFvBase);
+  CopyMem (PeiMemFv, (VOID*) (FvSection + 1), PcdGet32 (PcdOvmfPeiMemFvSize));
+
+  if (PeiMemFv->Signature != EFI_FVH_SIGNATURE) {
+    DEBUG ((EFI_D_ERROR, "Extracted FV at %p does not have FV header signature\n", PeiMemFv));
     CpuDeadLoop ();
     return EFI_VOLUME_CORRUPTED;
   }
 
-  *Fv = NewFv;
+  Status = FindFfsSectionInstance (
+             OutputBuffer,
+             OutputBufferSize,
+             EFI_SECTION_FIRMWARE_VOLUME_IMAGE,
+             1,
+             (EFI_COMMON_SECTION_HEADER**) &FvSection
+             );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "Unable to find DXE FV section\n"));
+    return Status;
+  }
+
+  ASSERT (FvSection->Type == EFI_SECTION_FIRMWARE_VOLUME_IMAGE);
+  ASSERT (SECTION_SIZE (FvSection) ==
+          (PcdGet32 (PcdOvmfDxeMemFvSize) + sizeof (*FvSection)));
+
+  DxeMemFv = (EFI_FIRMWARE_VOLUME_HEADER*)(UINTN) PcdGet32 (PcdOvmfDxeMemFvBase);
+  CopyMem (DxeMemFv, (VOID*) (FvSection + 1), PcdGet32 (PcdOvmfDxeMemFvSize));
+
+  if (DxeMemFv->Signature != EFI_FVH_SIGNATURE) {
+    DEBUG ((EFI_D_ERROR, "Extracted FV at %p does not have FV header signature\n", DxeMemFv));
+    CpuDeadLoop ();
+    return EFI_VOLUME_CORRUPTED;
+  }
+
+  *PeiFv = PeiMemFv;
   return EFI_SUCCESS;
 }
 
@@ -452,17 +482,17 @@ FindPeiCoreImageBaseInFv (
 **/
 VOID
 FindPeiCoreImageBase (
-  IN OUT  EFI_FIRMWARE_VOLUME_HEADER       **BootFv,
+  IN OUT  EFI_FIRMWARE_VOLUME_HEADER       **PeiFv,
      OUT  EFI_PHYSICAL_ADDRESS             *PeiCoreImageBase
   )
 {
   *PeiCoreImageBase = 0;
 
-  FindMainFv (BootFv);
+  FindMainFv (PeiFv);
 
-  DecompressGuidedFv (BootFv);
+  DecompressMemFvs (PeiFv);
 
-  FindPeiCoreImageBaseInFv (*BootFv, PeiCoreImageBase);
+  FindPeiCoreImageBaseInFv (*PeiFv, PeiCoreImageBase);
 }
 
 /**
