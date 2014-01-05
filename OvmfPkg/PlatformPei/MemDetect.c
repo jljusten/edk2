@@ -99,16 +99,21 @@ PublishPeiMemory (
   UINT64                      MemorySize;
   UINT64                      LowerMemorySize;
 
-  LowerMemorySize = GetSystemMemorySizeBelow4gb ();
+  if (mBootMode == BOOT_ON_S3_RESUME) {
+    MemoryBase = PcdGet32 (PcdS3AcpiReservedMemoryBase);
+    MemorySize = PcdGet32 (PcdS3AcpiReservedMemorySize);
+  } else {
+    LowerMemorySize = GetSystemMemorySizeBelow4gb ();
 
-  //
-  // Determine the range of memory to use during PEI
-  //
-  MemoryBase = PcdGet32 (PcdOvmfDxeMemFvBase) + PcdGet32 (PcdOvmfDxeMemFvSize);
-  MemorySize = LowerMemorySize - MemoryBase;
-  if (MemorySize > SIZE_64MB) {
-    MemoryBase = LowerMemorySize - SIZE_64MB;
-    MemorySize = SIZE_64MB;
+    //
+    // Determine the range of memory to use during PEI
+    //
+    MemoryBase = PcdGet32 (PcdOvmfDxeMemFvBase) + PcdGet32 (PcdOvmfDxeMemFvSize);
+    MemorySize = LowerMemorySize - MemoryBase;
+    if (MemorySize > SIZE_64MB) {
+      MemoryBase = LowerMemorySize - SIZE_64MB;
+      MemorySize = SIZE_64MB;
+    }
   }
 
   //
@@ -156,6 +161,17 @@ MemDetect (
     AddUntestedMemoryBaseSizeHob (BASE_4GB, UpperMemorySize);
 
     MtrrSetMemoryAttribute (BASE_4GB, UpperMemorySize, CacheWriteBack);
+  }
+
+  if (mBootMode != BOOT_ON_S3_RESUME) {
+    //
+    // This is the memory range that will be used for PEI on S3 resume
+    //
+    BuildMemoryAllocationHob (
+      (EFI_PHYSICAL_ADDRESS)(UINTN) PcdGet32 (PcdS3AcpiReservedMemoryBase),
+      (UINT64)(UINTN) PcdGet32 (PcdS3AcpiReservedMemorySize),
+      EfiACPIMemoryNVS
+      );
   }
 
   return LowerMemorySize;
