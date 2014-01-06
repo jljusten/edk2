@@ -90,4 +90,6 @@ XenGetE820Map (
   UINT32 *Count
   );
 
+extern EFI_BOOT_MODE mBootMode;
+
 #endif // _PLATFORM_PEI_H_INCLUDED_
