@@ -1,7 +1,7 @@
 /**@file
   Platform PEI driver
 
-  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
   Copyright (c) 2011, Andrei Warkentin <andreiw@motorola.com>
 
   This program and the accompanying materials
@@ -420,6 +420,8 @@ InitializePlatform (
 
   XenLeaf = XenDetect ();
 
+  BootModeInitialization ();
+
   if (XenLeaf != 0) {
     PublishPeiMemory ();
     PcdSetBool (PcdPciDisableBusEnumeration, TRUE);
@@ -443,8 +445,6 @@ InitializePlatform (
   }
 
   MiscInitialization ();
-
-  BootModeInitialization ();
 
   return EFI_SUCCESS;
 }
