@@ -443,17 +443,19 @@ InitializePlatform (
     InitializeXen (XenLeaf);
   }
 
-  ReserveEmuVariableNvStore ();
+  if (mBootMode != BOOT_ON_S3_RESUME) {
+    ReserveEmuVariableNvStore ();
 
-  PeiFvInitialization ();
+    PeiFvInitialization ();
 
-  if (XenLeaf != 0) {
-    XenMemMapInitialization ();
-  } else {
-    MemMapInitialization (TopOfMemory);
+    if (XenLeaf != 0) {
+      XenMemMapInitialization ();
+    } else {
+      MemMapInitialization (TopOfMemory);
+    }
+
+    MiscInitialization ();
   }
-
-  MiscInitialization ();
 
   return EFI_SUCCESS;
 }
