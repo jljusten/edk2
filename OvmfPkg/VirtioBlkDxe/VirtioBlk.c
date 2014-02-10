@@ -770,8 +770,8 @@ VirtioBlkInit (
   Dev->BlockIoMedia.RemovableMedia   = FALSE;
   Dev->BlockIoMedia.MediaPresent     = TRUE;
   Dev->BlockIoMedia.LogicalPartition = FALSE;
-  Dev->BlockIoMedia.ReadOnly         = !!(Features & VIRTIO_BLK_F_RO);
-  Dev->BlockIoMedia.WriteCaching     = !!(Features & VIRTIO_BLK_F_FLUSH);
+  Dev->BlockIoMedia.ReadOnly         = (BOOLEAN) (Features & VIRTIO_BLK_F_RO);
+  Dev->BlockIoMedia.WriteCaching     = (BOOLEAN) (Features & VIRTIO_BLK_F_FLUSH);
   Dev->BlockIoMedia.BlockSize        = BlockSize;
   Dev->BlockIoMedia.IoAlign          = 0;
   Dev->BlockIoMedia.LastBlock        = DivU64x32 (NumSectors,

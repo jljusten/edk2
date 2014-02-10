@@ -748,7 +748,7 @@ VirtioScsiInit (
   if (EFI_ERROR (Status)) {
     goto Failed;
   }
-  Dev->InOutSupported = !!(Features & VIRTIO_SCSI_F_INOUT);
+  Dev->InOutSupported = (BOOLEAN) (Features & VIRTIO_SCSI_F_INOUT);
 
   Status = VIRTIO_CFG_READ (Dev, MaxChannel, &MaxChannel);
   if (EFI_ERROR (Status)) {

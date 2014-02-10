@@ -879,7 +879,7 @@ Returns:
   if (Checksum != 0) {
     UINT16 Expected;
 
-    Expected = ((UINTN) FwVolHeader->Checksum + 0x10000 - Checksum) & 0xffff;
+    Expected = (UINT16) ((UINTN) FwVolHeader->Checksum + 0x10000 - Checksum);
 
     DEBUG ((EFI_D_INFO, "FV@%p Checksum is 0x%x, expected 0x%x\n",
             FwVolHeader, FwVolHeader->Checksum, Expected));

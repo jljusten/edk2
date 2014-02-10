@@ -94,7 +94,7 @@ VirtioNetGetStatus (
     if (EFI_ERROR (Status)) {
       goto Exit;
     }
-    Dev->Snm.MediaPresent = !!(LinkStatus & VIRTIO_NET_S_LINK_UP);
+    Dev->Snm.MediaPresent = (BOOLEAN) (LinkStatus & VIRTIO_NET_S_LINK_UP);
   }
 
   //

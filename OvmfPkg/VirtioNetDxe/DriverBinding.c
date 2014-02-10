@@ -129,7 +129,7 @@ VirtioNetGetFeatures (
     if (EFI_ERROR (Status)) {
       goto YieldDevice;
     }
-    *MediaPresent = !!(LinkStatus & VIRTIO_NET_S_LINK_UP);
+    *MediaPresent = (BOOLEAN) (LinkStatus & VIRTIO_NET_S_LINK_UP);
   }
 
 YieldDevice:
