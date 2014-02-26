@@ -28,6 +28,11 @@
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
   FLASH_DEFINITION               = OvmfPkg/OvmfPkgIa32.fdf
+!if $(TARGET) == DEBUG
+  FIX_LOAD_TOP_MEMORY_ADDRESS    = 0x7000000
+!else
+  FIX_LOAD_TOP_MEMORY_ADDRESS    = 0x0
+!endif
 
   #
   # Defines for default states.  These can be changed on the command line.
@@ -314,6 +319,8 @@
 
   # IRQs 5, 9, 10, 11 are level-triggered
   gPcAtChipsetPkgTokenSpaceGuid.Pcd8259LegacyModeEdgeLevel|0x0E20
+
+  gEfiMdeModulePkgTokenSpaceGuid.PcdLoadModuleAtFixAddressEnable | $(FIX_LOAD_TOP_MEMORY_ADDRESS)
 
 ################################################################################
 #
