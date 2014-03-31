@@ -124,6 +124,11 @@ if /I "%1"=="/?" goto Usage
   echo Resetting the PATH variable to include the EDK_TOOLS_PATH for this session.
 
 :PATH_ok
+  echo Running BaseToolsBins
+  %EDK_TOOLS_PATH%\Bin\Win32\BaseToolsBins.exe
+  if ERRORLEVEL 1 goto end
+
+:BaseToolsBins_ok
   echo           PATH      = %PATH%
   echo.
   if defined WORKSPACE (
