@@ -257,5 +257,6 @@ fi
 #
 echo Running edk2 build for OvmfPkg$Processor
 build -p $PLATFORMFILE $BUILD_OPTIONS -a $PROCESSOR -b $BUILDTARGET -t $TARGET_TOOLS -n $THREADNUMBER
+python $WORKSPACE/OvmfPkg/gdb.py $BUILD_ROOT/Ovmf.map
 exit $?
 
