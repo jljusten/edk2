@@ -425,6 +425,7 @@
 !ifdef $(CSM_ENABLE)
       NULL|OvmfPkg/Csm/CsmSupportLib/CsmSupportLib.inf
 !endif
+      NULL|OvmfPkg/Csm/Int10Stub/Int10Stub.inf
   }
 
   OvmfPkg/BlockMmioToBlockIoDxe/BlockIo.inf
