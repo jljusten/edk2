@@ -100,12 +100,16 @@ x4f00DataEnd:
 OemString:
         db      'Intel', 0
 ModeList:
+        dw      0x0115
         dw      0x0118
         dw      0xffff
 
 x4f01:
+        cmp     cx, 0x0115
+        je      x4f01ModeOkay
         cmp     cx, 0x0118
         jne     MainInt10CodeError
+x4f01ModeOkay:
         push    cx
         push    bx
         mov     cx, x4f01DataEnd - x4f01Data
@@ -113,6 +117,10 @@ x4f01:
         call    CopyMemCsBxToEsDiSizeCx
         pop     bx
         pop     cx
+        cmp     cx, 0x0115
+        jne     MainInt10Code4fDone
+        mov     word [es:di+0x12], 800
+        mov     word [es:di+0x14], 600
         jmp     MainInt10Code4fDone
 x4f01Data:
         dw      0x00fb          ; Supportted, Optional info, Color, Graphics,
@@ -152,17 +160,28 @@ x4f01Data:
 x4f01DataEnd:
 
 x4f02:
+        push    bx
+        and     bx, ~0x4000
+        cmp     bx, 0x0115
+        je      x4f02ModeOkay
         cmp     bx, 0x0118
+x4f02ModeOkay:
+        jne     x4f02DontUpdateCurrentMode
+        mov     [cs:xf403CurrentMode], bx
+x4f02DontUpdateCurrentMode:
+        pop     bx
         jne     MainInt10CodeError
         jmp     MainInt10Code4fDone
+
+xf403CurrentMode:
+        dw      0
 x4f03:
-        mov     bx, 0x0118
+        mov     bx, [cs:xf403CurrentMode]
         jmp     MainInt10Code4fDone
 
 CopyMemCsBxToEsDiSizeCx:
         push    bx
         push    di
-        lea     bx, [cs:x4f00Data]
 CopyMemCsBxToEsDiSizeCxLoop:
         mov     al, [cs:bx]
         inc     bx
