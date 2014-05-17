@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
 #  Portions copyright (c) 2008 - 2010, Apple Inc. All rights reserved.<BR>
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -438,6 +438,23 @@
       "$(SLINK)" $(SLINK_FLAGS) $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.slib $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
       otool -t $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.slib | hex2bin.py ${dst}
       
+
+[Nasm-to-Binary-Code-File]
+    <InputFile>
+        ?.nasmbin, ?.NASMBIN
+
+    <ExtraDependency>
+        $(MAKE_FILE)
+
+    <OutputFile>
+        $(OUTPUT_DIR)(+)${s_base}.bin
+
+    <Command>
+        "$(PP)" $(PP_FLAGS) $(INC) ${src} > ${d_path}(+)${s_base}.i
+        Trim --source-code --convert-hex -o ${d_path}(+)${s_base}.iii ${d_path}(+)${s_base}.i
+        cd $(OUTPUT_DIR)(+)${s_dir}
+        "$(NASM)" -I${s_path}(+) $(NASMBIN_FLAGS) -o $dst ${d_path}(+)${s_base}.iii
+
 
 [Microcode-File.USER_DEFINED, Microcode-File.Microcode]
     <InputFile>
