@@ -170,6 +170,22 @@
         # For RVCTCYGWIN ASM_FLAGS must be first to work around pathing issues
         "$(ASM)" $(ASM_FLAGS) -o ${dst} $(INC) ${d_path}(+)${s_base}.iii
 
+[Nasm-to-Object-File]
+    <InputFile>
+        ?.nasm, ?.NASM
+
+    <ExtraDependency>
+        $(MAKE_FILE)
+
+    <OutputFile>
+        $(OUTPUT_DIR)(+)${s_base}.obj
+
+    <Command>
+        "$(PP)" $(PP_FLAGS) $(INC) ${src} > ${d_path}(+)${s_base}.i
+        Trim --source-code --convert-hex -o ${d_path}(+)${s_base}.iii ${d_path}(+)${s_base}.i
+        cd $(OUTPUT_DIR)(+)${s_dir}
+        "$(NASM)" -I${s_path}(+) $(NASM_FLAGS) -o $dst ${d_path}(+)${s_base}.iii
+
 [Assembly-Code-File.COMMON.IPF]
     <InputFile>
         ?.s
