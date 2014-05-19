@@ -342,7 +342,7 @@
 #
 ################################################################################
 [Components]
-  OvmfPkg/ResetVector/ResetVector.inf
+  #UefiCpuPkg/ResetVector/OldVtf/Vtf.inf
 
   #
   # SEC Phase modules
@@ -351,6 +351,7 @@
     <LibraryClasses>
       NULL|IntelFrameworkModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
   }
+  OvmfPkg/EmptyPeiCore/EmptyPeiCore.inf
 
   #
   # PEI Phase modules

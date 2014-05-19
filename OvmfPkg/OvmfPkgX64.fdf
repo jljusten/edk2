@@ -186,8 +186,10 @@ READ_LOCK_STATUS   = TRUE
 # decompresses the PEI and DXE FVs which handles the rest of the boot sequence.
 #
 INF  OvmfPkg/Sec/SecMain.inf
+INF  OvmfPkg/EmptyPeiCore/EmptyPeiCore.inf
 
-INF  RuleOverride=RESET_VECTOR OvmfPkg/ResetVector/ResetVector.inf
+#INF  RuleOverride=RESET_VECTOR UefiCpuPkg/ResetVector/OldVtf/Vtf.inf
+#INF  RuleOverride=RESET_VECTOR OvmfPkg/ResetVector/ResetVector.inf
 
 ################################################################################
 [FV.PEIFV]
@@ -420,6 +422,7 @@ FILE FV_IMAGE = 9E21FD93-9C72-4c15-8C4B-E77F1DB2D792 {
     PE32     PE32           $(INF_OUTPUT)/$(MODULE_NAME).efi
     UI       STRING ="$(MODULE_NAME)" Optional
     VERSION  STRING ="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
+    RAW BIN Align = 16 $(WORKSPACE)/OvmfPkg/Sec/Vtf.bin
   }
 
 [Rule.Common.PEI_CORE]

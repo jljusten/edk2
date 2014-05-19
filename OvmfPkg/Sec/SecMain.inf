@@ -16,7 +16,8 @@
 [Defines]
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = SecMain
-  FILE_GUID                      = df1ccef6-f301-4a63-9661-fc6030dcc880
+  #FILE_GUID                      = df1ccef6-f301-4a63-9661-fc6030dcc880
+  FILE_GUID                      = 1BA0062E-C779-4582-8566-336AE8F78F09
   MODULE_TYPE                    = SEC
   VERSION_STRING                 = 1.0
   ENTRY_POINT                    = SecMain
@@ -36,9 +37,10 @@
   Ia32/SecEntry.S   | GCC
 
 [Sources.X64]
-  X64/SecEntry.asm  | MSFT
-  X64/SecEntry.asm  | INTEL
-  X64/SecEntry.S    | GCC
+  X64/OldVtf.nasm
+#  X64/SecEntry.asm  | MSFT
+#  X64/SecEntry.asm  | INTEL
+#  X64/SecEntry.S    | GCC
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -71,3 +73,7 @@
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfSecPageTablesBase
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfSecPeiTempRamBase
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfSecPeiTempRamSize
+
+[BuildOptions]
+   *_*_IA32_NASM_FLAGS = -D ARCH_IA32 -D DEBUG_NONE -I$(MODULE_DIR)/
+   *_*_X64_NASM_FLAGS = -D ARCH_X64 -D DEBUG_NONE -I$(MODULE_DIR)/
