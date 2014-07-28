@@ -4328,6 +4328,7 @@ RELEASE_GCC48_AARCH64_CC_FLAGS   = DEF(GCC48_AARCH64_CC_FLAGS) -Wno-unused-but-s
 *_GCC49_IA32_DLINK_FLAGS          = DEF(GCC49_IA32_X64_DLINK_FLAGS) -m elf_i386 --oformat=elf32-i386
 *_GCC49_IA32_RC_FLAGS             = DEF(GCC_IA32_RC_FLAGS)
 *_GCC49_IA32_OBJCOPY_FLAGS        = 
+*_GCC49_IA32_NASM_FLAGS           = -f elf32
 
 ##################
 # GCC49 X64 definitions
@@ -4351,6 +4352,7 @@ RELEASE_GCC48_AARCH64_CC_FLAGS   = DEF(GCC48_AARCH64_CC_FLAGS) -Wno-unused-but-s
 *_GCC49_X64_DLINK_FLAGS          = DEF(GCC49_X64_DLINK_FLAGS)
 *_GCC49_X64_RC_FLAGS             = DEF(GCC_X64_RC_FLAGS)
 *_GCC49_X64_OBJCOPY_FLAGS        = 
+*_GCC49_X64_NASM_FLAGS           = -f elf64
 
 ##################
 # GCC49 ARM definitions
