@@ -271,7 +271,8 @@
   Ia32/MultU64x32.S | GCC 
   Ia32/RRotU64.S | GCC 
   Ia32/LRotU64.S | GCC 
-  Ia32/ARShiftU64.S | GCC 
+  #Ia32/ARShiftU64.S | GCC 
+  Ia32/ARShiftU64.nasm | GCC 
   Ia32/RShiftU64.S | GCC 
   Ia32/LShiftU64.S | GCC 
   Ia32/EnableCache.S | GCC
