@@ -29,6 +29,7 @@ ApEntryPointInC (
   VOID
   )
 {
+  DEBUG ((EFI_D_INFO, "Hello from AP! (Apic ID %d)\n", GetApicId ()));
 }
 
 
@@ -48,6 +49,10 @@ InitializeMpSupport (
   }
 
   StartApsStackless (AsmApEntryPoint);
+
+  DisableInterrupts ();
+  CpuSleep ();
+  CpuDeadLoop ();
 
   mTopOfApCommonStack = NULL;
   FreePages (mCommonStack, EFI_SIZE_TO_PAGES (SIZE_64KB));
