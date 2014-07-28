@@ -41,5 +41,16 @@ InitializeMpSupport (
   VOID
   )
 {
+  mCommonStack = AllocatePages (EFI_SIZE_TO_PAGES (SIZE_64KB));
+  mTopOfApCommonStack = (VOID*) ((UINTN)mCommonStack + SIZE_64KB);
+  if (mCommonStack == NULL) {
+    return;
+  }
+
+  StartApsStackless (AsmApEntryPoint);
+
+  mTopOfApCommonStack = NULL;
+  FreePages (mCommonStack, EFI_SIZE_TO_PAGES (SIZE_64KB));
+  mCommonStack = NULL;
 }
 
