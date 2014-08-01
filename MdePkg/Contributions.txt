@@ -20,9 +20,9 @@ To make a contribution to a TianoCore project, follow these steps.
    not documented, then submit the code on development email list
    for the project.
 
-=======================================
-= Change Description / Commit Message =
-=======================================
+=====================================================
+= Change Description / Commit Message / Patch Email =
+=====================================================
 
 Your change description should use the standard format for a
 commit message, and must include your "Signed-off-by" signature
@@ -30,7 +30,30 @@ and the "Contributed-under" message.
 
 == Sample Change Description / Commit Message =
 
-=== Definitions for sample change description ===
+=== Start of sample patch email message ===
+
+From: Contributor Name <contributor@email.server>
+Subject: CodeModule: Brief-single-line-summary
+
+Full-commit-message
+
+Contributed-under: TianoCore Contribution Agreement 1.0
+Signed-off-by: Contributor Name <contributor@email.server>
+---
+PATCH INCLUDED INLINE
+
+=== End of sample patch email message ===
+
+=== Notes for sample patch email ===
+
+* This format matches git's format-patch command.
+* Patch files can be attached, but inline is preferred.
+  - Replying to comment on a patch included inline is much easier.
+* The first line of commit message is taken from the email's subject
+  line. The remaining portion of the commit message is the email's
+  content until the '---' line.
+
+=== Definitions for sample patch email ===
 
 * "CodeModule" is a short idenfier for the affected code.  For
   example MdePkg, or MdeModulePkg UsbBusDxe.
@@ -43,15 +66,6 @@ and the "Contributed-under" message.
   agreement is included below in this document.
 * "Signed-off-by" is the contributor's signature identifying them
   by their real/legal name and their email address.
-
-=== Start of sample change description / commit message ===
-CodeModule: Brief-single-line-summary
-
-Full-commit-message
-
-Contributed-under: TianoCore Contribution Agreement 1.0
-Signed-off-by: Contributor Name <contributor@email.server>
-=== End of sample change description / commit message ===
 
 ========================================
 = TianoCore Contribution Agreement 1.0 =
