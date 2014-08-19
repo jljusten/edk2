@@ -245,14 +245,7 @@ def LaunchCommand(Command, WorkingDir):
     # if working directory doesn't exist, Popen() will raise an exception
     if not os.path.isdir(WorkingDir):
         EdkLogger.error("build", FILE_NOT_FOUND, ExtraData=WorkingDir)
-    
-    # Command is used as the first Argument in following Popen().
-    # It could be a string or sequence. We find that if command is a string in following Popen(),
-    # ubuntu may fail with an error message that the command is not found.
-    # So here we may need convert command from string to list instance.
-    if not isinstance(Command, list):
-        Command = Command.split()
-    
+
     Proc = None
     EndOfProcedure = None
     try:
@@ -873,7 +866,7 @@ class Build():
     #   @param  CreateDepModuleMakeFile     Flag used to indicate creating makefile
     #                                       for dependent modules/Libraries
     #
-    def _BuildPa(self, Target, AutoGenObject, CreateDepsCodeFile=True, CreateDepsMakeFile=True, BuildModule=False):
+    def _Build(self, Target, AutoGenObject, CreateDepsCodeFile=True, CreateDepsMakeFile=True):
         if AutoGenObject == None:
             return False
 
@@ -890,6 +883,7 @@ class Build():
             if not self.SkipAutoGen or Target == 'genmake':
                 self.Progress.Start("Generating makefile")
                 AutoGenObject.CreateMakeFile(CreateDepsMakeFile)
+                AutoGenObject.CreateAsBuiltInf()
                 self.Progress.Stop("done!")
             if Target == "genmake":
                 return True
@@ -909,164 +903,8 @@ class Build():
                                 (AutoGenObject.BuildTarget, AutoGenObject.ToolChain, AutoGenObject.Arch),
                             ExtraData=str(AutoGenObject))
 
-        makefile = GenMake.BuildFile(AutoGenObject)._FILE_NAME_[GenMake.gMakeType]
-
-        # genfds
-        if Target == 'fds':
-            LaunchCommand(AutoGenObject.GenFdsCommand, AutoGenObject.MakeFileDir)
-            return True
-
-        # run
-        if Target == 'run':
-            RunDir = os.path.normpath(os.path.join(AutoGenObject.BuildDir, 'IA32'))
-            Command = '.\SecMain'
-            os.chdir(RunDir)
-            LaunchCommand(Command, RunDir)
-            return True
-
-        # build modules
-        if BuildModule:
-            BuildCommand = BuildCommand + [Target]
-            LaunchCommand(BuildCommand, AutoGenObject.MakeFileDir)
-            self.CreateAsBuiltInf()
-            return True
-
-        # build library
-        if Target == 'libraries':
-            for Lib in AutoGenObject.LibraryBuildDirectoryList:
-                NewBuildCommand = BuildCommand + ['-f', os.path.normpath(os.path.join(Lib, makefile)), 'pbuild']
-                LaunchCommand(NewBuildCommand, AutoGenObject.MakeFileDir)
-            return True
-
-        # build module
-        if Target == 'modules':
-            for Lib in AutoGenObject.LibraryBuildDirectoryList:
-                NewBuildCommand = BuildCommand + ['-f', os.path.normpath(os.path.join(Lib, makefile)), 'pbuild']
-                LaunchCommand(NewBuildCommand, AutoGenObject.MakeFileDir)
-            for Mod in AutoGenObject.ModuleBuildDirectoryList:
-                NewBuildCommand = BuildCommand + ['-f', os.path.normpath(os.path.join(Mod, makefile)), 'pbuild']
-                LaunchCommand(NewBuildCommand, AutoGenObject.MakeFileDir)
-            self.CreateAsBuiltInf()
-            return True
-
-        # cleanlib
-        if Target == 'cleanlib':
-            for Lib in AutoGenObject.LibraryBuildDirectoryList:
-                LibMakefile = os.path.normpath(os.path.join(Lib, makefile))
-                if os.path.exists(LibMakefile):
-                    NewBuildCommand = BuildCommand + ['-f', LibMakefile, 'cleanall']
-                    LaunchCommand(NewBuildCommand, AutoGenObject.MakeFileDir)
-            return True
-
-        # clean
-        if Target == 'clean':
-            for Mod in AutoGenObject.ModuleBuildDirectoryList:
-                ModMakefile = os.path.normpath(os.path.join(Mod, makefile))
-                if os.path.exists(ModMakefile):
-                    NewBuildCommand = BuildCommand + ['-f', ModMakefile, 'cleanall']
-                    LaunchCommand(NewBuildCommand, AutoGenObject.MakeFileDir)
-            for Lib in AutoGenObject.LibraryBuildDirectoryList:
-                LibMakefile = os.path.normpath(os.path.join(Lib, makefile))
-                if os.path.exists(LibMakefile):
-                    NewBuildCommand = BuildCommand + ['-f', LibMakefile, 'cleanall']
-                    LaunchCommand(NewBuildCommand, AutoGenObject.MakeFileDir)
-            return True
-
-        # cleanall
-        if Target == 'cleanall':
-            try:
-                #os.rmdir(AutoGenObject.BuildDir)
-                RemoveDirectory(AutoGenObject.BuildDir, True)
-                #
-                # First should close DB.
-                #
-                self.Db.Close()
-                RemoveDirectory(os.path.dirname(GlobalData.gDatabasePath), True)
-            except WindowsError, X:
-                EdkLogger.error("build", FILE_DELETE_FAILURE, ExtraData=str(X))
-        return True
-
-    ## Build a module or platform
-    #
-    # Create autogen code and makefile for a module or platform, and the launch
-    # "make" command to build it
-    #
-    #   @param  Target                      The target of build command
-    #   @param  Platform                    The platform file
-    #   @param  Module                      The module file
-    #   @param  BuildTarget                 The name of build target, one of "DEBUG", "RELEASE"
-    #   @param  ToolChain                   The name of toolchain to build
-    #   @param  Arch                        The arch of the module/platform
-    #   @param  CreateDepModuleCodeFile     Flag used to indicate creating code
-    #                                       for dependent modules/Libraries
-    #   @param  CreateDepModuleMakeFile     Flag used to indicate creating makefile
-    #                                       for dependent modules/Libraries
-    #
-    def _Build(self, Target, AutoGenObject, CreateDepsCodeFile=True, CreateDepsMakeFile=True, BuildModule=False):
-        if AutoGenObject == None:
-            return False
-
-        # skip file generation for cleanxxx targets, run and fds target
-        if Target not in ['clean', 'cleanlib', 'cleanall', 'run', 'fds']:
-            # for target which must generate AutoGen code and makefile
-            if not self.SkipAutoGen or Target == 'genc':
-                self.Progress.Start("Generating code")
-                AutoGenObject.CreateCodeFile(CreateDepsCodeFile)
-                self.Progress.Stop("done!")
-            if Target == "genc":
-                return True
-
-            if not self.SkipAutoGen or Target == 'genmake':
-                self.Progress.Start("Generating makefile")
-                AutoGenObject.CreateMakeFile(CreateDepsMakeFile)
-                #AutoGenObject.CreateAsBuiltInf()
-                self.Progress.Stop("done!")
-            if Target == "genmake":
-                return True
-        else:
-            # always recreate top/platform makefile when clean, just in case of inconsistency
-            AutoGenObject.CreateCodeFile(False)
-            AutoGenObject.CreateMakeFile(False)
-
-        if EdkLogger.GetLevel() == EdkLogger.QUIET:
-            EdkLogger.quiet("Building ... %s" % repr(AutoGenObject))
-
-        BuildCommand = AutoGenObject.BuildCommand
-        if BuildCommand == None or len(BuildCommand) == 0:
-            EdkLogger.error("build", OPTION_MISSING,
-                            "No build command found for this module. "
-                            "Please check your setting of %s_%s_%s_MAKE_PATH in Conf/tools_def.txt file." %
-                                (AutoGenObject.BuildTarget, AutoGenObject.ToolChain, AutoGenObject.Arch),
-                            ExtraData=str(AutoGenObject))
-
-        # genfds
-        if Target == 'fds':
-            LaunchCommand(AutoGenObject.GenFdsCommand, AutoGenObject.MakeFileDir)
-            return True
-
-        # run
-        if Target == 'run':
-            RunDir = os.path.normpath(os.path.join(AutoGenObject.BuildDir, 'IA32'))
-            Command = '.\SecMain'
-            os.chdir(RunDir)
-            LaunchCommand(Command, RunDir)
-            return True
-
-        # build modules
         BuildCommand = BuildCommand + [Target]
-        if BuildModule:
-            LaunchCommand(BuildCommand, AutoGenObject.MakeFileDir)
-            self.CreateAsBuiltInf()
-            return True
-
-        # build library
-        if Target == 'libraries':
-            pass
-
-        # not build modules
-
-
-        # cleanall
+        LaunchCommand(BuildCommand, AutoGenObject.MakeFileDir)
         if Target == 'cleanall':
             try:
                 #os.rmdir(AutoGenObject.BuildDir)
@@ -1406,10 +1244,7 @@ class Build():
                 self.LoadFixAddress = Wa.Platform.LoadFixAddress
                 self.BuildReport.AddPlatformReport(Wa)
                 self.Progress.Stop("done!")
-                for Arch in Wa.ArchList:
-                    GlobalData.gGlobalDefines['ARCH'] = Arch
-                    Pa = PlatformAutoGen(Wa, self.PlatformFile, BuildTarget, ToolChain, Arch)
-                    self._BuildPa(self.Target, Pa)
+                self._Build(self.Target, Wa)
 
                 # Create MAP file when Load Fix Address is enabled.
                 if self.Target in ["", "all", "fds"]:
@@ -1492,8 +1327,7 @@ class Build():
                     Ma = ModuleAutoGen(Wa, self.ModuleFile, BuildTarget, ToolChain, Arch, self.PlatformFile)
                     if Ma == None: continue
                     MaList.append(Ma)
-                    if not Ma.IsBinaryModule:
-                        self._Build(self.Target, Ma, BuildModule=True)
+                    self._Build(self.Target, Ma)
 
                 self.BuildReport.AddPlatformReport(Wa, MaList)
                 if MaList == []:
@@ -1674,8 +1508,7 @@ class Build():
                         #
                         # Generate FD image if there's a FDF file found
                         #
-                        LaunchCommand(Wa.GenFdsCommand, os.getcwd())
-
+                        LaunchCommand(Wa.BuildCommand + ["fds"], Wa.MakeFileDir)
                         #
                         # Create MAP file for all platform FVs after GenFds.
                         #
