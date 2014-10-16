@@ -35,7 +35,7 @@ InternalMemSetMem64 PROC
     mov     rax, rcx                    ; rax <- Buffer
     xchg    rcx, rdx                    ; rcx <- Count & rdx <- Buffer
     test    dl, 8
-    movd    xmm0, r8
+    movq    xmm0, r8
     jz      @F
     mov     [rdx], r8
     add     rdx, 8
