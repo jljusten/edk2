@@ -36,9 +36,9 @@
   Ia32/SecEntry.nasm| GCC
 
 [Sources.X64]
-  X64/SecEntry.asm  | MSFT
-  X64/SecEntry.asm  | INTEL
-  X64/SecEntry.S    | GCC
+  X64/SecEntry.nasm | MSFT
+  X64/SecEntry.nasm | INTEL
+  X64/SecEntry.nasm | GCC
 
 [Packages]
   MdePkg/MdePkg.dec
