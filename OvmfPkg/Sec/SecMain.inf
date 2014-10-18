@@ -31,9 +31,9 @@
   SecMain.c
 
 [Sources.IA32]
-  Ia32/SecEntry.asm | MSFT
-  Ia32/SecEntry.asm | INTEL
-  Ia32/SecEntry.S   | GCC
+  Ia32/SecEntry.nasm| MSFT
+  Ia32/SecEntry.nasm| INTEL
+  Ia32/SecEntry.nasm| GCC
 
 [Sources.X64]
   X64/SecEntry.asm  | MSFT
