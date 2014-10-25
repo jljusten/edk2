@@ -23,46 +23,45 @@
 ;
 ; CommonExceptionHandler()
 ;
-externdef CommonExceptionHandler:near
+extern ASM_PFX(CommonExceptionHandler)
 
-EXTRN mErrorCodeFlag:DWORD    ; Error code flags for exceptions
-EXTRN mDoFarReturnFlag:QWORD  ; Do far return flag
+extern ASM_PFX(mErrorCodeFlag)    ; Error code flags for exceptions
+extern ASM_PFX(mDoFarReturnFlag)  ; Do far return flag
 
-data SEGMENT
-
-.code
+DEFAULT REL
+SECTION .text
 
 ALIGN   8
 
 AsmIdtVectorBegin:
-REPEAT  32
-    db      6ah        ; push  #VectorNum
+%rep  32
+    db      0x6a        ; push  #VectorNum
     db      ($ - AsmIdtVectorBegin) / ((AsmIdtVectorEnd - AsmIdtVectorBegin) / 32) ; VectorNum
     push    rax
     mov     rax, CommonInterruptEntry
     jmp     rax
-ENDM
+%endrep
 AsmIdtVectorEnd:
 
 HookAfterStubHeaderBegin:
-    db      6ah        ; push
+    db      0x6a        ; push
 @VectorNum:
-    db      0          ; 0 will be fixed 
+    db      0          ; 0 will be fixed
     push    rax
     mov     rax, HookAfterStubHeaderEnd
     jmp     rax
 HookAfterStubHeaderEnd:
     mov     rax, rsp
-    and     sp,  0fff0h        ; make sure 16-byte aligned for exception context
-    sub     rsp, 18h           ; reserve room for filling exception data later
+    and     sp,  0xfff0        ; make sure 16-byte aligned for exception context
+    sub     rsp, 0x18           ; reserve room for filling exception data later
     push    rcx
     mov     rcx, [rax + 8]
-    bt      mErrorCodeFlag, ecx
-    jnc     @F
-    push    [rsp]             ; push additional rcx to make stack alignment
-@@:
+    bt      [ASM_PFX(mErrorCodeFlag)], ecx
+    jnc     .0
+    push    QWORD [rsp]             ; push additional rcx to make stack alignment
+.0:
     xchg    rcx, [rsp]        ; restore rcx, save Exception Number in stack
-    push    [rax]             ; push rax into stack to keep code consistence
+    push    QWORD [rax]             ; push rax into stack to keep code consistence
 
 ;---------------------------------------;
 ; CommonInterruptEntry                  ;
@@ -89,7 +88,8 @@ HookAfterStubHeaderEnd:
 ; +    RBP              +
 ; +---------------------+ <-- RBP, 16-byte aligned
 ; The follow algorithm is used for the common interrupt routine.
-CommonInterruptEntry PROC PUBLIC  
+global ASM_PFX(CommonInterruptEntry)
+ASM_PFX(CommonInterruptEntry):
     cli
     pop     rax
     ;
@@ -97,21 +97,21 @@ CommonInterruptEntry PROC PUBLIC
     ; IF flag automatically cleared at the entry point
     ;
     xchg    rcx, [rsp]      ; Save rcx into stack and save vector number into rcx
-    and     rcx, 0FFh
+    and     rcx, 0xFF
     cmp     ecx, 32         ; Intel reserved vector for exceptions?
-    jae     NoErrorCode
-    bt      mErrorCodeFlag, ecx
-    jc      @F
+    jae     .NoErrorCode
+    bt      [ASM_PFX(mErrorCodeFlag)], ecx
+    jc      .1
 
-NoErrorCode:
+.NoErrorCode:
 
     ;
     ; Push a dummy error code on the stack
     ; to maintain coherent stack map
     ;
-    push    [rsp]
-    mov     qword ptr [rsp + 8], 0
-@@:       
+    push    qword [rsp]
+    mov     qword [rsp + 8], 0
+.1:
     push    rbp
     mov     rbp, rsp
     push    0             ; clear EXCEPTION_HANDLER_CONTEXT.OldIdtHandler
@@ -138,7 +138,6 @@ NoErrorCode:
     ; +---------------------+ <-- RBP, 16-byte aligned
     ;
 
-
     ;
     ; Since here the stack pointer is 16-byte aligned, so
     ; EFI_FX_SAVE_STATE_X64 of EFI_SYSTEM_CONTEXT_x64
@@ -156,18 +155,18 @@ NoErrorCode:
     push r9
     push r8
     push rax
-    push qword ptr [rbp + 8]   ; RCX
+    push qword [rbp + 8]   ; RCX
     push rdx
     push rbx
-    push qword ptr [rbp + 48]  ; RSP
-    push qword ptr [rbp]       ; RBP
+    push qword [rbp + 48]  ; RSP
+    push qword [rbp]       ; RBP
     push rsi
     push rdi
 
 ;; UINT64  Gs, Fs, Es, Ds, Cs, Ss;  insure high 16 bits of each is zero
-    movzx   rax, word ptr [rbp + 56]
+    movzx   rax, word [rbp + 56]
     push    rax                      ; for ss
-    movzx   rax, word ptr [rbp + 32]
+    movzx   rax, word [rbp + 32]
     push    rax                      ; for cs
     mov     rax, ds
     push    rax
@@ -181,7 +180,7 @@ NoErrorCode:
     mov     [rbp + 8], rcx               ; save vector number
 
 ;; UINT64  Rip;
-    push    qword ptr [rbp + 24]
+    push    qword [rbp + 24]
 
 ;; UINT64  Gdtr[2], Idtr[2];
     xor     rax, rax
@@ -208,13 +207,13 @@ NoErrorCode:
     push    rax
 
 ;; UINT64  RFlags;
-    push    qword ptr [rbp + 40]
+    push    qword [rbp + 40]
 
 ;; UINT64  Cr0, Cr1, Cr2, Cr3, Cr4, Cr8;
     mov     rax, cr8
     push    rax
     mov     rax, cr4
-    or      rax, 208h
+    or      rax, 0x208
     mov     cr4, rax
     push    rax
     mov     rax, cr3
@@ -243,13 +242,13 @@ NoErrorCode:
 ;; FX_SAVE_STATE_X64 FxSaveState;
     sub rsp, 512
     mov rdi, rsp
-    db 0fh, 0aeh, 07h ;fxsave [rdi]
+    db 0xf, 0xae, 0x7 ;fxsave [rdi]
 
 ;; UEFI calling convention for x64 requires that Direction flag in EFLAGs is clear
     cld
 
 ;; UINT32  ExceptionData;
-    push    qword ptr [rbp + 16]
+    push    qword [rbp + 16]
 
 ;; Prepare parameter and call
     mov     rcx, [rbp + 8]
@@ -259,7 +258,7 @@ NoErrorCode:
     ; and make sure RSP is 16-byte aligned
     ;
     sub     rsp, 4 * 8 + 8
-    mov     rax, CommonExceptionHandler
+    lea     rax, [CommonExceptionHandler]
     call    rax
     add     rsp, 4 * 8 + 8
 
@@ -270,7 +269,7 @@ NoErrorCode:
 ;; FX_SAVE_STATE_X64 FxSaveState;
 
     mov rsi, rsp
-    db 0fh, 0aeh, 0Eh ; fxrstor [rsi]
+    db 0xf, 0xae, 0xE ; fxrstor [rsi]
     add rsp, 512
 
 ;; UINT64  Dr0, Dr1, Dr2, Dr3, Dr6, Dr7;
@@ -292,7 +291,7 @@ NoErrorCode:
     mov     cr8, rax
 
 ;; UINT64  RFlags;
-    pop     qword ptr [rbp + 40]
+    pop     qword [rbp + 40]
 
 ;; UINT64  Ldtr, Tr;
 ;; UINT64  Gdtr[2], Idtr[2];
@@ -300,7 +299,7 @@ NoErrorCode:
     add     rsp, 48
 
 ;; UINT64  Rip;
-    pop     qword ptr [rbp + 24]
+    pop     qword [rbp + 24]
 
 ;; UINT64  Gs, Fs, Es, Ds, Cs, Ss;
     pop     rax
@@ -312,15 +311,15 @@ NoErrorCode:
     mov     es, rax
     pop     rax
     mov     ds, rax
-    pop     qword ptr [rbp + 32]  ; for cs
-    pop     qword ptr [rbp + 56]  ; for ss
+    pop     qword [rbp + 32]  ; for cs
+    pop     qword [rbp + 56]  ; for ss
 
 ;; UINT64  Rdi, Rsi, Rbp, Rsp, Rbx, Rdx, Rcx, Rax;
 ;; UINT64  R8, R9, R10, R11, R12, R13, R14, R15;
     pop     rdi
     pop     rsi
     add     rsp, 8               ; not for rbp
-    pop     qword ptr [rbp + 48] ; for rsp
+    pop     qword [rbp + 48] ; for rsp
     pop     rbx
     pop     rdx
     pop     rcx
@@ -337,53 +336,50 @@ NoErrorCode:
     mov     rsp, rbp
     pop     rbp
     add     rsp, 16
-    cmp     qword ptr [rsp - 32], 0  ; check EXCEPTION_HANDLER_CONTEXT.OldIdtHandler
+    cmp     qword [rsp - 32], 0  ; check EXCEPTION_HANDLER_CONTEXT.OldIdtHandler
     jz      DoReturn
-    cmp     qword ptr [rsp - 40], 1  ; check EXCEPTION_HANDLER_CONTEXT.ExceptionDataFlag
+    cmp     qword [rsp - 40], 1  ; check EXCEPTION_HANDLER_CONTEXT.ExceptionDataFlag
     jz      ErrorCode
-    jmp     qword ptr [rsp - 32]
+    jmp     qword [rsp - 32]
 ErrorCode:
     sub     rsp, 8
-    jmp     qword ptr [rsp - 24]
+    jmp     qword [rsp - 24]
 
 DoReturn:
-    cmp     mDoFarReturnFlag, 0   ; Check if need to do far return instead of IRET
+    cmp     qword [ASM_PFX(mDoFarReturnFlag)], 0   ; Check if need to do far return instead of IRET
     jz      DoIret
     push    rax
     mov     rax, rsp          ; save old RSP to rax
-    mov     rsp, [rsp + 20h]   
-    push    [rax + 10h]       ; save CS in new location
-    push    [rax + 8h]        ; save EIP in new location
-    push    [rax + 18h]       ; save EFLAGS in new location
+    mov     rsp, [rsp + 0x20]
+    push    qword [rax + 0x10]       ; save CS in new location
+    push    qword [rax + 0x8]        ; save EIP in new location
+    push    qword [rax + 0x18]       ; save EFLAGS in new location
     mov     rax, [rax]        ; restore rax
     popfq                     ; restore EFLAGS
-    DB      48h               ; prefix to composite "retq" with next "retf"
+    DB      0x48               ; prefix to composite "retq" with next "retf"
     retf                      ; far return
 DoIret:
     iretq
-
-CommonInterruptEntry ENDP
 
 ;-------------------------------------------------------------------------------------
 ;  GetTemplateAddressMap (&AddressMap);
 ;-------------------------------------------------------------------------------------
 ; comments here for definition of address map
-AsmGetTemplateAddressMap   PROC
-    mov     rax, offset AsmIdtVectorBegin
-    mov     qword ptr [rcx], rax
-    mov     qword ptr [rcx + 8h],  (AsmIdtVectorEnd - AsmIdtVectorBegin) / 32
-    mov     rax, offset HookAfterStubHeaderBegin
-    mov     qword ptr [rcx + 10h], rax
+global ASM_PFX(AsmGetTemplateAddressMap)
+ASM_PFX(AsmGetTemplateAddressMap):
+    lea     rax, [AsmIdtVectorBegin]
+    mov     qword [rcx], rax
+    mov     qword [rcx + 0x8],  (AsmIdtVectorEnd - AsmIdtVectorBegin) / 32
+    lea     rax, [HookAfterStubHeaderBegin]
+    mov     qword [rcx + 0x10], rax
     ret
-AsmGetTemplateAddressMap   ENDP
 
 ;-------------------------------------------------------------------------------------
 ;  AsmVectorNumFixup (*NewVectorAddr, VectorNum, *OldVectorAddr);
 ;-------------------------------------------------------------------------------------
-AsmVectorNumFixup   PROC
+global ASM_PFX(AsmVectorNumFixup)
+ASM_PFX(AsmVectorNumFixup):
     mov     rax, rdx
     mov     [rcx + (@VectorNum - HookAfterStubHeaderBegin)], al
     ret
-AsmVectorNumFixup   ENDP
 
-END

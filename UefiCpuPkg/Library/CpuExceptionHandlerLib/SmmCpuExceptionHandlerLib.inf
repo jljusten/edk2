@@ -34,8 +34,8 @@
   Ia32/ArchInterruptDefs.h
 
 [Sources.X64]
-  X64/ExceptionHandlerAsm.asm
-  X64/ExceptionHandlerAsm.S     |GCC
+  X64/ExceptionHandlerAsm.nasm
+  X64/ExceptionHandlerAsm.nasm  |GCC
   X64/ArchExceptionHandler.c
   X64/ArchInterruptDefs.h
 
