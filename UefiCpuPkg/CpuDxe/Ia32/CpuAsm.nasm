@@ -1,4 +1,3 @@
-      TITLE   CpuAsm.asm:
 ;------------------------------------------------------------------------------
 ;*
 ;*   Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
@@ -10,15 +9,13 @@
 ;*   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 ;*   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 ;*
-;*    CpuAsm.asm
+;*    CpuAsm.nasm
 ;*
 ;*   Abstract:
 ;*
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -26,17 +23,17 @@
 ;   UINT16 Selector
 ;   );
 ;------------------------------------------------------------------------------
-SetCodeSelector PROC PUBLIC
+global ASM_PFX(SetCodeSelector)
+ASM_PFX(SetCodeSelector):
     mov     ecx, [esp+4]
     sub     esp, 0x10
-    lea     eax, setCodeSelectorLongJump
+    lea     eax, [setCodeSelectorLongJump]
     mov     [esp], eax
     mov     [esp+4], cx
-    jmp     fword ptr [esp]
+    jmp     dword far [esp]
 setCodeSelectorLongJump:
     add     esp, 0x10
     ret
-SetCodeSelector ENDP
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -44,7 +41,8 @@ SetCodeSelector ENDP
 ;   UINT16 Selector
 ;   );
 ;------------------------------------------------------------------------------
-SetDataSelectors PROC PUBLIC
+global ASM_PFX(SetDataSelectors)
+ASM_PFX(SetDataSelectors):
     mov     ecx, [esp+4]
     mov     ss, cx
     mov     ds, cx
@@ -52,7 +50,4 @@ SetDataSelectors PROC PUBLIC
     mov     fs, cx
     mov     gs, cx
     ret
-SetDataSelectors ENDP
 
-
-END

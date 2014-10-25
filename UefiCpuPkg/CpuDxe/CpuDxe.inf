@@ -48,9 +48,9 @@
   CpuGdt.c
 
 [Sources.IA32]
-  Ia32/CpuAsm.asm | MSFT
-  Ia32/CpuAsm.asm | INTEL
-  Ia32/CpuAsm.S   | GCC
+  Ia32/CpuAsm.nasm| MSFT
+  Ia32/CpuAsm.nasm| INTEL
+  Ia32/CpuAsm.nasm| GCC
 
 [Sources.X64]
   X64/CpuAsm.asm | MSFT
