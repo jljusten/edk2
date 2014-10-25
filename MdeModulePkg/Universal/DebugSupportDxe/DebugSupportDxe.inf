@@ -41,8 +41,7 @@
   Ia32/PlDebugSupport.c
   Ia32/PlDebugSupport.h
   Ia32/PlDebugSupportIa32.c
-  Ia32/AsmFuncs.S
-  Ia32/AsmFuncs.asm
+  Ia32/AsmFuncs.nasm
 
 [Sources.X64]
   Ia32/DebugSupport.h
