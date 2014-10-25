@@ -33,8 +33,7 @@
   Ia32/InitializeFpu.nasm
 
 [Sources.X64]
-  X64/InitializeFpu.asm
-  X64/InitializeFpu.S
+  X64/InitializeFpu.nasm
 
 [Packages]
   MdePkg/MdePkg.dec

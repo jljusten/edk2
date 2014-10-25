@@ -12,21 +12,19 @@
 ;*
 ;------------------------------------------------------------------------------
 
-
-.const
 ;
-; Float control word initial value: 
+; Float control word initial value:
 ; all exceptions masked, double-extended-precision, round-to-nearest
 ;
-mFpuControlWord       DW      037Fh
+mFpuControlWord: DW 0x37F
 ;
 ; Multimedia-extensions control word:
 ; all exceptions masked, round-to-nearest, flush to zero for masked underflow
 ;
-mMmxControlWord       DD      01F80h 
+mMmxControlWord: DD 0x1F80
 
-.code
-
+DEFAULT REL
+SECTION .text
 
 ;
 ; Initializes floating point units for requirement of UEFI specification.
@@ -36,17 +34,18 @@ mMmxControlWord       DD      01F80h
 ; (if supported) to 0x1F80 (all exceptions masked, round-to-nearest, flush to zero
 ; for masked underflow).
 ;
-InitializeFloatingPointUnits PROC PUBLIC
+global ASM_PFX(InitializeFloatingPointUnits)
+ASM_PFX(InitializeFloatingPointUnits):
 
     ;
     ; Initialize floating point units
     ;
-    ; The following opcodes stand for instruction 'finit' 
+    ; The following opcodes stand for instruction 'finit'
     ; to be supported by some 64-bit assemblers
     ;
-    DB      9Bh, 0DBh, 0E3h
-    fldcw   mFpuControlWord
-    
+    DB      0x9B, 0xDB, 0xE3
+    fldcw   [mFpuControlWord]
+
     ;
     ; Set OSFXSR bit 9 in CR4
     ;
@@ -54,9 +53,7 @@ InitializeFloatingPointUnits PROC PUBLIC
     or      rax, BIT9
     mov     cr4, rax
 
-    ldmxcsr mMmxControlWord
-    
-    ret
-InitializeFloatingPointUnits ENDP
+    ldmxcsr [mMmxControlWord]
 
-END
+    ret
+
