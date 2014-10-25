@@ -20,20 +20,17 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-
 ;
 ; CommonExceptionHandler()
 ;
-CommonExceptionHandler             PROTO   C
+extern ASM_PFX(CommonExceptionHandler)
 
-.data
+SECTION .data
 
-EXTRN mErrorCodeFlag:DWORD            ; Error code flags for exceptions
-EXTRN mDoFarReturnFlag:DWORD          ; Do far return flag
+extern ASM_PFX(mErrorCodeFlag)            ; Error code flags for exceptions
+extern ASM_PFX(mDoFarReturnFlag)          ; Do far return flag
 
-.code
+SECTION .text
 
 ALIGN   8
 
@@ -41,31 +38,31 @@ ALIGN   8
 ; exception handler stub table
 ;
 AsmIdtVectorBegin:
-REPEAT  32
-    db      6ah        ; push  #VectorNum
+%rep  32
+    db      0x6a        ; push  #VectorNum
     db      ($ - AsmIdtVectorBegin) / ((AsmIdtVectorEnd - AsmIdtVectorBegin) / 32) ; VectorNum
     push    eax
     mov     eax, CommonInterruptEntry
     jmp     eax
-ENDM
+%endrep
 AsmIdtVectorEnd:
 
 HookAfterStubBegin:
-    db      6ah        ; push
+    db      0x6a        ; push
 VectorNum:
-    db      0          ; 0 will be fixed 
+    db      0          ; 0 will be fixed
     push    eax
     mov     eax, HookAfterStubHeaderEnd
     jmp     eax
 HookAfterStubHeaderEnd:
     pop     eax
     sub     esp, 8     ; reserve room for filling exception data later
-    push    [esp + 8]
+    push    DWORD [esp + 8]
     xchg    ecx, [esp] ; get vector number
-    bt      mErrorCodeFlag, ecx
-    jnc     @F
-    push    [esp]      ; addition push if exception data needed
-@@:
+    bt      [ASM_PFX(mErrorCodeFlag)], ecx
+    jnc     .0
+    push    DWORD [esp]      ; addition push if exception data needed
+.0:
     xchg    ecx, [esp] ; restore ecx
     push    eax
 
@@ -88,7 +85,8 @@ HookAfterStubHeaderEnd:
 ; +---------------------+
 ; +    EBP              +
 ; +---------------------+ <-- EBP
-CommonInterruptEntry PROC PUBLIC
+global ASM_PFX(CommonInterruptEntry)
+ASM_PFX(CommonInterruptEntry):
     cli
     pop    eax
     ;
@@ -100,10 +98,10 @@ CommonInterruptEntry PROC PUBLIC
     ; Get vector number from top of stack
     ;
     xchg    ecx, [esp]
-    and     ecx, 0FFh       ; Vector number should be less than 256
+    and     ecx, 0xFF       ; Vector number should be less than 256
     cmp     ecx, 32         ; Intel reserved vector for exceptions?
     jae     NoErrorCode
-    bt      mErrorCodeFlag, ecx
+    bt      [ASM_PFX(mErrorCodeFlag)], ecx
     jc      HasErrorCode
 
 NoErrorCode:
@@ -187,13 +185,13 @@ ErrorCodeAndVectorOnStack:
     ; Align stack to make sure that EFI_FX_SAVE_STATE_IA32 of EFI_SYSTEM_CONTEXT_IA32
     ; is 16-byte aligned
     ;
-    and     esp, 0fffffff0h
+    and     esp, 0xfffffff0
     sub     esp, 12
 
     sub     esp, 8
     push    0            ; clear EXCEPTION_HANDLER_CONTEXT.OldIdtHandler
     push    0            ; clear EXCEPTION_HANDLER_CONTEXT.ExceptionDataFlag
-       
+
 ;; UINT32  Edi, Esi, Ebp, Esp, Ebx, Edx, Ecx, Eax;
     push    eax
     push    ecx
@@ -201,14 +199,14 @@ ErrorCodeAndVectorOnStack:
     push    ebx
     lea     ecx, [ebp + 6 * 4]
     push    ecx                          ; ESP
-    push    dword ptr [ebp]              ; EBP
+    push    dword [ebp]              ; EBP
     push    esi
     push    edi
 
 ;; UINT32  Gs, Fs, Es, Ds, Cs, Ss;
     mov     eax, ss
     push    eax
-    movzx   eax, word ptr [ebp + 4 * 4]
+    movzx   eax, word [ebp + 4 * 4]
     push    eax
     mov     eax, ds
     push    eax
@@ -228,14 +226,14 @@ ErrorCodeAndVectorOnStack:
     sidt    [esp]
     mov     eax, [esp + 2]
     xchg    eax, [esp]
-    and     eax, 0FFFFh
+    and     eax, 0xFFFF
     mov     [esp+4], eax
 
     sub     esp, 8
     sgdt    [esp]
     mov     eax, [esp + 2]
     xchg    eax, [esp]
-    and     eax, 0FFFFh
+    and     eax, 0xFFFF
     mov     [esp+4], eax
 
 ;; UINT32  Ldtr, Tr;
@@ -251,7 +249,7 @@ ErrorCodeAndVectorOnStack:
 
 ;; UINT32  Cr0, Cr1, Cr2, Cr3, Cr4;
     mov     eax, cr4
-    or      eax, 208h
+    or      eax, 0x208
     mov     cr4, eax
     push    eax
     mov     eax, cr3
@@ -280,24 +278,24 @@ ErrorCodeAndVectorOnStack:
 ;; FX_SAVE_STATE_IA32 FxSaveState;
     sub     esp, 512
     mov     edi, esp
-    db      0fh, 0aeh, 07h ;fxsave [edi]
+    db      0xf, 0xae, 0x7 ;fxsave [edi]
 
 ;; UEFI calling convention for IA32 requires that Direction flag in EFLAGs is clear
     cld
 
 ;; UINT32  ExceptionData;
-    push    dword ptr [ebp + 2 * 4]
+    push    dword [ebp + 2 * 4]
 
 ;; Prepare parameter and call
     mov     edx, esp
     push    edx
-    mov     edx, dword ptr [ebp + 1 * 4]
+    mov     edx, dword [ebp + 1 * 4]
     push    edx
 
     ;
     ; Call External Exception Handler
     ;
-    mov     eax, CommonExceptionHandler
+    mov     eax, ASM_PFX(CommonExceptionHandler)
     call    eax
     add     esp, 8
 
@@ -307,7 +305,7 @@ ErrorCodeAndVectorOnStack:
 
 ;; FX_SAVE_STATE_IA32 FxSaveState;
     mov     esi, esp
-    db      0fh, 0aeh, 0eh ; fxrstor [esi]
+    db      0xf, 0xae, 0xe ; fxrstor [esi]
     add     esp, 512
 
 ;; UINT32  Dr0, Dr1, Dr2, Dr3, Dr6, Dr7;
@@ -327,7 +325,7 @@ ErrorCodeAndVectorOnStack:
     mov     cr4, eax
 
 ;; UINT32  EFlags;
-    pop     dword ptr [ebp + 5 * 4]
+    pop     dword [ebp + 5 * 4]
 
 ;; UINT32  Ldtr, Tr;
 ;; UINT32  Gdtr[2], Idtr[2];
@@ -335,7 +333,7 @@ ErrorCodeAndVectorOnStack:
     add     esp, 24
 
 ;; UINT32  Eip;
-    pop     dword ptr [ebp + 3 * 4]
+    pop     dword [ebp + 3 * 4]
 
 ;; UINT32  Gs, Fs, Es, Ds, Cs, Ss;
 ;; NOTE - modified segment registers could hang the debugger...  We
@@ -346,7 +344,7 @@ ErrorCodeAndVectorOnStack:
     pop     fs
     pop     es
     pop     ds
-    pop     dword ptr [ebp + 4 * 4]
+    pop     dword [ebp + 4 * 4]
     pop     ss
 
 ;; UINT32  Edi, Esi, Ebp, Esp, Ebx, Edx, Ecx, Eax;
@@ -359,87 +357,84 @@ ErrorCodeAndVectorOnStack:
     pop     ecx
     pop     eax
 
-    pop     dword ptr [ebp - 8]
-    pop     dword ptr [ebp - 4]
+    pop     dword [ebp - 8]
+    pop     dword [ebp - 4]
     mov     esp, ebp
     pop     ebp
     add     esp, 8
-    cmp     dword ptr [esp - 16], 0   ; check EXCEPTION_HANDLER_CONTEXT.OldIdtHandler
+    cmp     dword [esp - 16], 0   ; check EXCEPTION_HANDLER_CONTEXT.OldIdtHandler
     jz      DoReturn
-    cmp     dword ptr [esp - 20], 1   ; check EXCEPTION_HANDLER_CONTEXT.ExceptionDataFlag
+    cmp     dword [esp - 20], 1   ; check EXCEPTION_HANDLER_CONTEXT.ExceptionDataFlag
     jz      ErrorCode
-    jmp     dword ptr [esp - 16]
+    jmp     dword [esp - 16]
 ErrorCode:
     sub     esp, 4
-    jmp     dword ptr [esp - 12]
+    jmp     dword [esp - 12]
 
-DoReturn:    
-    cmp     mDoFarReturnFlag, 0   ; Check if need to do far return instead of IRET
+DoReturn:
+    cmp     DWORD [ASM_PFX(mDoFarReturnFlag)], 0   ; Check if need to do far return instead of IRET
     jz      DoIret
-    push    [esp + 8]    ; save EFLAGS
+    push    DWORD [esp + 8]    ; save EFLAGS
     add     esp, 16
-    push    [esp - 8]    ; save CS in new location
-    push    [esp - 8]    ; save EIP in new location
-    push    [esp - 8]    ; save EFLAGS in new location
+    push    DWORD [esp - 8]    ; save CS in new location
+    push    DWORD [esp - 8]    ; save EIP in new location
+    push    DWORD [esp - 8]    ; save EFLAGS in new location
     popfd                ; restore EFLAGS
     retf                 ; far return
 
 DoIret:
     iretd
 
-CommonInterruptEntry ENDP
-
 ;---------------------------------------;
 ; _AsmGetTemplateAddressMap                  ;
 ;----------------------------------------------------------------------------;
-; 
+;
 ; Protocol prototype
 ;   AsmGetTemplateAddressMap (
 ;     EXCEPTION_HANDLER_TEMPLATE_MAP *AddressMap
 ;   );
-;           
+;
 ; Routine Description:
-; 
+;
 ;  Return address map of interrupt handler template so that C code can generate
 ;  interrupt table.
-; 
+;
 ; Arguments:
-; 
-; 
-; Returns: 
-; 
+;
+;
+; Returns:
+;
 ;   Nothing
 ;
-; 
+;
 ; Input:  [ebp][0]  = Original ebp
 ;         [ebp][4]  = Return address
-;          
+;
 ; Output: Nothing
-;           
+;
 ; Destroys: Nothing
 ;-----------------------------------------------------------------------------;
-AsmGetTemplateAddressMap  proc near public
+global ASM_PFX(AsmGetTemplateAddressMap)
+ASM_PFX(AsmGetTemplateAddressMap):
     push    ebp                 ; C prolog
     mov     ebp, esp
     pushad
 
-    mov ebx, dword ptr [ebp + 08h]
-    mov dword ptr [ebx],      AsmIdtVectorBegin
-    mov dword ptr [ebx + 4h], (AsmIdtVectorEnd - AsmIdtVectorBegin) / 32
-    mov dword ptr [ebx + 8h], HookAfterStubBegin
-  
+    mov ebx, dword [ebp + 0x8]
+    mov dword [ebx],      AsmIdtVectorBegin
+    mov dword [ebx + 0x4], (AsmIdtVectorEnd - AsmIdtVectorBegin) / 32
+    mov dword [ebx + 0x8], HookAfterStubBegin
+
     popad
     pop     ebp
     ret
-AsmGetTemplateAddressMap  ENDP
 
 ;-------------------------------------------------------------------------------------
 ;  AsmVectorNumFixup (*NewVectorAddr, VectorNum, *OldVectorAddr);
 ;-------------------------------------------------------------------------------------
-AsmVectorNumFixup   proc near public
-    mov     eax, dword ptr [esp + 8]
+global ASM_PFX(AsmVectorNumFixup)
+ASM_PFX(AsmVectorNumFixup):
+    mov     eax, dword [esp + 8]
     mov     ecx, [esp + 4]
     mov     [ecx + (VectorNum - HookAfterStubBegin)], al
     ret
-AsmVectorNumFixup   ENDP
-END
