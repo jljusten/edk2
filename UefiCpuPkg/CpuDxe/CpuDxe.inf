@@ -53,9 +53,9 @@
   Ia32/CpuAsm.nasm| GCC
 
 [Sources.X64]
-  X64/CpuAsm.asm | MSFT
-  X64/CpuAsm.asm | INTEL
-  X64/CpuAsm.S   | GCC
+  X64/CpuAsm.nasm| MSFT
+  X64/CpuAsm.nasm| INTEL
+  X64/CpuAsm.nasm| GCC
 
 [Protocols]
   gEfiCpuArchProtocolGuid                       ## PRODUCES
