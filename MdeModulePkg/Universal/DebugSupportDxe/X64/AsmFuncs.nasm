@@ -12,25 +12,25 @@
 ;
 ;**/
 
-EXCPT64_DIVIDE_ERROR     EQU    0
-EXCPT64_DEBUG            EQU    1
-EXCPT64_NMI              EQU    2
-EXCPT64_BREAKPOINT       EQU    3
-EXCPT64_OVERFLOW         EQU    4
-EXCPT64_BOUND            EQU    5
-EXCPT64_INVALID_OPCODE   EQU    6
-EXCPT64_DOUBLE_FAULT     EQU    8
-EXCPT64_INVALID_TSS      EQU   10
-EXCPT64_SEG_NOT_PRESENT  EQU   11
-EXCPT64_STACK_FAULT      EQU   12
-EXCPT64_GP_FAULT         EQU   13
-EXCPT64_PAGE_FAULT       EQU   14
-EXCPT64_FP_ERROR         EQU   16
-EXCPT64_ALIGNMENT_CHECK  EQU   17
-EXCPT64_MACHINE_CHECK    EQU   18
-EXCPT64_SIMD             EQU   19
+%define EXCPT64_DIVIDE_ERROR 0
+%define EXCPT64_DEBUG 1
+%define EXCPT64_NMI 2
+%define EXCPT64_BREAKPOINT 3
+%define EXCPT64_OVERFLOW 4
+%define EXCPT64_BOUND 5
+%define EXCPT64_INVALID_OPCODE 6
+%define EXCPT64_DOUBLE_FAULT 8
+%define EXCPT64_INVALID_TSS 10
+%define EXCPT64_SEG_NOT_PRESENT 11
+%define EXCPT64_STACK_FAULT 12
+%define EXCPT64_GP_FAULT 13
+%define EXCPT64_PAGE_FAULT 14
+%define EXCPT64_FP_ERROR 16
+%define EXCPT64_ALIGNMENT_CHECK 17
+%define EXCPT64_MACHINE_CHECK 18
+%define EXCPT64_SIMD 19
 
-FXSTOR_FLAG              EQU   01000000h         ; bit cpuid 24 of feature flags
+%define FXSTOR_FLAG 0x1000000         ; bit cpuid 24 of feature flags
 
 ;; The FXSTOR and FXRSTOR commands are used for saving and restoring the x87,
 ;; MMX, SSE, SSE2, etc registers.  The initialization of the debugsupport driver
@@ -38,26 +38,31 @@ FXSTOR_FLAG              EQU   01000000h         ; bit cpuid 24 of feature flags
 ;; and fail to init if they are not.
 
 ;; fxstor [rdi]
-FXSTOR_RDI               MACRO
-                         db 0fh, 0aeh, 00000111y ; mod = 00, reg/op = 000, r/m = 111 = [rdi]
-ENDM
+%macro FXSTOR_RDI 0
+                         db 0xf, 0xae, 00000111y ; mod = 00, reg/op = 000, r/m = 111 = [rdi]
+%endmacro
 
 ;; fxrstor [rsi]
-FXRSTOR_RSI              MACRO
-                         db 0fh, 0aeh, 00001110y ; mod = 00, reg/op = 001, r/m = 110 = [rsi]
-ENDM
+%macro FXRSTOR_RSI 0
+                         db 0xf, 0xae, 00001110y ; mod = 00, reg/op = 001, r/m = 110 = [rsi]
+%endmacro
 
-data SEGMENT
+SECTION .data
 
-public          OrigVector, InterruptEntryStub, StubSize, CommonIdtEntry, FxStorSupport
+global ASM_PFX(OrigVector)
+global ASM_PFX(InterruptEntryStub)
+global ASM_PFX(StubSize)
+global ASM_PFX(CommonIdtEntry)
+global ASM_PFX(FxStorSupport)
+extern ASM_PFX(InterruptDistrubutionHub)
 
-StubSize        dd      InterruptEntryStubEnd - InterruptEntryStub
-AppRsp          dq      1111111111111111h ; ?
-DebugRsp        dq      2222222222222222h ; ?
-ExtraPush       dq      3333333333333333h ; ?
-ExceptData      dq      4444444444444444h ; ?
-Rflags          dq      5555555555555555h ; ?
-OrigVector      dq      6666666666666666h ; ?
+ASM_PFX(StubSize): dd InterruptEntryStubEnd - ASM_PFX(InterruptEntryStub)
+AppRsp: dq 0x1111111111111111 ; ?
+DebugRsp: dq 0x2222222222222222 ; ?
+ExtraPush: dq 0x3333333333333333 ; ?
+ExceptData: dq 0x4444444444444444 ; ?
+Rflags: dq 0x5555555555555555 ; ?
+ASM_PFX(OrigVector): dq 0x6666666666666666 ; ?
 
 ;; The declarations below define the memory region that will be used for the debug stack.
 ;; The context record will be built by pushing register values onto this stack.
@@ -92,21 +97,15 @@ OrigVector      dq      6666666666666666h ; ?
 ;;      } SYSTEM_CONTEXT_X64;  // 64 bit system context record
 
 align           16
-DebugStackEnd   db      "DbgStkEnd >>>>>>"      ;; 16 byte long string - must be 16 bytes to preserve alignment
-                dd      1ffch dup (000000000h)  ;; 32K should be enough stack
-                                                ;;   This allocation is coocked to insure
-                                                ;;   that the the buffer for the FXSTORE instruction
-                                                ;;   will be 16 byte aligned also.
-                                                ;;
-ExceptionNumber dq      ?                       ;; first entry will be the vector number pushed by the stub
+DebugStackEnd: db "DbgStkEnd >>>>>>"    ;; 16 byte long string - must be 16 bytes to preserve alignment
+                times 0x1ffc dd    0x0  ;; 32K should be enough stack
+                                        ;;   This allocation is coocked to insure
+                                        ;;   that the the buffer for the FXSTORE instruction
+                                        ;;   will be 16 byte aligned also.
+                                        ;;
+ExceptionNumber: dq 0                   ;; first entry will be the vector number pushed by the stub
 
-DebugStackBegin db      "<<<< DbgStkBegin"      ;; initial debug ESP == DebugStackBegin, set in stub
-
-data ENDS
-
-text SEGMENT
-
-externdef InterruptDistrubutionHub:near
+DebugStackBegin: db "<<<< DbgStkBegin"  ;; initial debug ESP == DebugStackBegin, set in stub
 
 ;------------------------------------------------------------------------------
 ; BOOLEAN
@@ -116,7 +115,8 @@ externdef InterruptDistrubutionHub:near
 ;
 ; Abstract: Returns TRUE if FxStor instructions are supported
 ;
-FxStorSupport   PROC    PUBLIC
+global ASM_PFX(FxStorSupport)
+ASM_PFX(FxStorSupport):
 
 ;
 ; cpuid corrupts rbx which must be preserved per the C calling convention
@@ -129,7 +129,6 @@ FxStorSupport   PROC    PUBLIC
                 shr     rax, 24
                 pop     rbx
                 ret
-FxStorSupport   ENDP
 
 ;------------------------------------------------------------------------------
 ; void
@@ -140,23 +139,20 @@ FxStorSupport   ENDP
 ;
 ; Abstract: Encodes an IDT descriptor with the given physical address
 ;
-Vect2Desc       PROC    PUBLIC
+global ASM_PFX(Vect2Desc)
+ASM_PFX(Vect2Desc):
 
                 mov     rax, rdx
-                mov     word ptr [rcx], ax                  ; write bits 15..0 of offset
+                mov     word [rcx], ax                  ; write bits 15..0 of offset
                 mov     dx, cs
-                mov     word ptr [rcx+2], dx                ; SYS_CODE_SEL from GDT
-                mov     word ptr [rcx+4], 0e00h OR 8000h    ; type = 386 interrupt gate, present
+                mov     word [rcx+2], dx                ; SYS_CODE_SEL from GDT
+                mov     word [rcx+4], 0xe00 | 0x8000    ; type = 386 interrupt gate, present
                 shr     rax, 16
-                mov     word ptr [rcx+6], ax                ; write bits 31..16 of offset
+                mov     word [rcx+6], ax                ; write bits 31..16 of offset
                 shr     rax, 16
-                mov     dword ptr [rcx+8], eax              ; write bits 63..32 of offset
+                mov     dword [rcx+8], eax              ; write bits 63..32 of offset
 
                 ret
-
-Vect2Desc       ENDP
-
-
 
 ;------------------------------------------------------------------------------
 ; InterruptEntryStub
@@ -164,13 +160,11 @@ Vect2Desc       ENDP
 ; Abstract: This code is not a function, but is a small piece of code that is
 ;               copied and fixed up once for each IDT entry that is hooked.
 ;
-InterruptEntryStub::
+ASM_PFX(InterruptEntryStub):
                 push    0                       ; push vector number - will be modified before installed
-                db      0e9h                    ; jump rel32
+                db      0xe9                    ; jump rel32
                 dd      0                       ; fixed up to relative address of CommonIdtEntry
 InterruptEntryStubEnd:
-
-
 
 ;------------------------------------------------------------------------------
 ; CommonIdtEntry
@@ -178,7 +172,7 @@ InterruptEntryStubEnd:
 ; Abstract: This code is not a function, but is the common part for all IDT
 ;               vectors.
 ;
-CommonIdtEntry::
+ASM_PFX(CommonIdtEntry):
 ;;
 ;; At this point, the stub has saved the current application stack esp into AppRsp
 ;; and switched stacks to the debug stack, where it pushed the vector number
@@ -197,7 +191,6 @@ CommonIdtEntry::
 ;;
 ;;              Vector Number <----------------- pushed in our IDT Entry
 ;;
-
 
 ;; The stub switched us to the debug stack and pushed the interrupt number.
 ;;
@@ -225,12 +218,12 @@ CommonIdtEntry::
 
 ;; NOTE: we save rsp here to prevent compiler put rip reference cause error AppRsp
                 push    rax
-                mov     rax, qword ptr [rsp][8]          ; save vector number
-                mov     ExceptionNumber, rax             ; save vector number
+                mov     rax, qword [rsp+8]               ; save vector number
+                mov     [ExceptionNumber], rax           ; save vector number
                 pop     rax
                 add     rsp, 8                           ; pop vector number
-                mov     AppRsp, rsp                      ; save stack top
-                mov     rsp, offset DebugStackBegin      ; switch to debugger stack
+                mov     [AppRsp], rsp                    ; save stack top
+                lea     rsp, [DebugStackBegin]           ; switch to debugger stack
                 sub     rsp, 8                           ; leave space for vector number
 
 ;; UINT64  Rdi, Rsi, Rbp, Rsp, Rbx, Rdx, Rcx, Rax;
@@ -255,38 +248,38 @@ CommonIdtEntry::
 ;; Save interrupt state rflags register...
                 pushfq
                 pop     rax
-                mov     qword ptr Rflags, rax
+                mov     [Rflags], rax
 
 ;; We need to determine if any extra data was pushed by the exception, and if so, save it
 ;; To do this, we check the exception number pushed by the stub, and cache the
 ;; result in a variable since we'll need this again.
-                cmp     ExceptionNumber, EXCPT64_DOUBLE_FAULT
+                cmp     qword [ExceptionNumber], EXCPT64_DOUBLE_FAULT
                 jz      ExtraPushOne
-                cmp     ExceptionNumber, EXCPT64_INVALID_TSS
+                cmp     qword [ExceptionNumber], EXCPT64_INVALID_TSS
                 jz      ExtraPushOne
-                cmp     ExceptionNumber, EXCPT64_SEG_NOT_PRESENT
+                cmp     qword [ExceptionNumber], EXCPT64_SEG_NOT_PRESENT
                 jz      ExtraPushOne
-                cmp     ExceptionNumber, EXCPT64_STACK_FAULT
+                cmp     qword [ExceptionNumber], EXCPT64_STACK_FAULT
                 jz      ExtraPushOne
-                cmp     ExceptionNumber, EXCPT64_GP_FAULT
+                cmp     qword [ExceptionNumber], EXCPT64_GP_FAULT
                 jz      ExtraPushOne
-                cmp     ExceptionNumber, EXCPT64_PAGE_FAULT
+                cmp     qword [ExceptionNumber], EXCPT64_PAGE_FAULT
                 jz      ExtraPushOne
-                cmp     ExceptionNumber, EXCPT64_ALIGNMENT_CHECK
+                cmp     qword [ExceptionNumber], EXCPT64_ALIGNMENT_CHECK
                 jz      ExtraPushOne
-                mov     ExtraPush, 0
-                mov     ExceptData, 0
+                mov     qword [ExtraPush], 0
+                mov     qword [ExceptData], 0
                 jmp     ExtraPushDone
 ExtraPushOne:
-                mov     ExtraPush, 1
+                mov     qword [ExtraPush], 1
 
 ;; If there's some extra data, save it also, and modify the saved AppRsp to effectively
 ;; pop this value off the application's stack.
-                mov     rax, AppRsp
+                mov     rax, [AppRsp]
                 mov     rbx, [rax]
-                mov     ExceptData, rbx
+                mov     qword [ExceptData], rbx
                 add     rax, 8
-                mov     AppRsp, rax
+                mov     [AppRsp], rax
 
 ExtraPushDone:
 
@@ -294,9 +287,9 @@ ExtraPushDone:
 ;; is building the context record on the debug stack, we need to save the pushed
 ;; debug RSP, and replace it with the application's last stack entry...
                 mov     rax, [rsp + 24]
-                mov     DebugRsp, rax
+                mov     [DebugRsp], rax
                 mov     rax, AppRsp
-                mov     rax, QWORD PTR [rax + 24]
+                mov     rax, QWORD [rax + 24]
                 ; application stack has ss, rsp, rflags, cs, & rip, so
                 ; last actual application stack entry is saved at offset
                 ; 24 bytes from stack top.
@@ -309,7 +302,7 @@ ExtraPushDone:
 
                 ; CS from application is one entry back in application stack
                 mov     rax, AppRsp
-                movzx   rax, word ptr [rax + 8]
+                movzx   rax, word [rax + 8]
                 push    rax
 
                 mov     rax, ds
@@ -324,15 +317,15 @@ ExtraPushDone:
 ;; UINT64  Rip;
                 ; Rip from application is on top of application stack
                 mov     rax, AppRsp
-                push    qword ptr [rax]
+                push    qword [rax]
 
 ;; UINT64  Gdtr[2], Idtr[2];
                 push    0
                 push    0
-                sidt    fword ptr [rsp]
+                sidt    [rsp]
                 push    0
                 push    0
-                sgdt    fword ptr [rsp]
+                sgdt    [rsp]
 
 ;; UINT64  Ldtr, Tr;
                 xor     rax, rax
@@ -344,7 +337,7 @@ ExtraPushDone:
 ;; UINT64  RFlags;
 ;; Rflags from application is two entries back in application stack
                 mov     rax, AppRsp
-                push    qword ptr [rax + 16]
+                push    qword [rax + 16]
 
 ;; UINT64  Cr0, Cr1, Cr2, Cr3, Cr4, Cr8;
 ;; insure FXSAVE/FXRSTOR is enabled in CR4...
@@ -352,7 +345,7 @@ ExtraPushDone:
                 mov     rax, cr8
                 push    rax
                 mov     rax, cr4
-                or      rax, 208h
+                or      rax, 0x208
                 mov     cr4, rax
                 push    rax
                 mov     rax, cr3
@@ -405,7 +398,7 @@ ExtraPushDone:
                 mov     rdx, rsp
                 mov     rcx, ExceptionNumber
                 sub     rsp, 40
-                call    InterruptDistrubutionHub
+                call    ASM_PFX(InterruptDistrubutionHub)
                 add     rsp, 40
 
 ; restore context...
@@ -446,7 +439,7 @@ ExtraPushDone:
 
 ;; UINT64  RFlags;
                 mov     rax, AppRsp
-                pop     qword ptr [rax + 16]
+                pop     qword [rax + 16]
 
 ;; UINT64  Ldtr, Tr;
 ;; UINT64  Gdtr[2], Idtr[2];
@@ -454,7 +447,7 @@ ExtraPushDone:
                 add     rsp, 48
 
 ;; UINT64  Rip;
-                pop     qword ptr [rax]
+                pop     qword [rax]
 
 ;; UINT64  Gs, Fs, Es, Ds, Cs, Ss;
 ;; NOTE - modified segment registers could hang the debugger...  We
@@ -471,7 +464,7 @@ ExtraPushDone:
                 pop     rax
                 mov     ds, rax
                 mov     rax, AppRsp
-                pop     qword ptr [rax + 8]
+                pop     qword [rax + 8]
                 pop     rax
                 mov     ss, rax
 
@@ -485,7 +478,7 @@ ExtraPushDone:
 
                 mov     rbx, [rsp + 24]  ; move the potentially modified AppRsp into rbx
                 mov     rax, AppRsp
-                mov     rax, QWORD PTR [rax + 24]
+                mov     rax, QWORD [rax + 24]
                 cmp     rbx, rax
                 je      NoAppStackMove
 
@@ -506,20 +499,20 @@ ExtraPushDone:
                 mov     [rbx + 32], rcx
 
                 mov     rax, rbx         ; modify the saved AppRsp to the new AppRsp
-                mov     AppRsp, rax
+                mov     [AppRsp], rax
 NoAppStackMove:
-                mov     rax, DebugRsp    ; restore the DebugRsp on the debug stack
+                mov     rax, [DebugRsp]  ; restore the DebugRsp on the debug stack
                                          ; so our "pop" will not cause a stack switch
                 mov     [rsp + 24], rax
 
-                cmp     ExceptionNumber, 068h
+                cmp     qword [ExceptionNumber], 0x68
                 jne     NoChain
 
 Chain:
 
 ;; Restore rflags so when we chain, the flags will be exactly as if we were never here.
 ;; We gin up the stack to do an iretq so we can get ALL the flags.
-                mov     rax, AppRsp
+                mov     rax, [AppRsp]
                 mov     rbx, [rax + 40]
                 push    rbx
                 mov     rax, ss
@@ -527,13 +520,13 @@ Chain:
                 mov     rax, rsp
                 add     rax, 16
                 push    rax
-                mov     rax, AppRsp
+                mov     rax, [AppRsp]
                 mov     rbx, [rax + 16]
-                and     rbx, NOT 300h ; special handling for IF and TF
+                and     rbx, ~ 0x300 ; special handling for IF and TF
                 push    rbx
                 mov     rax, cs
                 push    rax
-                mov     rax, offset PhonyIretq
+                lea     rax, [PhonyIretq]
                 push    rax
                 iretq
 PhonyIretq:
@@ -558,10 +551,10 @@ PhonyIretq:
                 pop     r15
 
 ;; Switch back to application stack
-                mov     rsp, AppRsp
+                mov     rsp, [AppRsp]
 
 ;; Jump to original handler
-                jmp     OrigVector
+                jmp     ASM_PFX(OrigVector)
 
 NoChain:
 ;; UINT64  Rdi, Rsi, Rbp, Rsp, Rbx, Rdx, Rcx, Rax;
@@ -584,13 +577,8 @@ NoChain:
                 pop     r15
 
 ;; Switch back to application stack
-                mov     rsp, AppRsp
+                mov     rsp, [AppRsp]
 
 ;; We're outa here...
                 iretq
-text ENDS
-
-END
-
-
 
