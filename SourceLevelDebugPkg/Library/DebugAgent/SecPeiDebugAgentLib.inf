@@ -46,8 +46,8 @@
   DebugAgentCommon/Ia32/DebugException.h
 
 [Sources.X64]
-  DebugAgentCommon/X64/AsmFuncs.S      | GCC
-  DebugAgentCommon/X64/AsmFuncs.asm
+  DebugAgentCommon/X64/AsmFuncs.nasm   | GCC
+  DebugAgentCommon/X64/AsmFuncs.nasm
   DebugAgentCommon/X64/ArchDebugSupport.h
   DebugAgentCommon/X64/ArchDebugSupport.c
   DebugAgentCommon/X64/DebugException.h
