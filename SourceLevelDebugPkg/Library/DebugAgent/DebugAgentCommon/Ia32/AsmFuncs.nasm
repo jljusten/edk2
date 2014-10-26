@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   AsmFuncs.asm
+;   AsmFuncs.nasm
 ;
 ; Abstract:
 ;
@@ -21,154 +21,42 @@
 
 #include "DebugException.h"
 
-.686p
-.xmm
-.model  flat,c
-
 ;
 ; InterruptProcess()
 ;
-InterruptProcess                 PROTO   C
+extern ASM_PFX(InterruptProcess)
 
-public    Exception0Handle, TimerInterruptHandle, ExceptionStubHeaderSize
+global ASM_PFX(Exception0Handle)
+global ASM_PFX(TimerInterruptHandle)
+global ASM_PFX(ExceptionStubHeaderSize)
 
-AGENT_HANDLER_SIGNATURE  MACRO
-  db   41h, 47h, 54h, 48h       ; SIGNATURE_32('A','G','T','H')
-ENDM
+%macro AGENT_HANDLER_SIGNATURE 0
+  db   0x41, 0x47, 0x54, 0x48       ; SIGNATURE_32('A','G','T','H')
+%endmacro
 
-.data
+%macro DECLARE_HANDLER 2
+AGENT_HANDLER_SIGNATURE
+ASM_PFX(%1 %+ Handle):
+    cli
+    push    eax
+    mov     eax, %2
+    jmp     dword [CommonEntryAddr]
+%endmacro
 
-ExceptionStubHeaderSize   DD    Exception1Handle - Exception0Handle
-CommonEntryAddr           DD    CommonEntry
+SECTION .data
 
-.code
+ASM_PFX(ExceptionStubHeaderSize): dd ASM_PFX(Exception1Handle) - ASM_PFX(Exception0Handle)
+CommonEntryAddr: DD CommonEntry
 
-AGENT_HANDLER_SIGNATURE
-Exception0Handle:
-    cli
-    push    eax
-    mov     eax, 0
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception1Handle:
-    cli
-    push    eax
-    mov     eax, 1
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception2Handle:
-    cli
-    push    eax
-    mov     eax, 2
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception3Handle:
-    cli
-    push    eax
-    mov     eax, 3
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception4Handle:
-    cli
-    push    eax
-    mov     eax, 4
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception5Handle:
-    cli
-    push    eax
-    mov     eax, 5
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception6Handle:
-    cli
-    push    eax
-    mov     eax, 6
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception7Handle:
-    cli
-    push    eax
-    mov     eax, 7
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception8Handle:
-    cli
-    push    eax
-    mov     eax, 8
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception9Handle:
-    cli
-    push    eax
-    mov     eax, 9
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception10Handle:
-    cli
-    push    eax
-    mov     eax, 10
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception11Handle:
-    cli
-    push    eax
-    mov     eax, 11
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception12Handle:
-    cli
-    push    eax
-    mov     eax, 12
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception13Handle:
-    cli
-    push    eax
-    mov     eax, 13
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception14Handle:
-    cli
-    push    eax
-    mov     eax, 14
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception15Handle:
-    cli
-    push    eax
-    mov     eax, 15
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception16Handle:
-    cli
-    push    eax
-    mov     eax, 16
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception17Handle:
-    cli
-    push    eax
-    mov     eax, 17
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception18Handle:
-    cli
-    push    eax
-    mov     eax, 18
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-Exception19Handle:
-    cli
-    push    eax
-    mov     eax, 19
-    jmp     dword ptr [CommonEntryAddr]
-AGENT_HANDLER_SIGNATURE
-TimerInterruptHandle:
-    cli
-    push    eax
-    mov     eax, 32
-    jmp     dword ptr [CommonEntryAddr]
+SECTION .text
+
+%assign i 0
+%rep 20
+DECLARE_HANDLER Exception %+ i, i
+%assign i i+1
+%endrep
+
+DECLARE_HANDLER TimerInterrupt, 32
 
 CommonEntry:
 ;
@@ -201,8 +89,8 @@ CommonEntry:
     cmp     eax, DEBUG_EXCEPT_ALIGNMENT_CHECK
     je      NoExtrPush
 
-    push    [esp]
-    mov     dword ptr [esp + 4], 0
+    push    dword [esp]
+    mov     dword [esp + 4], 0
 
 NoExtrPush:
 
@@ -211,11 +99,11 @@ NoExtrPush:
     ;
     ; Make stack 16-byte alignment to make sure save fxrstor later
     ;
-    and     esp, 0fffffff0h
+    and     esp, 0xfffffff0
     sub     esp, 12
 
     ; store UINT32  Edi, Esi, Ebp, Ebx, Edx, Ecx, Eax;
-    push    dword ptr [ebp + 4]  ; original eax
+    push    dword [ebp + 4]  ; original eax
     push    ebx
     push    ecx
     push    edx
@@ -223,7 +111,7 @@ NoExtrPush:
     mov     eax, ebp
     add     eax, 4 * 6
     push    eax              ; original ESP
-    push    dword ptr [ebp]  ; EBP
+    push    dword [ebp]  ; EBP
     push    esi
     push    edi
 
@@ -232,7 +120,7 @@ NoExtrPush:
     ;; ... while we're at it, make sure DE is also enabled...
     mov     eax, cr4
     push    eax       ; push cr4 firstly
-    or      eax, 208h
+    or      eax, 0x208
     mov     cr4, eax
     mov     eax, cr3
     push    eax
@@ -262,9 +150,9 @@ NoExtrPush:
 
     ;; UINT32  Gdtr[2], Idtr[2];
     sub  esp, 8
-    sidt fword ptr [esp]
+    sidt [esp]
     sub  esp, 8
-    sgdt fword ptr [esp]
+    sgdt [esp]
 
     ;; UINT32  Ldtr, Tr;
     xor  eax, eax
@@ -305,18 +193,18 @@ NoExtrPush:
     ;; FX_SAVE_STATE_IA32 FxSaveState;
     sub esp, 512
     mov edi, esp
-    db 0fh, 0aeh, 00000111y ;fxsave [edi]
+    db 0xf, 0xae, 00000111y ;fxsave [edi]
 
-    ;; save the exception data    
-    push    dword ptr [ebp + 8]
+    ;; save the exception data
+    push    dword [ebp + 8]
 
     ;; Clear Direction Flag
     cld
-    	
+
     ; call the C interrupt process function
     push    esp     ; Structure
     push    ebx     ; vector
-    call    InterruptProcess
+    call    ASM_PFX(InterruptProcess)
     add     esp, 8
 
     ; skip the exception data
@@ -324,7 +212,7 @@ NoExtrPush:
 
     ;; FX_SAVE_STATE_IA32 FxSaveState;
     mov esi, esp
-    db 0fh, 0aeh, 00001110y ; fxrstor [esi]
+    db 0xf, 0xae, 00001110y ; fxrstor [esi]
     add esp, 512
 
     ;; UINT32  Dr0, Dr1, Dr2, Dr3, Dr6, Dr7;
@@ -342,7 +230,7 @@ NoExtrPush:
     mov     dr7, eax
 
     ;; set EFlags
-    pop     dword ptr [ebp + 4 * 5]  ; set EFLAGS in stack
+    pop     dword [ebp + 4 * 5]  ; set EFLAGS in stack
 
     ;; UINT32  Ldtr, Tr;
     ;; UINT32  Gdtr[2], Idtr[2];
@@ -350,7 +238,7 @@ NoExtrPush:
     add     esp, 24
 
     ;; UINT32  Eip;
-    pop     dword ptr [ebp + 4 * 3]   ; set EIP in stack
+    pop     dword [ebp + 4 * 3]   ; set EIP in stack
 
     ;; UINT32  Gs, Fs, Es, Ds, Cs, Ss;
     ;; NOTE - modified segment registers could hang the debugger...  We
@@ -361,7 +249,7 @@ NoExtrPush:
     pop     fs
     pop     es
     pop     ds
-    pop     dword ptr [ebp + 4 * 4]    ; set CS in stack
+    pop     dword [ebp + 4 * 4]    ; set CS in stack
     pop     ss
 
     ;; UINT32  Cr0, Cr1, Cr2, Cr3, Cr4;
@@ -378,8 +266,8 @@ NoExtrPush:
     ;; restore general register
     pop     edi
     pop     esi
-    pop     dword ptr [ebp]         ; save updated ebp
-    pop     dword ptr [ebp + 4]     ; save updated esp
+    pop     dword [ebp]         ; save updated ebp
+    pop     dword [ebp + 4]     ; save updated esp
     pop     edx
     pop     ecx
     pop     ebx
@@ -392,4 +280,3 @@ NoExtrPush:
 
     iretd
 
-END

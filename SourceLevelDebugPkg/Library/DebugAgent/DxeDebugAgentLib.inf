@@ -42,8 +42,8 @@
   DebugAgentCommon/DebugMp.h
 
 [Sources.Ia32]
-  DebugAgentCommon/Ia32/AsmFuncs.S     | GCC
-  DebugAgentCommon/Ia32/AsmFuncs.asm
+  DebugAgentCommon/Ia32/AsmFuncs.nasm  | GCC
+  DebugAgentCommon/Ia32/AsmFuncs.nasm
   DebugAgentCommon/Ia32/ArchDebugSupport.h
   DebugAgentCommon/Ia32/ArchDebugSupport.c
   DebugAgentCommon/Ia32/DebugException.h
