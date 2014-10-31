@@ -1,59 +1,54 @@
 ;/** @file
-;  
+;
 ;    IDT vector entry.
-;  
+;
 ;  Copyright (c) 2007 - 2008, Intel Corporation. All rights reserved.<BR>
 ;  This program and the accompanying materials
 ;  are licensed and made available under the terms and conditions of the BSD License
 ;  which accompanies this distribution.  The full text of the license may be found at
 ;  http://opensource.org/licenses/bsd-license.php
-;  
+;
 ;  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 ;  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-;  
+;
 ;**/
 
-    .686p
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;
 ;------------------------------------------------------------------------------
-;  Generic IDT Vector Handlers for the Host. 
+;  Generic IDT Vector Handlers for the Host.
 ;
 ;------------------------------------------------------------------------------
 
 ALIGN   8
-PUBLIC  AsmGetVectorTemplatInfo
-PUBLIC  AsmVectorFixup
+global ASM_PFX(AsmGetVectorTemplatInfo)
+global ASM_PFX(AsmVectorFixup)
 
-PUBLIC  AsmVectorFixup
+global ASM_PFX(AsmVectorFixup)
 
 @VectorTemplateBase:
         push  eax
-        db    6ah       ; push #VectorNumber
+        db    0x6a       ; push #VectorNumber
 @VectorNum:
         db    0
         mov   eax, CommonInterruptEntry
         jmp   eax
 @VectorTemplateEnd:
 
-
-AsmGetVectorTemplatInfo PROC
+global ASM_PFX(AsmGetVectorTemplatInfo)
+ASM_PFX(AsmGetVectorTemplatInfo):
         mov   ecx, [esp + 4]
-        mov   [ecx], @VectorTemplateBase
+        mov   dword [ecx], @VectorTemplateBase
         mov   eax, (@VectorTemplateEnd - @VectorTemplateBase)
         ret
-AsmGetVectorTemplatInfo ENDP
 
-
-AsmVectorFixup PROC
-        mov   eax, dword ptr [esp + 8]
+global ASM_PFX(AsmVectorFixup)
+ASM_PFX(AsmVectorFixup):
+        mov   eax, dword [esp + 8]
         mov   ecx, [esp + 4]
         mov   [ecx + (@VectorNum - @VectorTemplateBase)], al
         ret
-AsmVectorFixup ENDP
-
 
 ;---------------------------------------;
 ; CommonInterruptEntry                  ;
@@ -77,12 +72,9 @@ AsmVectorFixup ENDP
 ; +    Vector Number    +
 ; +---------------------+
 
-CommonInterruptEntry PROC 
+global ASM_PFX(CommonInterruptEntry)
+ASM_PFX(CommonInterruptEntry):
   cli
- 
+
   jmp $
-CommonInterruptEntry ENDP
-
-END
-
 
