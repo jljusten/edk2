@@ -71,7 +71,7 @@
 
   SysCall/Ia32/MathMultS64x64.nasm  | GCC
   SysCall/Ia32/MathDivU64x64.nasm   | GCC
-  SysCall/Ia32/MathReminderU64x64.S | GCC
+  SysCall/Ia32/MathRemainderU64x64.nasm | GCC
   SysCall/Ia32/MathLShiftS64.S      | GCC
   SysCall/Ia32/MathRShiftU64.S      | GCC
 
