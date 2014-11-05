@@ -14,19 +14,17 @@
 ;
 ;;
 
-.686P
-.MODEL FLAT, C
-.CODE
+SECTION .text
 
 ;----------------------------------------------------------------------------
-; Procedure:    InterruptRedirectionTemplate: Redirects interrupts 0x68-0x6F 
+; Procedure:    InterruptRedirectionTemplate: Redirects interrupts 0x68-0x6F
 ;
 ; Input:        None
 ;
 ; Output:       None
 ;
 ; Prototype:    VOID
-;               InterruptRedirectionTemplate (  
+;               InterruptRedirectionTemplate (
 ;                                VOID
 ;                                );
 ;
@@ -38,36 +36,35 @@
 ;               This code reflects interrupts 0x68-0x6f to interrupts 0x08-0x0f.
 ;               This template must be copied into low memory, and the IDT entries
 ;               0x68-0x6F must be point to the low memory copy of this code.  Each
-;               entry is 4 bytes long, so IDT entries 0x68-0x6F can be easily 
+;               entry is 4 bytes long, so IDT entries 0x68-0x6F can be easily
 ;               computed.
 ;
 ;----------------------------------------------------------------------------
 
-InterruptRedirectionTemplate PROC  C
-  int     08h
-  DB      0cfh          ; IRET
+global ASM_PFX(InterruptRedirectionTemplate)
+ASM_PFX(InterruptRedirectionTemplate):
+  int     0x8
+  DB      0xcf          ; IRET
   nop
-  int     09h
-  DB      0cfh          ; IRET
+  int     0x9
+  DB      0xcf          ; IRET
   nop
-  int     0ah
-  DB      0cfh          ; IRET
+  int     0xa
+  DB      0xcf          ; IRET
   nop
-  int     0bh
-  DB      0cfh          ; IRET
+  int     0xb
+  DB      0xcf          ; IRET
   nop
-  int     0ch
-  DB      0cfh          ; IRET
+  int     0xc
+  DB      0xcf          ; IRET
   nop
-  int     0dh
-  DB      0cfh          ; IRET
+  int     0xd
+  DB      0xcf          ; IRET
   nop
-  int     0eh
-  DB      0cfh          ; IRET
+  int     0xe
+  DB      0xcf          ; IRET
   nop
-  int     0fh
-  DB      0cfh          ; IRET
+  int     0xf
+  DB      0xcf          ; IRET
   nop
-InterruptRedirectionTemplate ENDP
 
-END
