@@ -29,7 +29,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; INTN
@@ -40,15 +41,18 @@
 ;   IN      UINTN                     Length
 ;   );
 ;------------------------------------------------------------------------------
-InternalMemCompareMem   PROC    USES    rsi rdi
+global ASM_PFX(InternalMemCompareMem)
+ASM_PFX(InternalMemCompareMem):
+    push    rsi
+    push    rdi
     mov     rsi, rcx
     mov     rdi, rdx
     mov     rcx, r8
     repe    cmpsb
-    movzx   rax, byte ptr [rsi - 1]
-    movzx   rdx, byte ptr [rdi - 1]
+    movzx   rax, byte [rsi - 1]
+    movzx   rdx, byte [rdi - 1]
     sub     rax, rdx
+    pop     rdi
+    pop     rsi
     ret
-InternalMemCompareMem   ENDP
 
-    END
