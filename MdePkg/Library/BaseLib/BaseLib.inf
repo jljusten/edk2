@@ -327,7 +327,7 @@
   X64/WriteMm6.nasm| MSFT
   X64/WriteMm5.nasm| MSFT
   X64/WriteMm4.nasm| MSFT
-  X64/WriteMm3.asm | MSFT
+  X64/WriteMm3.nasm| MSFT
   X64/WriteMm2.asm | MSFT
   X64/WriteMm1.asm | MSFT
   X64/WriteMm0.asm | MSFT
@@ -399,7 +399,7 @@
   X64/WriteMm6.nasm| INTEL
   X64/WriteMm5.nasm| INTEL
   X64/WriteMm4.nasm| INTEL
-  X64/WriteMm3.asm | INTEL
+  X64/WriteMm3.nasm| INTEL
   X64/WriteMm2.asm | INTEL
   X64/WriteMm1.asm | INTEL
   X64/WriteMm0.asm | INTEL
