@@ -48,7 +48,7 @@
 
 [Sources.X64]
   X64/RdRandWord.c
-  X64/AsmRdRand.asm
+  X64/AsmRdRand.nasm
   X64/GccRdRand.c           | GCC
 
 [Packages]
