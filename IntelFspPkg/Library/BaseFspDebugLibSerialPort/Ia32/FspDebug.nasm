@@ -15,9 +15,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT32 *
@@ -26,9 +24,8 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-GetStackFramePointer  PROC  PUBLIC
+global ASM_PFX(GetStackFramePointer)
+ASM_PFX(GetStackFramePointer):
     mov     eax, ebp
     ret
-GetStackFramePointer  ENDP
 
-    END

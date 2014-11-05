@@ -27,8 +27,8 @@
   DebugLib.c
 
 [Sources.Ia32]
-  Ia32/FspDebug.asm | MSFT
-  Ia32/FspDebug.s | GCC
+  Ia32/FspDebug.nasm| MSFT
+  Ia32/FspDebug.nasm| GCC
 
 [Packages]
   MdePkg/MdePkg.dec
