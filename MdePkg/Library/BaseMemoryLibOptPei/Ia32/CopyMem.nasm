@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -33,7 +31,10 @@
 ;    IN UINTN  Count
 ;    )
 ;------------------------------------------------------------------------------
-InternalMemCopyMem  PROC    USES    esi edi
+global ASM_PFX(InternalMemCopyMem)
+ASM_PFX(InternalMemCopyMem):
+    push    esi
+    push    edi
     mov     esi, [esp+16]                ; esi <- Source
     mov     edi, [esp+12]                ; edi <- Destination
     mov     edx, [esp+20]                ; edx <- Count
@@ -55,7 +56,7 @@ InternalMemCopyMem  PROC    USES    esi edi
     cld
 @CopyDone:
     mov     eax, [esp + 12]             ; eax <- Destination as return value
+    pop     edi
+    pop     esi
     ret
-InternalMemCopyMem  ENDP
 
-    END
