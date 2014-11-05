@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   IntHandler.asm
+;   IntHandler.nasm
 ;
 ; Abstract:
 ;
@@ -19,15 +19,10 @@
 ;
 ;------------------------------------------------------------------------------
 
+global ASM_PFX(AsmInterruptHandle)
 
-.686p
-.model  flat,c
-
-public AsmInterruptHandle
-
-.code
-AsmInterruptHandle:
+SECTION .text
+ASM_PFX(AsmInterruptHandle):
     cli
     mov   al, 1
     iretd
-END

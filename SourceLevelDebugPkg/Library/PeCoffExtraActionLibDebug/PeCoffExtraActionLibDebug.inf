@@ -34,8 +34,8 @@
 
 [Sources.IA32]
   Ia32/IntHandlerFuncs.c
-  Ia32/IntHandler.asm
-  Ia32/IntHandler.S       | GCC
+  Ia32/IntHandler.nasm
+  Ia32/IntHandler.nasm    | GCC
 
 [Sources.X64]
   X64/IntHandlerFuncs.c
