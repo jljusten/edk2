@@ -29,9 +29,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; INTN
@@ -42,15 +40,18 @@
 ;   IN      UINTN                     Length
 ;   );
 ;------------------------------------------------------------------------------
-InternalMemCompareMem   PROC    USES    esi edi
+global ASM_PFX(InternalMemCompareMem)
+ASM_PFX(InternalMemCompareMem):
+    push    esi
+    push    edi
     mov     esi, [esp + 12]
     mov     edi, [esp + 16]
     mov     ecx, [esp + 20]
     repe    cmpsb
-    movzx   eax, byte ptr [esi - 1]
-    movzx   edx, byte ptr [edi - 1]
+    movzx   eax, byte [esi - 1]
+    movzx   edx, byte [edi - 1]
     sub     eax, edx
+    pop     edi
+    pop     esi
     ret
-InternalMemCompareMem   ENDP
 
-    END
