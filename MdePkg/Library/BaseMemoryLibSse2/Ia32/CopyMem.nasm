@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   CopyMem.asm
+;   CopyMem.nasm
 ;
 ; Abstract:
 ;
@@ -21,10 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .xmm
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -34,37 +31,40 @@
 ;    IN UINTN  Count
 ;    );
 ;------------------------------------------------------------------------------
-InternalMemCopyMem  PROC    USES    esi edi
+global ASM_PFX(InternalMemCopyMem)
+ASM_PFX(InternalMemCopyMem):
+    push    esi
+    push    edi
     mov     esi, [esp + 16]             ; esi <- Source
     mov     edi, [esp + 12]             ; edi <- Destination
     mov     edx, [esp + 20]             ; edx <- Count
     lea     eax, [esi + edx - 1]        ; eax <- End of Source
     cmp     esi, edi
-    jae     @F
+    jae     .0
     cmp     eax, edi                    ; Overlapped?
     jae     @CopyBackward               ; Copy backward if overlapped
-@@:
+.0:
     xor     ecx, ecx
     sub     ecx, edi
     and     ecx, 15                     ; ecx + edi aligns on 16-byte boundary
-    jz      @F
+    jz      .1
     cmp     ecx, edx
     cmova   ecx, edx
     sub     edx, ecx                    ; edx <- remaining bytes to copy
     rep     movsb
-@@:
+.1:
     mov     ecx, edx
     and     edx, 15
     shr     ecx, 4                      ; ecx <- # of DQwords to copy
     jz      @CopyBytes
     add     esp, -16
     movdqu  [esp], xmm0                 ; save xmm0
-@@:
+.2:
     movdqu  xmm0, [esi]                 ; esi may not be 16-bytes aligned
     movntdq [edi], xmm0                 ; edi should be 16-bytes aligned
     add     esi, 16
     add     edi, 16
-    loop    @B
+    loop    .2
     mfence
     movdqu  xmm0, [esp]                 ; restore xmm0
     add     esp, 16                     ; stack cleanup
@@ -78,7 +78,7 @@ InternalMemCopyMem  PROC    USES    esi edi
     rep     movsb
     cld
     mov     eax, [esp + 12]             ; eax <- Destination as return value
+    pop     edi
+    pop     esi
     ret
-InternalMemCopyMem  ENDP
 
-    END
