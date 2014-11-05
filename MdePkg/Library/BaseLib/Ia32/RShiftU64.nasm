@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   RShiftU64.asm
+;   RShiftU64.nasm
 ;
 ; Abstract:
 ;
@@ -19,9 +19,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -31,7 +29,8 @@
 ;   IN      UINTN                     Count
 ;   );
 ;------------------------------------------------------------------------------
-InternalMathRShiftU64   PROC
+global ASM_PFX(InternalMathRShiftU64)
+ASM_PFX(InternalMathRShiftU64):
     mov     cl, [esp + 12]              ; cl <- Count
     xor     edx, edx
     mov     eax, [esp + 8]
@@ -41,6 +40,4 @@ InternalMathRShiftU64   PROC
     shrd    eax, edx, cl
     shr     edx, cl
     ret
-InternalMathRShiftU64   ENDP
 
-    END
