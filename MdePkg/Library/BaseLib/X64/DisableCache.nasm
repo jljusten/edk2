@@ -22,7 +22,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -31,13 +32,12 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-AsmDisableCache PROC
+global ASM_PFX(AsmDisableCache)
+ASM_PFX(AsmDisableCache):
     mov     rax, cr0
     bts     rax, 30
     btr     rax, 29
     mov     cr0, rax
     wbinvd
     ret
-AsmDisableCache ENDP
 
-    END

@@ -306,7 +306,7 @@
   X64/SetJump.nasm
   X64/SwitchStack.nasm
   X64/EnableCache.nasm
-  X64/DisableCache.asm
+  X64/DisableCache.nasm
 
   X64/CpuBreakpoint.c | MSFT 
   X64/WriteMsr64.c | MSFT 
@@ -479,7 +479,7 @@
   X64/CpuId.nasm| GCC
   X64/CpuIdEx.nasm| GCC
   X64/EnableCache.nasm| GCC
-  X64/DisableCache.S | GCC
+  X64/DisableCache.nasm| GCC
   ChkStkGcc.c  | GCC 
 
 [Sources.IPF]
