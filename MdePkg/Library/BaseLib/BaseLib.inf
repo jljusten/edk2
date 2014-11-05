@@ -375,7 +375,7 @@
   X64/WriteCr2.nasm| MSFT
   X64/WriteCr0.nasm| MSFT
   X64/ReadCr4.nasm| MSFT
-  X64/ReadCr3.asm | MSFT
+  X64/ReadCr3.nasm| MSFT
   X64/ReadCr2.asm | MSFT
   X64/ReadCr0.asm | MSFT
   X64/ReadEflags.asm | MSFT
@@ -447,7 +447,7 @@
   X64/WriteCr2.nasm| INTEL
   X64/WriteCr0.nasm| INTEL
   X64/ReadCr4.nasm| INTEL
-  X64/ReadCr3.asm | INTEL
+  X64/ReadCr3.nasm| INTEL
   X64/ReadCr2.asm | INTEL
   X64/ReadCr0.asm | INTEL
   X64/ReadEflags.asm | INTEL
