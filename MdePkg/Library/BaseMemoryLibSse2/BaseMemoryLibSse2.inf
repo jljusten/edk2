@@ -77,7 +77,7 @@
   X64/ZeroMem.nasm
   X64/SetMem64.nasm
   X64/SetMem32.nasm
-  X64/SetMem16.asm
+  X64/SetMem16.nasm
   X64/SetMem.asm
   X64/CopyMem.asm
   X64/ScanMem64.nasm
@@ -88,7 +88,7 @@
   X64/ZeroMem.nasm
   X64/SetMem64.nasm
   X64/SetMem32.nasm
-  X64/SetMem16.S
+  X64/SetMem16.nasm
   X64/SetMem.S
   X64/CopyMem.S
 
