@@ -19,11 +19,9 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
-InternalAssertJumpBuffer    PROTO   C
+extern ASM_PFX(InternalAssertJumpBuffer)
 
 ;------------------------------------------------------------------------------
 ; UINTN
@@ -32,9 +30,10 @@ InternalAssertJumpBuffer    PROTO   C
 ;   OUT     BASE_LIBRARY_JUMP_BUFFER  *JumpBuffer
 ;   );
 ;------------------------------------------------------------------------------
-SetJump     PROC
+global ASM_PFX(SetJump)
+ASM_PFX(SetJump):
     push    DWORD [esp + 4]
-    call    InternalAssertJumpBuffer    ; To validate JumpBuffer
+    call    ASM_PFX(InternalAssertJumpBuffer)    ; To validate JumpBuffer
     pop     ecx
     pop     ecx                         ; ecx <- return address
     mov     edx, [esp]
@@ -46,6 +45,4 @@ SetJump     PROC
     mov     [edx + 20], ecx             ; eip value to restore in LongJump
     xor     eax, eax
     jmp     ecx
-SetJump     ENDP
 
-    END
