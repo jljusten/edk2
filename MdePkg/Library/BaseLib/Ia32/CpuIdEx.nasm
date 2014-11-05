@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  UINT32
@@ -37,7 +35,9 @@
 ;    OUT  UINT32  *RegisterOutEdx  OPTIONAL
 ;    )
 ;------------------------------------------------------------------------------
-AsmCpuidEx  PROC    USES    ebx
+global ASM_PFX(AsmCpuidEx)
+ASM_PFX(AsmCpuidEx):
+    push    ebx
     push    ebp
     mov     ebp, esp
     mov     eax, [ebp + 12]
@@ -45,24 +45,23 @@ AsmCpuidEx  PROC    USES    ebx
     cpuid
     push    ecx
     mov     ecx, [ebp + 20]
-    jecxz   @F
+    jecxz   .0
     mov     [ecx], eax
-@@:
+.0:
     mov     ecx, [ebp + 24]
-    jecxz   @F
+    jecxz   .1
     mov     [ecx], ebx
-@@:
+.1:
     mov     ecx, [ebp + 32]
-    jecxz   @F
+    jecxz   .2
     mov     [ecx], edx
-@@:
+.2:
     mov     ecx, [ebp + 28]
-    jecxz   @F
+    jecxz   .3
     pop     DWORD [ecx]
-@@:
+.3:
     mov     eax, [ebp + 12]
     leave
+    pop     ebx
     ret
-AsmCpuidEx  ENDP
 
-    END
