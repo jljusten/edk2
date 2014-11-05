@@ -246,7 +246,7 @@
   Ia32/CpuBreakpoint.nasm| INTEL
   Ia32/ARShiftU64.nasm| INTEL
   Ia32/EnablePaging64.nasm| INTEL
-  Ia32/EnableCache.asm | INTEL
+  Ia32/EnableCache.nasm| INTEL
   Ia32/DisableCache.asm | INTEL
 
   Ia32/GccInline.c | GCC
@@ -272,7 +272,7 @@
   Ia32/ARShiftU64.nasm| GCC
   Ia32/RShiftU64.nasm| GCC
   Ia32/LShiftU64.nasm| GCC
-  Ia32/EnableCache.S | GCC
+  Ia32/EnableCache.nasm| GCC
   Ia32/DisableCache.S | GCC
 
   Ia32/Thunk16.nasm

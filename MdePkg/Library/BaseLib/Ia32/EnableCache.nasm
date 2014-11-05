@@ -15,16 +15,14 @@
 ;
 ; Abstract:
 ;
-;  Flush all caches with a WBINVD instruction, clear the CD bit of CR0 to 0, and clear 
+;  Flush all caches with a WBINVD instruction, clear the CD bit of CR0 to 0, and clear
 ;  the NW bit of CR0 to 0
 ;
 ; Notes:
 ;
 ;------------------------------------------------------------------------------
 
-    .486p
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -33,13 +31,12 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-AsmEnableCache PROC
+global ASM_PFX(AsmEnableCache)
+ASM_PFX(AsmEnableCache):
     wbinvd
     mov     eax, cr0
     btr     eax, 29
     btr     eax, 30
     mov     cr0, eax
     ret
-AsmEnableCache ENDP
 
-    END
