@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -30,9 +31,8 @@
 ;   IN UINT16 Ldtr
 ;   );
 ;------------------------------------------------------------------------------
-AsmWriteLdtr    PROC
+global ASM_PFX(AsmWriteLdtr)
+ASM_PFX(AsmWriteLdtr):
     lldt    cx
     ret
-AsmWriteLdtr    ENDP
 
-    END
