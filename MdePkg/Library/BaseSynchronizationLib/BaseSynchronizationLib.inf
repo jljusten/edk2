@@ -49,7 +49,7 @@
   X64/InterlockedCompareExchange64.c | MSFT
   X64/InterlockedCompareExchange32.c | MSFT
   
-  X64/InterlockedCompareExchange64.asm | INTEL
+  X64/InterlockedCompareExchange64.nasm| INTEL
   X64/InterlockedCompareExchange32.asm | INTEL
   
   X64/InterlockedDecrement.c | MSFT 
