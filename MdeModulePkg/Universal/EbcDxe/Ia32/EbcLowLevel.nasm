@@ -1,40 +1,31 @@
 ;/** @file
-;  
+;
 ;    This code provides low level routines that support the Virtual Machine
 ;    for option ROMs.
-;  
+;
 ;  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 ;  This program and the accompanying materials
 ;  are licensed and made available under the terms and conditions of the BSD License
 ;  which accompanies this distribution.  The full text of the license may be found at
 ;  http://opensource.org/licenses/bsd-license.php
-;  
+;
 ;  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 ;  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-;  
+;
 ;**/
-
-  page    ,132
-  title   VM ASSEMBLY LANGUAGE ROUTINES
 
 ;---------------------------------------------------------------------------
 ; Equate files needed.
 ;---------------------------------------------------------------------------
 
-.XLIST
-
-.LIST
-
 ;---------------------------------------------------------------------------
 ; Assembler options
 ;---------------------------------------------------------------------------
 
-.686p
-.model  flat, C
-.code
-CopyMem  PROTO  Destination:PTR DWORD, Source:PTR DWORD, Count:DWORD
-EbcInterpret               PROTO
-ExecuteEbcImageEntryPoint  PROTO
+SECTION .text
+extern ASM_PFX(CopyMem)
+extern ASM_PFX(EbcInterpret)
+extern ASM_PFX(ExecuteEbcImageEntryPoint)
 
 ;****************************************************************************
 ; EbcLLCALLEXNative
@@ -49,19 +40,20 @@ ExecuteEbcImageEntryPoint  PROTO
 ; Destroys no working registers.
 ;****************************************************************************
 ; INT64 EbcLLCALLEXNative(UINTN FuncAddr, UINTN NewStackPointer, VOID *FramePtr)
-EbcLLCALLEXNative        PROC        PUBLIC
+global ASM_PFX(EbcLLCALLEXNative)
+ASM_PFX(EbcLLCALLEXNative):
       push   ebp
       push   ebx
       mov    ebp, esp              ; standard function prolog
 
       ; Get function address in a register
       ; mov ecx, FuncAddr => mov ecx, dword ptr [FuncAddr]
-      mov    ecx, dword ptr [esp + 0Ch]
+      mov    ecx, dword [esp + 0xC]
 
       ; Set stack pointer to new value
       ; mov eax, NewStackPointer => mov eax, dword ptr [NewSp]
-      mov    eax, dword ptr [esp + 14h]
-      mov    edx, dword ptr [esp + 10h]
+      mov    eax, dword [esp + 0x14]
+      mov    edx, dword [esp + 0x10]
       sub    eax, edx
       sub    esp, eax
       mov    ebx, esp
@@ -69,7 +61,7 @@ EbcLLCALLEXNative        PROC        PUBLIC
       push   eax
       push   edx
       push   ebx
-      call   CopyMem
+      call   ASM_PFX(CopyMem)
       pop    eax
       pop    eax
       pop    eax
@@ -87,7 +79,6 @@ EbcLLCALLEXNative        PROC        PUBLIC
       pop      ebx
       pop      ebp
       ret
-EbcLLCALLEXNative    ENDP
 
 ;****************************************************************************
 ; EbcLLEbcInterpret
@@ -95,7 +86,8 @@ EbcLLCALLEXNative    ENDP
 ; Begin executing an EBC image.
 ;****************************************************************************
 ; UINT64 EbcLLEbcInterpret(VOID)
-EbcLLEbcInterpret PROC PUBLIC
+global ASM_PFX(EbcLLEbcInterpret)
+ASM_PFX(EbcLLEbcInterpret):
     ;
     ;; mov eax, 0xca112ebc
     ;; mov eax, EbcEntryPoint
@@ -133,14 +125,14 @@ EbcLLEbcInterpret PROC PUBLIC
     ; +-----------+
     ; |   Arg16   |
     ; +-----------+
-    ; 
+    ;
 
     ; Construct new stack
     push ebp
     mov  ebp, esp
     push esi
     push edi
-    sub  esp, 40h
+    sub  esp, 0x40
     push eax
     mov  esi, ebp
     add  esi, 8
@@ -148,15 +140,14 @@ EbcLLEbcInterpret PROC PUBLIC
     add  edi, 4
     mov  ecx, 16
     rep  movsd
-    
+
     ; call C-code
-    call EbcInterpret
-    add  esp, 44h
+    call ASM_PFX(EbcInterpret)
+    add  esp, 0x44
     pop  edi
     pop  esi
     pop  ebp
     ret
-EbcLLEbcInterpret ENDP
 
 ;****************************************************************************
 ; EbcLLExecuteEbcImageEntryPoint
@@ -164,7 +155,8 @@ EbcLLEbcInterpret ENDP
 ; Begin executing an EBC image.
 ;****************************************************************************
 ; UINT64 EbcLLExecuteEbcImageEntryPoint(VOID)
-EbcLLExecuteEbcImageEntryPoint PROC PUBLIC
+global ASM_PFX(EbcLLExecuteEbcImageEntryPoint)
+ASM_PFX(EbcLLExecuteEbcImageEntryPoint):
     ;
     ;; mov eax, 0xca112ebc
     ;; mov eax, EbcEntryPoint
@@ -188,20 +180,18 @@ EbcLLExecuteEbcImageEntryPoint PROC PUBLIC
     ; +-----------+
     ; |SystemTable|
     ; +-----------+
-    ; 
-    
-    ; Construct new stack
-    mov  [esp - 0Ch], eax
-    mov  eax, [esp + 04h]
-    mov  [esp - 08h], eax
-    mov  eax, [esp + 08h]
-    mov  [esp - 04h], eax
-    
-    ; call C-code
-    sub  esp, 0Ch
-    call ExecuteEbcImageEntryPoint
-    add  esp, 0Ch
-    ret
-EbcLLExecuteEbcImageEntryPoint ENDP
+    ;
 
-END
+    ; Construct new stack
+    mov  [esp - 0xC], eax
+    mov  eax, [esp + 0x4]
+    mov  [esp - 0x8], eax
+    mov  eax, [esp + 0x8]
+    mov  [esp - 0x4], eax
+
+    ; call C-code
+    sub  esp, 0xC
+    call ASM_PFX(ExecuteEbcImageEntryPoint)
+    add  esp, 0xC
+    ret
+
