@@ -48,8 +48,7 @@
   LegacySio.c
 
 [Sources.X64]
-  X64/InterruptTable.asm
-  X64/InterruptTable.S
+  X64/InterruptTable.nasm
   Thunk.c
   LegacyBootSupport.c
   LegacyBbs.c
