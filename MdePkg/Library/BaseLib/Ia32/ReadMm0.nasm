@@ -21,10 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .586
-    .model  flat,C
-    .mmx
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -33,13 +30,12 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-AsmReadMm0  PROC
+global ASM_PFX(AsmReadMm0)
+ASM_PFX(AsmReadMm0):
     push    eax
     push    eax
     movq    [esp], mm0
     pop     eax
     pop     edx
     ret
-AsmReadMm0  ENDP
 
-    END
