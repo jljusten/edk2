@@ -19,7 +19,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -29,30 +30,29 @@
 ;   IN      UINTN                     Value
 ;   );
 ;------------------------------------------------------------------------------
-InternalLongJump    PROC
+global ASM_PFX(InternalLongJump)
+ASM_PFX(InternalLongJump):
     mov     rbx, [rcx]
     mov     rsp, [rcx + 8]
-    mov     rbp, [rcx + 10h]
-    mov     rdi, [rcx + 18h]
-    mov     rsi, [rcx + 20h]
-    mov     r12, [rcx + 28h]
-    mov     r13, [rcx + 30h]
-    mov     r14, [rcx + 38h]
-    mov     r15, [rcx + 40h]
+    mov     rbp, [rcx + 0x10]
+    mov     rdi, [rcx + 0x18]
+    mov     rsi, [rcx + 0x20]
+    mov     r12, [rcx + 0x28]
+    mov     r13, [rcx + 0x30]
+    mov     r14, [rcx + 0x38]
+    mov     r15, [rcx + 0x40]
     ; load non-volatile fp registers
-    ldmxcsr [rcx + 50h]
-    movdqu  xmm6,  [rcx + 58h]
-    movdqu  xmm7,  [rcx + 68h]
-    movdqu  xmm8,  [rcx + 78h]
-    movdqu  xmm9,  [rcx + 88h]
-    movdqu  xmm10, [rcx + 98h]
-    movdqu  xmm11, [rcx + 0A8h]
-    movdqu  xmm12, [rcx + 0B8h]
-    movdqu  xmm13, [rcx + 0C8h]
-    movdqu  xmm14, [rcx + 0D8h]
-    movdqu  xmm15, [rcx + 0E8h]
+    ldmxcsr [rcx + 0x50]
+    movdqu  xmm6,  [rcx + 0x58]
+    movdqu  xmm7,  [rcx + 0x68]
+    movdqu  xmm8,  [rcx + 0x78]
+    movdqu  xmm9,  [rcx + 0x88]
+    movdqu  xmm10, [rcx + 0x98]
+    movdqu  xmm11, [rcx + 0xA8]
+    movdqu  xmm12, [rcx + 0xB8]
+    movdqu  xmm13, [rcx + 0xC8]
+    movdqu  xmm14, [rcx + 0xD8]
+    movdqu  xmm15, [rcx + 0xE8]
     mov     rax, rdx               ; set return value
-    jmp     qword ptr [rcx + 48h]
-InternalLongJump    ENDP
+    jmp     qword [rcx + 0x48]
 
-    END
