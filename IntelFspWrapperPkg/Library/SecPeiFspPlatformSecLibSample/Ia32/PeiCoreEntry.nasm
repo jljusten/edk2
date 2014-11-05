@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;  PeiCoreEntry.asm
+;  PeiCoreEntry.nasm
 ;
 ; Abstract:
 ;
@@ -19,15 +19,13 @@
 ;
 ;------------------------------------------------------------------------------
 
-.686p
-.xmm
-.model flat, c
-.code
+SECTION .text
 
-EXTRN   SecStartup:NEAR
-EXTRN   PlatformInit:NEAR
+extern ASM_PFX(SecStartup)
+extern ASM_PFX(PlatformInit)
 
-CallPeiCoreEntryPoint   PROC PUBLIC
+global ASM_PFX(CallPeiCoreEntryPoint)
+ASM_PFX(CallPeiCoreEntryPoint):
   ;
   ; Obtain the hob list pointer
   ;
@@ -38,7 +36,7 @@ CallPeiCoreEntryPoint   PROC PUBLIC
   ;   EDX: end of range
   ;
   mov     ecx, [esp+8]
-  mov     edx, [esp+0Ch]
+  mov     edx, [esp+0xC]
 
   ;
   ; Platform init
@@ -47,7 +45,7 @@ CallPeiCoreEntryPoint   PROC PUBLIC
   push edx
   push ecx
   push eax
-  call PlatformInit
+  call ASM_PFX(PlatformInit)
   pop  eax
   pop  eax
   pop  eax
@@ -78,7 +76,7 @@ CallPeiCoreEntryPoint   PROC PUBLIC
   mov     eax, 1
   cpuid
   shr     ebx, 16
-  and     ebx, 0000000FFh
+  and     ebx, 0xFF
   cmp     bl, 1
   jae     PushProcessorCount
 
@@ -112,14 +110,14 @@ PushBist:
   ;
   ; Pass entry point of the PEI core
   ;
-  mov     edi, 0FFFFFFE0h
-  push    DWORD PTR ds:[edi]
+  mov     edi, 0xFFFFFFE0
+  push    DWORD [ds:edi]
 
   ;
   ; Pass BFV into the PEI Core
   ;
-  mov     edi, 0FFFFFFFCh
-  push    DWORD PTR ds:[edi]
+  mov     edi, 0xFFFFFFFC
+  push    DWORD [ds:edi]
 
   ;
   ; Pass stack size into the PEI Core
@@ -134,7 +132,5 @@ PushBist:
   ;
   ; Pass Control into the PEI Core
   ;
-  call SecStartup
-CallPeiCoreEntryPoint   ENDP
+  call ASM_PFX(SecStartup)
 
-END
