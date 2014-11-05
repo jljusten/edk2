@@ -218,7 +218,7 @@
   Ia32/ReadDr0.nasm| INTEL
   Ia32/ReadCr4.nasm| INTEL
   Ia32/ReadCr3.nasm| INTEL
-  Ia32/ReadCr2.asm | INTEL 
+  Ia32/ReadCr2.nasm| INTEL
   Ia32/ReadCr0.asm | INTEL 
   Ia32/Mwait.asm | INTEL 
   Ia32/Monitor.asm | INTEL 
