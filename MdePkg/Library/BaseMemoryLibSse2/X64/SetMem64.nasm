@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   SetMem64.asm
+;   SetMem64.nasm
 ;
 ; Abstract:
 ;
@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -31,29 +32,28 @@
 ;    IN UINT64 Value
 ;    )
 ;------------------------------------------------------------------------------
-InternalMemSetMem64 PROC
+global ASM_PFX(InternalMemSetMem64)
+ASM_PFX(InternalMemSetMem64):
     mov     rax, rcx                    ; rax <- Buffer
     xchg    rcx, rdx                    ; rcx <- Count & rdx <- Buffer
     test    dl, 8
     movq    xmm0, r8
-    jz      @F
+    jz      .0
     mov     [rdx], r8
     add     rdx, 8
     dec     rcx
-@@:
+.0:
     shr     rcx, 1
     jz      @SetQwords
     movlhps xmm0, xmm0
-@@:
+.1:
     movntdq [rdx], xmm0
     lea     rdx, [rdx + 16]
-    loop    @B
+    loop    .1
     mfence
 @SetQwords:
-    jnc     @F
+    jnc     .2
     mov     [rdx], r8
-@@:
+.2:
     ret
-InternalMemSetMem64 ENDP
 
-    END
