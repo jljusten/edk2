@@ -233,7 +233,7 @@
   Ia32/FxSave.nasm| INTEL
   Ia32/FlushCacheLine.nasm| INTEL
   Ia32/EnablePaging32.nasm| INTEL
-  Ia32/EnableInterrupts.asm | INTEL 
+  Ia32/EnableInterrupts.nasm| INTEL
   Ia32/EnableDisableInterrupts.asm | INTEL 
   Ia32/DivU64x64Remainder.nasm| INTEL
   Ia32/DivU64x32Remainder.asm | INTEL 
