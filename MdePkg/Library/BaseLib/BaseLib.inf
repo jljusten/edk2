@@ -305,7 +305,7 @@
   X64/LongJump.nasm
   X64/SetJump.nasm
   X64/SwitchStack.nasm
-  X64/EnableCache.asm
+  X64/EnableCache.nasm
   X64/DisableCache.asm
 
   X64/CpuBreakpoint.c | MSFT 
@@ -478,7 +478,7 @@
   X64/DisablePaging64.S | GCC 
   X64/CpuId.nasm| GCC
   X64/CpuIdEx.nasm| GCC
-  X64/EnableCache.S | GCC
+  X64/EnableCache.nasm| GCC
   X64/DisableCache.S | GCC
   ChkStkGcc.c  | GCC 
 
