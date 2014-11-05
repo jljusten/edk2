@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   MultU64x32.asm
+;   MultU64x32.nasm
 ;
 ; Abstract:
 ;
@@ -19,9 +19,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -31,13 +29,12 @@
 ;   IN      UINT32                    Multiplier
 ;   );
 ;------------------------------------------------------------------------------
-InternalMathMultU64x32  PROC
+global ASM_PFX(InternalMathMultU64x32)
+ASM_PFX(InternalMathMultU64x32):
     mov     ecx, [esp + 12]
     mov     eax, ecx
     imul    ecx, [esp + 8]              ; overflow not detectable
-    mul     dword ptr [esp + 4]
+    mul     dword [esp + 4]
     add     edx, ecx
     ret
-InternalMathMultU64x32  ENDP
 
-    END
