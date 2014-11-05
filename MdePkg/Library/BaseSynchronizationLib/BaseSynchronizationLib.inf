@@ -39,7 +39,7 @@
   Ia32/InterlockedCompareExchange64.nasm| INTEL
   Ia32/InterlockedCompareExchange32.nasm| INTEL
   Ia32/InterlockedDecrement.nasm| INTEL
-  Ia32/InterlockedIncrement.asm | INTEL 
+  Ia32/InterlockedIncrement.nasm| INTEL
   Synchronization.c | INTEL
 
   Ia32/GccInline.c | GCC
