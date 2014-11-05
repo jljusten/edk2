@@ -21,10 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .586
-    .model  flat,C
-    .xmm
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -33,10 +30,9 @@
 ;   IN CONST IA32_FX_BUFFER *Buffer
 ;   );
 ;------------------------------------------------------------------------------
-InternalX86FxRestore  PROC
+global ASM_PFX(InternalX86FxRestore)
+ASM_PFX(InternalX86FxRestore):
     mov     eax, [esp + 4]              ; Buffer must be 16-byte aligned
     fxrstor [eax]
     ret
-InternalX86FxRestore  ENDP
 
-    END
