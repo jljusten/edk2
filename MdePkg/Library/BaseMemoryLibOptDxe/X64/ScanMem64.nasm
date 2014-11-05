@@ -29,7 +29,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; CONST VOID *
@@ -40,14 +41,15 @@
 ;   IN      UINT64                    Value
 ;   );
 ;------------------------------------------------------------------------------
-InternalMemScanMem64    PROC    USES    rdi
+global ASM_PFX(InternalMemScanMem64)
+ASM_PFX(InternalMemScanMem64):
+    push    rdi
     mov     rdi, rcx
     mov     rax, r8
     mov     rcx, rdx
     repne   scasq
     lea     rax, [rdi - 8]
     cmovnz  rax, rcx
+    pop     rdi
     ret
-InternalMemScanMem64    ENDP
 
-    END
