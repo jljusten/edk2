@@ -80,8 +80,7 @@
   X64/SetMem32.nasm
   X64/SetMem16.nasm
   X64/SetMem.nasm
-  X64/CopyMem.asm
-  X64/CopyMem.S
+  X64/CopyMem.nasm
   ScanMem64Wrapper.c
   ScanMem32Wrapper.c
   ScanMem16Wrapper.c
