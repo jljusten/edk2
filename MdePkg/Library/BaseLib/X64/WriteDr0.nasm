@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINTN
@@ -30,10 +31,9 @@
 ;   IN UINTN Value
 ;   );
 ;------------------------------------------------------------------------------
-AsmWriteDr0 PROC
+global ASM_PFX(AsmWriteDr0)
+ASM_PFX(AsmWriteDr0):
     mov     dr0, rcx
     mov     rax, rcx
     ret
-AsmWriteDr0 ENDP
 
-    END
