@@ -43,7 +43,7 @@
 
 [Sources.IA32]
   IA32/RdRandWord.c
-  IA32/AsmRdRand.asm
+  IA32/AsmRdRand.nasm
   IA32/GccRdRand.c          | GCC
 
 [Sources.X64]
