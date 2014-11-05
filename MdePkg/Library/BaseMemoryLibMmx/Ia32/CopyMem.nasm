@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   CopyMem.asm
+;   CopyMem.nasm
 ;
 ; Abstract:
 ;
@@ -21,10 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .mmx
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -35,16 +32,19 @@
 ;    IN UINTN  Count
 ;    );
 ;------------------------------------------------------------------------------
-InternalMemCopyMem  PROC    USES    esi edi
+global ASM_PFX(InternalMemCopyMem)
+ASM_PFX(InternalMemCopyMem):
+    push    esi
+    push    edi
     mov     esi, [esp + 16]             ; esi <- Source
     mov     edi, [esp + 12]             ; edi <- Destination
     mov     edx, [esp + 20]             ; edx <- Count
     lea     eax, [esi + edx - 1]        ; eax <- End of Source
     cmp     esi, edi
-    jae     @F
+    jae     .0
     cmp     eax, edi                    ; Overlapped?
     jae     @CopyBackward               ; Copy backward if overlapped
-@@:
+.0:
     mov     ecx, edx
     and     edx, 7
     shr     ecx, 3                      ; ecx <- # of Qwords to copy
@@ -52,12 +52,12 @@ InternalMemCopyMem  PROC    USES    esi edi
     push    eax
     push    eax
     movq    [esp], mm0                  ; save mm0
-@@:
+.1:
     movq    mm0, [esi]
     movq    [edi], mm0
     add     esi, 8
     add     edi, 8
-    loop    @B
+    loop    .1
     movq    mm0, [esp]                  ; restore mm0
     pop     ecx                         ; stack cleanup
     pop     ecx                         ; stack cleanup
@@ -71,7 +71,7 @@ InternalMemCopyMem  PROC    USES    esi edi
     rep     movsb
     cld
     mov     eax, [esp + 12]
+    pop     edi
+    pop     esi
     ret
-InternalMemCopyMem  ENDP
 
-    END
