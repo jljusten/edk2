@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -30,11 +31,10 @@
 ;   IN UINT32  Index
 ;   );
 ;------------------------------------------------------------------------------
-AsmReadMsr64    PROC
+global ASM_PFX(AsmReadMsr64)
+ASM_PFX(AsmReadMsr64):
     rdmsr                               ; edx & eax are zero extended
-    shl     rdx, 20h
+    shl     rdx, 0x20
     or      rax, rdx
     ret
-AsmReadMsr64    ENDP
 
-    END
