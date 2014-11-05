@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -31,11 +32,10 @@
 ;   IN UINT64  Value
 ;   );
 ;------------------------------------------------------------------------------
-AsmWriteMsr64   PROC
+global ASM_PFX(AsmWriteMsr64)
+ASM_PFX(AsmWriteMsr64):
     mov     rax, rdx                    ; meanwhile, rax <- return value
-    shr     rdx, 20h                    ; edx:eax contains the value to write
+    shr     rdx, 0x20                    ; edx:eax contains the value to write
     wrmsr
     ret
-AsmWriteMsr64   ENDP
 
-    END
