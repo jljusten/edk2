@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -32,7 +30,9 @@
 ;    IN UINTN  Count
 ;    );
 ;------------------------------------------------------------------------------
-InternalMemZeroMem  PROC    USES    edi
+global ASM_PFX(InternalMemZeroMem)
+ASM_PFX(InternalMemZeroMem):
+    push    edi
     xor     eax, eax
     mov     edi, [esp + 8]
     mov     ecx, [esp + 12]
@@ -44,7 +44,6 @@ InternalMemZeroMem  PROC    USES    edi
     mov     ecx, edx
     rep     stosb
     pop     eax
+    pop     edi
     ret
-InternalMemZeroMem  ENDP
 
-    END
