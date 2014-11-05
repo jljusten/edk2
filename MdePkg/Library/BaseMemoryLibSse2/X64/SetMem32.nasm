@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   SetMem32.asm
+;   SetMem32.nasm
 ;
 ; Abstract:
 ;
@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -31,36 +32,37 @@
 ;    IN UINT8  Value
 ;    )
 ;------------------------------------------------------------------------------
-InternalMemSetMem32 PROC    USES    rdi
+global ASM_PFX(InternalMemSetMem32)
+ASM_PFX(InternalMemSetMem32):
+    push    rdi
     mov     rdi, rcx
     mov     r9, rdi
     xor     rcx, rcx
     sub     rcx, rdi
     and     rcx, 15
     mov     rax, r8
-    jz      @F
+    jz      .0
     shr     rcx, 2
     cmp     rcx, rdx
     cmova   rcx, rdx
     sub     rdx, rcx
     rep     stosd
-@@:
+.0:
     mov     rcx, rdx
     and     edx, 3
     shr     rcx, 2
     jz      @SetDwords
     movd    xmm0, eax
     pshufd  xmm0, xmm0, 0
-@@:
+.1:
     movntdq [rdi], xmm0
     add     rdi, 16
-    loop    @B
+    loop    .1
     mfence
 @SetDwords:
     mov     ecx, edx
     rep     stosd
     mov     rax, r9
+    pop     rdi
     ret
-InternalMemSetMem32 ENDP
 
-    END
