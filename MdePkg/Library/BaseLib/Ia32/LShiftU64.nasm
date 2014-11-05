@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   LShiftU64.asm
+;   LShiftU64.nasm
 ;
 ; Abstract:
 ;
@@ -19,9 +19,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -31,7 +29,8 @@
 ;   IN      UINTN                     Count
 ;   );
 ;------------------------------------------------------------------------------
-InternalMathLShiftU64   PROC
+global ASM_PFX(InternalMathLShiftU64)
+ASM_PFX(InternalMathLShiftU64):
     mov     cl, [esp + 12]
     xor     eax, eax
     mov     edx, [esp + 4]
@@ -41,6 +40,4 @@ InternalMathLShiftU64   PROC
     shld    edx, eax, cl
     shl     eax, cl
     ret
-InternalMathLShiftU64   ENDP
 
-    END
