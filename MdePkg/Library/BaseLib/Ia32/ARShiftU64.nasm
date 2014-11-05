@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   ARShiftU64.asm
+;   ARShiftU64.nasm
 ;
 ; Abstract:
 ;
@@ -19,9 +19,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -31,7 +29,8 @@
 ;   IN      UINTN                     Count
 ;   );
 ;------------------------------------------------------------------------------
-InternalMathARShiftU64  PROC
+global ASM_PFX(InternalMathARShiftU64)
+ASM_PFX(InternalMathARShiftU64):
     mov     cl, [esp + 12]
     mov     eax, [esp + 8]
     cdq
@@ -41,6 +40,4 @@ InternalMathARShiftU64  PROC
     shrd    eax, edx, cl
     sar     edx, cl
     ret
-InternalMathARShiftU64  ENDP
 
-    END
