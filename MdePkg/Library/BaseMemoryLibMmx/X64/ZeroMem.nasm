@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   ZeroMem.asm
+;   ZeroMem.nasm
 ;
 ; Abstract:
 ;
@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -30,25 +31,26 @@
 ;    IN UINTN  Count
 ;    );
 ;------------------------------------------------------------------------------
-InternalMemZeroMem  PROC    USES    rdi
+global ASM_PFX(InternalMemZeroMem)
+ASM_PFX(InternalMemZeroMem):
+    push    rdi
     mov     rdi, rcx
     mov     rcx, rdx
     mov     r8, rdi
     and     edx, 7
     shr     rcx, 3
     jz      @ZeroBytes
-    DB      0fh, 0efh, 0c0h             ; pxor mm0, mm0
-@@:
-    DB      0fh, 0e7h, 7                ; movntq [rdi], mm0
+    DB      0xf, 0xef, 0xc0             ; pxor mm0, mm0
+.0:
+    DB      0xf, 0xe7, 7                ; movntq [rdi], mm0
     add     rdi, 8
-    loop    @B
-    DB      0fh, 0aeh, 0f0h             ; mfence
+    loop    .0
+    DB      0xf, 0xae, 0xf0             ; mfence
 @ZeroBytes:
     xor     eax, eax
     mov     ecx, edx
     rep     stosb
     mov     rax, r8
+    pop     rdi
     ret
-InternalMemZeroMem  ENDP
 
-    END
