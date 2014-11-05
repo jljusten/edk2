@@ -29,7 +29,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; CONST VOID *
@@ -40,14 +41,15 @@
 ;   IN      UINT8                     Value
 ;   );
 ;------------------------------------------------------------------------------
-InternalMemScanMem8 PROC    USES    rdi
+global ASM_PFX(InternalMemScanMem8)
+ASM_PFX(InternalMemScanMem8):
+    push    rdi
     mov     rdi, rcx
     mov     rcx, rdx
     mov     rax, r8
     repne   scasb
     lea     rax, [rdi - 1]
     cmovnz  rax, rcx                    ; set rax to 0 if not found
+    pop     rdi
     ret
-InternalMemScanMem8 ENDP
 
-    END
