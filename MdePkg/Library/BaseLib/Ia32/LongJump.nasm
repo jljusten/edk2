@@ -19,9 +19,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -31,7 +29,8 @@
 ;   IN      UINTN                     Value
 ;   );
 ;------------------------------------------------------------------------------
-InternalLongJump    PROC
+global ASM_PFX(InternalLongJump)
+ASM_PFX(InternalLongJump):
     pop     eax                         ; skip return address
     pop     edx                         ; edx <- JumpBuffer
     pop     eax                         ; eax <- Value
@@ -40,7 +39,5 @@ InternalLongJump    PROC
     mov     edi, [edx + 8]
     mov     ebp, [edx + 12]
     mov     esp, [edx + 16]
-    jmp     dword ptr [edx + 20]        ; restore "eip"
-InternalLongJump    ENDP
+    jmp     dword [edx + 20]        ; restore "eip"
 
-    END
