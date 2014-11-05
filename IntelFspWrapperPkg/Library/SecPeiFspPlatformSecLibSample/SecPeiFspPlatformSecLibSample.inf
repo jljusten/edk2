@@ -51,12 +51,12 @@
   Ia32/SecEntry.nasm
   Ia32/PeiCoreEntry.nasm
   Ia32/AsmSaveSecContext.nasm
-  Ia32/Stack.asm
+  Ia32/Stack.nasm
   Ia32/Fsp.h
   Ia32/SecEntry.nasm
   Ia32/PeiCoreEntry.nasm
   Ia32/AsmSaveSecContext.nasm
-  Ia32/Stack.S
+  Ia32/Stack.nasm
 
 ################################################################################
 #
