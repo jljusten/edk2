@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   SetMem64.asm
+;   SetMem64.nasm
 ;
 ; Abstract:
 ;
@@ -21,10 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .mmx
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -35,16 +32,15 @@
 ;    IN UINT64 Value
 ;    )
 ;------------------------------------------------------------------------------
-InternalMemSetMem64 PROC
+global ASM_PFX(InternalMemSetMem64)
+ASM_PFX(InternalMemSetMem64):
     mov     eax, [esp + 4]
     mov     ecx, [esp + 8]
     movq    mm0, [esp + 12]
     mov     edx, eax
-@@:
+.0:
     movq    [edx], mm0
     add     edx, 8
-    loop    @B
+    loop    .0
     ret
-InternalMemSetMem64 ENDP
 
-    END
