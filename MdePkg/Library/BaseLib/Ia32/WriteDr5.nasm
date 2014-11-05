@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .586p
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINTN
@@ -32,7 +30,8 @@
 ;   IN UINTN Value
 ;   );
 ;------------------------------------------------------------------------------
-AsmWriteDr5 PROC
+global ASM_PFX(AsmWriteDr5)
+ASM_PFX(AsmWriteDr5):
     mov     eax, [esp + 4]
     ;
     ; DR5 is alias to DR7 only if DE (in CR4) is cleared. Otherwise, writing to
@@ -41,8 +40,6 @@ AsmWriteDr5 PROC
     ; MS assembler doesn't support this instruction since no one would use it
     ; under normal circustances. Here opcode is used.
     ;
-    DB      0fh, 23h, 0e8h
+    DB      0xf, 0x23, 0xe8
     ret
-AsmWriteDr5 ENDP
 
-    END
