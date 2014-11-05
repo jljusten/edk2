@@ -15,9 +15,9 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .586p
-    .model  flat,C
-    .code
+    SECTION .text
+
+extern ASM_PFX(SwapStack)
 
 ;------------------------------------------------------------------------------
 ; UINT32
@@ -26,10 +26,9 @@
 ;   VOID
 ;   )
 ;------------------------------------------------------------------------------
-EXTERNDEF  C   MeasurePoint:PROC
-Pei2LoaderSwitchStack   PROC C PUBLIC
+global ASM_PFX(Pei2LoaderSwitchStack)
+ASM_PFX(Pei2LoaderSwitchStack):
     jmp     Loader2PeiSwitchStack
-Pei2LoaderSwitchStack   ENDP
 
 ;------------------------------------------------------------------------------
 ; UINT32
@@ -38,28 +37,26 @@ Pei2LoaderSwitchStack   ENDP
 ;   VOID
 ;   )
 ;------------------------------------------------------------------------------
-EXTERNDEF  C   SwapStack:PROC
-Loader2PeiSwitchStack   PROC C PUBLIC
+global ASM_PFX(Loader2PeiSwitchStack)
+ASM_PFX(Loader2PeiSwitchStack):
     ; Save current contexts
-    push    offset exit
+    push    dword exit
     pushfd
     cli
     pushad
     sub     esp, 8
-    sidt    fword ptr [esp]
+    sidt    [esp]
 
     ; Load new stack
     push    esp
-    call    SwapStack
+    call    ASM_PFX(SwapStack)
     mov     esp, eax
 
     ; Restore previous contexts
-    lidt    fword ptr [esp]
+    lidt    [esp]
     add     esp, 8
     popad
     popfd
 exit:
     ret
-Loader2PeiSwitchStack   ENDP
 
-    END
