@@ -13,22 +13,18 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .const
 ;
 ; Float control word initial value:
 ; all exceptions masked, double-precision, round-to-nearest
 ;
-mFpuControlWord       DW      027Fh
+mFpuControlWord: DW 0x27F
 ;
 ; Multimedia-extensions control word:
 ; all exceptions masked, round-to-nearest, flush to zero for masked underflow
 ;
-mMmxControlWord       DD      01F80h
+mMmxControlWord: DD 0x1F80
 
-    .xmm
-    .code
+    SECTION .text
 
 ;
 ; Initializes floating point units for requirement of UEFI specification.
@@ -38,7 +34,8 @@ mMmxControlWord       DD      01F80h
 ; (if supported) to 0x1F80 (all exceptions masked, round-to-nearest, flush to zero
 ; for masked underflow).
 ;
-InitializeFloatingPointUnits PROC PUBLIC
+global ASM_PFX(InitializeFloatingPointUnits)
+ASM_PFX(InitializeFloatingPointUnits):
 
     push    ebx
 
@@ -46,7 +43,7 @@ InitializeFloatingPointUnits PROC PUBLIC
     ; Initialize floating point units
     ;
     finit
-    fldcw   mFpuControlWord
+    fldcw   [mFpuControlWord]
 
     ;
     ; Use CpuId instructuion (CPUID.01H:EDX.SSE[bit 25] = 1) to test
@@ -68,12 +65,9 @@ InitializeFloatingPointUnits PROC PUBLIC
     ; The processor should support SSE instruction and we can use
     ; ldmxcsr instruction
     ;
-    ldmxcsr mMmxControlWord
+    ldmxcsr [mMmxControlWord]
 Done:
     pop     ebx
 
     ret
 
-InitializeFloatingPointUnits ENDP
-
-END
