@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -35,7 +33,8 @@
 ;   IN      VOID                      *NewStack
 ;   );
 ;------------------------------------------------------------------------------
-InternalX86DisablePaging32    PROC
+global ASM_PFX(InternalX86DisablePaging32)
+ASM_PFX(InternalX86DisablePaging32):
     mov     ebx, [esp + 4]
     mov     ecx, [esp + 8]
     mov     edx, [esp + 12]
@@ -52,6 +51,4 @@ InternalX86DisablePaging32    PROC
     push    ecx
     call    ebx
     jmp     $                           ; EntryPoint() should not return
-InternalX86DisablePaging32    ENDP
 
-    END
