@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -30,12 +31,11 @@
 ;   IN      CONST IA32_DESCRIPTOR     *Idtr
 ;   );
 ;------------------------------------------------------------------------------
-InternalX86WriteIdtr  PROC
+global ASM_PFX(InternalX86WriteIdtr)
+ASM_PFX(InternalX86WriteIdtr):
     pushfq
     cli
-    lidt    fword ptr [rcx]
+    lidt    [rcx]
     popfq
     ret
-InternalX86WriteIdtr  ENDP
 
-    END
