@@ -21,10 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .586P
-    .model  flat,C
-    .xmm
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID *
@@ -33,10 +30,9 @@
 ;   IN      VOID                      *LinearAddress
 ;   );
 ;------------------------------------------------------------------------------
-AsmFlushCacheLine   PROC
+global ASM_PFX(AsmFlushCacheLine)
+ASM_PFX(AsmFlushCacheLine):
     mov     eax, [esp + 4]
     clflush [eax]
     ret
-AsmFlushCacheLine   ENDP
 
-    END
