@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;  Dummy.asm
+;  Dummy.nasm
 ;
 ; Abstract:
 ;
@@ -19,8 +19,5 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .586p
-    .model  flat,C
-    .code
+    SECTION .text
 
-    END
