@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -30,7 +31,9 @@
 ;    IN UINTN  Count
 ;    );
 ;------------------------------------------------------------------------------
-InternalMemZeroMem  PROC    USES    rdi
+global ASM_PFX(InternalMemZeroMem)
+ASM_PFX(InternalMemZeroMem):
+    push    rdi
     push    rcx       ; push Buffer
     xor     rax, rax  ; rax = 0
     mov     rdi, rcx  ; rdi = Buffer
@@ -42,7 +45,6 @@ InternalMemZeroMem  PROC    USES    rdi
     mov     rcx, rdx  ; rcx = rdx
     rep     stosb
     pop     rax       ; rax = Buffer
+    pop     rdi
     ret
-InternalMemZeroMem  ENDP
 
-    END
