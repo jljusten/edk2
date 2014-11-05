@@ -355,7 +355,7 @@
   X64/ReadDs.nasm| MSFT
   X64/ReadCs.nasm| MSFT
   X64/WriteDr7.nasm| MSFT
-  X64/WriteDr6.asm | MSFT
+  X64/WriteDr6.nasm| MSFT
   X64/WriteDr5.asm | MSFT
   X64/WriteDr4.asm | MSFT
   X64/WriteDr3.asm | MSFT
@@ -427,7 +427,7 @@
   X64/ReadDs.nasm| INTEL
   X64/ReadCs.nasm| INTEL
   X64/WriteDr7.nasm| INTEL
-  X64/WriteDr6.asm | INTEL
+  X64/WriteDr6.nasm| INTEL
   X64/WriteDr5.asm | INTEL
   X64/WriteDr4.asm | INTEL
   X64/WriteDr3.asm | INTEL
