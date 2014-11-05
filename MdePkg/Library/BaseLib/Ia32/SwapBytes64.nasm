@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .586
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -32,12 +30,11 @@
 ;   IN      UINT64                    Operand
 ;   );
 ;------------------------------------------------------------------------------
-InternalMathSwapBytes64 PROC
+global ASM_PFX(InternalMathSwapBytes64)
+ASM_PFX(InternalMathSwapBytes64):
     mov     eax, [esp + 8]              ; eax <- upper 32 bits
     mov     edx, [esp + 4]              ; edx <- lower 32 bits
     bswap   eax
     bswap   edx
     ret
-InternalMathSwapBytes64 ENDP
 
-    END

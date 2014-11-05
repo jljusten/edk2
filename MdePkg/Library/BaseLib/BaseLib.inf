@@ -182,7 +182,7 @@
   Ia32/WriteCr2.nasm| INTEL
   Ia32/WriteCr0.nasm| INTEL
   Ia32/WriteMsr64.nasm| INTEL
-  Ia32/SwapBytes64.asm | INTEL 
+  Ia32/SwapBytes64.nasm| INTEL
   Ia32/SetJump.asm | INTEL 
   Ia32/RRotU64.asm | INTEL 
   Ia32/RShiftU64.asm | INTEL 
@@ -260,7 +260,7 @@
   Ia32/CpuId.S | GCC 
   Ia32/LongJump.S | GCC 
   Ia32/SetJump.S | GCC 
-  Ia32/SwapBytes64.S | GCC 
+  Ia32/SwapBytes64.nasm| GCC
   Ia32/DivU64x64Remainder.nasm| GCC
   Ia32/DivU64x32Remainder.S | GCC 
   Ia32/ModU64x32.S | GCC 
