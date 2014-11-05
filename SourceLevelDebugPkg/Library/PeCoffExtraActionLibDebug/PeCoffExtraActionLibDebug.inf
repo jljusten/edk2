@@ -39,8 +39,8 @@
 
 [Sources.X64]
   X64/IntHandlerFuncs.c
-  X64/IntHandler.asm
-  X64/IntHandler.S        | GCC
+  X64/IntHandler.nasm
+  X64/IntHandler.nasm     | GCC
 
 [Packages]
   MdePkg/MdePkg.dec
