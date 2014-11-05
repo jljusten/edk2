@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINTN
@@ -32,10 +30,9 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-AsmReadEflags   PROC
+global ASM_PFX(AsmReadEflags)
+ASM_PFX(AsmReadEflags):
     pushfd
     pop     eax
     ret
-AsmReadEflags   ENDP
 
-    END
