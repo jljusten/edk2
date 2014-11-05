@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT32
@@ -30,10 +31,9 @@
 ;   IN      UINT32                    *Value
 ;   );
 ;------------------------------------------------------------------------------
-InternalSyncDecrement   PROC
-    lock    dec     dword ptr [rcx]
+global ASM_PFX(InternalSyncDecrement)
+ASM_PFX(InternalSyncDecrement):
+    lock    dec     dword [rcx]
     mov     eax, [rcx]
     ret
-InternalSyncDecrement   ENDP
 
-    END
