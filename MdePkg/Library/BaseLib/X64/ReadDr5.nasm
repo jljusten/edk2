@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINTN
@@ -30,13 +31,12 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-AsmReadDr5  PROC
+global ASM_PFX(AsmReadDr5)
+ASM_PFX(AsmReadDr5):
     ;
     ; There's no obvious reason to access this register, since it's aliased to
     ; DR7 when DE=0 or an exception generated when DE=1
     ;
-    DB      0fh, 21h, 0e8h
+    DB      0xf, 0x21, 0xe8
     ret
-AsmReadDr5  ENDP
 
-    END
