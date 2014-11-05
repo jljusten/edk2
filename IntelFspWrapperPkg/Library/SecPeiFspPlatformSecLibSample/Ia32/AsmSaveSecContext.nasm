@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;  AsmSaveSecContext.asm
+;  AsmSaveSecContext.nasm
 ;
 ; Abstract:
 ;
@@ -19,10 +19,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-.686p
-.xmm
-.model flat,c
-.code
+SECTION .text
 
 ;----------------------------------------------------------------------------
 ;  MMX Usage:
@@ -33,18 +30,17 @@
 ;  It should be same as SecEntry.asm and PeiCoreEntry.asm.
 ;----------------------------------------------------------------------------
 
-AsmSaveBistValue   PROC PUBLIC
+global ASM_PFX(AsmSaveBistValue)
+ASM_PFX(AsmSaveBistValue):
   mov     eax, [esp+4]
   movd    mm0, eax
   ret
-AsmSaveBistValue   ENDP
 
-AsmSaveTickerValue   PROC PUBLIC
+global ASM_PFX(AsmSaveTickerValue)
+ASM_PFX(AsmSaveTickerValue):
   mov     eax, [esp+4]
   movd    mm6, eax
   mov     eax, [esp+8]
   movd    mm5, eax
   ret
-AsmSaveTickerValue   ENDP
 
-END
