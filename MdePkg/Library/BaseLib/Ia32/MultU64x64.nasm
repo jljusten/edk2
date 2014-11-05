@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   MultU64x64.asm
+;   MultU64x64.nasm
 ;
 ; Abstract:
 ;
@@ -19,9 +19,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -31,7 +29,9 @@
 ;   IN      UINT64                    Multiplier
 ;   );
 ;------------------------------------------------------------------------------
-InternalMathMultU64x64  PROC    USES    ebx
+global ASM_PFX(InternalMathMultU64x64)
+ASM_PFX(InternalMathMultU64x64):
+    push    ebx
     mov     ebx, [esp + 8]              ; ebx <- M1[0..31]
     mov     edx, [esp + 16]             ; edx <- M2[0..31]
     mov     ecx, ebx
@@ -41,7 +41,6 @@ InternalMathMultU64x64  PROC    USES    ebx
     add     ebx, edx                    ; carries are abandoned
     mul     ecx                         ; edx:eax <- M1[0..31] * M2[0..31]
     add     edx, ebx                    ; carries are abandoned
+    pop     ebx
     ret
-InternalMathMultU64x64  ENDP
 
-    END
