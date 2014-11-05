@@ -378,7 +378,7 @@
   X64/ReadCr3.nasm| MSFT
   X64/ReadCr2.nasm| MSFT
   X64/ReadCr0.nasm| MSFT
-  X64/ReadEflags.asm | MSFT
+  X64/ReadEflags.nasm| MSFT
 
   X64/CpuBreakpoint.asm | INTEL 
   X64/WriteMsr64.asm | INTEL 
@@ -450,7 +450,7 @@
   X64/ReadCr3.nasm| INTEL
   X64/ReadCr2.nasm| INTEL
   X64/ReadCr0.nasm| INTEL
-  X64/ReadEflags.asm | INTEL
+  X64/ReadEflags.nasm| INTEL
 
   X64/Non-existing.c
   Math64.c

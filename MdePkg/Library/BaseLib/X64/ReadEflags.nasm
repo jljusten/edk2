@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINTN
@@ -30,10 +31,9 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-AsmReadEflags   PROC
+global ASM_PFX(AsmReadEflags)
+ASM_PFX(AsmReadEflags):
     pushfq
     pop     rax
     ret
-AsmReadEflags   ENDP
 
-    END
