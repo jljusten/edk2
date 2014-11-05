@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -32,16 +33,19 @@
 ;    IN UINTN  Count
 ;    )
 ;------------------------------------------------------------------------------
-InternalMemCopyMem  PROC    USES    rsi rdi
+global ASM_PFX(InternalMemCopyMem)
+ASM_PFX(InternalMemCopyMem):
+    push    rsi
+    push    rdi
     mov     rsi, rdx                    ; rsi <- Source
     mov     rdi, rcx                    ; rdi <- Destination
     lea     r9, [rsi + r8 - 1]          ; r9 <- End of Source
     cmp     rsi, rdi
     mov     rax, rdi                    ; rax <- Destination as return value
-    jae     @F
+    jae     .0
     cmp     r9, rdi
     jae     @CopyBackward               ; Copy backward if overlapped
-@@:
+.0:
     mov     rcx, r8
     and     r8, 7
     shr     rcx, 3
@@ -55,7 +59,7 @@ InternalMemCopyMem  PROC    USES    rsi rdi
     mov     rcx, r8
     rep     movsb                       ; Copy bytes backward
     cld
+    pop     rdi
+    pop     rsi
     ret
-InternalMemCopyMem  ENDP
 
-    END
