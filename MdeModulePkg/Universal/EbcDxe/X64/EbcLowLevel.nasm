@@ -1,32 +1,30 @@
 ;/** @file
-;  
+;
 ;    This code provides low level routines that support the Virtual Machine.
 ;    for option ROMs.
-;  
+;
 ;  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 ;  Copyright (c) 2014 Hewlett-Packard Development Company, L.P.<BR>
 ;  This program and the accompanying materials
 ;  are licensed and made available under the terms and conditions of the BSD License
 ;  which accompanies this distribution.  The full text of the license may be found at
 ;  http://opensource.org/licenses/bsd-license.php
-;  
+;
 ;  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 ;  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-;  
+;
 ;**/
-
-  page    ,132
-  title   VM ASSEMBLY LANGUAGE ROUTINES
 
 ;---------------------------------------------------------------------------
 ; Equate files needed.
 ;---------------------------------------------------------------------------
 
-.CODE
+DEFAULT REL
+SECTION .text
 
-CopyMem  PROTO  Destination:PTR DWORD, Source:PTR DWORD, Count:DWORD
-EbcInterpret               PROTO
-ExecuteEbcImageEntryPoint  PROTO
+extern ASM_PFX(CopyMem)
+extern ASM_PFX(EbcInterpret)
+extern ASM_PFX(ExecuteEbcImageEntryPoint)
 
 ;****************************************************************************
 ; EbcLLCALLEX
@@ -40,7 +38,8 @@ ExecuteEbcImageEntryPoint  PROTO
 ; Destroys no working registers.
 ;****************************************************************************
 ; INT64 EbcLLCALLEXNative(UINTN FuncAddr, UINTN NewStackPointer, VOID *FramePtr)
-EbcLLCALLEXNative        PROC    PUBLIC
+global ASM_PFX(EbcLLCALLEXNative)
+ASM_PFX(EbcLLCALLEXNative):
       push   rbp
       push   rbx
       mov    rbp, rsp
@@ -63,33 +62,33 @@ EbcLLCALLEXNative        PROC    PUBLIC
       ;   This aids in the simplicity of supporting C unprototyped functions,
       ;   and vararg C/C++ functions."
       ;
-      cmp    r8, 20h
+      cmp    r8, 0x20
       jae    skip_expansion
-      mov    r8, 20h
+      mov    r8, 0x20
 skip_expansion:
-      
+
       sub    rsp, r8
 
       ;
       ; Fix X64 native function call 16-byte alignment.
       ;
       ; From MSDN x64 Software Conventions, Stack Usage:
-      ;   "The stack will always be maintained 16-byte aligned, except within 
+      ;   "The stack will always be maintained 16-byte aligned, except within
       ;   the prolog (for example, after the return address is pushed)."
       ;
-      and    rsp, NOT 0fh
+      and    rsp, ~ 0xf
 
       mov    rcx, rsp
-      sub    rsp, 20h
-      call   CopyMem
-      add    rsp, 20h
+      sub    rsp, 0x20
+      call   ASM_PFX(CopyMem)
+      add    rsp, 0x20
 
       ; Considering the worst case, load 4 potiential arguments
       ; into registers.
-      mov    rcx, qword ptr [rsp]
-      mov    rdx, qword ptr [rsp+8h]
-      mov    r8,  qword ptr [rsp+10h]
-      mov    r9,  qword ptr [rsp+18h]
+      mov    rcx, qword [rsp]
+      mov    rdx, qword [rsp+0x8]
+      mov    r8,  qword [rsp+0x10]
+      mov    r9,  qword [rsp+0x18]
 
       ; Now call the external routine
       call  rbx
@@ -99,7 +98,6 @@ skip_expansion:
       pop      rbx
       pop      rbp
       ret
-EbcLLCALLEXNative    ENDP
 
 ;****************************************************************************
 ; EbcLLEbcInterpret
@@ -107,7 +105,8 @@ EbcLLCALLEXNative    ENDP
 ; Begin executing an EBC image.
 ;****************************************************************************
 ; UINT64 EbcLLEbcInterpret(VOID)
-EbcLLEbcInterpret PROC PUBLIC
+global ASM_PFX(EbcLLEbcInterpret)
+ASM_PFX(EbcLLEbcInterpret):
     ;
     ;; mov rax, ca112ebccall2ebch
     ;; mov r10, EbcEntryPoint
@@ -158,10 +157,10 @@ EbcLLEbcInterpret PROC PUBLIC
     ;
 
     ; save old parameter to stack
-    mov  [rsp + 08h], rcx
-    mov  [rsp + 10h], rdx
-    mov  [rsp + 18h], r8
-    mov  [rsp + 20h], r9
+    mov  [rsp + 0x8], rcx
+    mov  [rsp + 0x10], rdx
+    mov  [rsp + 0x18], r8
+    mov  [rsp + 0x20], r9
 
     ; Construct new stack
     push rbp
@@ -169,30 +168,29 @@ EbcLLEbcInterpret PROC PUBLIC
     push rsi
     push rdi
     push rbx
-    sub  rsp, 80h
+    sub  rsp, 0x80
     push r10
     mov  rsi, rbp
-    add  rsi, 10h
+    add  rsi, 0x10
     mov  rdi, rsp
     add  rdi, 8
     mov  rcx, 16
     rep  movsq
-    
+
     ; build new paramater calling convention
-    mov  r9,  [rsp + 18h]
-    mov  r8,  [rsp + 10h]
-    mov  rdx, [rsp + 08h]
+    mov  r9,  [rsp + 0x18]
+    mov  r8,  [rsp + 0x10]
+    mov  rdx, [rsp + 0x8]
     mov  rcx, r10
 
     ; call C-code
-    call EbcInterpret
-    add  rsp, 88h
+    call ASM_PFX(EbcInterpret)
+    add  rsp, 0x88
     pop  rbx
     pop  rdi
     pop  rsi
     pop  rbp
     ret
-EbcLLEbcInterpret ENDP
 
 ;****************************************************************************
 ; EbcLLExecuteEbcImageEntryPoint
@@ -200,7 +198,8 @@ EbcLLEbcInterpret ENDP
 ; Begin executing an EBC image.
 ;****************************************************************************
 ; UINT64 EbcLLExecuteEbcImageEntryPoint(VOID)
-EbcLLExecuteEbcImageEntryPoint PROC PUBLIC
+global ASM_PFX(EbcLLExecuteEbcImageEntryPoint)
+ASM_PFX(EbcLLExecuteEbcImageEntryPoint):
     ;
     ;; mov rax, ca112ebccall2ebch
     ;; mov r10, EbcEntryPoint
@@ -228,7 +227,7 @@ EbcLLExecuteEbcImageEntryPoint PROC PUBLIC
     ; +-----------+
     ; |SystemTable| (RDX)
     ; +-----------+
-    ; 
+    ;
 
     ; build new paramater calling convention
     mov  r8, rdx
@@ -236,11 +235,8 @@ EbcLLExecuteEbcImageEntryPoint PROC PUBLIC
     mov  rcx, r10
 
     ; call C-code
-    sub  rsp, 28h
-    call ExecuteEbcImageEntryPoint
-    add  rsp, 28h
+    sub  rsp, 0x28
+    call ASM_PFX(ExecuteEbcImageEntryPoint)
+    add  rsp, 0x28
     ret
-EbcLLExecuteEbcImageEntryPoint ENDP
-
-END
 
