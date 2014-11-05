@@ -317,7 +317,7 @@
   X64/EnableInterrupts.nasm| MSFT
   X64/FlushCacheLine.nasm| MSFT
   X64/Invd.nasm| MSFT
-  X64/Wbinvd.asm | MSFT
+  X64/Wbinvd.nasm| MSFT
   X64/DisablePaging64.asm | MSFT
   X64/Mwait.asm | MSFT
   X64/Monitor.asm | MSFT
@@ -389,7 +389,7 @@
   X64/EnableInterrupts.nasm| INTEL
   X64/FlushCacheLine.nasm| INTEL
   X64/Invd.nasm| INTEL
-  X64/Wbinvd.asm | INTEL
+  X64/Wbinvd.nasm| INTEL
   X64/DisablePaging64.asm | INTEL
   X64/Mwait.asm | INTEL
   X64/Monitor.asm | INTEL
