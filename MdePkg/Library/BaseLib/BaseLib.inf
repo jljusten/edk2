@@ -340,7 +340,7 @@
   X64/ReadMm1.nasm| MSFT
   X64/ReadMm0.nasm| MSFT
   X64/FxRestore.nasm| MSFT
-  X64/FxSave.asm | MSFT
+  X64/FxSave.nasm| MSFT
   X64/WriteLdtr.asm | MSFT
   X64/ReadLdtr.asm | MSFT
   X64/WriteIdtr.asm | MSFT
@@ -412,7 +412,7 @@
   X64/ReadMm1.nasm| INTEL
   X64/ReadMm0.nasm| INTEL
   X64/FxRestore.nasm| INTEL
-  X64/FxSave.asm | INTEL
+  X64/FxSave.nasm| INTEL
   X64/WriteLdtr.asm | INTEL
   X64/ReadLdtr.asm | INTEL
   X64/WriteIdtr.asm | INTEL

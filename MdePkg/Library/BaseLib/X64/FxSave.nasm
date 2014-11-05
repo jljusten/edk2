@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -30,9 +31,8 @@
 ;   OUT IA32_FX_BUFFER *Buffer
 ;   );
 ;------------------------------------------------------------------------------
-InternalX86FxSave PROC
+global ASM_PFX(InternalX86FxSave)
+ASM_PFX(InternalX86FxSave):
     fxsave  [rcx]
     ret
-InternalX86FxSave ENDP
 
-    END
