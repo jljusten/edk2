@@ -93,42 +93,6 @@ ASM_GLOBAL    ASM_PFX(_gPcd_FixedAtBuild_PcdFspAreaSize)
 .endm
 
 #------------------------------------------------------------------------------
-ASM_GLOBAL ASM_PFX(FspSelfCheckDflt)
-ASM_PFX(FspSelfCheckDflt):
-   # Inputs:
-   #   eax -> Return address
-   # Outputs:
-   #   eax -> 0 - Successful, Non-zero - Failed.
-   # Register Usage:
-   #   eax is cleared and ebp is used for return address.
-   #   All others reserved.
-
-   # Save return address to EBP
-   movl  %eax, %ebp
-   xorl  %eax, %eax
-exit:
-   jmp   *%ebp
-#FspSelfCheckDflt   ENDP
-
-#------------------------------------------------------------------------------
-ASM_GLOBAL ASM_PFX(PlatformBasicInitDflt)
-ASM_PFX(PlatformBasicInitDflt):
-   # Inputs:
-   #   eax -> Return address
-   # Outputs:
-   #   eax -> 0 - Successful, Non-zero - Failed.
-   # Register Usage:
-   #   eax is cleared and ebp is used for return address.
-   #   All others reserved.
-
-   # Save return address to EBP
-   movl   %eax, %ebp
-   xorl   %eax, %eax
-exit2:
-   jmp   *%ebp
-#PlatformBasicInitDflt   ENDP
-
-#------------------------------------------------------------------------------
 ASM_GLOBAL ASM_PFX(LoadUcode)
 ASM_PFX(LoadUcode):
    # Inputs:

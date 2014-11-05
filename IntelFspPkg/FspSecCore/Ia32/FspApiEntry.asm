@@ -44,9 +44,8 @@ EXTERN   GetFspBaseAddress:PROC
 EXTERN   GetBootFirmwareVolumeOffset:PROC
 EXTERN   PlatformTempRamInit:PROC
 EXTERN   Pei2LoaderSwitchStack:PROC
-EXTERN   FspSelfCheck(FspSelfCheckDflt):PROC
-EXTERN   PlatformBasicInit(PlatformBasicInitDflt):PROC
-EXTERN   LoadUcode(LoadUcodeDflt):PROC
+EXTERN   FspSelfCheck:PROC
+EXTERN   PlatformBasicInit:PROC
 
 ;
 ; Define the data length that we saved on the stack top
@@ -56,43 +55,7 @@ DATA_LEN_OF_MCUD         EQU   18h
 DATA_LEN_AT_STACK_TOP    EQU   (DATA_LEN_OF_PER0 + DATA_LEN_OF_MCUD + 4)
 
 ;------------------------------------------------------------------------------
-FspSelfCheckDflt PROC NEAR PUBLIC
-   ; Inputs:
-   ;   eax -> Return address
-   ; Outputs:
-   ;   eax -> 0 - Successful, Non-zero - Failed.
-   ; Register Usage:
-   ;   eax is cleared and ebp is used for return address.
-   ;   All others reserved.
-
-   ; Save return address to EBP
-   mov   ebp, eax
-
-   xor   eax, eax
-exit:
-   jmp   ebp
-FspSelfCheckDflt   ENDP
-
-;------------------------------------------------------------------------------
-PlatformBasicInitDflt PROC NEAR PUBLIC
-   ; Inputs:
-   ;   eax -> Return address
-   ; Outputs:
-   ;   eax -> 0 - Successful, Non-zero - Failed.
-   ; Register Usage:
-   ;   eax is cleared and ebp is used for return address.
-   ;   All others reserved.
-
-   ; Save return address to EBP
-   mov   ebp, eax
-
-   xor   eax, eax
-exit:
-   jmp   ebp
-PlatformBasicInitDflt   ENDP
-
-;------------------------------------------------------------------------------
-LoadUcodeDflt   PROC  NEAR PUBLIC
+LoadUcode   PROC  NEAR PUBLIC
    ; Inputs:
    ;   esp -> LOAD_UCODE_PARAMS pointer
    ; Register Usage:
@@ -269,7 +232,7 @@ done:
 exit:
    jmp   ebp
 
-LoadUcodeDflt   ENDP
+LoadUcode   ENDP
 
 ;----------------------------------------------------------------------------
 ; TempRamInit API
