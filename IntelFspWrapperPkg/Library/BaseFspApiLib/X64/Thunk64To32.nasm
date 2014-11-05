@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;    Thunk64To32.asm
+;    Thunk64To32.nasm
 ;
 ; Abstract:
 ;
@@ -19,7 +19,8 @@
 ;   transit back to long mode.
 ;
 ;-------------------------------------------------------------------------------
-    .code
+    DEFAULT REL
+    SECTION .text
 ;----------------------------------------------------------------------------
 ; Procedure:    AsmExecute32BitCode
 ;
@@ -39,7 +40,8 @@
 ; Description:  A thunk function to execute 32-bit code in long mode.
 ;
 ;----------------------------------------------------------------------------
-AsmExecute32BitCode    PROC
+global ASM_PFX(AsmExecute32BitCode)
+ASM_PFX(AsmExecute32BitCode):
     ;
     ; save IFLAG and disable it
     ;
@@ -53,12 +55,12 @@ AsmExecute32BitCode    PROC
     push    rax
     mov     rax, cs
     push    rax
-    sub     rsp, 10h
-    sgdt    fword ptr [rsp]
+    sub     rsp, 0x10
+    sgdt    [rsp]
     ;
     ; load internal GDT
     ;
-    lgdt    fword ptr [r9]
+    lgdt    [r9]
     ;
     ; Save general purpose register and rflag register
     ;
@@ -77,9 +79,9 @@ AsmExecute32BitCode    PROC
     ;
     ; Prepare the CS and return address for the transition from 32-bit to 64-bit mode
     ;
-    mov     rax, 10h              ; load long mode selector
+    mov     rax, 0x10              ; load long mode selector
     shl     rax, 32
-    mov     r9, OFFSET ReloadCS   ;Assume the ReloadCS is under 4G
+    mov     r9, ReloadCS   ;Assume the ReloadCS is under 4G
     or      rax, r9
     push    rax
     ;
@@ -93,7 +95,7 @@ AsmExecute32BitCode    PROC
     ; save the 32-bit function entry and the return address into stack which will be
     ; retrieve in compatibility mode.
     ;
-    mov     rax, OFFSET ReturnBack   ;Assume the ReloadCS is under 4G
+    mov     rax, ReturnBack   ;Assume the ReloadCS is under 4G
     shl     rax, 32
     or      rax, rcx
     push    rax
@@ -101,14 +103,14 @@ AsmExecute32BitCode    PROC
     ;
     ; let rax save DS
     ;
-    mov     rax, 018h
+    mov     rax, 0x18
 
     ;
     ; Change to Compatible Segment
     ;
-    mov     rcx, 08h               ; load compatible mode selector
+    mov     rcx, 0x8               ; load compatible mode selector
     shl     rcx, 32
-    mov     rdx, OFFSET Compatible ; assume address < 4G
+    mov     rdx, Compatible ; assume address < 4G
     or      rcx, rdx
     push    rcx
     retf
@@ -128,7 +130,7 @@ Compatible:
     ;
     ; Clear EFER.LME
     ;
-    mov     ecx, 0C0000080h
+    mov     ecx, 0xC0000080
     rdmsr
     btc     eax, 8
     wrmsr
@@ -163,7 +165,7 @@ ReturnBack:
     ;
     ; Set EFER.LME to re-enable ia32-e
     ;
-    mov     ecx, 0C0000080h
+    mov     ecx, 0xC0000080
     rdmsr
     bts     eax, 8
     wrmsr
@@ -196,21 +198,21 @@ ReloadCS:
     ;
     ; Switch to orignal GDT and CS. here rsp is pointer to the orignal GDT descriptor.
     ;
-    lgdt    fword ptr[rsp]
+    lgdt    [rsp]
     ;
     ; drop GDT descriptor in stack
     ;
-    add     rsp, 10h
+    add     rsp, 0x10
     ;
     ; switch to orignal CS and GDTR
     ;
     pop     r9                 ; get  CS
     shl     r9,  32            ; rcx[32..47] <- Cs
-    mov     rcx, OFFSET @F
+    mov     rcx, .0
     or      rcx, r9
     push    rcx
     retf
-@@:
+.0:
     ;
     ; Reload original DS/ES/SS
     ;
@@ -225,6 +227,4 @@ ReloadCS:
     popfq
 
     ret
-AsmExecute32BitCode   ENDP
 
-    END
