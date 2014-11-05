@@ -21,19 +21,19 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID *
-; EFIAPI 
+; EFIAPI
 ; AsmFlushCacheLine (
 ;   IN      VOID                      *LinearAddress
 ;   );
 ;------------------------------------------------------------------------------
-AsmFlushCacheLine   PROC
+global ASM_PFX(AsmFlushCacheLine)
+ASM_PFX(AsmFlushCacheLine):
     clflush [rcx]
     mov     rax, rcx
     ret
-AsmFlushCacheLine   ENDP
 
-    END
