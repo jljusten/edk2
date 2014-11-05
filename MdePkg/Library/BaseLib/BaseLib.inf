@@ -236,7 +236,7 @@
   Ia32/EnableInterrupts.nasm| INTEL
   Ia32/EnableDisableInterrupts.nasm| INTEL
   Ia32/DivU64x64Remainder.nasm| INTEL
-  Ia32/DivU64x32Remainder.asm | INTEL 
+  Ia32/DivU64x32Remainder.nasm| INTEL
   Ia32/DivU64x32.asm | INTEL 
   Ia32/DisablePaging32.asm | INTEL 
   Ia32/DisableInterrupts.asm | INTEL 
@@ -262,7 +262,7 @@
   Ia32/SetJump.nasm| GCC
   Ia32/SwapBytes64.nasm| GCC
   Ia32/DivU64x64Remainder.nasm| GCC
-  Ia32/DivU64x32Remainder.S | GCC 
+  Ia32/DivU64x32Remainder.nasm| GCC
   Ia32/ModU64x32.nasm| GCC
   Ia32/DivU64x32.S | GCC 
   Ia32/MultU64x64.nasm| GCC
