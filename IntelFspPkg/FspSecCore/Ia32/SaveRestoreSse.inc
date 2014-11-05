@@ -18,86 +18,89 @@
 ;
 ; Define SSE instruction set
 ;
-IFDEF USE_SSE41_FLAG
+%ifdef USE_SSE41_FLAG
 ;
 ; Define SSE macros using SSE 4.1 instructions
 ;
-SXMMN        MACRO   XMM, IDX, REG
-             pinsrd  XMM, REG, (IDX AND 3)
-             ENDM
+%macro SXMMN 3 ; XMM, IDX, REG
+    pinsrd  %1, %3, (%2 & 3)
+%endmacro
 
-LXMMN        MACRO   XMM, REG, IDX
-             pextrd  REG, XMM, (IDX AND 3)
-             ENDM
-ELSE
+%macro LXMMN 3 ; XMM, REG, IDX
+    pextrd  %2, %1, (%3 & 3)
+%endmacro
+
+%else
+
 ;
 ; Define SSE macros using SSE 2 instructions
 ;
-SXMMN        MACRO   XMM, IDX, REG
-             pinsrw  XMM, REG, (IDX AND 3) * 2
-             ror     REG, 16
-             pinsrw  XMM, REG, (IDX AND 3) * 2 + 1
-             rol     REG, 16
-             ENDM
+%macro SXMMN 3 ; XMM, IDX, REG
+    pinsrw  %1, %3, ((%2 & 3) * 2)
+    ror     %3, 16
+    pinsrw  %1, %3, (%2 & 3) * 2 + 1
+    rol     %3, 16
+%endmacro
 
-LXMMN        MACRO   XMM, REG, IDX
-             pshufd  XMM, XMM,  (0E4E4E4h SHR (IDX * 2))  AND 0FFh
-             movd    REG, XMM
-             pshufd  XMM, XMM,  (0E4E4E4h SHR (IDX * 2 + (IDX AND 1) * 4)) AND 0FFh
-             ENDM
-ENDIF
+%macro LXMMN 3 ; XMM, REG, IDX
+    pshufd  %1, %1,  (0xE4E4E4 >> (%3 * 2))  & 0xFF
+    movd    %2, %1
+    pshufd  %1, %1,  (0xE4E4E4 >> (%3 * 2 + (%3 & 1) * 4)) & 0xFF
+%endmacro
+
+%endif
 
 
-SAVE_REGS    MACRO
+%macro SAVE_REGS 0
   SXMMN      xmm7, 0, ebp
   SXMMN      xmm7, 1, ebx
   SXMMN      xmm7, 2, esi
   SXMMN      xmm7, 3, edi
   SAVE_ESP
-             ENDM
+%endmacro
 
-LOAD_REGS    MACRO
+%macro LOAD_REGS 0
   LXMMN      xmm7, ebp, 0
   LXMMN      xmm7, ebx, 1
   LXMMN      xmm7, esi, 2
   LXMMN      xmm7, edi, 3
   LOAD_ESP
-             ENDM
+%endmacro
 
-LOAD_EAX     MACRO
+%macro LOAD_EAX 0
   LXMMN      xmm6, eax, 1
-             ENDM
+%endmacro
 
-SAVE_EAX     MACRO
+%macro SAVE_EAX 0
   SXMMN      xmm6, 1, eax
-             ENDM
+%endmacro
 
-LOAD_EDX     MACRO
+%macro LOAD_EDX 0
   LXMMN      xmm6, edx, 2
-             ENDM
+%endmacro
 
-SAVE_EDX     MACRO
+%macro SAVE_EDX 0
   SXMMN      xmm6, 2, edx
-             ENDM
+%endmacro
 
-SAVE_ECX     MACRO
+%macro SAVE_ECX 0
   SXMMN      xmm6, 3, ecx
-             ENDM
+%endmacro
 
-LOAD_ECX     MACRO
+%macro LOAD_ECX 0
   LXMMN      xmm6, ecx, 3
-             ENDM
+%endmacro
 
-SAVE_ESP     MACRO
+%macro SAVE_ESP 0
   SXMMN      xmm6, 0, esp
-             ENDM
+%endmacro
 
-LOAD_ESP     MACRO
+%macro LOAD_ESP 0
   movd       esp,  xmm6
-             ENDM
+%endmacro
 
-ENABLE_SSE   MACRO
+%macro ENABLE_SSE 0
   mov        eax, cr4
-  or         eax, 00000600h
+  or         eax, 0x00000600
   mov        cr4, eax
-             ENDM
+%endmacro

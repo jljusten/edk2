@@ -34,9 +34,7 @@
   Ia32/ResetVec.asm16 | MSFT
   Ia32/Stack.nasm
   Ia32/InitializeFpu.nasm
-  Ia32/FspApiEntry.asm  | MSFT
-
-  Ia32/FspApiEntry.s | GCC
+  Ia32/FspApiEntry.nasm
 
 [Binaries.Ia32]
   RAW|Vtf0/Bin/ResetVec.ia32.raw |GCC

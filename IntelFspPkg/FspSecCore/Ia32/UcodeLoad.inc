@@ -13,51 +13,54 @@
 ;
 ;------------------------------------------------------------------------------
 
-MSR_IA32_PLATFORM_ID        EQU     000000017h
-MSR_IA32_BIOS_UPDT_TRIG     EQU     000000079h
-MSR_IA32_BIOS_SIGN_ID       EQU     00000008bh
+MSR_IA32_PLATFORM_ID        EQU     0x000000017
+MSR_IA32_BIOS_UPDT_TRIG     EQU     0x000000079
+MSR_IA32_BIOS_SIGN_ID       EQU     0x00000008b
 
-ucode                       STRUCT 1t
-    version                 DWORD     ?
-    revision                DWORD     ?
-    date                    DWORD     ?
-    processor               DWORD     ?
-    checksum                DWORD     ?
-    loader                  DWORD     ?
-    rsvd                    DWORD     6t DUP (?)
-    data                    DWORD     500t DUP (?)
-ucode                       ENDS
-ucode_t                     TYPEDEF     ucode
+struc ucode
+    .version:                 resd     1
+    .revision:                resd     1
+    .date:                    resd     1
+    .processor:               resd     1
+    .checksum:                resd     1
+    .loader:                  resd     1
+    .rsvd:                    resd     6t
+    .data:                    resd     500t
+endstruc
+;ucode_t                     TYPEDEF     ucode
 
-ucode_hdr                   STRUCT 1t
-    version                 DWORD     ?
-    revision                DWORD     ?
-    date                    DWORD     ?
-    processor               DWORD     ?
-    checksum                DWORD     ?
-    loader                  DWORD     ?
-    flags                   DWORD     ?
-    data_size               DWORD     ?
-    total_size              DWORD     ?
-    rsvd                    DWORD     3t DUP (?)
-ucode_hdr                   ENDS
-ucode_hdr_t                 TYPEDEF     ucode_hdr
+struc ucode_hdr
+    .version:                 resd     1
+    .revision:                resd     1
+    .date:                    resd     1
+    .processor:               resd     1
+    .checksum:                resd     1
+    .loader:                  resd     1
+    .flags:                   resd     1
+    .data_size:               resd     1
+    .total_size:              resd     1
+    .rsvd:                    resd     3t
+    .size:
+endstruc
+;ucode_hdr_t                 TYPEDEF     ucode_hdr
 
-ext_sig_hdr                 STRUCT 1t
-    count                   DWORD     ?
-    checksum                DWORD     ?
-    rsvd                    DWORD     3t DUP (?)
-ext_sig_hdr                 ENDS
-ext_sig_hdr_t               TYPEDEF     ext_sig_hdr
+struc ext_sig_hdr
+    .count:                   resd     1
+    .checksum:                resd     1
+    .rsvd:                    resd     3t
+    .size:
+endstruc
+;ext_sig_hdr_t               TYPEDEF     ext_sig_hdr
 
-ext_sig                     STRUCT 1t
-    processor               DWORD     ?
-    flags                   DWORD     ?
-    checksum                DWORD     ?
-ext_sig                     ENDS
-ext_sig_t                   TYPEDEF     ext_sig
+struc ext_sig
+    .processor:               resd     1
+    .flags:                   resd     1
+    .checksum:                resd     1
+    .size:
+endstruc
+;ext_sig_t                   TYPEDEF     ext_sig
 
-LOAD_UCODE_PARAMS           STRUCT 1t
-    ucode_code_addr         DWORD          ?
-    ucode_code_size         DWORD          ?
-LOAD_UCODE_PARAMS           ENDS
+struc LOAD_UCODE_PARAMS
+    .ucode_code_addr:         resd     1
+    .ucode_code_size:         resd     1
+endstruc

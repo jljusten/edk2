@@ -15,47 +15,45 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .586p
-    .model  flat,C
-    .code
-    .xmm
+    SECTION .text
 
-INCLUDE    SaveRestoreSse.inc
-INCLUDE    UcodeLoad.inc
+%include    "SaveRestoreSse.inc"
+%include    "UcodeLoad.inc"
 
 ;
 ; Following are fixed PCDs
 ;
-EXTERN   PcdGet32(PcdTemporaryRamBase):DWORD
-EXTERN   PcdGet32(PcdTemporaryRamSize):DWORD
-EXTERN   PcdGet32(PcdFspTemporaryRamSize):DWORD
+extern   ASM_PFX(PcdGet32(PcdTemporaryRamBase))
+extern   ASM_PFX(PcdGet32(PcdTemporaryRamSize))
+extern   ASM_PFX(PcdGet32(PcdFspTemporaryRamSize))
 
 ;
 ; Following functions will be provided in C
 ;
-EXTERN   FspImageSizeOffset:DWORD
-EXTERN   SecStartup:PROC
-EXTERN   FspApiCallingCheck:PROC
+extern ASM_PFX(FspImageSizeOffset)
+extern ASM_PFX(SecStartup)
+extern ASM_PFX(FspApiCallingCheck)
 
 ;
 ; Following functions will be provided in PlatformSecLib
 ;
-EXTERN   GetFspBaseAddress:PROC
-EXTERN   GetBootFirmwareVolumeOffset:PROC
-EXTERN   PlatformTempRamInit:PROC
-EXTERN   Pei2LoaderSwitchStack:PROC
-EXTERN   FspSelfCheck:PROC
-EXTERN   PlatformBasicInit:PROC
+extern ASM_PFX(GetFspBaseAddress)
+extern ASM_PFX(GetBootFirmwareVolumeOffset)
+extern ASM_PFX(PlatformTempRamInit)
+extern ASM_PFX(Pei2LoaderSwitchStack)
+extern ASM_PFX(FspSelfCheck)
+extern ASM_PFX(PlatformBasicInit)
 
 ;
 ; Define the data length that we saved on the stack top
 ;
-DATA_LEN_OF_PER0         EQU   18h
-DATA_LEN_OF_MCUD         EQU   18h
-DATA_LEN_AT_STACK_TOP    EQU   (DATA_LEN_OF_PER0 + DATA_LEN_OF_MCUD + 4)
+%define DATA_LEN_OF_PER0 0x18
+%define DATA_LEN_OF_MCUD 0x18
+%define DATA_LEN_AT_STACK_TOP (DATA_LEN_OF_PER0 + DATA_LEN_OF_MCUD + 4)
 
 ;------------------------------------------------------------------------------
-LoadUcode   PROC  NEAR PUBLIC
+global ASM_PFX(LoadUcode)
+ASM_PFX(LoadUcode):
    ; Inputs:
    ;   esp -> LOAD_UCODE_PARAMS pointer
    ; Register Usage:
@@ -72,22 +70,22 @@ LoadUcode   PROC  NEAR PUBLIC
    mov    ebp, eax
 
    cmp    esp, 0
-   jz     paramerror
-   mov    eax, dword ptr [esp]    ; Parameter pointer
+   jz     .paramerror
+   mov    eax, dword [esp]    ; Parameter pointer
    cmp    eax, 0
-   jz     paramerror
+   jz     .paramerror
    mov    esp, eax
-   mov    esi, [esp].LOAD_UCODE_PARAMS.ucode_code_addr
+   mov    esi, [esp + LOAD_UCODE_PARAMS.ucode_code_addr]
    cmp    esi, 0
-   jnz    check_main_header
+   jnz    .check_main_header
 
-paramerror:
-   mov    eax, 080000002h
-   jmp    exit
+.paramerror:
+   mov    eax, 0x80000002
+   jmp    .exit
 
-   mov    esi, [esp].LOAD_UCODE_PARAMS.ucode_code_addr
+   mov    esi, [esp + LOAD_UCODE_PARAMS.ucode_code_addr]
 
-check_main_header:
+.check_main_header:
    ; Get processor signature and platform ID from the installed processor
    ; and save into registers for later use
    ; ebx = processor signature
@@ -99,7 +97,7 @@ check_main_header:
    rdmsr
    mov   ecx, edx
    shr   ecx, 50-32
-   and   ecx, 7h
+   and   ecx, 0x7
    mov   edx, 1
    shl   edx, cl
 
@@ -111,83 +109,83 @@ check_main_header:
 
    ; Check for valid microcode header
    ; Minimal test checking for header version and loader version as 1
-   mov   eax, dword ptr 1
-   cmp   [esi].ucode_hdr.version, eax
-   jne   advance_fixed_size
-   cmp   [esi].ucode_hdr.loader, eax
-   jne   advance_fixed_size
+   mov   eax, dword 1
+   cmp   [esi + ucode_hdr.version], eax
+   jne   .advance_fixed_size
+   cmp   [esi + ucode_hdr.loader], eax
+   jne   .advance_fixed_size
 
    ; Check if signature and plaform ID match
-   cmp   ebx, [esi].ucode_hdr.processor
-   jne   @f
-   test  edx, [esi].ucode_hdr.flags
-   jnz   load_check  ; Jif signature and platform ID match
+   cmp   ebx, [esi + ucode_hdr.processor]
+   jne   .0
+   test  edx, [esi + ucode_hdr.flags]
+   jnz   .load_check  ; Jif signature and platform ID match
 
-@@:
+.0:
    ; Check if extended header exists
    ; First check if total_size and data_size are valid
    xor   eax, eax
-   cmp   [esi].ucode_hdr.total_size, eax
-   je    next_microcode
-   cmp   [esi].ucode_hdr.data_size, eax
-   je    next_microcode
+   cmp   [esi + ucode_hdr.total_size], eax
+   je    .next_microcode
+   cmp   [esi + ucode_hdr.data_size], eax
+   je    .next_microcode
 
    ; Then verify total size - sizeof header > data size
-   mov   ecx, [esi].ucode_hdr.total_size
-   sub   ecx, sizeof ucode_hdr
-   cmp   ecx, [esi].ucode_hdr.data_size
-   jng   next_microcode    ; Jif extended header does not exist
+   mov   ecx, [esi + ucode_hdr.total_size]
+   sub   ecx, ucode_hdr.size
+   cmp   ecx, [esi + ucode_hdr.data_size]
+   jng   .next_microcode    ; Jif extended header does not exist
 
    ; Set edi -> extended header
    mov   edi, esi
-   add   edi, sizeof ucode_hdr
-   add   edi, [esi].ucode_hdr.data_size
+   add   edi, ucode_hdr.size
+   add   edi, [esi + ucode_hdr.data_size]
 
    ; Get count of extended structures
-   mov   ecx, [edi].ext_sig_hdr.count
+   mov   ecx, [edi + ext_sig_hdr.count]
 
    ; Move pointer to first signature structure
-   add   edi, sizeof ext_sig_hdr
+   add   edi, ext_sig_hdr.size
 
-check_ext_sig:
+.check_ext_sig:
    ; Check if extended signature and platform ID match
-   cmp   [edi].ext_sig.processor, ebx
-   jne   @f
-   test  [edi].ext_sig.flags, edx
-   jnz   load_check     ; Jif signature and platform ID match
-@@:
+   cmp   [edi + ext_sig.processor], ebx
+   jne   .1
+   test  [edi + ext_sig.flags], edx
+   jnz   .load_check     ; Jif signature and platform ID match
+.1:
    ; Check if any more extended signatures exist
-   add   edi, sizeof ext_sig
-   loop  check_ext_sig
+   add   edi, ext_sig.size
+   loop  .check_ext_sig
 
-next_microcode:
+.next_microcode:
    ; Advance just after end of this microcode
    xor   eax, eax
-   cmp   [esi].ucode_hdr.total_size, eax
-   je    @f
-   add   esi, [esi].ucode_hdr.total_size
-   jmp   check_address
-@@:
-   add   esi, dword ptr 2048
-   jmp   check_address
+   cmp   [esi + ucode_hdr.total_size], eax
+   je    .2
+   add   esi, [esi + ucode_hdr.total_size]
+   jmp   .check_address
+.2:
+   add   esi, dword 2048
+   jmp   .check_address
 
-advance_fixed_size:
+.advance_fixed_size:
    ; Advance by 4X dwords
-   add   esi, dword ptr 1024
+   add   esi, dword 1024
 
-check_address:
+.check_address:
    ; Is valid Microcode start point ?
-   cmp   dword ptr [esi], 0ffffffffh
-   jz    done
+   cmp   dword [esi], 0xffffffff
+   jz    .done
 
    ; Address >= microcode region address + microcode region size?
-   mov   eax, [esp].LOAD_UCODE_PARAMS.ucode_code_addr
-   add   eax, [esp].LOAD_UCODE_PARAMS.ucode_code_size
+   mov   eax, [esp + LOAD_UCODE_PARAMS.ucode_code_addr]
+   add   eax, [esp + LOAD_UCODE_PARAMS.ucode_code_size]
    cmp   esi, eax
-   jae   done        ;Jif address is outside of ucode region
-   jmp   check_main_header
+   jae   .done        ;Jif address is outside of ucode region
+   jmp   .check_main_header
 
-load_check:
+.load_check:
    ; Get the revision of the current microcode update loaded
    mov   ecx, MSR_IA32_BIOS_SIGN_ID
    xor   eax, eax               ; Clear EAX
@@ -200,39 +198,37 @@ load_check:
    rdmsr                         ; Get current microcode signature
 
    ; Verify this microcode update is not already loaded
-   cmp   [esi].ucode_hdr.revision, edx
-   je    continue
+   cmp   [esi + ucode_hdr.revision], edx
+   je    .continue
 
-load_microcode:
+.load_microcode:
    ; EAX contains the linear address of the start of the Update Data
    ; EDX contains zero
    ; ECX contains 79h (IA32_BIOS_UPDT_TRIG)
    ; Start microcode load with wrmsr
    mov   eax, esi
-   add   eax, sizeof ucode_hdr
+   add   eax, ucode_hdr.size
    xor   edx, edx
    mov   ecx, MSR_IA32_BIOS_UPDT_TRIG
    wrmsr
    mov   eax, 1
    cpuid
 
-continue:
-   jmp   next_microcode
+.continue:
+   jmp   .next_microcode
 
-done:
+.done:
    mov   eax, 1
    cpuid
    mov   ecx, MSR_IA32_BIOS_SIGN_ID
    rdmsr                         ; Get current microcode signature
    xor   eax, eax
    cmp   edx, 0
-   jnz   exit
-   mov   eax, 08000000Eh
+   jnz   .exit
+   mov   eax, 0x8000000E
 
-exit:
+.exit:
    jmp   ebp
-
-LoadUcode   ENDP
 
 ;----------------------------------------------------------------------------
 ; TempRamInit API
@@ -242,7 +238,8 @@ LoadUcode   ENDP
 ; used till main memory is initialized.
 ;
 ;----------------------------------------------------------------------------
-TempRamInitApi   PROC    NEAR    PUBLIC
+global ASM_PFX(TempRamInitApi)
+ASM_PFX(TempRamInitApi):
   ;
   ; Ensure SSE is enabled
   ;
@@ -263,36 +260,36 @@ TempRamInitApi   PROC    NEAR    PUBLIC
   ;
   ; Check Parameter
   ;
-  mov       eax, dword ptr [esp + 4]
+  mov       eax, dword [esp + 4]
   cmp       eax, 0
-  mov       eax, 80000002h
+  mov       eax, 0x80000002
   jz        NemInitExit
 
   ;
   ; CPUID/DeviceID check
   ;
-  mov       eax, @F
-  jmp       FspSelfCheck  ; Note: ESP can not be changed.
-@@:
+  mov       eax, .3
+  jmp       ASM_PFX(FspSelfCheck)  ; Note: ESP can not be changed.
+.3:
   cmp       eax, 0
   jnz       NemInitExit
 
   ;
   ; Platform Basic Init.
   ;
-  mov       eax, @F
-  jmp       PlatformBasicInit
-@@:
+  mov       eax, .4
+  jmp       ASM_PFX(PlatformBasicInit)
+.4:
   cmp       eax, 0
   jnz       NemInitExit
 
   ;
   ; Load microcode
   ;
-  mov       eax, @F
+  mov       eax, .5
   add       esp, 4
-  jmp       LoadUcode
-@@:
+  jmp       ASM_PFX(LoadUcode)
+.5:
   LOAD_ESP
   cmp       eax, 0
   jnz       NemInitExit
@@ -300,10 +297,10 @@ TempRamInitApi   PROC    NEAR    PUBLIC
   ;
   ; Call platform NEM init
   ;
-  mov       eax, @F
+  mov       eax, .6
   add       esp, 4
-  jmp       PlatformTempRamInit
-@@:
+  jmp       ASM_PFX(PlatformTempRamInit)
+.6:
   LOAD_ESP
   cmp       eax, 0
   jnz       NemInitExit
@@ -311,7 +308,7 @@ TempRamInitApi   PROC    NEAR    PUBLIC
   ;
   ; Save parameter pointer in edx
   ;
-  mov       edx, dword ptr [esp + 4]
+  mov       edx, dword [esp + 4]
 
   ;
   ; Enable FSP STACK
@@ -320,17 +317,17 @@ TempRamInitApi   PROC    NEAR    PUBLIC
   add       esp, PcdGet32(PcdTemporaryRamSize)
 
   push      DATA_LEN_OF_MCUD     ; Size of the data region
-  push      4455434Dh            ; Signature of the  data region 'MCUD'
-  push      dword ptr [edx +  4] ; Microcode size
-  push      dword ptr [edx +  0] ; Microcode base
-  push      dword ptr [edx + 12] ; Code size
-  push      dword ptr [edx + 8]  ; Code base
+  push      0x4455434D            ; Signature of the  data region 'MCUD'
+  push      dword [edx +  4] ; Microcode size
+  push      dword [edx +  0] ; Microcode base
+  push      dword [edx + 12] ; Code size
+  push      dword [edx + 8]  ; Code base
 
   ;
   ; Save API entry/exit timestamp into stack
   ;
   push      DATA_LEN_OF_PER0     ; Size of the data region
-  push      30524550h            ; Signature of the  data region 'PER0'
+  push      0x30524550            ; Signature of the  data region 'PER0'
   rdtsc
   push      edx
   push      eax
@@ -360,7 +357,6 @@ NemInitExit:
   ;
   LOAD_REGS
   ret
-TempRamInitApi   ENDP
 
 ;----------------------------------------------------------------------------
 ; FspInit API
@@ -370,36 +366,37 @@ TempRamInitApi   ENDP
 ; ContinuationFunc provided in the parameter.
 ;
 ;----------------------------------------------------------------------------
-FspInitApi   PROC    NEAR    PUBLIC
+global ASM_PFX(FspInitApi)
+ASM_PFX(FspInitApi):
   ;
   ; Stack must be ready
   ;
-  push   087654321h
+  push   0x87654321
   pop    eax
-  cmp    eax, 087654321h
-  jz     @F
-  mov    eax, 080000003h
-  jmp    exit
+  cmp    eax, 0x87654321
+  jz     .7
+  mov    eax, 0x80000003
+  jmp    .exit
 
-@@:
+.7:
   ;
   ; Additional check
   ;
   pushad
   push   1
-  call   FspApiCallingCheck
+  call   ASM_PFX(FspApiCallingCheck)
   add    esp, 4
-  mov    dword ptr [esp + 4 * 7],  eax
+  mov    dword [esp + 4 * 7],  eax
   popad
   cmp    eax, 0
-  jz     @F
-  jmp    exit
+  jz     .8
+  jmp    .exit
 
-@@:
+.8:
   ;
   ; Store the address in FSP which will return control to the BL
   ;
-  push   offset exit
+  push   dword .exit
 
   ;
   ; Create a Task Frame in the stack for the Boot Loader
@@ -410,7 +407,7 @@ FspInitApi   PROC    NEAR    PUBLIC
 
   ; Reserve 8 bytes for IDT save/restore
   sub     esp, 8
-  sidt    fword ptr [esp]
+  sidt    [esp]
 
   ;
   ; Setup new FSP stack
@@ -418,7 +415,7 @@ FspInitApi   PROC    NEAR    PUBLIC
   mov     eax, esp
   mov     esp, PcdGet32(PcdTemporaryRamBase)
   add     esp, PcdGet32(PcdTemporaryRamSize)
-  sub     esp, (DATA_LEN_AT_STACK_TOP + 40h)
+  sub     esp, (DATA_LEN_AT_STACK_TOP + 0x40)
 
   ;
   ; Save the bootloader's stack pointer
@@ -428,12 +425,12 @@ FspInitApi   PROC    NEAR    PUBLIC
   ;
   ; Pass entry point of the PEI core
   ;
-  call    GetFspBaseAddress
-  mov     edi, FspImageSizeOffset
-  mov     edi, DWORD PTR [eax + edi]
+  call    ASM_PFX(GetFspBaseAddress)
+  mov     edi, ASM_PFX(FspImageSizeOffset)
+  mov     edi, DWORD [eax + edi]
   add     edi, eax
-  sub     edi, 20h
-  add     eax, DWORD PTR [edi]
+  sub     edi, 0x20
+  add     eax, DWORD [edi]
   push    eax
 
   ;
@@ -443,9 +440,9 @@ FspInitApi   PROC    NEAR    PUBLIC
   ; PcdFspAreaBaseAddress are the same. For FSP with mulitple FVs,
   ; they are different. The code below can handle both cases.
   ;
-  call    GetFspBaseAddress
+  call    ASM_PFX(GetFspBaseAddress)
   mov     edi, eax
-  call    GetBootFirmwareVolumeOffset
+  call    ASM_PFX(GetBootFirmwareVolumeOffset)
   add     eax, edi
   push    eax
 
@@ -461,12 +458,10 @@ FspInitApi   PROC    NEAR    PUBLIC
   ;
   ; Pass Control into the PEI Core
   ;
-  call    SecStartup
+  call    ASM_PFX(SecStartup)
 
-exit:
+.exit:
   ret
-
-FspInitApi   ENDP
 
 ;----------------------------------------------------------------------------
 ; NotifyPhase API
@@ -475,41 +470,38 @@ FspInitApi   ENDP
 ; process
 ;
 ;----------------------------------------------------------------------------
-NotifyPhaseApi   PROC C PUBLIC
+global ASM_PFX(NotifyPhaseApi)
+ASM_PFX(NotifyPhaseApi):
   ;
   ; Stack must be ready
   ;
-  push   087654321h
+  push   0x87654321
   pop    eax
-  cmp    eax, 087654321h
-  jz     @F
-  mov    eax, 080000003h
-  jmp    err_exit
+  cmp    eax, 0x87654321
+  jz     .9
+  mov    eax, 0x80000003
+  jmp    .err_exit
 
-@@:
+.9:
   ;
   ; Verify the calling condition
   ;
   pushad
   push   2
-  call   FspApiCallingCheck
+  call   ASM_PFX(FspApiCallingCheck)
   add    esp, 4
-  mov    dword ptr [esp + 4 * 7],  eax
+  mov    dword [esp + 4 * 7],  eax
   popad
 
   cmp    eax, 0
-  jz     @F
+  jz     .10
 
   ;
   ; Error return
   ;
-err_exit:
+.err_exit:
   ret
 
-@@:
-  jmp    Pei2LoaderSwitchStack
+.10:
+  jmp    ASM_PFX(Pei2LoaderSwitchStack)
 
-NotifyPhaseApi   ENDP
-
-
-END
