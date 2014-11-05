@@ -20,7 +20,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-.code
+DEFAULT REL
+SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -29,13 +30,12 @@
 ;   IN UINT16   SelectorValue
 ;   );
 ;------------------------------------------------------------------------------
-AsmSetDataSelectors   PROC
+global ASM_PFX(AsmSetDataSelectors)
+ASM_PFX(AsmSetDataSelectors):
   mov     ds, cx
   mov     es, cx
   mov     fs, cx
   mov     gs, cx
-  mov     ss, cx   
+  mov     ss, cx
   ret
-AsmSetDataSelectors   ENDP
 
-END

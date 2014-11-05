@@ -40,8 +40,8 @@
   Ia32/AsmFuncs.nasm | GCC
 
 [Sources.X64]
-  X64/AsmFuncs.asm
-  X64/AsmFuncs.S     | GCC
+  X64/AsmFuncs.nasm
+  X64/AsmFuncs.nasm  | GCC
 
 [Packages]
   MdePkg/MdePkg.dec
