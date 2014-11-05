@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -30,9 +31,8 @@
 ;   IN      CONST IA32_DESCRIPTOR     *Idtr
 ;   );
 ;------------------------------------------------------------------------------
-InternalX86WriteGdtr  PROC
-    lgdt    fword ptr [rcx]
+global ASM_PFX(InternalX86WriteGdtr)
+ASM_PFX(InternalX86WriteGdtr):
+    lgdt    [rcx]
     ret
-InternalX86WriteGdtr  ENDP
 
-    END
