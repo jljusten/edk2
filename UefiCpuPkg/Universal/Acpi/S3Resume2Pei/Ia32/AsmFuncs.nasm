@@ -20,10 +20,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-.686
-.model  flat,C
-
-.code
+SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -32,14 +29,13 @@
 ;   IN UINT16   SelectorValue
 ;   );
 ;------------------------------------------------------------------------------
-AsmSetDataSelectors   PROC near public
+global ASM_PFX(AsmSetDataSelectors)
+ASM_PFX(AsmSetDataSelectors):
   mov     eax, [esp + 4]
   mov     ds, ax
   mov     es, ax
   mov     fs, ax
   mov     gs, ax
-  mov     ss, ax   
+  mov     ss, ax
   ret
-AsmSetDataSelectors   ENDP
 
-END
