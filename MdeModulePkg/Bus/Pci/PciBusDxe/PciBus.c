@@ -284,11 +284,7 @@ PciBusDriverBindingStart (
           );
   }  
 
-  if (PcdGetBool (PcdPciDisableBusEnumeration)) {
-    gFullEnumeration = FALSE;
-  } else {
-    gFullEnumeration = (BOOLEAN) ((SearchHostBridgeHandle (Controller) ? FALSE : TRUE));
-  }
+  gFullEnumeration = (BOOLEAN) ((SearchHostBridgeHandle (Controller) ? FALSE : TRUE));
 
   //
   // Open Device Path Protocol for PCI root bridge

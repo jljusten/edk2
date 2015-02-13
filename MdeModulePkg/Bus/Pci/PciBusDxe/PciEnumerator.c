@@ -1,7 +1,7 @@
 /** @file
   PCI eunmeration implementation on entire PCI bus system for PCI Bus module.
 
-Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -13,6 +13,28 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 #include "PciBus.h"
+
+/**
+  Installs gEfiPciEnumerationCompleteProtocolGuid on the given handle.
+
+  @param Handle  Handle of device to install the protocol on.
+
+  @retval EFI_SUCCESS    The protocol was installed successfully.
+  @retval other          Some error occurred when installing the protocol.
+
+**/
+EFI_STATUS
+InstallEnumerationCompleteProtocol (
+  IN EFI_HANDLE  Handle
+  )
+{
+  return gBS->InstallProtocolInterface (
+                &Handle,
+                &gEfiPciEnumerationCompleteProtocolGuid,
+                EFI_NATIVE_INTERFACE,
+                NULL
+                );
+}
 
 /**
   This routine is used to enumerate entire pci bus system
@@ -61,6 +83,21 @@ PciEnumerator (
   // Get the host bridge handle
   //
   HostBridgeHandle = PciRootBridgeIo->ParentHandle;
+
+  //
+  // PcdPciDisableBusEnumeration can be used to skip full enumeration,
+  // but we still install gEfiPciEnumerationCompleteProtocolGuid.
+  //
+  if (PcdGetBool (PcdPciDisableBusEnumeration)) {
+    Status = PciEnumeratorLight (Controller);
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+
+    gFullEnumeration = FALSE;
+
+    return InstallEnumerationCompleteProtocol (HostBridgeHandle);
+  }
 
   //
   // Get the pci host bridge resource allocation protocol
@@ -133,12 +170,7 @@ PciEnumerator (
 
   gFullEnumeration = FALSE;
 
-  Status = gBS->InstallProtocolInterface (
-                  &HostBridgeHandle,
-                  &gEfiPciEnumerationCompleteProtocolGuid,
-                  EFI_NATIVE_INTERFACE,
-                  NULL
-                  );
+  Status = InstallEnumerationCompleteProtocol (HostBridgeHandle);
   if (EFI_ERROR (Status)) {
     return Status;
   }
