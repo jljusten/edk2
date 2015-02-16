@@ -24,6 +24,7 @@
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PcdLib.h>
+#include <Library/UefiLib.h>
 
 #include <IndustryStandard/Acpi.h>
 

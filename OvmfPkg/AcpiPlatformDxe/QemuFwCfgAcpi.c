@@ -728,6 +728,35 @@ FreeLoader:
 }
 
 
+STATIC
+VOID
+EFIAPI
+PublishAllAcpiTables (
+  IN      EFI_EVENT                 Event,
+  IN      VOID                      *Context
+  )
+{
+  EFI_STATUS                         Status;
+  EFI_ACPI_TABLE_PROTOCOL            *AcpiProtocol;
+
+  //
+  // Only publish tables once
+  //
+  gBS->CloseEvent (Event);
+
+  DEBUG ((EFI_D_VERBOSE, "%a %d\n", __FUNCTION__, __LINE__));
+
+  AcpiProtocol = (EFI_ACPI_TABLE_PROTOCOL*) Context;
+
+  //
+  // At this callback, PCI enumeration should be complete. Therefore QEMU's
+  // tables are now finalized, and we can install them.
+  //
+  Status = DownloadAndInstallTables (AcpiProtocol, FALSE);
+  ASSERT_EFI_ERROR (Status);
+}
+
+
 /**
   Download, process, and install ACPI table data from the QEMU loader
   interface.
@@ -761,6 +790,7 @@ InstallQemuFwCfgTables (
   )
 {
   EFI_STATUS          Status;
+  EFI_EVENT           PublishAllTablesEvent = NULL;
 
   //
   // At this early stage, we install a few tables that other code depends on.
@@ -771,11 +801,13 @@ InstallQemuFwCfgTables (
   if (EFI_ERROR (Status)) {
     return Status;
   }
-  Status = DownloadAndInstallTables (AcpiProtocol, FALSE);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
 
+  Status = EfiCreateEventReadyToBootEx (
+             TPL_NOTIFY,
+             PublishAllAcpiTables,
+             (VOID*) AcpiProtocol,
+             &PublishAllTablesEvent
+             );
   return Status;
 }
 
