@@ -414,7 +414,8 @@ Process2ndPassCmdAddPointer (
   IN     CONST ORDERED_COLLECTION      *Tracker,
   IN     EFI_ACPI_TABLE_PROTOCOL       *AcpiProtocol,
   IN OUT UINTN                         InstalledKey[INSTALLED_TABLES_MAX],
-  IN OUT INT32                         *NumInstalled
+  IN OUT INT32                         *NumInstalled,
+  IN   BOOLEAN                         EarlyTablesOnly
   )
 {
   CONST ORDERED_COLLECTION_ENTRY                     *TrackerEntry;
@@ -550,10 +551,12 @@ Process2ndPassCmdAddPointer (
                                  AcpiProtocol->InstallAcpiTable().
 
 **/
+STATIC
 EFI_STATUS
 EFIAPI
-InstallAllQemuLinkedTables (
-  IN   EFI_ACPI_TABLE_PROTOCOL       *AcpiProtocol
+DownloadAndInstallTables (
+  IN   EFI_ACPI_TABLE_PROTOCOL       *AcpiProtocol,
+  IN   BOOLEAN                       EarlyTablesOnly
   )
 {
   EFI_STATUS               Status;
@@ -632,8 +635,10 @@ InstallAllQemuLinkedTables (
   Installed = 0;
   for (LoaderEntry = LoaderStart; LoaderEntry < LoaderEnd; ++LoaderEntry) {
     if (LoaderEntry->Type == QemuLoaderCmdAddPointer) {
-      Status = Process2ndPassCmdAddPointer (&LoaderEntry->Command.AddPointer,
-                 Tracker, AcpiProtocol, InstalledKey, &Installed);
+      Status = Process2ndPassCmdAddPointer (
+                 &LoaderEntry->Command.AddPointer, Tracker, AcpiProtocol,
+                 InstalledKey, &Installed, EarlyTablesOnly
+                 );
       if (EFI_ERROR (Status)) {
         break;
       }
@@ -686,6 +691,54 @@ FreeLoader:
 
 
 /**
+  Download, process, and install ACPI table data from the QEMU loader
+  interface.
+
+  The installation process is handled in two phase. The FACS table is
+  installed immediatedly, and the remaining tables are installed after the
+  ReadyToBoot event is signalled.
+
+  @param[in] AcpiProtocol  The ACPI table protocol used to install tables.
+
+  @retval  EFI_UNSUPPORTED       Firmware configuration is unavailable, or QEMU
+                                 loader command with unsupported parameters
+                                 has been found.
+
+  @retval  EFI_NOT_FOUND         The host doesn't export the required fw_cfg
+                                 files.
+
+  @retval  EFI_OUT_OF_RESOURCES  Memory allocation failed, or more than
+                                 INSTALLED_TABLES_MAX tables found.
+
+  @retval  EFI_PROTOCOL_ERROR    Found invalid fw_cfg contents.
+
+  @return                        Status codes returned by
+                                 AcpiProtocol->InstallAcpiTable().
+
+**/
+EFI_STATUS
+EFIAPI
+InstallQemuFwCfgTables (
+  IN   EFI_ACPI_TABLE_PROTOCOL       *AcpiProtocol
+  )
+{
+  EFI_STATUS          Status;
+
+  //
+  // At this early stage, we install a few tables that other code depends on.
+  //
+  // For example, the S3 code depends on the FACP table being available.
+  //
+  Status = DownloadAndInstallTables (AcpiProtocol, TRUE);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  return Status;
+}
+
+
+/**
   Entrypoint of QEMU fw-cfg Acpi Platform driver.
 
   @param  ImageHandle
@@ -718,6 +771,6 @@ QemuFwCfgAcpiPlatformEntryPoint (
     return EFI_ABORTED;
   }
 
-  Status = InstallAllQemuLinkedTables (AcpiTable);
+  Status = InstallQemuFwCfgTables (AcpiTable);
   return Status;
 }
