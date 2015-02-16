@@ -51,6 +51,7 @@
   QemuFwCfgLib
   LoadLinuxLib
   QemuBootOrderLib
+  UefiLib
 
 [Pcd]
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile

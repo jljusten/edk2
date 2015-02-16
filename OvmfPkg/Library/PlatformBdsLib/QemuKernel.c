@@ -19,6 +19,7 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/QemuFwCfgLib.h>
 #include <Library/UefiBootServicesTableLib.h>
+#include <Library/UefiLib.h>
 
 
 EFI_STATUS
@@ -142,6 +143,11 @@ TryRunningQemuKernel (
   if (EFI_ERROR (Status)) {
     goto FreeAndReturn;
   }
+
+  //
+  // Signal the EVT_SIGNAL_READY_TO_BOOT event
+  //
+  EfiSignalEventReadyToBoot();
 
   Status = LoadLinux (KernelBuf, SetupBuf);
 
