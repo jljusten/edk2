@@ -69,5 +69,5 @@
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFdBaseAddress
 
 [Depex]
-  gEfiAcpiTableProtocolGuid AND gEfiPciEnumerationCompleteProtocolGuid
+  gEfiAcpiTableProtocolGuid
 

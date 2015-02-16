@@ -51,6 +51,3 @@
 
 [Depex]
   gEfiAcpiTableProtocolGuid
-
-[Depex.IA32, Depex.X64]
-  gEfiPciEnumerationCompleteProtocolGuid
