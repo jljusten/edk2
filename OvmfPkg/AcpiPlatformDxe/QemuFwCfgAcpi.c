@@ -468,9 +468,18 @@ Process2ndPassCmdAddPointer (
         Facs->Length <= Blob2Remaining &&
         Facs->Signature ==
                 EFI_ACPI_1_0_FIRMWARE_ACPI_CONTROL_STRUCTURE_SIGNATURE) {
-      DEBUG ((EFI_D_VERBOSE, "found \"%-4.4a\" size 0x%x; installing\n",
+      DEBUG ((EFI_D_VERBOSE, "found \"%-4.4a\" size 0x%x; ",
         (CONST CHAR8 *)&Facs->Signature, Facs->Length));
       TableSize = Facs->Length;
+      if (!EarlyTablesOnly) {
+        //
+        // The early tables were already installed.
+        //
+        DEBUG ((EFI_D_VERBOSE, "already installed\n"));
+        return EFI_SUCCESS;
+      } else {
+        DEBUG ((EFI_D_VERBOSE, "installing\n"));
+      }
     }
   }
 
@@ -492,15 +501,41 @@ Process2ndPassCmdAddPointer (
         (CONST CHAR8 *)&Header->Signature, Header->Length));
       TableSize = Header->Length;
 
-      //
-      // Skip RSDT and XSDT because those are handled by
-      // EFI_ACPI_TABLE_PROTOCOL automatically.
-      if (Header->Signature ==
-                    EFI_ACPI_1_0_ROOT_SYSTEM_DESCRIPTION_TABLE_SIGNATURE ||
-          Header->Signature ==
-                    EFI_ACPI_2_0_EXTENDED_SYSTEM_DESCRIPTION_TABLE_SIGNATURE) {
+      switch (Header->Signature) {
+      case EFI_ACPI_1_0_ROOT_SYSTEM_DESCRIPTION_TABLE_SIGNATURE:
+      case EFI_ACPI_2_0_EXTENDED_SYSTEM_DESCRIPTION_TABLE_SIGNATURE:
+        //
+        // Skip RSDT and XSDT because those are handled by
+        // EFI_ACPI_TABLE_PROTOCOL automatically.
+        //
         DEBUG ((EFI_D_VERBOSE, "skipping\n"));
         return EFI_SUCCESS;
+      case EFI_ACPI_2_0_FIXED_ACPI_DESCRIPTION_TABLE_SIGNATURE:
+        //
+        // Skip RSDT and XSDT because those are handled by
+        // EFI_ACPI_TABLE_PROTOCOL automatically.
+        //
+        if (!EarlyTablesOnly) {
+          //
+          // The early tables were already installed.
+          //
+          DEBUG ((EFI_D_VERBOSE, "already installed\n"));
+          return EFI_SUCCESS;
+        }
+        break;
+      default:
+        //
+        // This table is in the set of tables that we install later.
+        //
+        if (EarlyTablesOnly) {
+          //
+          // We are only installing the early tables at this point, so skip
+          // installing this table for now.
+          //
+          DEBUG ((EFI_D_VERBOSE, "skipping for now\n"));
+          return EFI_SUCCESS;
+        }
+        break;
       }
     }
 
@@ -733,6 +768,10 @@ InstallQemuFwCfgTables (
   // For example, the S3 code depends on the FACP table being available.
   //
   Status = DownloadAndInstallTables (AcpiProtocol, TRUE);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+  Status = DownloadAndInstallTables (AcpiProtocol, FALSE);
   if (EFI_ERROR (Status)) {
     return Status;
   }
