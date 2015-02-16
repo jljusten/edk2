@@ -468,7 +468,7 @@ Process2ndPassCmdAddPointer (
         Facs->Length <= Blob2Remaining &&
         Facs->Signature ==
                 EFI_ACPI_1_0_FIRMWARE_ACPI_CONTROL_STRUCTURE_SIGNATURE) {
-      DEBUG ((EFI_D_VERBOSE, "found \"%-4.4a\" size 0x%x\n",
+      DEBUG ((EFI_D_VERBOSE, "found \"%-4.4a\" size 0x%x; installing\n",
         (CONST CHAR8 *)&Facs->Signature, Facs->Length));
       TableSize = Facs->Length;
     }
@@ -488,7 +488,7 @@ Process2ndPassCmdAddPointer (
       // - Length field consistent with both ACPI and containing blob size
       // - checksum is correct
       //
-      DEBUG ((EFI_D_VERBOSE, "found \"%-4.4a\" size 0x%x\n",
+      DEBUG ((EFI_D_VERBOSE, "found \"%-4.4a\" size 0x%x; ",
         (CONST CHAR8 *)&Header->Signature, Header->Length));
       TableSize = Header->Length;
 
@@ -499,9 +499,12 @@ Process2ndPassCmdAddPointer (
                     EFI_ACPI_1_0_ROOT_SYSTEM_DESCRIPTION_TABLE_SIGNATURE ||
           Header->Signature ==
                     EFI_ACPI_2_0_EXTENDED_SYSTEM_DESCRIPTION_TABLE_SIGNATURE) {
+        DEBUG ((EFI_D_VERBOSE, "skipping\n"));
         return EFI_SUCCESS;
       }
     }
+
+    DEBUG ((EFI_D_VERBOSE, "installing\n"));
   }
 
   if (TableSize == 0) {
