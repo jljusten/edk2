@@ -273,9 +273,8 @@ if [[ "$RUN_QEMU" == "yes" ]]; then
   if [[ "$ADD_QEMU_HDA" == "yes" ]]; then
     QEMU_COMMAND="$QEMU_COMMAND -hda fat:$BUILD_ROOT_ARCH"
   fi
-  QEMU_COMMAND="$QEMU_COMMAND $*"
-  echo Running: $QEMU_COMMAND
-  $QEMU_COMMAND
+  echo Running: $QEMU_COMMAND "$@"
+  $QEMU_COMMAND "$@"
   exit $?
 fi
 
