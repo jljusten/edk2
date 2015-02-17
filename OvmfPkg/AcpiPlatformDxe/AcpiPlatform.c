@@ -228,21 +228,13 @@ InstallOvmfFvTables (
 }
 
 /**
-  Entrypoint of Acpi Platform driver.
-
-  @param  ImageHandle
-  @param  SystemTable
-
-  @return EFI_SUCCESS
-  @return EFI_LOAD_ERROR
-  @return EFI_OUT_OF_RESOURCES
+  Installs all ACPI tables
 
 **/
-EFI_STATUS
-EFIAPI
-AcpiPlatformEntryPoint (
-  IN EFI_HANDLE         ImageHandle,
-  IN EFI_SYSTEM_TABLE   *SystemTable
+STATIC
+VOID
+InstallAcpiTables (
+  VOID
   )
 {
   EFI_STATUS                         Status;
@@ -268,6 +260,67 @@ AcpiPlatformEntryPoint (
     Status = InstallOvmfFvTables (AcpiTable);
   }
 
-  return Status;
+  ASSERT_EFI_ERROR (Status);
 }
 
+
+STATIC
+VOID
+EFIAPI
+PciEnumerationCompleteCallback (
+  IN  EFI_EVENT                           Event,
+  IN  VOID                                *Context
+  )
+{
+  InstallAcpiTables ();
+}
+
+
+/**
+  Entrypoint of Acpi Platform driver.
+
+  @param  ImageHandle
+  @param  SystemTable
+
+  @return EFI_SUCCESS
+  @return EFI_LOAD_ERROR
+  @return EFI_OUT_OF_RESOURCES
+
+**/
+EFI_STATUS
+EFIAPI
+AcpiPlatformEntryPoint (
+  IN EFI_HANDLE         ImageHandle,
+  IN EFI_SYSTEM_TABLE   *SystemTable
+  )
+{
+  EFI_STATUS    Status;
+  EFI_EVENT     Event = NULL;
+  VOID          *Registration;
+
+  if (PcdGetBool (PcdPciDisableBusEnumeration)) {
+    InstallAcpiTables ();
+  } else {
+    //
+    // Call PciEnumerationCompleteCallback when
+    // gEfiPciEnumerationCompleteProtocolGuid is installed.
+    //
+    Status = gBS->CreateEvent (
+                    EVT_NOTIFY_SIGNAL,
+                    TPL_CALLBACK,
+                    PciEnumerationCompleteCallback,
+                    NULL,
+                    &Event
+                    );
+    ASSERT_EFI_ERROR (Status);
+
+    Status = gBS->RegisterProtocolNotify (
+                    &gEfiPciEnumerationCompleteProtocolGuid,
+                    Event,
+                    &Registration
+                    );
+    ASSERT_EFI_ERROR (Status);
+  }
+
+  return EFI_SUCCESS;
+}

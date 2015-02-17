@@ -686,6 +686,46 @@ FreeLoader:
 
 
 /**
+  Installs all ACPI tables
+
+**/
+STATIC
+VOID
+InstallAcpiTables (
+  VOID
+  )
+{
+  EFI_STATUS                         Status;
+  EFI_ACPI_TABLE_PROTOCOL            *AcpiTable;
+
+  //
+  // Find the AcpiTable protocol
+  //
+  Status = gBS->LocateProtocol (
+                  &gEfiAcpiTableProtocolGuid,
+                  NULL,
+                  (VOID**)&AcpiTable
+                  );
+  ASSERT_EFI_ERROR (Status);
+
+  Status = InstallQemuFwCfgTables (AcpiTable);
+  ASSERT_EFI_ERROR (Status);
+}
+
+
+STATIC
+VOID
+EFIAPI
+PciEnumerationCompleteCallback (
+  IN  EFI_EVENT                           Event,
+  IN  VOID                                *Context
+  )
+{
+  InstallAcpiTables ();
+}
+
+
+/**
   Entrypoint of QEMU fw-cfg Acpi Platform driver.
 
   @param  ImageHandle
@@ -703,19 +743,33 @@ QemuFwCfgAcpiPlatformEntryPoint (
   IN EFI_SYSTEM_TABLE   *SystemTable
   )
 {
-  EFI_STATUS                         Status;
-  EFI_ACPI_TABLE_PROTOCOL            *AcpiTable;
+  EFI_STATUS    Status;
+  EFI_EVENT     Event = NULL;
+  VOID          *Registration;
 
-  //
-  // Find the AcpiTable protocol
-  //
-  Status = gBS->LocateProtocol (
-                  &gEfiAcpiTableProtocolGuid,
-                  NULL,
-                  (VOID**)&AcpiTable
-                  );
-  ASSERT_EFI_ERROR (Status);
+  if (PcdGetBool (PcdPciDisableBusEnumeration)) {
+    InstallAcpiTables ();
+  } else {
+    //
+    // Call PciEnumerationCompleteCallback when
+    // gEfiPciEnumerationCompleteProtocolGuid is installed.
+    //
+    Status = gBS->CreateEvent (
+                    EVT_NOTIFY_SIGNAL,
+                    TPL_CALLBACK,
+                    PciEnumerationCompleteCallback,
+                    NULL,
+                    &Event
+                    );
+    ASSERT_EFI_ERROR (Status);
 
-  Status = InstallQemuFwCfgTables (AcpiTable);
-  return Status;
+    Status = gBS->RegisterProtocolNotify (
+                    &gEfiPciEnumerationCompleteProtocolGuid,
+                    Event,
+                    &Registration
+                    );
+    ASSERT_EFI_ERROR (Status);
+  }
+
+  return EFI_SUCCESS;
 }

@@ -41,9 +41,13 @@
   QemuFwCfgLib
   UefiBootServicesTableLib
   UefiDriverEntryPoint
+  UefiLib
 
 [Protocols]
   gEfiAcpiTableProtocolGuid                     # PROTOCOL ALWAYS_CONSUMED
+
+[Pcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPciDisableBusEnumeration
 
 [Depex]
   gEfiAcpiTableProtocolGuid

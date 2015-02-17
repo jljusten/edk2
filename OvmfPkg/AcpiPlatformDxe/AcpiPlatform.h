@@ -19,11 +19,13 @@
 
 #include <Protocol/AcpiTable.h>
 #include <Protocol/FirmwareVolume2.h>
+#include <Protocol/PciEnumerationComplete.h>
 
 #include <Library/BaseLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PcdLib.h>
+#include <Library/UefiLib.h>
 
 #include <IndustryStandard/Acpi.h>
 

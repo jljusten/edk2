@@ -56,12 +56,14 @@
 
 [Protocols]
   gEfiAcpiTableProtocolGuid                     # PROTOCOL ALWAYS_CONSUMED
+  gEfiPciEnumerationCompleteProtocolGuid        # SOMETIMES_CONSUMES
 
 [Guids]
   gEfiXenInfoGuid
 
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiTableStorageFile
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPciDisableBusEnumeration
   gUefiCpuPkgTokenSpaceGuid.PcdCpuLocalApicBaseAddress
   gPcAtChipsetPkgTokenSpaceGuid.Pcd8259LegacyModeEdgeLevel
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFdBaseAddress
