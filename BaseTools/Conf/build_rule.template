@@ -527,7 +527,7 @@
 
 [Unicode-Text-File]
     <InputFile>
-        *.uni, *.Uni, *.UNI
+        *.uni, *.Uni, *.UNI, *.utf8, *.Utf8, *.UTF8
 
     <OutputFile>
         $(DEBUG_DIR)(+)AutoGen.c

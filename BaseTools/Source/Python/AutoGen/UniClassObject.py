@@ -43,6 +43,11 @@ BACK_SLASH_PLACEHOLDER = u'\u0006'
 
 gIncludePattern = re.compile("^#include +[\"<]+([^\"< >]+)[>\"]+$", re.MULTILINE | re.UNICODE)
 
+StringFileEncoding = {
+    '.uni': 'utf-16',
+    '.utf8': 'utf-8'
+}
+
 ## Convert a python unicode string to a normal string
 #
 # Convert a python unicode string to a normal string
@@ -209,7 +214,8 @@ class UniFileClassObject(object):
         Lang = distutils.util.split_quoted((Line.split(u"//")[0]))
         if len(Lang) != 3:
             try:
-                FileIn = codecs.open(LongFilePath(File.Path), mode='rb', encoding='utf-16').read()
+                encoding = StringFileEncoding[os.path.splitext(File.Path)[1].lower()]
+                FileIn = codecs.open(LongFilePath(File.Path), mode='rb', encoding=encoding).read()
             except UnicodeError, X:
                 EdkLogger.error("build", FILE_READ_FAILURE, "File read failure: %s" % str(X), ExtraData=File);
             except:
@@ -305,7 +311,8 @@ class UniFileClassObject(object):
             EdkLogger.error("Unicode File Parser", FILE_NOT_FOUND, ExtraData=File.Path)
 
         try:
-            FileIn = codecs.open(LongFilePath(File.Path), mode='rb', encoding='utf-16')
+            encoding = StringFileEncoding[os.path.splitext(File.Path)[1].lower()]
+            FileIn = codecs.open(LongFilePath(File.Path), mode='rb', encoding=encoding)
         except UnicodeError, X:
             EdkLogger.error("build", FILE_READ_FAILURE, "File read failure: %s" % str(X), ExtraData=File.Path);
         except:
