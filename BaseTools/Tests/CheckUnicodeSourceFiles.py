@@ -70,6 +70,23 @@ class Tests(TestTools.BaseToolsTest):
     def testUtf16InUniFile(self):
         self.CheckFile('utf_16', shouldPass=True)
 
+    def test32bitUnicodeCharInUtf8File(self):
+        data = u'''
+            #langdef en-US "English"
+            #string STR_A #language en-US "CodePoint (\U00010300) > 0xFFFF"
+        '''
+
+        path = self.EncodeToFile('utf_8', string=data)
+        try:
+            BtUni.UniFileClassObject([path])
+        except EdkLogger.FatalError:
+            return
+        except Exception:
+            pass
+
+        self.fail('A unicode code point larger than 0xffff ' +
+                  'should raise EdkLogger.FatalError')
+
 TheTestSuite = TestTools.MakeTheTestSuite(locals())
 
 if __name__ == '__main__':
