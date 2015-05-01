@@ -209,7 +209,7 @@ class UniFileClassObject(object):
         Lang = distutils.util.split_quoted((Line.split(u"//")[0]))
         if len(Lang) != 3:
             try:
-                FileIn = codecs.open(LongFilePath(File.Path), mode='rb', encoding='utf-16').read()
+                FileIn = self.OpenUniFile(LongFilePath(File.Path))
             except UnicodeError, X:
                 EdkLogger.error("build", FILE_READ_FAILURE, "File read failure: %s" % str(X), ExtraData=File);
             except:
@@ -253,6 +253,38 @@ class UniFileClassObject(object):
                     self.OrderedStringDict[LangName][Item.StringName] = len(self.OrderedStringList[LangName]) - 1
         return True
 
+    def OpenUniFile(self, FileName):
+        Encoding = 'utf-8'
+        UniFile = open(FileName, 'rb')
+
+        #
+        # Seek to end of file to determine its size
+        #
+        UniFile.seek(0, 2)
+        FileSize = UniFile.tell()
+
+        if FileSize >= 2:
+            #
+            # Seek to start of the file to read the UTF-16 BOM
+            #
+            UniFile.seek(0, 0)
+            Bom = UniFile.read(2)
+            UniFile.seek(0, 0)
+
+            if Bom == '\xff\xfe':
+                Encoding = 'utf-16'
+
+        Info = codecs.lookup(Encoding)
+        return codecs.StreamReaderWriter(UniFile, Info.streamreader, Info.streamwriter)
+
+    def Verify16bitCodePoints(self, String):
+        for cp in String:
+            if ord(cp) > 0xffff:
+                tmpl = 'The string {} defined in file {} ' + \
+                       'contains a character with a code point above 0xFFFF.'
+                error = tmpl.format(repr(String), self.File)
+                EdkLogger.error('Unicode File Parser', FORMAT_INVALID, error)
+
     #
     # Get String name and value
     #
@@ -274,6 +306,7 @@ class UniFileClassObject(object):
                 Language = LanguageList[IndexI].split()[0]
                 Value = LanguageList[IndexI][LanguageList[IndexI].find(u'\"') + len(u'\"') : LanguageList[IndexI].rfind(u'\"')] #.replace(u'\r\n', u'')
                 Language = GetLanguageCode(Language, self.IsCompatibleMode, self.File)
+                self.Verify16bitCodePoints(Value)
                 self.AddStringToList(Name, Language, Value)
 
     #
@@ -305,7 +338,7 @@ class UniFileClassObject(object):
             EdkLogger.error("Unicode File Parser", FILE_NOT_FOUND, ExtraData=File.Path)
 
         try:
-            FileIn = codecs.open(LongFilePath(File.Path), mode='rb', encoding='utf-16')
+            FileIn = self.OpenUniFile(LongFilePath(File.Path))
         except UnicodeError, X:
             EdkLogger.error("build", FILE_READ_FAILURE, "File read failure: %s" % str(X), ExtraData=File.Path);
         except:
@@ -426,6 +459,7 @@ class UniFileClassObject(object):
                     MatchString = re.match('[A-Z0-9_]+', Name, re.UNICODE)
                     if MatchString == None or MatchString.end(0) != len(Name):
                         EdkLogger.error('Unicode File Parser', FORMAT_INVALID, 'The string token name %s defined in UNI file %s contains the invalid lower case character.' %(Name, self.File))
+                self.Verify16bitCodePoints(Value)
                 self.AddStringToList(Name, Language, Value)
                 continue
 
