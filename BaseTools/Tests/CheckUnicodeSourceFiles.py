@@ -89,6 +89,12 @@ class Tests(TestTools.BaseToolsTest):
     def testUtf16InUniFile(self):
         self.CheckFile('.uni', 'utf_16', shouldFail=False)
 
+    def testUtf16InUtf8File(self):
+        self.CheckFile('.utf8', 'utf_16', shouldFail=True)
+
+    def testUtf8InUtf8File(self):
+        self.CheckFile('.utf8', 'utf_8', shouldFail=False)
+
 TheTestSuite = TestTools.MakeTheTestSuite(locals())
 
 if __name__ == '__main__':
