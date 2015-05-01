@@ -32,6 +32,7 @@ INFO    = 20
 WARN    = 30
 QUIET   = 40
 ERROR   = 50
+SILENT  = 99
 
 IsRaiseError = True
 
@@ -39,7 +40,9 @@ IsRaiseError = True
 _ToolName = os.path.basename(sys.argv[0])
 
 # For validation purpose
-_LogLevels = [DEBUG_0, DEBUG_1, DEBUG_2, DEBUG_3, DEBUG_4, DEBUG_5, DEBUG_6, DEBUG_7, DEBUG_8, DEBUG_9, VERBOSE, WARN, INFO, ERROR, QUIET]
+_LogLevels = [DEBUG_0, DEBUG_1, DEBUG_2, DEBUG_3, DEBUG_4, DEBUG_5,
+              DEBUG_6, DEBUG_7, DEBUG_8, DEBUG_9, VERBOSE, WARN, INFO,
+              ERROR, QUIET, SILENT]
 
 # For DEBUG level (All DEBUG_0~9 are applicable)
 _DebugLogger = logging.getLogger("tool_debug")
@@ -234,6 +237,10 @@ def SetLevel(Level):
     _DebugLogger.setLevel(Level)
     _InfoLogger.setLevel(Level)
     _ErrorLogger.setLevel(Level)
+
+def InitializeForUnitTest():
+    Initialize()
+    SetLevel(SILENT)
 
 ## Get current log level
 def GetLevel():
