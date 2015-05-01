@@ -259,6 +259,14 @@ class UniFileClassObject(object):
                     self.OrderedStringDict[LangName][Item.StringName] = len(self.OrderedStringList[LangName]) - 1
         return True
 
+    def Verify16bitCodePoints(self, String):
+        for cp in String:
+            if ord(cp) > 0xffff:
+                tmpl = 'The string {} defined in file {} ' + \
+                       'contains a character with a code point above 0xFFFF.'
+                error = tmpl.format(repr(String), self.File)
+                EdkLogger.error('Unicode File Parser', FORMAT_INVALID, error)
+
     #
     # Get String name and value
     #
@@ -280,6 +288,7 @@ class UniFileClassObject(object):
                 Language = LanguageList[IndexI].split()[0]
                 Value = LanguageList[IndexI][LanguageList[IndexI].find(u'\"') + len(u'\"') : LanguageList[IndexI].rfind(u'\"')] #.replace(u'\r\n', u'')
                 Language = GetLanguageCode(Language, self.IsCompatibleMode, self.File)
+                self.Verify16bitCodePoints(Value)
                 self.AddStringToList(Name, Language, Value)
 
     #
@@ -433,6 +442,7 @@ class UniFileClassObject(object):
                     MatchString = re.match('[A-Z0-9_]+', Name, re.UNICODE)
                     if MatchString == None or MatchString.end(0) != len(Name):
                         EdkLogger.error('Unicode File Parser', FORMAT_INVALID, 'The string token name %s defined in UNI file %s contains the invalid lower case character.' %(Name, self.File))
+                self.Verify16bitCodePoints(Value)
                 self.AddStringToList(Name, Language, Value)
                 continue
 
