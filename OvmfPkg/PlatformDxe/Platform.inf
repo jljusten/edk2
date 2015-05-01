@@ -26,7 +26,7 @@
 
 [Sources]
   Platform.c
-  Platform.uni
+  Platform.utf8
   PlatformConfig.c
   PlatformForms.vfr
 
