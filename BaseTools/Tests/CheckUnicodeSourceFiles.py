@@ -87,6 +87,15 @@ class Tests(TestTools.BaseToolsTest):
         self.fail('A unicode code point larger than 0xffff ' +
                   'should raise EdkLogger.FatalError')
 
+    def test32bitUnicodeCharInUtf8Comment(self):
+        data = u'''
+            // Comments can contain 32-bit unicode chars: \U00010300
+            #langdef en-US "English"
+            #string STR_A #language en-US "A"
+        '''
+
+        self.CheckFile('utf_8', shouldPass=True, string=data)
+
 TheTestSuite = TestTools.MakeTheTestSuite(locals())
 
 if __name__ == '__main__':
