@@ -81,6 +81,21 @@ class Tests(TestTools.BaseToolsTest):
     def testUtf16InUniFile(self):
         self.CheckFile('utf_16', shouldPass=True)
 
+    def testSupplementaryPlaneUnicodeCharInUtf16File(self):
+        #
+        # Supplementary Plane characters can exist in UTF-16 files,
+        # but they are not valid UCS-2 characters.
+        #
+        # This test makes sure that BaseTools rejects these characters
+        # if seen in a .uni file.
+        #
+        data = u'''
+            #langdef en-US "English"
+            #string STR_A #language en-US "CodePoint (\U00010300) > 0xFFFF"
+        '''
+
+        self.CheckFile('utf_16', shouldPass=False, string=data)
+
 TheTestSuite = TestTools.MakeTheTestSuite(locals())
 
 if __name__ == '__main__':
