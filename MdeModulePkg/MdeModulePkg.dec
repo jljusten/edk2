@@ -131,6 +131,10 @@
   #
   PlatformVarCleanupLib|Include/Library/PlatformVarCleanupLib.h
 
+  ## @libraryclass  Performs UEFI GOP Blt operations on a framebuffer
+  #
+  FrameBufferBltLib|Include/Library/FrameBufferBltLib.h
+
 [Guids]
   ## MdeModule package token space guid
   # Include/Guid/MdeModulePkgTokenSpace.h
