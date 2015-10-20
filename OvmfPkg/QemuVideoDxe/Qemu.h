@@ -119,6 +119,8 @@ typedef struct {
 
   UINT8                                 *LineBuffer;
   QEMU_VIDEO_VARIANT                    Variant;
+  VOID                                  *BltConfig;
+  UINTN                                 BltConfigSize;
 } QEMU_VIDEO_PRIVATE_DATA;
 
 ///

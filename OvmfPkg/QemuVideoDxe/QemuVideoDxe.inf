@@ -44,12 +44,12 @@
 
 [Packages]
   MdePkg/MdePkg.dec
-  OptionRomPkg/OptionRomPkg.dec
+  MdeModulePkg/MdeModulePkg.dec
   OvmfPkg/OvmfPkg.dec
 
 [LibraryClasses]
   BaseMemoryLib
-  BltLib
+  FrameBufferBltLib
   DebugLib
   DevicePathLib
   MemoryAllocationLib
@@ -65,7 +65,3 @@
   gEfiGraphicsOutputProtocolGuid                # PROTOCOL BY_START
   gEfiDevicePathProtocolGuid                    # PROTOCOL BY_START
   gEfiPciIoProtocolGuid                         # PROTOCOL TO_START
-
-[Pcd]
-  gOptionRomPkgTokenSpaceGuid.PcdDriverSupportedEfiVersion
-
