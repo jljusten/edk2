@@ -29,6 +29,7 @@
 #include <Library/PeCoffExtraActionLib.h>
 #include <Library/ExtractGuidedSectionLib.h>
 #include <Library/LocalApicLib.h>
+#include <Library/MtrrLib.h>
 
 #include <Ppi/TemporaryRamSupport.h>
 
@@ -687,6 +688,59 @@ FindAndReportEntryPoints (
   return;
 }
 
+
+/*
+  Initialize the MTRRs for the SEC phase.
+
+  Most importantly this will enable caching for decompression of the FVs.
+
+**/
+VOID
+InitializeMtrrsForSec (
+  VOID
+  )
+{
+  MTRR_SETTINGS               Settings;
+  MTRR_VARIABLE_SETTING       *Mtrr;
+
+  ZeroMem ((VOID *) &Settings, sizeof(Settings));
+
+  Settings.MtrrDefType = MTRR_LIB_CACHE_MTRR_ENABLED |
+    MTRR_LIB_CACHE_FIXED_MTRR_ENABLED | MTRR_CACHE_UNCACHEABLE;
+
+  //
+  // Address 0 - 0xa0000: Enable Write Back Cache
+  //
+  SetMem (&Settings.Fixed.Mtrr[0], 2 * sizeof(Settings.Fixed.Mtrr[0]),
+          MTRR_CACHE_WRITE_BACK);
+
+  //
+  // Set first 256MB as write-back cache
+  //
+  ASSERT ((PcdGet32 (PcdOvmfPeiMemFvBase) + PcdGet32 (PcdOvmfPeiMemFvSize)) <
+          SIZE_256MB);
+  ASSERT ((PcdGet32 (PcdOvmfDxeMemFvBase) + PcdGet32 (PcdOvmfDxeMemFvSize)) <
+          SIZE_256MB);
+  Mtrr = &Settings.Variables.Mtrr[0];
+  Mtrr->Base = 0LL | MTRR_CACHE_WRITE_BACK;
+  Mtrr->Mask = ((~(UINT64) (SIZE_256MB - 1) &
+                 MTRR_LIB_CACHE_VALID_ADDRESS) |
+                MTRR_LIB_CACHE_MTRR_ENABLED);
+
+  //
+  // Set ROM/Flash as write-protected cache
+  //
+  Mtrr = &Settings.Variables.Mtrr[0];
+  Mtrr->Base = PcdGet32 (PcdOvmfFdBaseAddress) | MTRR_CACHE_WRITE_PROTECTED;
+  Mtrr->Mask =
+    ((~(UINT64) (PcdGet32 (PcdOvmfFirmwareFdSize) - 1) &
+      MTRR_LIB_CACHE_VALID_ADDRESS) |
+     MTRR_LIB_CACHE_MTRR_ENABLED);
+
+  MtrrSetAllMtrrs (&Settings);
+}
+
+
 VOID
 EFIAPI
 SecCoreStartupWithStack (
@@ -712,6 +766,14 @@ SecCoreStartupWithStack (
   // to be compliant with UEFI spec.
   //
   InitializeFloatingPointUnits ();
+
+  //
+  // Initialize the MTRRs for the SEC phase. This will be redone more
+  // thoroughly at a later stage.
+  //
+  if (IsMtrrSupported ()) {
+    InitializeMtrrsForSec ();
+  }
 
   //
   // Initialize IDT
