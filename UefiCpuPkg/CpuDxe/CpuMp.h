@@ -114,7 +114,7 @@ typedef struct {
 **/
 typedef struct {
   CPU_DATA_BLOCK              *CpuDatas;
-  UINTN                       NumberOfProcessors;
+  UINT32                      NumberOfProcessors;
   UINTN                       NumberOfEnabledProcessors;
 
   EFI_AP_PROCEDURE            Procedure;

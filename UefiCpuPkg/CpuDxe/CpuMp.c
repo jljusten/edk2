@@ -1474,7 +1474,7 @@ ApEntryPointInC (
     // Store the Stack address, when reset the AP, We can found the original address.
     //
     mMpSystemData.CpuDatas[mMpSystemData.NumberOfProcessors].TopOfStack = TopOfApStack;
-    mMpSystemData.NumberOfProcessors++;
+    InterlockedIncrement (&mMpSystemData.NumberOfProcessors);
     mMpSystemData.NumberOfEnabledProcessors++;
   } else {
     Status = WhoAmI (&mMpServicesTemplate, &ProcessorNumber);
@@ -1749,9 +1749,18 @@ InitializeMpSupport (
     StartApsStackless ();
 
     //
-    // Wait for APs to arrive at the ApEntryPoint routine
+    // Wait for all APs to start
     //
-    MicroSecondDelay (PcdGet32 (PcdCpuApInitTimeOutInMicroSeconds));
+    Timeout = 0;
+    do {
+      if (InterlockedCompareExchange32 (
+            &mMpSystemData.NumberOfProcessors, 0, 0) >=
+          gMaxLogicalProcessorNumber) {
+        break;
+      }
+      MicroSecondDelay (gPollInterval);
+      Timeout += gPollInterval;
+    } while (Timeout <= PcdGet32 (PcdCpuApInitTimeOutInMicroSeconds));
   }
 
   DEBUG ((DEBUG_INFO, "Detect CPU count: %d\n", mMpSystemData.NumberOfProcessors));
