@@ -451,10 +451,6 @@ StartApsStackless (
   )
 {
   SendInitSipiSipiAllExcludingSelf ((UINT32)(UINTN)(VOID*) StartupCode);
-  //
-  // Wait for APs to arrive at the ApEntryPoint routine
-  //
-  MicroSecondDelay (PcdGet32 (PcdCpuApInitTimeOutInMicroSeconds));
 
   return EFI_SUCCESS;
 }

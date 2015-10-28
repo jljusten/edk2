@@ -1747,6 +1747,11 @@ InitializeMpSupport (
     PrepareAPStartupCode ();
 
     StartApsStackless ();
+
+    //
+    // Wait for APs to arrive at the ApEntryPoint routine
+    //
+    MicroSecondDelay (PcdGet32 (PcdCpuApInitTimeOutInMicroSeconds));
   }
 
   DEBUG ((DEBUG_INFO, "Detect CPU count: %d\n", mMpSystemData.NumberOfProcessors));
