@@ -1196,6 +1196,17 @@ WhoAmI (
     }
   }
 
+  if (Index >= mMpSystemData.NumberOfProcessors) {
+    //
+    // This is not a valid error for the WhoAmI function, but it should never
+    // happen from outside the driver. It could only happen if more APs
+    // started than the PcdCpuMaxLogicalProcessorNumber was set to. This call
+    // would come from ApEntryPointInC, and we use this error to prevent the
+    // AP from being used by MP services.
+    //
+    return EFI_DEVICE_ERROR;
+  }
+
   *ProcessorNumber = Index;
   return EFI_SUCCESS;
 }
@@ -1446,10 +1457,15 @@ ApEntryPointInC (
   VOID
   )
 {
+  EFI_STATUS      Status;
   VOID*           TopOfApStack;
   UINTN           ProcessorNumber;
 
   if (!mAPsAlreadyInitFinished) {
+    if (mMpSystemData.NumberOfProcessors >= gMaxLogicalProcessorNumber) {
+      return;
+    }
+
     FillInProcessorInformation (FALSE, mMpSystemData.NumberOfProcessors);
     TopOfApStack  = (UINT8*)mApStackStart + gApStackSize;
     mApStackStart = TopOfApStack;
@@ -1461,7 +1477,11 @@ ApEntryPointInC (
     mMpSystemData.NumberOfProcessors++;
     mMpSystemData.NumberOfEnabledProcessors++;
   } else {
-    WhoAmI (&mMpServicesTemplate, &ProcessorNumber);
+    Status = WhoAmI (&mMpServicesTemplate, &ProcessorNumber);
+    if (EFI_ERROR (Status)) {
+      return;
+    }
+
     //
     // Get the original stack address.
     //
