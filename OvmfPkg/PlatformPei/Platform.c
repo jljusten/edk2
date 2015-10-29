@@ -306,6 +306,21 @@ NoexecDxeInitialization (
 }
 
 VOID
+UpdateMaxNumberOfProcessors (
+  VOID
+  )
+{
+  UINT32 MaxProcessors;
+
+  if (QemuFwCfgIsAvailable ()) {
+    QemuFwCfgSelectItem (QemuFwCfgItemSmpCpuCount);
+    MaxProcessors = (UINT32) QemuFwCfgRead16 ();
+    ASSERT (MaxProcessors > 0);
+    PcdSet32 (PcdCpuMaxLogicalProcessorNumber, MaxProcessors);
+  }
+}
+
+VOID
 MiscInitialization (
   VOID
   )
@@ -326,6 +341,8 @@ MiscInitialization (
   // S3 resume as well, so we build it unconditionally.)
   //
   BuildCpuHob (mPhysMemAddressWidth, 16);
+
+  UpdateMaxNumberOfProcessors ();
 
   //
   // Determine platform type and save Host Bridge DID to PCD
