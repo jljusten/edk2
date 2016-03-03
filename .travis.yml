@@ -1,0 +1,18 @@
+language: c
+
+os:
+  - linux
+
+compiler:
+  - gcc
+
+addons:
+  apt:
+    packages:
+    - iasl
+    - nasm
+    - uuid-dev
+
+script:
+  - make -C BaseTools
+  - OvmfPkg/build.sh
