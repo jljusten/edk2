@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   SetMem32.asm
+;   SetMem32.nasm
 ;
 ; Abstract:
 ;
@@ -21,10 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .mmx
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -35,25 +32,24 @@
 ;    IN UINT32 Value
 ;    );
 ;------------------------------------------------------------------------------
-InternalMemSetMem32 PROC
+global ASM_PFX(InternalMemSetMem32)
+ASM_PFX(InternalMemSetMem32):
     mov     eax, [esp + 4]              ; eax <- Buffer as return value
     mov     ecx, [esp + 8]              ; ecx <- Count
-    movd    mm0, dword ptr [esp + 12]             ; mm0 <- Value
+    movd    mm0, dword [esp + 12]             ; mm0 <- Value
     shr     ecx, 1                      ; ecx <- number of qwords to set
     mov     edx, eax                    ; edx <- Buffer
     jz      @SetDwords
     movq    mm1, mm0
     psllq   mm1, 32
     por     mm0, mm1
-@@:
-    movq    qword ptr [edx], mm0
+.0:
+    movq    qword [edx], mm0
     lea     edx, [edx + 8]              ; use "lea" to avoid change in flags
-    loop    @B
+    loop    .0
 @SetDwords:
-    jnc     @F
-    movd    dword ptr [edx], mm0
-@@:
+    jnc     .1
+    movd    dword [edx], mm0
+.1:
     ret
-InternalMemSetMem32 ENDP
 
-    END
