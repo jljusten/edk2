@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -30,12 +31,11 @@
 ;   IN UINT64   Value
 ;   );
 ;------------------------------------------------------------------------------
-AsmWriteMm0 PROC
+global ASM_PFX(AsmWriteMm0)
+ASM_PFX(AsmWriteMm0):
     ;
     ; 64-bit MASM doesn't support MMX instructions, so use opcode here
     ;
-    DB      48h, 0fh, 6eh, 0c1h
+    DB      0x48, 0xf, 0x6e, 0xc1
     ret
-AsmWriteMm0 ENDP
 
-    END
