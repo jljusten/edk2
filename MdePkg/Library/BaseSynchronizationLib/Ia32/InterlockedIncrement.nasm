@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT32
@@ -32,11 +30,10 @@
 ;   IN      UINT32                    *Value
 ;   );
 ;------------------------------------------------------------------------------
-InternalSyncIncrement   PROC
+global ASM_PFX(InternalSyncIncrement)
+ASM_PFX(InternalSyncIncrement):
     mov     eax, [esp + 4]
-    lock    inc     dword ptr [eax]
+    lock    inc     dword [eax]
     mov     eax, [eax]
     ret
-InternalSyncIncrement   ENDP
 
-    END
