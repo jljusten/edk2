@@ -247,7 +247,7 @@
   Ia32/CpuPause.nasm| INTEL
   Ia32/CpuIdEx.nasm| INTEL
   Ia32/CpuId.nasm| INTEL
-  Ia32/CpuBreakpoint.asm | INTEL 
+  Ia32/CpuBreakpoint.nasm| INTEL
   Ia32/ARShiftU64.asm | INTEL 
   Ia32/Thunk16.nasm | MSFT
   Ia32/EnablePaging64.nasm| INTEL
