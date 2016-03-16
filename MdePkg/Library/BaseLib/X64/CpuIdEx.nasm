@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  UINT32
@@ -35,30 +36,31 @@
 ;    OUT  UINT32  *RegisterOutEdx  OPTIONAL
 ;    )
 ;------------------------------------------------------------------------------
-AsmCpuidEx  PROC    USES    rbx
+global ASM_PFX(AsmCpuidEx)
+ASM_PFX(AsmCpuidEx):
+    push    rbx
     mov     eax, ecx
     mov     ecx, edx
     push    rax                         ; save Index on stack
     cpuid
-    mov     r10, [rsp + 38h]
+    mov     r10, [rsp + 0x38]
     test    r10, r10
-    jz      @F
+    jz      .0
     mov     [r10], ecx
-@@:
+.0:
     mov     rcx, r8
-    jrcxz   @F
+    jrcxz   .1
     mov     [rcx], eax
-@@:
+.1:
     mov     rcx, r9
-    jrcxz   @F
+    jrcxz   .2
     mov     [rcx], ebx
-@@:
-    mov     rcx, [rsp + 40h]
-    jrcxz   @F
+.2:
+    mov     rcx, [rsp + 0x40]
+    jrcxz   .3
     mov     [rcx], edx
-@@:
+.3:
     pop     rax                         ; restore Index to rax as return value
+    pop     rbx
     ret
-AsmCpuidEx  ENDP
 
-    END
