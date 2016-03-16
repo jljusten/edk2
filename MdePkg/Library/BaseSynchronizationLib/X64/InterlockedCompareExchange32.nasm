@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT32
@@ -32,10 +33,9 @@
 ;   IN      UINT32                    ExchangeValue
 ;   );
 ;------------------------------------------------------------------------------
-InternalSyncCompareExchange32   PROC
+global ASM_PFX(InternalSyncCompareExchange32)
+ASM_PFX(InternalSyncCompareExchange32):
     mov     eax, edx
     lock    cmpxchg [rcx], r8d
     ret
-InternalSyncCompareExchange32   ENDP
 
-    END
