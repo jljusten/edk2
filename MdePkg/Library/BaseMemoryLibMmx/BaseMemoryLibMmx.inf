@@ -59,7 +59,7 @@
   Ia32/SetMem32.nasm
   Ia32/SetMem16.nasm
   Ia32/ZeroMem.nasm
-  Ia32/SetMem.S
+  Ia32/SetMem.nasm
   Ia32/CopyMem.S
   Ia32/ScanMem64.nasm
   Ia32/ScanMem32.nasm
@@ -70,7 +70,7 @@
   Ia32/SetMem32.nasm
   Ia32/SetMem16.nasm
   Ia32/ZeroMem.nasm
-  Ia32/SetMem.asm
+  Ia32/SetMem.nasm
   Ia32/CopyMem.asm
 
 [Sources.X64]
