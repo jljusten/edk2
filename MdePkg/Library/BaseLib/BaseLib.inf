@@ -244,7 +244,7 @@
   Ia32/DivU64x32.nasm| INTEL
   Ia32/DisablePaging32.nasm| INTEL
   Ia32/DisableInterrupts.nasm| INTEL
-  Ia32/CpuPause.asm | INTEL 
+  Ia32/CpuPause.nasm| INTEL
   Ia32/CpuIdEx.asm | INTEL 
   Ia32/CpuId.asm | INTEL 
   Ia32/CpuBreakpoint.asm | INTEL 
