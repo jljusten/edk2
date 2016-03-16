@@ -22,9 +22,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .486p
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -33,13 +31,12 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-AsmDisableCache PROC
+global ASM_PFX(AsmDisableCache)
+ASM_PFX(AsmDisableCache):
     mov     eax, cr0
     bts     eax, 30
     btr     eax, 29
     mov     cr0, eax
     wbinvd
     ret
-AsmDisableCache ENDP
 
-    END
