@@ -327,7 +327,7 @@
   X64/FlushCacheLine.nasm| MSFT
   X64/Invd.nasm| MSFT
   X64/Wbinvd.nasm| MSFT
-  X64/DisablePaging64.asm | MSFT
+  X64/DisablePaging64.nasm| MSFT
   X64/Mwait.asm | MSFT
   X64/Monitor.asm | MSFT
   X64/ReadPmc.asm | MSFT
@@ -400,7 +400,7 @@
   X64/FlushCacheLine.nasm| INTEL
   X64/Invd.nasm| INTEL
   X64/Wbinvd.nasm| INTEL
-  X64/DisablePaging64.asm | INTEL
+  X64/DisablePaging64.nasm| INTEL
   X64/Mwait.asm | INTEL
   X64/Monitor.asm | INTEL
   X64/ReadPmc.asm | INTEL
@@ -487,7 +487,7 @@
   X64/SetJump.nasm| GCC
   X64/LongJump.nasm| GCC
   X64/EnableDisableInterrupts.nasm| GCC
-  X64/DisablePaging64.S | GCC 
+  X64/DisablePaging64.nasm| GCC
   X64/CpuId.nasm| GCC
   X64/CpuIdEx.nasm| GCC
   X64/EnableCache.nasm| GCC
