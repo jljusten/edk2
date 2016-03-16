@@ -21,10 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .586P
-    .model  flat,C
-    .xmm
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID *
@@ -33,9 +30,10 @@
 ;   IN      VOID                      *LinearAddress
 ;   );
 ;------------------------------------------------------------------------------
-AsmFlushCacheLine   PROC
+global ASM_PFX(AsmFlushCacheLine)
+ASM_PFX(AsmFlushCacheLine):
     ;
-    ; If the CPU does not support CLFLUSH instruction, 
+    ; If the CPU does not support CLFLUSH instruction,
     ; then promote flush range to flush entire cache.
     ;
     mov     eax, 1
@@ -44,12 +42,10 @@ AsmFlushCacheLine   PROC
     pop     ebx
     mov     eax, [esp + 4]
     test    edx, BIT19
-    jz      @F
+    jz      .0
     clflush [eax]
     ret
-@@:
+.0:
     wbinvd
     ret
-AsmFlushCacheLine   ENDP
 
-    END
