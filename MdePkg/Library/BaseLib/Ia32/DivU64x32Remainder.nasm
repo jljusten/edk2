@@ -19,9 +19,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -32,7 +30,8 @@
 ;   OUT     UINT32                    *Remainder
 ;   );
 ;------------------------------------------------------------------------------
-InternalMathDivRemU64x32    PROC
+global ASM_PFX(InternalMathDivRemU64x32)
+ASM_PFX(InternalMathDivRemU64x32):
     mov     ecx, [esp + 12]         ; ecx <- divisor
     mov     eax, [esp + 8]          ; eax <- dividend[32..63]
     xor     edx, edx
@@ -41,11 +40,9 @@ InternalMathDivRemU64x32    PROC
     mov     eax, [esp + 8]          ; eax <- dividend[0..31]
     div     ecx                     ; eax <- quotient[0..31]
     mov     ecx, [esp + 20]         ; ecx <- Remainder
-    jecxz   @F                      ; abandon remainder if Remainder == NULL
+    jecxz   .0                      ; abandon remainder if Remainder == NULL
     mov     [ecx], edx
-@@:
+.0:
     pop     edx                     ; edx <- quotient[32..63]
     ret
-InternalMathDivRemU64x32    ENDP
 
-    END
