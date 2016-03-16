@@ -321,7 +321,7 @@
   X64/ReadMsr64.c | MSFT 
   X64/RdRand.nasm| MSFT
   X64/CpuPause.nasm| MSFT
-  X64/EnableDisableInterrupts.asm | MSFT
+  X64/EnableDisableInterrupts.nasm| MSFT
   X64/DisableInterrupts.asm | MSFT
   X64/EnableInterrupts.asm | MSFT
   X64/FlushCacheLine.asm | MSFT
@@ -394,7 +394,7 @@
   X64/ReadMsr64.asm | INTEL 
   X64/RdRand.nasm| INTEL
   X64/CpuPause.nasm| INTEL
-  X64/EnableDisableInterrupts.asm | INTEL
+  X64/EnableDisableInterrupts.nasm| INTEL
   X64/DisableInterrupts.asm | INTEL
   X64/EnableInterrupts.asm | INTEL
   X64/FlushCacheLine.asm | INTEL
@@ -486,7 +486,7 @@
   X64/SwitchStack.nasm| GCC
   X64/SetJump.nasm| GCC
   X64/LongJump.nasm| GCC
-  X64/EnableDisableInterrupts.S | GCC 
+  X64/EnableDisableInterrupts.nasm| GCC
   X64/DisablePaging64.S | GCC 
   X64/CpuId.nasm| GCC
   X64/CpuIdEx.nasm| GCC
