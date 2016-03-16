@@ -342,7 +342,7 @@
   X64/WriteMm0.nasm| MSFT
   X64/ReadMm7.nasm| MSFT
   X64/ReadMm6.nasm| MSFT
-  X64/ReadMm5.asm | MSFT
+  X64/ReadMm5.nasm| MSFT
   X64/ReadMm4.asm | MSFT
   X64/ReadMm3.asm | MSFT
   X64/ReadMm2.asm | MSFT
@@ -415,7 +415,7 @@
   X64/WriteMm0.nasm| INTEL
   X64/ReadMm7.nasm| INTEL
   X64/ReadMm6.nasm| INTEL
-  X64/ReadMm5.asm | INTEL
+  X64/ReadMm5.nasm| INTEL
   X64/ReadMm4.asm | INTEL
   X64/ReadMm3.asm | INTEL
   X64/ReadMm2.asm | INTEL

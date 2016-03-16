@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -30,12 +31,11 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-AsmReadMm5  PROC
+global ASM_PFX(AsmReadMm5)
+ASM_PFX(AsmReadMm5):
     ;
     ; 64-bit MASM doesn't support MMX instructions, so use opcode here
     ;
-    DB      48h, 0fh, 7eh, 0e8h
+    DB      0x48, 0xf, 0x7e, 0xe8
     ret
-AsmReadMm5  ENDP
 
-    END
