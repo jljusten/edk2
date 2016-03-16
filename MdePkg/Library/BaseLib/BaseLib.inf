@@ -192,7 +192,7 @@
   Ia32/RShiftU64.nasm| INTEL
   Ia32/ReadPmc.nasm| INTEL
   Ia32/ReadTsc.nasm| INTEL
-  Ia32/ReadLdtr.asm | INTEL 
+  Ia32/ReadLdtr.nasm| INTEL
   Ia32/ReadIdtr.asm | INTEL 
   Ia32/ReadGdtr.asm | INTEL 
   Ia32/ReadTr.asm | INTEL 
