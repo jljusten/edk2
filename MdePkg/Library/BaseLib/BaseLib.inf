@@ -232,7 +232,7 @@
   Ia32/LShiftU64.nasm| INTEL
   Ia32/LRotU64.nasm| INTEL
   Ia32/LongJump.nasm| INTEL
-  Ia32/Invd.asm | INTEL 
+  Ia32/Invd.nasm| INTEL
   Ia32/FxRestore.asm | INTEL 
   Ia32/FxSave.asm | INTEL 
   Ia32/FlushCacheLine.asm | INTEL 
