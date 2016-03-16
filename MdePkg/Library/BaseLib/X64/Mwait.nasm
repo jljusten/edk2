@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -31,11 +32,10 @@
 ;   IN      UINTN                     Ecx
 ;   );
 ;------------------------------------------------------------------------------
-AsmMwait    PROC
+global ASM_PFX(AsmMwait)
+ASM_PFX(AsmMwait):
     mov     eax, ecx
     mov     ecx, edx
-    DB      0fh, 1, 0c9h                ; mwait
+    DB      0xf, 1, 0xc9                ; mwait
     ret
-AsmMwait    ENDP
 
-    END
