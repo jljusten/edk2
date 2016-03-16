@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -30,9 +31,8 @@
 ;   OUT IA32_DESCRIPTOR  *Gdtr
 ;   );
 ;------------------------------------------------------------------------------
-InternalX86ReadGdtr   PROC
-    sgdt    fword ptr [rcx]
+global ASM_PFX(InternalX86ReadGdtr)
+ASM_PFX(InternalX86ReadGdtr):
+    sgdt    [rcx]
     ret
-InternalX86ReadGdtr   ENDP
 
-    END
