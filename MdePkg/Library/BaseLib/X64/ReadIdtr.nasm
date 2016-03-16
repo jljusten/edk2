@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -30,9 +31,8 @@
 ;   OUT     IA32_DESCRIPTOR           *Idtr
 ;   );
 ;------------------------------------------------------------------------------
-InternalX86ReadIdtr   PROC
-    sidt    fword ptr [rcx]
+global ASM_PFX(InternalX86ReadIdtr)
+ASM_PFX(InternalX86ReadIdtr):
+    sidt    [rcx]
     ret
-InternalX86ReadIdtr   ENDP
 
-    END
