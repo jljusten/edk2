@@ -359,7 +359,7 @@
   X64/ReadTr.nasm| MSFT
   X64/ReadSs.nasm| MSFT
   X64/ReadGs.nasm| MSFT
-  X64/ReadFs.asm | MSFT
+  X64/ReadFs.nasm| MSFT
   X64/ReadEs.asm | MSFT
   X64/ReadDs.asm | MSFT
   X64/ReadCs.asm | MSFT
@@ -432,7 +432,7 @@
   X64/ReadTr.nasm| INTEL
   X64/ReadSs.nasm| INTEL
   X64/ReadGs.nasm| INTEL
-  X64/ReadFs.asm | INTEL
+  X64/ReadFs.nasm| INTEL
   X64/ReadEs.asm | INTEL
   X64/ReadDs.asm | INTEL
   X64/ReadCs.asm | INTEL
