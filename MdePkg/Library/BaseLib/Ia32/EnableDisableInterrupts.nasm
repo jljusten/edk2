@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386p
-    .model  flat
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -32,10 +30,9 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-_EnableDisableInterrupts    PROC
+global ASM_PFX(_EnableDisableInterrupts)
+ASM_PFX(_EnableDisableInterrupts):
     sti
     cli
     ret
-_EnableDisableInterrupts    ENDP
 
-    END

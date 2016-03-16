@@ -238,7 +238,7 @@
   Ia32/FlushCacheLine.nasm| INTEL
   Ia32/EnablePaging32.nasm| INTEL
   Ia32/EnableInterrupts.nasm| INTEL
-  Ia32/EnableDisableInterrupts.asm | INTEL 
+  Ia32/EnableDisableInterrupts.nasm| INTEL
   Ia32/DivU64x64Remainder.nasm| INTEL
   Ia32/DivU64x32Remainder.asm | INTEL 
   Ia32/DivU64x32.asm | INTEL 
@@ -258,7 +258,7 @@
   Ia32/GccInline.c | GCC
   Ia32/Thunk16.nasm | GCC 
   Ia32/Thunk16.S | XCODE 
-  Ia32/EnableDisableInterrupts.S | GCC 
+  Ia32/EnableDisableInterrupts.nasm| GCC
   Ia32/EnablePaging64.nasm| GCC
   Ia32/DisablePaging32.S | GCC 
   Ia32/EnablePaging32.nasm| GCC
