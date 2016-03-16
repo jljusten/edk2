@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -32,10 +30,9 @@
 ;   OUT     IA32_DESCRIPTOR           *Idtr
 ;   );
 ;------------------------------------------------------------------------------
-InternalX86ReadIdtr PROC
+global ASM_PFX(InternalX86ReadIdtr)
+ASM_PFX(InternalX86ReadIdtr):
     mov     eax, [esp + 4]
-    sidt    fword ptr [eax]
+    sidt    [eax]
     ret
-InternalX86ReadIdtr ENDP
 
-    END
