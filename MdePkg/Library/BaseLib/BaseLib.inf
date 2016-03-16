@@ -361,7 +361,7 @@
   X64/ReadGs.nasm| MSFT
   X64/ReadFs.nasm| MSFT
   X64/ReadEs.nasm| MSFT
-  X64/ReadDs.asm | MSFT
+  X64/ReadDs.nasm| MSFT
   X64/ReadCs.asm | MSFT
   X64/WriteDr7.asm | MSFT
   X64/WriteDr6.asm | MSFT
@@ -434,7 +434,7 @@
   X64/ReadGs.nasm| INTEL
   X64/ReadFs.nasm| INTEL
   X64/ReadEs.nasm| INTEL
-  X64/ReadDs.asm | INTEL
+  X64/ReadDs.nasm| INTEL
   X64/ReadCs.asm | INTEL
   X64/WriteDr7.asm | INTEL
   X64/WriteDr6.asm | INTEL
