@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -31,14 +32,15 @@
 ;    IN UINT64 Value
 ;    )
 ;------------------------------------------------------------------------------
-InternalMemSetMem64 PROC    USES    rdi
+global ASM_PFX(InternalMemSetMem64)
+ASM_PFX(InternalMemSetMem64):
+    push    rdi
     push    rcx
     mov     rdi, rcx
     mov     rax, r8
     xchg    rcx, rdx
     rep     stosq
     pop     rax
+    pop     rdi
     ret
-InternalMemSetMem64 ENDP
 
-    END
