@@ -331,7 +331,7 @@
   X64/Mwait.nasm| MSFT
   X64/Monitor.nasm| MSFT
   X64/ReadPmc.nasm| MSFT
-  X64/ReadTsc.asm | MSFT
+  X64/ReadTsc.nasm| MSFT
   X64/WriteMm7.asm | MSFT
   X64/WriteMm6.asm | MSFT
   X64/WriteMm5.asm | MSFT
@@ -404,7 +404,7 @@
   X64/Mwait.nasm| INTEL
   X64/Monitor.nasm| INTEL
   X64/ReadPmc.nasm| INTEL
-  X64/ReadTsc.asm | INTEL
+  X64/ReadTsc.nasm| INTEL
   X64/WriteMm7.asm | INTEL
   X64/WriteMm6.asm | INTEL
   X64/WriteMm5.asm | INTEL

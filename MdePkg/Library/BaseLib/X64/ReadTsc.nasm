@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -30,11 +31,10 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-AsmReadTsc  PROC
+global ASM_PFX(AsmReadTsc)
+ASM_PFX(AsmReadTsc):
     rdtsc
-    shl     rdx, 20h
+    shl     rdx, 0x20
     or      rax, rdx
     ret
-AsmReadTsc  ENDP
 
-    END
