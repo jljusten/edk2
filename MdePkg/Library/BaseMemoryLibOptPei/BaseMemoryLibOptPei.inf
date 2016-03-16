@@ -44,7 +44,7 @@
   Ia32/SetMem32.nasm
   Ia32/SetMem16.nasm
   Ia32/SetMem.nasm
-  Ia32/CopyMem.S
+  Ia32/CopyMem.nasm
   Ia32/ScanMem64.nasm
   Ia32/ScanMem32.nasm
   Ia32/ScanMem16.nasm
@@ -55,7 +55,7 @@
   Ia32/SetMem32.nasm
   Ia32/SetMem16.nasm
   Ia32/SetMem.nasm
-  Ia32/CopyMem.asm
+  Ia32/CopyMem.nasm
   ScanMem64Wrapper.c
   ScanMem32Wrapper.c
   ScanMem16Wrapper.c
