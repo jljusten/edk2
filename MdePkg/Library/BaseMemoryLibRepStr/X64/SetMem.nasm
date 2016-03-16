@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -32,13 +33,14 @@
 ;    IN UINT8  Value
 ;    )
 ;------------------------------------------------------------------------------
-InternalMemSetMem   PROC    USES    rdi
+global ASM_PFX(InternalMemSetMem)
+ASM_PFX(InternalMemSetMem):
+    push    rdi
     mov     rax, r8    ; rax = Value
     mov     rdi, rcx   ; rdi = Buffer
     xchg    rcx, rdx   ; rcx = Count, rdx = Buffer
     rep     stosb
     mov     rax, rdx   ; rax = Buffer
+    pop     rdi
     ret
-InternalMemSetMem   ENDP
 
-    END

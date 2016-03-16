@@ -79,7 +79,7 @@
   X64/SetMem64.nasm
   X64/SetMem32.nasm
   X64/SetMem16.nasm
-  X64/SetMem.S
+  X64/SetMem.nasm
   X64/CopyMem.S
   X64/ScanMem64.nasm
   X64/ScanMem32.nasm
@@ -90,7 +90,7 @@
   X64/SetMem64.nasm
   X64/SetMem32.nasm
   X64/SetMem16.nasm
-  X64/SetMem.asm
+  X64/SetMem.nasm
   X64/CopyMem.asm
 
 [Packages]
