@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -33,13 +31,14 @@
 ;    IN UINT16 Value
 ;    )
 ;------------------------------------------------------------------------------
-InternalMemSetMem16 PROC    USES    edi
+global ASM_PFX(InternalMemSetMem16)
+ASM_PFX(InternalMemSetMem16):
+    push    edi
     mov     eax, [esp + 16]
     mov     edi, [esp + 8]
     mov     ecx, [esp + 12]
     rep     stosw
     mov     eax, [esp + 8]
+    pop     edi
     ret
-InternalMemSetMem16 ENDP
 
-    END
