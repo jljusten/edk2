@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -35,7 +33,8 @@
 ;   IN      VOID                      *NewStack
 ;   );
 ;------------------------------------------------------------------------------
-InternalX86EnablePaging32 PROC
+global ASM_PFX(InternalX86EnablePaging32)
+ASM_PFX(InternalX86EnablePaging32):
     mov     ebx, [esp + 4]
     mov     ecx, [esp + 8]
     mov     edx, [esp + 12]
@@ -52,6 +51,4 @@ InternalX86EnablePaging32 PROC
     push    ecx
     call    ebx
     jmp     $
-InternalX86EnablePaging32 ENDP
 
-    END
