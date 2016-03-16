@@ -320,7 +320,7 @@
   X64/WriteMsr64.c | MSFT 
   X64/ReadMsr64.c | MSFT 
   X64/RdRand.nasm| MSFT
-  X64/CpuPause.asm | MSFT
+  X64/CpuPause.nasm| MSFT
   X64/EnableDisableInterrupts.asm | MSFT
   X64/DisableInterrupts.asm | MSFT
   X64/EnableInterrupts.asm | MSFT
@@ -393,7 +393,7 @@
   X64/WriteMsr64.asm | INTEL 
   X64/ReadMsr64.asm | INTEL 
   X64/RdRand.nasm| INTEL
-  X64/CpuPause.asm | INTEL
+  X64/CpuPause.nasm| INTEL
   X64/EnableDisableInterrupts.asm | INTEL
   X64/DisableInterrupts.asm | INTEL
   X64/EnableInterrupts.asm | INTEL
