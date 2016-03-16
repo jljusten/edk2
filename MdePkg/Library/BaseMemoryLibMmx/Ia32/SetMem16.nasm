@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   SetMem16.asm
+;   SetMem16.nasm
 ;
 ; Abstract:
 ;
@@ -21,10 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .mmx
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -35,7 +32,9 @@
 ;    IN UINT16 Value
 ;    )
 ;------------------------------------------------------------------------------
-InternalMemSetMem16 PROC    USES    edi
+global ASM_PFX(InternalMemSetMem16)
+ASM_PFX(InternalMemSetMem16):
+    push    edi
     mov     eax, [esp + 16]
     shrd    edx, eax, 16
     shld    eax, edx, 16
@@ -49,15 +48,14 @@ InternalMemSetMem16 PROC    USES    edi
     movd    mm1, eax
     psllq   mm0, 32
     por     mm0, mm1
-@@:
+.0:
     movq    [edi], mm0
     add     edi, 8
-    loop    @B
+    loop    .0
 @SetWords:
     mov     ecx, edx
     rep     stosw
     mov     eax, [esp + 8]
+    pop     edi
     ret
-InternalMemSetMem16 ENDP
 
-    END
