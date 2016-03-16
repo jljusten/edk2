@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386p
-    .model  flat
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -32,10 +30,9 @@
 ;   IN UINT16 Ldtr
 ;   );
 ;------------------------------------------------------------------------------
-_AsmWriteLdtr   PROC
+global ASM_PFX(_AsmWriteLdtr)
+ASM_PFX(_AsmWriteLdtr):
     mov     eax, [esp + 4]
     lldt    ax
     ret
-_AsmWriteLdtr   ENDP
 
-    END
