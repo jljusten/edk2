@@ -54,7 +54,7 @@
   
   X64/InterlockedCompareExchange64.nasm| INTEL
   X64/InterlockedCompareExchange32.nasm| INTEL
-  X64/InterlockedCompareExchange16.asm | INTEL
+  X64/InterlockedCompareExchange16.nasm| INTEL
   
   X64/InterlockedDecrement.c | MSFT 
   X64/InterlockedIncrement.c | MSFT 

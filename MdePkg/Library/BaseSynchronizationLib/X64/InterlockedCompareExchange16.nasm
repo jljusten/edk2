@@ -22,7 +22,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT16
@@ -33,10 +34,9 @@
 ;   IN      UINT16                    ExchangeValue
 ;   );
 ;------------------------------------------------------------------------------
-InternalSyncCompareExchange16   PROC
+global ASM_PFX(InternalSyncCompareExchange16)
+ASM_PFX(InternalSyncCompareExchange16):
     mov     ax, dx
     lock    cmpxchg [rcx], r8w
     ret
-InternalSyncCompareExchange16   ENDP
 
-    END
