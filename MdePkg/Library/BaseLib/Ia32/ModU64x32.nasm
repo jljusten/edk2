@@ -19,9 +19,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT32
@@ -31,7 +29,8 @@
 ;   IN      UINT32                    Divisor
 ;   );
 ;------------------------------------------------------------------------------
-InternalMathModU64x32   PROC
+global ASM_PFX(InternalMathModU64x32)
+ASM_PFX(InternalMathModU64x32):
     mov     eax, [esp + 8]
     mov     ecx, [esp + 12]
     xor     edx, edx
@@ -40,6 +39,4 @@ InternalMathModU64x32   PROC
     div     ecx
     mov     eax, edx
     ret
-InternalMathModU64x32   ENDP
 
-    END
