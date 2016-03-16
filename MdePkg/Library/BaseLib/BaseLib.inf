@@ -311,7 +311,7 @@
   X64/CpuIdEx.nasm
   X64/CpuId.nasm
   X64/LongJump.nasm
-  X64/SetJump.asm
+  X64/SetJump.nasm
   X64/SwitchStack.asm
   X64/EnableCache.asm
   X64/DisableCache.asm
@@ -484,7 +484,7 @@
   X64/Thunk16.nasm | GCC 
   X64/Thunk16.S | XCODE 
   X64/SwitchStack.S | GCC 
-  X64/SetJump.S | GCC 
+  X64/SetJump.nasm| GCC
   X64/LongJump.nasm| GCC
   X64/EnableDisableInterrupts.S | GCC 
   X64/DisablePaging64.S | GCC 

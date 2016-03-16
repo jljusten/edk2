@@ -19,9 +19,10 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
-EXTERN   InternalAssertJumpBuffer:PROC
+extern ASM_PFX(InternalAssertJumpBuffer)
 
 ;------------------------------------------------------------------------------
 ; UINTN
@@ -30,37 +31,36 @@ EXTERN   InternalAssertJumpBuffer:PROC
 ;   OUT     BASE_LIBRARY_JUMP_BUFFER  *JumpBuffer
 ;   );
 ;------------------------------------------------------------------------------
-SetJump     PROC
+global ASM_PFX(SetJump)
+ASM_PFX(SetJump):
     push    rcx
-    add     rsp, -20h
-    call    InternalAssertJumpBuffer
-    add     rsp, 20h
+    add     rsp, -0x20
+    call    ASM_PFX(InternalAssertJumpBuffer)
+    add     rsp, 0x20
     pop     rcx
     pop     rdx
     mov     [rcx], rbx
     mov     [rcx + 8], rsp
-    mov     [rcx + 10h], rbp
-    mov     [rcx + 18h], rdi
-    mov     [rcx + 20h], rsi
-    mov     [rcx + 28h], r12
-    mov     [rcx + 30h], r13
-    mov     [rcx + 38h], r14
-    mov     [rcx + 40h], r15
-    mov     [rcx + 48h], rdx
+    mov     [rcx + 0x10], rbp
+    mov     [rcx + 0x18], rdi
+    mov     [rcx + 0x20], rsi
+    mov     [rcx + 0x28], r12
+    mov     [rcx + 0x30], r13
+    mov     [rcx + 0x38], r14
+    mov     [rcx + 0x40], r15
+    mov     [rcx + 0x48], rdx
     ; save non-volatile fp registers
-    stmxcsr [rcx + 50h]
-    movdqu  [rcx + 58h], xmm6
-    movdqu  [rcx + 68h], xmm7
-    movdqu  [rcx + 78h], xmm8
-    movdqu  [rcx + 88h], xmm9
-    movdqu  [rcx + 98h], xmm10
-    movdqu  [rcx + 0A8h], xmm11
-    movdqu  [rcx + 0B8h], xmm12
-    movdqu  [rcx + 0C8h], xmm13
-    movdqu  [rcx + 0D8h], xmm14
-    movdqu  [rcx + 0E8h], xmm15
+    stmxcsr [rcx + 0x50]
+    movdqu  [rcx + 0x58], xmm6
+    movdqu  [rcx + 0x68], xmm7
+    movdqu  [rcx + 0x78], xmm8
+    movdqu  [rcx + 0x88], xmm9
+    movdqu  [rcx + 0x98], xmm10
+    movdqu  [rcx + 0xA8], xmm11
+    movdqu  [rcx + 0xB8], xmm12
+    movdqu  [rcx + 0xC8], xmm13
+    movdqu  [rcx + 0xD8], xmm14
+    movdqu  [rcx + 0xE8], xmm15
     xor     rax, rax
     jmp     rdx
-SetJump     ENDP
 
-    END
