@@ -20,9 +20,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386p
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -31,10 +29,9 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-CpuFlushTlb PROC
+global ASM_PFX(CpuFlushTlb)
+ASM_PFX(CpuFlushTlb):
     mov     eax, cr3
     mov     cr3, eax                    ; moving to CR3 flushes TLB
     ret
-CpuFlushTlb ENDP
 
-    END
