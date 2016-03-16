@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -30,9 +31,8 @@
 ;   IN CONST IA32_FX_BUFFER *Buffer
 ;   );
 ;------------------------------------------------------------------------------
-InternalX86FxRestore  PROC
+global ASM_PFX(InternalX86FxRestore)
+ASM_PFX(InternalX86FxRestore):
     fxrstor [rcx]
     ret
-InternalX86FxRestore  ENDP
 
-    END
