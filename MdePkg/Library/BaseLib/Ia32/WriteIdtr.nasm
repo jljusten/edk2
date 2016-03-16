@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386p
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -32,13 +30,12 @@
 ;   IN      CONST IA32_DESCRIPTOR     *Idtr
 ;   );
 ;------------------------------------------------------------------------------
-InternalX86WriteIdtr  PROC
+global ASM_PFX(InternalX86WriteIdtr)
+ASM_PFX(InternalX86WriteIdtr):
     mov     eax, [esp + 4]
     pushfd
     cli
-    lidt    fword ptr [eax]
+    lidt    [eax]
     popfd
     ret
-InternalX86WriteIdtr  ENDP
 
-    END
