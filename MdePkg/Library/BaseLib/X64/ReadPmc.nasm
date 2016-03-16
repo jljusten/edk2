@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -30,11 +31,10 @@
 ;   IN UINT32   PmcIndex
 ;   );
 ;------------------------------------------------------------------------------
-AsmReadPmc  PROC
+global ASM_PFX(AsmReadPmc)
+ASM_PFX(AsmReadPmc):
     rdpmc
-    shl     rdx, 20h
+    shl     rdx, 0x20
     or      rax, rdx
     ret
-AsmReadPmc  ENDP
 
-    END
