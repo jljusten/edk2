@@ -13,13 +13,11 @@
 ; WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 ;
 ;;
-    .586P
-    .model  flat,C
-    .code
+    SECTION .text
 
-PUBLIC   AsmFixAddress16
-PUBLIC   AsmJmpAddr32
-   
+global ASM_PFX(AsmFixAddress16)
+global ASM_PFX(AsmJmpAddr32)
+
 ;-----------------------------------------
 ;VOID
 ;AsmTransferControl (
@@ -27,45 +25,43 @@ PUBLIC   AsmJmpAddr32
 ;  IN   UINT32           AcpiLowMemoryBase
 ;  );
 ;-----------------------------------------
-   
-AsmTransferControl  PROC
+
+global ASM_PFX(AsmTransferControl)
+ASM_PFX(AsmTransferControl):
     ; S3WakingVector    :DWORD
     ; AcpiLowMemoryBase :DWORD
     push  ebp
-    mov   ebp, esp    
-    lea   eax, @F
-    push  28h               ; CS
+    mov   ebp, esp
+    lea   eax, [.0]
+    push  0x28               ; CS
     push  eax
     mov   ecx, [ebp + 8]
     shrd  ebx, ecx, 20
-    and   ecx, 0fh          
-    mov   bx, cx          
+    and   ecx, 0xf
+    mov   bx, cx
     mov   [@jmp_addr], ebx
     retf
-@@:
-    DB    0b8h, 30h, 0      ; mov ax, 30h as selector
+.0:
+    DB    0xb8, 0x30, 0      ; mov ax, 30h as selector
     mov   ds, ax
     mov   es, ax
     mov   fs, ax
     mov   gs, ax
     mov   ss, ax
-    mov   eax, cr0          ; Get control register 0  
-    DB    66h
-    DB    83h, 0e0h, 0feh   ; and    eax, 0fffffffeh  ; Clear PE bit (bit #0)
-    DB    0fh, 22h, 0c0h    ; mov    cr0, eax         ; Activate real mode
-    DB    0eah              ; jmp far @jmp_addr
-@jmp_addr DD  ?
+    mov   eax, cr0          ; Get control register 0
+    DB    0x66
+    DB    0x83, 0xe0, 0xfe   ; and    eax, 0fffffffeh  ; Clear PE bit (bit #0)
+    DB    0xf, 0x22, 0xc0    ; mov    cr0, eax         ; Activate real mode
+    DB    0xea              ; jmp far @jmp_addr
+@jmp_addr: DD 0
 
-AsmTransferControl  ENDP
-
-AsmTransferControl32  PROC
-  jmp AsmTransferControl
-AsmTransferControl32  ENDP
+global ASM_PFX(AsmTransferControl32)
+ASM_PFX(AsmTransferControl32):
+  jmp ASM_PFX(AsmTransferControl)
 
 ; dummy
-AsmTransferControl16  PROC
-AsmFixAddress16  DD ?
-AsmJmpAddr32 DD  ?
-AsmTransferControl16  ENDP
+global ASM_PFX(AsmTransferControl16)
+ASM_PFX(AsmTransferControl16):
+ASM_PFX(AsmFixAddress16): DD 0
+ASM_PFX(AsmJmpAddr32): DD 0
 
-    END
