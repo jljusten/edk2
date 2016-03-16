@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -33,7 +31,9 @@
 ;    IN UINT8  Value
 ;    )
 ;------------------------------------------------------------------------------
-InternalMemSetMem   PROC    USES    edi
+global ASM_PFX(InternalMemSetMem)
+ASM_PFX(InternalMemSetMem):
+    push    edi
     mov         ecx, [esp + 12]
     mov         al,  [esp + 16]
     mov         ah,  al
@@ -47,7 +47,6 @@ InternalMemSetMem   PROC    USES    edi
     and         ecx, 3
     rep stosb
     mov         eax, [esp + 8]
+    pop     edi
     ret
-InternalMemSetMem   ENDP
 
-    END
