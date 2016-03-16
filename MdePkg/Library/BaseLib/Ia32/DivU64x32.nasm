@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   DivU64x32.asm
+;   DivU64x32.nasm
 ;
 ; Abstract:
 ;
@@ -19,9 +19,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -31,7 +29,8 @@
 ;   IN      UINT32                    Divisor
 ;   );
 ;------------------------------------------------------------------------------
-InternalMathDivU64x32   PROC
+global ASM_PFX(InternalMathDivU64x32)
+ASM_PFX(InternalMathDivU64x32):
     mov     eax, [esp + 8]
     mov     ecx, [esp + 12]
     xor     edx, edx
@@ -41,6 +40,4 @@ InternalMathDivU64x32   PROC
     div     ecx
     pop     edx                     ; restore high-order dword of the quotient
     ret
-InternalMathDivU64x32   ENDP
 
-    END
