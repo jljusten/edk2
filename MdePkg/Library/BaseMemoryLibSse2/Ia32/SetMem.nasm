@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   SetMem.asm
+;   SetMem.nasm
 ;
 ; Abstract:
 ;
@@ -21,10 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .xmm
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -35,19 +32,21 @@
 ;    IN UINT8  Value
 ;    );
 ;------------------------------------------------------------------------------
-InternalMemSetMem   PROC    USES    edi
+global ASM_PFX(InternalMemSetMem)
+ASM_PFX(InternalMemSetMem):
+    push    edi
     mov     edx, [esp + 12]             ; edx <- Count
     mov     edi, [esp + 8]              ; edi <- Buffer
     mov     al, [esp + 16]              ; al <- Value
     xor     ecx, ecx
     sub     ecx, edi
     and     ecx, 15                     ; ecx + edi aligns on 16-byte boundary
-    jz      @F
+    jz      .0
     cmp     ecx, edx
     cmova   ecx, edx
     sub     edx, ecx
     rep     stosb
-@@:
+.0:
     mov     ecx, edx
     and     edx, 15
     shr     ecx, 4                      ; ecx <- # of DQwords to set
@@ -58,10 +57,10 @@ InternalMemSetMem   PROC    USES    edi
     movd    xmm0, eax
     pshuflw xmm0, xmm0, 0               ; xmm0[0..63] <- Value repeats 8 times
     movlhps xmm0, xmm0                  ; xmm0 <- Value repeats 16 times
-@@:
+.1:
     movntdq [edi], xmm0                 ; edi should be 16-byte aligned
     add     edi, 16
-    loop    @B
+    loop    .1
     mfence
     movdqu  xmm0, [esp]                 ; restore xmm0
     add     esp, 16                     ; stack cleanup
@@ -69,7 +68,6 @@ InternalMemSetMem   PROC    USES    edi
     mov     ecx, edx
     rep     stosb
     mov     eax, [esp + 8]              ; eax <- Buffer as return value
+    pop     edi
     ret
-InternalMemSetMem   ENDP
 
-    END
