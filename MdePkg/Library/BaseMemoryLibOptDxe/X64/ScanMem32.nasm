@@ -29,7 +29,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; CONST VOID *
@@ -40,14 +41,15 @@
 ;   IN      UINT32                    Value
 ;   );
 ;------------------------------------------------------------------------------
-InternalMemScanMem32    PROC    USES    rdi
+global ASM_PFX(InternalMemScanMem32)
+ASM_PFX(InternalMemScanMem32):
+    push    rdi
     mov     rdi, rcx
     mov     rax, r8
     mov     rcx, rdx
     repne   scasd
     lea     rax, [rdi - 4]
     cmovnz  rax, rcx
+    pop     rdi
     ret
-InternalMemScanMem32    ENDP
 
-    END
