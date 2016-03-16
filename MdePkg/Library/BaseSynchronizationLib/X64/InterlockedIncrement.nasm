@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT32
@@ -30,10 +31,9 @@
 ;   IN      UINT32                    *Value
 ;   );
 ;------------------------------------------------------------------------------
-InternalSyncIncrement   PROC
-    lock    inc     dword ptr [rcx]
+global ASM_PFX(InternalSyncIncrement)
+ASM_PFX(InternalSyncIncrement):
+    lock    inc     dword [rcx]
     mov     eax, [rcx]
     ret
-InternalSyncIncrement   ENDP
 
-    END

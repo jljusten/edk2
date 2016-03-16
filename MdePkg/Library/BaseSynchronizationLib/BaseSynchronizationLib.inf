@@ -61,7 +61,7 @@
   SynchronizationMsc.c | MSFT 
 
   X64/InterlockedDecrement.nasm| INTEL
-  X64/InterlockedIncrement.asm | INTEL 
+  X64/InterlockedIncrement.nasm| INTEL
   Synchronization.c | INTEL 
 
   X64/GccInline.c | GCC
