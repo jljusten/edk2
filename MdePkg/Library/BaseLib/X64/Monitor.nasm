@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -32,12 +33,11 @@
 ;   IN      UINTN                     Edx
 ;   );
 ;------------------------------------------------------------------------------
-AsmMonitor  PROC
+global ASM_PFX(AsmMonitor)
+ASM_PFX(AsmMonitor):
     mov     eax, ecx
     mov     ecx, edx
     mov     edx, r8d
-    DB      0fh, 1, 0c8h                ; monitor
+    DB      0xf, 1, 0xc8                ; monitor
     ret
-AsmMonitor  ENDP
 
-    END
