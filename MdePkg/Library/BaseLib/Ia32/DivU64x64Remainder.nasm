@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   DivU64x64Remainder.asm
+;   DivU64x64Remainder.nasm
 ;
 ; Abstract:
 ;
@@ -20,11 +20,9 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
-EXTERN  InternalMathDivRemU64x32:PROC
+extern ASM_PFX(InternalMathDivRemU64x32)
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -35,37 +33,40 @@ EXTERN  InternalMathDivRemU64x32:PROC
 ;   OUT     UINT64                    *Remainder    OPTIONAL
 ;   );
 ;------------------------------------------------------------------------------
-InternalMathDivRemU64x64    PROC
+global ASM_PFX(InternalMathDivRemU64x64)
+ASM_PFX(InternalMathDivRemU64x64):
     mov     ecx, [esp + 16]             ; ecx <- divisor[32..63]
     test    ecx, ecx
     jnz     _@DivRemU64x64              ; call _@DivRemU64x64 if Divisor > 2^32
     mov     ecx, [esp + 20]
-    jecxz   @F
-    and     dword ptr [ecx + 4], 0      ; zero high dword of remainder
+    jecxz   .0
+    and     dword [ecx + 4], 0      ; zero high dword of remainder
     mov     [esp + 16], ecx             ; set up stack frame to match DivRemU64x32
-@@:
-    jmp     InternalMathDivRemU64x32
-InternalMathDivRemU64x64    ENDP
+.0:
+    jmp     ASM_PFX(InternalMathDivRemU64x32)
 
-_@DivRemU64x64  PROC PRIVATE    USES    ebx esi edi
-    mov     edx, dword ptr [esp + 20]
-    mov     eax, dword ptr [esp + 16]   ; edx:eax <- dividend
+_@DivRemU64x64:
+    push    ebx
+    push    esi
+    push    edi
+    mov     edx, dword [esp + 20]
+    mov     eax, dword [esp + 16]   ; edx:eax <- dividend
     mov     edi, edx
     mov     esi, eax                    ; edi:esi <- dividend
-    mov     ebx, dword ptr [esp + 24]   ; ecx:ebx <- divisor
-@@:
+    mov     ebx, dword [esp + 24]   ; ecx:ebx <- divisor
+.1:
     shr     edx, 1
     rcr     eax, 1
     shrd    ebx, ecx, 1
     shr     ecx, 1
-    jnz     @B
+    jnz     .1
     div     ebx
     mov     ebx, eax                    ; ebx <- quotient
     mov     ecx, [esp + 28]             ; ecx <- high dword of divisor
-    mul     dword ptr [esp + 24]        ; edx:eax <- quotient * divisor[0..31]
+    mul     dword [esp + 24]        ; edx:eax <- quotient * divisor[0..31]
     imul    ecx, ebx                    ; ecx <- quotient * divisor[32..63]
     add     edx, ecx                    ; edx <- (quotient * divisor)[32..63]
-    mov     ecx, dword ptr [esp + 32]   ; ecx <- addr for Remainder
+    mov     ecx, dword [esp + 32]   ; ecx <- addr for Remainder
     jc      @TooLarge                   ; product > 2^64
     cmp     edi, edx                    ; compare high 32 bits
     ja      @Correct
@@ -75,8 +76,8 @@ _@DivRemU64x64  PROC PRIVATE    USES    ebx esi edi
 @TooLarge:
     dec     ebx                         ; adjust quotient by -1
     jecxz   @Return                     ; return if Remainder == NULL
-    sub     eax, dword ptr [esp + 24]
-    sbb     edx, dword ptr [esp + 28]   ; edx:eax <- (quotient - 1) * divisor
+    sub     eax, dword [esp + 24]
+    sbb     edx, dword [esp + 28]   ; edx:eax <- (quotient - 1) * divisor
 @Correct:
     jecxz   @Return
     sub     esi, eax
@@ -86,7 +87,8 @@ _@DivRemU64x64  PROC PRIVATE    USES    ebx esi edi
 @Return:
     mov     eax, ebx                    ; eax <- quotient
     xor     edx, edx                    ; quotient is 32 bits long
+    pop     edi
+    pop     esi
+    pop     ebx
     ret
-_@DivRemU64x64  ENDP
 
-    END
