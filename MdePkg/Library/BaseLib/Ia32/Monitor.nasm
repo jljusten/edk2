@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINTN
@@ -34,12 +32,11 @@
 ;   IN      UINTN                     Edx
 ;   );
 ;------------------------------------------------------------------------------
-AsmMonitor  PROC
+global ASM_PFX(AsmMonitor)
+ASM_PFX(AsmMonitor):
     mov     eax, [esp + 4]
     mov     ecx, [esp + 8]
     mov     edx, [esp + 12]
-    DB      0fh, 1, 0c8h                ; monitor
+    DB      0xf, 1, 0xc8                ; monitor
     ret
-AsmMonitor  ENDP
 
-    END
