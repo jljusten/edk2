@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .586p
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -33,12 +31,11 @@
 ;   IN UINT64  Value
 ;   );
 ;------------------------------------------------------------------------------
-AsmWriteMsr64   PROC
+global ASM_PFX(AsmWriteMsr64)
+ASM_PFX(AsmWriteMsr64):
     mov     edx, [esp + 12]
     mov     eax, [esp + 8]
     mov     ecx, [esp + 4]
     wrmsr
     ret
-AsmWriteMsr64   ENDP
 
-    END
