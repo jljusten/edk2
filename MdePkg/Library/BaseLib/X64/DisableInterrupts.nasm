@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -30,9 +31,8 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-DisableInterrupts   PROC
+global ASM_PFX(DisableInterrupts)
+ASM_PFX(DisableInterrupts):
     cli
     ret
-DisableInterrupts   ENDP
 
-    END
