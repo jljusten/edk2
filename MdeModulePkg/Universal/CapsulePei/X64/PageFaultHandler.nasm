@@ -13,14 +13,16 @@
 ;
 ;;
 
-EXTERN PageFaultHandler:PROC
+extern ASM_PFX(PageFaultHandler)
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
-PageFaultHandlerHook PROC
-    add     rsp, -10h
+global ASM_PFX(PageFaultHandlerHook)
+ASM_PFX(PageFaultHandlerHook):
+    add     rsp, -0x10
     ; save rax
-    mov     [rsp + 08h], rax
+    mov     [rsp + 0x8], rax
 
     ;push    rax                         ; save all volatile registers
     push    rcx
@@ -31,28 +33,28 @@ PageFaultHandlerHook PROC
     push    r11
     ; save volatile fp registers
     ; 68h + 08h(for alignment)
-    add     rsp, -70h
-    stmxcsr [rsp + 60h]
-    movdqa  [rsp + 0h], xmm0
-    movdqa  [rsp + 10h], xmm1
-    movdqa  [rsp + 20h], xmm2
-    movdqa  [rsp + 30h], xmm3
-    movdqa  [rsp + 40h], xmm4
-    movdqa  [rsp + 50h], xmm5
+    add     rsp, -0x70
+    stmxcsr [rsp + 0x60]
+    movdqa  [rsp + 0x0], xmm0
+    movdqa  [rsp + 0x10], xmm1
+    movdqa  [rsp + 0x20], xmm2
+    movdqa  [rsp + 0x30], xmm3
+    movdqa  [rsp + 0x40], xmm4
+    movdqa  [rsp + 0x50], xmm5
 
-    add     rsp, -20h
-    call    PageFaultHandler
-    add     rsp, 20h
+    add     rsp, -0x20
+    call    ASM_PFX(PageFaultHandler)
+    add     rsp, 0x20
 
     ; load volatile fp registers
-    ldmxcsr [rsp + 60h]
-    movdqa  xmm0,  [rsp + 0h]
-    movdqa  xmm1,  [rsp + 10h]
-    movdqa  xmm2,  [rsp + 20h]
-    movdqa  xmm3,  [rsp + 30h]
-    movdqa  xmm4,  [rsp + 40h]
-    movdqa  xmm5,  [rsp + 50h]
-    add     rsp, 70h
+    ldmxcsr [rsp + 0x60]
+    movdqa  xmm0,  [rsp + 0x0]
+    movdqa  xmm1,  [rsp + 0x10]
+    movdqa  xmm2,  [rsp + 0x20]
+    movdqa  xmm3,  [rsp + 0x30]
+    movdqa  xmm4,  [rsp + 0x40]
+    movdqa  xmm5,  [rsp + 0x50]
+    add     rsp, 0x70
 
     pop     r11
     pop     r10
@@ -62,7 +64,7 @@ PageFaultHandlerHook PROC
     pop     rcx
     ;pop     rax                         ; restore all volatile registers
 
-    add     rsp, 10h
+    add     rsp, 0x10
 
     ; rax returned from PageFaultHandler is NULL or OriginalHandler address
     ; NULL if the page fault is handled by PageFaultHandler
@@ -70,18 +72,16 @@ PageFaultHandlerHook PROC
     test    rax, rax
 
     ; save OriginalHandler address
-    mov     [rsp - 10h], rax
+    mov     [rsp - 0x10], rax
     ; restore rax
-    mov     rax, [rsp - 08h]
+    mov     rax, [rsp - 0x8]
 
-    jz      @F
+    jz      .0
 
     ; jump to OriginalHandler
-    jmp     qword ptr [rsp - 10h]
+    jmp     qword [rsp - 0x10]
 
-@@:
-    add     rsp, 08h                    ; skip error code for PF
+.0:
+    add     rsp, 0x8                    ; skip error code for PF
     iretq
-PageFaultHandlerHook ENDP
 
-    END

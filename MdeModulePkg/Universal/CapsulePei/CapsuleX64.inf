@@ -38,8 +38,7 @@
 
 [Sources]
   X64/X64Entry.c
-  X64/PageFaultHandler.asm
-  X64/PageFaultHandler.S
+  X64/PageFaultHandler.nasm
   Common/CapsuleCoalesce.c
 
 [Packages]
