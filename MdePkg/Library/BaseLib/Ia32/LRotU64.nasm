@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   LRotU64.asm
+;   LRotU64.nasm
 ;
 ; Abstract:
 ;
@@ -19,9 +19,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -31,7 +29,9 @@
 ;   IN      UINTN                     Count
 ;   );
 ;------------------------------------------------------------------------------
-InternalMathLRotU64 PROC    USES    ebx
+global ASM_PFX(InternalMathLRotU64)
+ASM_PFX(InternalMathLRotU64):
+    push    ebx
     mov     cl, [esp + 16]
     mov     edx, [esp + 12]
     mov     eax, [esp + 8]
@@ -40,12 +40,11 @@ InternalMathLRotU64 PROC    USES    ebx
     ror     ebx, cl
     shld    eax, ebx, cl
     test    cl, 32                      ; Count >= 32?
-    jz      @F
+    jz      .0
     mov     ecx, eax
     mov     eax, edx
     mov     edx, ecx
-@@:    
+.0:
+    pop     ebx
     ret
-InternalMathLRotU64 ENDP
 
-    END
