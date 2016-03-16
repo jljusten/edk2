@@ -29,9 +29,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; CONST VOID *
@@ -42,25 +40,26 @@
 ;   IN      UINT64                    Value
 ;   );
 ;------------------------------------------------------------------------------
-InternalMemScanMem64    PROC    USES    edi
+global ASM_PFX(InternalMemScanMem64)
+ASM_PFX(InternalMemScanMem64):
+    push    edi
     mov     ecx, [esp + 12]
     mov     eax, [esp + 16]
     mov     edx, [esp + 20]
     mov     edi, [esp + 8]
-@@:
+.0:
     cmp     eax, [edi]
     lea     edi, [edi + 8]
-    loopne  @B
-    jne     @F
+    loopne  .0
+    jne     .1
     cmp     edx, [edi - 4]
-    jecxz   @F
-    jne     @B
-@@:
+    jecxz   .1
+    jne     .0
+.1:
     lea     eax, [edi - 8]
-    jz      @F
+    jz      .2
     mov     eax, ecx
-@@:    
+.2:
+    pop     edi
     ret
-InternalMemScanMem64    ENDP
 
-    END
