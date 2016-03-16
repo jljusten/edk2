@@ -319,7 +319,7 @@
   X64/CpuBreakpoint.c | MSFT 
   X64/WriteMsr64.c | MSFT 
   X64/ReadMsr64.c | MSFT 
-  X64/RdRand.asm | MSFT
+  X64/RdRand.nasm| MSFT
   X64/CpuPause.asm | MSFT
   X64/EnableDisableInterrupts.asm | MSFT
   X64/DisableInterrupts.asm | MSFT
@@ -392,7 +392,7 @@
   X64/CpuBreakpoint.asm | INTEL 
   X64/WriteMsr64.asm | INTEL 
   X64/ReadMsr64.asm | INTEL 
-  X64/RdRand.asm | INTEL
+  X64/RdRand.nasm| INTEL
   X64/CpuPause.asm | INTEL
   X64/EnableDisableInterrupts.asm | INTEL
   X64/DisableInterrupts.asm | INTEL
@@ -492,7 +492,7 @@
   X64/CpuIdEx.nasm| GCC
   X64/EnableCache.nasm| GCC
   X64/DisableCache.nasm| GCC
-  X64/RdRand.S | GCC
+  X64/RdRand.nasm| GCC
   ChkStkGcc.c  | GCC 
 
 [Sources.IPF]

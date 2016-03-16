@@ -11,7 +11,7 @@
 ;
 ; Module Name:
 ;
-;   RdRand.asm
+;   RdRand.nasm
 ;
 ; Abstract:
 ;
@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  Generates a 16 bit random number through RDRAND instruction.
@@ -29,10 +30,11 @@
 ;
 ;  BOOLEAN EFIAPI AsmRdRand16 (UINT16 *Rand);
 ;------------------------------------------------------------------------------
-AsmRdRand16  PROC
+global ASM_PFX(AsmRdRand16)
+ASM_PFX(AsmRdRand16):
     ; rdrand   ax                  ; generate a 16 bit RN into eax,
                                    ; CF=1 if RN generated ok, otherwise CF=0
-    db     0fh, 0c7h, 0f0h         ; rdrand r16: "0f c7 /6  ModRM:r/m(w)"
+    db     0xf, 0xc7, 0xf0         ; rdrand r16: "0f c7 /6  ModRM:r/m(w)"
     jc     rn16_ok                 ; jmp if CF=1
     xor    rax, rax                ; reg=0 if CF=0
     ret                            ; return with failure status
@@ -40,7 +42,6 @@ rn16_ok:
     mov    [rcx], ax
     mov    rax,  1
     ret
-AsmRdRand16 ENDP
 
 ;------------------------------------------------------------------------------
 ;  Generates a 32 bit random number through RDRAND instruction.
@@ -48,10 +49,11 @@ AsmRdRand16 ENDP
 ;
 ;  BOOLEAN EFIAPI AsmRdRand32 (UINT32 *Rand);
 ;------------------------------------------------------------------------------
-AsmRdRand32  PROC
+global ASM_PFX(AsmRdRand32)
+ASM_PFX(AsmRdRand32):
     ; rdrand   eax                 ; generate a 32 bit RN into eax,
                                    ; CF=1 if RN generated ok, otherwise CF=0
-    db     0fh, 0c7h, 0f0h         ; rdrand r32: "0f c7 /6  ModRM:r/m(w)"
+    db     0xf, 0xc7, 0xf0         ; rdrand r32: "0f c7 /6  ModRM:r/m(w)"
     jc     rn32_ok                 ; jmp if CF=1
     xor    rax, rax                ; reg=0 if CF=0
     ret                            ; return with failure status
@@ -59,7 +61,6 @@ rn32_ok:
     mov    [rcx], eax
     mov    rax,  1
     ret
-AsmRdRand32 ENDP
 
 ;------------------------------------------------------------------------------
 ;  Generates a 64 bit random number through one RDRAND instruction.
@@ -67,10 +68,11 @@ AsmRdRand32 ENDP
 ;
 ;  BOOLEAN EFIAPI AsmRdRand64 (UINT64 *Random);
 ;------------------------------------------------------------------------------
-AsmRdRand64  PROC
+global ASM_PFX(AsmRdRand64)
+ASM_PFX(AsmRdRand64):
     ; rdrand   rax                 ; generate a 64 bit RN into rax,
                                    ; CF=1 if RN generated ok, otherwise CF=0
-    db     048h, 0fh, 0c7h, 0f0h   ; rdrand r64: "REX.W + 0f c7 /6 ModRM:r/m(w)"
+    db     0x48, 0xf, 0xc7, 0xf0   ; rdrand r64: "REX.W + 0f c7 /6 ModRM:r/m(w)"
     jc     rn64_ok                 ; jmp if CF=1
     xor    rax, rax                ; reg=0 if CF=0
     ret                            ; return with failure status
@@ -78,6 +80,4 @@ rn64_ok:
     mov    [rcx], rax
     mov    rax, 1
     ret
-AsmRdRand64 ENDP
 
-    END
