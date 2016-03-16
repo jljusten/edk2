@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .386
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ;  VOID *
@@ -33,16 +31,19 @@
 ;    IN UINTN  Count
 ;    )
 ;------------------------------------------------------------------------------
-InternalMemCopyMem  PROC    USES    esi edi
+global ASM_PFX(InternalMemCopyMem)
+ASM_PFX(InternalMemCopyMem):
+    push    esi
+    push    edi
     mov     esi, [esp + 16]             ; esi <- Source
     mov     edi, [esp + 12]             ; edi <- Destination
     mov     edx, [esp + 20]             ; edx <- Count
     lea     eax, [esi + edx - 1]        ; eax <- End of Source
     cmp     esi, edi
-    jae     @F
+    jae     .0
     cmp     eax, edi
     jae     @CopyBackward               ; Copy backward if overlapped
-@@:
+.0:
     mov     ecx, edx
     and     edx, 3
     shr     ecx, 2
@@ -57,7 +58,7 @@ InternalMemCopyMem  PROC    USES    esi edi
     rep     movsb                       ; Copy bytes backward
     cld
     mov     eax, [esp + 12]             ; eax <- Destination as return value
+    pop     edi
+    pop     esi
     ret
-InternalMemCopyMem  ENDP
 
-    END
