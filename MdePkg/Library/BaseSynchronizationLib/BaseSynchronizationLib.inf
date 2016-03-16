@@ -39,7 +39,7 @@
 
   Ia32/InterlockedCompareExchange64.nasm| INTEL
   Ia32/InterlockedCompareExchange32.nasm| INTEL
-  Ia32/InterlockedCompareExchange16.asm | INTEL
+  Ia32/InterlockedCompareExchange16.nasm| INTEL
   Ia32/InterlockedDecrement.asm | INTEL 
   Ia32/InterlockedIncrement.asm | INTEL 
   Synchronization.c | INTEL
