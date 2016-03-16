@@ -17,7 +17,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; Routine Description:
@@ -36,7 +37,8 @@
 ;   None
 ;
 ;------------------------------------------------------------------------------
-InternalSwitchStack PROC
+global ASM_PFX(InternalSwitchStack)
+ASM_PFX(InternalSwitchStack):
     mov     rax, rcx
     mov     rcx, rdx
     mov     rdx, r8
@@ -44,8 +46,6 @@ InternalSwitchStack PROC
     ; Reserve space for register parameters (rcx, rdx, r8 & r9) on the stack,
     ; in case the callee wishes to spill them.
     ;
-    lea     rsp, [r9 - 20h]
+    lea     rsp, [r9 - 0x20]
     call    rax
-InternalSwitchStack ENDP
 
-    END
