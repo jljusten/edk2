@@ -215,7 +215,7 @@
   Ia32/ReadDr7.nasm| INTEL
   Ia32/ReadDr6.nasm| INTEL
   Ia32/ReadDr5.nasm| INTEL
-  Ia32/ReadDr4.asm | INTEL 
+  Ia32/ReadDr4.nasm| INTEL
   Ia32/ReadDr3.asm | INTEL 
   Ia32/ReadDr2.asm | INTEL 
   Ia32/ReadDr1.asm | INTEL 

@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .586p
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINTN
@@ -32,7 +30,8 @@
 ;   VOID
 ;   );
 ;------------------------------------------------------------------------------
-AsmReadDr4  PROC
+global ASM_PFX(AsmReadDr4)
+ASM_PFX(AsmReadDr4):
     ;
     ; DR4 is alias to DR6 only if DE (in CR4) is cleared. Otherwise, reading
     ; this register will cause a #UD exception.
@@ -40,8 +39,6 @@ AsmReadDr4  PROC
     ; MS assembler doesn't support this instruction since no one would use it
     ; under normal circustances. Here opcode is used.
     ;
-    DB      0fh, 21h, 0e0h
+    DB      0xf, 0x21, 0xe0
     ret
-AsmReadDr4  ENDP
 
-    END
