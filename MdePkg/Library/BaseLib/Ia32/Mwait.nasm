@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINTN
@@ -33,11 +31,10 @@
 ;   IN      UINTN                     Ecx
 ;   );
 ;------------------------------------------------------------------------------
-AsmMwait    PROC
+global ASM_PFX(AsmMwait)
+ASM_PFX(AsmMwait):
     mov     eax, [esp + 4]
     mov     ecx, [esp + 8]
-    DB      0fh, 1, 0c9h                ; mwait
+    DB      0xf, 1, 0xc9                ; mwait
     ret
-AsmMwait    ENDP
 
-    END
