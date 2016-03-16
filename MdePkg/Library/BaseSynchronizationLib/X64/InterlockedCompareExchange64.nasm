@@ -21,7 +21,8 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .code
+    DEFAULT REL
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; UINT64
@@ -32,10 +33,9 @@
 ;   IN      UINT64                    ExchangeValue
 ;   );
 ;------------------------------------------------------------------------------
-InternalSyncCompareExchange64   PROC
+global ASM_PFX(InternalSyncCompareExchange64)
+ASM_PFX(InternalSyncCompareExchange64):
     mov     rax, rdx
     lock    cmpxchg [rcx], r8
     ret
-InternalSyncCompareExchange64   ENDP
 
-    END
