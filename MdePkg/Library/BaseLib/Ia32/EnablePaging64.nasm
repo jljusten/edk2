@@ -21,9 +21,7 @@
 ;
 ;------------------------------------------------------------------------------
 
-    .686p
-    .model  flat,C
-    .code
+    SECTION .text
 
 ;------------------------------------------------------------------------------
 ; VOID
@@ -36,13 +34,14 @@
 ;   IN      UINT64                    NewStack
 ;   );
 ;------------------------------------------------------------------------------
-InternalX86EnablePaging64 PROC
+global ASM_PFX(InternalX86EnablePaging64)
+ASM_PFX(InternalX86EnablePaging64):
     cli
-    mov     DWORD PTR [esp], @F         ; offset for far retf, seg is the 1st arg
+    mov     DWORD [esp], .0         ; offset for far retf, seg is the 1st arg
     mov     eax, cr4
-    or      al, (1 SHL 5)
+    or      al, (1 << 5)
     mov     cr4, eax                    ; enable PAE
-    mov     ecx, 0c0000080h
+    mov     ecx, 0xc0000080
     rdmsr
     or      ah, 1                       ; set LME
     wrmsr
@@ -50,19 +49,17 @@ InternalX86EnablePaging64 PROC
     bts     eax, 31                     ; set PG
     mov     cr0, eax                    ; enable paging
     retf                                ; topmost 2 dwords hold the address
-@@:                                     ; long mode starts here
-    DB      67h, 48h                    ; 32-bit address size, 64-bit operand size
+.0:
+    DB      0x67, 0x48                    ; 32-bit address size, 64-bit operand size
     mov     ebx, [esp]                  ; mov rbx, [esp]
-    DB      67h, 48h
+    DB      0x67, 0x48
     mov     ecx, [esp + 8]              ; mov rcx, [esp + 8]
-    DB      67h, 48h
-    mov     edx, [esp + 10h]            ; mov rdx, [esp + 10h]
-    DB      67h, 48h
-    mov     esp, [esp + 18h]            ; mov rsp, [esp + 18h]
-    DB      48h
-    add     esp, -20h                   ; add rsp, -20h
+    DB      0x67, 0x48
+    mov     edx, [esp + 0x10]            ; mov rdx, [esp + 10h]
+    DB      0x67, 0x48
+    mov     esp, [esp + 0x18]            ; mov rsp, [esp + 18h]
+    DB      0x48
+    add     esp, -0x20                   ; add rsp, -20h
     call    ebx                         ; call rbx
     hlt                                 ; no one should get here
-InternalX86EnablePaging64 ENDP
 
-    END
