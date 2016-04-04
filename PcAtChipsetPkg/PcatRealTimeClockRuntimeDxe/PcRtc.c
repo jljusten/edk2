@@ -1,7 +1,7 @@
 /** @file
   RTC Architectural Protocol GUID as defined in DxeCis 0.96.
 
-Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -104,6 +104,8 @@ PcRtcInit (
   EFI_TIME        Time;
   UINTN           DataSize;
   UINT32          TimerVar;
+  BOOLEAN         Enabled;
+  BOOLEAN         Pending;
 
   //
   // Acquire RTC Lock to make access to RTC atomic
@@ -226,11 +228,96 @@ PcRtcInit (
   // Reset time value according to new RTC configuration
   //
   Status = PcRtcSetTime (&Time, Global);
-  if(!EFI_ERROR (Status)) {
-    return EFI_SUCCESS;
-  } else {
+  if (EFI_ERROR (Status)) {
     return EFI_DEVICE_ERROR;
   }
+  
+  //
+  // Reset wakeup time value to valid state when wakeup alarm is disabled and wakeup time is invalid.
+  // Global variable has already had valid SavedTimeZone and Daylight,
+  // so we can use them to get and set wakeup time.
+  //
+  Status = PcRtcGetWakeupTime (&Enabled, &Pending, &Time, Global);
+  if ((Enabled) || (!EFI_ERROR (Status))) {
+    return EFI_SUCCESS;
+  }
+  
+  //
+  // When wakeup time is disabled and invalid, reset wakeup time register to valid state 
+  // but keep wakeup alarm disabled.
+  //
+  Time.Second = RTC_INIT_SECOND;
+  Time.Minute = RTC_INIT_MINUTE;
+  Time.Hour   = RTC_INIT_HOUR;
+  Time.Day    = RTC_INIT_DAY;
+  Time.Month  = RTC_INIT_MONTH;
+  Time.Year   = RTC_INIT_YEAR;
+  Time.Nanosecond  = 0;
+  Time.TimeZone = Global->SavedTimeZone;
+  Time.Daylight = Global->Daylight;;
+
+  //
+  // Acquire RTC Lock to make access to RTC atomic
+  //
+  if (!EfiAtRuntime ()) {
+    EfiAcquireLock (&Global->RtcLock);
+  }
+  //
+  // Wait for up to 0.1 seconds for the RTC to be updated
+  //
+  Status = RtcWaitToUpdate (PcdGet32 (PcdRealTimeClockUpdateTimeout));
+  if (EFI_ERROR (Status)) {
+    if (!EfiAtRuntime ()) {
+    EfiReleaseLock (&Global->RtcLock);
+    }
+    return EFI_DEVICE_ERROR;
+  }
+  
+  ConvertEfiTimeToRtcTime (&Time, RegisterB, &Century);
+
+  //
+  // Set the Y/M/D info to variable as it has no corresponding hw registers.
+  //
+  Status =  EfiSetVariable (
+              L"RTCALARM",
+              &gEfiCallerIdGuid,
+              EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE,
+              sizeof (Time),
+              &Time
+              );
+  if (EFI_ERROR (Status)) {
+    if (!EfiAtRuntime ()) {
+      EfiReleaseLock (&Global->RtcLock);
+    }
+    return EFI_DEVICE_ERROR;
+  }
+  
+  //
+  // Inhibit updates of the RTC
+  //
+  RegisterB.Bits.Set  = 1;
+  RtcWrite (RTC_ADDRESS_REGISTER_B, RegisterB.Data);
+ 
+  //
+  // Set RTC alarm time registers
+  //
+  RtcWrite (RTC_ADDRESS_SECONDS_ALARM, Time.Second);
+  RtcWrite (RTC_ADDRESS_MINUTES_ALARM, Time.Minute);
+  RtcWrite (RTC_ADDRESS_HOURS_ALARM, Time.Hour);
+
+  //
+  // Allow updates of the RTC registers
+  //
+  RegisterB.Bits.Set = 0;
+  RtcWrite (RTC_ADDRESS_REGISTER_B, RegisterB.Data);
+ 
+  //
+  // Release RTC Lock.
+  //
+  if (!EfiAtRuntime ()) {
+    EfiReleaseLock (&Global->RtcLock);
+  }
+  return EFI_SUCCESS;
 }
 
 /**
@@ -868,8 +955,8 @@ RtcTimeFieldsValid (
   IN EFI_TIME *Time
   )
 {
-  if (Time->Year < 1998 ||
-      Time->Year > 2099 ||
+  if (Time->Year < PcdGet16 (PcdMinimalValidYear) ||
+      Time->Year > PcdGet16 (PcdMaximalValidYear) ||
       Time->Month < 1 ||
       Time->Month > 12 ||
       (!DayValid (Time)) ||

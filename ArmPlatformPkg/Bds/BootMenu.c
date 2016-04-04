@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011 - 2014, ARM Limited. All rights reserved.
+*  Copyright (c) 2011 - 2015, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -15,6 +15,7 @@
 #include "BdsInternal.h"
 
 #include <Guid/ArmGlobalVariableHob.h>
+#include <Guid/ArmPlatformEvents.h>
 
 extern BDS_LOAD_OPTION_SUPPORT *BdsLoadOptionSupportList;
 
@@ -341,6 +342,9 @@ BootMenuAddBootOption (
       if (InitrdPathNodes != NULL) {
         // Append the Device Path to the selected device path
         InitrdPath = AppendDevicePath (SupportedBootDevice->DevicePathProtocol, (CONST EFI_DEVICE_PATH_PROTOCOL *)InitrdPathNodes);
+        // Free the InitrdPathNodes created by Support->CreateDevicePathNode()
+        FreePool (InitrdPathNodes);
+
         if (InitrdPath == NULL) {
           Status = EFI_OUT_OF_RESOURCES;
           goto EXIT;
@@ -540,6 +544,8 @@ BootMenuUpdateBootOption (
           // Append the Device Path to the selected device path
           InitrdPath = AppendDevicePath (TempInitrdPath, (CONST EFI_DEVICE_PATH_PROTOCOL *)InitrdPathNodes);
           FreePool (TempInitrdPath);
+          // Free the InitrdPathNodes created by Support->CreateDevicePathNode()
+          FreePool (InitrdPathNodes);
           if (InitrdPath == NULL) {
             Status = EFI_OUT_OF_RESOURCES;
             goto EXIT;
@@ -829,6 +835,7 @@ UpdateFdtPath (
   BDS_SUPPORTED_DEVICE      *SupportedBootDevice;
   EFI_DEVICE_PATH_PROTOCOL  *FdtDevicePathNodes;
   EFI_DEVICE_PATH_PROTOCOL  *FdtDevicePath;
+  EFI_EVENT                 UpdateFdtEvent;
 
   Status = SelectBootDevice (&SupportedBootDevice);
   if (EFI_ERROR(Status)) {
@@ -846,6 +853,8 @@ UpdateFdtPath (
   if (FdtDevicePathNodes != NULL) {
     // Append the Device Path node to the select device path
     FdtDevicePath = AppendDevicePath (SupportedBootDevice->DevicePathProtocol, FdtDevicePathNodes);
+    // Free the FdtDevicePathNodes created by Support->CreateDevicePathNode()
+    FreePool (FdtDevicePathNodes);
     FdtDevicePathSize = GetDevicePathSize (FdtDevicePath);
     Status = gRT->SetVariable (
                     (CHAR16*)L"Fdt",
@@ -856,7 +865,7 @@ UpdateFdtPath (
                     );
     ASSERT_EFI_ERROR(Status);
   } else {
-    gRT->SetVariable (
+    Status = gRT->SetVariable (
            (CHAR16*)L"Fdt",
            &gArmGlobalVariableGuid,
            EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
@@ -864,6 +873,23 @@ UpdateFdtPath (
            NULL
            );
     ASSERT_EFI_ERROR(Status);
+  }
+
+  if (!EFI_ERROR (Status)) {
+    //
+    // Signal FDT has been updated
+    //
+    Status = gBS->CreateEventEx (
+        EVT_NOTIFY_SIGNAL,
+        TPL_NOTIFY,
+        EmptyCallbackFunction,
+        NULL,
+        &gArmPlatformUpdateFdtEventGuid,
+        &UpdateFdtEvent
+        );
+    if (!EFI_ERROR (Status)) {
+      gBS->SignalEvent (UpdateFdtEvent);
+    }
   }
 
 EXIT:

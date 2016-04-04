@@ -1401,8 +1401,6 @@ EfiShellEnablePageBreak (
                                 is NULL, then the current shell environment is used.
                             
   @param[out] StartImageStatus  Returned status from gBS->StartImage.
-  @param[out] ExitDataSize      ExitDataSize as returned from gBS->StartImage
-  @param[out] ExitData          ExitData as returned from gBS->StartImage
 
   @retval EFI_SUCCESS       The command executed successfully. The  status code
                             returned by the command is pointed to by StatusCode.
@@ -1417,9 +1415,7 @@ InternalShellExecuteDevicePath(
   IN CONST EFI_DEVICE_PATH_PROTOCOL *DevicePath,
   IN CONST CHAR16                   *CommandLine OPTIONAL,
   IN CONST CHAR16                   **Environment OPTIONAL,
-  OUT EFI_STATUS                    *StartImageStatus OPTIONAL,
-  OUT UINTN                         *ExitDataSize OPTIONAL,
-  OUT CHAR16                        **ExitData OPTIONAL
+  OUT EFI_STATUS                    *StartImageStatus OPTIONAL
   )
 {
   EFI_STATUS                    Status;
@@ -1429,18 +1425,10 @@ InternalShellExecuteDevicePath(
   EFI_LOADED_IMAGE_PROTOCOL     *LoadedImage;
   LIST_ENTRY                    OrigEnvs;
   EFI_SHELL_PARAMETERS_PROTOCOL ShellParamsProtocol;
-  UINTN                         InternalExitDataSize;
-  UINTN                         *ExitDataSizePtr;
   CHAR16                        *ImagePath;
   UINTN                         Index;
-
-  // ExitDataSize is not OPTIONAL for gBS->BootServices, provide somewhere for
-  // it to be dumped if the caller doesn't want it.
-  if (ExitData == NULL) {
-    ExitDataSizePtr = &InternalExitDataSize;
-  } else {
-    ExitDataSizePtr = ExitDataSize;
-  }
+  CHAR16                        *Walker;
+  CHAR16                        *NewCmdLine;
 
   if (ParentImageHandle == NULL) {
     return (EFI_INVALID_PARAMETER);
@@ -1449,6 +1437,17 @@ InternalShellExecuteDevicePath(
   InitializeListHead(&OrigEnvs);
 
   NewHandle = NULL;
+  
+  NewCmdLine = AllocateCopyPool (StrSize (CommandLine), CommandLine);
+  if (NewCmdLine == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  for (Walker = NewCmdLine; Walker != NULL && *Walker != CHAR_NULL ; Walker++) {
+    if (*Walker == L'^' && *(Walker+1) == L'#') {
+      CopyMem(Walker, Walker+1, StrSize(Walker) - sizeof(Walker[0]));
+    }
+  }
 
   //
   // Load the image with:
@@ -1478,9 +1477,9 @@ InternalShellExecuteDevicePath(
 
   if (!EFI_ERROR(Status)) {
     ASSERT(LoadedImage->LoadOptionsSize == 0);
-    if (CommandLine != NULL) {
-      LoadedImage->LoadOptionsSize  = (UINT32)StrSize(CommandLine);
-      LoadedImage->LoadOptions      = (VOID*)CommandLine;
+    if (NewCmdLine != NULL) {
+      LoadedImage->LoadOptionsSize  = (UINT32)StrSize(NewCmdLine);
+      LoadedImage->LoadOptions      = (VOID*)NewCmdLine;
     }
 
     //
@@ -1499,7 +1498,7 @@ InternalShellExecuteDevicePath(
     ShellParamsProtocol.StdIn   = ShellInfoObject.NewShellParametersProtocol->StdIn;
     ShellParamsProtocol.StdOut  = ShellInfoObject.NewShellParametersProtocol->StdOut;
     ShellParamsProtocol.StdErr  = ShellInfoObject.NewShellParametersProtocol->StdErr;
-    Status = UpdateArgcArgv(&ShellParamsProtocol, CommandLine, NULL, NULL);
+    Status = UpdateArgcArgv(&ShellParamsProtocol, NewCmdLine, NULL, NULL);
     ASSERT_EFI_ERROR(Status);
     //
     // Replace Argv[0] with the full path of the binary we're executing:
@@ -1534,13 +1533,13 @@ InternalShellExecuteDevicePath(
     ///@todo initialize and install ShellInterface protocol on the new image for compatibility if - PcdGetBool(PcdShellSupportOldProtocols)
 
     //
-    // now start the image, passing up exit data if the caller requested it
+    // now start the image and if the caller wanted the return code pass it to them...
     //
     if (!EFI_ERROR(Status)) {
       StartStatus      = gBS->StartImage(
                           NewHandle,
-                          ExitDataSizePtr,
-                          ExitData
+                          0,
+                          NULL
                           );
       if (StartImageStatus != NULL) {
         *StartImageStatus = StartStatus;
@@ -1577,6 +1576,8 @@ FreeAlloc:
     CleanupStatus = SetEnvironmentVariableList(&OrigEnvs);
     ASSERT_EFI_ERROR (CleanupStatus);
   }
+
+  FreePool (NewCmdLine);
 
   return(Status);
 }
@@ -1627,8 +1628,6 @@ EfiShellExecute(
   CHAR16                    *Temp;
   EFI_DEVICE_PATH_PROTOCOL  *DevPath;
   UINTN                     Size;
-  UINTN                     ExitDataSize;
-  CHAR16                    *ExitData;
 
   if ((PcdGet8(PcdShellSupportLevel) < 1)) {
     return (EFI_UNSUPPORTED);
@@ -1656,32 +1655,7 @@ EfiShellExecute(
     DevPath,
     Temp,
     (CONST CHAR16**)Environment,
-    StatusCode,
-    &ExitDataSize,
-    &ExitData);
-
-    if (Status == EFI_ABORTED) {
-      // If the command exited with an error, the shell should put the exit
-      // status in ExitData, preceded by a null-terminated string.
-      ASSERT (ExitDataSize == StrSize (ExitData) + sizeof (SHELL_STATUS));
-
-      if (StatusCode != NULL) {
-        // Skip the null-terminated string
-        ExitData += StrLen (ExitData) + 1;
-
-        // Use CopyMem to avoid alignment faults
-        CopyMem (StatusCode, ExitData, sizeof (SHELL_STATUS));
-
-        // Convert from SHELL_STATUS to EFI_STATUS
-        // EFI_STATUSes have top bit set when they are errors.
-        // (See UEFI Spec Appendix D)
-        if (*StatusCode != SHELL_SUCCESS) {
-          *StatusCode = (EFI_STATUS) *StatusCode | MAX_BIT;
-        }
-      }
-      FreePool (ExitData);
-      Status = EFI_SUCCESS;
-    }
+    StatusCode);
 
   //
   // de-allocate and return

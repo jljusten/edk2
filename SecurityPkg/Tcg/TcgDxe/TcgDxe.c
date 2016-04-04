@@ -8,7 +8,7 @@ buffer overflow, integer overflow.
 
 TcgDxePassThroughToTpm() will receive untrusted input and do basic validation.
 
-Copyright (c) 2005 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2005 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials 
 are licensed and made available under the terms and conditions of the BSD License 
 which accompanies this distribution.  The full text of the license may be found at 
@@ -51,6 +51,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/TpmCommLib.h>
 #include <Library/PcdLib.h>
 #include <Library/UefiLib.h>
+#include <Library/ReportStatusCodeLib.h>
 
 #include "TpmComm.h"
 
@@ -264,7 +265,7 @@ TcgDxeStatusCheck (
   }
 
   if (EventLogLastEntry != NULL) {
-    if (TcgData->BsCap.TPMDeactivatedFlag) {
+    if (TcgData->BsCap.TPMDeactivatedFlag || (!TcgData->BsCap.TPMPresentFlag)) {
       *EventLogLastEntry = (EFI_PHYSICAL_ADDRESS)(UINTN)0;
     } else {
       *EventLogLastEntry = (EFI_PHYSICAL_ADDRESS)(UINTN)TcgData->LastEvent;
@@ -411,7 +412,7 @@ TcgDxeLogEvent (
 
   TcgData = TCG_DXE_DATA_FROM_THIS (This);
   
-  if (TcgData->BsCap.TPMDeactivatedFlag) {
+  if (TcgData->BsCap.TPMDeactivatedFlag || (!TcgData->BsCap.TPMPresentFlag)) {
     return EFI_DEVICE_ERROR;
   }
   return TcgDxeLogEventI (
@@ -495,8 +496,8 @@ TcgDxeHashLogExtendEventI (
 {
   EFI_STATUS                        Status;
 
-  if (HashData == NULL && HashDataLen > 0) {
-    return EFI_INVALID_PARAMETER;
+  if (!TcgData->BsCap.TPMPresentFlag) {
+    return EFI_DEVICE_ERROR;
   }
 
   if (HashDataLen > 0 || HashData != NULL) {
@@ -505,7 +506,10 @@ TcgDxeHashLogExtendEventI (
                (UINTN) HashDataLen,
                &NewEventHdr->Digest
                );
-    ASSERT_EFI_ERROR (Status);
+    if (EFI_ERROR(Status)) {
+      DEBUG ((DEBUG_ERROR, "TpmCommHashAll Failed. %x\n", Status));
+      goto Done;
+    }
   }
 
   Status = TpmCommExtend (
@@ -516,6 +520,17 @@ TcgDxeHashLogExtendEventI (
              );
   if (!EFI_ERROR (Status)) {
     Status = TcgDxeLogEventI (TcgData, NewEventHdr, NewEventData);
+  }
+
+Done:
+  if ((Status == EFI_DEVICE_ERROR) || (Status == EFI_TIMEOUT)) {
+    DEBUG ((EFI_D_ERROR, "TcgDxeHashLogExtendEventI - %r. Disable TPM.\n", Status));
+    TcgData->BsCap.TPMPresentFlag = FALSE;
+    REPORT_STATUS_CODE (
+      EFI_ERROR_CODE | EFI_ERROR_MINOR,
+      (PcdGet32 (PcdStatusCodeSubClassTpmDevice) | EFI_P_EC_INTERFACE_ERROR)
+      );
+    Status = EFI_DEVICE_ERROR;
   }
 
   return Status;
@@ -566,12 +581,16 @@ TcgDxeHashLogExtendEvent (
 
   TcgData = TCG_DXE_DATA_FROM_THIS (This);
   
-  if (TcgData->BsCap.TPMDeactivatedFlag) {
+  if (TcgData->BsCap.TPMDeactivatedFlag || (!TcgData->BsCap.TPMPresentFlag)) {
     return EFI_DEVICE_ERROR;
   }
     
   if (AlgorithmId != TPM_ALG_SHA) {
     return EFI_UNSUPPORTED;
+  }
+  
+  if (HashData == 0 && HashDataLen > 0) {
+    return EFI_INVALID_PARAMETER;
   }
 
   Status = TcgDxeHashLogExtendEventI (
@@ -745,9 +764,7 @@ MeasureHandoffTables (
              (VOID **) &SmbiosTable
              );
 
-  if (!EFI_ERROR (Status)) {
-    ASSERT (SmbiosTable != NULL);
-
+  if (!EFI_ERROR (Status) && SmbiosTable != NULL) {
     TcgEvent.PCRIndex  = 1;
     TcgEvent.EventType = EV_EFI_HANDOFF_TABLES;
     TcgEvent.EventSize = sizeof (HandoffTables);
@@ -1020,12 +1037,14 @@ MeasureAllBootVariables (
              &BootCount,
              (VOID **) &BootOrder
              );
-  if (Status == EFI_NOT_FOUND) {
+  if (Status == EFI_NOT_FOUND || BootOrder == NULL) {
     return EFI_SUCCESS;
   }
-  ASSERT (BootOrder != NULL);
 
   if (EFI_ERROR (Status)) {
+    //
+    // BootOrder can't be NULL if status is not EFI_NOT_FOUND
+    //
     FreePool (BootOrder);
     return Status;
   }
@@ -1091,14 +1110,18 @@ OnReadyToBoot (
     Status = TcgMeasureAction (
                EFI_CALLING_EFI_APPLICATION
                );
-    ASSERT_EFI_ERROR (Status);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_CALLING_EFI_APPLICATION));
+    }
 
     //
     // 2. Draw a line between pre-boot env and entering post-boot env.
     //
     for (PcrIndex = 0; PcrIndex < 8; PcrIndex++) {
       Status = MeasureSeparatorEvent (PcrIndex);
-      ASSERT_EFI_ERROR (Status);
+      if (EFI_ERROR (Status)) {
+        DEBUG ((EFI_D_ERROR, "Seperator Event not Measured. Error!\n"));
+      }
     }
 
     //
@@ -1119,7 +1142,9 @@ OnReadyToBoot (
     Status = TcgMeasureAction (
                EFI_RETURNING_FROM_EFI_APPLICATOIN
                );
-    ASSERT_EFI_ERROR (Status);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_RETURNING_FROM_EFI_APPLICATOIN));
+    }
   }
 
   DEBUG ((EFI_D_INFO, "TPM TcgDxe Measure Data when ReadyToBoot\n"));
@@ -1198,7 +1223,10 @@ InstallAcpiTable (
                             &TableKey
                             );
   }
-  ASSERT_EFI_ERROR (Status);
+
+  if (EFI_ERROR (Status)) {
+    DEBUG((EFI_D_ERROR, "Tcg Acpi Table installation failure"));
+  }
 }
 
 /**
@@ -1225,7 +1253,9 @@ OnExitBootServices (
   Status = TcgMeasureAction (
              EFI_EXIT_BOOT_SERVICES_INVOCATION
              );
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_EXIT_BOOT_SERVICES_INVOCATION));
+  }
 
   //
   // Measure success of ExitBootServices
@@ -1233,7 +1263,9 @@ OnExitBootServices (
   Status = TcgMeasureAction (
              EFI_EXIT_BOOT_SERVICES_SUCCEEDED
              );
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)){
+    DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_EXIT_BOOT_SERVICES_SUCCEEDED));
+  }
 }
 
 /**
@@ -1260,8 +1292,9 @@ OnExitBootServicesFailed (
   Status = TcgMeasureAction (
              EFI_EXIT_BOOT_SERVICES_FAILED
              );
-  ASSERT_EFI_ERROR (Status);
-
+  if (EFI_ERROR (Status)){
+    DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_EXIT_BOOT_SERVICES_FAILED));
+  }
 }
 
 /**
@@ -1329,6 +1362,10 @@ DriverEntry (
     return Status;
   }
 
+  if (GetFirstGuidHob (&gTpmErrorHobGuid) != NULL) {
+    mTcgDxeData.BsCap.TPMPresentFlag = FALSE;
+  }
+
   Status = GetTpmStatus (&mTcgDxeData.BsCap.TPMDeactivatedFlag);
   if (EFI_ERROR (Status)) {
     DEBUG ((
@@ -1346,7 +1383,7 @@ DriverEntry (
                   EFI_NATIVE_INTERFACE,
                   &mTcgDxeData.TcgProtocol
                   );
-  if (!EFI_ERROR (Status) && !mTcgDxeData.BsCap.TPMDeactivatedFlag) {
+  if (!EFI_ERROR (Status) && (!mTcgDxeData.BsCap.TPMDeactivatedFlag) && mTcgDxeData.BsCap.TPMPresentFlag) {
     //
     // Setup the log area and copy event log from hob list to it
     //

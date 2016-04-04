@@ -1,6 +1,6 @@
 /**@file
 
-Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -880,7 +880,8 @@ Returns:
   if (Checksum != 0) {
     UINT16 Expected;
 
-    Expected = ((UINTN) FwVolHeader->Checksum + 0x10000 - Checksum) & 0xffff;
+    Expected =
+      (UINT16) (((UINTN) FwVolHeader->Checksum + 0x10000 - Checksum) & 0xffff);
 
     DEBUG ((EFI_D_INFO, "FV@%p Checksum is 0x%x, expected 0x%x\n",
             FwVolHeader, FwVolHeader->Checksum, Expected));
@@ -894,7 +895,7 @@ STATIC
 EFI_STATUS
 MarkMemoryRangeForRuntimeAccess (
   EFI_PHYSICAL_ADDRESS                BaseAddress,
-  UINT64                              Length
+  UINTN                               Length
   )
 {
   EFI_STATUS                          Status;
@@ -918,7 +919,7 @@ MarkMemoryRangeForRuntimeAccess (
   Status = gBS->AllocatePages (
                   AllocateAddress,
                   EfiRuntimeServicesData,
-                  (UINTN) EFI_SIZE_TO_PAGES (Length),
+                  EFI_SIZE_TO_PAGES (Length),
                   &BaseAddress
                   );
   ASSERT_EFI_ERROR (Status);
@@ -978,7 +979,7 @@ InitializeVariableFvHeader (
     // Erase all the blocks
     //
     for (Offset = Start; Offset < Start + Length; Offset += BlockSize) {
-      Status = QemuFlashEraseBlock ((EFI_LBA) Offset / BlockSize);
+      Status = QemuFlashEraseBlock (Offset / BlockSize);
       ASSERT_EFI_ERROR (Status);
     }
 
@@ -987,7 +988,7 @@ InitializeVariableFvHeader (
     //
     WriteLength = GoodFwVolHeader->HeaderLength;
     Status = QemuFlashWrite (
-               (EFI_LBA) Start / BlockSize,
+               Start / BlockSize,
                0,
                &WriteLength,
                (UINT8 *) GoodFwVolHeader);
@@ -1025,7 +1026,7 @@ Returns:
   EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL  *OldFwbInterface;
   UINT32                              MaxLbaSize;
   EFI_PHYSICAL_ADDRESS                BaseAddress;
-  UINT64                              Length;
+  UINTN                               Length;
   UINTN                               NumOfBlocks;
   EFI_EVENT                           VirtualAddressChangeEvent;
 

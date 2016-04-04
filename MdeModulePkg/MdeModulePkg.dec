@@ -3,7 +3,7 @@
 # It also provides the definitions(including PPIs/PROTOCOLs/GUIDs and library classes)
 # and libraries instances, which are used for those modules.
 #
-# Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2007 - 2015, Intel Corporation. All rights reserved.<BR>
 # This program and the accompanying materials are licensed and made available under 
 # the terms and conditions of the BSD License that accompanies this distribution.  
 # The full text of the license may be found at
@@ -101,6 +101,9 @@
   ##  @libraryclass    Provides platform specific display interface.
   #
   CustomizedDisplayLib|Include/Library/CustomizedDisplayLib.h
+
+  ## @libraryclass   Provides sorting functions
+  SortLib|Include/Library/SortLib.h
 
 [Guids]
   ## MdeModule package token space guid
@@ -272,6 +275,12 @@
 
   ## Include/Guid/StatusCodeDataTypeVariable.h
   gEdkiiStatusCodeDataTypeVariableGuid = { 0xf6ee6dbb, 0xd67f, 0x4ea0, { 0x8b, 0x96, 0x6a, 0x71, 0xb1, 0x9d, 0x84, 0xad }}
+  
+  ## Include/Guid/MemoryProfile.h
+  gEdkiiMemoryProfileGuid              = { 0x821c9a09, 0x541a, 0x40f6, { 0x9f, 0x43, 0xa, 0xd1, 0x93, 0xa1, 0x2c, 0xfe }}
+
+  ## Include/Protocol/VarErrorFlag.h
+  gEdkiiVarErrorFlagGuid               = { 0x4b37fe8, 0xf6ae, 0x480b, { 0xbd, 0xd5, 0x37, 0xd9, 0x8c, 0x5e, 0x89, 0xaa } }
 
 [Ppis]
   ## Include/Ppi/AtaController.h
@@ -351,6 +360,12 @@
   ## This protocol is intended for use as a means to mark a variable read-only after the event EFI_END_OF_DXE_EVENT_GUID is signaled.
   #  Include/Protocol/VariableLock.h
   gEdkiiVariableLockProtocolGuid = { 0xcd3d0a05, 0x9e24, 0x437c, { 0xa8, 0x91, 0x1e, 0xe0, 0x53, 0xdb, 0x76, 0x38 }}
+
+  ## Include/Protocol/VarCheck.h
+  gEdkiiVarCheckProtocolGuid     = { 0xaf23b340, 0x97b4, 0x4685, { 0x8d, 0x4f, 0xa3, 0xf2, 0x81, 0x69, 0xb2, 0x1d } }
+
+  ## Include/Protocol/SmmVarCheck.h
+  gEdkiiSmmVarCheckProtocolGuid  = { 0xb0d8f3c1, 0xb7de, 0x4c11, { 0xbc, 0x89, 0x2f, 0xb5, 0x62, 0xc8, 0xc4, 0x11 } }
 
   ## This protocol is similar with DXE FVB protocol and used in the UEFI SMM evvironment.
   #  Include/Protocol/SmmFirmwareVolumeBlock.h
@@ -691,12 +706,37 @@
   # @Prompt Maximum HwErr variable size.
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxHardwareErrorVariableSize|0x8000|UINT32|0x30000004
 
-  ## The size of reserved HwErr variable space. Note that this value must be less than or equal to PcdFlashNvStorageVariableSize.
+  ## The size of reserved HwErr variable space. Note that this value must be less than (PcdFlashNvStorageVariableSize - EFI_FIRMWARE_VOLUME_HEADER.HeaderLength - sizeof (VARIABLE_STORE_HEADER)).
   # In EdkII implementation, HwErr type variable is stored with common non-volatile variables in the same NV region.
-  # so the platform integrator should ensure this value is less than or equal to PcdFlashNvStorageVariableSize.
+  # so the platform integrator should ensure this value is less than (PcdFlashNvStorageVariableSize - EFI_FIRMWARE_VOLUME_HEADER.HeaderLength - sizeof (VARIABLE_STORE_HEADER)).
   # this value is used to guarantee the space of HwErr type variable and not populated by common variable.
   # @Prompt HwErr variable storage size.
   gEfiMdeModulePkgTokenSpaceGuid.PcdHwErrStorageSize|0x0000|UINT32|0x30000006
+
+  ## The size of maximum user NV variable space.<BR><BR>
+  # Note that this value must be less than (PcdFlashNvStorageVariableSize - EFI_FIRMWARE_VOLUME_HEADER.HeaderLength - sizeof (VARIABLE_STORE_HEADER) - PcdHwErrStorageSize).<BR>
+  # If the value is 0, it means user variable share the same NV storage with system variable,
+  # this is designed to keep the compatibility for the platform that does not allocate special region for user variable.<BR>
+  # If the value is non-0, the below 4 types of variables will be regarded as System Variable, their property could be got by VarCheck protocol,
+  # otherwise the variable will be regarded as user variable.<BR>
+  #  1) UEFI defined variables (gEfiGlobalVariableGuid and gEfiImageSecurityDatabaseGuid(auth variable) variables at least).<BR>
+  #  2) Variables managed by Variable driver internally.<BR>
+  #  3) Variables need to be locked, they MUST be set by VariableLock protocol.<BR>
+  #  4) Important during platform boot, their property SHOULD be set by VarCheck protocol.<BR>
+  # The PCD is used to guarantee the space of system variable and not populated by user variable.<BR>
+  # @Prompt Maximum user NV variable space size.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMaxUserNvVariableSpaceSize|0x00|UINT32|0x00000009
+
+  ## The size of NV variable space reserved at UEFI boottime.<BR><BR>
+  # Note that this value must be less than (PcdFlashNvStorageVariableSize - EFI_FIRMWARE_VOLUME_HEADER.HeaderLength - sizeof (VARIABLE_STORE_HEADER) - PcdHwErrStorageSize).<BR>
+  # In EdkII implementation, variable driver can reserved some NV storage region for boottime settings.
+  # So at UEFI runtime, the variable service consumer can not exhaust full NV storage region.<BR>
+  # Then the common NV variable space size at boottime will be
+  #  (PcdFlashNvStorageVariableSize - EFI_FIRMWARE_VOLUME_HEADER.HeaderLength - sizeof (VARIABLE_STORE_HEADER) - PcdHwErrStorageSize),<BR>
+  # and the common NV variable space size at runtime will be
+  #  (PcdFlashNvStorageVariableSize - EFI_FIRMWARE_VOLUME_HEADER.HeaderLength - sizeof (VARIABLE_STORE_HEADER) - PcdHwErrStorageSize) - PcdBoottimeReservedNvVariableSpaceSize.<BR>
+  # @Prompt Boottime reserved NV variable space size.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdBoottimeReservedNvVariableSpaceSize|0x00|UINT32|0x30000007
 
   ## The size of volatile buffer. This buffer is used to store VOLATILE attribute variables.
   # @Prompt Variable storage size.
@@ -770,8 +810,9 @@
   # @Expression 0x80000002 | (gEfiMdeModulePkgTokenSpaceGuid.PcdSerialFifoControl & 0xD8) == 0
   gEfiMdeModulePkgTokenSpaceGuid.PcdSerialFifoControl|0x07|UINT8|0x00020005
 
-  ## TFTP BlockSize. Initial value 0 means using default block size which is (MTU-IP_HEADER-UDP_HEADER-TFTP_HEADER)
-  #  to handle all link layers. If the value is non zero, the PCD value will be used as block size.
+  ## This setting can override the default TFTP block size. A value of 0 computes
+  # the default from MTU information. A non-zero value will be used as block size
+  # in bytes.
   # @Prompt TFTP block size.
   gEfiMdeModulePkgTokenSpaceGuid.PcdTftpBlockSize|0x0|UINT64|0x30001026
 
@@ -811,6 +852,38 @@
   ## Default Creator Revision for ACPI table creation.
   # @Prompt Default Creator Revision for ACPI table creation.
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorRevision|0x01000013|UINT32|0x30001038
+
+  ## The mask is used to control memory profile behavior.<BR><BR>
+  #  BIT0 - Enable UEFI memory profile.<BR>
+  #  BIT1 - Enable SMRAM profile.<BR>
+  # @Prompt Memory Profile Property.
+  # @Expression  0x80000002 | (gEfiMdeModulePkgTokenSpaceGuid.PcdMemoryProfilePropertyMask & 0xFC) == 0
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMemoryProfilePropertyMask|0x0|UINT8|0x30001041
+
+  ## This flag is to control which memory types of alloc info will be recorded by DxeCore & SmmCore.<BR><BR>
+  # For SmmCore, only EfiRuntimeServicesCode and EfiRuntimeServicesData are valid.<BR>
+  #
+  # Below is bit mask for this PCD: (Order is same as UEFI spec)<BR>
+  #  EfiReservedMemoryType          0x0001<BR>
+  #  EfiLoaderCode                  0x0002<BR>
+  #  EfiLoaderData                  0x0004<BR>
+  #  EfiBootServicesCode            0x0008<BR>
+  #  EfiBootServicesData            0x0010<BR>
+  #  EfiRuntimeServicesCode         0x0020<BR>
+  #  EfiRuntimeServicesData         0x0040<BR>
+  #  EfiConventionalMemory          0x0080<BR>
+  #  EfiUnusableMemory              0x0100<BR>
+  #  EfiACPIReclaimMemory           0x0200<BR>
+  #  EfiACPIMemoryNVS               0x0400<BR>
+  #  EfiMemoryMappedIO              0x0800<BR>
+  #  EfiMemoryMappedIOPortSpace     0x1000<BR>
+  #  EfiPalCode                     0x2000<BR>
+  #  OS Reserved        0x8000000000000000<BR>
+  #
+  # e.g. Reserved+ACPINvs+ACPIReclaim+RuntimeCode+RuntimeData are needed, 0x661 should be used.<BR>
+  #
+  # @Prompt Memory profile memory type.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMemoryProfileMemoryType|0x0|UINT64|0x30001042
 
   ## UART clock frequency is for the baud rate configuration.
   # @Prompt Serial Port Clock Rate.
@@ -877,10 +950,13 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareSize|0x0|UINT32|0x30000014
 
   ## Base address of the FTW working block range in flash device.
+  # If PcdFlashNvStorageFtwWorkingSize is larger than one block size, this value should be block size aligned.
   # @Prompt Base address of flash FTW working block range.
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingBase|0x0|UINT32|0x30000010
 
   ## Size of the FTW working block range.
+  # If the value is less than one block size, the work space range should not span blocks.
+  # If the value is larger than one block size, it should be block size aligned.
   # @Prompt Size of flash FTW working block range.
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingSize|0x0|UINT32|0x30000011
 
@@ -893,6 +969,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareBase64|0x0|UINT64|0x80000013
 
   ## 64-bit Base address of the FTW working block range in flash device.
+  # If PcdFlashNvStorageFtwWorkingSize is larger than one block size, this value should be block size aligned.
   # @Prompt 64-bit Base address of flash FTW working block range.
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingBase64|0x0|UINT64|0x80000010
 
@@ -1080,7 +1157,7 @@
 
   ## SMBIOS version.
   # @Prompt SMBIOS version.
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion|0x0207|UINT16|0x00010055
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion|0x0208|UINT16|0x00010055
 
   ## This PCD specifies the additional pad size in FPDT Basic Boot Performance Table for
   #  the extension FPDT boot records received after ReadyToBoot and before ExitBootService.

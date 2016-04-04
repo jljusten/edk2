@@ -1,7 +1,7 @@
 /** @file
 Entry and initialization module for the browser.
 
-Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2015, Intel Corporation. All rights reserved.<BR>
 Copyright (c) 2014, Hewlett-Packard Development Company, L.P.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
@@ -98,8 +98,7 @@ EFI_GUID  gDisplayEngineGuid = {
   0xE38C1029, 0xE38F, 0x45b9, {0x8F, 0x0D, 0xE2, 0xE6, 0x0B, 0xC9, 0xB2, 0x62}
 };
 
-FORM_ENTRY_INFO               gFormEntryInfo;
-UINTN                         gSequence;
+BOOLEAN                       gMisMatch;
 EFI_SCREEN_DESCRIPTOR         gStatementDimensions;
 BOOLEAN                       mStatementLayoutIsChanged = TRUE;
 USER_INPUT                    *gUserInput;
@@ -136,7 +135,20 @@ CHAR16            *gMiniString;
 CHAR16            *gOptionMismatch;
 CHAR16            *gFormSuppress;
 CHAR16            *gProtocolNotFound;
-
+CHAR16            *gConfirmDefaultMsg;
+CHAR16            *gConfirmSubmitMsg;
+CHAR16            *gConfirmDiscardMsg;
+CHAR16            *gConfirmResetMsg;
+CHAR16            *gConfirmExitMsg;
+CHAR16            *gConfirmSubmitMsg2nd;
+CHAR16            *gConfirmDefaultMsg2nd;
+CHAR16            *gConfirmResetMsg2nd;
+CHAR16            *gConfirmExitMsg2nd;
+CHAR16            *gConfirmOpt;
+CHAR16            *gConfirmOptYes;
+CHAR16            *gConfirmOptNo;
+CHAR16            *gConfirmMsgConnect;
+CHAR16            *gConfirmMsgEnd;
 CHAR16            gModalSkipColumn;
 CHAR16            gPromptBlockWidth;
 CHAR16            gOptionBlockWidth;
@@ -214,6 +226,20 @@ InitializeDisplayStrings (
   gFormNotFound         = GetToken (STRING_TOKEN (STATUS_BROWSER_FORM_NOT_FOUND), gHiiHandle);
   gNoSubmitIf           = GetToken (STRING_TOKEN (STATUS_BROWSER_NO_SUBMIT_IF), gHiiHandle);
   gBrwoserError         = GetToken (STRING_TOKEN (STATUS_BROWSER_ERROR), gHiiHandle);
+  gConfirmDefaultMsg    = GetToken (STRING_TOKEN (CONFIRM_DEFAULT_MESSAGE), gHiiHandle);
+  gConfirmDiscardMsg    = GetToken (STRING_TOKEN (CONFIRM_DISCARD_MESSAGE), gHiiHandle);
+  gConfirmSubmitMsg     = GetToken (STRING_TOKEN (CONFIRM_SUBMIT_MESSAGE), gHiiHandle);
+  gConfirmResetMsg      = GetToken (STRING_TOKEN (CONFIRM_RESET_MESSAGE), gHiiHandle);
+  gConfirmExitMsg       = GetToken (STRING_TOKEN (CONFIRM_EXIT_MESSAGE), gHiiHandle);
+  gConfirmDefaultMsg2nd = GetToken (STRING_TOKEN (CONFIRM_DEFAULT_MESSAGE_2ND), gHiiHandle);
+  gConfirmSubmitMsg2nd  = GetToken (STRING_TOKEN (CONFIRM_SUBMIT_MESSAGE_2ND), gHiiHandle);
+  gConfirmResetMsg2nd   = GetToken (STRING_TOKEN (CONFIRM_RESET_MESSAGE_2ND), gHiiHandle);
+  gConfirmExitMsg2nd    = GetToken (STRING_TOKEN (CONFIRM_EXIT_MESSAGE_2ND), gHiiHandle);
+  gConfirmOpt           = GetToken (STRING_TOKEN (CONFIRM_OPTION), gHiiHandle);
+  gConfirmOptYes        = GetToken (STRING_TOKEN (CONFIRM_OPTION_YES), gHiiHandle);
+  gConfirmOptNo         = GetToken (STRING_TOKEN (CONFIRM_OPTION_NO), gHiiHandle);
+  gConfirmMsgConnect    = GetToken (STRING_TOKEN (CONFIRM_OPTION_CONNECT), gHiiHandle);
+  gConfirmMsgEnd        = GetToken (STRING_TOKEN (CONFIRM_OPTION_END), gHiiHandle);
 }
 
 /**
@@ -249,6 +275,20 @@ FreeDisplayStrings (
   FreePool (gBrwoserError);
   FreePool (gNoSubmitIf);
   FreePool (gFormNotFound);
+  FreePool (gConfirmDefaultMsg);
+  FreePool (gConfirmSubmitMsg);
+  FreePool (gConfirmDiscardMsg);
+  FreePool (gConfirmResetMsg);
+  FreePool (gConfirmExitMsg);
+  FreePool (gConfirmDefaultMsg2nd);
+  FreePool (gConfirmSubmitMsg2nd);
+  FreePool (gConfirmResetMsg2nd);
+  FreePool (gConfirmExitMsg2nd);
+  FreePool (gConfirmOpt);
+  FreePool (gConfirmOptYes);
+  FreePool (gConfirmOptNo);
+  FreePool (gConfirmMsgConnect);
+  FreePool (gConfirmMsgEnd);
 }
 
 /**
@@ -1475,6 +1515,238 @@ FindTopOfScreenMenu (
 }
 
 /**
+  Get the index info for this opcode.
+
+  @param  OpCode      The input opcode for the statement.
+
+  @retval  The index of this statement.
+
+**/
+UINTN
+GetIndexInfoForOpcode (
+  IN EFI_IFR_OP_HEADER  *OpCode
+  )
+{
+  LIST_ENTRY                      *NewPos;
+  UI_MENU_OPTION                  *MenuOption;
+  UINTN                           Index;
+
+  NewPos = gMenuOption.ForwardLink;
+  Index  = 0;
+
+  for (NewPos = gMenuOption.ForwardLink; NewPos != &gMenuOption; NewPos = NewPos->ForwardLink){
+    MenuOption = MENU_OPTION_FROM_LINK (NewPos);
+
+    if (CompareMem (MenuOption->ThisTag->OpCode, OpCode, OpCode->Length) == 0) {
+      if (MenuOption->ThisTag->OpCode == OpCode) {
+        return Index;
+      }
+
+      Index ++;
+    }
+  }
+
+  return Index;
+}
+
+/**
+  Is this the saved highlight statement.
+
+  @param  HighLightedStatement      The input highlight statement.
+
+  @retval  TRUE   This is the highlight statement.
+  @retval  FALSE  This is not the highlight statement.
+
+**/
+BOOLEAN 
+IsSavedHighlightStatement (
+  IN FORM_DISPLAY_ENGINE_STATEMENT  *HighLightedStatement
+  )
+{
+  if ((gFormData->HiiHandle == gHighligthMenuInfo.HiiHandle) &&
+      (gFormData->FormId == gHighligthMenuInfo.FormId)) {
+    if (gHighligthMenuInfo.HLTQuestionId != 0) {
+      return (BOOLEAN) (gHighligthMenuInfo.HLTQuestionId == GetQuestionIdInfo (HighLightedStatement->OpCode));
+    } else {
+      if (CompareMem (gHighligthMenuInfo.HLTOpCode, HighLightedStatement->OpCode, gHighligthMenuInfo.HLTOpCode->Length) == 0) {
+        if (gHighligthMenuInfo.HLTIndex == 0 || gHighligthMenuInfo.HLTIndex == GetIndexInfoForOpcode(HighLightedStatement->OpCode)) {
+          return TRUE;
+        } else {
+          return FALSE;
+        }
+      }
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+  Is this the highlight menu.
+
+  @param  MenuOption      The input Menu option.
+
+  @retval  TRUE   This is the highlight menu option.
+  @retval  FALSE  This is not the highlight menu option.
+
+**/
+BOOLEAN
+IsHighLightMenuOption (
+  IN UI_MENU_OPTION     *MenuOption
+  )
+{
+  if (gHighligthMenuInfo.HLTQuestionId != 0) {
+    if (GetQuestionIdInfo(MenuOption->ThisTag->OpCode) == gHighligthMenuInfo.HLTQuestionId) {
+      return (BOOLEAN) (MenuOption->Sequence == gHighligthMenuInfo.HLTSequence);
+    }
+  } else {
+    if(CompareMem (gHighligthMenuInfo.HLTOpCode, MenuOption->ThisTag->OpCode, gHighligthMenuInfo.HLTOpCode->Length) == 0) {
+      if (gHighligthMenuInfo.HLTIndex == 0 || gHighligthMenuInfo.HLTIndex == GetIndexInfoForOpcode(MenuOption->ThisTag->OpCode)) {
+        return (BOOLEAN) (MenuOption->Sequence == gHighligthMenuInfo.HLTSequence);
+      } else {
+        return FALSE;
+      }
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+  Find the highlight menu.
+
+  If the input is NULL, base on the record highlight info in
+  gHighligthMenuInfo to find the last highlight menu.
+
+  @param  HighLightedStatement      The input highlight statement.
+
+  @retval  The highlight menu index.
+
+**/
+LIST_ENTRY *
+FindHighLightMenuOption (
+ IN FORM_DISPLAY_ENGINE_STATEMENT  *HighLightedStatement
+ )
+{
+  LIST_ENTRY                      *NewPos;
+  UI_MENU_OPTION                  *MenuOption;
+
+  NewPos = gMenuOption.ForwardLink;
+  MenuOption = MENU_OPTION_FROM_LINK (NewPos);
+
+  if (HighLightedStatement != NULL) {
+    while (MenuOption->ThisTag != HighLightedStatement) {
+      NewPos     = NewPos->ForwardLink;
+      if (NewPos == &gMenuOption) {
+        //
+        // Not Found it, break
+        //
+        break;
+      }
+      MenuOption = MENU_OPTION_FROM_LINK (NewPos);
+    }
+
+    //
+    // Must find the highlight statement.
+    //
+    ASSERT (NewPos != &gMenuOption);
+
+  } else {
+    while (!IsHighLightMenuOption (MenuOption)) {
+      NewPos     = NewPos->ForwardLink;
+      if (NewPos == &gMenuOption) {
+        //
+        // Not Found it, break
+        //
+        break;
+      }
+      MenuOption = MENU_OPTION_FROM_LINK (NewPos);
+    }
+
+    //
+    // Highlight statement has disappear (suppressed/disableed)
+    //
+    if (NewPos == &gMenuOption) {
+      NewPos = NULL;
+    }
+  }
+
+  return NewPos;
+}
+
+/**
+  Is this the Top of screen menu.
+
+  @param  MenuOption      The input Menu option.
+
+  @retval  TRUE   This is the Top of screen menu option.
+  @retval  FALSE  This is not the Top of screen menu option.
+
+**/
+BOOLEAN
+IsTopOfScreeMenuOption (
+  IN UI_MENU_OPTION     *MenuOption
+  )
+{
+  if (gHighligthMenuInfo.TOSQuestionId != 0) {
+    return (BOOLEAN) (GetQuestionIdInfo(MenuOption->ThisTag->OpCode) == gHighligthMenuInfo.TOSQuestionId);
+  } 
+
+  if(CompareMem (gHighligthMenuInfo.TOSOpCode, MenuOption->ThisTag->OpCode, gHighligthMenuInfo.TOSOpCode->Length) == 0) {
+    if (gHighligthMenuInfo.TOSIndex == 0 || gHighligthMenuInfo.TOSIndex == GetIndexInfoForOpcode(MenuOption->ThisTag->OpCode)) {
+      return TRUE;
+    } else {
+      return FALSE;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+  Find the Top of screen menu.
+
+  If the input is NULL, base on the record highlight info in
+  gHighligthMenuInfo to find the last highlight menu.
+
+  @param  HighLightedStatement      The input highlight statement.
+
+  @retval  The highlight menu index.
+
+**/
+LIST_ENTRY *
+FindTopOfScreenMenuOption (
+ VOID
+ )
+{
+  LIST_ENTRY                      *NewPos;
+  UI_MENU_OPTION                  *MenuOption;
+
+  NewPos = gMenuOption.ForwardLink;
+  MenuOption = MENU_OPTION_FROM_LINK (NewPos);
+
+  while (!IsTopOfScreeMenuOption(MenuOption)) {
+    NewPos     = NewPos->ForwardLink;
+    if (NewPos == &gMenuOption) {
+      //
+      // Not Found it, break
+      //
+      break;
+    }
+    MenuOption = MENU_OPTION_FROM_LINK (NewPos);
+  }
+
+  //
+  // Last time top of screen menu has disappeared.
+  //
+  if (NewPos == &gMenuOption) {
+    NewPos = NULL;
+  }
+
+  return NewPos;
+}
+
+/**
   Find the first menu which will be show at the top.
 
   @param  FormData               The data info for this form.
@@ -1491,160 +1763,223 @@ FindTopMenu (
   OUT UINTN                     *SkipValue
   )
 {
-  LIST_ENTRY                      *NewPos;
   UINTN                           TopRow;
   UINTN                           BottomRow;
-  UI_MENU_OPTION                  *SavedMenuOption;
+  UI_MENU_OPTION                  *MenuOption;
   UINTN                           TmpValue;
 
-  TmpValue  = 0;
   TopRow    = gStatementDimensions.TopRow    + SCROLL_ARROW_HEIGHT;
   BottomRow = gStatementDimensions.BottomRow - SCROLL_ARROW_HEIGHT;
 
-  //
-  // If not has input highlight statement, just return the first one in this form.
-  //
-  if (FormData->HighLightedStatement == NULL) {
+  if (gMisMatch) {
+    //
+    // Reenter caused by option mismatch or auto exit caused by refresh form(refresh interval/guid), 
+    // base on the record highlight info to find the highlight menu.
+    //
+    ASSERT (gFormData->HiiHandle == gHighligthMenuInfo.HiiHandle &&
+            gFormData->FormId == gHighligthMenuInfo.FormId);
+
+    *HighlightMenu = FindHighLightMenuOption(NULL);
+    if (*HighlightMenu != NULL) {
+      //
+      // Update skip info for this highlight menu.
+      //
+      MenuOption = MENU_OPTION_FROM_LINK (*HighlightMenu);
+      UpdateOptionSkipLines (MenuOption);
+
+      //
+      // Found the last time highlight menu.
+      //
+      *TopOfScreen = FindTopOfScreenMenuOption();
+      if (*TopOfScreen != NULL) {
+        //
+        // Found the last time selectable top of screen menu.
+        //
+        AdjustDateAndTimePosition(TRUE, TopOfScreen);
+        MenuOption = MENU_OPTION_FROM_LINK (*TopOfScreen);
+        UpdateOptionSkipLines (MenuOption);
+
+        *SkipValue = gHighligthMenuInfo.SkipValue;
+      } else {
+        //
+        // Not found last time top of screen menu, so base on current highlight menu
+        // to find the new top of screen menu.
+        // Make the current highlight menu at the bottom of the form to calculate the
+        // top of screen menu.
+        //
+        if (MenuOption->Skip >= BottomRow - TopRow) {
+          *TopOfScreen = *HighlightMenu;
+          TmpValue     = 0;
+        } else {
+          *TopOfScreen = FindTopOfScreenMenu(*HighlightMenu, BottomRow - TopRow - MenuOption->Skip, &TmpValue);
+        }
+
+        *SkipValue   = TmpValue;
+      }
+    } else {
+      //
+      // Last time highlight menu has disappear, find the first highlightable menu as the defalut one.
+      //
+      *HighlightMenu = gMenuOption.ForwardLink;
+      if (!IsListEmpty (&gMenuOption)) {
+        MoveToNextStatement (FALSE, HighlightMenu, BottomRow - TopRow, TRUE);
+      }
+      *TopOfScreen   = gMenuOption.ForwardLink;
+      *SkipValue = 0;
+    }
+
+    gMisMatch = FALSE;
+  } else if (FormData->HighLightedStatement != NULL) {
+    if (IsSavedHighlightStatement (FormData->HighLightedStatement)) {
+      //
+      // Input highlight menu is same as last time highlight menu.
+      // Base on last time highlight menu to set the top of screen menu and highlight menu.
+      //
+      *HighlightMenu = FindHighLightMenuOption(NULL);
+      ASSERT (*HighlightMenu != NULL);
+
+      //
+      // Update skip info for this highlight menu.
+      //
+      MenuOption = MENU_OPTION_FROM_LINK (*HighlightMenu);
+      UpdateOptionSkipLines (MenuOption);
+      
+      *TopOfScreen = FindTopOfScreenMenuOption();
+      if (*TopOfScreen == NULL) {
+        //
+        // Not found last time top of screen menu, so base on current highlight menu
+        // to find the new top of screen menu.
+        // Make the current highlight menu at the bottom of the form to calculate the
+        // top of screen menu.
+        //
+        if (MenuOption->Skip >= BottomRow - TopRow) {
+          *TopOfScreen = *HighlightMenu;
+          TmpValue     = 0;
+        } else {
+          *TopOfScreen = FindTopOfScreenMenu(*HighlightMenu, BottomRow - TopRow - MenuOption->Skip, &TmpValue);
+        }
+
+        *SkipValue   = TmpValue;
+      } else {
+        AdjustDateAndTimePosition(TRUE, TopOfScreen);
+        MenuOption = MENU_OPTION_FROM_LINK (*TopOfScreen);
+        UpdateOptionSkipLines (MenuOption);
+
+        *SkipValue = gHighligthMenuInfo.SkipValue;
+      }
+      AdjustDateAndTimePosition(TRUE, TopOfScreen);
+    } else {
+      //
+      // Input highlight menu is not save as last time highlight menu.
+      //
+      *HighlightMenu = FindHighLightMenuOption(FormData->HighLightedStatement);
+      MenuOption = MENU_OPTION_FROM_LINK (*HighlightMenu);
+      UpdateOptionSkipLines (MenuOption);
+
+      //
+      // Make the current highlight menu at the bottom of the form to calculate the
+      // top of screen menu.
+      //
+      if (MenuOption->Skip >= BottomRow - TopRow) {
+        *TopOfScreen = *HighlightMenu;
+        TmpValue     = 0;
+      } else {
+        *TopOfScreen = FindTopOfScreenMenu(*HighlightMenu, BottomRow - TopRow - MenuOption->Skip, &TmpValue);
+      }
+
+      *SkipValue   = TmpValue;
+    }
+    AdjustDateAndTimePosition(TRUE, TopOfScreen);
+  } else {
+    //
+    // If not has input highlight statement, just return the first one in this form.
+    //
     *TopOfScreen   = gMenuOption.ForwardLink;
     *HighlightMenu = gMenuOption.ForwardLink;
     if (!IsListEmpty (&gMenuOption)) {
       MoveToNextStatement (FALSE, HighlightMenu, BottomRow - TopRow, TRUE);
     }
     *SkipValue     = 0;
-    return;
   }
-
-  //
-  // Now base on the input highlight menu to find the top menu in this page.
-  // Will base on the highlight menu show at the bottom to find the top menu.
-  //
-  NewPos = gMenuOption.ForwardLink;
-  SavedMenuOption = MENU_OPTION_FROM_LINK (NewPos);
-
-  while ((SavedMenuOption->ThisTag != FormData->HighLightedStatement) ||
-         (SavedMenuOption->Sequence != gSequence)) {
-    NewPos     = NewPos->ForwardLink;
-    if (NewPos == &gMenuOption) {
-      //
-      // Not Found it, break
-      //
-      break;
-    }
-    SavedMenuOption = MENU_OPTION_FROM_LINK (NewPos);
-  }
-  ASSERT (SavedMenuOption->ThisTag == FormData->HighLightedStatement);
-
-  *HighlightMenu = NewPos;
-
-  AdjustDateAndTimePosition(FALSE, &NewPos);
-  SavedMenuOption = MENU_OPTION_FROM_LINK (NewPos);
-  UpdateOptionSkipLines (SavedMenuOption);
-
-  //
-  // FormRefreshEvent != NULL means this form will auto exit at an interval, display engine 
-  // will try to keep highlight on the current position after this form exit and re-enter.
-  //
-  // HiiHandle + QuestionId can find the only one question in the system.
-  //
-  // If this question has question id, save the question id info to find the question.
-  // else save the opcode buffer to find it.
-  //
-  if (gFormData->FormRefreshEvent != NULL && gFormData->HiiHandle == gHighligthMenuInfo.HiiHandle) {
-    if (gHighligthMenuInfo.QuestionId != 0) { 
-      if (gHighligthMenuInfo.QuestionId == GetQuestionIdInfo(SavedMenuOption->ThisTag->OpCode)) {
-        BottomRow = gHighligthMenuInfo.DisplayRow + SavedMenuOption->Skip;
-        //
-        // SkipValue only used for menu at the top of the form.
-        // If Highlight menu is not at the top, this value will be update later.
-        //
-        TmpValue = gHighligthMenuInfo.SkipValue;
-      }
-    } else if (gHighligthMenuInfo.OpCode != NULL){
-      if (!CompareMem (gHighligthMenuInfo.OpCode, SavedMenuOption->ThisTag->OpCode, gHighligthMenuInfo.OpCode->Length)) {
-        BottomRow = gHighligthMenuInfo.DisplayRow + SavedMenuOption->Skip;
-        //
-        // SkipValue only used for menu at the top of the form.
-        // If Highlight menu is not at the top, this value will be update later.
-        //
-        TmpValue = gHighligthMenuInfo.SkipValue;
-      }
-    }
-  }
-
-  if (SavedMenuOption->Skip >= BottomRow - TopRow) {
-    *TopOfScreen = NewPos;
-  } else {
-    *TopOfScreen = FindTopOfScreenMenu(NewPos, BottomRow - TopRow - SavedMenuOption->Skip, &TmpValue);
-  }
-  AdjustDateAndTimePosition(TRUE, TopOfScreen);
-
-  *SkipValue   = TmpValue;
 }
 
 /**
-  Update highlight menu info.
+  Record the highlight menu and top of screen menu info.
 
-  @param  MenuOption               The menu opton which is highlight.
-  @param  SkipValue                The skipvalue info for this menu.
-                                   SkipValue only used for the menu at the top of the form.
+  @param  Highlight               The menu opton which is highlight.
+  @param  TopOfScreen             The menu opton which is at the top of the form.
+  @param  SkipValue               The skip line info for the top of screen menu.
 
 **/
 VOID
 UpdateHighlightMenuInfo (
-  IN UI_MENU_OPTION            *MenuOption,
-  IN UINTN                     SkipValue
+  IN  LIST_ENTRY                      *Highlight,
+  IN  LIST_ENTRY                      *TopOfScreen,
+  IN  UINTN                           SkipValue
   )
 {
+  UI_MENU_OPTION                  *MenuOption;
   FORM_DISPLAY_ENGINE_STATEMENT   *Statement;
 
-  //
-  // This is the current selected statement
-  //
-  Statement = MenuOption->ThisTag;
+  gHighligthMenuInfo.HiiHandle  = gFormData->HiiHandle;
+  gHighligthMenuInfo.FormId     = gFormData->FormId;
+  gHighligthMenuInfo.SkipValue  = (UINT16)SkipValue;
 
-  //
-  // Get the highlight statement.
-  //
-  gUserInput->SelectedStatement = Statement;
-  gSequence = (UINT16) MenuOption->Sequence;
+  if (!IsListEmpty (&gMenuOption)) {
+    MenuOption = MENU_OPTION_FROM_LINK (Highlight);
+    Statement  = MenuOption->ThisTag;
 
-  //
-  // FormRefreshEvent != NULL means this form will auto exit at an interval, display engine 
-  // will try to keep highlight on the current position after this form exit and re-enter.
-  //
-  // HiiHandle + QuestionId can find the only one question in the system.
-  //
-  // If this question has question id, base on the question id info to find the question.
-  // else base on the opcode buffer to find it.
-  //
-  if (gFormData->FormRefreshEvent != NULL) {
-    gHighligthMenuInfo.HiiHandle  = gFormData->HiiHandle;
-    gHighligthMenuInfo.QuestionId = GetQuestionIdInfo(Statement->OpCode);
+    gUserInput->SelectedStatement = Statement;
 
-    //
-    // if question id == 0, save the opcode buffer for later use.
-    //
-    if (gHighligthMenuInfo.QuestionId == 0) {
-      if (gHighligthMenuInfo.OpCode != NULL) {
-        FreePool (gHighligthMenuInfo.OpCode);
+    gHighligthMenuInfo.HLTSequence   = MenuOption->Sequence;
+    gHighligthMenuInfo.HLTQuestionId = GetQuestionIdInfo(Statement->OpCode);
+    if (gHighligthMenuInfo.HLTQuestionId == 0) {
+      //
+      // if question id == 0, save the opcode buffer..
+      //
+      if (gHighligthMenuInfo.HLTOpCode != NULL) {
+        FreePool (gHighligthMenuInfo.HLTOpCode);
       }
-      gHighligthMenuInfo.OpCode = AllocateCopyPool (Statement->OpCode->Length, Statement->OpCode);
-      ASSERT (gHighligthMenuInfo.OpCode != NULL);
-    }
-    gHighligthMenuInfo.DisplayRow = (UINT16) MenuOption->Row;
-    gHighligthMenuInfo.SkipValue  = (UINT16) SkipValue;
-  } else {
-    gHighligthMenuInfo.HiiHandle  = NULL;
-    gHighligthMenuInfo.QuestionId = 0;
-    if (gHighligthMenuInfo.OpCode != NULL) {
-      FreePool (gHighligthMenuInfo.OpCode);
-      gHighligthMenuInfo.OpCode = NULL;
-    }
-    gHighligthMenuInfo.DisplayRow = 0;
-    gHighligthMenuInfo.SkipValue  = 0;
-  }
+      gHighligthMenuInfo.HLTOpCode = AllocateCopyPool (Statement->OpCode->Length, Statement->OpCode);
+      ASSERT (gHighligthMenuInfo.HLTOpCode != NULL);
 
-  RefreshKeyHelp(gFormData, Statement, FALSE);
+      gHighligthMenuInfo.HLTIndex = GetIndexInfoForOpcode(Statement->OpCode);
+    }
+
+    MenuOption = MENU_OPTION_FROM_LINK (TopOfScreen);
+    Statement  = MenuOption->ThisTag;
+
+    gHighligthMenuInfo.TOSQuestionId = GetQuestionIdInfo(Statement->OpCode);
+    if (gHighligthMenuInfo.TOSQuestionId == 0) {
+      //
+      // if question id == 0, save the opcode buffer..
+      //
+      if (gHighligthMenuInfo.TOSOpCode != NULL) {
+        FreePool (gHighligthMenuInfo.TOSOpCode);
+      }
+      gHighligthMenuInfo.TOSOpCode = AllocateCopyPool (Statement->OpCode->Length, Statement->OpCode);
+      ASSERT (gHighligthMenuInfo.TOSOpCode != NULL);
+
+      gHighligthMenuInfo.TOSIndex = GetIndexInfoForOpcode(Statement->OpCode);
+    }
+  } else {
+    gUserInput->SelectedStatement    = NULL;
+
+    gHighligthMenuInfo.HLTSequence   = 0;
+    gHighligthMenuInfo.HLTQuestionId = 0;
+    if (gHighligthMenuInfo.HLTOpCode != NULL) {
+      FreePool (gHighligthMenuInfo.HLTOpCode);
+    }
+    gHighligthMenuInfo.HLTOpCode     = NULL;
+    gHighligthMenuInfo.HLTIndex      = 0;
+
+    gHighligthMenuInfo.TOSQuestionId = 0;
+    if (gHighligthMenuInfo.TOSOpCode != NULL) {
+      FreePool (gHighligthMenuInfo.TOSOpCode);
+    }
+    gHighligthMenuInfo.TOSOpCode     = NULL;
+    gHighligthMenuInfo.TOSIndex      = 0;
+  }
 }
 
 /**
@@ -1777,6 +2112,146 @@ HasOptionString (
   return TRUE;
 }
 
+/**
+  Double confirm with user about the action.
+
+  @param  Action               The user input action.
+
+  @retval TRUE                 User confirm with the input or not need user confirm.
+  @retval FALSE                User want ignore this input.
+
+**/
+BOOLEAN
+FxConfirmPopup (
+  IN UINT32   Action
+  )
+{
+  EFI_INPUT_KEY                   Key;
+  CHAR16                          *CfmStr;
+  UINTN                           CfmStrLen;
+  UINT32                          CheckFlags;
+  BOOLEAN                         RetVal;
+  UINTN                           CatLen;
+
+  CfmStrLen = 0;
+  CatLen    = StrLen (gConfirmMsgConnect);
+
+  //
+  // Below action need extra popup dialog to confirm.
+  // 
+  CheckFlags = BROWSER_ACTION_DISCARD | 
+               BROWSER_ACTION_DEFAULT |
+               BROWSER_ACTION_SUBMIT |
+               BROWSER_ACTION_RESET |
+               BROWSER_ACTION_EXIT;
+
+  //
+  // Not need to confirm with user, just return TRUE.
+  //
+  if ((Action & CheckFlags) == 0) {
+    return TRUE;
+  }
+
+  if ((Action & BROWSER_ACTION_DISCARD) == BROWSER_ACTION_DISCARD) {
+    CfmStrLen += StrLen (gConfirmDiscardMsg);
+  } 
+
+  if ((Action & BROWSER_ACTION_DEFAULT) == BROWSER_ACTION_DEFAULT) {
+    if (CfmStrLen != 0) {
+      CfmStrLen += CatLen;
+    } 
+
+    CfmStrLen += StrLen (gConfirmDefaultMsg);
+  }
+
+  if ((Action & BROWSER_ACTION_SUBMIT)  == BROWSER_ACTION_SUBMIT) {
+    if (CfmStrLen != 0) {
+      CfmStrLen += CatLen;
+    } 
+
+    CfmStrLen += StrLen (gConfirmSubmitMsg);
+  }
+
+  if ((Action & BROWSER_ACTION_RESET)  == BROWSER_ACTION_RESET) {
+    if (CfmStrLen != 0) {
+      CfmStrLen += CatLen;
+    } 
+
+    CfmStrLen += StrLen (gConfirmResetMsg);
+  }
+
+  if ((Action & BROWSER_ACTION_EXIT)  == BROWSER_ACTION_EXIT) {
+    if (CfmStrLen != 0) {
+      CfmStrLen += CatLen;
+    } 
+
+    CfmStrLen += StrLen (gConfirmExitMsg);
+  }
+
+  //
+  // Allocate buffer to save the string.
+  // String + "?" + "\0"
+  //
+  CfmStr = AllocateZeroPool ((CfmStrLen + 1 + 1) * sizeof (CHAR16));
+  ASSERT (CfmStr != NULL);
+
+  if ((Action & BROWSER_ACTION_DISCARD) == BROWSER_ACTION_DISCARD) {
+    StrCpy (CfmStr, gConfirmDiscardMsg);
+  }
+
+  if ((Action & BROWSER_ACTION_DEFAULT) == BROWSER_ACTION_DEFAULT) {
+    if (CfmStr[0] != 0) {
+      StrCat (CfmStr, gConfirmMsgConnect);
+      StrCat (CfmStr, gConfirmDefaultMsg2nd);
+    } else {
+      StrCpy (CfmStr, gConfirmDefaultMsg);
+    }
+  }
+
+  if ((Action & BROWSER_ACTION_SUBMIT)  == BROWSER_ACTION_SUBMIT) {
+    if (CfmStr[0] != 0) {
+      StrCat (CfmStr, gConfirmMsgConnect);
+      StrCat (CfmStr, gConfirmSubmitMsg2nd);
+    } else {
+      StrCpy (CfmStr, gConfirmSubmitMsg);
+    }
+  }
+
+  if ((Action & BROWSER_ACTION_RESET)  == BROWSER_ACTION_RESET) {
+    if (CfmStr[0] != 0) {
+      StrCat (CfmStr, gConfirmMsgConnect);
+      StrCat (CfmStr, gConfirmResetMsg2nd);
+    } else {
+      StrCpy (CfmStr, gConfirmResetMsg);
+    }
+  }
+
+  if ((Action & BROWSER_ACTION_EXIT)  == BROWSER_ACTION_EXIT) {
+    if (CfmStr[0] != 0) {
+      StrCat (CfmStr, gConfirmMsgConnect);
+      StrCat (CfmStr, gConfirmExitMsg2nd);
+    } else {
+      StrCpy (CfmStr, gConfirmExitMsg);
+    }
+  }
+
+  StrCat (CfmStr, gConfirmMsgEnd);
+
+  do {
+    CreateDialog (&Key, gEmptyString, CfmStr, gConfirmOpt, gEmptyString, NULL);
+  } while (((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) != (gConfirmOptYes[0] | UPPER_LOWER_CASE_OFFSET)) &&
+           ((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) != (gConfirmOptNo[0] | UPPER_LOWER_CASE_OFFSET)));
+
+  if ((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) == (gConfirmOptYes[0] | UPPER_LOWER_CASE_OFFSET)) {
+    RetVal = TRUE;
+  } else {
+    RetVal = FALSE;
+  }
+
+  FreePool (CfmStr);
+
+  return RetVal;
+}
 
 /**
   Print string for this menu option.
@@ -2049,10 +2524,8 @@ UiDisplayMenu (
   UINTN                           TopRow;
   UINTN                           BottomRow;
   UINTN                           Index;
-  UINT16                          Width;
   CHAR16                          *StringPtr;
   CHAR16                          *OptionString;
-  CHAR16                          *OutputString;
   CHAR16                          *HelpString;
   CHAR16                          *HelpHeaderString;
   CHAR16                          *HelpBottomString;
@@ -2069,10 +2542,8 @@ UiDisplayMenu (
   UI_MENU_OPTION                  *MenuOption;
   UI_MENU_OPTION                  *NextMenuOption;
   UI_MENU_OPTION                  *SavedMenuOption;
-  UI_MENU_OPTION                  *PreviousMenuOption;
   UI_CONTROL_FLAG                 ControlFlag;
   UI_SCREEN_OPERATION             ScreenOperation;
-  UINT16                          DefaultId;
   FORM_DISPLAY_ENGINE_STATEMENT   *Statement;
   BROWSER_HOT_KEY                 *HotKey;
   UINTN                           HelpPageIndex;
@@ -2087,7 +2558,6 @@ UiDisplayMenu (
   UINT16                          BottomLineWidth;
   EFI_STRING_ID                   HelpInfo;
   UI_EVENT_TYPE                   EventType;
-  FORM_DISPLAY_ENGINE_STATEMENT   *InitialHighlight;
   BOOLEAN                         SkipHighLight;
 
   EventType           = UIEventNone;
@@ -2098,7 +2568,6 @@ UiDisplayMenu (
   OptionString        = NULL;
   ScreenOperation     = UiNoOperation;
   NewLine             = TRUE;
-  DefaultId           = 0;
   HelpPageCount       = 0;
   HelpLine            = 0;
   RowCount            = 0;
@@ -2109,24 +2578,20 @@ UiDisplayMenu (
   EachLineWidth       = 0;
   HeaderLineWidth     = 0;
   BottomLineWidth     = 0;
-  OutputString        = NULL;
   UpArrow             = FALSE;
   DownArrow           = FALSE;
   SkipValue           = 0;
   SkipHighLight       = FALSE;
 
   NextMenuOption      = NULL;
-  PreviousMenuOption  = NULL;
   SavedMenuOption     = NULL;
   HotKey              = NULL;
   Repaint             = TRUE;
   MenuOption          = NULL;
   gModalSkipColumn    = (CHAR16) (gStatementDimensions.RightColumn - gStatementDimensions.LeftColumn) / 6;
-  InitialHighlight    = gFormData->HighLightedStatement;
 
   ZeroMem (&Key, sizeof (EFI_INPUT_KEY));
 
-  Width     = (UINT16)gOptionBlockWidth - 1;
   TopRow    = gStatementDimensions.TopRow    + SCROLL_ARROW_HEIGHT;
   BottomRow = gStatementDimensions.BottomRow - SCROLL_ARROW_HEIGHT - 1;
 
@@ -2138,6 +2603,10 @@ UiDisplayMenu (
   }
 
   FindTopMenu(FormData, &TopOfScreen, &NewPos, &SkipValue);
+  if (!IsListEmpty (&gMenuOption)) {
+    NextMenuOption = MENU_OPTION_FROM_LINK (NewPos);
+    gUserInput->SelectedStatement = NextMenuOption->ThisTag;
+  }
 
   gST->ConOut->EnableCursor (gST->ConOut, FALSE);
 
@@ -2243,7 +2712,11 @@ UiDisplayMenu (
           }
 
           if (EFI_ERROR (Status)) {
-            return Status;
+            if (gMisMatch) {
+              return EFI_SUCCESS;
+            } else {
+              return Status;
+            }
           }
           //
           // 3. Update the row info which will be used by next menu.
@@ -2306,10 +2779,12 @@ UiDisplayMenu (
       //
       ControlFlag = CfUpdateHelpString;
 
+      UpdateHighlightMenuInfo(NewPos, TopOfScreen, SkipValue);
+
       if (SkipHighLight) {
-        MenuOption    = SavedMenuOption;
         SkipHighLight = FALSE;
-        UpdateHighlightMenuInfo (MenuOption, TopOfScreen == &MenuOption->Link ? SkipValue : 0);
+        MenuOption    = SavedMenuOption;
+        RefreshKeyHelp(gFormData, SavedMenuOption->ThisTag, FALSE);
         break;
       }
 
@@ -2351,9 +2826,7 @@ UiDisplayMenu (
         // This is the current selected statement
         //
         MenuOption = MENU_OPTION_FROM_LINK (NewPos);
-        Statement = MenuOption->ThisTag;
-
-        UpdateHighlightMenuInfo (MenuOption, Temp2);
+        RefreshKeyHelp(gFormData, MenuOption->ThisTag, FALSE);
 
         if (!IsSelectable (MenuOption)) {
           break;
@@ -2588,6 +3061,7 @@ UiDisplayMenu (
       }
 
       if (EventType == UIEventDriver) {
+        gMisMatch = TRUE;
         gUserInput->Action = BROWSER_ACTION_NONE;
         ControlFlag = CfExit;
         break;
@@ -2795,13 +3269,6 @@ UiDisplayMenu (
         break;
       }
 
-      //
-      // When user press ESC, it will try to show another menu, should clean the gSequence info.
-      //
-      if (gSequence != 0) {
-        gSequence = 0;
-      }
-
       gUserInput->Action = BROWSER_ACTION_FORM_EXIT;
       ControlFlag = CfExit;
       break;
@@ -2810,8 +3277,19 @@ UiDisplayMenu (
       ControlFlag = CfRepaint;
 
       ASSERT (HotKey != NULL);
-      gUserInput->Action = HotKey->Action;
-      ControlFlag = CfExit;
+
+      if (FxConfirmPopup(HotKey->Action)) {
+        gUserInput->Action = HotKey->Action;
+        if ((HotKey->Action & BROWSER_ACTION_DEFAULT) == BROWSER_ACTION_DEFAULT) {
+          gUserInput->DefaultId = HotKey->DefaultId;
+        }
+        ControlFlag = CfExit;
+      } else {
+        Repaint     = TRUE;
+        NewLine     = TRUE;
+        ControlFlag = CfRepaint;
+      }
+
       break;
 
     case CfUiLeft:
@@ -2914,6 +3392,8 @@ UiDisplayMenu (
       //
       AdjustDateAndTimePosition (TRUE, &TopOfScreen);
       AdjustDateAndTimePosition (TRUE, &NewPos);
+
+      UpdateHighlightMenuInfo(NewPos, TopOfScreen, SkipValue);
       break;
 
     case CfUiPageUp:
@@ -2953,6 +3433,8 @@ UiDisplayMenu (
       //
       AdjustDateAndTimePosition (TRUE, &TopOfScreen);
       AdjustDateAndTimePosition (TRUE, &NewPos);
+
+      UpdateHighlightMenuInfo(NewPos, TopOfScreen, SkipValue);
       break;
 
     case CfUiPageDown:
@@ -3014,6 +3496,8 @@ UiDisplayMenu (
       //
       AdjustDateAndTimePosition (TRUE, &TopOfScreen);
       AdjustDateAndTimePosition (TRUE, &NewPos);
+
+      UpdateHighlightMenuInfo(NewPos, TopOfScreen, SkipValue);
       break;
 
     case CfUiDown:
@@ -3075,6 +3559,8 @@ UiDisplayMenu (
         //
         AdjustDateAndTimePosition (TRUE, &TopOfScreen);
         AdjustDateAndTimePosition (TRUE, &NewPos);
+
+        UpdateHighlightMenuInfo(NewPos, TopOfScreen, SkipValue);
         break;
       }        
 
@@ -3172,6 +3658,8 @@ UiDisplayMenu (
       //
       AdjustDateAndTimePosition (TRUE, &TopOfScreen);
       AdjustDateAndTimePosition (TRUE, &NewPos);
+
+      UpdateHighlightMenuInfo(NewPos, TopOfScreen, SkipValue);
       break;
 
     case CfUiNoOperation:
@@ -3581,8 +4069,12 @@ UnloadDisplayEngine (
 
   FreeDisplayStrings ();
 
-  if (gHighligthMenuInfo.OpCode != NULL) {
-    FreePool (gHighligthMenuInfo.OpCode);
+  if (gHighligthMenuInfo.HLTOpCode != NULL) {
+    FreePool (gHighligthMenuInfo.HLTOpCode);
+  }
+
+  if (gHighligthMenuInfo.TOSOpCode != NULL) {
+    FreePool (gHighligthMenuInfo.TOSOpCode);
   }
 
   return EFI_SUCCESS;

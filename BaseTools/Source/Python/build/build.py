@@ -1,7 +1,8 @@
 ## @file
 # build a platform or a module
 #
-#  Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2014, Hewlett-Packard Development Company, L.P.<BR>
+#  Copyright (c) 2007 - 2015, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -49,7 +50,7 @@ import Common.EdkLogger
 import Common.GlobalData as GlobalData
 
 # Version and Copyright
-VersionNumber = "0.51" + ' ' + gBUILD_VERSION
+VersionNumber = "0.60" + ' ' + gBUILD_VERSION
 __version__ = "%prog Version " + VersionNumber
 __copyright__ = "Copyright (c) 2007 - 2014, Intel Corporation  All rights reserved."
 
@@ -931,14 +932,9 @@ class Build():
 
         makefile = GenMake.BuildFile(AutoGenObject)._FILE_NAME_[GenMake.gMakeType]
 
-        # genfds
-        if Target == 'fds':
-            LaunchCommand(AutoGenObject.GenFdsCommand, AutoGenObject.MakeFileDir)
-            return True
-
         # run
         if Target == 'run':
-            RunDir = os.path.normpath(os.path.join(AutoGenObject.BuildDir, 'IA32'))
+            RunDir = os.path.normpath(os.path.join(AutoGenObject.BuildDir, GlobalData.gGlobalDefines['ARCH']))
             Command = '.\SecMain'
             os.chdir(RunDir)
             LaunchCommand(Command, RunDir)
@@ -997,11 +993,6 @@ class Build():
             try:
                 #os.rmdir(AutoGenObject.BuildDir)
                 RemoveDirectory(AutoGenObject.BuildDir, True)
-                #
-                # First should close DB.
-                #
-                self.Db.Close()
-                RemoveDirectory(os.path.dirname(GlobalData.gDatabasePath), True)
             except WindowsError, X:
                 EdkLogger.error("build", FILE_DELETE_FAILURE, ExtraData=str(X))
         return True
@@ -1059,6 +1050,14 @@ class Build():
                                 (AutoGenObject.BuildTarget, AutoGenObject.ToolChain, AutoGenObject.Arch),
                             ExtraData=str(AutoGenObject))
 
+        # build modules
+        if BuildModule:
+            if Target != 'fds':
+                BuildCommand = BuildCommand + [Target]
+            LaunchCommand(BuildCommand, AutoGenObject.MakeFileDir)
+            self.CreateAsBuiltInf()
+            return True
+
         # genfds
         if Target == 'fds':
             LaunchCommand(AutoGenObject.GenFdsCommand, AutoGenObject.MakeFileDir)
@@ -1066,17 +1065,10 @@ class Build():
 
         # run
         if Target == 'run':
-            RunDir = os.path.normpath(os.path.join(AutoGenObject.BuildDir, 'IA32'))
+            RunDir = os.path.normpath(os.path.join(AutoGenObject.BuildDir, GlobalData.gGlobalDefines['ARCH']))
             Command = '.\SecMain'
             os.chdir(RunDir)
             LaunchCommand(Command, RunDir)
-            return True
-
-        # build modules
-        BuildCommand = BuildCommand + [Target]
-        if BuildModule:
-            LaunchCommand(BuildCommand, AutoGenObject.MakeFileDir)
-            self.CreateAsBuiltInf()
             return True
 
         # build library
@@ -1091,11 +1083,6 @@ class Build():
             try:
                 #os.rmdir(AutoGenObject.BuildDir)
                 RemoveDirectory(AutoGenObject.BuildDir, True)
-                #
-                # First should close DB.
-                #
-                self.Db.Close()
-                RemoveDirectory(os.path.dirname(GlobalData.gDatabasePath), True)
             except WindowsError, X:
                 EdkLogger.error("build", FILE_DELETE_FAILURE, ExtraData=str(X))
         return True
@@ -1463,12 +1450,11 @@ class Build():
                         # Rebase module to the preferred memory address before GenFds
                         #
                         self._CollectModuleMapBuffer(MapBuffer, ModuleList)
-                        if self.Fdf:
-                            #
-                            # create FDS again for the updated EFI image
-                            #
-                            self._Build("fds", Wa)
                     if self.Fdf:
+                        #
+                        # create FDS again for the updated EFI image
+                        #
+                        self._Build("fds", Wa)
                         #
                         # Create MAP file for all platform FVs after GenFds.
                         #
@@ -1558,10 +1544,10 @@ class Build():
                         # Rebase module to the preferred memory address before GenFds
                         #
                         self._CollectModuleMapBuffer(MapBuffer, ModuleList)
-                        #
-                        # create FDS again for the updated EFI image
-                        #
-                        self._Build("fds", Wa)
+                    #
+                    # create FDS again for the updated EFI image
+                    #
+                    self._Build("fds", Wa)
                     #
                     # Create MAP file for all platform FVs after GenFds.
                     #
@@ -1804,6 +1790,10 @@ class Build():
         else:
             self.SpawnMode = False
             self._BuildModule()
+
+        if self.Target == 'cleanall':
+            self.Db.Close()
+            RemoveDirectory(os.path.dirname(GlobalData.gDatabasePath), True)
 
     def CreateAsBuiltInf(self):
         for Module in self.BuildModules:

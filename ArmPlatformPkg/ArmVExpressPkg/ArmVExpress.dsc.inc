@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2011-2014, ARM Limited. All rights reserved.
+#  Copyright (c) 2011-2015, ARM Limited. All rights reserved.
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -72,6 +72,7 @@
   ArmGenericTimerCounterLib|ArmPkg/Library/ArmGenericTimerPhyCounterLib/ArmGenericTimerPhyCounterLib.inf
 
   # Versatile Express Specific Libraries
+  PlatformPeiLib|ArmPlatformPkg/PlatformPei/PlatformPeiLib.inf
   ArmPlatformSysConfigLib|ArmPlatformPkg/ArmVExpressPkg/Library/ArmVExpressSysConfigLib/ArmVExpressSysConfigLib.inf
   NorFlashPlatformLib|ArmPlatformPkg/ArmVExpressPkg/Library/NorFlashArmVExpressLib/NorFlashArmVExpressLib.inf
   EfiResetSystemLib|ArmPlatformPkg/ArmVExpressPkg/Library/ResetSystemLib/ResetSystemLib.inf
@@ -111,7 +112,16 @@
 
   # BDS Libraries
   BdsLib|ArmPkg/Library/BdsLib/BdsLib.inf
+
+  AcpiLib|EmbeddedPkg/Library/AcpiLib/AcpiLib.inf
   FdtLib|EmbeddedPkg/Library/FdtLib/FdtLib.inf
+
+  # RunAxf support via Dynamic Shell Command protocol
+  # It uses the Shell libraries.
+  ArmShellCmdRunAxfLib|ArmPlatformPkg/Library/ArmShellCmdRunAxf/ArmShellCmdRunAxf.inf
+  ShellLib|ShellPkg/Library/UefiShellLib/UefiShellLib.inf
+  FileHandleLib|MdePkg/Library/UefiFileHandleLib/UefiFileHandleLib.inf
+  SortLib|MdeModulePkg/Library/UefiSortLib/UefiSortLib.inf
 
 [LibraryClasses.common.SEC]
   ArmPlatformSecExtraActionLib|ArmPlatformPkg/Library/DebugSecExtraActionLib/DebugSecExtraActionLib.inf
@@ -128,7 +138,6 @@
   HobLib|EmbeddedPkg/Library/PrePiHobLib/PrePiHobLib.inf
   PrePiHobListPointerLib|ArmPlatformPkg/Library/PrePiHobListPointerLib/PrePiHobListPointerLib.inf
   PerformanceLib|MdeModulePkg/Library/PeiPerformanceLib/PeiPerformanceLib.inf
-  PlatformPeiLib|ArmPlatformPkg/PlatformPei/PlatformPeiLib.inf
   MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
 !endif
 
@@ -256,6 +265,9 @@
 
 [PcdsFixedAtBuild.common]
   gArmPlatformTokenSpaceGuid.PcdFirmwareVendor|"ARM Versatile Express"
+!ifdef $(FIRMWARE_VER)
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"$(FIRMWARE_VER)"
+!endif
 
   gEmbeddedTokenSpaceGuid.PcdEmbeddedPrompt|"VExpress"
   gEfiMdePkgTokenSpaceGuid.PcdMaximumUnicodeStringLength|1000000
@@ -359,6 +371,12 @@
   gArmPlatformTokenSpaceGuid.PcdDefaultConInPaths|L"VenHw(D3987D4B-971A-435F-8CAF-4967EB627241)/Uart(38400,8,N,1)/VenPcAnsi()"
   gArmPlatformTokenSpaceGuid.PcdPlatformBootTimeOut|10
 
+  # RunAxf support via Dynamic Shell Command protocol
+  # We want to use the Shell Libraries but don't want it to initialise
+  # automatically. We initialise the libraries when the command is called by the
+  # Shell.
+  gEfiShellPkgTokenSpaceGuid.PcdShellLibAutoInitialize|FALSE
+
 [Components.common]
   # Versatile Express FileSystem
   ArmPlatformPkg/FileSystem/BootMonFs/BootMonFs.inf
@@ -388,3 +406,6 @@
   EmbeddedPkg/Application/AndroidFastboot/AndroidFastbootApp.inf
   EmbeddedPkg/Drivers/AndroidFastbootTransportUsbDxe/FastbootTransportUsbDxe.inf
   ArmPlatformPkg/ArmVExpressPkg/ArmVExpressFastBootDxe/ArmVExpressFastBootDxe.inf
+
+  # FV Filesystem
+  MdeModulePkg/Universal/FvSimpleFileSystemDxe/FvSimpleFileSystemDxe.inf

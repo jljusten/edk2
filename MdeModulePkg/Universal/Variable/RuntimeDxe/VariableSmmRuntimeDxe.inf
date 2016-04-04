@@ -5,7 +5,12 @@
 #  four EFI_RUNTIME_SERVICES: SetVariable, GetVariable, GetNextVariableName and QueryVariableInfo
 #  and works with SMM variable module together.
 #
-# Copyright (c) 2010 - 2014, Intel Corporation. All rights reserved.<BR>
+#  Caution: This module requires additional review when modified.
+#  This driver will have external input - variable data.
+#  This external input must be validated carefully to avoid security issues such as
+#  buffer overflow or integer overflow.
+#
+# Copyright (c) 2010 - 2015, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -60,6 +65,7 @@
   ## UNDEFINED # Used to do smm communication
   gEfiSmmVariableProtocolGuid
   gEdkiiVariableLockProtocolGuid                ## PRODUCES
+  gEdkiiVarCheckProtocolGuid                    ## PRODUCES
 
 [Guids]
   gEfiEventVirtualAddressChangeGuid             ## CONSUMES ## Event

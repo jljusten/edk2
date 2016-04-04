@@ -955,7 +955,6 @@ ProcessOptions (
   UINTN                           Index2;
   UINT8                           *ValueArray;
   UINT8                           ValueType;
-  EFI_STRING_ID                   StringId;
   EFI_IFR_ORDERED_LIST            *OrderList;
   BOOLEAN                         ValueInvalid;
 
@@ -964,7 +963,6 @@ ProcessOptions (
   StringPtr     = NULL;
   Character[1]  = L'\0';
   *OptionString = NULL;
-  StringId      = 0;
   ValueInvalid  = FALSE;
 
   ZeroMem (FormattedNumber, 21 * sizeof (CHAR16));
@@ -1036,7 +1034,7 @@ ProcessOptions (
           // Exit current DisplayForm with new value.
           //
           gUserInput->SelectedStatement = Question;
-          
+          gMisMatch = TRUE;
           ValueArray = AllocateZeroPool (Question->CurrentValue.BufferLen);
           ASSERT (ValueArray != NULL);
           gUserInput->InputValue.Buffer    = ValueArray;
@@ -1121,7 +1119,7 @@ ProcessOptions (
           // Exit current DisplayForm with new value.
           //
           gUserInput->SelectedStatement = Question;
-          
+          gMisMatch = TRUE;
           ValueArray = AllocateCopyPool (Question->CurrentValue.BufferLen, Question->CurrentValue.Buffer);
           ASSERT (ValueArray != NULL);
           gUserInput->InputValue.Buffer    = ValueArray;
@@ -1198,7 +1196,7 @@ ProcessOptions (
             break;
           }
           gUserInput->SelectedStatement = Question;
-
+          gMisMatch = TRUE;
           FreePool (*OptionString);
           *OptionString = NULL;
           return EFI_NOT_FOUND;

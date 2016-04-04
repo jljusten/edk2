@@ -1,7 +1,7 @@
 /** @file
   Initialize TPM device and measure FVs before handing off control to DXE.
 
-Copyright (c) 2005 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2005 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials 
 are licensed and made available under the terms and conditions of the BSD License 
 which accompanies this distribution.  The full text of the license may be found at 
@@ -38,6 +38,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/PeiServicesTablePointerLib.h>
 #include <Library/BaseLib.h>
 #include <Library/MemoryAllocationLib.h>
+#include <Library/ReportStatusCodeLib.h>
 
 #include "TpmComm.h"
 
@@ -46,6 +47,12 @@ BOOLEAN                 mImageInMemory  = FALSE;
 EFI_PEI_PPI_DESCRIPTOR  mTpmInitializedPpiList = {
   EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
   &gPeiTpmInitializedPpiGuid,
+  NULL
+};
+
+EFI_PEI_PPI_DESCRIPTOR  mTpmInitializationDonePpiList = {
+  EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
+  &gPeiTpmInitializationDonePpiGuid,
   NULL
 };
 
@@ -221,6 +228,10 @@ HashLogExtendEvent (
 {
   EFI_STATUS                        Status;
   VOID                              *HobData;
+  
+  if (GetFirstGuidHob (&gTpmErrorHobGuid) != NULL) {
+    return EFI_DEVICE_ERROR;
+  }
 
   HobData = NULL;
   if (HashDataLen != 0) {
@@ -229,7 +240,9 @@ HashLogExtendEvent (
                HashDataLen,
                &NewEventHdr->Digest
                );
-    ASSERT_EFI_ERROR (Status);
+    if (EFI_ERROR (Status)) {
+      goto Done;
+    }
   }
 
   Status = TpmCommExtend (
@@ -239,20 +252,34 @@ HashLogExtendEvent (
              NewEventHdr->PCRIndex,
              NULL
              );
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
 
   HobData = BuildGuidHob (
              &gTcgEventEntryHobGuid,
              sizeof (*NewEventHdr) + NewEventHdr->EventSize
              );
   if (HobData == NULL) {
-    return EFI_OUT_OF_RESOURCES;
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Done;
   }
 
   CopyMem (HobData, NewEventHdr, sizeof (*NewEventHdr));
   HobData = (VOID *) ((UINT8*)HobData + sizeof (*NewEventHdr));
   CopyMem (HobData, NewEventData, NewEventHdr->EventSize);
-  return EFI_SUCCESS;
+
+Done:
+  if ((Status == EFI_DEVICE_ERROR) || (Status == EFI_TIMEOUT)) {
+    DEBUG ((EFI_D_ERROR, "HashLogExtendEvent - %r. Disable TPM.\n", Status));
+    BuildGuidHob (&gTpmErrorHobGuid,0);
+    REPORT_STATUS_CODE (
+      EFI_ERROR_CODE | EFI_ERROR_MINOR,
+      (PcdGet32 (PcdStatusCodeSubClassTpmDevice) | EFI_P_EC_INTERFACE_ERROR)
+      );
+    Status = EFI_DEVICE_ERROR;
+  }
+  return Status;
 }
 
 /**
@@ -365,7 +392,6 @@ MeasureFvImage (
              &TcgEventHdr,
              (UINT8*) &FvBlob
              );
-  ASSERT_EFI_ERROR (Status);
 
   //
   // Add new FV into the measured FV list.
@@ -682,7 +708,6 @@ PeimEntryMP (
   if (IsTpmUsable (PeiServices, TpmHandle)) {
     if (PcdGet8 (PcdTpmScrtmPolicy) == 1) {
       Status = MeasureCRTMVersion (PeiServices, TpmHandle);
-      ASSERT_EFI_ERROR (Status);
     }
 
     Status = MeasureMainBios (PeiServices, TpmHandle);
@@ -718,6 +743,7 @@ PeimEntryMA (
   )
 {
   EFI_STATUS                        Status;
+  EFI_STATUS                        Status2;
   EFI_BOOT_MODE                     BootMode;
   TIS_TPM_HANDLE                    TpmHandle;
 
@@ -749,13 +775,13 @@ PeimEntryMA (
     Status = TisPcRequestUseTpm ((TIS_PC_REGISTERS_PTR)TpmHandle);
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "TPM not detected!\n"));
-      return Status;
+      goto Done;
     }
 
     if (PcdGet8 (PcdTpmInitializationPolicy) == 1) {
       Status = TpmCommStartup ((EFI_PEI_SERVICES**)PeiServices, TpmHandle, BootMode);
       if (EFI_ERROR (Status) ) {
-        return Status;
+        goto Done;
       }
     }
 
@@ -765,20 +791,29 @@ PeimEntryMA (
     if (BootMode != BOOT_ON_S3_RESUME) {
       Status = TpmCommContinueSelfTest ((EFI_PEI_SERVICES**)PeiServices, TpmHandle);
       if (EFI_ERROR (Status)) {
-        return Status;
+        goto Done;
       }
     }
 
+    //
+    // Only intall TpmInitializedPpi on success
+    //
     Status = PeiServicesInstallPpi (&mTpmInitializedPpiList);
     ASSERT_EFI_ERROR (Status);
   }
 
   if (mImageInMemory) {
     Status = PeimEntryMP ((EFI_PEI_SERVICES**)PeiServices);
-    if (EFI_ERROR (Status)) {
-      return Status;
-    }
+    return Status;
   }
+
+Done:
+  //
+  // Always intall TpmInitializationDonePpi no matter success or fail.
+  // Other driver can know TPM initialization state by TpmInitializedPpi.
+  //
+  Status2 = PeiServicesInstallPpi (&mTpmInitializationDonePpiList);
+  ASSERT_EFI_ERROR (Status2);
 
   return Status;
 }

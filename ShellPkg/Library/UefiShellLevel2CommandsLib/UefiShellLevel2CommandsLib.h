@@ -9,7 +9,7 @@
   * functions are non-interactive only
 
 
-  Copyright (c) 2009 - 2013, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -47,7 +47,6 @@
 #include <Library/HiiLib.h>
 #include <Library/SortLib.h>
 #include <Library/FileHandleLib.h>
-#include <Library/PathLib.h>
 
 extern CONST  CHAR16                            mFileName[];
 extern        EFI_HANDLE                        gShellLevel2HiiHandle;
@@ -301,6 +300,23 @@ StrniCmp(
   );
 
 /**
+  Cleans off all the quotes in the string.
+
+  @param[in]     OriginalString   pointer to the string to be cleaned.
+  @param[out]   CleanString      The new string with all quotes removed. 
+                                                  Memory allocated in the function and free 
+                                                  by caller.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
+EFI_STATUS
+EFIAPI
+ShellLevel2StripQuotes (
+  IN  CONST CHAR16     *OriginalString,
+  OUT CHAR16           **CleanString
+  );
+
+/**
   Function for 'Vol' command.
 
   @param[in] ImageHandle  Handle to the Image (NULL if Internal).
@@ -311,6 +327,45 @@ EFIAPI
 ShellCommandRunVol (
   IN EFI_HANDLE        ImageHandle,
   IN EFI_SYSTEM_TABLE  *SystemTable
+  );
+
+/**
+  Function to Copy one file to another location
+
+  If the destination exists the user will be prompted and the result put into *resp
+
+  @param[in] Source     pointer to source file name
+  @param[in] Dest       pointer to destination file name
+  @param[out] Resp      pointer to response from question.  Pass back on looped calling
+  @param[in] SilentMode whether to run in quiet mode or not
+
+  @retval SHELL_SUCCESS   The source file was copied to the destination
+**/
+SHELL_STATUS
+EFIAPI
+CopySingleFile(
+  IN CONST CHAR16 *Source,
+  IN CONST CHAR16 *Dest,
+  OUT VOID        **Resp,
+  IN BOOLEAN      SilentMode
+  );
+
+/**
+  Delete a node and all nodes under it (including sub directories).
+
+  @param[in] Node   The node to start deleting with.
+  @param[in] Quiet  TRUE to print no messages.
+
+  @retval SHELL_SUCCESS       The operation was successful.
+  @retval SHELL_ACCESS_DENIED A file was read only.
+  @retval SHELL_ABORTED       The abort message was received.
+  @retval SHELL_DEVICE_ERROR  A device error occured reading this Node.
+**/
+SHELL_STATUS
+EFIAPI
+CascadeDelete(
+  IN EFI_SHELL_FILE_INFO  *Node,
+  IN CONST BOOLEAN        Quiet
   );
 
 #endif

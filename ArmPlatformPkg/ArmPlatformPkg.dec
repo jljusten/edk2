@@ -1,6 +1,6 @@
 #/** @file
 #
-#  Copyright (c) 2011-2014, ARM Limited. All rights reserved.
+#  Copyright (c) 2011-2015, ARM Limited. All rights reserved.
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -42,6 +42,9 @@
 
   gArmBootMonFsFileInfoGuid   = { 0x41e26b9c, 0xada6, 0x45b3, { 0x80, 0x8e, 0x23, 0x57, 0xa3, 0x5b, 0x60, 0xd6 } }
 
+  ## Include/Guid/ArmPlatformEvents.h
+  gArmPlatformUpdateFdtEventGuid = { 0xaffe115b, 0x8589, 0x456d, { 0xba, 0xb5, 0x8f, 0x2e, 0xda, 0x53, 0xae, 0xb7 } }
+
 [Ppis]
   ## Include/Ppi/ArmGlobalVariable.h
   gArmGlobalVariablePpiGuid = { 0xab1c1816, 0xd542, 0x4e6f, {0x9b, 0x1e, 0x8e, 0xcd, 0x92, 0x53, 0xe2, 0xe7} }
@@ -70,7 +73,7 @@
   gArmPlatformTokenSpaceGuid.PcdCPUCoreSecSecondaryStackSize|0x1000|UINT32|0x00000006
 
   # Stack for CPU Cores in Non Secure Mode
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|0|UINT32|0x00000009
+  gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|0|UINT64|0x00000009
   gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize|0x10000|UINT32|0x00000037
   gArmPlatformTokenSpaceGuid.PcdCPUCoreSecondaryStackSize|0x1000|UINT32|0x0000000A
 

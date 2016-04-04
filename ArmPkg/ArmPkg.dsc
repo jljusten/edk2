@@ -31,13 +31,11 @@
 
 [BuildOptions]
   XCODE:*_*_ARM_PLATFORM_FLAGS  == -arch armv7
-  XCODE:RELEASE_*_*_CC_FLAGS     = -DMDEPKG_NDEBUG
-
   GCC:*_*_ARM_PLATFORM_FLAGS    == -march=armv7-a -mfpu=neon
-  GCC:RELEASE_*_*_CC_FLAGS     = -DMDEPKG_NDEBUG
+  # We use A15 to get the Secure and Virtualization extensions
+  RVCT:*_*_ARM_PLATFORM_FLAGS  == --cpu Cortex-A15
 
-  RVCT:*_*_ARM_PLATFORM_FLAGS  == --cpu Cortex-A8
-  RVCT:RELEASE_*_*_CC_FLAGS  = -DMDEPKG_NDEBUG
+  RELEASE_*_*_CC_FLAGS  = -DMDEPKG_NDEBUG
 
 [LibraryClasses.common]
   BaseLib|MdePkg/Library/BaseLib/BaseLib.inf
@@ -56,6 +54,10 @@
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
   PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
   PeCoffGetEntryPointLib|MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
+
+  NetLib|MdeModulePkg/Library/DxeNetLib/DxeNetLib.inf
+  UefiHiiServicesLib|MdeModulePkg/Library/UefiHiiServicesLib/UefiHiiServicesLib.inf
+  HiiLib|MdeModulePkg/Library/UefiHiiLib/UefiHiiLib.inf
 
   SemihostLib|ArmPkg/Library/SemihostLib/SemihostLib.inf
   UncachedMemoryAllocationLib|ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
@@ -117,12 +119,14 @@
   ArmPkg/Library/SemiHostingSerialPortLib/SemiHostingSerialPortLib.inf
   ArmPkg/Library/SemihostLib/SemihostLib.inf
   ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
+  ArmPkg/Library/ArmPsciResetSystemLib/ArmPsciResetSystemLib.inf
 
   ArmPkg/Drivers/CpuDxe/CpuDxe.inf
   ArmPkg/Drivers/CpuPei/CpuPei.inf
   ArmPkg/Drivers/ArmGic/ArmGicDxe.inf
   ArmPkg/Drivers/ArmGic/ArmGicLib.inf
   ArmPkg/Drivers/ArmGic/ArmGicSecLib.inf
+  ArmPkg/Drivers/GenericWatchdogDxe/GenericWatchdogDxe.inf
   ArmPkg/Drivers/TimerDxe/TimerDxe.inf
 
   ArmPkg/Library/ArmGenericTimerPhyCounterLib/ArmGenericTimerPhyCounterLib.inf
@@ -130,6 +134,7 @@
 
   ArmPkg/Library/ArmSmcLib/ArmSmcLib.inf
   ArmPkg/Library/ArmSmcLibNull/ArmSmcLibNull.inf
+  ArmPkg/Library/ArmHvcLib/ArmHvcLib.inf
 
   ArmPkg/Filesystem/SemihostFs/SemihostFs.inf
 

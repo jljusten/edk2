@@ -15,7 +15,7 @@
   TrEEMeasureGptTable() function will receive untrusted GPT partition table, and parse
   partition data carefully.
 
-Copyright (c) 2013 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2013 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials 
 are licensed and made available under the terms and conditions of the BSD License 
 which accompanies this distribution.  The full text of the license may be found at 
@@ -456,7 +456,7 @@ DxeTpm2MeasureBootHandler (
                            TreeProtocol, 
                            &ProtocolCapability
                            );
-  if (EFI_ERROR (Status) || !ProtocolCapability.TrEEPresentFlag) {
+  if (EFI_ERROR (Status) || (!ProtocolCapability.TrEEPresentFlag)) {
     //
     // TPM device doesn't work or activate.
     //
@@ -509,7 +509,7 @@ DxeTpm2MeasureBootHandler (
             // Measure GPT disk.
             //
             Status = TrEEMeasureGptTable (TreeProtocol, Handle);
-            DEBUG ((EFI_D_ERROR, "DxeTpm2MeasureBootHandler - TrEEMeasureGptTable - %r\n", Status));
+            DEBUG ((EFI_D_INFO, "DxeTpm2MeasureBootHandler - TrEEMeasureGptTable - %r\n", Status));
             if (!EFI_ERROR (Status)) {
               //
               // GPT disk check done.
@@ -653,7 +653,7 @@ DxeTpm2MeasureBootHandler (
                ImageContext.ImageType, 
                DevicePathNode
                );
-    DEBUG ((EFI_D_ERROR, "DxeTpm2MeasureBootHandler - TrEEMeasurePeImage - %r\n", Status));
+    DEBUG ((EFI_D_INFO, "DxeTpm2MeasureBootHandler - TrEEMeasurePeImage - %r\n", Status));
   }
 
   //
@@ -664,7 +664,7 @@ Finish:
     FreePool (OrigDevicePathNode);
   }
 
-  DEBUG ((EFI_D_ERROR, "DxeTpm2MeasureBootHandler - %r\n", Status));
+  DEBUG ((EFI_D_INFO, "DxeTpm2MeasureBootHandler - %r\n", Status));
 
   return Status;
 }

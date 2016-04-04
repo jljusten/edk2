@@ -3,7 +3,7 @@
   The internal header file includes the common header files, defines
   internal structure and functions used by Variable modules.
 
-Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -23,6 +23,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/FirmwareVolumeBlock.h>
 #include <Protocol/Variable.h>
 #include <Protocol/VariableLock.h>
+#include <Protocol/VarCheck.h>
 #include <Library/PcdLib.h>
 #include <Library/HobLib.h>
 #include <Library/UefiDriverEntryPoint.h>
@@ -41,15 +42,11 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Guid/SystemNvDataGuid.h>
 #include <Guid/FaultTolerantWrite.h>
 #include <Guid/HardwareErrorVariable.h>
+#include <Guid/VarErrorFlag.h>
 
 #define VARIABLE_ATTRIBUTE_BS_RT        (EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS)
 #define VARIABLE_ATTRIBUTE_NV_BS_RT     (VARIABLE_ATTRIBUTE_BS_RT | EFI_VARIABLE_NON_VOLATILE)
 #define VARIABLE_ATTRIBUTE_NV_BS_RT_AT  (VARIABLE_ATTRIBUTE_NV_BS_RT | EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS)
-
-typedef struct {
-  CHAR16      *Name;
-  UINT32      Attributes;
-} GLOBAL_VARIABLE_ENTRY;
 
 ///
 /// The size of a 3 character ISO639 language code.
@@ -89,7 +86,11 @@ typedef struct {
   VARIABLE_GLOBAL VariableGlobal;
   UINTN           VolatileLastVariableOffset;
   UINTN           NonVolatileLastVariableOffset;
+  UINTN           CommonVariableSpace;
+  UINTN           CommonMaxUserVariableSpace;
+  UINTN           CommonRuntimeVariableSpace;
   UINTN           CommonVariableTotalSize;
+  UINTN           CommonUserVariableTotalSize;
   UINTN           HwErrVariableTotalSize;
   CHAR8           *PlatformLangCodes;
   CHAR8           *LangCodes;
@@ -105,9 +106,9 @@ typedef struct {
 } VARIABLE_ENTRY_CONSISTENCY;
 
 typedef struct {
-  EFI_GUID    Guid;
-  CHAR16      *Name;
   LIST_ENTRY  Link;
+  EFI_GUID    Guid;
+  //CHAR16      *Name;
 } VARIABLE_ENTRY;
 
 /**
@@ -365,6 +366,41 @@ GetFvbInfoByAddress (
   );
 
 /**
+  Finds variable in storage blocks of volatile and non-volatile storage areas.
+
+  This code finds variable in storage blocks of volatile and non-volatile storage areas.
+  If VariableName is an empty string, then we just return the first
+  qualified variable without comparing VariableName and VendorGuid.
+  If IgnoreRtCheck is TRUE, then we ignore the EFI_VARIABLE_RUNTIME_ACCESS attribute check
+  at runtime when searching existing variable, only VariableName and VendorGuid are compared.
+  Otherwise, variables without EFI_VARIABLE_RUNTIME_ACCESS are not visible at runtime.
+
+  @param  VariableName                Name of the variable to be found.
+  @param  VendorGuid                  Vendor GUID to be found.
+  @param  PtrTrack                    VARIABLE_POINTER_TRACK structure for output,
+                                      including the range searched and the target position.
+  @param  Global                      Pointer to VARIABLE_GLOBAL structure, including
+                                      base of volatile variable storage area, base of
+                                      NV variable storage area, and a lock.
+  @param  IgnoreRtCheck               Ignore EFI_VARIABLE_RUNTIME_ACCESS attribute
+                                      check at runtime when searching variable.
+
+  @retval EFI_INVALID_PARAMETER       If VariableName is not an empty string, while
+                                      VendorGuid is NULL.
+  @retval EFI_SUCCESS                 Variable successfully found.
+  @retval EFI_NOT_FOUND               Variable not found
+
+**/
+EFI_STATUS
+FindVariable (
+  IN  CHAR16                  *VariableName,
+  IN  EFI_GUID                *VendorGuid,
+  OUT VARIABLE_POINTER_TRACK  *PtrTrack,
+  IN  VARIABLE_GLOBAL         *Global,
+  IN  BOOLEAN                 IgnoreRtCheck
+  );
+
+/**
 
   This code finds variable in storage blocks (Volatile or Non-Volatile).
 
@@ -395,6 +431,9 @@ VariableServiceGetVariable (
 
   This code Finds the Next available variable.
 
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode. This function will do basic validation, before parse the data.
+
   @param VariableNameSize           Size of the variable name.
   @param VariableName               Pointer to variable name.
   @param VendorGuid                 Variable Vendor Guid.
@@ -416,6 +455,10 @@ VariableServiceGetNextVariableName (
 /**
 
   This code sets variable in storage blocks (Volatile or Non-Volatile).
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize and data are external input.
+  This function will do basic validation, before parse the data.
 
   @param VariableName                     Name of Variable to be found.
   @param VendorGuid                       Variable vendor GUID.
@@ -445,6 +488,9 @@ VariableServiceSetVariable (
 
   This code returns information about the EFI variables.
 
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode. This function will do basic validation, before parse the data.
+
   @param Attributes                     Attributes bitmask to specify the type of variables
                                         on which to return information.
   @param MaximumVariableStorageSize     Pointer to the maximum size of the storage space available
@@ -469,6 +515,9 @@ VariableServiceQueryVariableInfoInternal (
 /**
 
   This code returns information about the EFI variables.
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode. This function will do basic validation, before parse the data.
 
   @param Attributes                     Attributes bitmask to specify the type of variables
                                         on which to return information.
@@ -514,6 +563,144 @@ VariableLockRequestToLock (
   IN CONST EDKII_VARIABLE_LOCK_PROTOCOL *This,
   IN       CHAR16                       *VariableName,
   IN       EFI_GUID                     *VendorGuid
+  );
+
+/**
+  Check if a Unicode character is a hexadecimal character.
+
+  This function checks if a Unicode character is a
+  hexadecimal character.  The valid hexadecimal character is
+  L'0' to L'9', L'a' to L'f', or L'A' to L'F'.
+
+
+  @param Char           The character to check against.
+
+  @retval TRUE          If the Char is a hexadecmial character.
+  @retval FALSE         If the Char is not a hexadecmial character.
+
+**/
+BOOLEAN
+EFIAPI
+IsHexaDecimalDigitCharacter (
+  IN CHAR16             Char
+  );
+
+/**
+  Internal SetVariable check.
+
+  @param[in] VariableName       Name of Variable to set.
+  @param[in] VendorGuid         Variable vendor GUID.
+  @param[in] Attributes         Attribute value of the variable.
+  @param[in] DataSize           Size of Data to set.
+  @param[in] Data               Data pointer.
+
+  @retval EFI_SUCCESS           The SetVariable check result was success.
+  @retval EFI_INVALID_PARAMETER An invalid combination of attribute bits, name, and GUID were supplied,
+                                or the DataSize exceeds the minimum or maximum allowed,
+                                or the Data value is not following UEFI spec for UEFI defined variables.
+  @retval EFI_WRITE_PROTECTED   The variable in question is read-only.
+  @retval Others                The return status from check handler.
+
+**/
+EFI_STATUS
+EFIAPI
+InternalVarCheckSetVariableCheck (
+  IN CHAR16     *VariableName,
+  IN EFI_GUID   *VendorGuid,
+  IN UINT32     Attributes,
+  IN UINTN      DataSize,
+  IN VOID       *Data
+  );
+
+/**
+  Register SetVariable check handler.
+
+  @param[in] Handler            Pointer to check handler.
+
+  @retval EFI_SUCCESS           The SetVariable check handler was registered successfully.
+  @retval EFI_INVALID_PARAMETER Handler is NULL.
+  @retval EFI_ACCESS_DENIED     EFI_END_OF_DXE_EVENT_GROUP_GUID or EFI_EVENT_GROUP_READY_TO_BOOT has
+                                already been signaled.
+  @retval EFI_OUT_OF_RESOURCES  There is not enough resource for the SetVariable check handler register request.
+  @retval EFI_UNSUPPORTED       This interface is not implemented.
+                                For example, it is unsupported in VarCheck protocol if both VarCheck and SmmVarCheck protocols are present.
+
+**/
+EFI_STATUS
+EFIAPI
+VarCheckRegisterSetVariableCheckHandler (
+  IN VAR_CHECK_SET_VARIABLE_CHECK_HANDLER   Handler
+  );
+
+/**
+  Variable property set.
+
+  @param[in] Name               Pointer to the variable name.
+  @param[in] Guid               Pointer to the vendor GUID.
+  @param[in] VariableProperty   Pointer to the input variable property.
+
+  @retval EFI_SUCCESS           The property of variable specified by the Name and Guid was set successfully.
+  @retval EFI_INVALID_PARAMETER Name, Guid or VariableProperty is NULL, or Name is an empty string,
+                                or the fields of VariableProperty are not valid.
+  @retval EFI_ACCESS_DENIED     EFI_END_OF_DXE_EVENT_GROUP_GUID or EFI_EVENT_GROUP_READY_TO_BOOT has
+                                already been signaled.
+  @retval EFI_OUT_OF_RESOURCES  There is not enough resource for the variable property set request.
+
+**/
+EFI_STATUS
+EFIAPI
+VarCheckVariablePropertySet (
+  IN CHAR16                         *Name,
+  IN EFI_GUID                       *Guid,
+  IN VAR_CHECK_VARIABLE_PROPERTY    *VariableProperty
+  );
+
+/**
+  Internal variable property get.
+
+  @param[in]  Name              Pointer to the variable name.
+  @param[in]  Guid              Pointer to the vendor GUID.
+  @param[out] VariableProperty  Pointer to the output variable property.
+
+  @retval EFI_SUCCESS           The property of variable specified by the Name and Guid was got successfully.
+  @retval EFI_NOT_FOUND         The property of variable specified by the Name and Guid was not found.
+
+**/
+EFI_STATUS
+EFIAPI
+InternalVarCheckVariablePropertyGet (
+  IN CHAR16                         *Name,
+  IN EFI_GUID                       *Guid,
+  OUT VAR_CHECK_VARIABLE_PROPERTY   *VariableProperty
+  );
+
+/**
+  Variable property get.
+
+  @param[in]  Name              Pointer to the variable name.
+  @param[in]  Guid              Pointer to the vendor GUID.
+  @param[out] VariableProperty  Pointer to the output variable property.
+
+  @retval EFI_SUCCESS           The property of variable specified by the Name and Guid was got successfully.
+  @retval EFI_INVALID_PARAMETER Name, Guid or VariableProperty is NULL, or Name is an empty string.
+  @retval EFI_NOT_FOUND         The property of variable specified by the Name and Guid was not found.
+
+**/
+EFI_STATUS
+EFIAPI
+VarCheckVariablePropertyGet (
+  IN CHAR16                         *Name,
+  IN EFI_GUID                       *Guid,
+  OUT VAR_CHECK_VARIABLE_PROPERTY   *VariableProperty
+  );
+
+/**
+  Initialize variable quota.
+
+**/
+VOID
+InitializeVariableQuota (
+  VOID
   );
 
 extern VARIABLE_MODULE_GLOBAL  *mVariableModuleGlobal;

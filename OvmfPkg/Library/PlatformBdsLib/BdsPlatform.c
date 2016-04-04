@@ -13,7 +13,7 @@
 **/
 
 #include "BdsPlatform.h"
-#include "QemuBootOrder.h"
+#include <Library/QemuBootOrderLib.h>
 
 
 //
@@ -25,7 +25,20 @@ EFI_EVENT     mEfiDevPathEvent;
 VOID          *mEmuVariableEventReg;
 EFI_EVENT     mEmuVariableEvent;
 BOOLEAN       mDetectVgaOnly;
+UINT16        mHostBridgeDevId;
 
+//
+// Table of host IRQs matching PCI IRQs A-D
+// (for configuring PCI Interrupt Line register)
+//
+CONST UINT8 PciHostIrqs[] = {
+  0x0a, 0x0a, 0x0b, 0x0b
+};
+
+//
+// Array Size macro
+//
+#define ARRAY_SIZE(array) (sizeof (array) / sizeof (array[0]))
 
 //
 // Type definitions
@@ -716,64 +729,176 @@ Returns:
 }
 
 
-VOID
-PciInitialization (
+/**
+  Configure PCI Interrupt Line register for applicable devices
+  Ported from SeaBIOS, src/fw/pciinit.c, *_pci_slot_get_irq()
+
+  @param[in]  Handle - Handle of PCI device instance
+  @param[in]  PciIo - PCI IO protocol instance
+  @param[in]  PciHdr - PCI Header register block
+
+  @retval EFI_SUCCESS - PCI Interrupt Line register configured successfully.
+
+**/
+EFI_STATUS
+EFIAPI
+SetPciIntLine (
+  IN EFI_HANDLE           Handle,
+  IN EFI_PCI_IO_PROTOCOL  *PciIo,
+  IN PCI_TYPE00           *PciHdr
   )
 {
-  //
-  // Bus 0, Device 0, Function 0 - Host to PCI Bridge
-  //
-  PciWrite8 (PCI_LIB_ADDRESS (0, 0, 0, 0x3c), 0x00);
+  EFI_DEVICE_PATH_PROTOCOL  *DevPathNode;
+  UINTN                     RootSlot;
+  UINTN                     Idx;
+  UINT8                     IrqLine;
+  EFI_STATUS                Status;
 
-  //
-  // Bus 0, Device 1, Function 0 - PCI to ISA Bridge
-  //
-  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x3c), 0x00);
-  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x60), 0x0b); // LNKA routing target
-  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x61), 0x0b); // LNKB routing target
-  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x62), 0x0a); // LNKC routing target
-  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x63), 0x0a); // LNKD routing target
+  Status = EFI_SUCCESS;
 
-  //
-  // Bus 0, Device 1, Function 1 - IDE Controller
-  //
-  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 1, 0x3c), 0x00);
-  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 1, 0x0d), 0x40);
+  if (PciHdr->Device.InterruptPin != 0) {
 
-  //
-  // Bus 0, Device 1, Function 3 - Power Managment Controller
-  //
-  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 3, 0x3c), 0x09);
-  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 3, 0x3d), 0x01); // INTA
+    DevPathNode = DevicePathFromHandle (Handle);
+    ASSERT (DevPathNode != NULL);
 
-  //
-  // Bus 0, Device 2, Function 0 - Video Controller
-  //
-  PciWrite8 (PCI_LIB_ADDRESS (0, 2, 0, 0x3c), 0x00);
+    //
+    // Compute index into PciHostIrqs[] table by walking
+    // the device path and adding up all device numbers
+    //
+    Status = EFI_NOT_FOUND;
+    RootSlot = 0;
+    Idx = PciHdr->Device.InterruptPin - 1;
+    while (!IsDevicePathEnd (DevPathNode)) {
+      if (DevicePathType (DevPathNode) == HARDWARE_DEVICE_PATH &&
+          DevicePathSubType (DevPathNode) == HW_PCI_DP) {
 
-  //
-  // Bus 0, Device 3, Function 0 - Network Controller
-  //
-  PciWrite8 (PCI_LIB_ADDRESS (0, 3, 0, 0x3c), 0x0a);
-  PciWrite8 (PCI_LIB_ADDRESS (0, 3, 0, 0x3d), 0x01); // INTA (-> LNKC)
+        Idx += ((PCI_DEVICE_PATH *)DevPathNode)->Device;
 
-  //
-  // Bus 0, Device 5, Function 0 - RAM Memory
-  //
-  PciWrite8 (PCI_LIB_ADDRESS (0, 5, 0, 0x3c), 0x0b);
-  PciWrite8 (PCI_LIB_ADDRESS (0, 5, 0, 0x3d), 0x01); // INTA (-> LNKA)
+        //
+        // Unlike SeaBIOS, which starts climbing from the leaf device
+        // up toward the root, we traverse the device path starting at
+        // the root moving toward the leaf node.
+        // The slot number of the top-level parent bridge is needed for
+        // Q35 cases with more than 24 slots on the root bus.
+        //
+        if (Status != EFI_SUCCESS) {
+          Status = EFI_SUCCESS;
+          RootSlot = ((PCI_DEVICE_PATH *)DevPathNode)->Device;
+        }
+      }
+
+      DevPathNode = NextDevicePathNode (DevPathNode);
+    }
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+    if (RootSlot == 0) {
+      DEBUG((
+        EFI_D_ERROR,
+        "%a: PCI host bridge (00:00.0) should have no interrupts!\n",
+        __FUNCTION__
+        ));
+      ASSERT (FALSE);
+    }
+
+    //
+    // Final PciHostIrqs[] index calculation depends on the platform
+    // and should match SeaBIOS src/fw/pciinit.c *_pci_slot_get_irq()
+    //
+    switch (mHostBridgeDevId) {
+      case INTEL_82441_DEVICE_ID:
+        Idx -= 1;
+        break;
+      case INTEL_Q35_MCH_DEVICE_ID:
+        //
+        // SeaBIOS contains the following comment:
+        // "Slots 0-24 rotate slot:pin mapping similar to piix above, but
+        //  with a different starting index - see q35-acpi-dsdt.dsl.
+        //
+        //  Slots 25-31 all use LNKA mapping (or LNKE, but A:D = E:H)"
+        //
+        if (RootSlot > 24) {
+          //
+          // in this case, subtract back out RootSlot from Idx
+          // (SeaBIOS never adds it to begin with, but that would make our
+          //  device path traversal loop above too awkward)
+          //
+          Idx -= RootSlot;
+        }
+        break;
+      default:
+        ASSERT (FALSE); // should never get here
+    }
+    Idx %= ARRAY_SIZE (PciHostIrqs);
+    IrqLine = PciHostIrqs[Idx];
+
+    //
+    // Set PCI Interrupt Line register for this device to PciHostIrqs[Idx]
+    //
+    Status = PciIo->Pci.Write (
+               PciIo,
+               EfiPciIoWidthUint8,
+               PCI_INT_LINE_OFFSET,
+               1,
+               &IrqLine
+               );
+  }
+
+  return Status;
 }
 
 
 VOID
-AcpiInitialization (
-  VOID
+PciAcpiInitialization (
   )
 {
+  UINTN  Pmba;
+
+  //
+  // Query Host Bridge DID to determine platform type
+  //
+  mHostBridgeDevId = PcdGet16 (PcdOvmfHostBridgePciDevId);
+  switch (mHostBridgeDevId) {
+    case INTEL_82441_DEVICE_ID:
+      Pmba = POWER_MGMT_REGISTER_PIIX4 (0x40);
+      //
+      // 00:01.0 ISA Bridge (PIIX4) LNK routing targets
+      //
+      PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x60), 0x0b); // A
+      PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x61), 0x0b); // B
+      PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x62), 0x0a); // C
+      PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x63), 0x0a); // D
+      break;
+    case INTEL_Q35_MCH_DEVICE_ID:
+      Pmba = POWER_MGMT_REGISTER_Q35 (0x40);
+      //
+      // 00:1f.0 LPC Bridge (Q35) LNK routing targets
+      //
+      PciWrite8 (PCI_LIB_ADDRESS (0, 0x1f, 0, 0x60), 0x0a); // A
+      PciWrite8 (PCI_LIB_ADDRESS (0, 0x1f, 0, 0x61), 0x0a); // B
+      PciWrite8 (PCI_LIB_ADDRESS (0, 0x1f, 0, 0x62), 0x0b); // C
+      PciWrite8 (PCI_LIB_ADDRESS (0, 0x1f, 0, 0x63), 0x0b); // D
+      PciWrite8 (PCI_LIB_ADDRESS (0, 0x1f, 0, 0x68), 0x0a); // E
+      PciWrite8 (PCI_LIB_ADDRESS (0, 0x1f, 0, 0x69), 0x0a); // F
+      PciWrite8 (PCI_LIB_ADDRESS (0, 0x1f, 0, 0x6a), 0x0b); // G
+      PciWrite8 (PCI_LIB_ADDRESS (0, 0x1f, 0, 0x6b), 0x0b); // H
+      break;
+    default:
+      DEBUG ((EFI_D_ERROR, "%a: Unknown Host Bridge Device ID: 0x%04x\n",
+        __FUNCTION__, mHostBridgeDevId));
+      ASSERT (FALSE);
+      return;
+  }
+
+  //
+  // Initialize PCI_INTERRUPT_LINE for applicable present PCI devices
+  //
+  VisitAllPciInstances (SetPciIntLine);
+
   //
   // Set ACPI SCI_EN bit in PMCNTRL
   //
-  IoOr16 ((PciRead32 (PCI_LIB_ADDRESS (0, 1, 3, 0x40)) & ~BIT0) + 4, BIT0);
+  IoOr16 ((PciRead32 (Pmba) & ~BIT0) + 4, BIT0);
 }
 
 
@@ -938,8 +1063,7 @@ Returns:
   //
   BdsLibConnectAll ();
 
-  PciInitialization ();
-  AcpiInitialization ();
+  PciAcpiInitialization ();
 
   //
   // Clear the logo after all devices are connected.
@@ -1061,13 +1185,6 @@ Returns:
 --*/
 {
   EFI_STATUS                         Status;
-  UINT16                             Timeout;
-  EFI_EVENT                          UserInputDurationTime;
-  LIST_ENTRY                     *Link;
-  BDS_COMMON_OPTION                  *BootOption;
-  UINTN                              Index;
-  EFI_INPUT_KEY                      Key;
-  EFI_TPL                            OldTpl;
   EFI_BOOT_MODE                      BootMode;
 
   DEBUG ((EFI_D_INFO, "PlatformBdsPolicyBehavior\n"));
@@ -1084,11 +1201,6 @@ Returns:
     //
     PlatformBdsRestoreNvVarsFromHardDisk ();
   }
-
-  //
-  // Init the time out value
-  //
-  Timeout = PcdGet16 (PcdPlatformBootTimeOut);
 
   //
   // Load the driver option as the driver option list
@@ -1116,19 +1228,7 @@ Returns:
     //
     PlatformBdsNoConsoleAction ();
   }
-  //
-  // Create a 300ms duration event to ensure user has enough input time to enter Setup
-  //
-  Status = gBS->CreateEvent (
-                  EVT_TIMER,
-                  0,
-                  NULL,
-                  NULL,
-                  &UserInputDurationTime
-                  );
-  ASSERT (Status == EFI_SUCCESS);
-  Status = gBS->SetTimer (UserInputDurationTime, TimerRelative, 3000000);
-  ASSERT (Status == EFI_SUCCESS);
+
   //
   // Memory test and Logo show
   //
@@ -1144,14 +1244,6 @@ Returns:
   //
   TryRunningQemuKernel ();
 
-  //
-  // Give one chance to enter the setup if we
-  // have the time out
-  //
-  if (Timeout != 0) {
-    //PlatformBdsEnterFrontPage (Timeout, FALSE);
-  }
-
   DEBUG ((EFI_D_INFO, "BdsLibConnectAll\n"));
   BdsLibConnectAll ();
   BdsLibEnumerateAllBootOption (BootOptionList);
@@ -1163,49 +1255,7 @@ Returns:
   //
   BdsLibBuildOptionFromVar (BootOptionList, L"BootOrder");
 
-  //
-  // To give the User a chance to enter Setup here, if user set TimeOut is 0.
-  // BDS should still give user a chance to enter Setup
-  //
-  // Connect first boot option, and then check user input before exit
-  //
-  for (Link = BootOptionList->ForwardLink; Link != BootOptionList;Link = Link->ForwardLink) {
-    BootOption = CR (Link, BDS_COMMON_OPTION, Link, BDS_LOAD_OPTION_SIGNATURE);
-    if (!IS_LOAD_OPTION_TYPE (BootOption->Attribute, LOAD_OPTION_ACTIVE)) {
-      //
-      // skip the header of the link list, becuase it has no boot option
-      //
-      continue;
-    } else {
-      //
-      // Make sure the boot option device path connected, but ignore the BBS device path
-      //
-      if (DevicePathType (BootOption->DevicePath) != BBS_DEVICE_PATH) {
-        BdsLibConnectDevicePath (BootOption->DevicePath);
-      }
-      break;
-    }
-  }
-
-  //
-  // Check whether the user input after the duration time has expired
-  //
-  OldTpl = EfiGetCurrentTpl();
-  gBS->RestoreTPL (TPL_APPLICATION);
-  gBS->WaitForEvent (1, &UserInputDurationTime, &Index);
-  gBS->CloseEvent (UserInputDurationTime);
-  Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-  gBS->RaiseTPL (OldTpl);
-
-  if (!EFI_ERROR (Status)) {
-    //
-    // Enter Setup if user input
-    //
-    Timeout = 0xffff;
-    PlatformBdsEnterFrontPage (Timeout, FALSE);
-  }
-
-  return ;
+  PlatformBdsEnterFrontPage (GetFrontPageTimeoutFromQemu(), TRUE);
 }
 
 VOID

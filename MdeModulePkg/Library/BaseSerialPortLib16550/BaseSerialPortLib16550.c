@@ -1,6 +1,7 @@
 /** @file
   16550 UART Serial Port library functions
 
+  (C) Copyright 2014 Hewlett-Packard Development Company, L.P.<BR>
   Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -184,7 +185,6 @@ GetSerialRegisterBase (
   )
 {
   UINTN                 PciLibAddress;
-  UINTN                 PrimaryBusNumber;
   UINTN                 BusNumber;
   UINTN                 SubordinateBusNumber;
   UINT32                ParentIoBase;
@@ -233,7 +233,6 @@ GetSerialRegisterBase (
     //
     // Retrieve and verify the bus numbers in the PCI to PCI Bridge
     //
-    PrimaryBusNumber     = PciRead8 (PciLibAddress + PCI_BRIDGE_PRIMARY_BUS_REGISTER_OFFSET);
     BusNumber            = PciRead8 (PciLibAddress + PCI_BRIDGE_SECONDARY_BUS_REGISTER_OFFSET);
     SubordinateBusNumber = PciRead8 (PciLibAddress + PCI_BRIDGE_SUBORDINATE_BUS_REGISTER_OFFSET);
     if (BusNumber == 0 || BusNumber > SubordinateBusNumber) {
@@ -244,8 +243,8 @@ GetSerialRegisterBase (
     // Retrieve and verify the I/O or MMIO decode window in the PCI to PCI Bridge
     //
     if (PcdGetBool (PcdSerialUseMmio)) {
-      MemoryLimit = PciRead16 (PciLibAddress + OFFSET_OF (PCI_BRIDGE_CONTROL_REGISTER, MemoryLimit)) & 0xfff0;
-      MemoryBase  = PciRead16 (PciLibAddress + OFFSET_OF (PCI_BRIDGE_CONTROL_REGISTER, MemoryBase))  & 0xfff0;
+      MemoryLimit = PciRead16 (PciLibAddress + OFFSET_OF (PCI_TYPE01, Bridge.MemoryLimit)) & 0xfff0;
+      MemoryBase  = PciRead16 (PciLibAddress + OFFSET_OF (PCI_TYPE01, Bridge.MemoryBase))  & 0xfff0;
 
       //
       // If PCI Bridge MMIO window is disabled, then return 0
@@ -263,17 +262,17 @@ GetSerialRegisterBase (
       ParentMemoryBase  = MemoryBase;
       ParentMemoryLimit = MemoryLimit;
     } else {
-      IoLimit = PciRead8 (PciLibAddress + OFFSET_OF (PCI_BRIDGE_CONTROL_REGISTER, IoLimit));
+      IoLimit = PciRead8 (PciLibAddress + OFFSET_OF (PCI_TYPE01, Bridge.IoLimit));
       if ((IoLimit & PCI_BRIDGE_32_BIT_IO_SPACE ) == 0) {
         IoLimit = IoLimit >> 4;
       } else {
-        IoLimit = (PciRead16 (PciLibAddress + OFFSET_OF (PCI_BRIDGE_CONTROL_REGISTER, IoLimitUpper16)) << 4) | (IoLimit >> 4);
+        IoLimit = (PciRead16 (PciLibAddress + OFFSET_OF (PCI_TYPE01, Bridge.IoLimitUpper16)) << 4) | (IoLimit >> 4);
       }
-      IoBase = PciRead8 (PciLibAddress + OFFSET_OF (PCI_BRIDGE_CONTROL_REGISTER, IoBase));
+      IoBase = PciRead8 (PciLibAddress + OFFSET_OF (PCI_TYPE01, Bridge.IoBase));
       if ((IoBase & PCI_BRIDGE_32_BIT_IO_SPACE ) == 0) {
         IoBase = IoBase >> 4;
       } else {
-        IoBase = (PciRead16 (PciLibAddress + OFFSET_OF (PCI_BRIDGE_CONTROL_REGISTER, IoBaseUpper16)) << 4) | (IoBase >> 4);
+        IoBase = (PciRead16 (PciLibAddress + OFFSET_OF (PCI_TYPE01, Bridge.IoBaseUpper16)) << 4) | (IoBase >> 4);
       }
       
       //

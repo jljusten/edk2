@@ -1,7 +1,7 @@
 /** @file
   Provides interface to shell functionality for shell commands and applications.
 
-  Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -15,6 +15,7 @@
 #include "UefiShellLib.h"
 #include <ShellBase.h>
 #include <Library/SortLib.h>
+#include <Library/BaseLib.h>
 
 #define FIND_XXXXX_FILE_BUFFER_SIZE (SIZE_OF_EFI_FILE_INFO + MAX_FILE_NAME_LEN)
 
@@ -671,6 +672,7 @@ ShellOpenFileByName(
   EFI_DEVICE_PATH_PROTOCOL      *FilePath;
   EFI_STATUS                    Status;
   EFI_FILE_INFO                 *FileInfo;
+  CHAR16                        *FileNameCopy;
 
   //
   // ASSERT if FileName is NULL
@@ -682,11 +684,32 @@ ShellOpenFileByName(
   }
 
   if (gEfiShellProtocol != NULL) {
-    if ((OpenMode & EFI_FILE_MODE_CREATE) == EFI_FILE_MODE_CREATE && (Attributes & EFI_FILE_DIRECTORY) == EFI_FILE_DIRECTORY) {
-      return ShellCreateDirectory(FileName, FileHandle);
+    if ((OpenMode & EFI_FILE_MODE_CREATE) == EFI_FILE_MODE_CREATE) {
+
+      //
+      // Create only a directory
+      //
+      if ((Attributes & EFI_FILE_DIRECTORY) == EFI_FILE_DIRECTORY) {
+        return ShellCreateDirectory(FileName, FileHandle);
+      }
+
+      //
+      // Create the directory to create the file in
+      //
+      FileNameCopy = AllocateCopyPool (StrSize (FileName), FileName);
+      if (FileName == NULL) {
+        return (EFI_OUT_OF_RESOURCES);
+      }
+      PathCleanUpDirectories (FileNameCopy);
+      if (PathRemoveLastItem (FileNameCopy)) {
+        ShellCreateDirectory (FileNameCopy, FileHandle);
+        ShellCloseFile (FileHandle);
+      }
+      SHELL_FREE_NON_NULL (FileNameCopy);
     }
+
     //
-    // Use UEFI Shell 2.0 method
+    // Use UEFI Shell 2.0 method to create the file
     //
     Status = gEfiShellProtocol->OpenFileByName(FileName,
                                                FileHandle,
@@ -1494,12 +1517,20 @@ ShellOpenFileMetaArg (
 {
   EFI_STATUS                    Status;
   LIST_ENTRY                    mOldStyleFileList;
+  CHAR16                        *CleanFilePathStr;
 
   //
   // ASSERT that Arg and ListHead are not NULL
   //
   ASSERT(Arg      != NULL);
   ASSERT(ListHead != NULL);
+
+  CleanFilePathStr = NULL;
+
+  Status = InternalShellStripQuotes (Arg, &CleanFilePathStr);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
 
   //
   // Check for UEFI Shell 2.0 protocols
@@ -1508,11 +1539,12 @@ ShellOpenFileMetaArg (
     if (*ListHead == NULL) {
       *ListHead = (EFI_SHELL_FILE_INFO*)AllocateZeroPool(sizeof(EFI_SHELL_FILE_INFO));
       if (*ListHead == NULL) {
+        FreePool(CleanFilePathStr);
         return (EFI_OUT_OF_RESOURCES);
       }
       InitializeListHead(&((*ListHead)->Link));
     }
-    Status = gEfiShellProtocol->OpenFileList(Arg,
+    Status = gEfiShellProtocol->OpenFileList(CleanFilePathStr,
                                            OpenMode,
                                            ListHead);
     if (EFI_ERROR(Status)) {
@@ -1522,9 +1554,11 @@ ShellOpenFileMetaArg (
     }
     if (*ListHead != NULL && IsListEmpty(&(*ListHead)->Link)) {
       FreePool(*ListHead);
+      FreePool(CleanFilePathStr);
       *ListHead = NULL;
       return (EFI_NOT_FOUND);
     }
+    FreePool(CleanFilePathStr);
     return (Status);
   }
 
@@ -1540,15 +1574,17 @@ ShellOpenFileMetaArg (
     //
     // Get the EFI Shell list of files
     //
-    Status = mEfiShellEnvironment2->FileMetaArg(Arg, &mOldStyleFileList);
+    Status = mEfiShellEnvironment2->FileMetaArg(CleanFilePathStr, &mOldStyleFileList);
     if (EFI_ERROR(Status)) {
       *ListHead = NULL;
+      FreePool(CleanFilePathStr);
       return (Status);
     }
 
     if (*ListHead == NULL) {
       *ListHead = (EFI_SHELL_FILE_INFO    *)AllocateZeroPool(sizeof(EFI_SHELL_FILE_INFO));
       if (*ListHead == NULL) {
+        FreePool(CleanFilePathStr);
         return (EFI_OUT_OF_RESOURCES);
       }
       InitializeListHead(&((*ListHead)->Link));
@@ -1569,9 +1605,11 @@ ShellOpenFileMetaArg (
       *ListHead = NULL;
       Status = EFI_NOT_FOUND;
     }
+    FreePool(CleanFilePathStr);
     return (Status);
   }
 
+  FreePool(CleanFilePathStr);
   return (EFI_UNSUPPORTED);
 }
 /**
@@ -1888,6 +1926,7 @@ InternalIsOnCheckList (
 
   @param[in] Name               pointer to Name of parameter found
   @param[in] AlwaysAllowNumbers TRUE to allow numbers, FALSE to not.
+  @param[in] TimeNumbers        TRUE to allow numbers with ":", FALSE otherwise.
 
   @retval TRUE                  the Parameter is a flag.
   @retval FALSE                 the Parameter not a flag.
@@ -1896,7 +1935,8 @@ BOOLEAN
 EFIAPI
 InternalIsFlag (
   IN CONST CHAR16               *Name,
-  IN BOOLEAN                    AlwaysAllowNumbers
+  IN CONST BOOLEAN              AlwaysAllowNumbers,
+  IN CONST BOOLEAN              TimeNumbers
   )
 {
   //
@@ -1907,7 +1947,7 @@ InternalIsFlag (
   //
   // If we accept numbers then dont return TRUE. (they will be values)
   //
-  if (((Name[0] == L'-' || Name[0] == L'+') && InternalShellIsHexOrDecimalNumber(Name+1, FALSE, FALSE)) && AlwaysAllowNumbers) {
+  if (((Name[0] == L'-' || Name[0] == L'+') && InternalShellIsHexOrDecimalNumber(Name+1, FALSE, FALSE, TimeNumbers)) && AlwaysAllowNumbers) {
     return (FALSE);
   }
 
@@ -2041,6 +2081,7 @@ InternalCommandLineParse (
         // possibly trigger the next loop(s) to populate the value of this item
         //
         case TypeValue:
+        case TypeTimeValue:
           GetItemValue = 1;
           ValueSize = 0;
           break;
@@ -2060,8 +2101,7 @@ InternalCommandLineParse (
           ASSERT(GetItemValue == 0);
           break;
       }
-    } else if (GetItemValue != 0 && !InternalIsFlag(Argv[LoopCounter], AlwaysAllowNumbers)) {
-      ASSERT(CurrentItemPackage != NULL);
+    } else if (GetItemValue != 0 && CurrentItemPackage != NULL && !InternalIsFlag(Argv[LoopCounter], AlwaysAllowNumbers, (CONST BOOLEAN)(CurrentItemPackage->Type == TypeTimeValue))) {
       //
       // get the item VALUE for a previous flag
       //
@@ -2099,7 +2139,7 @@ InternalCommandLineParse (
       if (GetItemValue == 0) {
         InsertHeadList(*CheckPackage, &CurrentItemPackage->Link);
       }
-    } else if (!InternalIsFlag(Argv[LoopCounter], AlwaysAllowNumbers) ){ //|| ProblemParam == NULL) {
+    } else if (!InternalIsFlag(Argv[LoopCounter], AlwaysAllowNumbers, FALSE)){
       //
       // add this one as a non-flag
       //
@@ -3119,7 +3159,7 @@ ShellStrToUintn(
 
   Hex = FALSE;
 
-  if (!InternalShellIsHexOrDecimalNumber(String, Hex, TRUE)) {
+  if (!InternalShellIsHexOrDecimalNumber(String, Hex, TRUE, FALSE)) {
     Hex = TRUE;
   }
 
@@ -3536,6 +3576,7 @@ ShellPromptForResponseHii (
   @param[in] String       The string to evaluate.
   @param[in] ForceHex     TRUE - always assume hex.
   @param[in] StopAtSpace  TRUE to halt upon finding a space, FALSE to keep going.
+  @param[in] TimeNumbers        TRUE to allow numbers with ":", FALSE otherwise.
 
   @retval TRUE        It is all numeric (dec/hex) characters.
   @retval FALSE       There is a non-numeric character.
@@ -3545,7 +3586,8 @@ EFIAPI
 InternalShellIsHexOrDecimalNumber (
   IN CONST CHAR16   *String,
   IN CONST BOOLEAN  ForceHex,
-  IN CONST BOOLEAN  StopAtSpace
+  IN CONST BOOLEAN  StopAtSpace,
+  IN CONST BOOLEAN  TimeNumbers
   )
 {
   BOOLEAN Hex;
@@ -3589,6 +3631,9 @@ InternalShellIsHexOrDecimalNumber (
   // loop through the remaining characters and use the lib function
   //
   for ( ; String != NULL && *String != CHAR_NULL && !(StopAtSpace && *String == L' ') ; String++){
+    if (TimeNumbers && (String[0] == L':')) {
+      continue;
+    }
     if (Hex) {
       if (!ShellIsHexaDecimalDigitCharacter(*String)) {
         return (FALSE);
@@ -3912,10 +3957,10 @@ ShellConvertStringToUint64(
 
   Hex = ForceHex;
 
-  if (!InternalShellIsHexOrDecimalNumber(String, Hex, StopAtSpace)) {
+  if (!InternalShellIsHexOrDecimalNumber(String, Hex, StopAtSpace, FALSE)) {
     if (!Hex) {
       Hex = TRUE;
-      if (!InternalShellIsHexOrDecimalNumber(String, Hex, StopAtSpace)) {
+      if (!InternalShellIsHexOrDecimalNumber(String, Hex, StopAtSpace, FALSE)) {
         return (EFI_INVALID_PARAMETER);
       }
     } else {
@@ -3931,7 +3976,7 @@ ShellConvertStringToUint64(
   //
   // make sure we have something left that is numeric.
   //
-  if (Walker == NULL || *Walker == CHAR_NULL || !InternalShellIsHexOrDecimalNumber(Walker, Hex, StopAtSpace)) {
+  if (Walker == NULL || *Walker == CHAR_NULL || !InternalShellIsHexOrDecimalNumber(Walker, Hex, StopAtSpace, FALSE)) {
     return (EFI_INVALID_PARAMETER);
   }
 
@@ -4240,3 +4285,41 @@ ShellDeleteFileByName(
   return(Status);
   
 }
+
+/**
+  Cleans off all the quotes in the string.
+
+  @param[in]     OriginalString   pointer to the string to be cleaned.
+  @param[out]   CleanString      The new string with all quotes removed. 
+                                                  Memory allocated in the function and free 
+                                                  by caller.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
+EFI_STATUS
+EFIAPI
+InternalShellStripQuotes (
+  IN  CONST CHAR16     *OriginalString,
+  OUT CHAR16           **CleanString
+  )
+{
+  CHAR16            *Walker;
+  
+  if (OriginalString == NULL || CleanString == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  *CleanString = AllocateCopyPool (StrSize (OriginalString), OriginalString);
+  if (*CleanString == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  for (Walker = *CleanString; Walker != NULL && *Walker != CHAR_NULL ; Walker++) {
+    if (*Walker == L'\"') {
+      CopyMem(Walker, Walker+1, StrSize(Walker) - sizeof(Walker[0]));
+    }
+  }
+
+  return EFI_SUCCESS;
+}
+

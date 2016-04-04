@@ -61,7 +61,9 @@
   CpuDeadLoop.c
   Cpu.c
   LinkedList.c
+  SafeString.c
   String.c
+  FilePaths.c
   BaseLibInternals.h
 
 [Sources.Ia32]
@@ -505,6 +507,7 @@
   gEfiMdePkgTokenSpaceGuid.PcdMaximumLinkedListLength      ## SOMETIMES_CONSUMES
   gEfiMdePkgTokenSpaceGuid.PcdMaximumAsciiStringLength     ## SOMETIMES_CONSUMES
   gEfiMdePkgTokenSpaceGuid.PcdMaximumUnicodeStringLength   ## SOMETIMES_CONSUMES
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask            ## SOMETIMES_CONSUMES
 
 [FeaturePcd]
   gEfiMdePkgTokenSpaceGuid.PcdVerifyNodeInList  ## CONSUMES

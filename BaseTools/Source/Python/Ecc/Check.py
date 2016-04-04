@@ -63,7 +63,7 @@ class Check(object):
     def GeneralCheckNonAcsii(self):
         if EccGlobalData.gConfig.GeneralCheckNonAcsii == '1' or EccGlobalData.gConfig.GeneralCheckAll == '1' or EccGlobalData.gConfig.CheckAll == '1':
             EdkLogger.quiet("Checking Non-ACSII char in file ...")
-            SqlCommand = """select ID, FullPath, ExtName from File"""
+            SqlCommand = """select ID, FullPath, ExtName from File where ExtName in ('.dec', '.inf', '.dsc', 'c', 'h')"""
             RecordSet = EccGlobalData.gDb.TblFile.Exec(SqlCommand)
             for Record in RecordSet:
                 if Record[2].upper() not in EccGlobalData.gConfig.BinaryExtList:
@@ -686,7 +686,7 @@ class Check(object):
                             % (MODEL_EFI_LIBRARY_CLASS, MODEL_EFI_LIBRARY_CLASS)
             RecordSet = EccGlobalData.gDb.TblDsc.Exec(SqlCommand)
             for Record in RecordSet:
-                if Record[3] and Record[4] and Record[3] != Record[4]:
+                if Record[3] and Record[4] and Record[3] != Record[4] and Record[1] != 'NULL':
                     SqlCommand = """select FullPath from File where ID = %s""" % (Record[2])
                     FilePathList = EccGlobalData.gDb.TblFile.Exec(SqlCommand)
                     for FilePath in FilePathList:

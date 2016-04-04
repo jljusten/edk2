@@ -1,7 +1,7 @@
 /** @file
   Provides interface to advanced shell functionality for parsing both handle and protocol database.
 
-  Copyright (c) 2013 - 2014, Hewlett-Packard Development Company, L.P.
+  Copyright (c) 2013 - 2014, Hewlett-Packard Development Company, L.P.<BR>
   Copyright (c) 2010 - 2014, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -349,14 +349,19 @@ PciRootBridgeIoDumpInformation(
   }
 
   Temp = HiiGetString(mHandleParsingHiiHandle, STRING_TOKEN(STR_PCIRB_DUMP_PH), NULL);
-  ASSERT (Temp != NULL);
+  if (Temp == NULL) {
+    return NULL;
+  }
   Temp2 = CatSPrint(L"\r\n", Temp, PciRootBridgeIo->ParentHandle);
   FreePool(Temp);
   RetVal = Temp2;
   Temp2 = NULL;
  
   Temp = HiiGetString(mHandleParsingHiiHandle, STRING_TOKEN(STR_PCIRB_DUMP_SEG), NULL);
-  ASSERT (Temp != NULL);
+  if (Temp == NULL) {
+    SHELL_FREE_NON_NULL(RetVal);
+    return NULL;
+  }
   Temp2 = CatSPrint(RetVal, Temp, PciRootBridgeIo->SegmentNumber);
   FreePool(Temp);
   FreePool(RetVal);
@@ -368,7 +373,10 @@ PciRootBridgeIoDumpInformation(
   Status = PciRootBridgeIo->GetAttributes (PciRootBridgeIo, &Supports, &Attributes);
   if (!EFI_ERROR(Status)) {
     Temp = HiiGetString(mHandleParsingHiiHandle, STRING_TOKEN(STR_PCIRB_DUMP_ATT), NULL);
-    ASSERT (Temp != NULL);    
+    if (Temp == NULL) {
+      SHELL_FREE_NON_NULL(RetVal);
+      return NULL;
+    }    
     Temp2 = CatSPrint(RetVal, Temp, Attributes);
     FreePool(Temp);
     FreePool(RetVal);
@@ -376,7 +384,10 @@ PciRootBridgeIoDumpInformation(
     Temp2 = NULL;
     
     Temp = HiiGetString(mHandleParsingHiiHandle, STRING_TOKEN(STR_PCIRB_DUMP_SUPPORTS), NULL);
-    ASSERT (Temp != NULL);
+    if (Temp == NULL) {
+      SHELL_FREE_NON_NULL(RetVal);
+      return NULL;
+    }
     Temp2 = CatSPrint(RetVal, Temp, Supports);
     FreePool(Temp);
     FreePool(RetVal);
@@ -388,7 +399,10 @@ PciRootBridgeIoDumpInformation(
   Status = PciRootBridgeIo->Configuration (PciRootBridgeIo, (VOID **) &Configuration);
   if (!EFI_ERROR(Status) && Configuration != NULL) {
     Temp = HiiGetString(mHandleParsingHiiHandle, STRING_TOKEN(STR_PCIRB_DUMP_TITLE), NULL);
-    ASSERT (Temp != NULL);
+    if (Temp == NULL) {
+      SHELL_FREE_NON_NULL(RetVal);
+      return NULL;
+    }
     Temp2 = CatSPrint(RetVal, Temp, Supports);
     FreePool(Temp);
     FreePool(RetVal);
@@ -581,6 +595,205 @@ DevicePathProtocolDumpInformation(
   return (Temp);
 }
 
+/**
+  Function to dump information about EfiAdapterInformation Protocol.
+
+  @param[in] TheHandle      The handle that has the protocol installed.
+  @param[in] Verbose        TRUE for additional information, FALSE otherwise.
+
+  @retval A pointer to a string containing the information.
+**/
+CHAR16*
+EFIAPI
+AdapterInformationDumpInformation (
+  IN CONST EFI_HANDLE TheHandle,
+  IN CONST BOOLEAN    Verbose
+  )
+{
+  EFI_STATUS                        Status;
+  EFI_ADAPTER_INFORMATION_PROTOCOL  *EfiAdptrInfoProtocol;
+  UINTN                             InfoTypesBufferCount;
+  UINTN                             GuidIndex;
+  EFI_GUID                          *InfoTypesBuffer;
+  CHAR16                            *GuidStr;
+  CHAR16                            *TempStr;
+  CHAR16                            *RetVal;
+  VOID                              *InformationBlock;
+  UINTN                             InformationBlockSize;
+   
+  if (!Verbose) {
+    return (CatSPrint(NULL, L"AdapterInfo"));
+  }
+
+  InfoTypesBuffer   = NULL;
+  InformationBlock  = NULL;
+  
+  //
+  // Allocate print buffer to store data
+  //
+  RetVal = AllocateZeroPool (PcdGet16(PcdShellPrintBufferSize));
+  if (RetVal == NULL) {
+    return NULL;
+  }
+
+  Status = gBS->OpenProtocol (
+                  (EFI_HANDLE) (TheHandle),
+                  &gEfiAdapterInformationProtocolGuid,
+                  (VOID **) &EfiAdptrInfoProtocol,
+                  NULL,
+                  NULL,
+                  EFI_OPEN_PROTOCOL_GET_PROTOCOL
+                  );
+
+  if (EFI_ERROR (Status)) {
+    SHELL_FREE_NON_NULL (RetVal);
+    return NULL;
+  }
+
+  //
+  // Get a list of supported information types for this instance of the protocol.
+  //
+  Status = EfiAdptrInfoProtocol->GetSupportedTypes (
+                                   EfiAdptrInfoProtocol,
+                                   &InfoTypesBuffer, 
+                                   &InfoTypesBufferCount
+                                   );
+  if (EFI_ERROR (Status)) {
+    TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_GET_SUPP_TYPES_FAILED), NULL);
+    if (TempStr != NULL) {
+      RetVal = CatSPrint (RetVal, TempStr, Status);
+    } else {
+      goto ERROR_EXIT;
+    }  
+  } else {
+    TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_SUPP_TYPE_HEADER), NULL);
+    if (TempStr == NULL) {
+      goto ERROR_EXIT;
+    }
+    RetVal = CatSPrint (RetVal, TempStr);
+    SHELL_FREE_NON_NULL (TempStr);
+
+    for (GuidIndex = 0; GuidIndex < InfoTypesBufferCount; GuidIndex++) {
+      TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_GUID_NUMBER), NULL);
+      if (TempStr == NULL) {
+        goto ERROR_EXIT;
+      }
+      RetVal = CatSPrint (RetVal, TempStr, (GuidIndex + 1), InfoTypesBuffer[GuidIndex]);
+      SHELL_FREE_NON_NULL (TempStr);
+
+      TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_GUID_STRING), NULL);
+      if (TempStr == NULL) {
+        goto ERROR_EXIT;
+      }
+
+      if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoMediaStateGuid)) {
+        RetVal = CatSPrint (RetVal, TempStr, L"gEfiAdapterInfoMediaStateGuid");
+      } else if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoNetworkBootGuid)) {
+        RetVal = CatSPrint (RetVal, TempStr, L"gEfiAdapterInfoNetworkBootGuid");
+      } else if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoSanMacAddressGuid)) {
+        RetVal = CatSPrint (RetVal, TempStr, L"gEfiAdapterInfoSanMacAddressGuid");
+      } else {
+
+        GuidStr = GetStringNameFromGuid (&InfoTypesBuffer[GuidIndex], NULL);
+       
+        if (GuidStr != NULL) {
+          if (StrCmp(GuidStr, L"UnknownDevice") == 0) {
+            RetVal = CatSPrint (RetVal, TempStr, L"UnknownInfoType");
+            
+            SHELL_FREE_NON_NULL (TempStr);
+            SHELL_FREE_NON_NULL(GuidStr);
+            //
+            // So that we never have to pass this UnknownInfoType to the parsing function "GetInformation" service of AIP
+            //
+            continue; 
+          } else {
+            RetVal = CatSPrint (RetVal, TempStr, GuidStr);
+            SHELL_FREE_NON_NULL(GuidStr);
+          }
+        }
+      }
+      
+      SHELL_FREE_NON_NULL (TempStr);
+
+      Status = EfiAdptrInfoProtocol->GetInformation (
+                                       EfiAdptrInfoProtocol,
+                                       &InfoTypesBuffer[GuidIndex],
+                                       &InformationBlock,
+                                       &InformationBlockSize
+                                       );
+
+      if (EFI_ERROR (Status)) {
+        TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_GETINFO_FAILED), NULL);
+        if (TempStr == NULL) {
+          goto ERROR_EXIT;
+        }
+        RetVal = CatSPrint (RetVal, TempStr, Status);
+      } else {
+        if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoMediaStateGuid)) {
+          TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_MEDIA_STATE), NULL);
+          if (TempStr == NULL) {
+            goto ERROR_EXIT;
+          }
+          RetVal = CatSPrint (
+                     RetVal,
+                     TempStr,
+                     ((EFI_ADAPTER_INFO_MEDIA_STATE *)InformationBlock)->MediaState,
+                     ((EFI_ADAPTER_INFO_MEDIA_STATE *)InformationBlock)->MediaState
+                     );
+        } else if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoNetworkBootGuid)) {
+          TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_NETWORK_BOOT_INFO), NULL);
+          if (TempStr == NULL) {
+            goto ERROR_EXIT;
+          }
+          RetVal = CatSPrint (
+                     RetVal,
+                     TempStr,
+                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiIpv4BootCapablity,
+                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiIpv6BootCapablity, 
+                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->FCoeBootCapablity, 
+                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->OffloadCapability, 
+                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiMpioCapability, 
+                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiIpv4Boot, 
+                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiIpv6Boot,
+                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->FCoeBoot
+                     );
+        } else if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoSanMacAddressGuid) == TRUE) { 
+          TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_SAN_MAC_ADDRESS_INFO), NULL);
+          if (TempStr == NULL) {
+            goto ERROR_EXIT;
+          }
+          RetVal = CatSPrint (
+                     RetVal,
+                     TempStr,
+                     ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[0], 
+                     ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[1], 
+                     ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[2],
+                     ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[3], 
+                     ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[4], 
+                     ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[5]
+                     );   
+        } else {
+          TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_UNKNOWN_INFO_TYPE), NULL);
+          if (TempStr == NULL) {
+            goto ERROR_EXIT;
+          }
+          RetVal = CatSPrint (RetVal, TempStr, &InfoTypesBuffer[GuidIndex]);
+        }
+      }
+      SHELL_FREE_NON_NULL (TempStr);
+      SHELL_FREE_NON_NULL (InformationBlock);
+    }
+  }
+
+  SHELL_FREE_NON_NULL (InfoTypesBuffer);
+  return RetVal;
+
+ERROR_EXIT:
+  SHELL_FREE_NON_NULL (RetVal);
+  SHELL_FREE_NON_NULL (InfoTypesBuffer);
+  SHELL_FREE_NON_NULL (InformationBlock);
+  return NULL;
+}
 //
 // Put the information on the NT32 protocol GUIDs here so we are not dependant on the Nt32Pkg
 //
@@ -601,6 +814,21 @@ DevicePathProtocolDumpInformation(
 STATIC CONST EFI_GUID WinNtThunkProtocolGuid = LOCAL_EFI_WIN_NT_THUNK_PROTOCOL_GUID;
 STATIC CONST EFI_GUID WinNtIoProtocolGuid    = LOCAL_EFI_WIN_NT_BUS_DRIVER_IO_PROTOCOL_GUID;
 STATIC CONST EFI_GUID WinNtSerialPortGuid    = LOCAL_EFI_WIN_NT_SERIAL_PORT_GUID;
+
+//
+// Deprecated protocols we dont want to link from IntelFrameworkModulePkg
+//
+#define LOCAL_EFI_ISA_IO_PROTOCOL_GUID \
+  { \
+  0x7ee2bd44, 0x3da0, 0x11d4, { 0x9a, 0x38, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d } \
+  } 
+#define LOCAL_EFI_ISA_ACPI_PROTOCOL_GUID \
+  { \
+  0x64a892dc, 0x5561, 0x4536, { 0x92, 0xc7, 0x79, 0x9b, 0xfc, 0x18, 0x33, 0x55 } \
+  }
+STATIC CONST EFI_GUID EfiIsaIoProtocolGuid = LOCAL_EFI_ISA_IO_PROTOCOL_GUID;
+STATIC CONST EFI_GUID EfiIsaAcpiProtocolGuid = LOCAL_EFI_ISA_ACPI_PROTOCOL_GUID;
+
 
 STATIC CONST GUID_INFO_BLOCK mGuidStringListNT[] = {
   {STRING_TOKEN(STR_WINNT_THUNK),           (EFI_GUID*)&WinNtThunkProtocolGuid,               NULL},
@@ -715,6 +943,12 @@ STATIC CONST GUID_INFO_BLOCK mGuidStringList[] = {
   {STRING_TOKEN(STR_DRIVER_CONFIG2),        &gEfiDriverConfiguration2ProtocolGuid,            NULL},
 
 //
+// these are using local (non-global) definitions to reduce package dependancy.
+//
+  {STRING_TOKEN(STR_ISA_IO),                (EFI_GUID*)&EfiIsaIoProtocolGuid,                 NULL},
+  {STRING_TOKEN(STR_ISA_ACPI),              (EFI_GUID*)&EfiIsaAcpiProtocolGuid,               NULL},
+
+//
 // the ones under this are GUID identified structs, not protocols
 //
   {STRING_TOKEN(STR_FILE_INFO),             &gEfiFileInfoGuid,                                NULL},
@@ -770,7 +1004,7 @@ STATIC CONST GUID_INFO_BLOCK mGuidStringList[] = {
 // UEFI 2.4
 //
   {STRING_TOKEN(STR_DISK_IO2),              &gEfiDiskIo2ProtocolGuid,                         NULL},
-  {STRING_TOKEN(STR_ADAPTER_INFO),          &gEfiAdapterInformationProtocolGuid,              NULL},
+  {STRING_TOKEN(STR_ADAPTER_INFO),          &gEfiAdapterInformationProtocolGuid,              AdapterInformationDumpInformation},
 
 //
 // PI Spec ones
@@ -898,7 +1132,6 @@ AddNewGuidNameMapping(
   IN CONST CHAR8    *Lang OPTIONAL
   )
 {
-  CONST GUID_INFO_BLOCK *Temp;
   EFI_STRING_ID         NameID;
 
   HandleParsingHiiInit();
@@ -907,7 +1140,7 @@ AddNewGuidNameMapping(
     return (EFI_INVALID_PARAMETER);
   }
 
-  if ((Temp = InternalShellGetNodeFromGuid(Guid)) != NULL) {
+  if ((InternalShellGetNodeFromGuid(Guid)) != NULL) {
     return (EFI_ACCESS_DENIED);
   }
 

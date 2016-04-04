@@ -48,7 +48,6 @@ GCC_ASM_EXPORT (ArmWriteVBar)
 GCC_ASM_EXPORT (ArmReadVBar)
 GCC_ASM_EXPORT (ArmEnableVFP)
 GCC_ASM_EXPORT (ArmCallWFI)
-GCC_ASM_EXPORT (ArmInvalidateInstructionAndDataTlb)
 GCC_ASM_EXPORT (ArmReadMpidr)
 GCC_ASM_EXPORT (ArmReadTpidrurw)
 GCC_ASM_EXPORT (ArmWriteTpidrurw)
@@ -314,8 +313,8 @@ ASM_PFX(ArmDisableBranchPrediction):
 
 ASM_PFX(AArch64AllDataCachesOperation):
 // We can use regs 0-7 and 9-15 without having to save/restore.
-// Save our link register on the stack.
-  str   x30, [sp, #-0x10]!
+// Save our link register on the stack. - The stack must always be quad-word aligned
+  str   x30, [sp, #-16]!
   mov   x1, x0                  // Save Function call in x1
   mrs   x6, clidr_el1           // Read EL1 CLIDR
   and   x3, x6, #0x7000000      // Mask out all but Level of Coherency (LoC)
@@ -327,8 +326,8 @@ ASM_PFX(AArch64AllDataCachesOperation):
 
 ASM_PFX(AArch64PerformPoUDataCacheOperation):
 // We can use regs 0-7 and 9-15 without having to save/restore.
-// Save our link register on the stack.
-  str   x30, [sp, #-0x10]!
+// Save our link register on the stack. - The stack must always be quad-word aligned
+  str   x30, [sp, #-16]!
   mov   x1, x0                  // Save Function call in x1
   mrs   x6, clidr_el1           // Read EL1 CLIDR
   and   x3, x6, #0x38000000     // Mask out all but Point of Unification (PoU)
@@ -448,18 +447,6 @@ ASM_PFX(ArmEnableVFP):
 ASM_PFX(ArmCallWFI):
   wfi
   ret
-
-
-ASM_PFX(ArmInvalidateInstructionAndDataTlb):
-   EL1_OR_EL2_OR_EL3(x0)
-1: tlbi  vmalle1
-   b     4f
-2: tlbi  alle2
-   b     4f
-3: tlbi  alle3
-4: dsb   sy
-   isb
-   ret
 
 
 ASM_PFX(ArmReadMpidr):

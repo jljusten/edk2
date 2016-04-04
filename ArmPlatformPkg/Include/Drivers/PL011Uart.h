@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2014, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -34,6 +34,11 @@
 #define UARTMIS                   0x040
 #define UARTICR                   0x044
 #define UARTDMACR                 0x048
+
+#define UARTPID0                  0xFE0
+#define UARTPID1                  0xFE4
+#define UARTPID2                  0xFE8
+#define UARTPID3                  0xFEC
 
 // Data status bits
 #define UART_DATA_ERROR_MASK      0x0F00
@@ -81,6 +86,9 @@
 #define PL011_UARTLCR_H_PEN       (1 << 1)  // Parity Enable
 #define PL011_UARTLCR_H_BRK       (1 << 0)  // Send break
 
+#define PL011_UARTPID2_VER(X)     (((X) >> 4) & 0xF)
+#define PL011_VER_R1P4            0x2
+
 /*
 
   Programmed hardware of Serial port.
@@ -100,38 +108,74 @@ PL011UartInitializePort (
   );
 
 /**
-  Set the serial device control bits.
 
-  @param  UartBase                The base address of the PL011 UART.
-  @param  Control                 Control bits which are to be set on the serial device.
+  Assert or deassert the control signals on a serial port.
+  The following control signals are set according their bit settings :
+  . Request to Send
+  . Data Terminal Ready
 
-  @retval EFI_SUCCESS             The new control bits were set on the serial device.
-  @retval EFI_UNSUPPORTED         The serial device does not support this operation.
-  @retval EFI_DEVICE_ERROR        The serial device is not functioning correctly.
+  @param[in]  UartBase  UART registers base address
+  @param[in]  Control   The following bits are taken into account :
+                        . EFI_SERIAL_REQUEST_TO_SEND : assert/deassert the
+                          "Request To Send" control signal if this bit is
+                          equal to one/zero.
+                        . EFI_SERIAL_DATA_TERMINAL_READY : assert/deassert
+                          the "Data Terminal Ready" control signal if this
+                          bit is equal to one/zero.
+                        . EFI_SERIAL_HARDWARE_LOOPBACK_ENABLE : enable/disable
+                          the hardware loopback if this bit is equal to
+                          one/zero.
+                        . EFI_SERIAL_SOFTWARE_LOOPBACK_ENABLE : not supported.
+                        . EFI_SERIAL_HARDWARE_FLOW_CONTROL_ENABLE : enable/
+                          disable the hardware flow control based on CTS (Clear
+                          To Send) and RTS (Ready To Send) control signals.
+
+  @retval  RETURN_SUCCESS      The new control bits were set on the serial device.
+  @retval  RETURN_UNSUPPORTED  The serial device does not support this operation.
 
 **/
 RETURN_STATUS
 EFIAPI
 PL011UartSetControl (
-    IN UINTN                    UartBase,
-    IN UINT32                   Control
+  IN UINTN   UartBase,
+  IN UINT32  Control
   );
 
 /**
-  Get the serial device control bits.
 
-  @param  UartBase                The base address of the PL011 UART.
-  @param  Control                 Control signals read from the serial device.
+  Retrieve the status of the control bits on a serial device.
 
-  @retval EFI_SUCCESS             The control bits were read from the serial device.
-  @retval EFI_DEVICE_ERROR        The serial device is not functioning correctly.
+  @param[in]   UartBase  UART registers base address
+  @param[out]  Control   Status of the control bits on a serial device :
+
+                         . EFI_SERIAL_DATA_CLEAR_TO_SEND, EFI_SERIAL_DATA_SET_READY,
+                           EFI_SERIAL_RING_INDICATE, EFI_SERIAL_CARRIER_DETECT,
+                           EFI_SERIAL_REQUEST_TO_SEND, EFI_SERIAL_DATA_TERMINAL_READY
+                           are all related to the DTE (Data Terminal Equipment) and
+                           DCE (Data Communication Equipment) modes of operation of
+                           the serial device.
+                         . EFI_SERIAL_INPUT_BUFFER_EMPTY : equal to one if the receive
+                           buffer is empty, 0 otherwise.
+                         . EFI_SERIAL_OUTPUT_BUFFER_EMPTY : equal to one if the transmit
+                           buffer is empty, 0 otherwise.
+                         . EFI_SERIAL_HARDWARE_LOOPBACK_ENABLE : equal to one if the
+                           hardware loopback is enabled (the ouput feeds the receive
+                           buffer), 0 otherwise.
+                         . EFI_SERIAL_SOFTWARE_LOOPBACK_ENABLE : equal to one if a
+                           loopback is accomplished by software, 0 otherwise.
+                         . EFI_SERIAL_HARDWARE_FLOW_CONTROL_ENABLE : equal to one if the
+                           hardware flow control based on CTS (Clear To Send) and RTS
+                           (Ready To Send) control signals is enabled, 0 otherwise.
+
+
+  @retval RETURN_SUCCESS  The control bits were read from the serial device.
 
 **/
 RETURN_STATUS
 EFIAPI
 PL011UartGetControl (
-    IN UINTN                    UartBase,
-    OUT UINT32                  *Control
+  IN UINTN     UartBase,
+  OUT UINT32  *Control
   );
 
 /**

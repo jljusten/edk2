@@ -1,7 +1,7 @@
 /** @file
   SMM Core Main Entry Point
 
-  Copyright (c) 2009 - 2012, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials are licensed and made available 
   under the terms and conditions of the BSD License which accompanies this 
   distribution.  The full text of the license may be found at        
@@ -81,6 +81,14 @@ SMM_CORE_SMI_HANDLERS  mSmmCoreSmiHandlers[] = {
   { SmmEndOfDxeHandler,       &gEfiEndOfDxeEventGroupGuid,        NULL, FALSE },
   { NULL,                     NULL,                               NULL, FALSE }
 };
+
+UINTN                           mFullSmramRangeCount;
+EFI_SMRAM_DESCRIPTOR            *mFullSmramRanges;
+
+//
+// Maximum support address used to check input CommunicationBuffer
+//
+UINTN  mMaximumSupportAddress = 0;
 
 /**
   Place holder function until all the SMM System Table Service are available.
@@ -226,6 +234,8 @@ SmmReadyToLockHandler (
   gST = NULL;
   gBS = NULL;
 
+  SmramProfileReadyToLock ();
+
   return Status;
 }
 
@@ -266,7 +276,77 @@ SmmEndOfDxeHandler (
              EFI_NATIVE_INTERFACE,
              NULL
              );
-  return EFI_SUCCESS;
+  return Status;
+}
+
+/**
+  Caculate and save the maximum support address.
+
+**/
+VOID
+CaculateMaximumSupportAddress (
+  VOID
+  )
+{
+  VOID         *Hob;
+  UINT32       RegEax;
+  UINT8        PhysicalAddressBits;
+
+  //
+  // Get physical address bits supported.
+  //
+  Hob = GetFirstHob (EFI_HOB_TYPE_CPU);
+  if (Hob != NULL) {
+    PhysicalAddressBits = ((EFI_HOB_CPU *) Hob)->SizeOfMemorySpace;
+  } else {
+    AsmCpuid (0x80000000, &RegEax, NULL, NULL, NULL);
+    if (RegEax >= 0x80000008) {
+      AsmCpuid (0x80000008, &RegEax, NULL, NULL, NULL);
+      PhysicalAddressBits = (UINT8) RegEax;
+    } else {
+      PhysicalAddressBits = 36;
+    }
+  }
+  //
+  // IA-32e paging translates 48-bit linear addresses to 52-bit physical addresses.
+  //
+  ASSERT (PhysicalAddressBits <= 52);
+  if (PhysicalAddressBits > 48) {
+    PhysicalAddressBits = 48;
+  }
+  
+  //
+  // Save the maximum support address in one global variable  
+  //
+  mMaximumSupportAddress = (UINTN) (LShiftU64 (1, PhysicalAddressBits) - 1);
+  DEBUG ((EFI_D_INFO, "mMaximumSupportAddress = 0x%lx\n", mMaximumSupportAddress));
+}
+
+/**
+  Check if input buffer is in valid address scope or not.
+
+  @param[in]  Pointer      Pointer to the input buffer.
+  @param[in]  BufferSize   Input buffer size in bytes.
+
+  @retval TRUE    The input buffer is in valid address scope.  
+  @retval FALSE   The input buffer is not in valid address scope.  
+
+**/
+BOOLEAN
+IsValidPointer (
+  IN VOID     *Pointer,
+  IN UINTN    BufferSize
+  )
+{
+  if ((UINTN) Pointer > mMaximumSupportAddress) {
+    return FALSE;
+  }
+
+  if (BufferSize > (mMaximumSupportAddress - (UINTN) Pointer)) {
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 /**
@@ -318,22 +398,29 @@ SmmEntryPoint (
       //
       // Synchronous SMI for SMM Core or request from Communicate protocol
       //
-      CommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)gSmmCorePrivate->CommunicationBuffer;
-      gSmmCorePrivate->BufferSize -= OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
-      Status = SmiManage (
-                 &CommunicateHeader->HeaderGuid, 
-                 NULL, 
-                 CommunicateHeader->Data, 
-                 &gSmmCorePrivate->BufferSize
-                 );
-
-      //
-      // Update CommunicationBuffer, BufferSize and ReturnStatus
-      // Communicate service finished, reset the pointer to CommBuffer to NULL
-      //
-      gSmmCorePrivate->BufferSize += OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
-      gSmmCorePrivate->CommunicationBuffer = NULL;
-      gSmmCorePrivate->ReturnStatus = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
+      if (!IsValidPointer (gSmmCorePrivate->CommunicationBuffer, gSmmCorePrivate->BufferSize)) {
+        //
+        // If CommunicationBuffer is not in valid address scope, return EFI_INVALID_PARAMETER
+        //
+        gSmmCorePrivate->CommunicationBuffer = NULL;
+        gSmmCorePrivate->ReturnStatus = EFI_INVALID_PARAMETER;
+      } else {
+        CommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)gSmmCorePrivate->CommunicationBuffer;
+        gSmmCorePrivate->BufferSize -= OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
+        Status = SmiManage (
+                   &CommunicateHeader->HeaderGuid, 
+                   NULL, 
+                   CommunicateHeader->Data, 
+                   &gSmmCorePrivate->BufferSize
+                   );
+        //
+        // Update CommunicationBuffer, BufferSize and ReturnStatus
+        // Communicate service finished, reset the pointer to CommBuffer to NULL
+        //
+        gSmmCorePrivate->BufferSize += OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
+        gSmmCorePrivate->CommunicationBuffer = NULL;
+        gSmmCorePrivate->ReturnStatus = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
+      }
     }
   }
 
@@ -401,6 +488,16 @@ SmmMain (
   //
   SmmInitializeMemoryServices (gSmmCorePrivate->SmramRangeCount, gSmmCorePrivate->SmramRanges);
 
+  SmramProfileInit ();
+
+  //
+  // Copy FullSmramRanges to SMRAM
+  //
+  mFullSmramRangeCount = gSmmCorePrivate->FullSmramRangeCount;
+  mFullSmramRanges = AllocatePool (mFullSmramRangeCount * sizeof (EFI_SMRAM_DESCRIPTOR));
+  ASSERT (mFullSmramRanges != NULL);
+  CopyMem (mFullSmramRanges, gSmmCorePrivate->FullSmramRanges, mFullSmramRangeCount * sizeof (EFI_SMRAM_DESCRIPTOR));
+
   //
   // Register all SMI Handlers required by the SMM Core
   //
@@ -412,6 +509,13 @@ SmmMain (
                );
     ASSERT_EFI_ERROR (Status);
   }
-  
+
+  RegisterSmramProfileHandler ();
+
+  //
+  // Caculate and save maximum support address used in SmmEntryPoint().
+  //
+  CaculateMaximumSupportAddress ();
+
   return EFI_SUCCESS;
 }

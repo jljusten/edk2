@@ -320,8 +320,6 @@ Lan9118SetMacAddress (
                       (UINT32)(Mac->Addr[4] & 0xFF) |
                       ((Mac->Addr[5] & 0xFF) << 8)
                     );
-
-  CopyMem (&Snp->Mode->CurrentAddress, &Mac, NET_ETHER_ADDR_LEN);
 }
 
 VOID
@@ -398,6 +396,7 @@ Lan9118Initialize (
       DEBUG ((EFI_D_WARN, "Warning: using driver-default MAC address\n"));
       DefaultMacAddress = FixedPcdGet64 (PcdLan9118DefaultMacAddress);
       Lan9118SetMacAddress((EFI_MAC_ADDRESS *) &DefaultMacAddress, Snp);
+      CopyMem (&Snp->Mode->CurrentAddress, &DefaultMacAddress, NET_ETHER_ADDR_LEN);
     }
   } else {
     // Store the MAC address that was loaded from EEPROM
@@ -492,7 +491,6 @@ PhySoftReset (
   )
 {
   UINT32 PmtCtrl = 0;
-  UINT32 LinkTo = 0;
 
   // PMT PHY reset takes precedence over BCR
   if (Flags & PHY_RESET_PMT) {
@@ -505,26 +503,12 @@ PhySoftReset (
       gBS->Stall (LAN9118_STALL);
     }
   // PHY Basic Control Register reset
-  } else if (Flags & PHY_RESET_PMT) {
+  } else if (Flags & PHY_RESET_BCR) {
     IndirectPHYWrite32 (PHY_INDEX_BASIC_CTRL, PHYCR_RESET);
 
     // Wait for completion
     while (IndirectPHYRead32 (PHY_INDEX_BASIC_CTRL) & PHYCR_RESET) {
       gBS->Stall (LAN9118_STALL);
-    }
-  }
-
-  // Check the link status
-  if (Flags & PHY_RESET_CHECK_LINK) {
-    LinkTo = 100000; // 2 second (could be 50% more)
-    while (EFI_ERROR (CheckLinkStatus (0, Snp)) && (LinkTo > 0)) {
-      gBS->Stall (LAN9118_STALL);
-      LinkTo--;
-    }
-
-    // Timed out
-    if (LinkTo <= 0) {
-      return EFI_TIMEOUT;
     }
   }
 

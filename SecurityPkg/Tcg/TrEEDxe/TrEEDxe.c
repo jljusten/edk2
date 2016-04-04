@@ -1,7 +1,7 @@
 /** @file
   This module implements TrEE Protocol.
   
-Copyright (c) 2013 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2013 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials 
 are licensed and made available under the terms and conditions of the BSD License 
 which accompanies this distribution.  The full text of the license may be found at 
@@ -48,6 +48,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/Tpm2DeviceLib.h>
 #include <Library/HashLib.h>
 #include <Library/PerformanceLib.h>
+#include <Library/ReportStatusCodeLib.h>
 
 #define PERF_ID_TREE_DXE  0x3120
 
@@ -64,16 +65,13 @@ typedef struct {
 typedef struct {
   EFI_GUID               *EventGuid;
   TREE_EVENT_LOG_FORMAT  LogFormat;
-  UINT32                 BootHashAlg;
-  UINT16                 DigestAlgID;
-  TPMI_ALG_HASH          TpmHashAlgo;
 } TREE_EVENT_INFO_STRUCT;
 
 TREE_EVENT_INFO_STRUCT mTreeEventInfo[] = {
-  {&gTcgEventEntryHobGuid,             TREE_EVENT_LOG_FORMAT_TCG_1_2,      TREE_BOOT_HASH_ALG_SHA1,     0,                       TPM_ALG_SHA1},
+  {&gTcgEventEntryHobGuid,             TREE_EVENT_LOG_FORMAT_TCG_1_2},
 };
 
-#define TCG_EVENT_LOG_AREA_COUNT_MAX   5
+#define TCG_EVENT_LOG_AREA_COUNT_MAX   2
 
 typedef struct {
   TREE_EVENT_LOG_FORMAT             EventLogFormat;
@@ -364,7 +362,7 @@ TreeGetCapability (
   IN OUT TREE_BOOT_SERVICE_CAPABILITY *ProtocolCapability
   )
 {
-  DEBUG ((EFI_D_ERROR, "TreeGetCapability ...\n"));
+  DEBUG ((EFI_D_INFO, "TreeGetCapability ...\n"));
 
   if ((This == NULL) || (ProtocolCapability == NULL)) {
     return EFI_INVALID_PARAMETER;
@@ -376,7 +374,7 @@ TreeGetCapability (
   }
 
   CopyMem (ProtocolCapability, &mTcgDxeData.BsCap, mTcgDxeData.BsCap.Size);
-  DEBUG ((EFI_D_ERROR, "TreeGetCapability - %r\n", EFI_SUCCESS));
+  DEBUG ((EFI_D_INFO, "TreeGetCapability - %r\n", EFI_SUCCESS));
   return EFI_SUCCESS;
 }
 
@@ -451,7 +449,7 @@ TreeGetEventLog (
 {
   UINTN  Index;
 
-  DEBUG ((EFI_D_ERROR, "TreeGetEventLog ...\n"));
+  DEBUG ((EFI_D_INFO, "TreeGetEventLog ...\n"));
 
   if (This == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -482,7 +480,7 @@ TreeGetEventLog (
 
   if (EventLogLocation != NULL) {
     *EventLogLocation = mTcgDxeData.EventLogAreaStruct[Index].Lasa;
-    DEBUG ((EFI_D_ERROR, "TreeGetEventLog (EventLogLocation - %x)\n", *EventLogLocation));
+    DEBUG ((EFI_D_INFO, "TreeGetEventLog (EventLogLocation - %x)\n", *EventLogLocation));
   }
 
   if (EventLogLastEntry != NULL) {
@@ -491,15 +489,15 @@ TreeGetEventLog (
     } else {
       *EventLogLastEntry = (EFI_PHYSICAL_ADDRESS)(UINTN)mTcgDxeData.EventLogAreaStruct[Index].LastEvent;
     }
-    DEBUG ((EFI_D_ERROR, "TreeGetEventLog (EventLogLastEntry - %x)\n", *EventLogLastEntry));
+    DEBUG ((EFI_D_INFO, "TreeGetEventLog (EventLogLastEntry - %x)\n", *EventLogLastEntry));
   }
 
   if (EventLogTruncated != NULL) {
     *EventLogTruncated = mTcgDxeData.EventLogAreaStruct[Index].EventLogTruncated;
-    DEBUG ((EFI_D_ERROR, "TreeGetEventLog (EventLogTruncated - %x)\n", *EventLogTruncated));
+    DEBUG ((EFI_D_INFO, "TreeGetEventLog (EventLogTruncated - %x)\n", *EventLogTruncated));
   }
 
-  DEBUG ((EFI_D_ERROR, "TreeGetEventLog - %r\n", EFI_SUCCESS));
+  DEBUG ((EFI_D_INFO, "TreeGetEventLog - %r\n", EFI_SUCCESS));
 
   // Dump Event Log for debug purpose
   if ((EventLogLocation != NULL) && (EventLogLastEntry != NULL)) {
@@ -629,72 +627,6 @@ TcgDxeLogEvent (
 }
 
 /**
-  This function return hash algorithm from event log format.
-
-  @param[in]     EventLogFormat    Event log format.
-
-  @return hash algorithm.
-**/
-TPMI_ALG_HASH
-TrEEGetHashAlgoFromLogFormat (
-  IN      TREE_EVENT_LOG_FORMAT     EventLogFormat
-  )
-{
-  UINTN  Index;
-
-  for (Index = 0; Index < sizeof(mTreeEventInfo)/sizeof(mTreeEventInfo[0]); Index++) {
-    if (mTreeEventInfo[Index].LogFormat == EventLogFormat) {
-      return mTreeEventInfo[Index].TpmHashAlgo;
-    }
-  }
-  return TPM_ALG_SHA1;
-}
-
-/**
-  This function return hash algorithm ID from event log format.
-
-  @param[in]     EventLogFormat    Event log format.
-
-  @return hash algorithm ID.
-**/
-UINT16
-TrEEGetAlgIDFromLogFormat (
-  IN      TREE_EVENT_LOG_FORMAT     EventLogFormat
-  )
-{
-  UINTN  Index;
-
-  for (Index = 0; Index < sizeof(mTreeEventInfo)/sizeof(mTreeEventInfo[0]); Index++) {
-    if (mTreeEventInfo[Index].LogFormat == EventLogFormat) {
-      return mTreeEventInfo[Index].DigestAlgID;
-    }
-  }
-  return 0;
-}
-
-/**
-  This function return boot hash algorithm from event log format.
-
-  @param[in]     EventLogFormat    Event log format.
-
-  @return boot hash algorithm.
-**/
-UINT32
-TrEEGetBootHashAlgFromLogFormat (
-  IN      TREE_EVENT_LOG_FORMAT     EventLogFormat
-  )
-{
-  UINTN  Index;
-
-  for (Index = 0; Index < sizeof(mTreeEventInfo)/sizeof(mTreeEventInfo[0]); Index++) {
-    if (mTreeEventInfo[Index].LogFormat == EventLogFormat) {
-      return mTreeEventInfo[Index].BootHashAlg;
-    }
-  }
-  return TREE_BOOT_HASH_ALG_SHA1;
-}
-
-/**
   This function get digest from digest list.
 
   @param HashAlg    digest algorithm
@@ -811,6 +743,10 @@ TcgDxeHashLogExtendEvent (
 {
   EFI_STATUS                        Status;
   TPML_DIGEST_VALUES                DigestList;
+  
+  if (!mTcgDxeData.BsCap.TrEEPresentFlag) {
+    return EFI_DEVICE_ERROR;
+  }
 
   Status = HashAndExtend (
              NewEventHdr->PCRIndex,
@@ -822,6 +758,15 @@ TcgDxeHashLogExtendEvent (
     if ((Flags & TREE_EXTEND_ONLY) == 0) {
       Status = TcgDxeLogHashEvent (&DigestList, NewEventHdr, NewEventData);
     }
+  }
+
+  if (Status == EFI_DEVICE_ERROR) {
+    DEBUG ((EFI_D_ERROR, "TcgDxeHashLogExtendEvent - %r. Disable TPM.\n", Status));
+    mTcgDxeData.BsCap.TrEEPresentFlag = FALSE;
+    REPORT_STATUS_CODE (
+      EFI_ERROR_CODE | EFI_ERROR_MINOR,
+      (PcdGet32 (PcdStatusCodeSubClassTpmDevice) | EFI_P_EC_INTERFACE_ERROR)
+      );
   }
 
   return Status;
@@ -860,7 +805,7 @@ TreeHashLogExtendEvent (
   TCG_PCR_EVENT_HDR  NewEventHdr;
   TPML_DIGEST_VALUES DigestList;
 
-  DEBUG ((EFI_D_ERROR, "TreeHashLogExtendEvent ...\n"));
+  DEBUG ((EFI_D_INFO, "TreeHashLogExtendEvent ...\n"));
 
   if ((This == NULL) || (DataToHash == 0) || (Event == NULL)) {
     return EFI_INVALID_PARAMETER;
@@ -893,6 +838,14 @@ TreeHashLogExtendEvent (
         Status = TcgDxeLogHashEvent (&DigestList, &NewEventHdr, Event->Event);
       }
     }
+    if (Status == EFI_DEVICE_ERROR) {
+      DEBUG ((EFI_D_ERROR, "MeasurePeImageAndExtend - %r. Disable TPM.\n", Status));
+      mTcgDxeData.BsCap.TrEEPresentFlag = FALSE;
+      REPORT_STATUS_CODE (
+        EFI_ERROR_CODE | EFI_ERROR_MINOR,
+        (PcdGet32 (PcdStatusCodeSubClassTpmDevice) | EFI_P_EC_INTERFACE_ERROR)
+        );
+    }
   } else {
     Status = TcgDxeHashLogExtendEvent (
                Flags,
@@ -902,7 +855,7 @@ TreeHashLogExtendEvent (
                Event->Event
                );
   }
-  DEBUG ((EFI_D_ERROR, "TreeHashLogExtendEvent - %r\n", Status));
+  DEBUG ((EFI_D_INFO, "TreeHashLogExtendEvent - %r\n", Status));
   return Status;
 }
 
@@ -932,7 +885,7 @@ TreeSubmitCommand (
 {
   EFI_STATUS    Status;
 
-  DEBUG ((EFI_D_ERROR, "TreeSubmitCommand ...\n"));
+  DEBUG ((EFI_D_INFO, "TreeSubmitCommand ...\n"));
 
   if ((This == NULL) ||
       (InputParameterBlockSize == 0) || (InputParameterBlock == NULL) ||
@@ -957,7 +910,7 @@ TreeSubmitCommand (
              &OutputParameterBlockSize,
              OutputParameterBlock
              );
-  DEBUG ((EFI_D_ERROR, "TreeSubmitCommand - %r\n", Status));
+  DEBUG ((EFI_D_INFO, "TreeSubmitCommand - %r\n", Status));
   return Status;
 }
 
@@ -1109,9 +1062,7 @@ MeasureHandoffTables (
              (VOID **) &SmbiosTable
              );
 
-  if (!EFI_ERROR (Status)) {
-    ASSERT (SmbiosTable != NULL);
-
+  if (!EFI_ERROR (Status) && SmbiosTable != NULL) {
     TcgEvent.PCRIndex  = 1;
     TcgEvent.EventType = EV_EFI_HANDOFF_TABLES;
     TcgEvent.EventSize = sizeof (HandoffTables);
@@ -1180,7 +1131,7 @@ MeasureSeparatorEvent (
   TCG_PCR_EVENT_HDR                 TcgEvent;
   UINT32                            EventData;
 
-  DEBUG ((EFI_D_ERROR, "MeasureSeparatorEvent Pcr - %x\n", PCRIndex));
+  DEBUG ((EFI_D_INFO, "MeasureSeparatorEvent Pcr - %x\n", PCRIndex));
 
   EventData = 0;
   TcgEvent.PCRIndex  = PCRIndex;
@@ -1225,10 +1176,8 @@ MeasureVariable (
   UINTN                             VarNameLength;
   EFI_VARIABLE_DATA_TREE            *VarLog;
 
-  ASSERT ((VarSize == 0 && VarData == NULL) || (VarSize != 0 && VarData != NULL));
-
-  DEBUG ((EFI_D_ERROR, "TrEEDxe: MeasureVariable (Pcr - %x, EventType - %x, ", (UINTN)PCRIndex, (UINTN)EventType));
-  DEBUG ((EFI_D_ERROR, "VariableName - %s, VendorGuid - %g)\n", VarName, VendorGuid));
+  DEBUG ((EFI_D_INFO, "TrEEDxe: MeasureVariable (Pcr - %x, EventType - %x, ", (UINTN)PCRIndex, (UINTN)EventType));
+  DEBUG ((EFI_D_INFO, "VariableName - %s, VendorGuid - %g)\n", VarName, VendorGuid));
 
   VarNameLength      = StrLen (VarName);
   TcgEvent.PCRIndex  = PCRIndex;
@@ -1249,7 +1198,7 @@ MeasureVariable (
      VarName,
      VarNameLength * sizeof (*VarName)
      );
-  if (VarSize != 0) {
+  if (VarSize != 0 && VarData != NULL) {
     CopyMem (
        (CHAR16 *)VarLog->UnicodeName + VarNameLength,
        VarData,
@@ -1318,10 +1267,12 @@ ReadAndMeasureVariable (
       *VarSize = 0;
     }
   } else {
+    //
+    // if status error, VarData is freed and set NULL by GetVariable2
+    //
     if (EFI_ERROR (Status)) {
-      return Status;
+      return EFI_NOT_FOUND;
     }
-    ASSERT (*VarData != NULL);
   }
 
   Status = MeasureVariable (
@@ -1425,12 +1376,14 @@ MeasureAllBootVariables (
              &BootCount,
              (VOID **) &BootOrder
              );
-  if (Status == EFI_NOT_FOUND) {
+  if (Status == EFI_NOT_FOUND || BootOrder == NULL) {
     return EFI_SUCCESS;
   }
-  ASSERT (BootOrder != NULL);
 
   if (EFI_ERROR (Status)) {
+    //
+    // BootOrder can't be NULL if status is not EFI_NOT_FOUND
+    //
     FreePool (BootOrder);
     return Status;
   }
@@ -1553,11 +1506,11 @@ MeasureSecureBootPolicy (
 
   if (PcdGetBool (PcdFirmwareDebuggerInitialized)) {
     Status = MeasureLaunchOfFirmwareDebugger ();
-    DEBUG ((EFI_D_ERROR, "MeasureLaunchOfFirmwareDebugger - %r\n", Status));
+    DEBUG ((EFI_D_INFO, "MeasureLaunchOfFirmwareDebugger - %r\n", Status));
   }
 
   Status = MeasureAllSecureVariables ();
-  DEBUG ((EFI_D_ERROR, "MeasureAllSecureVariables - %r\n", Status));
+  DEBUG ((EFI_D_INFO, "MeasureAllSecureVariables - %r\n", Status));
 
   //
   // We need measure Separator(7) here, because this event must be between SecureBootPolicy (Configure)
@@ -1566,7 +1519,7 @@ MeasureSecureBootPolicy (
   // the Authority measurement happen before ReadToBoot event.
   //
   Status = MeasureSeparatorEvent (7);
-  DEBUG ((EFI_D_ERROR, "MeasureSeparatorEvent - %r\n", Status));
+  DEBUG ((EFI_D_INFO, "MeasureSeparatorEvent - %r\n", Status));
   return ;
 }
 
@@ -1614,6 +1567,9 @@ OnReadyToBoot (
     Status = TcgMeasureAction (
                EFI_CALLING_EFI_APPLICATION
                );
+    if (EFI_ERROR (Status)) {
+      DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_CALLING_EFI_APPLICATION));
+    }
 
     //
     // 2. Draw a line between pre-boot env and entering post-boot env.
@@ -1621,6 +1577,9 @@ OnReadyToBoot (
     //
     for (PcrIndex = 0; PcrIndex < 7; PcrIndex++) {
       Status = MeasureSeparatorEvent (PcrIndex);
+      if (EFI_ERROR (Status)) {
+        DEBUG ((EFI_D_ERROR, "Seperator Event not Measured. Error!\n"));
+      }
     }
 
     //
@@ -1641,6 +1600,9 @@ OnReadyToBoot (
     Status = TcgMeasureAction (
                EFI_RETURNING_FROM_EFI_APPLICATOIN
                );
+    if (EFI_ERROR (Status)) {
+      DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_RETURNING_FROM_EFI_APPLICATOIN));
+    }
   }
 
   DEBUG ((EFI_D_INFO, "TPM2 TrEEDxe Measure Data when ReadyToBoot\n"));
@@ -1721,7 +1683,10 @@ InstallAcpiTable (
                             &TableKey
                             );
   }
-  ASSERT_EFI_ERROR (Status);
+
+  if (EFI_ERROR (Status)) {
+    DEBUG((EFI_D_ERROR, "Tcg Acpi Table installation failure"));
+  }
 }
 
 /**
@@ -1748,7 +1713,9 @@ OnExitBootServices (
   Status = TcgMeasureAction (
              EFI_EXIT_BOOT_SERVICES_INVOCATION
              );
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_EXIT_BOOT_SERVICES_INVOCATION));
+  }
 
   //
   // Measure success of ExitBootServices
@@ -1756,7 +1723,9 @@ OnExitBootServices (
   Status = TcgMeasureAction (
              EFI_EXIT_BOOT_SERVICES_SUCCEEDED
              );
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_EXIT_BOOT_SERVICES_SUCCEEDED));
+  }
 }
 
 /**
@@ -1783,7 +1752,9 @@ OnExitBootServicesFailed (
   Status = TcgMeasureAction (
              EFI_EXIT_BOOT_SERVICES_FAILED
              );
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_EXIT_BOOT_SERVICES_FAILED));
+  }
 
 }
 
@@ -1849,18 +1820,22 @@ DriverEntry (
     DEBUG ((EFI_D_ERROR, "TPM not detected!\n"));
     return Status;
   }
+  
+  if (GetFirstGuidHob (&gTpmErrorHobGuid) != NULL) {
+    mTcgDxeData.BsCap.TrEEPresentFlag = FALSE;
+  }
 
   //
   // Fill information
   //
-  DEBUG ((EFI_D_ERROR, "TrEE.ProtocolVersion  - %02x.%02x\n", mTcgDxeData.BsCap.ProtocolVersion.Major, mTcgDxeData.BsCap.ProtocolVersion.Minor));
-  DEBUG ((EFI_D_ERROR, "TrEE.StructureVersion - %02x.%02x\n", mTcgDxeData.BsCap.StructureVersion.Major, mTcgDxeData.BsCap.StructureVersion.Minor));
+  DEBUG ((EFI_D_INFO, "TrEE.ProtocolVersion  - %02x.%02x\n", mTcgDxeData.BsCap.ProtocolVersion.Major, mTcgDxeData.BsCap.ProtocolVersion.Minor));
+  DEBUG ((EFI_D_INFO, "TrEE.StructureVersion - %02x.%02x\n", mTcgDxeData.BsCap.StructureVersion.Major, mTcgDxeData.BsCap.StructureVersion.Minor));
 
   Status = Tpm2GetCapabilityManufactureID (&mTcgDxeData.BsCap.ManufacturerID);
   if (EFI_ERROR (Status)) {
     DEBUG ((EFI_D_ERROR, "Tpm2GetCapabilityManufactureID fail!\n"));
   } else {
-    DEBUG ((EFI_D_ERROR, "Tpm2GetCapabilityManufactureID - %08x\n", mTcgDxeData.BsCap.ManufacturerID));
+    DEBUG ((EFI_D_INFO, "Tpm2GetCapabilityManufactureID - %08x\n", mTcgDxeData.BsCap.ManufacturerID));
   }
 
   DEBUG_CODE (
@@ -1871,7 +1846,7 @@ DriverEntry (
     if (EFI_ERROR (Status)) {
       DEBUG ((EFI_D_ERROR, "Tpm2GetCapabilityFirmwareVersion fail!\n"));
     } else {
-      DEBUG ((EFI_D_ERROR, "Tpm2GetCapabilityFirmwareVersion - %08x %08x\n", FirmwareVersion1, FirmwareVersion2));
+      DEBUG ((EFI_D_INFO, "Tpm2GetCapabilityFirmwareVersion - %08x %08x\n", FirmwareVersion1, FirmwareVersion2));
     }
   );
 
@@ -1881,7 +1856,7 @@ DriverEntry (
   } else {
     mTcgDxeData.BsCap.MaxCommandSize  = (UINT16)MaxCommandSize;
     mTcgDxeData.BsCap.MaxResponseSize = (UINT16)MaxResponseSize;
-    DEBUG ((EFI_D_ERROR, "Tpm2GetCapabilityMaxCommandResponseSize - %08x, %08x\n", MaxCommandSize, MaxResponseSize));
+    DEBUG ((EFI_D_INFO, "Tpm2GetCapabilityMaxCommandResponseSize - %08x, %08x\n", MaxCommandSize, MaxResponseSize));
   }
 
   Status = Tpm2GetCapabilityPcrs (&Pcrs);
@@ -1889,10 +1864,10 @@ DriverEntry (
     DEBUG ((EFI_D_ERROR, "Tpm2GetCapabilityPcrs fail!\n"));
     TpmHashAlgorithmBitmap = TREE_BOOT_HASH_ALG_SHA1;
   } else {
-    DEBUG ((EFI_D_ERROR, "Tpm2GetCapabilityPcrs Count - %08x\n", Pcrs.count));
+    DEBUG ((EFI_D_INFO, "Tpm2GetCapabilityPcrs Count - %08x\n", Pcrs.count));
     TpmHashAlgorithmBitmap = 0;
     for (Index = 0; Index < Pcrs.count; Index++) {
-      DEBUG ((EFI_D_ERROR, "hash - %x\n", Pcrs.pcrSelections[Index].hash));
+      DEBUG ((EFI_D_INFO, "hash - %x\n", Pcrs.pcrSelections[Index].hash));
       switch (Pcrs.pcrSelections[Index].hash) {
       case TPM_ALG_SHA1:
         TpmHashAlgorithmBitmap |= TREE_BOOT_HASH_ALG_SHA1;
@@ -1912,11 +1887,11 @@ DriverEntry (
       }
     }
   }
-  DEBUG ((EFI_D_ERROR, "TPM.HashAlgorithmBitmap - 0x%08x\n", TpmHashAlgorithmBitmap));
+  DEBUG ((EFI_D_INFO, "TPM.HashAlgorithmBitmap - 0x%08x\n", TpmHashAlgorithmBitmap));
 
-  DEBUG ((EFI_D_ERROR, "TrEE.SupportedEventLogs - 0x%08x\n", mTcgDxeData.BsCap.SupportedEventLogs));
+  DEBUG ((EFI_D_INFO, "TrEE.SupportedEventLogs - 0x%08x\n", mTcgDxeData.BsCap.SupportedEventLogs));
   mTcgDxeData.BsCap.HashAlgorithmBitmap = TpmHashAlgorithmBitmap;
-  DEBUG ((EFI_D_ERROR, "TrEE.HashAlgorithmBitmap - 0x%08x\n", mTcgDxeData.BsCap.HashAlgorithmBitmap));
+  DEBUG ((EFI_D_INFO, "TrEE.HashAlgorithmBitmap - 0x%08x\n", mTcgDxeData.BsCap.HashAlgorithmBitmap));
 
   if (mTcgDxeData.BsCap.TrEEPresentFlag) {
     //
@@ -1973,7 +1948,7 @@ DriverEntry (
   // Install TrEEProtocol
   //
   Status = InstallTrEE ();
-  DEBUG ((EFI_D_ERROR, "InstallTrEE - %r\n", Status));
+  DEBUG ((EFI_D_INFO, "InstallTrEE - %r\n", Status));
 
   return Status;
 }

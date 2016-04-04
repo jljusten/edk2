@@ -1,7 +1,7 @@
 /** @file
   Initialize TPM2 device and measure FVs before handing off control to DXE.
 
-Copyright (c) 2013 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2013 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials 
 are licensed and made available under the terms and conditions of the BSD License 
 which accompanies this distribution.  The full text of the license may be found at 
@@ -40,19 +40,17 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/TrEEProtocol.h>
 #include <Library/PerformanceLib.h>
 #include <Library/MemoryAllocationLib.h>
+#include <Library/ReportStatusCodeLib.h>
 
 #define PERF_ID_TREE_PEI  0x3080
 
 typedef struct {
   EFI_GUID               *EventGuid;
   TREE_EVENT_LOG_FORMAT  LogFormat;
-  UINT32                 BootHashAlg;
-  UINT16                 DigestAlgID;
-  TPMI_ALG_HASH          TpmHashAlgo;
 } TREE_EVENT_INFO_STRUCT;
 
 TREE_EVENT_INFO_STRUCT mTreeEventInfo[] = {
-  {&gTcgEventEntryHobGuid,             TREE_EVENT_LOG_FORMAT_TCG_1_2,      TREE_BOOT_HASH_ALG_SHA1,     0,                       TPM_ALG_SHA1},
+  {&gTcgEventEntryHobGuid,             TREE_EVENT_LOG_FORMAT_TCG_1_2},
 };
 
 BOOLEAN                 mImageInMemory  = FALSE;
@@ -61,6 +59,12 @@ EFI_PEI_FILE_HANDLE     mFileHandle;
 EFI_PEI_PPI_DESCRIPTOR  mTpmInitializedPpiList = {
   EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
   &gPeiTpmInitializedPpiGuid,
+  NULL
+};
+
+EFI_PEI_PPI_DESCRIPTOR  mTpmInitializationDonePpiList = {
+  EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
+  &gPeiTpmInitializationDonePpiGuid,
   NULL
 };
 
@@ -127,28 +131,6 @@ EFI_PEI_NOTIFY_DESCRIPTOR           mNotifyList[] = {
 };
 
 EFI_PEI_FIRMWARE_VOLUME_INFO_MEASUREMENT_EXCLUDED_PPI *mMeasurementExcludedFvPpi;
-
-/**
-  This function return hash algorithm from event log format.
-
-  @param[in]     EventLogFormat    Event log format.
-
-  @return hash algorithm.
-**/
-TPMI_ALG_HASH
-TrEEGetHashAlgoFromLogFormat (
-  IN      TREE_EVENT_LOG_FORMAT     EventLogFormat
-  )
-{
-  UINTN  Index;
-
-  for (Index = 0; Index < sizeof(mTreeEventInfo)/sizeof(mTreeEventInfo[0]); Index++) {
-    if (mTreeEventInfo[Index].LogFormat == EventLogFormat) {
-      return mTreeEventInfo[Index].TpmHashAlgo;
-    }
-  }
-  return TPM_ALG_SHA1;
-}
 
 /**
   This function get digest from digest list.
@@ -318,6 +300,10 @@ HashLogExtendEvent (
   EFI_STATUS                        Status;
   TPML_DIGEST_VALUES                DigestList;
 
+  if (GetFirstGuidHob (&gTpmErrorHobGuid) != NULL) {
+    return EFI_DEVICE_ERROR;
+  }
+
   Status = HashAndExtend (
              NewEventHdr->PCRIndex,
              HashData,
@@ -329,6 +315,16 @@ HashLogExtendEvent (
       Status = LogHashEvent (&DigestList, NewEventHdr, NewEventData);
     }
   }
+  
+  if (Status == EFI_DEVICE_ERROR) {
+    DEBUG ((EFI_D_ERROR, "HashLogExtendEvent - %r. Disable TPM.\n", Status));
+    BuildGuidHob (&gTpmErrorHobGuid,0);
+    REPORT_STATUS_CODE (
+      EFI_ERROR_CODE | EFI_ERROR_MINOR,
+      (PcdGet32 (PcdStatusCodeSubClassTpmDevice) | EFI_P_EC_INTERFACE_ERROR)
+      );
+  }
+
   return Status;
 }
 
@@ -431,7 +427,6 @@ MeasureFvImage (
              &TcgEventHdr,
              (UINT8*) &FvBlob
              );
-  ASSERT_EFI_ERROR (Status);
 
   //
   // Add new FV into the measured FV list.
@@ -600,7 +595,6 @@ PeimEntryMP (
   
   if (PcdGet8 (PcdTpm2ScrtmPolicy) == 1) {
     Status = MeasureCRTMVersion ();
-    ASSERT_EFI_ERROR (Status);
   }
 
   Status = MeasureMainBios ();
@@ -633,21 +627,13 @@ PeimEntryMA (
   )
 {
   EFI_STATUS                        Status;
+  EFI_STATUS                        Status2;
   EFI_BOOT_MODE                     BootMode;
 
   if (CompareGuid (PcdGetPtr(PcdTpmInstanceGuid), &gEfiTpmDeviceInstanceNoneGuid) ||
       CompareGuid (PcdGetPtr(PcdTpmInstanceGuid), &gEfiTpmDeviceInstanceTpm12Guid)){
     DEBUG ((EFI_D_ERROR, "No TPM2 instance required!\n"));
     return EFI_UNSUPPORTED;
-  }
-
-  //
-  // Update for Performance optimization
-  //
-  Status = Tpm2RequestUseTpm ();
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "TPM not detected!\n"));
-    return Status;
   }
 
   Status = PeiServicesGetBootMode (&BootMode);
@@ -670,6 +656,12 @@ PeimEntryMA (
     //
     // Initialize TPM device
     //
+    Status = Tpm2RequestUseTpm ();
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "TPM2 not detected!\n"));
+      goto Done;
+    }
+
     if (PcdGet8 (PcdTpm2InitializationPolicy) == 1) {
       if (BootMode == BOOT_ON_S3_RESUME) {
         Status = Tpm2Startup (TPM_SU_STATE);
@@ -680,7 +672,7 @@ PeimEntryMA (
         Status = Tpm2Startup (TPM_SU_CLEAR);
       }
       if (EFI_ERROR (Status) ) {
-        return Status;
+        goto Done;
       }
     }
 
@@ -691,21 +683,30 @@ PeimEntryMA (
       if (PcdGet8 (PcdTpm2SelfTestPolicy) == 1) {
         Status = Tpm2SelfTest (NO);
         if (EFI_ERROR (Status)) {
-          return Status;
+          goto Done;
         }
       }
     }
 
+    //
+    // Only intall TpmInitializedPpi on success
+    //
     Status = PeiServicesInstallPpi (&mTpmInitializedPpiList);
     ASSERT_EFI_ERROR (Status);
   }
 
   if (mImageInMemory) {
     Status = PeimEntryMP ((EFI_PEI_SERVICES**)PeiServices);
-    if (EFI_ERROR (Status)) {
-      return Status;
-    }
+    return Status;
   }
+
+Done:
+  //
+  // Always intall TpmInitializationDonePpi no matter success or fail.
+  // Other driver can know TPM initialization state by TpmInitializedPpi.
+  //
+  Status2 = PeiServicesInstallPpi (&mTpmInitializationDonePpiList);
+  ASSERT_EFI_ERROR (Status2);
 
   return Status;
 }

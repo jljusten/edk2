@@ -29,10 +29,8 @@
 [Sources]
   BdsPlatform.c
   PlatformData.c
-  QemuBootOrder.c
   QemuKernel.c
   BdsPlatform.h
-  QemuBootOrder.h
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -52,12 +50,13 @@
   NvVarsFileLib
   QemuFwCfgLib
   LoadLinuxLib
+  QemuBootOrderLib
 
 [Pcd]
-  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdPlatformBootTimeOut
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile
   gUefiOvmfPkgTokenSpaceGuid.PcdEmuVariableEvent
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFlashVariablesEnable
+  gUefiOvmfPkgTokenSpaceGuid.PcdOvmfHostBridgePciDevId
 
 [Pcd.IA32, Pcd.X64]
   gEfiMdePkgTokenSpaceGuid.PcdFSBClock

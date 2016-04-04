@@ -836,13 +836,11 @@ FormDisplayCallback (
   IN VOID         *Context
   )
 {
-  EFI_STATUS                  Status;
-
   if (mFormDisplay != NULL) {
     return;
   }
 
-  Status = gBS->LocateProtocol (
+  gBS->LocateProtocol (
                   &gEdkiiFormDisplayEngineProtocolGuid,
                   NULL,
                   (VOID **) &mFormDisplay
@@ -1346,6 +1344,110 @@ ConfigRespToStorage (
   return Status;
 }
 
+/**
+  Convert the buffer value to HiiValue.
+
+  @param  Question               The question.
+  @param  Value                  Unicode buffer save the question value.
+
+  @retval  Status whether convert the value success.
+
+**/
+EFI_STATUS
+BufferToValue (
+  IN OUT FORM_BROWSER_STATEMENT           *Question,
+  IN     CHAR16                           *Value
+  )
+{
+  CHAR16                       *StringPtr;
+  BOOLEAN                      IsBufferStorage;
+  CHAR16                       *DstBuf;
+  CHAR16                       TempChar;
+  UINTN                        LengthStr;
+  UINT8                        *Dst;
+  CHAR16                       TemStr[5];
+  UINTN                        Index;
+  UINT8                        DigitUint8;
+  BOOLEAN                      IsString;
+  UINTN                        Length;
+  EFI_STATUS                   Status;
+
+  IsString = (BOOLEAN) ((Question->HiiValue.Type == EFI_IFR_TYPE_STRING) ?  TRUE : FALSE);
+  if (Question->Storage->Type == EFI_HII_VARSTORE_BUFFER || 
+      Question->Storage->Type == EFI_HII_VARSTORE_EFI_VARIABLE_BUFFER) {
+    IsBufferStorage = TRUE;
+  } else {
+    IsBufferStorage = FALSE;
+  }
+
+  //
+  // Question Value is provided by Buffer Storage or NameValue Storage
+  //
+  if (Question->BufferValue != NULL) {
+    //
+    // This Question is password or orderedlist
+    //
+    Dst = Question->BufferValue;
+  } else {
+    //
+    // Other type of Questions
+    //
+    Dst = (UINT8 *) &Question->HiiValue.Value;
+  }
+
+  //
+  // Temp cut at the end of this section, end with '\0' or '&'.
+  //
+  StringPtr = Value;
+  while (*StringPtr != L'\0' && *StringPtr != L'&') {
+    StringPtr++;
+  }
+  TempChar = *StringPtr;
+  *StringPtr = L'\0';
+
+  LengthStr = StrLen (Value);
+  Status    = EFI_SUCCESS;
+  if (!IsBufferStorage && IsString) {
+    //
+    // Convert Config String to Unicode String, e.g "0041004200430044" => "ABCD"
+    // Add string tail char L'\0' into Length
+    //
+    Length    = Question->StorageWidth + sizeof (CHAR16);
+    if (Length < ((LengthStr / 4 + 1) * 2)) {
+      Status = EFI_BUFFER_TOO_SMALL;
+    } else {
+      DstBuf = (CHAR16 *) Dst;
+      ZeroMem (TemStr, sizeof (TemStr));
+      for (Index = 0; Index < LengthStr; Index += 4) {
+        StrnCpy (TemStr, Value + Index, 4);
+        DstBuf[Index/4] = (CHAR16) StrHexToUint64 (TemStr);
+      }
+      //
+      // Add tailing L'\0' character
+      //
+      DstBuf[Index/4] = L'\0';
+    }
+  } else {
+    if (Question->StorageWidth < ((LengthStr + 1) / 2)) {
+      Status = EFI_BUFFER_TOO_SMALL;
+    } else {
+      ZeroMem (TemStr, sizeof (TemStr));
+      for (Index = 0; Index < LengthStr; Index ++) {
+        TemStr[0] = Value[LengthStr - Index - 1];
+        DigitUint8 = (UINT8) StrHexToUint64 (TemStr);
+        if ((Index & 1) == 0) {
+          Dst [Index/2] = DigitUint8;
+        } else {
+          Dst [Index/2] = (UINT8) ((DigitUint8 << 4) + Dst [Index/2]);
+        }
+      }
+    }
+  }
+
+  *StringPtr = TempChar;
+
+  return Status;
+}
 
 /**
   Get Question's current Value.
@@ -1378,14 +1480,8 @@ GetQuestionValue (
   CHAR16              *Progress;
   CHAR16              *Result;
   CHAR16              *Value;
-  CHAR16              *StringPtr;
   UINTN               Length;
-  UINTN               Index;
-  UINTN               LengthStr;
   BOOLEAN             IsBufferStorage;
-  BOOLEAN             IsString;
-  CHAR16              TemStr[5];
-  UINT8               DigitUint8;
 
   Status = EFI_SUCCESS;
   Value  = NULL;
@@ -1538,7 +1634,6 @@ GetQuestionValue (
   } else {
     IsBufferStorage = FALSE;
   }
-  IsString = (BOOLEAN) ((Question->HiiValue.Type == EFI_IFR_TYPE_STRING) ?  TRUE : FALSE);
   if (GetValueFrom == GetSetValueWithEditBuffer || GetValueFrom == GetSetValueWithBuffer ) {
     if (IsBufferStorage) {
       if (GetValueFrom == GetSetValueWithEditBuffer) {
@@ -1560,45 +1655,7 @@ GetQuestionValue (
       }
 
       ASSERT (Value != NULL);
-      LengthStr = StrLen (Value);
-      Status    = EFI_SUCCESS;
-      if (IsString) {
-        //
-        // Convert Config String to Unicode String, e.g "0041004200430044" => "ABCD"
-        // Add string tail char L'\0' into Length
-        //
-        Length    = StorageWidth + sizeof (CHAR16);
-        if (Length < ((LengthStr / 4 + 1) * 2)) {
-          Status = EFI_BUFFER_TOO_SMALL;
-        } else {
-          StringPtr = (CHAR16 *) Dst;
-          ZeroMem (TemStr, sizeof (TemStr));
-          for (Index = 0; Index < LengthStr; Index += 4) {
-            StrnCpy (TemStr, Value + Index, 4);
-            StringPtr[Index/4] = (CHAR16) StrHexToUint64 (TemStr);
-          }
-          //
-          // Add tailing L'\0' character
-          //
-          StringPtr[Index/4] = L'\0';
-        }
-      } else {
-        if (StorageWidth < ((LengthStr + 1) / 2)) {
-          Status = EFI_BUFFER_TOO_SMALL;
-        } else {
-          ZeroMem (TemStr, sizeof (TemStr));
-          for (Index = 0; Index < LengthStr; Index ++) {
-            TemStr[0] = Value[LengthStr - Index - 1];
-            DigitUint8 = (UINT8) StrHexToUint64 (TemStr);
-            if ((Index & 1) == 0) {
-              Dst [Index/2] = DigitUint8;
-            } else {
-              Dst [Index/2] = (UINT8) ((DigitUint8 << 4) + Dst [Index/2]);
-            }
-          }
-        }
-      }
-
+      Status = BufferToValue (Question, Value);
       FreePool (Value);
     }
   } else {
@@ -1663,54 +1720,7 @@ GetQuestionValue (
     //
     Value = Value + 1;
 
-    //
-    // Suppress <AltResp> if any
-    //
-    StringPtr = Value;
-    while (*StringPtr != L'\0' && *StringPtr != L'&') {
-      StringPtr++;
-    }
-    *StringPtr = L'\0';
-
-    LengthStr = StrLen (Value);
-    Status    = EFI_SUCCESS;
-    if (!IsBufferStorage && IsString) {
-      //
-      // Convert Config String to Unicode String, e.g "0041004200430044" => "ABCD"
-      // Add string tail char L'\0' into Length
-      //
-      Length    = StorageWidth + sizeof (CHAR16);
-      if (Length < ((LengthStr / 4 + 1) * 2)) {
-        Status = EFI_BUFFER_TOO_SMALL;
-      } else {
-        StringPtr = (CHAR16 *) Dst;
-        ZeroMem (TemStr, sizeof (TemStr));
-        for (Index = 0; Index < LengthStr; Index += 4) {
-          StrnCpy (TemStr, Value + Index, 4);
-          StringPtr[Index/4] = (CHAR16) StrHexToUint64 (TemStr);
-        }
-        //
-        // Add tailing L'\0' character
-        //
-        StringPtr[Index/4] = L'\0';
-      }
-    } else {
-      if (StorageWidth < ((LengthStr + 1) / 2)) {
-        Status = EFI_BUFFER_TOO_SMALL;
-      } else {
-        ZeroMem (TemStr, sizeof (TemStr));
-        for (Index = 0; Index < LengthStr; Index ++) {
-          TemStr[0] = Value[LengthStr - Index - 1];
-          DigitUint8 = (UINT8) StrHexToUint64 (TemStr);
-          if ((Index & 1) == 0) {
-            Dst [Index/2] = DigitUint8;
-          } else {
-            Dst [Index/2] = (UINT8) ((DigitUint8 << 4) + Dst [Index/2]);
-          }
-        }
-      }
-    }
-
+    Status = BufferToValue (Question, Value);
     if (EFI_ERROR (Status)) {
       FreePool (Result);
       return Status;
@@ -3205,7 +3215,6 @@ SubmitForSystem (
   EFI_STATUS              Status;
   LIST_ENTRY              *Link;
   LIST_ENTRY              *StorageLink;
-  BROWSER_STORAGE         *Storage;
   FORMSET_STORAGE         *FormSetStorage;
   FORM_BROWSER_FORM       *Form;
   FORM_BROWSER_FORMSET    *LocalFormSet;
@@ -3271,7 +3280,6 @@ SubmitForSystem (
         StorageLink = GetFirstNode (&LocalFormSet->StorageListHead);
         while (!IsNull (&LocalFormSet->StorageListHead, StorageLink)) {
           FormSetStorage = FORMSET_STORAGE_FROM_LINK (StorageLink);
-          Storage        = FormSetStorage->BrowserStorage;
           StorageLink = GetNextNode (&LocalFormSet->StorageListHead, StorageLink);
 
           SynchronizeStorage(FormSetStorage->BrowserStorage, FormSetStorage->ConfigRequest, FALSE);
@@ -3280,7 +3288,6 @@ SubmitForSystem (
         StorageLink = GetFirstNode (&LocalFormSet->SaveFailStorageListHead);
         while (!IsNull (&LocalFormSet->SaveFailStorageListHead, StorageLink)) {
           FormSetStorage = FORMSET_STORAGE_FROM_SAVE_FAIL_LINK (StorageLink);
-          Storage        = FormSetStorage->BrowserStorage;
           StorageLink = GetNextNode (&LocalFormSet->SaveFailStorageListHead, StorageLink);
 
           SynchronizeStorage(FormSetStorage->BrowserStorage, FormSetStorage->ConfigRequest, FALSE);
@@ -3373,11 +3380,111 @@ SubmitForm (
 }
 
 /**
+  Converts the unicode character of the string from uppercase to lowercase.
+  This is a internal function.
+
+  @param ConfigString  String to be converted
+
+**/
+VOID
+EFIAPI
+HiiToLower (
+  IN EFI_STRING  ConfigString
+  )
+{
+  EFI_STRING  String;
+  BOOLEAN     Lower;
+
+  ASSERT (ConfigString != NULL);
+
+  //
+  // Convert all hex digits in range [A-F] in the configuration header to [a-f]
+  //
+  for (String = ConfigString, Lower = FALSE; *String != L'\0'; String++) {
+    if (*String == L'=') {
+      Lower = TRUE;
+    } else if (*String == L'&') {
+      Lower = FALSE;
+    } else if (Lower && *String >= L'A' && *String <= L'F') {
+      *String = (CHAR16) (*String - L'A' + L'a');
+    }
+  }
+}
+
+/**
+  Find the point in the ConfigResp string for this question.
+
+  @param  Question               The question.
+  @param  ConfigResp             Get ConfigResp string.
+
+  @retval  point to the offset where is for this question.
+
+**/
+CHAR16 *
+GetOffsetFromConfigResp (
+  IN FORM_BROWSER_STATEMENT           *Question,
+  IN CHAR16                           *ConfigResp
+  )
+{
+  CHAR16                       *RequestElement;
+  CHAR16                       *BlockData;
+
+  //
+  // Type is EFI_HII_VARSTORE_NAME_VALUE.
+  //
+  if (Question->Storage->Type == EFI_HII_VARSTORE_NAME_VALUE) {
+    RequestElement = StrStr (ConfigResp, Question->VariableName);
+    if (RequestElement != NULL) {
+      //
+      // Skip the "VariableName=" field.
+      //
+      RequestElement += StrLen (Question->VariableName) + 1;
+    }
+
+    return RequestElement;
+  }
+
+  //
+  // Type is EFI_HII_VARSTORE_EFI_VARIABLE or EFI_HII_VARSTORE_EFI_VARIABLE_BUFFER
+  //
+
+  //
+  // 1. Directly use Question->BlockName to find.
+  //
+  RequestElement = StrStr (ConfigResp, Question->BlockName);
+  if (RequestElement != NULL) {
+    //
+    // Skip the "Question->BlockName&VALUE=" field.
+    //
+    RequestElement += StrLen (Question->BlockName) + StrLen (L"&VALUE=");
+    return RequestElement;
+  }
+  
+  //
+  // 2. Change all hex digits in Question->BlockName to lower and compare again.
+  //
+  BlockData = AllocateCopyPool (StrSize(Question->BlockName), Question->BlockName);
+  ASSERT (BlockData != NULL);
+  HiiToLower (BlockData);
+  RequestElement = StrStr (ConfigResp, BlockData);
+  FreePool (BlockData);
+
+  if (RequestElement != NULL) {
+    //
+    // Skip the "Question->BlockName&VALUE=" field.
+    //
+    RequestElement += StrLen (Question->BlockName) + StrLen (L"&VALUE=");
+  }
+
+  return RequestElement;
+}
+
+/**
   Get Question default value from AltCfg string.
 
   @param  FormSet                The form set.
+  @param  Form                   The form
   @param  Question               The question.
-  @param  DefaultId              The default Id.
 
   @retval EFI_SUCCESS            Question is reset to default value.
 
@@ -3385,193 +3492,61 @@ SubmitForm (
 EFI_STATUS
 GetDefaultValueFromAltCfg (
   IN     FORM_BROWSER_FORMSET             *FormSet,
-  IN OUT FORM_BROWSER_STATEMENT           *Question,
-  IN     UINT16                           DefaultId
+  IN     FORM_BROWSER_FORM                *Form,
+  IN OUT FORM_BROWSER_STATEMENT           *Question
   )
-{
-  BOOLEAN             IsBufferStorage;
-  BOOLEAN             IsString;  
-  UINTN               Length;
-  BROWSER_STORAGE     *Storage;
-  CHAR16              *ConfigRequest;
-  CHAR16              *Progress;
-  CHAR16              *Result;
-  CHAR16              *ConfigResp;
-  CHAR16              *Value;
-  CHAR16              *StringPtr;
-  UINTN               LengthStr;
-  UINT8               *Dst;
-  CHAR16              TemStr[5];
-  UINTN               Index;
-  UINT8               DigitUint8;
-  EFI_STATUS          Status;
+{ 
+  BROWSER_STORAGE              *Storage;
+  FORMSET_STORAGE              *FormSetStorage;
+  CHAR16                       *ConfigResp;
+  CHAR16                       *Value;
+  LIST_ENTRY                   *Link;
+  FORM_BROWSER_CONFIG_REQUEST  *ConfigInfo;
 
-  Status        = EFI_NOT_FOUND;
-  Length        = 0;
-  Dst           = NULL;
-  ConfigRequest = NULL;
-  Result        = NULL;
-  ConfigResp    = NULL;
-  Value         = NULL;
-  Storage       = Question->Storage;
-
+  Storage = Question->Storage;
   if ((Storage == NULL) || (Storage->Type == EFI_HII_VARSTORE_EFI_VARIABLE)) {
-    return Status;
+    return EFI_NOT_FOUND;
   }
 
   //
-  // Question Value is provided by Buffer Storage or NameValue Storage
+  // Try to get AltCfg string from form. If not found it, then
+  // try to get it from formset.
   //
-  if (Question->BufferValue != NULL) {
-    //
-    // This Question is password or orderedlist
-    //
-    Dst = Question->BufferValue;
-  } else {
-    //
-    // Other type of Questions
-    //
-    Dst = (UINT8 *) &Question->HiiValue.Value;
-  }
+  ConfigResp    = NULL;
+  Link = GetFirstNode (&Form->ConfigRequestHead);
+  while (!IsNull (&Form->ConfigRequestHead, Link)) {
+    ConfigInfo = FORM_BROWSER_CONFIG_REQUEST_FROM_LINK (Link);
+    Link = GetNextNode (&Form->ConfigRequestHead, Link);
 
-  if (Storage->Type == EFI_HII_VARSTORE_BUFFER || Storage->Type == EFI_HII_VARSTORE_EFI_VARIABLE_BUFFER) {
-    IsBufferStorage = TRUE;
-  } else {
-    IsBufferStorage = FALSE;
-  }
-  IsString = (BOOLEAN) ((Question->HiiValue.Type == EFI_IFR_TYPE_STRING) ?  TRUE : FALSE);
-
-  //
-  // <ConfigRequest> ::= <ConfigHdr> + <BlockName> ||
-  //                   <ConfigHdr> + "&" + <VariableName>
-  //
-  if (IsBufferStorage) {
-    Length  = StrLen (Storage->ConfigHdr);
-    Length += StrLen (Question->BlockName);
-  } else {
-    Length  = StrLen (Storage->ConfigHdr);
-    Length += StrLen (Question->VariableName) + 1;
-  }
-  ConfigRequest = AllocateZeroPool ((Length + 1) * sizeof (CHAR16));
-  ASSERT (ConfigRequest != NULL);
-
-  StrCpy (ConfigRequest, Storage->ConfigHdr);
-  if (IsBufferStorage) {
-    StrCat (ConfigRequest, Question->BlockName);
-  } else {
-    StrCat (ConfigRequest, L"&");
-    StrCat (ConfigRequest, Question->VariableName);
-  }
-
-  Status = mHiiConfigRouting->ExtractConfig (
-                                    mHiiConfigRouting,
-                                    ConfigRequest,
-                                    &Progress,
-                                    &Result
-                                    );
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
-
-  //
-  // Call ConfigRouting GetAltCfg(ConfigRoute, <ConfigResponse>, Guid, Name, DevicePath, AltCfgId, AltCfgResp)
-  //    Get the default configuration string according to the default ID.
-  //
-  Status = mHiiConfigRouting->GetAltConfig (
-                                mHiiConfigRouting,
-                                Result,
-                                &Storage->Guid,
-                                Storage->Name,
-                                NULL,
-                                &DefaultId,  // it can be NULL to get the current setting.
-                                &ConfigResp
-                              );
-  
-  //
-  // The required setting can't be found. So, it is not required to be validated and set.
-  //
-  if (EFI_ERROR (Status)) {
-    goto Done;
+    if (Storage == ConfigInfo->Storage) {
+      ConfigResp = ConfigInfo->ConfigAltResp;
+      break;
+    }
   }
 
   if (ConfigResp == NULL) {
-    Status = EFI_NOT_FOUND;
-    goto Done;
-  }
+    Link = GetFirstNode (&FormSet->StorageListHead);
+    while (!IsNull (&FormSet->StorageListHead, Link)) {
+      FormSetStorage = FORMSET_STORAGE_FROM_LINK (Link);
+      Link = GetNextNode (&FormSet->StorageListHead, Link);
 
-  //
-  // Skip <ConfigRequest>
-  //
-  if (IsBufferStorage) {
-    Value = StrStr (ConfigResp, L"&VALUE");
-    ASSERT (Value != NULL);
-    //
-    // Skip "&VALUE"
-    //
-    Value = Value + 6;
-  } else {
-    Value = StrStr (ConfigResp, Question->VariableName);
-    ASSERT (Value != NULL);
-
-    Value = Value + StrLen (Question->VariableName);
-  }
-  if (*Value != '=') {
-    Status = EFI_NOT_FOUND;
-    goto Done;
-  }
-  //
-  // Skip '=', point to value
-  //
-  Value = Value + 1;
-
-  //
-  // Suppress <AltResp> if any
-  //
-  StringPtr = Value;
-  while (*StringPtr != L'\0' && *StringPtr != L'&') {
-    StringPtr++;
-  }
-  *StringPtr = L'\0';
-
-  LengthStr = StrLen (Value);
-  if (!IsBufferStorage && IsString) {
-    StringPtr = (CHAR16 *) Dst;
-    ZeroMem (TemStr, sizeof (TemStr));
-    for (Index = 0; Index < LengthStr; Index += 4) {
-      StrnCpy (TemStr, Value + Index, 4);
-      StringPtr[Index/4] = (CHAR16) StrHexToUint64 (TemStr);
-    }
-    //
-    // Add tailing L'\0' character
-    //
-    StringPtr[Index/4] = L'\0';
-  } else {
-    ZeroMem (TemStr, sizeof (TemStr));
-    for (Index = 0; Index < LengthStr; Index ++) {
-      TemStr[0] = Value[LengthStr - Index - 1];
-      DigitUint8 = (UINT8) StrHexToUint64 (TemStr);
-      if ((Index & 1) == 0) {
-        Dst [Index/2] = DigitUint8;
-      } else {
-        Dst [Index/2] = (UINT8) ((DigitUint8 << 4) + Dst [Index/2]);
+      if (Storage == FormSetStorage->BrowserStorage) {
+        ConfigResp = FormSetStorage->ConfigAltResp;
+        break;
       }
     }
   }
 
-Done:
-  if (ConfigRequest != NULL){
-    FreePool (ConfigRequest);
+  if (ConfigResp == NULL) {
+    return EFI_NOT_FOUND;
   }
 
-  if (ConfigResp != NULL) {
-    FreePool (ConfigResp);
-  }
-  
-  if (Result != NULL) {
-    FreePool (Result);
+  Value = GetOffsetFromConfigResp (Question, ConfigResp);
+  if (Value == NULL) {
+    return EFI_NOT_FOUND;
   }
 
-  return Status;
+  return BufferToValue (Question, Value);
 }
 
 /**
@@ -3824,7 +3799,7 @@ GetQuestionDefault (
   // Get default value from altcfg string.
   //
   if (ConfigAccess != NULL) {  
-    Status = GetDefaultValueFromAltCfg(FormSet, Question, DefaultId);
+    Status = GetDefaultValueFromAltCfg(FormSet, Form, Question);
     if (!EFI_ERROR (Status)) {
         return Status;
     }
@@ -4005,6 +3980,247 @@ GetQuestionDefault (
   return Status;
 }
 
+/**
+  Get AltCfg string for current form.
+
+  @param  FormSet                Form data structure.
+  @param  Form                   Form data structure.
+  @param  DefaultId              The Class of the default.
+  @param  BrowserStorage         The input request storage for the questions.
+
+**/
+VOID
+ExtractAltCfgForForm (
+  IN FORM_BROWSER_FORMSET   *FormSet,
+  IN FORM_BROWSER_FORM      *Form,
+  IN UINT16                 DefaultId,
+  IN BROWSER_STORAGE        *BrowserStorage
+  )
+{
+  EFI_STATUS                   Status;
+  LIST_ENTRY                   *Link;
+  CHAR16                       *ConfigResp;
+  CHAR16                       *Progress;
+  CHAR16                       *Result;
+  BROWSER_STORAGE              *Storage;
+  FORM_BROWSER_CONFIG_REQUEST  *ConfigInfo;
+  FORMSET_STORAGE              *FormSetStorage;
+
+  //
+  // Check whether has get AltCfg string for this formset.
+  // If yes, no need to get AltCfg for form.
+  //
+  Link = GetFirstNode (&FormSet->StorageListHead);
+  while (!IsNull (&FormSet->StorageListHead, Link)) {
+    FormSetStorage = FORMSET_STORAGE_FROM_LINK (Link);
+    Storage        = FormSetStorage->BrowserStorage;
+    Link = GetNextNode (&FormSet->StorageListHead, Link);
+    if (BrowserStorage != NULL && BrowserStorage != Storage) {
+      continue;
+    }
+
+    if (Storage->Type != EFI_HII_VARSTORE_EFI_VARIABLE &&
+        FormSetStorage->ElementCount != 0 &&
+        FormSetStorage->HasCallAltCfg) {
+      return;
+    }
+  }
+
+  //
+  // Get AltCfg string for each form.
+  //
+  Link = GetFirstNode (&Form->ConfigRequestHead);
+  while (!IsNull (&Form->ConfigRequestHead, Link)) {
+    ConfigInfo = FORM_BROWSER_CONFIG_REQUEST_FROM_LINK (Link);
+    Link = GetNextNode (&Form->ConfigRequestHead, Link);
+
+    Storage = ConfigInfo->Storage;
+    if (BrowserStorage != NULL && BrowserStorage != Storage) {
+      continue;
+    }
+
+    if (Storage->Type == EFI_HII_VARSTORE_EFI_VARIABLE) {
+      continue;
+    }
+
+    //
+    // 1. Skip if there is no RequestElement
+    //
+    if (ConfigInfo->ElementCount == 0) {
+      continue;
+    }
+
+    //
+    // 2. Get value through hii config routine protocol.
+    //
+    Status = mHiiConfigRouting->ExtractConfig (
+                                      mHiiConfigRouting,
+                                      ConfigInfo->ConfigRequest,
+                                      &Progress,
+                                      &Result
+                                      );
+    if (EFI_ERROR (Status)) {
+      continue;
+    }
+
+    //
+    // 3. Call ConfigRouting GetAltCfg(ConfigRoute, <ConfigResponse>, Guid, Name, DevicePath, AltCfgId, AltCfgResp)
+    //    Get the default configuration string according to the default ID.
+    //
+    Status = mHiiConfigRouting->GetAltConfig (
+                                  mHiiConfigRouting,
+                                  Result,
+                                  &Storage->Guid,
+                                  Storage->Name,
+                                  NULL,
+                                  &DefaultId,  // it can be NULL to get the current setting.
+                                  &ConfigResp
+                                );
+    FreePool (Result);
+    if (EFI_ERROR (Status)) {
+      continue;
+    }
+
+    ConfigInfo->ConfigAltResp = ConfigResp;
+  }
+}
+
+/**
+  Clean AltCfg string for current form.
+
+  @param  Form                   Form data structure.
+
+**/
+VOID
+CleanAltCfgForForm (
+  IN FORM_BROWSER_FORM   *Form
+  )
+{
+  LIST_ENTRY              *Link;
+  FORM_BROWSER_CONFIG_REQUEST  *ConfigInfo;
+
+  Link = GetFirstNode (&Form->ConfigRequestHead);
+  while (!IsNull (&Form->ConfigRequestHead, Link)) {
+    ConfigInfo = FORM_BROWSER_CONFIG_REQUEST_FROM_LINK (Link);
+    Link = GetNextNode (&Form->ConfigRequestHead, Link);
+
+    if (ConfigInfo->ConfigAltResp != NULL) {
+      FreePool (ConfigInfo->ConfigAltResp);
+      ConfigInfo->ConfigAltResp = NULL;
+    }
+  }
+}
+
+/**
+  Get AltCfg string for current formset.
+
+  @param  FormSet                Form data structure.
+  @param  DefaultId              The Class of the default.
+  @param  BrowserStorage         The input request storage for the questions.
+
+**/
+VOID
+ExtractAltCfgForFormSet (
+  IN FORM_BROWSER_FORMSET   *FormSet,
+  IN UINT16                 DefaultId,
+  IN BROWSER_STORAGE        *BrowserStorage
+  )
+{
+  EFI_STATUS              Status;
+  LIST_ENTRY              *Link;
+  CHAR16                  *ConfigResp;
+  CHAR16                  *Progress;
+  CHAR16                  *Result;
+  BROWSER_STORAGE         *Storage;
+  FORMSET_STORAGE         *FormSetStorage;
+
+  Link = GetFirstNode (&FormSet->StorageListHead);
+  while (!IsNull (&FormSet->StorageListHead, Link)) {
+    FormSetStorage = FORMSET_STORAGE_FROM_LINK (Link);
+    Storage        = FormSetStorage->BrowserStorage;
+    Link = GetNextNode (&FormSet->StorageListHead, Link);
+
+    if (BrowserStorage != NULL && BrowserStorage != Storage) {
+      continue;
+    }
+
+    if (Storage->Type == EFI_HII_VARSTORE_EFI_VARIABLE) {
+      continue;
+    }
+
+    //
+    // 1. Skip if there is no RequestElement
+    //
+    if (FormSetStorage->ElementCount == 0) {
+      continue;
+    }
+
+    FormSetStorage->HasCallAltCfg = TRUE;
+
+    //
+    // 2. Get value through hii config routine protocol.
+    //
+    Status = mHiiConfigRouting->ExtractConfig (
+                                      mHiiConfigRouting,
+                                      FormSetStorage->ConfigRequest,
+                                      &Progress,
+                                      &Result
+                                      );
+    if (EFI_ERROR (Status)) {
+      continue;
+    }
+
+    //
+    // 3. Call ConfigRouting GetAltCfg(ConfigRoute, <ConfigResponse>, Guid, Name, DevicePath, AltCfgId, AltCfgResp)
+    //    Get the default configuration string according to the default ID.
+    //
+    Status = mHiiConfigRouting->GetAltConfig (
+                                  mHiiConfigRouting,
+                                  Result,
+                                  &Storage->Guid,
+                                  Storage->Name,
+                                  NULL,
+                                  &DefaultId,  // it can be NULL to get the current setting.
+                                  &ConfigResp
+                                );
+
+    FreePool (Result);
+    if (EFI_ERROR (Status)) {
+      continue;
+    }
+
+    FormSetStorage->ConfigAltResp = ConfigResp;
+  }
+
+}
+
+/**
+  Clean AltCfg string for current formset.
+
+  @param  FormSet                Form data structure.
+
+**/
+VOID
+CleanAltCfgForFormSet (
+  IN FORM_BROWSER_FORMSET   *FormSet
+  )
+{
+  LIST_ENTRY              *Link;
+  FORMSET_STORAGE         *FormSetStorage;
+
+  Link = GetFirstNode (&FormSet->StorageListHead);
+  while (!IsNull (&FormSet->StorageListHead, Link)) {
+    FormSetStorage = FORMSET_STORAGE_FROM_LINK (Link);
+    Link = GetNextNode (&FormSet->StorageListHead, Link);
+
+    if (FormSetStorage->ConfigAltResp != NULL) {
+      FreePool (FormSetStorage->ConfigAltResp);
+      FormSetStorage->ConfigAltResp = NULL;
+    }
+
+    FormSetStorage->HasCallAltCfg = FALSE;
+  }
+}
 
 /**
   Reset Questions to their initial value or default value in a Form, Formset or System.
@@ -4021,6 +4237,7 @@ GetQuestionDefault (
   @param  RetrieveValueFirst     Whether call the retrieve call back to
                                  get the initial value before get default
                                  value.
+  @param  SkipGetAltCfg          Whether skip the get altcfg string process.
 
   @retval EFI_SUCCESS            The function completed successfully.
   @retval EFI_UNSUPPORTED        Unsupport SettingScope.
@@ -4034,7 +4251,8 @@ ExtractDefault (
   IN BROWSER_SETTING_SCOPE            SettingScope,
   IN BROWSER_GET_DEFAULT_VALUE        GetDefaultValueScope,
   IN BROWSER_STORAGE                  *Storage OPTIONAL,
-  IN BOOLEAN                          RetrieveValueFirst
+  IN BOOLEAN                          RetrieveValueFirst,
+  IN BOOLEAN                          SkipGetAltCfg
   )
 {
   EFI_STATUS              Status;
@@ -4056,8 +4274,15 @@ ExtractDefault (
   if (GetDefaultValueScope == GetDefaultForStorage && Storage == NULL) {
     return EFI_UNSUPPORTED;
   }
-  
+
   if (SettingScope == FormLevel) {
+    //
+    // Prepare the AltCfg String for form.
+    //
+    if (!SkipGetAltCfg && (GetDefaultValueScope != GetDefaultForNoStorage)) {
+      ExtractAltCfgForForm (FormSet, Form, DefaultId, Storage);
+    }
+
     //
     // Extract Form default
     //
@@ -4114,12 +4339,33 @@ ExtractDefault (
         SetQuestionValue (FormSet, Form, Question, GetSetValueWithEditBuffer);
       }
     }
+
+    //
+    // Clean the AltCfg String.
+    //
+    if (!SkipGetAltCfg && (GetDefaultValueScope != GetDefaultForNoStorage)) {
+      CleanAltCfgForForm(Form);
+    }
   } else if (SettingScope == FormSetLevel) {
+    //
+    // Prepare the AltCfg String for formset.
+    //
+    if (!SkipGetAltCfg && (GetDefaultValueScope != GetDefaultForNoStorage)) {
+      ExtractAltCfgForFormSet (FormSet, DefaultId, Storage);
+    }
+
     FormLink = GetFirstNode (&FormSet->FormListHead);
     while (!IsNull (&FormSet->FormListHead, FormLink)) {
       Form = FORM_BROWSER_FORM_FROM_LINK (FormLink);
-      ExtractDefault (FormSet, Form, DefaultId, FormLevel, GetDefaultValueScope, Storage, RetrieveValueFirst);
+      ExtractDefault (FormSet, Form, DefaultId, FormLevel, GetDefaultValueScope, Storage, RetrieveValueFirst, SkipGetAltCfg);
       FormLink = GetNextNode (&FormSet->FormListHead, FormLink);
+    }
+
+    //
+    // Clean the AltCfg String.
+    //
+    if (!SkipGetAltCfg && (GetDefaultValueScope != GetDefaultForNoStorage)) {
+      CleanAltCfgForFormSet (FormSet);
     }
   } else if (SettingScope == SystemLevel) {
     //
@@ -4142,7 +4388,7 @@ ExtractDefault (
 
       mSystemLevelFormSet = LocalFormSet;
 
-      ExtractDefault (LocalFormSet, NULL, DefaultId, FormSetLevel, GetDefaultValueScope, Storage, RetrieveValueFirst);
+      ExtractDefault (LocalFormSet, NULL, DefaultId, FormSetLevel, GetDefaultValueScope, Storage, RetrieveValueFirst, SkipGetAltCfg);
     }
 
     mSystemLevelFormSet = OldFormSet;
@@ -4601,13 +4847,11 @@ ConfigRequestAdjust (
   CHAR16       *RequestElement;
   CHAR16       *NextRequestElement;
   CHAR16       *NextElementBakup;
-  UINTN        SpareBufLen;
   CHAR16       *SearchKey;
   CHAR16       *ValueKey;
   BOOLEAN      RetVal;
   CHAR16       *ConfigRequest;
 
-  SpareBufLen    = 0;
   RetVal         = FALSE;
   NextElementBakup = NULL;
   ValueKey         = NULL;
@@ -4705,158 +4949,6 @@ ConfigRequestAdjust (
 }
 
 /**
-
-  Base on ConfigRequest info to get default value for current formset. 
-
-  ConfigRequest info include the info about which questions in current formset need to 
-  get default value. This function only get these questions default value.
-  
-  @param  FormSet                FormSet data structure.
-  @param  Storage                Storage need to update value.
-  @param  ConfigRequest          The config request string.
-
-**/
-VOID
-GetDefaultForFormset (
-  IN FORM_BROWSER_FORMSET    *FormSet,
-  IN BROWSER_STORAGE         *Storage,
-  IN CHAR16                  *ConfigRequest
-  )
-{
-  UINT8             *BackUpBuf;
-  UINTN             BufferSize;
-  LIST_ENTRY        BackUpList;
-  NAME_VALUE_NODE   *Node;
-  LIST_ENTRY        *Link;
-  LIST_ENTRY        *NodeLink;
-  NAME_VALUE_NODE   *TmpNode;
-  EFI_STATUS        Status;
-  EFI_STRING        Progress;
-  EFI_STRING        Result;
-
-  BackUpBuf = NULL;
-  InitializeListHead(&BackUpList);
-
-  //
-  // Back update the edit buffer.
-  // 
-  if (Storage->Type == EFI_HII_VARSTORE_BUFFER || 
-      (Storage->Type == EFI_HII_VARSTORE_EFI_VARIABLE_BUFFER)) {
-    BackUpBuf = AllocateCopyPool (Storage->Size, Storage->EditBuffer);
-    ASSERT (BackUpBuf != NULL);
-  } else if (Storage->Type == EFI_HII_VARSTORE_NAME_VALUE) {
-    Link = GetFirstNode (&Storage->NameValueListHead);
-    while (!IsNull (&Storage->NameValueListHead, Link)) {
-      Node = NAME_VALUE_NODE_FROM_LINK (Link);
-      Link = GetNextNode (&Storage->NameValueListHead, Link);
-
-      //
-      // Only back Node belong to this formset.
-      //
-      if (StrStr (Storage->ConfigRequest, Node->Name) == NULL) {
-        continue;
-      }
-
-      TmpNode = AllocateCopyPool (sizeof (NAME_VALUE_NODE), Node);
-      ASSERT (TmpNode != NULL);
-      TmpNode->Name = AllocateCopyPool (StrSize(Node->Name) * sizeof (CHAR16), Node->Name);
-      ASSERT (TmpNode->Name != NULL);
-      TmpNode->EditValue = AllocateCopyPool (StrSize(Node->EditValue) * sizeof (CHAR16), Node->EditValue);
-      ASSERT (TmpNode->EditValue != NULL);
-
-      InsertTailList(&BackUpList, &TmpNode->Link);
-    }
-  }
-
-  //
-  // Get default value.
-  //
-  ExtractDefault (FormSet, NULL, EFI_HII_DEFAULT_CLASS_STANDARD, FormSetLevel, GetDefaultForStorage, Storage, TRUE);
-
-  //
-  // Update the question value based on the input ConfigRequest.
-  //
-  if (Storage->Type == EFI_HII_VARSTORE_BUFFER || 
-      (Storage->Type == EFI_HII_VARSTORE_EFI_VARIABLE_BUFFER)) {
-    ASSERT (BackUpBuf != NULL);
-    BufferSize = Storage->Size;
-    Status = mHiiConfigRouting->BlockToConfig(
-                                  mHiiConfigRouting,
-                                  ConfigRequest,
-                                  Storage->EditBuffer,
-                                  BufferSize,
-                                  &Result,
-                                  &Progress
-                                  );
-    ASSERT_EFI_ERROR (Status);
-    
-    Status = mHiiConfigRouting->ConfigToBlock (
-                                  mHiiConfigRouting,
-                                  Result,
-                                  BackUpBuf,
-                                  &BufferSize,
-                                  &Progress
-                                  );
-    ASSERT_EFI_ERROR (Status);
-
-    if (Result != NULL) {
-      FreePool (Result);
-    }
-    
-    CopyMem (Storage->EditBuffer, BackUpBuf, Storage->Size);
-    FreePool (BackUpBuf);
-  } else if (Storage->Type == EFI_HII_VARSTORE_NAME_VALUE) {
-    //
-    // Update question value, only element in ConfigReqeust will be update.
-    //
-    Link = GetFirstNode (&BackUpList);
-    while (!IsNull (&BackUpList, Link)) {
-      Node = NAME_VALUE_NODE_FROM_LINK (Link);
-      Link = GetNextNode (&BackUpList, Link);
-
-      if (StrStr (ConfigRequest, Node->Name) != NULL) {
-        continue;
-      }
-
-      NodeLink = GetFirstNode (&Storage->NameValueListHead);
-      while (!IsNull (&Storage->NameValueListHead, NodeLink)) {
-        TmpNode  = NAME_VALUE_NODE_FROM_LINK (NodeLink);
-        NodeLink = GetNextNode (&Storage->NameValueListHead, NodeLink);
-      
-        if (StrCmp (Node->Name, TmpNode->Name) != 0) {
-          continue;
-        }
-
-        FreePool (TmpNode->EditValue);
-        TmpNode->EditValue = AllocateCopyPool (StrSize(Node->EditValue) * sizeof (CHAR16), Node->EditValue);
-
-        RemoveEntryList (&Node->Link);
-        FreePool (Node->EditValue);
-        FreePool (Node->Name);
-        FreePool (Node);
-      }
-    }
-
-    //
-    // Restore the Name/Value node.
-    //  
-    Link = GetFirstNode (&BackUpList);
-    while (!IsNull (&BackUpList, Link)) {
-      Node = NAME_VALUE_NODE_FROM_LINK (Link);
-      Link = GetNextNode (&BackUpList, Link);
- 
-      //
-      // Free this node.
-      //
-      RemoveEntryList (&Node->Link);
-      FreePool (Node->EditValue);
-      FreePool (Node->Name);
-      FreePool (Node);
-    }
-  }
-}
-
-/**
   Fill storage's edit copy with settings requested from Configuration Driver.
 
   @param  FormSet                FormSet data structure.
@@ -4946,7 +5038,7 @@ LoadStorage (
   // If get value fail, extract default from IFR binary
   //
   if (EFI_ERROR (Status)) {
-    ExtractDefault (FormSet, NULL, EFI_HII_DEFAULT_CLASS_STANDARD, FormSetLevel, GetDefaultForStorage, Storage->BrowserStorage, TRUE);
+    ExtractDefault (FormSet, NULL, EFI_HII_DEFAULT_CLASS_STANDARD, FormSetLevel, GetDefaultForStorage, Storage->BrowserStorage, TRUE, TRUE);
   } else {
     //
     // Convert Result from <ConfigAltResp> to <ConfigResp>
@@ -5092,7 +5184,7 @@ InitializeCurrentSetting (
   //
   // Extract default from IFR binary for no storage questions.
   //  
-  ExtractDefault (FormSet, NULL, EFI_HII_DEFAULT_CLASS_STANDARD, FormSetLevel, GetDefaultForNoStorage, NULL, TRUE);
+  ExtractDefault (FormSet, NULL, EFI_HII_DEFAULT_CLASS_STANDARD, FormSetLevel, GetDefaultForNoStorage, NULL, TRUE, FALSE);
 
   //
   // Request current settings from Configuration Driver
@@ -5885,7 +5977,7 @@ ExecuteAction (
   // Executet the difault action.
   //
   if ((Action & BROWSER_ACTION_DEFAULT) != 0) {
-    Status = ExtractDefault (FormSet, Form, DefaultId, gBrowserSettingScope, GetDefaultForAll, NULL, FALSE);
+    Status = ExtractDefault (FormSet, Form, DefaultId, gBrowserSettingScope, GetDefaultForAll, NULL, FALSE, FALSE);
     if (EFI_ERROR (Status)) {
       return Status;
     }

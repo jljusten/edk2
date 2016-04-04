@@ -77,6 +77,9 @@
   gArmTokenSpaceGuid.PcdVFPEnabled|0|UINT32|0x00000024
 
   gArmTokenSpaceGuid.PcdArmUncachedMemoryMask|0x0000000080000000|UINT64|0x00000002
+  # This PCD will free the unallocated buffers if their size reach this threshold.
+  # We set the default value to 512MB.
+  gArmTokenSpaceGuid.PcdArmFreeUncachedMemorySizeThreshold|0x20000000|UINT64|0x00000043
   gArmTokenSpaceGuid.PcdArmCacheOperationThreshold|1024|UINT32|0x00000003
   gArmTokenSpaceGuid.PcdCpuVectorBaseAddress|0xffff0000|UINT32|0x00000004
   gArmTokenSpaceGuid.PcdCpuResetAddress|0x00000000|UINT32|0x00000005
@@ -84,17 +87,17 @@
   #
   # ARM Secure Firmware PCDs
   #
-  gArmTokenSpaceGuid.PcdSecureFdBaseAddress|0|UINT32|0x00000015
+  gArmTokenSpaceGuid.PcdSecureFdBaseAddress|0|UINT64|0x00000015
   gArmTokenSpaceGuid.PcdSecureFdSize|0|UINT32|0x00000016
-  gArmTokenSpaceGuid.PcdSecureFvBaseAddress|0x0|UINT32|0x0000002F
+  gArmTokenSpaceGuid.PcdSecureFvBaseAddress|0x0|UINT64|0x0000002F
   gArmTokenSpaceGuid.PcdSecureFvSize|0x0|UINT32|0x00000030
 
   #
   # ARM Normal (or Non Secure) Firmware PCDs
   #
-  gArmTokenSpaceGuid.PcdFdBaseAddress|0|UINT32|0x0000002B
+  gArmTokenSpaceGuid.PcdFdBaseAddress|0|UINT64|0x0000002B
   gArmTokenSpaceGuid.PcdFdSize|0|UINT32|0x0000002C
-  gArmTokenSpaceGuid.PcdFvBaseAddress|0|UINT32|0x0000002D
+  gArmTokenSpaceGuid.PcdFvBaseAddress|0|UINT64|0x0000002D
   gArmTokenSpaceGuid.PcdFvSize|0|UINT32|0x0000002E
 
   #
@@ -224,6 +227,14 @@
   gArmTokenSpaceGuid.PcdArmArchTimerIntrNum|30|UINT32|0x00000036
   gArmTokenSpaceGuid.PcdArmArchTimerHypIntrNum|26|UINT32|0x00000040
   gArmTokenSpaceGuid.PcdArmArchTimerVirtIntrNum|27|UINT32|0x00000041
+
+  #
+  # ARM Generic Watchdog
+  #
+
+  gArmTokenSpaceGuid.PcdGenericWatchdogControlBase|0x2A440000|UINT32|0x00000007
+  gArmTokenSpaceGuid.PcdGenericWatchdogRefreshBase|0x2A450000|UINT32|0x00000008
+  gArmTokenSpaceGuid.PcdGenericWatchdogEl2IntrNum|93|UINT32|0x00000009
 
   #
   # ARM Generic Interrupt Controller

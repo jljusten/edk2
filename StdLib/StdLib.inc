@@ -26,9 +26,8 @@
 
 [LibraryClasses.Common.UEFI_APPLICATION]
   ShellLib|ShellPkg/Library/UefiShellLib/UefiShellLib.inf
-  FileHandleLib|ShellPkg/Library/UefiFileHandleLib/UefiFileHandleLib.inf
-  SortLib|ShellPkg/Library/UefiSortLib/UefiSortLib.inf
-  PathLib|ShellPkg/Library/BasePathLib/BasePathLib.inf
+  FileHandleLib|MdePkg/Library/UefiFileHandleLib/UefiFileHandleLib.inf
+  SortLib|MdeModulePkg/Library/UefiSortLib/UefiSortLib.inf
   ShellCEntryLib|ShellPkg/Library/UefiShellCEntryLib/UefiShellCEntryLib.inf
 
   #
@@ -65,8 +64,11 @@
 # Applications should not directly access any functions defined in these libraries.
   LibGdtoa|StdLib/LibC/gdtoa/gdtoa.inf
   DevConsole|StdLib/LibC/Uefi/Devices/daConsole.inf
-  DevShell|StdLib/LibC/Uefi/Devices/daShell.inf
+  DevShell|StdLib/LibC/Uefi/Devices/daShell.inf       # DEPRECATED!  Please use DevMedia for new code.
+  DevMedia|StdLib/LibC/Uefi/Devices/daShell.inf
   DevUtility|StdLib/LibC/Uefi/Devices/daUtility.inf
+
+  LuaLib|AppPkg/Applications/Lua/LuaLib.inf           # Lua language library
 
 [LibraryClasses.ARM]
   NULL|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
@@ -102,7 +104,18 @@
 #
 
 [BuildOptions]
-!ifndef $(EMULATE)
+!ifdef $(EMULATE)
+  # The Build Options, below, are only used when building the Standard Libraries
+  # to be run under an emulation environment; such as NT32Pkg.
+  # They disable optimization which facillitates debugging under the Emulation environment.
+  INTEL:*_*_IA32_CC_FLAGS   = /Od /D UEFI_C_SOURCE
+   MSFT:*_*_IA32_CC_FLAGS   = /Od /D UEFI_C_SOURCE
+    GCC:*_*_IA32_CC_FLAGS   = -O0 -DUEFI_C_SOURCE
+    RVCT:*_*_*_CC_FLAGS     = --library_interface=none -DUEFI_C_SOURCE -J$(WORKSPACE)/StdLib/Include -J$(WORKSPACE)/StdLib/Include/Arm
+  ARMGCC:*_*_*_CC_FLAGS     = -O0 -DUEFI_C_SOURCE -Wno-unknown-pragmas -Wno-unused -Wno-format-zero-length
+   XCODE:*_*_*_CC_FLAGS     = -O0 -DUEFI_C_SOURCE -Wno-unused-const-variable -Wno-string-compare -Wno-sometimes-uninitialized
+
+!else
   # These Build Options are used when building the Standard Libraries to be run
   # on real hardware.
    INTEL:*_*_*_CC_FLAGS     = /Qfreestanding /D UEFI_C_SOURCE
@@ -111,15 +124,4 @@
     RVCT:*_*_*_CC_FLAGS     = --library_interface=none -DUEFI_C_SOURCE -J$(WORKSPACE)/StdLib/Include -J$(WORKSPACE)/StdLib/Include/Arm
   ARMGCC:*_*_*_CC_FLAGS     = -nostdinc -nostdlib -DUEFI_C_SOURCE -Wno-unknown-pragmas -Wno-unused -Wno-format-zero-length
    XCODE:*_*_*_CC_FLAGS     = -nostdinc -nostdlib -DUEFI_C_SOURCE -Wno-unused-const-variable -Wno-string-compare -Wno-sometimes-uninitialized
-
-!else
-  # The Build Options, below, are only used when building the Standard Libraries
-  # to be run under an emulation environment.
-  # They disable optimization which facillitates debugging under the Emulation environment.
-  INTEL:*_*_IA32_CC_FLAGS   = /Od /D UEFI_C_SOURCE
-   MSFT:*_*_IA32_CC_FLAGS   = /Od /D UEFI_C_SOURCE
-    GCC:*_*_IA32_CC_FLAGS   = -O0 -DUEFI_C_SOURCE
-    RVCT:*_*_*_CC_FLAGS     = --library_interface=none -DUEFI_C_SOURCE -J$(WORKSPACE)/StdLib/Include -J$(WORKSPACE)/StdLib/Include/Arm
-  ARMGCC:*_*_*_CC_FLAGS     = -O0 -DUEFI_C_SOURCE -Wno-unknown-pragmas -Wno-unused -Wno-format-zero-length
-   XCODE:*_*_*_CC_FLAGS     = -O0 -DUEFI_C_SOURCE -Wno-unused-const-variable -Wno-string-compare -Wno-sometimes-uninitialized
 !endif

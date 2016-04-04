@@ -65,6 +65,7 @@
   ArmGenericTimerCounterLib|ArmPkg/Library/ArmGenericTimerPhyCounterLib/ArmGenericTimerPhyCounterLib.inf
 
   # RealView Emulation Board Specific Libraries
+  PlatformPeiLib|ArmPlatformPkg/PlatformPei/PlatformPeiLib.inf
   EfiResetSystemLib|ArmPlatformPkg/ArmRealViewEbPkg/Library/ResetSystemLib/ResetSystemLib.inf
   RealTimeClockLib|ArmPlatformPkg/Library/PL031RealTimeClockLib/PL031RealTimeClockLib.inf
   SerialPortLib|ArmPlatformPkg/Library/PL011SerialPortLib/PL011SerialPortLib.inf
@@ -74,7 +75,7 @@
   PL011UartLib|ArmPlatformPkg/Drivers/PL011Uart/PL011Uart.inf
   NorFlashPlatformLib|ArmPlatformPkg/ArmRealViewEbPkg/Library/NorFlashArmRealViewEbLib/NorFlashArmRealViewEbLib.inf
   LcdPlatformLib|ArmPlatformPkg/ArmRealViewEbPkg/Library/PL111LcdArmRealViewEbLib/PL111LcdArmRealViewEbLib.inf
-  ArmPlatformSysConfigLib|ArmPlatformPkg/ArmRealViewEbPkg/Library/SysConfigArmRealViewEbLib/SysConfigArmRealViewEbLib.inf
+  ArmPlatformSysConfigLib|ArmPlatformPkg/Library/ArmPlatformSysConfigLibNull/ArmPlatformSysConfigLibNull.inf
 
   # Networking Requirements for ArmPlatformPkg/Bds
   NetLib|MdeModulePkg/Library/DxeNetLib/DxeNetLib.inf
@@ -124,7 +125,6 @@
   MemoryAllocationLib|EmbeddedPkg/Library/PrePiMemoryAllocationLib/PrePiMemoryAllocationLib.inf
   HobLib|EmbeddedPkg/Library/PrePiHobLib/PrePiHobLib.inf
   PrePiHobListPointerLib|ArmPlatformPkg/Library/PrePiHobListPointerLib/PrePiHobListPointerLib.inf
-  PlatformPeiLib|ArmPlatformPkg/PlatformPei/PlatformPeiLib.inf
   MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
 !endif
 

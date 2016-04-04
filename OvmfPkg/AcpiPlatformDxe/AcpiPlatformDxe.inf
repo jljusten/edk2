@@ -51,6 +51,7 @@
   MemoryAllocationLib
   BaseLib
   DxeServicesTableLib
+  OrderedCollectionLib
 
 [Protocols]
   gEfiAcpiTableProtocolGuid                     # PROTOCOL ALWAYS_CONSUMED
@@ -65,5 +66,5 @@
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFdBaseAddress
 
 [Depex]
-  gEfiAcpiTableProtocolGuid
+  gEfiAcpiTableProtocolGuid AND gEfiPciEnumerationCompleteProtocolGuid
 
