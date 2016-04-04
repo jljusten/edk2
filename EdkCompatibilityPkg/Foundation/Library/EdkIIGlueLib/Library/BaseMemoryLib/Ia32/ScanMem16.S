@@ -26,8 +26,8 @@
 #       BaseMemoryLibSse2
 #
 #------------------------------------------------------------------------------
-
-.globl _InternalMemScanMem16
+#include <EdkIIGlueBase.h>
+.globl ASM_PFX(InternalMemScanMem16)
 
 #------------------------------------------------------------------------------
 # CONST VOID *
@@ -38,7 +38,7 @@
 #   IN      UINT16                    Value
 #   );
 #------------------------------------------------------------------------------
-_InternalMemScanMem16:
+ASM_PFX(InternalMemScanMem16):
     push    %edi
     movl    12(%esp), %ecx
     movl    8(%esp), %edi

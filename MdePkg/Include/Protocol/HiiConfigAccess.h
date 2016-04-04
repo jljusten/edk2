@@ -5,7 +5,7 @@
   This protocol is published by drivers providing and requesting 
   configuration data from HII. It may only be invoked by HII.
   
-  Copyright (c) 2006 - 2008, Intel Corporation
+  Copyright (c) 2006 - 2009, Intel Corporation
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -74,7 +74,7 @@ typedef UINTN EFI_BROWSER_ACTION;
                                   values corresponding to all requested
                                   names.
 
-  @retval EFI_OUT_OF_MEMORY       Not enough memory to store the
+  @retval EFI_OUT_OF_RESOURCES    Not enough memory to store the
                                   parts of the results that must be
                                   stored awaiting possible future
                                   protocols.
@@ -95,7 +95,7 @@ typedef UINTN EFI_BROWSER_ACTION;
                                   process the names.
 
   @retval EFI_INVALID_PARAMETER   Illegal syntax. Progress set
-                                  to most recent & before the
+                                  to most recent "&" before the
                                   error or the beginning of the
                                   string.
 
@@ -121,7 +121,7 @@ EFI_STATUS
   driver followed by name / value configuration pairs. The driver
   must apply those pairs to its configurable storage. If the
   driver's configuration is stored in a linear block of data
-  and the driver????s name / value pairs are in <BlockConfig>
+  and the driver's name / value pairs are in <BlockConfig>
   format, it may use the ConfigToBlock helper function (above) to
   simplify the job.
 
@@ -141,7 +141,7 @@ EFI_STATUS
   @retval EFI_SUCCESS             The results have been distributed or are
                                   awaiting distribution.
   
-  @retval EFI_OUT_OF_MEMORY       Not enough memory to store the
+  @retval EFI_OUT_OF_RESOURCES    Not enough memory to store the
                                   parts of the results that must be
                                   stored awaiting possible future
                                   protocols.
@@ -173,7 +173,7 @@ EFI_STATUS
   @param  QuestionId             A unique value which is sent to the original
                                  exporting driver so that it can identify the type
                                  of data to expect. The format of the data tends to 
-                                 vary based on the opcode that enerated the callback.
+                                 vary based on the opcode that generated the callback.
   @param  Type                   The type of value for the question.
   @param  Value                  A pointer to the data being sent to the original
                                  exporting driver.

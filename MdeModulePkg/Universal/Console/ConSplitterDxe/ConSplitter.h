@@ -729,7 +729,7 @@ ConSplitterAbsolutePointerWaitForInput (
                                 languages specified in SupportedLanguages. The
                                 number of languages supported by a driver is up
                                 to the driver writer. Language is specified
-                                in RFC 3066 or ISO 639-2 language code format.
+                                in RFC 4646 or ISO 639-2 language code format.
 
   @param  DriverName[out]       A pointer to the Unicode string to return.
                                 This Unicode string is the name of the
@@ -794,7 +794,7 @@ ConSplitterComponentNameGetDriverName (
                                 languages specified in SupportedLanguages. The
                                 number of languages supported by a driver is up
                                 to the driver writer. Language is specified in
-                                RFC 3066 or ISO 639-2 language code format.
+                                RFC 4646 or ISO 639-2 language code format.
 
   @param  ControllerName[out]   A pointer to the Unicode string to return.
                                 This Unicode string is the name of the
@@ -873,7 +873,7 @@ ConSplitterConInComponentNameGetControllerName (
                                 languages specified in SupportedLanguages. The
                                 number of languages supported by a driver is up
                                 to the driver writer. Language is specified in
-                                RFC 3066 or ISO 639-2 language code format.
+                                RFC 4646 or ISO 639-2 language code format.
 
   @param  ControllerName[out]   A pointer to the Unicode string to return.
                                 This Unicode string is the name of the
@@ -931,7 +931,7 @@ ConSplitterSimplePointerComponentNameGetControllerName (
                                  retrieve the name of the bus controller.  It will
                                  not be NULL for a bus driver that wishes to
                                  retrieve the name of a child controller.
-  @param  Language               A pointer to RFC3066 language identifier. This is
+  @param  Language               A pointer to RFC4646 language identifier. This is
                                  the language of the controller name that that the
                                  caller is requesting, and it must match one of the
                                  languages specified in SupportedLanguages.  The
@@ -1005,7 +1005,7 @@ ConSplitterAbsolutePointerComponentNameGetControllerName (
                                 languages specified in SupportedLanguages. The
                                 number of languages supported by a driver is up
                                 to the driver writer. Language is specified in
-                                RFC 3066 or ISO 639-2 language code format.
+                                RFC 4646 or ISO 639-2 language code format.
 
   @param  ControllerName[out]   A pointer to the Unicode string to return.
                                 This Unicode string is the name of the
@@ -1084,7 +1084,7 @@ ConSplitterConOutComponentNameGetControllerName (
                                 languages specified in SupportedLanguages. The
                                 number of languages supported by a driver is up
                                 to the driver writer. Language is specified in
-                                RFC 3066 or ISO 639-2 language code format.
+                                RFC 4646 or ISO 639-2 language code format.
 
   @param  ControllerName[out]   A pointer to the Unicode string to return.
                                 This Unicode string is the name of the
@@ -1773,7 +1773,7 @@ ConSplitterGrowBuffer (
 **/
 EFI_STATUS
 EFIAPI
-ConSpliterGraphicsOutputQueryMode (
+ConSplitterGraphicsOutputQueryMode (
   IN  EFI_GRAPHICS_OUTPUT_PROTOCOL          *This,
   IN  UINT32                                ModeNumber,
   OUT UINTN                                 *SizeOfInfo,
@@ -1795,7 +1795,7 @@ ConSpliterGraphicsOutputQueryMode (
 **/
 EFI_STATUS
 EFIAPI
-ConSpliterGraphicsOutputSetMode (
+ConSplitterGraphicsOutputSetMode (
   IN  EFI_GRAPHICS_OUTPUT_PROTOCOL * This,
   IN  UINT32                       ModeNumber
   );
@@ -1848,7 +1848,7 @@ ConSpliterGraphicsOutputSetMode (
 **/
 EFI_STATUS
 EFIAPI
-ConSpliterGraphicsOutputBlt (
+ConSplitterGraphicsOutputBlt (
   IN  EFI_GRAPHICS_OUTPUT_PROTOCOL                  *This,
   IN  EFI_GRAPHICS_OUTPUT_BLT_PIXEL                 *BltBuffer, OPTIONAL
   IN  EFI_GRAPHICS_OUTPUT_BLT_OPERATION             BltOperation,
@@ -1878,7 +1878,7 @@ ConSpliterGraphicsOutputBlt (
 **/
 EFI_STATUS
 EFIAPI
-ConSpliterUgaDrawGetMode (
+ConSplitterUgaDrawGetMode (
   IN  EFI_UGA_DRAW_PROTOCOL           *This,
   OUT UINT32                          *HorizontalResolution,
   OUT UINT32                          *VerticalResolution,
@@ -1902,7 +1902,7 @@ ConSpliterUgaDrawGetMode (
 **/
 EFI_STATUS
 EFIAPI
-ConSpliterUgaDrawSetMode (
+ConSplitterUgaDrawSetMode (
   IN  EFI_UGA_DRAW_PROTOCOL           *This,
   IN UINT32                           HorizontalResolution,
   IN UINT32                           VerticalResolution,
@@ -1961,7 +1961,7 @@ ConSpliterUgaDrawSetMode (
 **/
 EFI_STATUS
 EFIAPI
-ConSpliterUgaDrawBlt (
+ConSplitterUgaDrawBlt (
   IN  EFI_UGA_DRAW_PROTOCOL                         *This,
   IN  EFI_UGA_PIXEL                                 *BltBuffer, OPTIONAL
   IN  EFI_UGA_BLT_OPERATION                         BltOperation,

@@ -154,7 +154,7 @@ FvNameGuid         = 6D99E806-3D38-42c2-A095-5F4300BFD7DC
   ##
 APRIORI PEI {
   INF  MdeModulePkg/Universal/PCD/Pei/Pcd.inf
-  INF  IntelFrameworkModulePkg/Universal/StatusCode/Pei/PeiStatusCode.inf
+  INF  IntelFrameworkModulePkg/Universal/StatusCode/Pei/StatusCodePei.inf
   }
 APRIORI DXE {
   INF  MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
@@ -163,7 +163,7 @@ APRIORI DXE {
 
 INF  MdeModulePkg/Core/Pei/PeiMain.inf
 INF  MdeModulePkg/Universal/PCD/Pei/Pcd.inf
-INF  IntelFrameworkModulePkg/Universal/StatusCode/Pei/PeiStatusCode.inf
+INF  IntelFrameworkModulePkg/Universal/StatusCode/Pei/StatusCodePei.inf
 INF  Nt32Pkg/BootModePei/BootModePei.inf
 INF  Nt32Pkg/WinNtFlashMapPei/WinNtFlashMapPei.inf
 INF  Nt32Pkg/WinNtAutoScanPei/WinNtAutoScanPei.inf
@@ -194,7 +194,7 @@ INF  MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
 INF  IntelFrameworkModulePkg/Universal/DataHubStdErrDxe/DataHubStdErrDxe.inf
 INF  Nt32Pkg/MiscSubClassPlatformDxe/MiscSubClassPlatformDxe.inf
 INF  Nt32Pkg/TimerDxe/TimerDxe.inf
-INF  IntelFrameworkModulePkg/Universal/StatusCode/Dxe/DxeStatusCode.inf
+INF  IntelFrameworkModulePkg/Universal/StatusCode/RuntimeDxe/StatusCodeRuntimeDxe.inf
 INF  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
 INF  MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
 INF  MdeModulePkg/Universal/MonotonicCounterRuntimeDxe/MonotonicCounterRuntimeDxe.inf
@@ -218,8 +218,8 @@ INF  Nt32Pkg/WinNtBlockIoDxe/WinNtBlockIoDxe.inf
 INF  Nt32Pkg/WinNtSerialIoDxe/WinNtSerialIoDxe.inf
 INF  Nt32Pkg/WinNtGopDxe/WinNtGopDxe.inf
 INF  Nt32Pkg/WinNtSimpleFileSystemDxe/WinNtSimpleFileSystemDxe.inf
-INF  MdeModulePkg/Universal/DriverSampleDxe/DriverSampleDxe.inf
 INF  MdeModulePkg/Universal/PlatformDriOverrideDxe/PlatformDriOverrideDxe.inf
+INF  MdeModulePkg/Universal/DriverSampleDxe/DriverSampleDxe.inf
 
 INF  MdeModulePkg/Universal/Network/DpcDxe/DpcDxe.inf
 INF  MdeModulePkg/Universal/Network/ArpDxe/ArpDxe.inf

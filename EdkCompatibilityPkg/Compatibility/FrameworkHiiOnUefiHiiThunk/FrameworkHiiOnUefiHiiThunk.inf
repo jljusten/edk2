@@ -66,6 +66,7 @@
   MdeModulePkg/MdeModulePkg.dec
   IntelFrameworkPkg/IntelFrameworkPkg.dec
   IntelFrameworkModulePkg/IntelFrameworkModulePkg.dec
+  EdkCompatibilityPkg/EdkCompatibilityPkg.dec
   
 [LibraryClasses]
   UefiRuntimeServicesTableLib
@@ -76,11 +77,14 @@
   DebugLib
   BaseLib
   HiiLib
-  IfrSupportLib
-  ExtendedIfrSupportLib
   PrintLib
   UefiLib
   PcdLib
+  LanguageLib
+
+[Guids]
+  gEfiIfrTianoGuid
+  gEfiIfrFrameworkGuid
 
 [Protocols]
   gEfiHiiImageProtocolGuid

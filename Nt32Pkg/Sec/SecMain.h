@@ -23,6 +23,7 @@ Abstract:
 #include <PiPei.h>
 #include <PiDxe.h>
 #include <WinNtPeim.h>
+#include <Guid/StatusCodeDataTypeDebug.h>
 #include <Library/BaseLib.h>
 #include <Library/PeCoffLib.h>
 #include <Ppi/NtPeiLoadFile.h>
@@ -38,7 +39,6 @@ Abstract:
 #include <Library/ReportStatusCodeLib.h>
 
 #include <IndustryStandard/PeImage.h>
-
 
 #define STACK_SIZE                0x20000      
 

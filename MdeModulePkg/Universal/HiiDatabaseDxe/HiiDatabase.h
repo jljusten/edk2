@@ -37,7 +37,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/BaseLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/MemoryAllocationLib.h>
-#include <Library/IfrSupportLib.h>
 #include <Library/UefiLib.h>
 #include <Library/PcdLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
@@ -64,6 +63,38 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define BITMAP_LEN_24_BIT(Width, Height) ((Width) * (Height) * 3)
 
 //
+// IFR data structure
+//
+// BASE_CR (a, IFR_DEFAULT_VALUE_DATA, Entry) to get the whole structure.
+
+typedef struct {
+  LIST_ENTRY          Entry;             // Link to VarStorage
+  EFI_GUID            Guid;
+  CHAR16              *Name;
+  EFI_VARSTORE_ID     VarStoreId;
+  UINT16              Size;
+  LIST_ENTRY          BlockEntry;        // Link to its Block array
+} IFR_VARSTORAGE_DATA;
+
+typedef struct {
+  LIST_ENTRY          Entry;             // Link to Block array
+  UINT16              Offset;
+  UINT16              Width;
+  EFI_QUESTION_ID     QuestionId;
+  UINT8               OpCode;
+  UINT8               Scope;
+  LIST_ENTRY          DefaultValueEntry; // Link to its default value array
+} IFR_BLOCK_DATA;
+
+typedef struct {
+  LIST_ENTRY          Entry;
+  UINT8               OpCode;
+  EFI_STRING_ID       DefaultName;
+  UINT16              DefaultId;
+  UINT64              Value;
+} IFR_DEFAULT_DATA;
+
+//
 // Storage types
 //
 #define EFI_HII_VARSTORE_BUFFER            0
@@ -83,8 +114,6 @@ typedef struct {
   CHAR16              *Name;
   UINT16              Size;
 } HII_FORMSET_STORAGE;
-
-#define HII_FORMSET_STORAGE_FROM_LINK(a)  CR (a, HII_FORMSET_STORAGE, Link, HII_FORMSET_STORAGE_SIGNATURE)
 
 
 //
@@ -454,6 +483,34 @@ FindGlyphBlock (
   OUT UINT8                          **GlyphBuffer, OPTIONAL
   OUT EFI_HII_GLYPH_INFO             *Cell, OPTIONAL
   OUT UINTN                          *GlyphBufferLen OPTIONAL
+  );
+
+/**
+  This function exports Form packages to a buffer.
+  This is a internal function.
+
+  @param  Private                Hii database private structure.
+  @param  Handle                 Identification of a package list.
+  @param  PackageList            Pointer to a package list which will be exported.
+  @param  UsedSize               The length of buffer be used.
+  @param  BufferSize             Length of the Buffer.
+  @param  Buffer                 Allocated space for storing exported data.
+  @param  ResultSize             The size of the already exported content of  this
+                                 package list.
+
+  @retval EFI_SUCCESS            Form Packages are exported successfully.
+  @retval EFI_INVALID_PARAMETER  Any input parameter is invalid.
+
+**/
+EFI_STATUS
+ExportFormPackages (
+  IN HII_DATABASE_PRIVATE_DATA          *Private,
+  IN EFI_HII_HANDLE                     Handle,
+  IN HII_DATABASE_PACKAGE_LIST_INSTANCE *PackageList,
+  IN UINTN                              UsedSize,
+  IN UINTN                              BufferSize,
+  IN OUT VOID                           *Buffer,
+  IN OUT UINTN                          *ResultSize
   );
 
 //

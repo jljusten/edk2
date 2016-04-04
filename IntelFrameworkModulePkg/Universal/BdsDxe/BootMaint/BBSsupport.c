@@ -401,6 +401,7 @@ BdsIsLegacyBootOption (
   @retval EFI_NOT_FOUND           Fail to retrive variable of boot order.
 **/
 EFI_STATUS
+EFIAPI
 BdsDeleteAllInvalidLegacyBootOptions (
   VOID
   )
@@ -682,6 +683,7 @@ BdsCreateOneLegacyBootOption (
 
 **/
 EFI_STATUS
+EFIAPI
 BdsAddNonExistingLegacyBootOptions (
   VOID
   )
@@ -974,6 +976,7 @@ BdsCreateDevOrder (
 
 **/
 EFI_STATUS
+EFIAPI
 BdsUpdateLegacyDevOrder (
   VOID
   )
@@ -1483,7 +1486,8 @@ BdsSetBootPriority4SameTypeDev (
 **/
 VOID
 PrintBbsTable (
-  IN BBS_TABLE                      *LocalBbsTable
+  IN BBS_TABLE  *LocalBbsTable,
+  IN UINT16     BbsCount
   )
 {
   UINT16  Idx;
@@ -1491,7 +1495,7 @@ PrintBbsTable (
   DEBUG ((DEBUG_ERROR, "\n"));
   DEBUG ((DEBUG_ERROR, " NO  Prio bb/dd/ff cl/sc Type Stat segm:offs\n"));
   DEBUG ((DEBUG_ERROR, "=============================================\n"));
-  for (Idx = 0; Idx < MAX_BBS_ENTRIES; Idx++) {
+  for (Idx = 0; Idx < BbsCount; Idx++) {
     if ((LocalBbsTable[Idx].BootPriority == BBS_IGNORE_ENTRY) ||
         (LocalBbsTable[Idx].BootPriority == BBS_DO_NOT_BOOT_FROM) ||
         (LocalBbsTable[Idx].BootPriority == BBS_LOWEST_PRIORITY)
@@ -1531,6 +1535,7 @@ PrintBbsTable (
   @return status of BdsSetBootPriority4SameTypeDev()
 **/
 EFI_STATUS
+EFIAPI
 BdsRefreshBbsTableForBoot (
   IN BDS_COMMON_OPTION        *Entry
   )
@@ -1656,7 +1661,7 @@ BdsRefreshBbsTableForBoot (
   }
 
   DEBUG_CODE_BEGIN();
-    PrintBbsTable (LocalBbsTable);
+    PrintBbsTable (LocalBbsTable, BbsCount);
   DEBUG_CODE_END();
   
   return Status;

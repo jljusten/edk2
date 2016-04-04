@@ -29,6 +29,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define BOOT_MANAGER_FORM_ID     0x1000
 
 #define LABEL_BOOT_OPTION        0x00
+#define LABEL_BOOT_OPTION_END    0x01
 
 //
 // These are the VFR compiler generated data representing our VFR data.
@@ -86,7 +87,9 @@ BootManagerCallback (
   Registers HII packages for the Boot Manger to HII Database.
   It also registers the browser call back function.
 
-  @return Status of gBS->InstallMultipleProtocolInterfaces() and gHiiDatabase->NewPackageList()
+  @retval  EFI_SUCCESS           HII packages for the Boot Manager were registered successfully.
+  @retval  EFI_OUT_OF_RESOURCES  HII packages for the Boot Manager failed to be registered.
+
 **/
 EFI_STATUS
 InitializeBootManager (

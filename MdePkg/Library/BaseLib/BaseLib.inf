@@ -1,7 +1,7 @@
 #/** @file
 #  Base Library implementation.
 #
-#  Copyright (c) 2007 - 2008, Intel Corporation.
+#  Copyright (c) 2007 - 2009, Intel Corporation.
 #
 #  All rights reserved. This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -370,7 +370,6 @@
   X64/Invd.asm
   X64/Wbinvd.asm
   X64/DisablePaging64.asm
-  X64/EnablePaging64.asm
   X64/Mwait.asm
   X64/Monitor.asm
   X64/ReadPmc.asm
@@ -533,7 +532,6 @@
   X64/FxSave.S | GCC 
   X64/FxRestore.S | GCC 
   X64/FlushCacheLine.S | GCC 
-  X64/EnablePaging64.S | GCC 
   X64/EnableInterrupts.S | GCC 
   X64/EnableDisableInterrupts.S | GCC 
   X64/DisablePaging64.S | GCC 
@@ -560,7 +558,8 @@
   Ipf/AccessMsr.s        | INTEL
   Ipf/AccessMsr.s        | GCC
   Ipf/AccessMsrDb.s      | MSFT
-  Ipf/FlushCacheRange.s
+  Ipf/InternalFlushCacheRange.s
+  Ipf/FlushCacheRange.c
   Ipf/InternalSwitchStack.c
   Ipf/GetInterruptState.s
   Ipf/CpuPause.s

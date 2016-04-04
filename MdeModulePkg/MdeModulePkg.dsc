@@ -68,15 +68,13 @@
   UdpIoLib|MdeModulePkg/Library/DxeUdpIoLib/DxeUdpIoLib.inf
   DpcLib|MdeModulePkg/Library/DxeDpcLib/DxeDpcLib.inf
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
-  IfrSupportLib|MdeModulePkg/Library/UefiIfrSupportLib/UefiIfrSupportLib.inf
-  ExtendedIfrSupportLib|MdeModulePkg/Library/ExtendedIfrSupportLib/ExtendedIfrSupportLib.inf
   CapsuleLib|MdeModulePkg/Library/DxeCapsuleLibNull/DxeCapsuleLibNull.inf
   DxeServicesLib|MdePkg/Library/DxeServicesLib/DxeServicesLib.inf
   DxeServicesLib|MdePkg/Library/DxeServicesLib/DxeServicesLib.inf
-  PlatformDriverOverrideLib|MdeModulePkg/Library/DxePlatDriOverLib/DxePlatDriOverLib.inf
   HiiLib|MdeModulePkg/Library/UefiHiiLib/UefiHiiLib.inf
   ReportStatusCodeLib|MdePkg/Library/BaseReportStatusCodeLibNull/BaseReportStatusCodeLibNull.inf
   MemoryTestLib|MdeModulePkg/Library/BaseMemoryTestLibNull/BaseMemoryTestLibNull.inf
+  UefiHiiServicesLib|MdeModulePkg/Library/UefiHiiServicesLib/UefiHiiServicesLib.inf
 
 [LibraryClasses.IA32]
   IoLib|MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
@@ -272,15 +270,12 @@
   MdeModulePkg/Library/DxeIpIoLib/DxeIpIoLib.inf
   MdeModulePkg/Library/DxeNetLib/DxeNetLib.inf
   MdeModulePkg/Library/DxePerformanceLib/DxePerformanceLib.inf
-  MdeModulePkg/Library/DxePlatDriOverLib/DxePlatDriOverLib.inf
   MdeModulePkg/Library/DxeUdpIoLib/DxeUdpIoLib.inf
   MdeModulePkg/Library/DxePrintLibPrint2Protocol/DxePrintLibPrint2Protocol.inf
-  MdeModulePkg/Library/ExtendedIfrSupportLib/ExtendedIfrSupportLib.inf
   MdeModulePkg/Library/PeiPerformanceLib/PeiPerformanceLib.inf
   MdeModulePkg/Library/PeiRecoveryLibNull/PeiRecoveryLibNull.inf
   MdeModulePkg/Library/PeiS3LibNull/PeiS3LibNull.inf
   MdeModulePkg/Library/UefiHiiLib/UefiHiiLib.inf
-  MdeModulePkg/Library/UefiIfrSupportLib/UefiIfrSupportLib.inf
   MdeModulePkg/Library/BaseMemoryTestLibNull/BaseMemoryTestLibNull.inf
   MdeModulePkg/Library/BaseMemoryTestLib/BaseMemoryTestLib.inf
 
@@ -318,7 +313,6 @@
   MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
   MdeModulePkg/Universal/PCD/Pei/Pcd.inf
   MdeModulePkg/Universal/PlatformDriOverrideDxe/PlatformDriOverrideDxe.inf
-  MdeModulePkg/Application/PlatOverMngr/PlatOverMngr.inf
   MdeModulePkg/Universal/SecurityStubDxe/SecurityStubDxe.inf
   MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
   MdeModulePkg/Application/VariableInfo/VariableInfo.inf

@@ -82,7 +82,7 @@ EFI_GUID EfiLegacyDevOrderGuid  = EFI_LEGACY_DEV_ORDER_VARIABLE_GUID;
 EFI_GUID mBootMaintGuid         = BOOT_MAINT_FORMSET_GUID;
 EFI_GUID mFileExplorerGuid      = FILE_EXPLORE_FORMSET_GUID;
 
-CHAR16  mBootMaintStorageName[]     = L"BmData";
+CHAR16  mBootMaintStorageName[]     = L"BmmData";
 CHAR16  mFileExplorerStorageName[]  = L"FeData";
 
 /**
@@ -128,20 +128,22 @@ CreateMenuStringToken (
   for (Index = 0; Index < MenuOption->MenuNumber; Index++) {
     NewMenuEntry = BOpt_GetMenuEntry (MenuOption, Index);
 
-    HiiLibNewString (
-      HiiHandle,
-      &NewMenuEntry->DisplayStringToken,
-      NewMenuEntry->DisplayString
-      );
+    NewMenuEntry->DisplayStringToken = HiiSetString (
+                                         HiiHandle,
+                                         0,
+                                         NewMenuEntry->DisplayString,
+                                         NULL
+                                         );
 
     if (NULL == NewMenuEntry->HelpString) {
       NewMenuEntry->HelpStringToken = NewMenuEntry->DisplayStringToken;
     } else {
-      HiiLibNewString (
-        HiiHandle,
-        &NewMenuEntry->HelpStringToken,
-        NewMenuEntry->HelpString
-        );
+      NewMenuEntry->HelpStringToken = HiiSetString (
+                                        HiiHandle,
+                                        0,
+                                        NewMenuEntry->HelpString,
+                                        NULL
+                                        );
     }
   }
 
@@ -249,8 +251,7 @@ BootMaintCallback (
   UINT8             *NewLegacyDev;
   UINT8             *DisMap;
   EFI_FORM_ID       FormId;
-  UINTN             BufferSize;
-
+  
   if ((Value == NULL) || (ActionRequest == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
@@ -271,11 +272,7 @@ BootMaintCallback (
   // Retrive uncommitted data from Form Browser
   //
   CurrentFakeNVMap = &Private->BmmFakeNvData;
-  BufferSize = sizeof (BMM_FAKE_NV_DATA);
-  Status = GetBrowserData (NULL, NULL, &BufferSize, (UINT8 *) CurrentFakeNVMap);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
+  HiiGetBrowserData (&mBootMaintGuid, mBootMaintStorageName, sizeof (BMM_FAKE_NV_DATA), (UINT8 *) CurrentFakeNVMap);
 
   //
   // need to be subtituded.
@@ -586,8 +583,7 @@ BootMaintCallback (
   //
   // Pass changed uncommitted data back to Form Browser
   //
-  BufferSize = sizeof (BMM_FAKE_NV_DATA);
-  Status = SetBrowserData (NULL, NULL, BufferSize, (UINT8 *) CurrentFakeNVMap, NULL);
+  Status = HiiSetBrowserData (&mBootMaintGuid, mBootMaintStorageName, sizeof (BMM_FAKE_NV_DATA), (UINT8 *) CurrentFakeNVMap, NULL);
 
   return Status;
 }
@@ -848,7 +844,6 @@ InitializeBM (
   )
 {
   EFI_LEGACY_BIOS_PROTOCOL    *LegacyBios;
-  EFI_HII_PACKAGE_LIST_HEADER *PackageList;
   BMM_CALLBACK_DATA           *BmmCallbackInfo;
   EFI_STATUS                  Status;
   UINT8                       *Ptr;
@@ -910,7 +905,7 @@ InitializeBM (
                   NULL
                   );
   if (EFI_ERROR (Status)) {
-    return Status;
+    goto Exit;
   }
 
   //
@@ -925,47 +920,60 @@ InitializeBM (
                   NULL
                   );
   if (EFI_ERROR (Status)) {
-    return Status;
+    goto Exit;
   }
 
   //
   // Post our Boot Maint VFR binnary to the HII database.
   //
-  PackageList = HiiLibPreparePackageList (2, &mBootMaintGuid, BmBin, BdsDxeStrings);
-  ASSERT (PackageList != NULL);
-
-  Status = gHiiDatabase->NewPackageList (
-                           gHiiDatabase,
-                           PackageList,
-                           BmmCallbackInfo->BmmDriverHandle,
-                           &BmmCallbackInfo->BmmHiiHandle
-                           );
-  FreePool (PackageList);
+  BmmCallbackInfo->BmmHiiHandle = HiiAddPackages (
+                                    &mBootMaintGuid,
+                                    BmmCallbackInfo->BmmDriverHandle,
+                                    BmBin,
+                                    BdsDxeStrings,
+                                    NULL
+                                    );
+  ASSERT (BmmCallbackInfo->BmmHiiHandle != NULL);
 
   //
   // Post our File Explorer VFR binary to the HII database.
   //
-  PackageList = HiiLibPreparePackageList (2, &mFileExplorerGuid, FEBin, BdsDxeStrings);
-  ASSERT (PackageList != NULL);
-
-  Status = gHiiDatabase->NewPackageList (
-                           gHiiDatabase,
-                           PackageList,
-                           BmmCallbackInfo->FeDriverHandle,
-                           &BmmCallbackInfo->FeHiiHandle
-                           );
-  FreePool (PackageList);
+  BmmCallbackInfo->FeHiiHandle = HiiAddPackages (
+                                   &mFileExplorerGuid,
+                                   BmmCallbackInfo->FeDriverHandle,
+                                   FEBin,
+                                   BdsDxeStrings,
+                                   NULL
+                                   );
+  ASSERT (BmmCallbackInfo->FeHiiHandle != NULL);
 
   //
-  // Allocate space for creation of Buffer
+  // Init OpCode Handle and Allocate space for creation of Buffer
   //
-  gUpdateData.BufferSize = UPDATE_DATA_SIZE;
-  gUpdateData.Data = AllocateZeroPool (UPDATE_DATA_SIZE);
-  if (gUpdateData.Data == NULL) {
-    FreePool (BmmCallbackInfo->LoadContext);
-    FreePool (BmmCallbackInfo);
-    return EFI_OUT_OF_RESOURCES;
+  mStartOpCodeHandle = HiiAllocateOpCodeHandle ();
+  if (mStartOpCodeHandle == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Exit;
   }
+
+  mEndOpCodeHandle = HiiAllocateOpCodeHandle ();
+  if (mEndOpCodeHandle == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Exit;
+  }
+
+  //
+  // Create Hii Extend Label OpCode as the start opcode
+  //
+  mStartLabel = (EFI_IFR_GUID_LABEL *) HiiCreateGuidOpCode (mStartOpCodeHandle, &gEfiIfrTianoGuid, NULL, sizeof (EFI_IFR_GUID_LABEL));
+  mStartLabel->ExtendOpCode = EFI_IFR_EXTEND_OP_LABEL;
+
+  //
+  // Create Hii Extend Label OpCode as the end opcode
+  //
+  mEndLabel = (EFI_IFR_GUID_LABEL *) HiiCreateGuidOpCode (mEndOpCodeHandle, &gEfiIfrTianoGuid, NULL, sizeof (EFI_IFR_GUID_LABEL));
+  mEndLabel->ExtendOpCode = EFI_IFR_EXTEND_OP_LABEL;
+  mEndLabel->Number       = LABEL_END;
 
   InitializeStringDepository ();
 
@@ -990,63 +998,63 @@ InitializeBM (
   Status = EfiLibLocateProtocol (&gEfiLegacyBiosProtocolGuid, (VOID **) &LegacyBios);
   if (!EFI_ERROR (Status)) {
     RefreshUpdateData ();
+    mStartLabel->Number = FORM_BOOT_LEGACY_DEVICE_ID;
 
     //
     // If LegacyBios Protocol is installed, add 3 tags about legacy boot option
     // in BootOption form: legacy FD/HD/CD/NET/BEV
     //
-    CreateGotoOpCode (
+    HiiCreateGotoOpCode (
+      mStartOpCodeHandle,
       FORM_SET_FD_ORDER_ID,
       STRING_TOKEN (STR_FORM_SET_FD_ORDER_TITLE),
       STRING_TOKEN (STR_FORM_SET_FD_ORDER_TITLE),
       EFI_IFR_FLAG_CALLBACK,
-      FORM_SET_FD_ORDER_ID,
-      &gUpdateData
+      FORM_SET_FD_ORDER_ID
       );
 
-    CreateGotoOpCode (
+    HiiCreateGotoOpCode (
+      mStartOpCodeHandle,
       FORM_SET_HD_ORDER_ID,
       STRING_TOKEN (STR_FORM_SET_HD_ORDER_TITLE),
       STRING_TOKEN (STR_FORM_SET_HD_ORDER_TITLE),
       EFI_IFR_FLAG_CALLBACK,
-      FORM_SET_HD_ORDER_ID,
-      &gUpdateData
+      FORM_SET_HD_ORDER_ID
       );
 
-    CreateGotoOpCode (
+    HiiCreateGotoOpCode (
+      mStartOpCodeHandle,
       FORM_SET_CD_ORDER_ID,
       STRING_TOKEN (STR_FORM_SET_CD_ORDER_TITLE),
       STRING_TOKEN (STR_FORM_SET_CD_ORDER_TITLE),
       EFI_IFR_FLAG_CALLBACK,
-      FORM_SET_CD_ORDER_ID,
-      &gUpdateData
+      FORM_SET_CD_ORDER_ID
       );
 
-    CreateGotoOpCode (
+    HiiCreateGotoOpCode (
+      mStartOpCodeHandle,
       FORM_SET_NET_ORDER_ID,
       STRING_TOKEN (STR_FORM_SET_NET_ORDER_TITLE),
       STRING_TOKEN (STR_FORM_SET_NET_ORDER_TITLE),
       EFI_IFR_FLAG_CALLBACK,
-      FORM_SET_NET_ORDER_ID,
-      &gUpdateData
+      FORM_SET_NET_ORDER_ID
       );
 
-    CreateGotoOpCode (
+    HiiCreateGotoOpCode (
+      mStartOpCodeHandle,
       FORM_SET_BEV_ORDER_ID,
       STRING_TOKEN (STR_FORM_SET_BEV_ORDER_TITLE),
       STRING_TOKEN (STR_FORM_SET_BEV_ORDER_TITLE),
       EFI_IFR_FLAG_CALLBACK,
-      FORM_SET_BEV_ORDER_ID,
-      &gUpdateData
+      FORM_SET_BEV_ORDER_ID
       );
-
-    IfrLibUpdateForm (
+    
+    HiiUpdateForm (
       BmmCallbackInfo->BmmHiiHandle,
       &mBootMaintGuid,
       FORM_BOOT_SETUP_ID,
-      FORM_BOOT_LEGACY_DEVICE_ID,
-      FALSE,
-      &gUpdateData
+      mStartOpCodeHandle, // Label FORM_BOOT_LEGACY_DEVICE_ID
+      mEndOpCodeHandle    // LABEL_END
       );
   }
 
@@ -1058,17 +1066,46 @@ InitializeBM (
   //
   // Remove our IFR data from HII database
   //
-  gHiiDatabase->RemovePackageList (gHiiDatabase, BmmCallbackInfo->BmmHiiHandle);
-  gHiiDatabase->RemovePackageList (gHiiDatabase, BmmCallbackInfo->FeHiiHandle);
+  HiiRemovePackages (BmmCallbackInfo->BmmHiiHandle);
+  HiiRemovePackages (BmmCallbackInfo->FeHiiHandle);
 
   CleanUpStringDepository ();
 
   FreeAllMenu ();
 
+Exit:
+  if (mStartOpCodeHandle != NULL) {
+    HiiFreeOpCodeHandle (mStartOpCodeHandle);
+  }
+
+  if (mEndOpCodeHandle != NULL) {
+    HiiFreeOpCodeHandle (mEndOpCodeHandle);
+  }
+
+  if (BmmCallbackInfo->FeDriverHandle != NULL) {
+    gBS->UninstallMultipleProtocolInterfaces (
+           BmmCallbackInfo->FeDriverHandle,
+           &gEfiDevicePathProtocolGuid,
+           &mFeHiiVendorDevicePath,
+           &gEfiHiiConfigAccessProtocolGuid,
+           &BmmCallbackInfo->FeConfigAccess,
+           NULL
+           );
+  }
+
+  if (BmmCallbackInfo->BmmDriverHandle != NULL) {
+    gBS->UninstallMultipleProtocolInterfaces (
+           BmmCallbackInfo->BmmDriverHandle,
+           &gEfiDevicePathProtocolGuid,
+           &mBmmHiiVendorDevicePath,
+           &gEfiHiiConfigAccessProtocolGuid,
+           &BmmCallbackInfo->BmmConfigAccess,
+           NULL
+           );
+  }
+
   FreePool (BmmCallbackInfo->LoadContext);
   FreePool (BmmCallbackInfo);
-  FreePool (gUpdateData.Data);
-  gUpdateData.Data = NULL;
 
   return Status;
 }
@@ -1169,7 +1206,7 @@ GetStringTokenFromDepository (
     //
     NextListNode = AllocateZeroPool (sizeof (STRING_LIST_NODE));
     ASSERT (NextListNode != NULL);
-    HiiLibNewString (CallbackData->BmmHiiHandle, &(NextListNode->StringToken), L" ");
+    NextListNode->StringToken = HiiSetString (CallbackData->BmmHiiHandle, 0, L" ", NULL);
     ASSERT (NextListNode->StringToken != 0);
 
     StringDepository->TotalNodeNumber++;
@@ -1304,7 +1341,7 @@ FormSetDispatcher (
                              gFormBrowser2,
                              &CallbackData->BmmHiiHandle,
                              1,
-                             NULL,
+                             &mBootMaintGuid,
                              0,
                              NULL,
                              &ActionRequest
@@ -1326,7 +1363,7 @@ FormSetDispatcher (
                                gFormBrowser2,
                                &CallbackData->FeHiiHandle,
                                1,
-                               NULL,
+                               &mFileExplorerGuid,
                                0,
                                NULL,
                                &ActionRequest
@@ -1360,6 +1397,7 @@ FormSetDispatcher (
 
 **/
 EFI_STATUS
+EFIAPI
 BdsDeleteBootOption (
   IN UINTN                       OptionNumber,
   IN OUT UINT16                  *BootOrder,

@@ -2,7 +2,7 @@
   Mde UEFI library API implementation.
   Print to StdErr or ConOut defined in EFI_SYSTEM_TABLE
 
-  Copyright (c) 2007 - 2008, Intel Corporation<BR>
+  Copyright (c) 2007 - 2009, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -306,9 +306,9 @@ AsciiErrorPrint (
   If the EFI_HII_FONT_PROTOCOL is not present in the handle database, then no
   string is printed, and 0 is returned.
 
-  @param  X            X coordinate to print the string.
-  @param  Y            Y coordinate to print the string.
-  @param  Foreground   The forground color of the string being printed.  This is
+  @param  PointX       X coordinate to print the string.
+  @param  PointY       Y coordinate to print the string.
+  @param  Foreground   The foreground color of the string being printed.  This is
                        an optional parameter that may be NULL.  If it is NULL,
                        then the foreground color of the current ConOut device
                        in the EFI_SYSTEM_TABLE is used.
@@ -325,8 +325,8 @@ AsciiErrorPrint (
 **/
 UINTN
 InternalPrintGraphic (
-  IN UINTN                            X,
-  IN UINTN                            Y,
+  IN UINTN                            PointX,
+  IN UINTN                            PointY,
   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *Foreground,
   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *Background,
   IN CHAR16                           *Buffer,
@@ -334,13 +334,10 @@ InternalPrintGraphic (
   )
 {
   EFI_STATUS                          Status;
-  UINTN                               Index;
-  CHAR16                              *UnicodeWeight;
   UINT32                              HorizontalResolution;
   UINT32                              VerticalResolution;
   UINT32                              ColorDepth;
   UINT32                              RefreshRate;
-  UINTN                               LineBufferLen;
   EFI_HII_FONT_PROTOCOL               *HiiFont;
   EFI_IMAGE_OUTPUT                    *Blt;
   EFI_FONT_DISPLAY_INFO               FontInfo;
@@ -350,10 +347,14 @@ InternalPrintGraphic (
   EFI_UGA_DRAW_PROTOCOL               *UgaDraw;
   EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL     *Sto;
   EFI_HANDLE                          ConsoleHandle;
+  UINTN                               Width;
+  UINTN                               Height;
+  UINTN                               Delta;
 
   HorizontalResolution  = 0;
   VerticalResolution    = 0;
   Blt                   = NULL;
+  RowInfoArray          = NULL;
 
   ConsoleHandle = gST->ConsoleOutHandle;
 
@@ -377,7 +378,7 @@ InternalPrintGraphic (
                     );
   }
   if (EFI_ERROR (Status)) {
-    return 0;
+    goto Error;
   }
 
   Status = gBS->HandleProtocol (
@@ -387,7 +388,7 @@ InternalPrintGraphic (
                   );
 
   if (EFI_ERROR (Status)) {
-    return 0;
+    goto Error;
   }
 
   if (GraphicsOutput != NULL) {
@@ -396,7 +397,6 @@ InternalPrintGraphic (
   } else if (UgaDraw != NULL && FeaturePcdGet (PcdUgaConsumeSupport)) {
     UgaDraw->GetMode (UgaDraw, &HorizontalResolution, &VerticalResolution, &ColorDepth, &RefreshRate);
   } else {
-    Status = EFI_UNSUPPORTED;
     goto Error;
   }
 
@@ -405,22 +405,6 @@ InternalPrintGraphic (
   Status = gBS->LocateProtocol (&gEfiHiiFontProtocolGuid, NULL, (VOID **) &HiiFont);
   if (EFI_ERROR (Status)) {
     goto Error;
-  }
-
-  UnicodeWeight = Buffer;
-
-  for (Index = 0; UnicodeWeight[Index] != 0; Index++) {
-    if (UnicodeWeight[Index] == CHAR_BACKSPACE ||
-        UnicodeWeight[Index] == CHAR_LINEFEED  ||
-        UnicodeWeight[Index] == CHAR_CARRIAGE_RETURN) {
-      UnicodeWeight[Index] = 0;
-    }
-  }
-
-  LineBufferLen = sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL) * HorizontalResolution * EFI_GLYPH_HEIGHT;
-  if (EFI_GLYPH_WIDTH * EFI_GLYPH_HEIGHT * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) * PrintNum > LineBufferLen) {
-     Status = EFI_INVALID_PARAMETER;
-     goto Error;
   }
 
   Blt = (EFI_IMAGE_OUTPUT *) AllocateZeroPool (sizeof (EFI_IMAGE_OUTPUT));
@@ -455,16 +439,21 @@ InternalPrintGraphic (
 
     Status = HiiFont->StringToImage (
                          HiiFont,
-                         EFI_HII_IGNORE_IF_NO_GLYPH | EFI_HII_DIRECT_TO_SCREEN,
+                         EFI_HII_IGNORE_IF_NO_GLYPH | EFI_HII_OUT_FLAG_CLIP |
+                         EFI_HII_OUT_FLAG_CLIP_CLEAN_X | EFI_HII_OUT_FLAG_CLIP_CLEAN_Y |
+                         EFI_HII_IGNORE_LINE_BREAK | EFI_HII_DIRECT_TO_SCREEN,
                          Buffer,
                          &FontInfo,
                          &Blt,
-                         X,
-                         Y,
-                         NULL,
-                         NULL,
+                         PointX,
+                         PointY,
+                         &RowInfoArray,
+                         &RowInfoArraySize,
                          NULL
                          );
+    if (EFI_ERROR (Status)) {
+      goto Error;
+    }
 
   } else if (FeaturePcdGet (PcdUgaConsumeSupport)) {
     ASSERT (UgaDraw!= NULL);
@@ -472,19 +461,20 @@ InternalPrintGraphic (
     Blt->Image.Bitmap = AllocateZeroPool (Blt->Width * Blt->Height * sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     ASSERT (Blt->Image.Bitmap != NULL);
 
-    RowInfoArray = NULL;
     //
     //  StringToImage only support blt'ing image to device using GOP protocol. If GOP is not supported in this platform,
     //  we ask StringToImage to print the string to blt buffer, then blt to device using UgaDraw.
     //
     Status = HiiFont->StringToImage (
                          HiiFont,
-                         EFI_HII_IGNORE_IF_NO_GLYPH,
+                         EFI_HII_IGNORE_IF_NO_GLYPH | EFI_HII_OUT_FLAG_CLIP |
+                         EFI_HII_OUT_FLAG_CLIP_CLEAN_X | EFI_HII_OUT_FLAG_CLIP_CLEAN_Y |
+                         EFI_HII_IGNORE_LINE_BREAK,
                          Buffer,
                          &FontInfo,
                          &Blt,
-                         X,
-                         Y,
+                         PointX,
+                         PointY,
                          &RowInfoArray,
                          &RowInfoArraySize,
                          NULL
@@ -493,40 +483,57 @@ InternalPrintGraphic (
     if (!EFI_ERROR (Status)) {
       ASSERT (RowInfoArray != NULL);
       //
-      // Line breaks are handled by caller of DrawUnicodeWeightAtCursorN, so the updated parameter RowInfoArraySize by StringToImage will
+      // Explicit Line break characters are ignored, so the updated parameter RowInfoArraySize by StringToImage will
       // always be 1 or 0 (if there is no valid Unicode Char can be printed). ASSERT here to make sure.
       //
       ASSERT (RowInfoArraySize <= 1);
 
+      if (RowInfoArraySize != 0) {
+        Width  = RowInfoArray[0].LineWidth;
+        Height = RowInfoArray[0].LineHeight;
+        Delta  = Blt->Width * sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
+      } else {
+        Width  = 0;
+        Height = 0;
+        Delta  = 0;
+      }
       Status = UgaDraw->Blt (
                           UgaDraw,
                           (EFI_UGA_PIXEL *) Blt->Image.Bitmap,
                           EfiUgaBltBufferToVideo,
-                          X,
-                          Y,
-                          X,
-                          Y,
-                          RowInfoArray[0].LineWidth,
-                          RowInfoArray[0].LineHeight,
-                          Blt->Width * sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL)
+                          PointX,
+                          PointY,
+                          PointX,
+                          PointY,
+                          Width,
+                          Height,
+                          Delta
                           );
+    } else {
+      goto Error;
     }
-
-    FreePool (RowInfoArray);
     FreePool (Blt->Image.Bitmap);
-
   } else {
-    Status = EFI_UNSUPPORTED;
+    goto Error;
+  }
+  //
+  // Calculate the number of actual printed characters
+  //
+  if (RowInfoArraySize != 0) {
+    PrintNum = RowInfoArray[0].EndIndex - RowInfoArray[0].StartIndex + 1;
+  } else {
+    PrintNum = 0;
   }
 
+  FreePool (RowInfoArray);
   FreePool (Blt);
+  return PrintNum;
 
 Error:
-  if (EFI_ERROR (Status)) {
-    return 0;
-  } else {
-    return PrintNum;
+  if (Blt != NULL) {
+    FreePool (Blt);
   }
+  return 0;
 }
 
 /**
@@ -535,12 +542,15 @@ Error:
 
   This function prints a formatted Unicode string to the graphics console device 
   specified by ConsoleOutputHandle in EFI_SYSTEM_TABLE and returns the number of 
-  Unicode characters printed.  If the length of the formatted Unicode string is
-  greater than PcdUefiLibMaxPrintBufferSize, then only the first 
-  PcdUefiLibMaxPrintBufferSize characters are printed.  The EFI_HII_FONT_PROTOCOL
-  is used to convert the string to a bitmap using the glyphs registered with the 
-  HII database.  No wrapping is performed, so any portions of the string the fall
-  outside the active display region will not be displayed.
+  Unicode characters displayed, not including partial characters that may be clipped 
+  by the right edge of the display.  If the length of the formatted Unicode string is
+  greater than PcdUefiLibMaxPrintBufferSize, then at most the first 
+  PcdUefiLibMaxPrintBufferSize characters are printed.The EFI_HII_FONT_PROTOCOL
+  StringToImage() service is used to convert the string to a bitmap using the glyphs 
+  registered with the HII database. No wrapping is performed, so any portions of the 
+  string the fall outside the active display region will not be displayed. Please see 
+  Section 27.2.6 of the UEFI Specification for a description of the supported string
+  format including the set of control codes supported by the StringToImage() service.
 
   If a graphics console device is not associated with the ConsoleOutputHandle 
   defined in the EFI_SYSTEM_TABLE then no string is printed, and 0 is returned.
@@ -549,8 +559,8 @@ Error:
   If Format is NULL, then ASSERT().
   If Format is not aligned on a 16-bit boundary, then ASSERT().
 
-  @param  X            X coordinate to print the string.
-  @param  Y            Y coordinate to print the string.
+  @param  PointX       X coordinate to print the string.
+  @param  PointY       Y coordinate to print the string.
   @param  ForeGround   The foreground color of the string being printed.  This is
                        an optional parameter that may be NULL.  If it is NULL,
                        then the foreground color of the current ConOut device
@@ -570,8 +580,8 @@ Error:
 UINTN
 EFIAPI
 PrintXY (
-  IN UINTN                            X,
-  IN UINTN                            Y,
+  IN UINTN                            PointX,
+  IN UINTN                            PointY,
   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *ForeGround, OPTIONAL
   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *BackGround, OPTIONAL
   IN CONST CHAR16                     *Format,
@@ -596,7 +606,7 @@ PrintXY (
 
   PrintNum = UnicodeVSPrint (Buffer, BufferSize, Format, Marker);
 
-  ReturnNum = InternalPrintGraphic (X, Y, ForeGround, BackGround, Buffer, PrintNum);
+  ReturnNum = InternalPrintGraphic (PointX, PointY, ForeGround, BackGround, Buffer, PrintNum);
 
   FreePool (Buffer);
 
@@ -609,12 +619,15 @@ PrintXY (
 
   This function prints a formatted ASCII string to the graphics console device 
   specified by ConsoleOutputHandle in EFI_SYSTEM_TABLE and returns the number of 
-  ASCII characters printed.  If the length of the formatted ASCII string is
-  greater than PcdUefiLibMaxPrintBufferSize, then only the first 
-  PcdUefiLibMaxPrintBufferSize characters are printed.  The EFI_HII_FONT_PROTOCOL
-  is used to convert the string to a bitmap using the glyphs registered with the 
-  HII database.  No wrapping is performed, so any portions of the string the fall
-  outside the active display region will not be displayed.
+  ASCII characters displayed, not including partial characters that may be clipped 
+  by the right edge of the display.  If the length of the formatted ASCII string is
+  greater than PcdUefiLibMaxPrintBufferSize, then at most the first 
+  PcdUefiLibMaxPrintBufferSize characters are printed.The EFI_HII_FONT_PROTOCOL
+  StringToImage() service is used to convert the string to a bitmap using the glyphs 
+  registered with the HII database. No wrapping is performed, so any portions of the 
+  string the fall outside the active display region will not be displayed. Please see 
+  Section 27.2.6 of the UEFI Specification for a description of the supported string
+  format including the set of control codes supported by the StringToImage() service.
 
   If a graphics console device is not associated with the ConsoleOutputHandle 
   defined in the EFI_SYSTEM_TABLE then no string is printed, and 0 is returned.
@@ -622,8 +635,8 @@ PrintXY (
   string is printed, and 0 is returned.
   If Format is NULL, then ASSERT().
 
-  @param  X            X coordinate to print the string.
-  @param  Y            Y coordinate to print the string.
+  @param  PointX       X coordinate to print the string.
+  @param  PointY       Y coordinate to print the string.
   @param  ForeGround   The foreground color of the string being printed.  This is
                        an optional parameter that may be NULL.  If it is NULL,
                        then the foreground color of the current ConOut device
@@ -643,8 +656,8 @@ PrintXY (
 UINTN
 EFIAPI
 AsciiPrintXY (
-  IN UINTN                            X,
-  IN UINTN                            Y,
+  IN UINTN                            PointX,
+  IN UINTN                            PointY,
   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *ForeGround, OPTIONAL
   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *BackGround, OPTIONAL
   IN CONST CHAR8                      *Format,
@@ -668,7 +681,7 @@ AsciiPrintXY (
 
   PrintNum = UnicodeSPrintAsciiFormat (Buffer, BufferSize, Format, Marker);
 
-  ReturnNum = InternalPrintGraphic (X, Y, ForeGround, BackGround, Buffer, PrintNum);
+  ReturnNum = InternalPrintGraphic (PointX, PointY, ForeGround, BackGround, Buffer, PrintNum);
 
   FreePool (Buffer);
 

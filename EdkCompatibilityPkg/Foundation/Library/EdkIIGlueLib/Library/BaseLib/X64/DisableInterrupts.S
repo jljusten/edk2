@@ -21,7 +21,7 @@
 #
 #------------------------------------------------------------------------------
 
-
+#include <EdkIIGlueBase.h>
 #------------------------------------------------------------------------------
 # VOID
 # EFIAPI
@@ -29,7 +29,7 @@
 #   VOID
 #   );
 #------------------------------------------------------------------------------
-.global _DisableInterrupts;
-_DisableInterrupts:
+.global ASM_PFX(DisableInterrupts)
+ASM_PFX(DisableInterrupts):
     cli
     ret

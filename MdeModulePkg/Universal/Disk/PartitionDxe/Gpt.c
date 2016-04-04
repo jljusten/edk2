@@ -217,13 +217,13 @@ PartitionInstallGptChildHandles (
   //
   // Read the Protective MBR from LBA #0
   //
-  Status = BlockIo->ReadBlocks (
-                      BlockIo,
-                      BlockIo->Media->MediaId,
-                      0,
-                      BlockIo->Media->BlockSize,
-                      ProtectiveMbr
-                      );
+  Status = DiskIo->ReadDisk (
+                     DiskIo,
+                     BlockIo->Media->MediaId,
+                     0,
+                     BlockIo->Media->BlockSize,
+                     ProtectiveMbr
+                     );
   if (EFI_ERROR (Status)) {
     GptValidStatus = Status;
     goto Done;
@@ -296,15 +296,15 @@ PartitionInstallGptChildHandles (
   }
 
   Status = DiskIo->ReadDisk (
-                    DiskIo,
-                    BlockIo->Media->MediaId,
-                    MultU64x32(PrimaryHeader->PartitionEntryLBA, BlockSize),
-                    PrimaryHeader->NumberOfPartitionEntries * (PrimaryHeader->SizeOfPartitionEntry),
-                    PartEntry
-                    );
+                     DiskIo,
+                     BlockIo->Media->MediaId,
+                     MultU64x32(PrimaryHeader->PartitionEntryLBA, BlockSize),
+                     PrimaryHeader->NumberOfPartitionEntries * (PrimaryHeader->SizeOfPartitionEntry),
+                     PartEntry
+                     );
   if (EFI_ERROR (Status)) {
     GptValidStatus = Status;
-    DEBUG ((EFI_D_ERROR, " Partition Entry ReadBlocks error\n"));
+    DEBUG ((EFI_D_ERROR, " Partition Entry ReadDisk error\n"));
     goto Done;
   }
 
@@ -433,13 +433,13 @@ PartitionValidGptTable (
   //
   // Read the EFI Partition Table Header
   //
-  Status = BlockIo->ReadBlocks (
-                      BlockIo,
-                      BlockIo->Media->MediaId,
-                      Lba,
-                      BlockSize,
-                      PartHdr
-                      );
+  Status = DiskIo->ReadDisk (
+                     DiskIo,
+                     BlockIo->Media->MediaId,
+                     MultU64x32 (Lba, BlockSize),
+                     BlockSize,
+                     PartHdr
+                     );
   if (EFI_ERROR (Status)) {
     FreePool (PartHdr);
     return FALSE;
@@ -574,14 +574,20 @@ PartitionRestoreGptTable (
   PartHdr->PartitionEntryLBA  = PEntryLBA;
   PartitionSetCrc ((EFI_TABLE_HEADER *) PartHdr);
 
-  Status = BlockIo->WriteBlocks (BlockIo, BlockIo->Media->MediaId, PartHdr->MyLBA, BlockSize, PartHdr);
+  Status = DiskIo->WriteDisk (
+                     DiskIo,
+                     BlockIo->Media->MediaId,
+                     MultU64x32 (PartHdr->MyLBA, BlockIo->Media->BlockSize),
+                     BlockSize,
+                     PartHdr
+                     );
   if (EFI_ERROR (Status)) {
     goto Done;
   }
 
   Ptr = AllocatePool (PartHeader->NumberOfPartitionEntries * PartHeader->SizeOfPartitionEntry);
   if (Ptr == NULL) {
-    DEBUG ((EFI_D_ERROR, " Allocate pool effor\n"));
+    DEBUG ((EFI_D_ERROR, " Allocate pool error\n"));
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
   }

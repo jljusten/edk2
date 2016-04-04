@@ -2,10 +2,10 @@
   Provides services to access PCI Configuration Space using the I/O ports 0xCF8 and 0xCFC.
   
   This library is identical to the PCI Library, except the access method for performing PCI 
-  configuration cycles must be though I/O ports 0xCF8 and 0xCFC.  This library only allows 
+  configuration cycles must be through I/O ports 0xCF8 and 0xCFC.  This library only allows 
   access to PCI Segment #0.
 
-Copyright (c) 2006 - 2008, Intel Corporation<BR>
+Copyright (c) 2006 - 2009, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -47,6 +47,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
   associated with that PCI device may be accessed after SetVirtualAddressMap() is called.
   
   If Address > 0x0FFFFFFF, then ASSERT().
+  If the register specified by Address >= 0x100, then ASSERT().
 
   @param  Address Address that encodes the PCI Bus, Device, Function and
                   Register.

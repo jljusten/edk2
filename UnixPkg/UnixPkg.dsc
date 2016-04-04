@@ -4,7 +4,7 @@
 #
 # The Emulation Platform can be used to debug individual modules, prior to creating
 #       a real platform. This also provides an example for how an DSC is created.
-# Copyright (c) 2006 - 2008, Intel Corporation
+# Copyright (c) 2006 - 2009, Intel Corporation
 #
 #  All rights reserved. This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -60,11 +60,10 @@
   CacheMaintenanceLib|MdePkg/Library/BaseCacheMaintenanceLib/BaseCacheMaintenanceLib.inf
   IoLib|MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
   UefiDecompressLib|IntelFrameworkModulePkg/Library/BaseUefiTianoCustomDecompressLib/BaseUefiTianoCustomDecompressLib.inf
+  UefiHiiServicesLib|MdeModulePkg/Library/UefiHiiServicesLib/UefiHiiServicesLib.inf
   HiiLib|MdeModulePkg/Library/UefiHiiLib/UefiHiiLib.inf
   S3Lib|MdeModulePkg/Library/PeiS3LibNull/PeiS3LibNull.inf
   RecoveryLib|MdeModulePkg/Library/PeiRecoveryLibNull/PeiRecoveryLibNull.inf
-  IfrSupportLib|MdeModulePkg/Library/UefiIfrSupportLib/UefiIfrSupportLib.inf
-  ExtendedIfrSupportLib|MdeModulePkg/Library/ExtendedIfrSupportLib/ExtendedIfrSupportLib.inf
   GenericBdsLib|IntelFrameworkModulePkg/Library/GenericBdsLib/GenericBdsLib.inf
   PlatformBdsLib|UnixPkg/Library/UnixBdsLib/PlatformBds.inf
   CapsuleLib|MdeModulePkg/Library/DxeCapsuleLibNull/DxeCapsuleLibNull.inf
@@ -288,7 +287,6 @@
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseSerial|FALSE
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseMemory|FALSE
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseOEM|TRUE
-  gEfiEdkModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|FALSE
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseHardSerial|FALSE
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseEfiSerial|FALSE
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseRuntimeMemory|FALSE
@@ -318,10 +316,7 @@
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdStatusCodeUseMemory|FALSE
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdStatusCodeUseOEM|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|FALSE
-  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSupportEfiDecompress|TRUE
-  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSupportTianoDecompress|TRUE
-  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSupportCustomDecompress|TRUE
-  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplBuildShareCodeHobs|TRUE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSupportUefiDecompress|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxePcdDatabaseTraverseEnabled|TRUE
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdStatusCodeUseHardSerial|FALSE
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdStatusCodeUseEfiSerial|FALSE
@@ -374,6 +369,7 @@
 [PcdsDynamicHii.common.DEFAULT]
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutColumn|L"Setup"|gEfiUnixSystemConfigGuid|0x0|80
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow|L"Setup"|gEfiUnixSystemConfigGuid|0x4|25
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdPlatformBootTimeOut|L"Timeout"|gEfiGlobalVariableGuid|0x0|10
 
 ###################################################################################################
 #
@@ -407,7 +403,7 @@
    <LibraryClasses>
       PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   }
-  IntelFrameworkModulePkg/Universal/StatusCode/Pei/PeiStatusCode.inf
+  IntelFrameworkModulePkg/Universal/StatusCode/Pei/StatusCodePei.inf
   UnixPkg/BootModePei/BootModePei.inf
   UnixPkg/UnixFlashMapPei/FlashMap.inf
   MdeModulePkg/Universal/Variable/Pei/VariablePei.inf
@@ -443,7 +439,7 @@
   IntelFrameworkModulePkg/Universal/DataHubStdErrDxe/DataHubStdErrDxe.inf
   UnixPkg/MiscSubClassPlatformDxe/MiscSubClassDriver.inf
   UnixPkg/TimerDxe/Timer.inf
-  IntelFrameworkModulePkg/Universal/StatusCode/Dxe/DxeStatusCode.inf
+  IntelFrameworkModulePkg/Universal/StatusCode/RuntimeDxe/StatusCodeRuntimeDxe.inf
   MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
   MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
   MdeModulePkg/Universal/MonotonicCounterRuntimeDxe/MonotonicCounterRuntimeDxe.inf

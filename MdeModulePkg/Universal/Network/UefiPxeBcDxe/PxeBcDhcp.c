@@ -1,7 +1,7 @@
 /** @file
   Support for PxeBc dhcp functions.
   
-Copyright (c) 2007 - 2008, Intel Corporation.<BR>                                                         
+Copyright (c) 2007 - 2009, Intel Corporation.<BR>                                                         
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -766,6 +766,7 @@ PxeBcSelectOffer (
 
 **/
 EFI_STATUS
+EFIAPI
 PxeBcDhcpCallBack (
   IN EFI_DHCP4_PROTOCOL                * This,
   IN VOID                              *Context,
@@ -1018,9 +1019,15 @@ PxeBcBuildDhcpOptions (
   OptList[Index]->OpCode  = PXEBC_PXE_DHCP4_TAG_UNDI;
   OptList[Index]->Length  = sizeof (PXEBC_DHCP4_OPTION_UNDI);
   OptEnt.Undi             = (PXEBC_DHCP4_OPTION_UNDI *) OptList[Index]->Data;
-  OptEnt.Undi->Type       = Private->Nii->Type;
-  OptEnt.Undi->MajorVer   = Private->Nii->MajorVer;
-  OptEnt.Undi->MinorVer   = Private->Nii->MinorVer;
+  if (Private->Nii != NULL) {
+    OptEnt.Undi->Type       = Private->Nii->Type;
+    OptEnt.Undi->MajorVer   = Private->Nii->MajorVer;
+    OptEnt.Undi->MinorVer   = Private->Nii->MinorVer;
+  } else {
+    OptEnt.Undi->Type       = DEFAULT_UNDI_TYPE;
+    OptEnt.Undi->MajorVer   = DEFAULT_UNDI_MAJOR;
+    OptEnt.Undi->MinorVer   = DEFAULT_UNDI_MINOR;
+  }
 
   Index++;
   OptList[Index] = GET_NEXT_DHCP_OPTION (OptList[Index - 1]);
@@ -1044,9 +1051,16 @@ PxeBcBuildDhcpOptions (
   OptEnt.Clid             = (PXEBC_DHCP4_OPTION_CLID *) OptList[Index]->Data;
   CopyMem (OptEnt.Clid, DEFAULT_CLASS_ID_DATA, sizeof (PXEBC_DHCP4_OPTION_CLID));
   CvtNum (SYS_ARCH, OptEnt.Clid->ArchitectureType, sizeof (OptEnt.Clid->ArchitectureType));
-  CopyMem (OptEnt.Clid->InterfaceName, Private->Nii->StringId, sizeof (OptEnt.Clid->InterfaceName));
-  CvtNum (Private->Nii->MajorVer, OptEnt.Clid->UndiMajor, sizeof (OptEnt.Clid->UndiMajor));
-  CvtNum (Private->Nii->MinorVer, OptEnt.Clid->UndiMinor, sizeof (OptEnt.Clid->UndiMinor));
+
+  if (Private->Nii != NULL) {
+    // 
+    // If NII protocol exists, update DHCP option data
+    //
+    CopyMem (OptEnt.Clid->InterfaceName, Private->Nii->StringId, sizeof (OptEnt.Clid->InterfaceName));
+    CvtNum (Private->Nii->MajorVer, OptEnt.Clid->UndiMajor, sizeof (OptEnt.Clid->UndiMajor));
+    CvtNum (Private->Nii->MinorVer, OptEnt.Clid->UndiMinor, sizeof (OptEnt.Clid->UndiMinor));
+  }
+
   Index++;
 
   return Index;
@@ -1103,6 +1117,7 @@ PxeBcDiscvBootService (
   UINT8                               VendorOptLen;
   CHAR8                               *SystemSerialNumber;
   EFI_DHCP4_HEADER                    *DhcpHeader;
+  UINT32                              Xid;
 
 
   Mode      = Private->PxeBc.Mode;
@@ -1169,14 +1184,15 @@ PxeBcDiscvBootService (
 
     DhcpHeader->HwAddrLen = sizeof (EFI_GUID);
   }
-
-  Token.Packet->Dhcp4.Header.Xid      = NET_RANDOM (NetRandomInitSeed ());
-  Token.Packet->Dhcp4.Header.Reserved = (UINT16) ((IsBCast) ? 0xf000 : 0x0);
+       
+  Xid                                 = NET_RANDOM (NetRandomInitSeed ());
+  Token.Packet->Dhcp4.Header.Xid      = HTONL(Xid);
+  Token.Packet->Dhcp4.Header.Reserved = HTONS((IsBCast) ? 0x8000 : 0);
   CopyMem (&Token.Packet->Dhcp4.Header.ClientAddr, &Private->StationIp, sizeof (EFI_IPv4_ADDRESS));
 
   Token.RemotePort = Sport;
 
-  if (DestIp == NULL) {
+  if (IsBCast) {
     SetMem (&Token.RemoteAddress, sizeof (EFI_IPv4_ADDRESS), 0xff);
   } else {
     CopyMem (&Token.RemoteAddress, DestIp, sizeof (EFI_IPv4_ADDRESS));
@@ -1196,7 +1212,8 @@ PxeBcDiscvBootService (
   //
   for (TryIndex = 1; TryIndex <= PXEBC_BOOT_REQUEST_RETRIES; TryIndex++) {
 
-    Token.TimeoutValue  = PXEBC_BOOT_REQUEST_TIMEOUT * TryIndex;
+    Token.TimeoutValue                  = (UINT16) (PXEBC_BOOT_REQUEST_TIMEOUT * TryIndex);
+    Token.Packet->Dhcp4.Header.Seconds  = (UINT16) (PXEBC_BOOT_REQUEST_TIMEOUT * (TryIndex - 1));
 
     Status              = Dhcp4->TransmitReceive (Dhcp4, &Token);
 

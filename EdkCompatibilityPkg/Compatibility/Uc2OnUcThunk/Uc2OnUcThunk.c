@@ -30,12 +30,8 @@ Module Name:
 #include <Library/UefiLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/HiiLib.h>
-
-
-///
-/// The size of a 3 character ISO639 language code.
-///
-#define ISO_639_2_ENTRY_SIZE            3
+#include <Library/BaseMemoryLib.h>
+#include <Library/LanguageLib.h>
 
 /**
   Performs a case-insensitive comparison of two Null-terminated Unicode 
@@ -248,7 +244,7 @@ UcNotificationEvent (
     //
     // Fill in rest of private data structure
     //
-    Private->UC2.SupportedLanguages = ConvertIso639LanguageToRfc3066Language (Private->UC->SupportedLanguages);
+    Private->UC2.SupportedLanguages = ConvertLanguagesIso639ToRfc4646 (Private->UC->SupportedLanguages);
     if (Private->UC2.SupportedLanguages != NULL) {
 
       //

@@ -20,6 +20,21 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "BootMngr/BootManager.h"
 #include "String.h"
 
+
+//
+// These are the VFR compiler generated data representing our VFR data.
+//
+extern UINT8  FrontPageVfrBin[];
+
+extern EFI_HII_DATABASE_PROTOCOL       *gHiiDatabase;
+extern EFI_HII_STRING_PROTOCOL         *gHiiString;
+extern EFI_FORM_BROWSER2_PROTOCOL      *gFormBrowser2;
+extern EFI_HII_CONFIG_ROUTING_PROTOCOL *gHiiConfigRouting;
+
+extern UINTN    gCallbackKey;
+extern BOOLEAN  gConnectAllHappened;
+
+
 #define ONE_SECOND  10000000
 
 ///
@@ -45,6 +60,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define FRONT_PAGE_KEY_BOOT_MAINTAIN   0x9876
 
 #define LABEL_SELECT_LANGUAGE          0x1000
+#define LABEL_END                      0xffff
 
 #define FRONT_PAGE_FORMSET_GUID \
   { \
@@ -75,19 +91,6 @@ typedef struct {
       ConfigAccess, \
       FRONT_PAGE_CALLBACK_DATA_SIGNATURE \
       )
-
-//
-// These are the VFR compiler generated data representing our VFR data.
-//
-extern UINT8  FrontPageVfrBin[];
-
-extern EFI_HII_DATABASE_PROTOCOL       *gHiiDatabase;
-extern EFI_HII_STRING_PROTOCOL         *gHiiString;
-extern EFI_FORM_BROWSER2_PROTOCOL      *gFormBrowser2;
-extern EFI_HII_CONFIG_ROUTING_PROTOCOL *gHiiConfigRouting;
-
-extern UINTN    gCallbackKey;
-extern BOOLEAN  gConnectAllHappened;
 
 /**
   This function allows a caller to extract the current configuration for one

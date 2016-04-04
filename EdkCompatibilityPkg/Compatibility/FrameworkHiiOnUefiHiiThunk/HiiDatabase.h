@@ -45,12 +45,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/HiiLib.h>
-#include <Library/DevicePathLib.h>
 #include <Library/UefiLib.h>
-
-#include <Library/IfrSupportLib.h>
-#include <Library/ExtendedIfrSupportLib.h>
 #include <Library/PcdLib.h>
+#include <Library/LanguageLib.h>
 
 #include <Guid/MdeModuleHii.h>
 
@@ -73,8 +70,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 /// The size of a 3 character ISO639 language code.
 ///
 #define ISO_639_2_ENTRY_SIZE            3
-
-
 
 #pragma pack (1)
 typedef struct {
@@ -186,15 +181,22 @@ typedef struct {
 } BUFFER_STORAGE_ENTRY;
 
 #pragma pack(1)
+///
+/// HII specific Vendor Device Path Node definition.
+///
+typedef struct {
+  VENDOR_DEVICE_PATH             VendorDevicePath;
+  UINT32                         Reserved;
+  UINT64                         UniqueId;
+} HII_VENDOR_DEVICE_PATH_NODE;
 
 ///
 /// HII specific Vendor Device Path definition.
 ///
 typedef struct {
-  VENDOR_DEVICE_PATH             VendorDevicePath;
+  HII_VENDOR_DEVICE_PATH_NODE    Node;
   EFI_DEVICE_PATH_PROTOCOL       End;
 } HII_VENDOR_DEVICE_PATH;
-
 #pragma pack()
 
 #define CONFIG_ACCESS_PRIVATE_SIGNATURE            SIGNATURE_32 ('H', 'T', 'c', 'a')
@@ -305,7 +307,7 @@ HiiNewString (
 
 EFI_STATUS
 EFIAPI
-HiiGetString (
+HiiThunkGetString (
   IN     EFI_HII_PROTOCOL           *This,
   IN     FRAMEWORK_EFI_HII_HANDLE   Handle,
   IN     STRING_REF                 Token,
@@ -382,7 +384,7 @@ HiiGetDefaultImage (
 
 EFI_STATUS
 EFIAPI
-HiiUpdateForm (
+HiiThunkUpdateForm (
   IN EFI_HII_PROTOCOL                   *This,
   IN FRAMEWORK_EFI_HII_HANDLE           Handle,
   IN EFI_FORM_LABEL                     Label,
@@ -415,12 +417,12 @@ ThunkSendForm (
 EFI_STATUS
 EFIAPI 
 ThunkCreatePopUp (
-  IN  UINTN                           NumberOfLines,
+  IN  UINTN                           LinesNumber,
   IN  BOOLEAN                         HotKey,
   IN  UINTN                           MaximumStringSize,
   OUT CHAR16                          *StringBuffer,
-  OUT EFI_INPUT_KEY                   *KeyValue,
-  IN  CHAR16                          *String,
+  OUT EFI_INPUT_KEY                   *Key,
+  IN  CHAR16                          *FirstString,
   ...
   );
 
@@ -445,11 +447,11 @@ NewOrAddPackNotify (
   );
 
 /**
-  Create a EFI_HII_UPDATE_DATA structure used to call IfrLibUpdateForm.
+  Create a Hii Update data Handle used to call IfrLibUpdateForm.
 
-  @param ThunkContext   The HII Thunk Context.
-  @param FwUpdateData   The Framework Update Data.
-  @param UefiUpdateData The UEFI Update Data.
+  @param ThunkContext         The HII Thunk Context.
+  @param FwUpdateData         The Framework Update Data.
+  @param UefiOpCodeHandle     The UEFI Update Data.
 
   @retval EFI_SUCCESS       The UEFI Update Data is created successfully.
   @retval EFI_UNSUPPORTED   There is unsupported opcode in FwUpdateData.
@@ -459,7 +461,7 @@ EFI_STATUS
 FwUpdateDataToUefiUpdateData (
   IN       HII_THUNK_CONTEXT                *ThunkContext,
   IN CONST FRAMEWORK_EFI_HII_UPDATE_DATA    *FwUpdateData,
-  OUT      EFI_HII_UPDATE_DATA              **UefiUpdateData
+  IN       VOID                             *UefiOpCodeHandle
   )
 ;
 
@@ -471,6 +473,75 @@ FwUpdateDataToUefiUpdateData (
 VOID
 InitSetBrowserStrings (
   VOID
+  )
+;
+
+/**
+  Convert language code from RFC4646 to ISO639-2.
+
+  LanguageRfc4646 contain a single RFC 4646 code such as
+  "en-US" or "fr-FR".
+
+  The LanguageRfc4646 must be a buffer large enough
+  for ISO_639_2_ENTRY_SIZE characters.
+
+  If LanguageRfc4646 is NULL, then ASSERT.
+  If LanguageIso639 is NULL, then ASSERT.
+
+  @param  LanguageRfc4646        RFC4646 language code.
+  @param  LanguageIso639         ISO639-2 language code.
+
+  @retval EFI_SUCCESS            Language code converted.
+  @retval EFI_NOT_FOUND          Language code not found.
+
+**/
+EFI_STATUS
+EFIAPI
+ConvertRfc4646LanguageToIso639Language (
+  IN  CHAR8   *LanguageRfc4646,
+  OUT CHAR8   *LanguageIso639
+  )
+;
+
+/**
+  Convert language code from ISO639-2 to RFC4646 and return the converted language.
+  Caller is responsible for freeing the allocated buffer.
+
+  LanguageIso639 contain a single ISO639-2 code such as
+  "eng" or "fra".
+
+  If LanguageIso639 is NULL, then ASSERT.
+  If LanguageRfc4646 is NULL, then ASSERT.
+
+  @param  LanguageIso639         ISO639-2 language code.
+
+  @return the allocated buffer or NULL, if the language is not found.
+
+**/
+CHAR8*
+EFIAPI
+ConvertIso639LanguageToRfc4646Language (
+  IN  CONST CHAR8   *LanguageIso639
+  )
+;
+
+/**
+  Get next language from language code list (with separator ';').
+
+  If LangCode is NULL, then ASSERT.
+  If Lang is NULL, then ASSERT.
+
+  @param  LangCode    On input: point to first language in the list. On
+                                 output: point to next language in the list, or
+                                 NULL if no more language in the list.
+  @param  Lang           The first language in the list.
+
+**/
+VOID
+EFIAPI
+GetNextLanguage (
+  IN OUT CHAR8      **LangCode,
+  OUT CHAR8         *Lang
   )
 ;
 

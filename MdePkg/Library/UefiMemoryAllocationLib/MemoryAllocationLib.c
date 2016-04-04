@@ -2,7 +2,7 @@
   Support routines for memory allocation routines based 
   on boot services for Dxe phase drivers.
 
-  Copyright (c) 2006 - 2008, Intel Corporation<BR>
+  Copyright (c) 2006 - 2009, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -127,7 +127,8 @@ AllocateReservedPages (
 
   Frees the number of 4KB pages specified by Pages from the buffer specified by Buffer.  Buffer
   must have been allocated on a previous call to the page allocation services of the Memory
-  Allocation Library.
+  Allocation Library.  If it is not possible to free allocated pages, then this function will
+  perform no actions.
   
   If Buffer was not allocated with a page allocation function in the Memory Allocation Library,
   then ASSERT().
@@ -323,7 +324,8 @@ AllocateAlignedReservedPages (
 
   Frees the number of 4KB pages specified by Pages from the buffer specified by Buffer.  Buffer
   must have been allocated on a previous call to the aligned page allocation services of the Memory
-  Allocation Library.
+  Allocation Library.  If it is not possible to free allocated pages, then this function will 
+  perform no actions.
   
   If Buffer was not allocated with an aligned page allocation function in the Memory Allocation
   Library, then ASSERT().
@@ -440,9 +442,9 @@ AllocateReservedPool (
 }
 
 /**
-  Allocates and zeros a buffer of a certian pool type.
+  Allocates and zeros a buffer of a certain pool type.
 
-  Allocates the number bytes specified by AllocationSize of a certian pool type, clears the buffer
+  Allocates the number bytes specified by AllocationSize of a certain pool type, clears the buffer
   with zeros, and returns a pointer to the allocated buffer.  If AllocationSize is 0, then a valid
   buffer of 0 size is returned.  If there is not enough memory remaining to satisfy the request,
   then NULL is returned.
@@ -535,9 +537,9 @@ AllocateReservedZeroPool (
 }
 
 /**
-  Copies a buffer to an allocated buffer of a certian pool type.
+  Copies a buffer to an allocated buffer of a certain pool type.
 
-  Allocates the number bytes specified by AllocationSize of a certian pool type, copies
+  Allocates the number bytes specified by AllocationSize of a certain pool type, copies
   AllocationSize bytes from Buffer to the newly allocated buffer, and returns a pointer to the
   allocated buffer.  If AllocationSize is 0, then a valid buffer of 0 size is returned.  If there
   is not enough memory remaining to satisfy the request, then NULL is returned.
@@ -661,8 +663,8 @@ AllocateReservedCopyPool (
   If NewSize is 0, then a valid buffer of 0 size is  returned.  If there is not 
   enough memory remaining to satisfy the request, then NULL is returned.
   
-  If NewSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
-  If OldSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
+  If the allocation of the new buffer is successful and the smaller of NewSize and OldSize
+  is greater than (MAX_ADDRESS - OldBuffer + 1), then ASSERT().
 
   @param  PoolType       The type of pool to allocate.
   @param  OldSize        The size, in bytes, of OldBuffer.
@@ -683,7 +685,7 @@ InternalReallocatePool (
 {
   VOID  *NewBuffer;
 
-  NewBuffer = AllocateZeroPool (NewSize);
+  NewBuffer = InternalAllocateZeroPool (PoolType, NewSize);
   if (NewBuffer != NULL && OldBuffer != NULL) {
     CopyMem (NewBuffer, OldBuffer, MIN (OldSize, NewSize));
     FreePool (OldBuffer);
@@ -701,8 +703,8 @@ InternalReallocatePool (
   If NewSize is 0, then a valid buffer of 0 size is  returned.  If there is not 
   enough memory remaining to satisfy the request, then NULL is returned.
   
-  If NewSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
-  If OldSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
+  If the allocation of the new buffer is successful and the smaller of NewSize and OldSize
+  is greater than (MAX_ADDRESS - OldBuffer + 1), then ASSERT().
 
   @param  OldSize        The size, in bytes, of OldBuffer.
   @param  NewSize        The size, in bytes, of the buffer to reallocate.
@@ -733,8 +735,8 @@ ReallocatePool (
   If NewSize is 0, then a valid buffer of 0 size is  returned.  If there is not 
   enough memory remaining to satisfy the request, then NULL is returned.
 
-  If NewSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
-  If OldSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
+  If the allocation of the new buffer is successful and the smaller of NewSize and OldSize
+  is greater than (MAX_ADDRESS - OldBuffer + 1), then ASSERT().
 
   @param  OldSize        The size, in bytes, of OldBuffer.
   @param  NewSize        The size, in bytes, of the buffer to reallocate.
@@ -765,8 +767,8 @@ ReallocateRuntimePool (
   If NewSize is 0, then a valid buffer of 0 size is  returned.  If there is not 
   enough memory remaining to satisfy the request, then NULL is returned.
 
-  If NewSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
-  If OldSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
+  If the allocation of the new buffer is successful and the smaller of NewSize and OldSize
+  is greater than (MAX_ADDRESS - OldBuffer + 1), then ASSERT().
 
   @param  OldSize        The size, in bytes, of OldBuffer.
   @param  NewSize        The size, in bytes, of the buffer to reallocate.
@@ -792,7 +794,8 @@ ReallocateReservedPool (
   Memory Allocation Library.
 
   Frees the buffer specified by Buffer.  Buffer must have been allocated on a previous call to the
-  pool allocation services of the Memory Allocation Library.
+  pool allocation services of the Memory Allocation Library.  If it is not possible to free pool
+  resources, then this function will perform no actions.
   
   If Buffer was not allocated with a pool allocation function in the Memory Allocation Library,
   then ASSERT().

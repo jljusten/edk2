@@ -22,8 +22,15 @@ EFI_GUID   mFormSetGuid = FORMSET_GUID;
 EFI_GUID   mInventoryGuid = INVENTORY_GUID;
 
 CHAR16     VariableName[] = L"MyIfrNVData";
+//
+// <ConfigHdr> Template
+//
+CONST CHAR16 mDriverSampleConfigHdr[] = L"GUID=00000000000000000000000000000000&NAME=0000&PATH=00";
 
-HII_VENDOR_DEVICE_PATH  mHiiVendorDevicePath1 = {
+EFI_HANDLE                      DriverHandle[2] = {NULL, NULL};
+DRIVER_SAMPLE_PRIVATE_DATA      *PrivateData = NULL;
+
+HII_VENDOR_DEVICE_PATH  mHiiVendorDevicePath0 = {
   {
     {
       HARDWARE_DEVICE_PATH,
@@ -48,7 +55,7 @@ HII_VENDOR_DEVICE_PATH  mHiiVendorDevicePath1 = {
   }
 };
 
-HII_VENDOR_DEVICE_PATH  mHiiVendorDevicePath2 = {
+HII_VENDOR_DEVICE_PATH  mHiiVendorDevicePath1 = {
   {
     {
       HARDWARE_DEVICE_PATH,
@@ -125,6 +132,7 @@ ValidatePassword (
   EFI_STATUS                      Status;
   UINTN                           Index;
   UINTN                           BufferSize;
+  UINTN                           PasswordMaxSize;
   CHAR16                          *Password;
   CHAR16                          *EncodedPassword;
   BOOLEAN                         OldPassword;
@@ -148,10 +156,11 @@ ValidatePassword (
   }
 
   OldPassword = FALSE;
+  PasswordMaxSize = sizeof (PrivateData->Configuration.WhatIsThePassword2);
   //
   // Check whether we have any old password set
   //
-  for (Index = 0; Index < 20; Index++) {
+  for (Index = 0; Index < PasswordMaxSize / sizeof (UINT16); Index++) {
     if (PrivateData->Configuration.WhatIsThePassword2[Index] != 0) {
       OldPassword = TRUE;
       break;
@@ -167,23 +176,23 @@ ValidatePassword (
   //
   // Get user input password
   //
-  BufferSize = 21 * sizeof (CHAR16);
-  Password = AllocateZeroPool (BufferSize);
-  ASSERT (Password != NULL);
-
-  Status = HiiLibGetString (PrivateData->HiiHandle[0], StringId, Password, &BufferSize);
-  if (EFI_ERROR (Status)) {
+  Password = HiiGetString (PrivateData->HiiHandle[0], StringId, NULL);
+  if (Password == NULL) {
+    return EFI_NOT_READY;
+  }
+  if (StrSize (Password) > PasswordMaxSize) {
     FreePool (Password);
-    return Status;
+    return EFI_NOT_READY;
   }
 
   //
   // Validate old password
   //
-  EncodedPassword = AllocateCopyPool (21 * sizeof (CHAR16), Password);
+  EncodedPassword = AllocateZeroPool (PasswordMaxSize);
   ASSERT (EncodedPassword != NULL);
-  EncodePassword (EncodedPassword, 20 * sizeof (CHAR16));
-  if (CompareMem (EncodedPassword, PrivateData->Configuration.WhatIsThePassword2, 20 * sizeof (CHAR16)) != 0) {
+  StrnCpy (EncodedPassword, Password, StrLen (Password));
+  EncodePassword (EncodedPassword, StrLen (EncodedPassword) * sizeof (CHAR16));
+  if (CompareMem (EncodedPassword, PrivateData->Configuration.WhatIsThePassword2, StrLen (EncodedPassword) * sizeof (CHAR16)) != 0) {
     //
     // Old password mismatch, return EFI_NOT_READY to prompt for error message
     //
@@ -215,10 +224,11 @@ SetPassword (
   )
 {
   EFI_STATUS                      Status;
-  UINTN                           BufferSize;
   CHAR16                          *Password;
+  CHAR16                          *TempPassword;
   UINTN                           PasswordSize;
   DRIVER_SAMPLE_CONFIGURATION     *Configuration;
+  UINTN                           BufferSize;
 
   //
   // Get Buffer Storage data from EFI variable
@@ -239,45 +249,53 @@ SetPassword (
   // Get user input password
   //
   Password = &PrivateData->Configuration.WhatIsThePassword2[0];
-  PasswordSize = sizeof (PrivateData->Configuration.WhatIsThePassword2);
-  
+  PasswordSize = sizeof (PrivateData->Configuration.WhatIsThePassword2); 
   ZeroMem (Password, PasswordSize);
-  Status = HiiLibGetString (PrivateData->HiiHandle[0], StringId, Password, &BufferSize);
-  if (EFI_ERROR (Status)) {
-    return Status;
+  
+  TempPassword = HiiGetString (PrivateData->HiiHandle[0], StringId, NULL);
+  if (TempPassword == NULL) {
+    return EFI_NOT_READY;
   }
+  if (StrSize (TempPassword) > PasswordSize) {
+    FreePool (TempPassword);
+    return EFI_NOT_READY;
+  }
+  StrnCpy (Password, TempPassword, StrLen (TempPassword));
+  FreePool (TempPassword);
 
   //
   // Retrive uncommitted data from Browser
   //
-  BufferSize = sizeof (DRIVER_SAMPLE_CONFIGURATION);
-  Configuration = AllocateZeroPool (sizeof (DRIVER_SAMPLE_PRIVATE_DATA));
+  Configuration = AllocateZeroPool (sizeof (DRIVER_SAMPLE_CONFIGURATION));
   ASSERT (Configuration != NULL);
-  Status = GetBrowserData (&mFormSetGuid, VariableName, &BufferSize, (UINT8 *) Configuration);
-  if (!EFI_ERROR (Status)) {
+  if (HiiGetBrowserData (&mFormSetGuid, VariableName, sizeof (DRIVER_SAMPLE_CONFIGURATION), (UINT8 *) Configuration)) {
     //
     // Update password's clear text in the screen
     //
-    CopyMem (Configuration->PasswordClearText, Password, PasswordSize);
+    CopyMem (Configuration->PasswordClearText, Password, StrSize (Password));
 
     //
     // Update uncommitted data of Browser
     //
-    BufferSize = sizeof (DRIVER_SAMPLE_CONFIGURATION);
-    Status = SetBrowserData (
-               &mFormSetGuid,
-               VariableName,
-               BufferSize,
-               (UINT8 *) Configuration,
-               NULL
-               );
+    HiiSetBrowserData (
+       &mFormSetGuid,
+       VariableName,
+       sizeof (DRIVER_SAMPLE_CONFIGURATION),
+       (UINT8 *) Configuration,
+       NULL
+       );
   }
+
+  //
+  // Free Configuration Buffer
+  //
   FreePool (Configuration);
+
 
   //
   // Set password
   //
-  EncodePassword (Password, PasswordSize);
+  EncodePassword (Password, StrLen (Password) * 2);
   Status = gRT->SetVariable(
                   VariableName,
                   &mFormSetGuid,
@@ -328,57 +346,59 @@ ExtractConfig (
   UINTN                            BufferSize;
   DRIVER_SAMPLE_PRIVATE_DATA       *PrivateData;
   EFI_HII_CONFIG_ROUTING_PROTOCOL  *HiiConfigRouting;
+  EFI_STRING                       ConfigRequest;
+  UINTN                            Size;
+  
+  if (Progress == NULL || Results == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+  //
+  // Initialize the local variables.
+  //
+  ConfigRequest    = NULL;
+  Size             = 0;
+  *Progress        = Request;
 
   PrivateData = DRIVER_SAMPLE_PRIVATE_FROM_THIS (This);
   HiiConfigRouting = PrivateData->HiiConfigRouting;
 
   //
-  //
-  // Get Buffer Storage data from EFI variable
+  // Get Buffer Storage data from EFI variable.
+  // Try to get the current setting from variable.
   //
   BufferSize = sizeof (DRIVER_SAMPLE_CONFIGURATION);
   Status = gRT->GetVariable (
-                  VariableName,
-                  &mFormSetGuid,
-                  NULL,
-                  &BufferSize,
-                  &PrivateData->Configuration
-                  );
+            VariableName,
+            &mFormSetGuid,
+            NULL,
+            &BufferSize,
+            &PrivateData->Configuration
+            );
   if (EFI_ERROR (Status)) {
-    return Status;
+    return EFI_NOT_FOUND;
   }
-
+  
   if (Request == NULL) {
     //
-    // Request is set to NULL, return all configurable elements together with ALTCFG
+    // Request is set to NULL, construct full request string.
     //
-    Status = ConstructConfigAltResp (
-               NULL,
-               NULL,
-               Results,
-               &mFormSetGuid,
-               VariableName,
-               PrivateData->DriverHandle[0],
-               &PrivateData->Configuration,
-               BufferSize,
-               VfrMyIfrNVDataBlockName,
-               2,
-               STRING_TOKEN (STR_STANDARD_DEFAULT_PROMPT),
-               VfrMyIfrNVDataDefault0000,
-               STRING_TOKEN (STR_MANUFACTURE_DEFAULT_PROMPT),
-               VfrMyIfrNVDataDefault0001
-               );
 
-    return Status;
-  }
-
-  //
-  // Check routing data in <ConfigHdr>.
-  // Note: if only one Storage is used, then this checking could be skipped.
-  //
-  if (!IsConfigHdrMatch (Request, &mFormSetGuid, VariableName)) {
-    *Progress = Request;
-    return EFI_NOT_FOUND;
+    //
+    // Allocate and fill a buffer large enough to hold the <ConfigHdr> template 
+    // followed by "&OFFSET=0&WIDTH=WWWWWWWWWWWWWWWW" followed by a Null-terminator
+    //
+    Size = (StrLen (mDriverSampleConfigHdr) + 32 + 1) * sizeof (CHAR16);
+    ConfigRequest = AllocateZeroPool (Size);
+    UnicodeSPrint (ConfigRequest, Size, L"%s&OFFSET=0&WIDTH=%016LX", mDriverSampleConfigHdr, (UINT64)BufferSize);
+  } else {
+    //
+    // Check routing data in <ConfigHdr>.
+    // Note: if only one Storage is used, then this checking could be skipped.
+    //
+    if (!HiiIsConfigHdrMatch (Request, &mFormSetGuid, VariableName)) {
+      return EFI_NOT_FOUND;
+    }
+    ConfigRequest = Request;
   }
 
   //
@@ -386,12 +406,18 @@ ExtractConfig (
   //
   Status = HiiConfigRouting->BlockToConfig (
                                 HiiConfigRouting,
-                                Request,
+                                ConfigRequest,
                                 (UINT8 *) &PrivateData->Configuration,
                                 BufferSize,
                                 Results,
                                 Progress
                                 );
+  
+  if (Request == NULL) {
+    FreePool (ConfigRequest);
+    *Progress = NULL;
+  }
+
   return Status;
 }
 
@@ -434,10 +460,11 @@ RouteConfig (
   PrivateData = DRIVER_SAMPLE_PRIVATE_FROM_THIS (This);
   HiiConfigRouting = PrivateData->HiiConfigRouting;
 
+  //
   // Check routing data in <ConfigHdr>.
   // Note: if only one Storage is used, then this checking could be skipped.
   //
-  if (!IsConfigHdrMatch (Configuration, &mFormSetGuid, VariableName)) {
+  if (!HiiIsConfigHdrMatch (Configuration, &mFormSetGuid, VariableName)) {
     *Progress = Configuration;
     return EFI_NOT_FOUND;
   }
@@ -447,12 +474,12 @@ RouteConfig (
   //
   BufferSize = sizeof (DRIVER_SAMPLE_CONFIGURATION);
   Status = gRT->GetVariable (
-                  VariableName,
-                  &mFormSetGuid,
-                  NULL,
-                  &BufferSize,
-                  &PrivateData->Configuration
-                  );
+            VariableName,
+            &mFormSetGuid,
+            NULL,
+            &BufferSize,
+            &PrivateData->Configuration
+            );
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -522,13 +549,21 @@ DriverCallback (
 {
   DRIVER_SAMPLE_PRIVATE_DATA      *PrivateData;
   EFI_STATUS                      Status;
-  EFI_HII_UPDATE_DATA             UpdateData;
-  IFR_OPTION                      *IfrOptionList;
   UINT8                           MyVar;
+  VOID                            *StartOpCodeHandle;
+  VOID                            *OptionsOpCodeHandle;
+  EFI_IFR_GUID_LABEL              *StartLabel;
+  VOID                            *EndOpCodeHandle;
+  EFI_IFR_GUID_LABEL              *EndLabel;
 
   if ((Value == NULL) || (ActionRequest == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
+  
+  if ((Type == EFI_IFR_TYPE_STRING) && (Value->string == 0)) {
+    return EFI_INVALID_PARAMETER;
+  }
+   
 
   Status = EFI_SUCCESS;
   PrivateData = DRIVER_SAMPLE_PRIVATE_FROM_THIS (This);
@@ -538,139 +573,179 @@ DriverCallback (
     //
     // Initialize the container for dynamic opcodes
     //
-    IfrLibInitUpdateData (&UpdateData, 0x1000);
+    StartOpCodeHandle = HiiAllocateOpCodeHandle ();
+    ASSERT (StartOpCodeHandle != NULL);
 
-    IfrOptionList = AllocatePool (2 * sizeof (IFR_OPTION));
-    ASSERT (IfrOptionList != NULL);
+    EndOpCodeHandle = HiiAllocateOpCodeHandle ();
+    ASSERT (EndOpCodeHandle != NULL);
 
-    IfrOptionList[0].Flags        = 0;
-    IfrOptionList[0].StringToken  = STRING_TOKEN (STR_BOOT_OPTION1);
-    IfrOptionList[0].Value.u8     = 1;
-    IfrOptionList[1].Flags        = EFI_IFR_OPTION_DEFAULT;
-    IfrOptionList[1].StringToken  = STRING_TOKEN (STR_BOOT_OPTION2);
-    IfrOptionList[1].Value.u8     = 2;
+    //
+    // Create Hii Extend Label OpCode as the start opcode
+    //
+    StartLabel = (EFI_IFR_GUID_LABEL *) HiiCreateGuidOpCode (StartOpCodeHandle, &gEfiIfrTianoGuid, NULL, sizeof (EFI_IFR_GUID_LABEL));
+    StartLabel->ExtendOpCode = EFI_IFR_EXTEND_OP_LABEL;
+    StartLabel->Number       = LABEL_UPDATE1;
 
-      CreateActionOpCode (
-        0x1237,                           // Question ID
-        STRING_TOKEN(STR_EXIT_TEXT),      // Prompt text
-        STRING_TOKEN(STR_EXIT_TEXT),      // Help text
-        EFI_IFR_FLAG_CALLBACK,            // Question flag
-        0,                                // Action String ID
-        &UpdateData                       // Container for dynamic created opcodes
-        );
+    //
+    // Create Hii Extend Label OpCode as the end opcode
+    //
+    EndLabel = (EFI_IFR_GUID_LABEL *) HiiCreateGuidOpCode (EndOpCodeHandle, &gEfiIfrTianoGuid, NULL, sizeof (EFI_IFR_GUID_LABEL));
+    EndLabel->ExtendOpCode = EFI_IFR_EXTEND_OP_LABEL;
+    EndLabel->Number       = LABEL_END;
+
+    HiiCreateActionOpCode (
+      StartOpCodeHandle,                // Container for dynamic created opcodes
+      0x1237,                           // Question ID
+      STRING_TOKEN(STR_EXIT_TEXT),      // Prompt text
+      STRING_TOKEN(STR_EXIT_TEXT),      // Help text
+      EFI_IFR_FLAG_CALLBACK,            // Question flag
+      0                                 // Action String ID
+    );
+
+    //
+    // Create Option OpCode
+    //
+    OptionsOpCodeHandle = HiiAllocateOpCodeHandle ();
+    ASSERT (OptionsOpCodeHandle != NULL);
+
+    HiiCreateOneOfOptionOpCode (
+      OptionsOpCodeHandle,
+      STRING_TOKEN (STR_BOOT_OPTION1),
+      0,
+      EFI_IFR_NUMERIC_SIZE_1,
+      1
+      );
+
+    HiiCreateOneOfOptionOpCode (
+      OptionsOpCodeHandle,
+      STRING_TOKEN (STR_BOOT_OPTION2),
+      0,
+      EFI_IFR_NUMERIC_SIZE_1,
+      2
+      );
+
+    //
+    // Prepare initial value for the dynamic created oneof Question
+    //
+    PrivateData->Configuration.DynamicOneof = 2;
+    Status = gRT->SetVariable(
+                    VariableName,
+                    &mFormSetGuid,
+                    EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
+                    sizeof (DRIVER_SAMPLE_CONFIGURATION),
+                    &PrivateData->Configuration
+                    );
+
+    HiiCreateOneOfOpCode (
+      StartOpCodeHandle,                         // Container for dynamic created opcodes
+      0x8001,                                    // Question ID (or call it "key")
+      CONFIGURATION_VARSTORE_ID,                 // VarStore ID
+      (UINT16) DYNAMIC_ONE_OF_VAR_OFFSET,        // Offset in Buffer Storage
+      STRING_TOKEN (STR_ONE_OF_PROMPT),          // Question prompt text
+      STRING_TOKEN (STR_ONE_OF_HELP),            // Question help text
+      EFI_IFR_FLAG_CALLBACK,                     // Question flag
+      EFI_IFR_NUMERIC_SIZE_1,                    // Data type of Question Value
+      OptionsOpCodeHandle,                       // Option Opcode list
+      NULL                                       // Default Opcode is NULl
+      );
+
+    HiiCreateOrderedListOpCode (
+      StartOpCodeHandle,                         // Container for dynamic created opcodes
+      0x8002,                                    // Question ID
+      CONFIGURATION_VARSTORE_ID,                 // VarStore ID
+      (UINT16) DYNAMIC_ORDERED_LIST_VAR_OFFSET,  // Offset in Buffer Storage
+      STRING_TOKEN (STR_BOOT_OPTIONS),           // Question prompt text
+      STRING_TOKEN (STR_BOOT_OPTIONS),           // Question help text
+      EFI_IFR_FLAG_RESET_REQUIRED,               // Question flag
+      0,                                         // Ordered list flag, e.g. EFI_IFR_UNIQUE_SET
+      EFI_IFR_NUMERIC_SIZE_1,                    // Data type of Question value
+      5,                                         // Maximum container
+      OptionsOpCodeHandle,                       // Option Opcode list
+      NULL                                       // Default Opcode is NULl
+      );
+
+    HiiCreateGotoOpCode (
+      StartOpCodeHandle,                // Container for dynamic created opcodes
+      1,                                // Target Form ID
+      STRING_TOKEN (STR_GOTO_FORM1),    // Prompt text
+      STRING_TOKEN (STR_GOTO_HELP),     // Help text
+      0,                                // Question flag
+      0x8003                            // Question ID
+      );
+
+    HiiUpdateForm (
+      PrivateData->HiiHandle[0],  // HII handle
+      &mFormSetGuid,              // Formset GUID
+      0x1234,                     // Form ID
+      StartOpCodeHandle,          // Label for where to insert opcodes
+      EndOpCodeHandle             // Replace data
+      );
+
+    HiiFreeOpCodeHandle (StartOpCodeHandle);
+    HiiFreeOpCodeHandle (OptionsOpCodeHandle);
+    break;
     
-      //
-      // Prepare initial value for the dynamic created oneof Question
-      //
-      PrivateData->Configuration.DynamicOneof = 2;
-      Status = gRT->SetVariable(
-                      VariableName,
-                      &mFormSetGuid,
-                      EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
-                      sizeof (DRIVER_SAMPLE_CONFIGURATION),
-                      &PrivateData->Configuration
-                      );
-      CreateOneOfOpCode (
-        0x8001,                                    // Question ID (or call it "key")
-        CONFIGURATION_VARSTORE_ID,                 // VarStore ID
-        (UINT16) DYNAMIC_ONE_OF_VAR_OFFSET,        // Offset in Buffer Storage
-        STRING_TOKEN (STR_ONE_OF_PROMPT),          // Question prompt text
-        STRING_TOKEN (STR_ONE_OF_HELP),            // Question help text
-        EFI_IFR_FLAG_CALLBACK,                     // Question flag
-        EFI_IFR_NUMERIC_SIZE_1,                    // Data type of Question Value
-        IfrOptionList,                             // Option list
-        2,                                         // Number of options in Option list
-        &UpdateData                                // Container for dynamic created opcodes
-        );
+  case 0x5678:
+    //
+    // We will reach here once the Question is refreshed
+    //
+
+    //
+    // Initialize the container for dynamic opcodes
+    //
+    StartOpCodeHandle = HiiAllocateOpCodeHandle ();
+    ASSERT (StartOpCodeHandle != NULL);
+
+    //
+    // Create Hii Extend Label OpCode as the start opcode
+    //
+    StartLabel = (EFI_IFR_GUID_LABEL *) HiiCreateGuidOpCode (StartOpCodeHandle, &gEfiIfrTianoGuid, NULL, sizeof (EFI_IFR_GUID_LABEL));
+    StartLabel->ExtendOpCode = EFI_IFR_EXTEND_OP_LABEL;
+    StartLabel->Number       = LABEL_UPDATE2;
+
+    HiiCreateActionOpCode (
+      StartOpCodeHandle,                // Container for dynamic created opcodes
+      0x1237,                           // Question ID
+      STRING_TOKEN(STR_EXIT_TEXT),      // Prompt text
+      STRING_TOKEN(STR_EXIT_TEXT),      // Help text
+      EFI_IFR_FLAG_CALLBACK,            // Question flag
+      0                                 // Action String ID
+    );
     
-      CreateOrderedListOpCode (
-        0x8002,                                    // Question ID
-        CONFIGURATION_VARSTORE_ID,                 // VarStore ID
-        (UINT16) DYNAMIC_ORDERED_LIST_VAR_OFFSET,  // Offset in Buffer Storage
-        STRING_TOKEN (STR_BOOT_OPTIONS),           // Question prompt text
-        STRING_TOKEN (STR_BOOT_OPTIONS),           // Question help text
-        EFI_IFR_FLAG_RESET_REQUIRED,               // Question flag
-        0,                                         // Ordered list flag, e.g. EFI_IFR_UNIQUE_SET
-        EFI_IFR_NUMERIC_SIZE_1,                    // Data type of Question value
-        5,                                         // Maximum container
-        IfrOptionList,                             // Option list
-        2,                                         // Number of options in Option list
-        &UpdateData                                // Container for dynamic created opcodes
-        );
-    
-      CreateGotoOpCode (
-        1,                                // Target Form ID
-        STRING_TOKEN (STR_GOTO_FORM1),    // Prompt text
-        STRING_TOKEN (STR_GOTO_HELP),     // Help text
-        0,                                // Question flag
-        0x8003,                           // Question ID
-        &UpdateData                       // Container for dynamic created opcodes
-        );
-    
-      Status = IfrLibUpdateForm (
-                 PrivateData->HiiHandle[0],  // HII handle
-                 &mFormSetGuid,              // Formset GUID
-                 0x1234,                     // Form ID
-                 0x1234,                     // Label for where to insert opcodes
-                 TRUE,                       // Append or replace
-                 &UpdateData                 // Dynamic created opcodes
-                 );
-      FreePool (IfrOptionList);
-      IfrLibFreeUpdateData (&UpdateData);
-      break;
-    
-    case 0x5678:
-      //
-      // We will reach here once the Question is refreshed
-      //
-      IfrLibInitUpdateData (&UpdateData, 0x1000);
-    
-      IfrOptionList = AllocatePool (2 * sizeof (IFR_OPTION));
-      ASSERT (IfrOptionList != NULL);
-    
-      CreateActionOpCode (
-        0x1237,                           // Question ID
-        STRING_TOKEN(STR_EXIT_TEXT),      // Prompt text
-        STRING_TOKEN(STR_EXIT_TEXT),      // Help text
-        EFI_IFR_FLAG_CALLBACK,            // Question flag
-        0,                                // Action String ID
-        &UpdateData                       // Container for dynamic created opcodes
-        );
-    
-      Status = IfrLibUpdateForm (
-                 PrivateData->HiiHandle[0],  // HII handle
-                 &mFormSetGuid,              // Formset GUID
-                 3,                          // Form ID
-                 0x2234,                     // Label for where to insert opcodes
-                 TRUE,                       // Append or replace
-                 &UpdateData                 // Dynamic created opcodes
-                 );
-      IfrLibFreeUpdateData (&UpdateData);
-    
-      //
-      // Refresh the Question value
-      //
-      PrivateData->Configuration.DynamicRefresh++;
-      Status = gRT->SetVariable(
-                      VariableName,
-                      &mFormSetGuid,
-                      EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
-                      sizeof (DRIVER_SAMPLE_CONFIGURATION),
-                      &PrivateData->Configuration
-                      );
-    
-      //
-      // Change an EFI Variable storage (MyEfiVar) asynchronous, this will cause
-      // the first statement in Form 3 be suppressed
-      //
-      MyVar = 111;
-      Status = gRT->SetVariable(
-                      L"MyVar",
-                      &mFormSetGuid,
-                      EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
-                      1,
-                      &MyVar
-                      );
+    HiiUpdateForm (
+      PrivateData->HiiHandle[0],  // HII handle
+      &mFormSetGuid,              // Formset GUID
+      0x3,                        // Form ID
+      StartOpCodeHandle,          // Label for where to insert opcodes
+      NULL                        // Insert data
+      );
+
+    HiiFreeOpCodeHandle (StartOpCodeHandle); 
+  
+    //
+    // Refresh the Question value
+    //
+    PrivateData->Configuration.DynamicRefresh++;
+    Status = gRT->SetVariable(
+                    VariableName,
+                    &mFormSetGuid,
+                    EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
+                    sizeof (DRIVER_SAMPLE_CONFIGURATION),
+                    &PrivateData->Configuration
+                    );
+  
+    //
+    // Change an EFI Variable storage (MyEfiVar) asynchronous, this will cause
+    // the first statement in Form 3 be suppressed
+    //
+    MyVar = 111;
+    Status = gRT->SetVariable(
+                    L"MyVar",
+                    &mFormSetGuid,
+                    EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
+                    1,
+                    &MyVar
+                    );
     break;
 
   case 0x1237:
@@ -736,11 +811,7 @@ DriverSampleInit (
   )
 {
   EFI_STATUS                      Status;
-  EFI_STATUS                      SavedStatus;
-  EFI_HII_PACKAGE_LIST_HEADER     *PackageList;
   EFI_HII_HANDLE                  HiiHandle[2];
-  EFI_HANDLE                      DriverHandle[2] = {NULL, NULL};
-  DRIVER_SAMPLE_PRIVATE_DATA      *PrivateData;
   EFI_SCREEN_DESCRIPTOR           Screen;
   EFI_HII_DATABASE_PROTOCOL       *HiiDatabase;
   EFI_HII_STRING_PROTOCOL         *HiiString;
@@ -749,12 +820,13 @@ DriverSampleInit (
   CHAR16                          *NewString;
   UINTN                           BufferSize;
   DRIVER_SAMPLE_CONFIGURATION     *Configuration;
-  BOOLEAN                         ExtractIfrDefault;
+  BOOLEAN                         ActionFlag;
+  EFI_STRING                      ConfigRequestHdr;  
 
   //
-  // Initialize the library and our protocol.
+  // Initialize the local variables.
   //
-
+  ConfigRequestHdr = NULL;
   //
   // Initialize screen dimensions for SendForm().
   // Remove 3 characters from top and bottom
@@ -819,7 +891,7 @@ DriverSampleInit (
   Status = gBS->InstallMultipleProtocolInterfaces (
                   &DriverHandle[0],
                   &gEfiDevicePathProtocolGuid,
-                  &mHiiVendorDevicePath1,
+                  &mHiiVendorDevicePath0,
                   &gEfiHiiConfigAccessProtocolGuid,
                   &PrivateData->ConfigAccess,
                   NULL
@@ -831,26 +903,17 @@ DriverSampleInit (
   //
   // Publish our HII data
   //
-  PackageList = HiiLibPreparePackageList (
-                  2,
-                  &mFormSetGuid,
-                  DriverSampleStrings,
-                  VfrBin
-                  );
-  if (PackageList == NULL) {
+  HiiHandle[0] = HiiAddPackages (
+                   &mFormSetGuid,
+                   DriverHandle[0],
+                   DriverSampleStrings,
+                   VfrBin,
+                   NULL
+                   );
+  if (HiiHandle[0] == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
-  Status = HiiDatabase->NewPackageList (
-                          HiiDatabase,
-                          PackageList,
-                          DriverHandle[0],
-                          &HiiHandle[0]
-                          );
-  FreePool (PackageList);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
   PrivateData->HiiHandle[0] = HiiHandle[0];
 
   //
@@ -859,33 +922,24 @@ DriverSampleInit (
   Status = gBS->InstallMultipleProtocolInterfaces (
                   &DriverHandle[1],
                   &gEfiDevicePathProtocolGuid,
-                  &mHiiVendorDevicePath2,
+                  &mHiiVendorDevicePath1,
                   NULL
                   );
   ASSERT_EFI_ERROR (Status);
 
   PrivateData->DriverHandle[1] = DriverHandle[1];
 
-  PackageList = HiiLibPreparePackageList (
-                  2,
-                  &mInventoryGuid,
-                  DriverSampleStrings,
-                  InventoryBin
-                  );
-  if (PackageList == NULL) {
+  HiiHandle[1] = HiiAddPackages (
+                   &mInventoryGuid,
+                   DriverHandle[1],
+                   DriverSampleStrings,
+                   InventoryBin,
+                   NULL
+                   );
+  if (HiiHandle[1] == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
-  Status = HiiDatabase->NewPackageList (
-                          HiiDatabase,
-                          PackageList,
-                          DriverHandle[1],
-                          &HiiHandle[1]
-                          );
-  FreePool (PackageList);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
   PrivateData->HiiHandle[1] = HiiHandle[1];
 
   //
@@ -894,9 +948,8 @@ DriverSampleInit (
   //
   NewString = L"700 Mhz";
 
-  Status = HiiLibSetString (HiiHandle[0], STRING_TOKEN (STR_CPU_STRING2), NewString);
-  if (EFI_ERROR (Status)) {
-    return Status;
+  if (HiiSetString (HiiHandle[0], STRING_TOKEN (STR_CPU_STRING2), NewString, NULL) == 0) {
+    return EFI_OUT_OF_RESOURCES;
   }
 
   //
@@ -908,69 +961,115 @@ DriverSampleInit (
   //
   // Try to read NV config EFI variable first
   //
-  ExtractIfrDefault = TRUE;
+  ConfigRequestHdr = HiiConstructConfigHdr (&mFormSetGuid, VariableName, DriverHandle[0]);
+  ASSERT (ConfigRequestHdr != NULL);
+
   BufferSize = sizeof (DRIVER_SAMPLE_CONFIGURATION);
   Status = gRT->GetVariable (VariableName, &mFormSetGuid, NULL, &BufferSize, Configuration);
-  if (!EFI_ERROR (Status) && (BufferSize == sizeof (DRIVER_SAMPLE_CONFIGURATION))) {
-    ExtractIfrDefault = FALSE;
-  }
-
-  if (ExtractIfrDefault) {
+  if (EFI_ERROR (Status)) {
+    //
+    // Store zero data Buffer Storage to EFI variable
+    //
+    Status = gRT->SetVariable(
+                    VariableName,
+                    &mFormSetGuid,
+                    EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
+                    sizeof (DRIVER_SAMPLE_CONFIGURATION),
+                    Configuration
+                    );
+    ASSERT (Status == EFI_SUCCESS);
     //
     // EFI variable for NV config doesn't exit, we should build this variable
     // based on default values stored in IFR
     //
-    BufferSize = sizeof (DRIVER_SAMPLE_CONFIGURATION);
-    Status = IfrLibExtractDefault (Configuration, &BufferSize, 1, VfrMyIfrNVDataDefault0000);
-
-    if (!EFI_ERROR (Status)) {
-      gRT->SetVariable(
-             VariableName,
-             &mFormSetGuid,
-             EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
-             sizeof (DRIVER_SAMPLE_CONFIGURATION),
-             Configuration
-             );
-    }
+    ActionFlag = HiiSetToDefaults (ConfigRequestHdr, EFI_HII_DEFAULT_CLASS_STANDARD);
+    ASSERT (ActionFlag);
+  } else {
+    //
+    // EFI variable does exist and Validate Current Setting
+    //
+    ActionFlag = HiiValidateSettings (ConfigRequestHdr);
+    ASSERT (ActionFlag);
   }
+  
+  FreePool (ConfigRequestHdr);
+
+
+  //
+  // In default, this driver is built into Flash device image, 
+  // the following code doesn't run.
+  //
 
   //
   // Example of how to display only the item we sent to HII
+  // When this driver is not built into Flash device image, 
+  // it need to call SendForm to show front page by itself.
   //
-  if (DISPLAY_ONLY_MY_ITEM == 0x0001) {
+  if (DISPLAY_ONLY_MY_ITEM <= 1) {
     //
     // Have the browser pull out our copy of the data, and only display our data
     //
-    //    Status = FormConfig->SendForm (FormConfig, TRUE, HiiHandle, NULL, NULL, NULL, &Screen, NULL);
-    //
     Status = FormBrowser2->SendForm (
                              FormBrowser2,
-                             HiiHandle,
+                             &(HiiHandle[DISPLAY_ONLY_MY_ITEM]),
                              1,
                              NULL,
                              0,
                              NULL,
                              NULL
                              );
-    SavedStatus = Status;
+  
+    HiiRemovePackages (HiiHandle[0]);
+  
+    HiiRemovePackages (HiiHandle[1]);
+  }
 
-    Status = HiiDatabase->RemovePackageList (HiiDatabase, HiiHandle[0]);
-    if (EFI_ERROR (Status)) {
-      return Status;
-    }
+  return EFI_SUCCESS;
+}
 
-    Status = HiiDatabase->RemovePackageList (HiiDatabase, HiiHandle[1]);
-    if (EFI_ERROR (Status)) {
-      return Status;
-    }
+/**
+  Unloads the application and its installed protocol.
 
-    return SavedStatus;
-  } else {
-    //
-    // Have the browser pull out all the data in the HII Database and display it.
-    //
-    //    Status = FormConfig->SendForm (FormConfig, TRUE, 0, NULL, NULL, NULL, NULL, NULL);
-    //
+  @param[in]  ImageHandle       Handle that identifies the image to be unloaded.
+
+  @retval EFI_SUCCESS           The image has been unloaded.
+**/
+EFI_STATUS
+EFIAPI
+DriverSampleUnload (
+  IN EFI_HANDLE  ImageHandle
+  )
+{
+  if (DriverHandle[0] != NULL) {
+    gBS->UninstallMultipleProtocolInterfaces (
+            DriverHandle[0],
+            &gEfiDevicePathProtocolGuid,
+            &mHiiVendorDevicePath0,
+            &gEfiHiiConfigAccessProtocolGuid,
+            &PrivateData->ConfigAccess,
+            NULL
+           );
+  }
+
+  if (DriverHandle[1] != NULL) {
+    gBS->UninstallMultipleProtocolInterfaces (
+            DriverHandle[1],
+            &gEfiDevicePathProtocolGuid,
+            &mHiiVendorDevicePath1,
+            NULL
+           );
+  }
+
+  if (PrivateData->HiiHandle[0] != NULL) {
+    HiiRemovePackages (PrivateData->HiiHandle[0]);
+  }
+
+  if (PrivateData->HiiHandle[1] != NULL) {
+    HiiRemovePackages (PrivateData->HiiHandle[1]);
+  }
+
+  if (PrivateData != NULL) {
+    FreePool (PrivateData);
   }
 
   return EFI_SUCCESS;

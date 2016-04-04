@@ -49,14 +49,12 @@
 #define LABEL_1_VALUE               0x01
 #define LABEL_2_VALUE               0x1000
 #define LABEL_UPDATE_BBS            0x2222
-#define LABEL_END                   0x2223
 
 formset
-  guid     = FORMSET_GUID,
-  title    = STRING_TOKEN(STR_FORM_SET_TITLE),
-  help     = STRING_TOKEN(STR_FORM_SET_TITLE_HELP),
-  class    = EFI_ON_BOARD_DEVICE_CLASS,
-  subclass = EFI_SETUP_APPLICATION_SUBCLASS,
+  guid      = FORMSET_GUID,
+  title     = STRING_TOKEN(STR_FORM_SET_TITLE),
+  help      = STRING_TOKEN(STR_FORM_SET_TITLE_HELP),
+  classguid = EFI_HII_PLATFORM_SETUP_FORMSET_GUID,
   
   //
   // Notes: VfrCompiler will insert a Standard Default Storage declaration 
@@ -519,7 +517,7 @@ formset
             refresh interval = 3             // Refresh interval in seconds
     endnumeric;
 
-    label 0x2234;
+    label LABEL_UPDATE2;
     label LABEL_END;
 
   endform;
@@ -531,7 +529,7 @@ formset
   form formid = 0x1234,            // Dynamically created page,
        title = STRING_TOKEN(STR_DYNAMIC_TITLE);  // note formid is a variable (for readability) (UINT16) - also added Form to the line to signify the Op-Code
 
-    label 0x1234;
+    label LABEL_UPDATE1;
     //
     // This is where we will insert dynamic created opcodes
     //

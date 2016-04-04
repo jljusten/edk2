@@ -86,9 +86,6 @@ extern EFI_COMPONENT_NAME2_PROTOCOL  gPartitionComponentName2;
                                    (((UINT8 *) a)[3] << 24) )
 
 
-#define SIZE_OF_EFI_BLOCK_IO_MEDIA_REV1  ((UINTN)&((EFI_BLOCK_IO_MEDIA *)0)->LastBlock + sizeof(EFI_LBA))
-#define SIZE_OF_EFI_BLOCK_IO_MEDIA_REV2  sizeof(EFI_BLOCK_IO_MEDIA)
-
 //
 // GPT Partition Entry Status
 //
@@ -191,7 +188,7 @@ PartitionDriverBindingStop (
                                 languages specified in SupportedLanguages. The
                                 number of languages supported by a driver is up
                                 to the driver writer. Language is specified
-                                in RFC 3066 or ISO 639-2 language code format.
+                                in RFC 4646 or ISO 639-2 language code format.
 
   @param  DriverName[out]       A pointer to the Unicode string to return.
                                 This Unicode string is the name of the
@@ -256,7 +253,7 @@ PartitionComponentNameGetDriverName (
                                 languages specified in SupportedLanguages. The
                                 number of languages supported by a driver is up
                                 to the driver writer. Language is specified in
-                                RFC 3066 or ISO 639-2 language code format.
+                                RFC 4646 or ISO 639-2 language code format.
 
   @param  ControllerName[out]   A pointer to the Unicode string to return.
                                 This Unicode string is the name of the

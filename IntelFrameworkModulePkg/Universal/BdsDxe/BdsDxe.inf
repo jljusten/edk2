@@ -95,8 +95,6 @@
   BaseLib
   HobLib
   UefiRuntimeServicesTableLib
-  IfrSupportLib
-  ExtendedIfrSupportLib
   GenericBdsLib
   ReportStatusCodeLib
   PerformanceLib
@@ -115,7 +113,7 @@
 [Guids]
   gEfiGlobalVariableGuid                        ## SOMETIMES_PRODUCES ## Variable:L"BootNext" (The number of next boot option)
                                                 ## SOMETIMES_PRODUCES ## Variable:L"BootXX" (Boot option variable)
-                                                ## SOMETIMES_PRODUCES ## Variable:L"PlatformLang" (Platform supported languange in Rfc3066 format)
+                                                ## SOMETIMES_PRODUCES ## Variable:L"PlatformLang" (Platform supported languange in Rfc4646 format)
                                                 ## SOMETIMES_PRODUCES ## Variable:L"Lang" (Platform supported languange in Iso639 format)
                                                 ## SOMETIMES_PRODUCES ## Variable:L"KeyOrder" (Number of hotkey)
                                                 ## SOMETIMES_PRODUCES ## Variable:L"KeyXX" (Hotkey option variable)
@@ -135,6 +133,8 @@
   gEfiMemorySubClassGuid                        ## CONSUMES ## GUID (Indicate the datahub for holding memory record)
   gEfiProcessorSubClassGuid                     ## CONSUMES ## GUID (Indicate the datahub for holding processor record)
   gEfiCapsuleVendorGuid                         ## CONSUMES ## GUID (Indicate the hob for holding capsule update image)
+  gEfiHiiPlatformSetupFormsetGuid               ## CONSUMES ## GUID (Indicate the formset class guid to be displayed)
+  gEfiIfrTianoGuid                              ## CONSUMES ## GUID (Extended IFR Guid Opcode)
 
 [Protocols]
   gEfiHiiStringProtocolGuid                     # PROTOCOL ALWAYS_CONSUMES

@@ -573,7 +573,7 @@ GetWorker (
   EFI_STATUS          Status;
   UINTN               DataSize;
   VOID                *Data;
-  UINT16              *StringTable;
+  UINT8               *StringTable;
   UINT16              StringTableIdx;
   PEI_PCD_DATABASE    *PeiPcdDb;
   UINT32              LocalTokenNumber;
@@ -622,7 +622,7 @@ GetWorker (
       VariableHead = (VARIABLE_HEAD *) ((UINT8 *)PeiPcdDb + Offset);
       
       Guid = &(PeiPcdDb->Init.GuidTable[VariableHead->GuidTableIndex]);
-      Name = &StringTable[VariableHead->StringIndex];
+      Name = (UINT16*)&StringTable[VariableHead->StringIndex];
 
       Status = GetHiiVariable (Guid, Name, &Data, &DataSize);
 
@@ -640,7 +640,7 @@ GetWorker (
       return (VOID *) ((UINT8 *)PeiPcdDb + Offset);
 
     case PCD_TYPE_STRING:
-      StringTableIdx = (UINT16) *((UINT8 *) PeiPcdDb + Offset);
+      StringTableIdx = * (UINT16*) ((UINT8 *) PeiPcdDb + Offset);
       return (VOID *) (&StringTable[StringTableIdx]);
 
     default:

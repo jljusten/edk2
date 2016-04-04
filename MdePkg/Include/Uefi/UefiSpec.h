@@ -964,7 +964,7 @@ typedef enum {
   ///
   EfiResetWarm,
   ///
-  /// Used to induce en entry into power state equivalent to the ACPI G2/S5 or G3
+  /// Used to induce an entry into the power state equivalent to the ACPI G2/S5 or G3
   /// state.  If the system does not support this reset type, then when the system
   /// is rebooted, it should exhibit the EfiResetCold attributes.
   ///
@@ -1904,7 +1904,7 @@ typedef struct {
   ///
   EFI_HANDLE                        ConsoleInHandle;
   ///
-  /// A pointer to the SIMPLE_INPUT_PROTOCOL interface that is
+  /// A pointer to the EFI_SIMPLE_TEXT_INPUT_PROTOCOL interface that is
   /// associated with ConsoleInHandle.
   ///
   EFI_SIMPLE_TEXT_INPUT_PROTOCOL    *ConIn;
@@ -1913,7 +1913,7 @@ typedef struct {
   ///
   EFI_HANDLE                        ConsoleOutHandle;
   ///
-  /// A pointer to the SIMPLE_TEXT_OUTPUT_PROTOCOL interface
+  /// A pointer to the EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL interface
   /// that is associated with ConsoleOutHandle.
   ///
   EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL   *ConOut;
@@ -1922,7 +1922,7 @@ typedef struct {
   ///
   EFI_HANDLE                        StandardErrorHandle;
   ///
-  /// A pointer to the SIMPLE_TEXT_OUTPUT_PROTOCOL interface
+  /// A pointer to the EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL interface
   /// that is associated with StandardErrorHandle.
   ///
   EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL   *StdErr;
@@ -2010,7 +2010,7 @@ typedef union {
     ///
     /// The SysReq key must be pressed (1) or must not be pressed (0).
     ///
-    UINT32  SysReqPessed    : 1;
+    UINT32  SysReqPressed    : 1;
     UINT32  Reserved        : 16;
     ///
     /// Specifies the actual number of entries in EFI_KEY_OPTION.Keys, from 0-3. If
@@ -2048,14 +2048,6 @@ typedef struct {
   ///
   //EFI_INPUT_KEY      Keys[];
 } EFI_KEY_OPTION;
-
-#define EFI_KEY_OPTION_SHIFT     0x00000001
-#define EFI_KEY_OPTION_CONTROL   0x00000002
-#define EFI_KEY_OPTION_ALT       0x00000004
-#define EFI_KEY_OPTION_LOGO      0x00000008
-#define EFI_KEY_OPTION_MENU      0x00000010
-#define EFI_KEY_OPTION_SYSREQ    0x00000020
-#define EFI_KEY_CODE_COUNT       0x00000300
 
 //
 // EFI File location to boot from on removable media devices

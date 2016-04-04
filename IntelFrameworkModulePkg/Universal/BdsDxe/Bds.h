@@ -16,7 +16,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define _BDS_MODULE_H_
 
 #include <PiDxe.h>
-
+#include <IndustryStandard/PeImage.h>
 #include <Guid/MdeModuleHii.h>
 #include <Guid/FileSystemVolumeLabelInfo.h>
 #include <Protocol/DevicePath.h>
@@ -51,8 +51,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PerformanceLib.h>
 #include <Library/ReportStatusCodeLib.h>
-#include <Library/IfrSupportLib.h>
-#include <Library/ExtendedIfrSupportLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/HobLib.h>
 #include <Library/BaseLib.h>
@@ -65,13 +63,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <Library/GenericBdsLib.h>
 #include <Library/PlatformBdsLib.h>
-
-#define EFI_BDS_ARCH_PROTOCOL_INSTANCE_FROM_THIS(_this) \
-  CR ((_this),                                          \
-      EFI_BDS_ARCH_PROTOCOL_INSTANCE,                   \
-      Bds,                                              \
-      EFI_BDS_ARCH_PROTOCOL_INSTANCE_SIGNATURE          \
-      )
 
 #pragma pack(1)
 

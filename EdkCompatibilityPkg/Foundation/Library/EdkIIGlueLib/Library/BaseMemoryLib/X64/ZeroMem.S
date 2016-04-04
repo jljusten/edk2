@@ -24,7 +24,7 @@
 #
 #------------------------------------------------------------------------------
 
-
+#include <EdkIIGlueBase.h>
 #------------------------------------------------------------------------------
 #  VOID *
 #  InternalMemZeroMem (
@@ -33,8 +33,8 @@
 #    );
 #------------------------------------------------------------------------------
 .intel_syntax
-.globl _InternalMemZeroMem
-_InternalMemZeroMem:
+.globl ASM_PFX(InternalMemZeroMem)
+ASM_PFX(InternalMemZeroMem):
     push    rdi
     push    rcx
     xor     rax, rax

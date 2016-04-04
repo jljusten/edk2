@@ -27,7 +27,7 @@ typedef struct _EFI_COMPONENT_NAME2_PROTOCOL  EFI_COMPONENT_NAME2_PROTOCOL;
 
 
 /**
-  Retrieves a Unicode string that is the user readable name of
+  Retrieves a Unicode string that is the user-readable name of
   the EFI Driver.
 
   @param  This       A pointer to the
@@ -40,7 +40,7 @@ typedef struct _EFI_COMPONENT_NAME2_PROTOCOL  EFI_COMPONENT_NAME2_PROTOCOL;
                      languages specified in SupportedLanguages.
                      The number of languages supported by a
                      driver is up to the driver writer. Language
-                     is specified in RFC 3066 language code
+                     is specified in RFC 4646 language code
                      format.
   
   @param  DriverName A pointer to the Unicode string to return.
@@ -87,7 +87,7 @@ EFI_STATUS
                            retrieve the name of.  This is an
                            optional parameter that may be NULL.
                            It will be NULL for device drivers.
-                           It will also be NULL for a bus
+                           It will also be NULL for bus
                            drivers that wish to retrieve the
                            name of the bus controller.  It will
                            not be NULL for a bus driver that
@@ -103,7 +103,7 @@ EFI_STATUS
                            SupportedLanguages. The number of
                            languages supported by a driver is up
                            to the driver writer. Language is
-                           specified in RFC 3066 language code
+                           specified in RFC 4646 language code
                            format.
 
   @param  ControllerName   A pointer to the Unicode string to
@@ -164,7 +164,7 @@ struct _EFI_COMPONENT_NAME2_PROTOCOL {
   /// supported language codes. This is the list of language codes that
   /// this protocol supports. The number of languages supported by a
   /// driver is up to the driver writer. SupportedLanguages is
-  /// specified in RFC 3066 format.  
+  /// specified in RFC 4646 format.  
   ///
   CHAR8                                    *SupportedLanguages;
 };

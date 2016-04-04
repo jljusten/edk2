@@ -7,7 +7,7 @@
   Common Object File Format Specification, Revision 8.0 - May 16, 2006. 
   This file also includes some definitions in PI Specification, Revision 1.0.
 
-  Copyright (c) 2006 - 2008, Intel Corporation
+  Copyright (c) 2006 - 2009, Intel Corporation
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -27,8 +27,6 @@
 #define EFI_IMAGE_SUBSYSTEM_EFI_APPLICATION         10
 #define EFI_IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER 11
 #define EFI_IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER      12
-#define EFI_IMAGE_SUBSYSTEM_EFI_EFI_ROM             13
-
 #define EFI_IMAGE_SUBSYSTEM_SAL_RUNTIME_DRIVER      13 ///< defined PI Specification, 1.0
 
 
@@ -501,10 +499,10 @@ typedef struct {
 ///
 typedef struct {
   union {
-    UINT32  SymbolTableIndex; // Symbol table index of function name if Linenumber is 0.
-    UINT32  VirtualAddress;   // Virtual address of line number.
+    UINT32  SymbolTableIndex; ///< Symbol table index of function name if Linenumber is 0.
+    UINT32  VirtualAddress;   ///< Virtual address of line number.
   } Type;
-  UINT16  Linenumber;         // Line number.
+  UINT16  Linenumber;         ///< Line number.
 } EFI_IMAGE_LINENUMBER;
 
 ///
@@ -598,7 +596,7 @@ typedef struct {
 
 
 ///
-/// Debug Direcotry Format
+/// Debug Directory Format
 ///
 typedef struct {
   UINT32  Characteristics;
@@ -642,6 +640,59 @@ typedef struct {
   // Filename of .PDB goes here
   //
 } EFI_IMAGE_DEBUG_CODEVIEW_RSDS_ENTRY;
+
+///
+/// Resource format.
+///
+typedef struct {
+  UINT32  Characteristics;
+  UINT32  TimeDateStamp;
+  UINT16  MajorVersion;
+  UINT16  MinorVersion;
+  UINT16  NumberOfNamedEntries;
+  UINT16  NumberOfIdEntries;
+  //
+  // Array of EFI_IMAGE_RESOURCE_DIRECTORY_ENTRY entries goes here.
+  //
+} EFI_IMAGE_RESOURCE_DIRECTORY;
+
+///
+/// Resource directory entry format.
+///
+typedef struct {
+  union {
+    struct {
+      UINT32  NameOffset:31;
+      UINT32  NameIsString:1;
+    } s;
+    UINT32  Id;
+  } u1;
+  union {
+    UINT32  OffsetToData;
+    struct {
+      UINT32  OffsetToDirectory:31;
+      UINT32  DataIsDirectory:1;
+    } s;
+  } u2;
+} EFI_IMAGE_RESOURCE_DIRECTORY_ENTRY;
+
+///
+/// Resource directory entry for string.
+///
+typedef struct {
+  UINT16  Length;
+  CHAR16  String[1];
+} EFI_IMAGE_RESOURCE_DIRECTORY_STRING;
+
+///
+/// Resource directory entry for data array.
+///
+typedef struct {
+  UINT32  OffsetToData;
+  UINT32  Size;
+  UINT32  CodePage;
+  UINT32  Reserved;
+} EFI_IMAGE_RESOURCE_DATA_ENTRY;
 
 ///
 /// Header format for TE images, defined in PI Specification, 1.0

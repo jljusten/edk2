@@ -29,6 +29,7 @@ case "$1" in
      ;;
    *)
      echo Invalid Architecture string, should be only IA32 or X64
+     return 1
 esac
 
 #
@@ -37,13 +38,13 @@ esac
 export OUTPUT_DIR=$BUILD_DIR/IA32/DuetPkg/BootSector/BootSector/OUTPUT
 
 echo Compressing DUETEFIMainFv.FV ...
-$BASETOOLS_DIR/TianoCompress -e -o $BUILD_DIR/FV/DUETEFIMAINFV.z $BUILD_DIR/FV/DUETEFIMAINFV.Fv
+$BASETOOLS_DIR/LzmaCompress -e -o $BUILD_DIR/FV/DUETEFIMAINFV.z $BUILD_DIR/FV/DUETEFIMAINFV.Fv
 
 echo Compressing DxeMain.efi ...
-$BASETOOLS_DIR/TianoCompress -e -o $BUILD_DIR/FV/DxeMain.z $BUILD_DIR/$PROCESSOR/DxeCore.efi
+$BASETOOLS_DIR/LzmaCompress -e -o $BUILD_DIR/FV/DxeMain.z $BUILD_DIR/$PROCESSOR/DxeCore.efi
 
 echo Compressing DxeIpl.efi ...
-$BASETOOLS_DIR/TianoCompress -e -o $BUILD_DIR/FV/DxeIpl.z $BUILD_DIR/$PROCESSOR/DxeIpl.efi	
+$BASETOOLS_DIR/LzmaCompress -e -o $BUILD_DIR/FV/DxeIpl.z $BUILD_DIR/$PROCESSOR/DxeIpl.efi	
 
 echo Generate Loader Image ...
 
@@ -77,4 +78,5 @@ then
 	
 	echo Done!
 fi
+
 

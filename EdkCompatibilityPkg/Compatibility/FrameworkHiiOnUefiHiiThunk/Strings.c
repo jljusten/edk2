@@ -15,42 +15,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "HiiDatabase.h"
 
-typedef struct {
-  CHAR8 *Iso639;
-  CHAR8 *Rfc3066;
-} ISO639TORFC3066MAP;
-
-ISO639TORFC3066MAP Iso639ToRfc3066Map [] = {
-    {"eng", "en-US"},
-    {"fra", "fr-FR"},
-};
-
-CHAR8 *
-ConvertIso639ToRfc3066 (
-  CHAR8 *Iso638Lang
-  )
-{
-  UINTN Index;
-  CHAR8 AsciiLanguage[ISO_639_2_ENTRY_SIZE + 1];
-  
-  AsciiStrnCpy (AsciiLanguage, Iso638Lang, sizeof (AsciiLanguage));
-  for (Index = 0; Index < ISO_639_2_ENTRY_SIZE + 1; Index ++) {
-  	if (AsciiLanguage [Index] == 0) {
-  		break;
-  	} else if (AsciiLanguage [Index] >= 'A' && AsciiLanguage [Index] <= 'Z') {
-  		AsciiLanguage [Index] = (CHAR8) (AsciiLanguage [Index] - 'A' + 'a');
-  	}
-  }
-
-  for (Index = 0; Index < sizeof (Iso639ToRfc3066Map) / sizeof (Iso639ToRfc3066Map[0]); Index++) {
-    if (AsciiStrnCmp (AsciiLanguage, Iso639ToRfc3066Map[Index].Iso639, AsciiStrSize (AsciiLanguage)) == 0) {
-      return Iso639ToRfc3066Map[Index].Rfc3066;
-    }
-  }
-
-  return (CHAR8 *) NULL;
-}
-
 /**
   Test if all of the characters in a string have corresponding font characters.
 
@@ -65,7 +29,7 @@ ConvertIso639ToRfc3066 (
                          If all glyphs in the string are available, the index is the index of the terminator 
                          of the string. 
   @param GlyphBufferSize A pointer to a value. On output, if the function returns EFI_SUCCESS, 
-                         it contains the amount of memory that is required to store the string¡¯s glyph equivalent.
+                         it contains the amount of memory that is required to store the string? glyph equivalent.
 
   @retval EFI_UNSUPPORTED  The function performs nothing and return EFI_UNSUPPORTED.
 **/
@@ -126,7 +90,7 @@ GetTagGuidByFwHiiHandle (
   Create or update the String given a new string and String ID.
 
   @param ThunkContext           The Thunk Context.
-  @param Rfc3066AsciiLanguage   The RFC 3066 Language code in ASCII string format.
+  @param Rfc4646AsciiLanguage   The RFC 4646 Language code in ASCII string format.
   @param NewString              The new string.
   @param StringId               The String ID. If StringId is 0, a new String Token
                                 is created. Otherwise, the String Token StringId is 
@@ -142,79 +106,23 @@ GetTagGuidByFwHiiHandle (
 EFI_STATUS
 UpdateString (
   IN CONST HII_THUNK_CONTEXT        *ThunkContext,
-  IN CONST CHAR8                    *Rfc3066AsciiLanguage,
+  IN CONST CHAR8                    *Rfc4646AsciiLanguage,
   IN       CHAR16                   *NewString,
   IN OUT STRING_REF                 *StringId
   )
 {
   EFI_STRING_ID                             NewStringId;
-  EFI_STATUS                                Status;
 
-
-  NewStringId = 0;
-  
-  if (*StringId == 0) {
-    //
-    // Create a new string token.
-    //
-    if (Rfc3066AsciiLanguage == NULL) {
-      //
-      // For all languages in the package list.
-      //
-      Status = HiiLibNewString (ThunkContext->UefiHiiHandle, &NewStringId, NewString);
-    } else {
-      //
-      // For specified language.
-      //
-      Status = mHiiStringProtocol->NewString (
-                                     mHiiStringProtocol,
-                                     ThunkContext->UefiHiiHandle,
-                                     &NewStringId,
-                                     Rfc3066AsciiLanguage,
-                                     NULL,
-                                     NewString,
-                                     NULL
-                                     );
-    }
-  } else {
-    //
-    // Update the existing string token.
-    //
-    if (Rfc3066AsciiLanguage == NULL) {
-      //
-      // For all languages in the package list.
-      //
-      Status = HiiLibSetString (ThunkContext->UefiHiiHandle, *StringId, NewString);
-    } else {
-      //
-      // For specified language.
-      //
-      Status = mHiiStringProtocol->SetString (
-                                   mHiiStringProtocol,
-                                   ThunkContext->UefiHiiHandle,
-                                   *StringId,
-                                   Rfc3066AsciiLanguage,
-                                   NewString,
-                                   NULL
-                                   );
-    }
-  }
-  
-  if (!EFI_ERROR (Status)) {
-    if (*StringId == 0) {
-      //
-      // When creating new string, return the newly created String Token.
-      //
-      *StringId = NewStringId;
-    }
-  } else {
+  NewStringId = HiiSetString (ThunkContext->UefiHiiHandle, *StringId, NewString, Rfc4646AsciiLanguage);
+  *StringId = NewStringId;
+  if (NewStringId == 0) {
     //
     // Only EFI_INVALID_PARAMETER is defined in HII 0.92 specification.
     //
-    *StringId = 0;
+    return EFI_INVALID_PARAMETER;
+  } else {
+    return EFI_SUCCESS;
   }
-
-  return Status;
 }
 
 /**
@@ -256,19 +164,19 @@ HiiNewString (
   EFI_STRING_ID                             LastStringId;
   CHAR8                                     AsciiLanguage[ISO_639_2_ENTRY_SIZE + 1];
   CHAR16                                    LanguageCopy[ISO_639_2_ENTRY_SIZE + 1];
-  CHAR8                                     *Rfc3066AsciiLanguage;
+  CHAR8                                     *Rfc4646AsciiLanguage;
 
   LastStringId      = (EFI_STRING_ID) 0;
   StringId          = (EFI_STRING_ID) 0;
-  Rfc3066AsciiLanguage = NULL;
+  Rfc4646AsciiLanguage = NULL;
 
   if (Language != NULL) {
     ZeroMem (AsciiLanguage, sizeof (AsciiLanguage));;
     ZeroMem (LanguageCopy, sizeof (LanguageCopy));
     CopyMem (LanguageCopy, Language, ISO_639_2_ENTRY_SIZE * sizeof (CHAR16));
     UnicodeStrToAsciiStr (LanguageCopy, AsciiLanguage);
-    Rfc3066AsciiLanguage = ConvertIso639ToRfc3066 (AsciiLanguage);
-    ASSERT (Rfc3066AsciiLanguage != NULL);
+    Rfc4646AsciiLanguage = ConvertLanguagesIso639ToRfc4646 (AsciiLanguage);
+    ASSERT (Rfc4646AsciiLanguage != NULL);
   }
 
   Private = HII_THUNK_PRIVATE_DATA_FROM_THIS(This);
@@ -289,7 +197,7 @@ HiiNewString (
       if (CompareGuid (&TagGuid, &ThunkContext->TagGuid)) {
         if (ThunkContext->SharingStringPack) {
           StringId = *Reference;
-          Status = UpdateString (ThunkContext, Rfc3066AsciiLanguage, NewString, &StringId);
+          Status = UpdateString (ThunkContext, Rfc4646AsciiLanguage, NewString, &StringId);
           if (EFI_ERROR (Status)) {
             break;
           }
@@ -317,7 +225,7 @@ HiiNewString (
     }
   } else {
     StringId = *Reference;
-    Status = UpdateString (StringPackThunkContext, Rfc3066AsciiLanguage, NewString, &StringId);
+    Status = UpdateString (StringPackThunkContext, Rfc4646AsciiLanguage, NewString, &StringId);
   }
 
   if (!EFI_ERROR (Status)) {
@@ -378,7 +286,7 @@ HiiResetStrings (
 **/
 EFI_STATUS
 EFIAPI
-HiiGetString (
+HiiThunkGetString (
   IN     EFI_HII_PROTOCOL           *This,
   IN     FRAMEWORK_EFI_HII_HANDLE   Handle,
   IN     STRING_REF                 Token,
@@ -388,16 +296,18 @@ HiiGetString (
   OUT    EFI_STRING                 StringBuffer
   )
 {
-  CHAR8                                 *Iso639AsciiLanguage;
   HII_THUNK_PRIVATE_DATA                *Private;
-  CHAR8                                 *Rfc3066AsciiLanguage;
+  CHAR8                                 *Iso639AsciiLanguage;
+  CHAR8                                 *Rfc4646AsciiLanguage;
+  CHAR8                                 *SupportedLanguages;
+  CHAR8                                 *PlatformLanguage;
+  CHAR8                                 *BestLanguage;
   EFI_HII_HANDLE                        UefiHiiHandle;
   EFI_STATUS                            Status;
 
   Private = HII_THUNK_PRIVATE_DATA_FROM_THIS(This);
 
-  Iso639AsciiLanguage = NULL;
-  Rfc3066AsciiLanguage = NULL;
+  Rfc4646AsciiLanguage = NULL;
 
   if (LanguageString != NULL) {
     Iso639AsciiLanguage = AllocateZeroPool (StrLen (LanguageString) + 1);
@@ -408,15 +318,16 @@ HiiGetString (
 
     //
     // Caller of Framework HII Interface uses the Language Identification String defined 
-    // in Iso639. So map it to the Language Identifier defined in RFC3066.
+    // in Iso639. So map it to the Language Identifier defined in RFC4646.
     //
-    Rfc3066AsciiLanguage = ConvertIso639ToRfc3066 (Iso639AsciiLanguage);
+    Rfc4646AsciiLanguage = ConvertLanguagesIso639ToRfc4646 (Iso639AsciiLanguage);
+    FreePool (Iso639AsciiLanguage);
 
     //
-    // If Rfc3066AsciiLanguage is NULL, more language mapping must be added to 
-    // Iso639ToRfc3066Map.
+    // If Rfc4646AsciiLanguage is NULL, more language mapping must be added to 
+    // Iso639ToRfc4646Map.
     //
-    ASSERT (Rfc3066AsciiLanguage != NULL);
+    ASSERT (Rfc4646AsciiLanguage != NULL);
     
   }
 
@@ -426,23 +337,56 @@ HiiGetString (
     goto Done;
   }
 
-  if (Rfc3066AsciiLanguage == NULL) {
-    Status =  HiiLibGetString (UefiHiiHandle, Token, StringBuffer, BufferLengthTemp);
-  } else {
-    Status = mHiiStringProtocol->GetString (
-                                 mHiiStringProtocol,
-                                 Rfc3066AsciiLanguage,
-                                 UefiHiiHandle,
-                                 Token,
-                                 StringBuffer,
-                                 BufferLengthTemp,
-                                 NULL
-                                 );
+  //
+  // Get the languages that the package specified by HiiHandle supports
+  //
+  SupportedLanguages = HiiGetSupportedLanguages (UefiHiiHandle);
+  if (SupportedLanguages == NULL) {
+    goto Error2;
   }
 
+  //
+  // Get the current platform language setting
+  //
+  PlatformLanguage = GetEfiGlobalVariable (L"PlatformLang");
+  if (PlatformLanguage == NULL) {
+    goto Error1;
+  }
+
+  //
+  // Get the best matching language from SupportedLanguages
+  //
+  BestLanguage = GetBestLanguage (
+                   SupportedLanguages, 
+                   FALSE,                // RFC 4646 mode
+                   (Rfc4646AsciiLanguage != NULL) ? Rfc4646AsciiLanguage : "",
+                   PlatformLanguage,     // Next highest priority
+                   SupportedLanguages,   // Lowest priority 
+                   NULL
+                   );
+  if (BestLanguage == NULL) {
+    FreePool (PlatformLanguage);
+Error1:
+    FreePool (SupportedLanguages);
+Error2:
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
+  Status = mHiiStringProtocol->GetString (
+                               mHiiStringProtocol,
+                               BestLanguage,
+                               UefiHiiHandle,
+                               Token,
+                               StringBuffer,
+                               BufferLengthTemp,
+                               NULL
+                               );
+  FreePool (BestLanguage);
+
 Done:
-	if (Iso639AsciiLanguage != NULL) {
-    FreePool (Iso639AsciiLanguage);
+	if (Rfc4646AsciiLanguage != NULL) {
+    FreePool (Rfc4646AsciiLanguage);
   }
   
   return Status;

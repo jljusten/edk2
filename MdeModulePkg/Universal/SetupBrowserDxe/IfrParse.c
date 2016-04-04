@@ -21,8 +21,10 @@ UINT16           mExpressionOpCodeIndex;
 BOOLEAN          mInScopeSubtitle;
 BOOLEAN          mInScopeSuppress;
 BOOLEAN          mInScopeGrayOut;
+BOOLEAN          mInScopeDisable;
 FORM_EXPRESSION  *mSuppressExpression;
 FORM_EXPRESSION  *mGrayOutExpression;
+FORM_EXPRESSION  *mDisableExpression;
 
 /**
   Initialize Statement header members.
@@ -75,6 +77,11 @@ CreateStatement (
     Statement->GrayOutExpression = mGrayOutExpression;
   }
 
+
+  if (mInScopeDisable) {
+    Statement->DisableExpression = mDisableExpression;
+  }
+
   Statement->InSubtitle = mInScopeSubtitle;
 
   //
@@ -108,17 +115,15 @@ UpdateCheckBoxStringToken (
 {
   CHAR16                  Str[MAXIMUM_VALUE_CHARACTERS];
   EFI_STRING_ID           Id;
-  EFI_STATUS              Status;
 
   ASSERT (Statement != NULL);
   ASSERT (Statement->Operand == EFI_IFR_NUMERIC_OP);
   
   UnicodeValueToString (Str, 0, Statement->VarStoreInfo.VarName, MAXIMUM_VALUE_CHARACTERS - 1);
-  
-  Status = HiiLibNewString (FormSet->HiiHandle, &Id, Str);
 
-  if (EFI_ERROR (Status)) {
-    return Status;
+  Id = HiiSetString (FormSet->HiiHandle, 0, Str, NULL);
+  if (Id == 0) {
+    return EFI_OUT_OF_RESOURCES;
   }
 
   Statement->VarStoreInfo.VarName = Id;
@@ -323,40 +328,25 @@ InitializeConfigHdr (
   IN OUT FORMSET_STORAGE   *Storage
   )
 {
-  EFI_STATUS  Status;
-  UINTN       StrBufferLen;
   CHAR16      *Name;
-
+  
   if (Storage->Type == EFI_HII_VARSTORE_BUFFER) {
     Name = Storage->Name;
   } else {
     Name = NULL;
   }
-
-  StrBufferLen = 0;
-  Status = ConstructConfigHdr (
-             Storage->ConfigHdr,
-             &StrBufferLen,
-             &Storage->Guid,
-             Name,
-             FormSet->DriverHandle
-             );
-  if (Status == EFI_BUFFER_TOO_SMALL) {
-    Storage->ConfigHdr = AllocateZeroPool (StrBufferLen);
-    Status = ConstructConfigHdr (
-               Storage->ConfigHdr,
-               &StrBufferLen,
-               &Storage->Guid,
-               Name,
-               FormSet->DriverHandle
-               );
+  
+  Storage->ConfigHdr = HiiConstructConfigHdr (
+                         &Storage->Guid,
+                         Name,
+                         FormSet->DriverHandle
+                         );
+  
+  if (Storage->ConfigHdr == NULL) {
+    return EFI_NOT_FOUND;
   }
 
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  Storage->ConfigRequest = AllocateCopyPool (StrBufferLen, Storage->ConfigHdr);
+  Storage->ConfigRequest = AllocateCopyPool (StrSize (Storage->ConfigHdr), Storage->ConfigHdr);
   Storage->SpareStrLen = 0;
 
   return EFI_SUCCESS;
@@ -827,7 +817,6 @@ ParseOpCodes (
   BOOLEAN                 SuppressForOption;
   BOOLEAN                 InScopeOptionSuppress;
   FORM_EXPRESSION         *OptionSuppressExpression;
-  BOOLEAN                 InScopeDisable;
   UINT16                  DepthOfDisable;
   BOOLEAN                 OpCodeDisabled;
   BOOLEAN                 SingleOpCodeExpression;
@@ -839,7 +828,7 @@ ParseOpCodes (
   mInScopeSuppress         = FALSE;
   InScopeOptionSuppress    = FALSE;
   mInScopeGrayOut          = FALSE;
-  InScopeDisable           = FALSE;
+  mInScopeDisable          = FALSE;
   DepthOfDisable           = 0;
   OpCodeDisabled           = FALSE;
   SingleOpCodeExpression   = FALSE;
@@ -907,7 +896,7 @@ ParseOpCodes (
 
         if (ScopeOpCode == EFI_IFR_DISABLE_IF_OP) {
           if (DepthOfDisable == 0) {
-            InScopeDisable = FALSE;
+            mInScopeDisable = FALSE;
             OpCodeDisabled = FALSE;
           } else {
             DepthOfDisable--;
@@ -1052,9 +1041,9 @@ ParseOpCodes (
         //
         SingleOpCodeExpression = FALSE;
 
-        if (InScopeDisable) {
+        if (mInScopeDisable && CurrentForm == NULL) {
           //
-          // Evaluate DisableIf expression
+          // This is DisableIf expression for Form, it should be a constant expression
           //
           Status = EvaluateExpression (FormSet, CurrentForm, CurrentExpression);
           if (EFI_ERROR (Status)) {
@@ -1090,6 +1079,12 @@ ParseOpCodes (
 
       CopyMem (&FormSet->FormSetTitle, &((EFI_IFR_FORM_SET *) OpCodeData)->FormSetTitle, sizeof (EFI_STRING_ID));
       CopyMem (&FormSet->Help,         &((EFI_IFR_FORM_SET *) OpCodeData)->Help,         sizeof (EFI_STRING_ID));
+
+      //
+      // The formset OpCode contains ClassGuid
+      //
+      FormSet->NumberOfClassGuid = (UINT8) (((EFI_IFR_FORM_SET *) OpCodeData)->Flags & 0x3);
+      CopyMem (FormSet->ClassGuid, OpCodeData + sizeof (EFI_IFR_FORM_SET), FormSet->NumberOfClassGuid * sizeof (EFI_GUID));
       break;
 
     case EFI_IFR_FORM_OP:
@@ -1225,14 +1220,17 @@ ParseOpCodes (
       break;
 
     case EFI_IFR_RESET_BUTTON_OP:
-      CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
-
+      //
+      // Create Statement
+      //
+      CurrentStatement = CreateStatement (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
       CopyMem (&CurrentStatement->DefaultId, &((EFI_IFR_RESET_BUTTON *) OpCodeData)->DefaultId, sizeof (EFI_DEFAULT_ID));
       break;
 
     case EFI_IFR_REF_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
-
+      ASSERT (CurrentStatement != NULL);
       CopyMem (&CurrentStatement->RefFormId, &((EFI_IFR_REF *) OpCodeData)->FormId, sizeof (EFI_FORM_ID));
       if (OpCodeLength >= sizeof (EFI_IFR_REF2)) {
         CopyMem (&CurrentStatement->RefQuestionId, &((EFI_IFR_REF2 *) OpCodeData)->QuestionId, sizeof (EFI_QUESTION_ID));
@@ -1250,7 +1248,8 @@ ParseOpCodes (
     case EFI_IFR_ONE_OF_OP:
     case EFI_IFR_NUMERIC_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
-
+      ASSERT(CurrentStatement != NULL);
+      
       CurrentStatement->Flags = ((EFI_IFR_ONE_OF *) OpCodeData)->Flags;
       Value = &CurrentStatement->HiiValue;
 
@@ -1300,7 +1299,8 @@ ParseOpCodes (
 
     case EFI_IFR_ORDERED_LIST_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
-
+      ASSERT(CurrentStatement != NULL);
+      
       CurrentStatement->Flags = ((EFI_IFR_ORDERED_LIST *) OpCodeData)->Flags;
       CurrentStatement->MaxContainers = ((EFI_IFR_ORDERED_LIST *) OpCodeData)->MaxContainers;
       CurrentStatement->StorageWidth = (UINT16)(CurrentStatement->MaxContainers * sizeof (UINT8));
@@ -1321,7 +1321,8 @@ ParseOpCodes (
 
     case EFI_IFR_CHECKBOX_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
-
+      ASSERT(CurrentStatement != NULL);
+      
       CurrentStatement->Flags = ((EFI_IFR_CHECKBOX *) OpCodeData)->Flags;
       CurrentStatement->StorageWidth = sizeof (BOOLEAN);
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_BOOLEAN;
@@ -1332,7 +1333,7 @@ ParseOpCodes (
 
     case EFI_IFR_STRING_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
-
+      ASSERT (CurrentStatement != NULL);
       //
       // MinSize is the minimum number of characters that can be accepted for this opcode,
       // MaxSize is the maximum number of characters that can be accepted for this opcode.
@@ -1351,7 +1352,7 @@ ParseOpCodes (
 
     case EFI_IFR_PASSWORD_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
-
+      ASSERT (CurrentStatement != NULL);
       //
       // MinSize is the minimum number of characters that can be accepted for this opcode,
       // MaxSize is the maximum number of characters that can be accepted for this opcode.
@@ -1369,7 +1370,8 @@ ParseOpCodes (
 
     case EFI_IFR_DATE_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
-
+      ASSERT(CurrentStatement != NULL);
+      
       CurrentStatement->Flags = ((EFI_IFR_DATE *) OpCodeData)->Flags;
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_DATE;
 
@@ -1388,7 +1390,8 @@ ParseOpCodes (
 
     case EFI_IFR_TIME_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
-
+      ASSERT(CurrentStatement != NULL);
+      
       CurrentStatement->Flags = ((EFI_IFR_TIME *) OpCodeData)->Flags;
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_TIME;
 
@@ -1521,8 +1524,16 @@ ParseOpCodes (
       CurrentExpression->Type = EFI_HII_EXPRESSION_DISABLE_IF;
       InitializeListHead (&CurrentExpression->OpCodeListHead);
 
-      InScopeDisable = TRUE;
-      OpCodeDisabled = FALSE;
+      if (CurrentForm != NULL) {
+        //
+        // This is DisableIf for Question, enqueue it to Form expression list
+        //
+        InsertTailList (&CurrentForm->ExpressionListHead, &CurrentExpression->Link);
+      }
+
+      mDisableExpression = CurrentExpression;
+      mInScopeDisable    = TRUE;
+      OpCodeDisabled     = FALSE;
 
       //
       // Take a look at next OpCode to see whether current expression consists
@@ -1631,9 +1642,12 @@ ParseOpCodes (
           break;
 
         case EFI_IFR_EXTEND_OP_BANNER:
+          //
+          // By SubClass to get Banner Data from Front Page
+          //
           if (FormSet->SubClass == EFI_FRONT_PAGE_SUBCLASS) {
             CopyMem (
-              &BannerData->Banner[((EFI_IFR_GUID_BANNER *) OpCodeData)->LineNumber][
+              &gBannerData->Banner[((EFI_IFR_GUID_BANNER *) OpCodeData)->LineNumber][
               ((EFI_IFR_GUID_BANNER *) OpCodeData)->Alignment],
               &((EFI_IFR_GUID_BANNER *) OpCodeData)->Title,
               sizeof (EFI_STRING_ID)
@@ -1713,7 +1727,7 @@ ParseOpCodes (
         break;
 
       case EFI_IFR_DISABLE_IF_OP:
-        InScopeDisable = FALSE;
+        mInScopeDisable = FALSE;
         OpCodeDisabled = FALSE;
         break;
 
@@ -1728,9 +1742,9 @@ ParseOpCodes (
 
       default:
         if (IsExpressionOpCode (ScopeOpCode)) {
-          if (InScopeDisable) {
+          if (mInScopeDisable && CurrentForm == NULL) {
             //
-            // Evaluate DisableIf expression
+            // This is DisableIf expression for Form, it should be a constant expression
             //
             Status = EvaluateExpression (FormSet, CurrentForm, CurrentExpression);
             if (EFI_ERROR (Status)) {

@@ -2,7 +2,7 @@
   Provides services to load and relocate a PE/COFF image.
 
   The PE/COFF Loader Library abstracts the implementation of a PE/COFF loader for
-  IA-32, x86, IPF, and EBC processor types. The library functions are memory based 
+  IA-32, x86, IPF, and EBC processor types. The library functions are memory-based 
   and can be ported easily to any environment.
   
 Copyright (c) 2006 - 2008, Intel Corporation                                                         
@@ -185,6 +185,12 @@ typedef struct {
   /// Initialization Core Interface Specification.
   ///
   BOOLEAN                           IsTeImage;
+  ///
+  /// Set by PeCoffLoaderLoadImage() to the HII resource offset
+  /// if the image contains a custom PE/COFF resource with the type 'HII';
+  /// otherwise, the entry remains to be 0.
+  ///
+  PHYSICAL_ADDRESS                  HiiResourceData;
 } PE_COFF_LOADER_IMAGE_CONTEXT;
 
 /**
@@ -224,12 +230,16 @@ PeCoffLoaderGetImageInfo (
   of ImageContext as the relocation base address.  The caller must allocate the relocation
   fixup log buffer and fill in the FixupData field of ImageContext prior to calling this function.
   
-  The ImageRead, Handle, PeCoffHeaderOffset,  IsTeImage, Machine, ImageType, ImageAddress, 
+  The ImageRead, Handle, PeCoffHeaderOffset, IsTeImage, Machine, ImageType, ImageAddress, 
   ImageSize, DestinationAddress, RelocationsStripped, SectionAlignment, SizeOfHeaders, 
   DebugDirectoryEntryRva, EntryPoint, FixupDataSize, CodeView, PdbPointer, and FixupData of 
   the ImageContext structure must be valid prior to invoking this service.
     
   If ImageContext is NULL, then ASSERT().
+
+  Note that if the platform does not maintain coherency between the instruction cache(s) and the data
+  cache(s) in hardware, then the caller is responsible for performing cache maintenance operations
+  prior to transferring control to a PE/COFF image that is loaded using this library.
 
   @param  ImageContext        Pointer to the image context structure that describes the PE/COFF
                               image that is being relocated.
@@ -254,12 +264,16 @@ PeCoffLoaderRelocateImage (
   Loads the PE/COFF image accessed through the ImageRead service of ImageContext into the buffer
   specified by the ImageAddress and ImageSize fields of ImageContext.  The caller must allocate
   the load buffer and fill in the ImageAddress and ImageSize fields prior to calling this function.
-  The EntryPoint, FixupDataSize, CodeView, and PdbPointer fields of ImageContext are computed.
-  The ImageRead, Handle, PeCoffHeaderOffset,  IsTeImage,  Machine, ImageType, ImageAddress, ImageSize, 
+  The EntryPoint, FixupDataSize, CodeView, PdbPointer and HiiResourceData fields of ImageContext are computed.
+  The ImageRead, Handle, PeCoffHeaderOffset, IsTeImage, Machine, ImageType, ImageAddress, ImageSize, 
   DestinationAddress, RelocationsStripped, SectionAlignment, SizeOfHeaders, and DebugDirectoryEntryRva 
   fields of the ImageContext structure must be valid prior to invoking this service.
   
   If ImageContext is NULL, then ASSERT().
+
+  Note that if the platform does not maintain coherency between the instruction cache(s) and the data
+  cache(s) in hardware, then the caller is responsible for performing cache maintenance operations
+  prior to transferring control to a PE/COFF image that is loaded using this library.
 
   @param  ImageContext              Pointer to the image context structure that describes the PE/COFF
                                     image that is being loaded.
@@ -288,7 +302,7 @@ PeCoffLoaderLoadImage (
   This is the default implementation of a PE_COFF_LOADER_READ_FILE function 
   that assumes FileHandle pointer to the beginning of a PE/COFF image.   
   This function reads contents of the PE/COFF image that starts at the system memory 
-  address specified by FileHandle.  The read operation copies ReadSize bytes from the 
+  address specified by FileHandle. The read operation copies ReadSize bytes from the 
   PE/COFF image starting at byte offset FileOffset into the buffer specified by Buffer.  
   The size of the buffer actually read is returned in ReadSize.
   
@@ -321,9 +335,13 @@ PeCoffLoaderImageReadFromMemory (
   
   This function reapplies relocation fixups to the PE/COFF image specified by ImageBase 
   and ImageSize so the image will execute correctly when the PE/COFF image is mapped 
-  to the address specified by VirtualImageBase.  RelocationData must be identical 
+  to the address specified by VirtualImageBase. RelocationData must be identical 
   to the FiuxupData buffer from the PE_COFF_LOADER_IMAGE_CONTEXT structure 
   after this PE/COFF image was relocated with PeCoffLoaderRelocateImage().
+
+  Note that if the platform does not maintain coherency between the instruction cache(s) and the data
+  cache(s) in hardware, then the caller is responsible for performing cache maintenance operations
+  prior to transferring control to a PE/COFF image that is loaded using this library.
 
   @param  ImageBase          Base address of a PE/COFF image that has been loaded 
                              and relocated into system memory.

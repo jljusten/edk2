@@ -29,8 +29,8 @@ EFI_HII_DATABASE_PROTOCOL         *mHiiDatabase;
 EFI_HII_STRING_PROTOCOL           *mHiiString;
 EFI_HII_CONFIG_ROUTING_PROTOCOL   *mHiiConfigRouting;
 
-BANNER_DATA           *BannerData;
-EFI_HII_HANDLE        FrontPageHandle;
+BANNER_DATA           *gBannerData;
+EFI_HII_HANDLE        gFrontPageHandle;
 UINTN                 gClassOfVfr;
 UINTN                 gFunctionKeySetting;
 BOOLEAN               gResetRequired;
@@ -75,6 +75,8 @@ CHAR16            *gMinusString;
 CHAR16            *gAdjustNumber;
 CHAR16            *gSaveChanges;
 CHAR16            *gOptionMismatch;
+
+CHAR16            *mUnknownString = L"!";
 
 CHAR16            gPromptBlockWidth;
 CHAR16            gOptionBlockWidth;
@@ -268,7 +270,7 @@ SendForm (
   InitializeBrowserStrings ();
 
   gFunctionKeySetting = DEFAULT_FUNCTION_KEY_SETTING;
-  gClassOfVfr         = EFI_SETUP_APPLICATION_SUBCLASS;
+  gClassOfVfr         = FORMSET_CLASS_PLATFORM_SETUP;
 
   //
   // Ensure we are in Text mode
@@ -525,7 +527,6 @@ InitializeSetup (
   )
 {
   EFI_STATUS                  Status;
-  EFI_HII_PACKAGE_LIST_HEADER *PackageList;
 
   //
   // Locate required Hii relative protocols
@@ -554,21 +555,19 @@ InitializeSetup (
   //
   // Publish our HII data
   //
-  PackageList = HiiLibPreparePackageList (1, &gSetupBrowserGuid, SetupBrowserStrings);
-  ASSERT (PackageList != NULL);
-  Status = mHiiDatabase->NewPackageList (
-                           mHiiDatabase,
-                           PackageList,
-                           ImageHandle,
-                           &gHiiHandle
-                           );
-  ASSERT_EFI_ERROR (Status);
+  gHiiHandle = HiiAddPackages (
+                 &gSetupBrowserGuid,
+                 ImageHandle,
+                 SetupBrowserStrings,
+                 NULL
+                 );
+  ASSERT (gHiiHandle != NULL);
 
   //
   // Initialize Driver private data
   //
-  BannerData = AllocateZeroPool (sizeof (BANNER_DATA));
-  ASSERT (BannerData != NULL);
+  gBannerData = AllocateZeroPool (sizeof (BANNER_DATA));
+  ASSERT (gBannerData != NULL);
 
   //
   // Install FormBrowser2 protocol
@@ -603,11 +602,9 @@ NewString (
   )
 {
   EFI_STRING_ID  StringId;
-  EFI_STATUS     Status;
 
-  StringId = 0;
-  Status = HiiLibNewString (HiiHandle, &StringId, String);
-  ASSERT_EFI_ERROR (Status);
+  StringId = HiiSetString (HiiHandle, 0, String, NULL);
+  ASSERT (StringId != 0);
 
   return StringId;
 }
@@ -631,7 +628,8 @@ DeleteString (
   CHAR16  NullChar;
 
   NullChar = CHAR_NULL;
-  return HiiLibSetString (HiiHandle, StringId, &NullChar);
+  HiiSetString (HiiHandle, StringId, &NullChar, NULL);
+  return EFI_SUCCESS;
 }
 
 
@@ -651,29 +649,14 @@ GetToken (
   IN  EFI_HII_HANDLE               HiiHandle
   )
 {
-  EFI_STATUS  Status;
-  CHAR16      *String;
-  UINTN       BufferLength;
+  EFI_STRING  String;
 
-  //
-  // Set default string size assumption at no more than 256 bytes
-  //
-  BufferLength = 0x100;
-  String = AllocateZeroPool (BufferLength);
-  ASSERT (String != NULL);
-
-  Status = HiiLibGetString (HiiHandle, Token, String, &BufferLength);
-
-  if (Status == EFI_BUFFER_TOO_SMALL) {
-    FreePool (String);
-    String = AllocateZeroPool (BufferLength);
+  String = HiiGetString (HiiHandle, Token, NULL);
+  if (String == NULL) {
+    String = AllocateCopyPool (sizeof (mUnknownString), mUnknownString);
     ASSERT (String != NULL);
-
-    Status = HiiLibGetString (HiiHandle, Token, String, &BufferLength);
   }
-  ASSERT_EFI_ERROR (Status);
-
-  return String;
+  return (CHAR16 *) String;
 }
 
 
@@ -1179,7 +1162,7 @@ GetQuestionValue (
             if ((Index & 1) == 0) {
               Dst [Index/2] = DigitUint8;
             } else {
-              Dst [Index/2] = (UINT8) ((Dst [Index/2] << 4) + DigitUint8);
+              Dst [Index/2] = (UINT8) ((DigitUint8 << 4) + Dst [Index/2]);
             }
           }
         }
@@ -1288,7 +1271,7 @@ GetQuestionValue (
           if ((Index & 1) == 0) {
             Dst [Index/2] = DigitUint8;
           } else {
-            Dst [Index/2] = (UINT8) ((Dst [Index/2] << 4) + DigitUint8);
+            Dst [Index/2] = (UINT8) ((DigitUint8 << 4) + Dst [Index/2]);
           }
         }
       }
@@ -1896,21 +1879,16 @@ GetQuestionDefault (
   // For Questions without default
   //
   switch (Question->Operand) {
-  case EFI_IFR_NUMERIC_OP:
-    //
-    // Take minimal value as numeric's default value
-    //
-    HiiValue->Value.u64 = Question->Minimum;
-    break;
-
   case EFI_IFR_ONE_OF_OP:
     //
     // Take first oneof option as oneof's default value
     //
-    Link = GetFirstNode (&Question->OptionListHead);
-    if (!IsNull (&Question->OptionListHead, Link)) {
-      Option = QUESTION_OPTION_FROM_LINK (Link);
-      CopyMem (HiiValue, &Option->Value, sizeof (EFI_HII_VALUE));
+    if (ValueToOption (Question, HiiValue) == NULL) {    
+      Link = GetFirstNode (&Question->OptionListHead);
+      if (!IsNull (&Question->OptionListHead, Link)) {
+        Option = QUESTION_OPTION_FROM_LINK (Link);
+        CopyMem (HiiValue, &Option->Value, sizeof (EFI_HII_VALUE));
+      }
     }
     break;
 
@@ -1970,11 +1948,11 @@ ExtractFormDefault (
     Link = GetNextNode (&Form->StatementListHead, Link);
 
     //
-    // If Question is suppressed, don't reset it to default
+    // If Question is disabled, don't reset it to default
     //
-    if (Question->SuppressExpression != NULL) {
-      Status = EvaluateExpression (FormSet, Form, Question->SuppressExpression);
-      if (!EFI_ERROR (Status) && Question->SuppressExpression->Result.Value.b) {
+    if (Question->DisableExpression != NULL) {
+      Status = EvaluateExpression (FormSet, Form, Question->DisableExpression);
+      if (!EFI_ERROR (Status) && Question->DisableExpression->Result.Value.b) {
         continue;
       }
     }
@@ -2189,6 +2167,10 @@ GetIfrBinaryData (
   BOOLEAN                      ReturnDefault;
   UINT32                       PackageListLength;
   EFI_HII_PACKAGE_HEADER       PackageHeader;
+  UINT8                        Index;
+  UINT8                        NumberOfClassGuid;
+  BOOLEAN                      IsSetupClassGuid;
+  EFI_GUID                     *ClassGuid;
 
   OpCodeData = NULL;
   Package = NULL;
@@ -2244,7 +2226,21 @@ GetIfrBinaryData (
           // Check whether return default FormSet
           //
           if (ReturnDefault) {
-            break;
+            //
+            // Check ClassGuid of formset OpCode
+            //
+            IsSetupClassGuid  = FALSE;
+            NumberOfClassGuid = (UINT8) (((EFI_IFR_FORM_SET *) OpCodeData)->Flags & 0x3);
+            ClassGuid         = (EFI_GUID *) (OpCodeData + sizeof (EFI_IFR_FORM_SET));
+            for (Index = 0; Index < NumberOfClassGuid; Index++) {
+              if (CompareGuid (ClassGuid + Index, &gEfiHiiPlatformSetupFormsetGuid)) {
+                IsSetupClassGuid = TRUE;
+                break;
+              }
+            }
+            if (IsSetupClassGuid) {
+              break;
+            }
           }
 
           //
@@ -2363,9 +2359,10 @@ InitializeFormSet (
     return Status;
   }
 
-  gClassOfVfr = FormSet->SubClass;
-  if (gClassOfVfr == EFI_FRONT_PAGE_SUBCLASS) {
-    FrontPageHandle = FormSet->HiiHandle;
+  gClassOfVfr = FORMSET_CLASS_PLATFORM_SETUP;
+  if (FormSet->SubClass == EFI_FRONT_PAGE_SUBCLASS) {
+    gClassOfVfr = FORMSET_CLASS_FRONT_PAGE;
+    gFrontPageHandle = FormSet->HiiHandle;
   }
 
   //

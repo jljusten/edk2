@@ -11,7 +11,7 @@
     may include support for the Internet Group Management
     Protocol (IGMP).
   
-  Copyright (c) 2006 - 2008, Intel Corporation                                                         
+  Copyright (c) 2006 - 2009, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -312,6 +312,9 @@ EFI_STATUS
   @retval EFI_NO_MAPPING        When using the default address, configuration (DHCP, BOOTP,
                                 RARP, etc.) is not finished yet.
   @retval EFI_INVALID_PARAMETER One or more of the following conditions is TRUE:
+                                This is NULL.
+                                IpConfigData.StationAddress is not a unicast IPv4 address.
+                                IpConfigData.SubnetMask is not a valid IPv4 subnet 
   @retval EFI_UNSUPPORTED       One or more of the following conditions is TRUE:
                                 A configuration protocol (DHCP, BOOTP, RARP, etc.) could
                                 not be located when clients choose to use the default IPv4
@@ -509,7 +512,7 @@ EFI_STATUS
   Abort an asynchronous transmit or receive request.
   
   The Cancel() function is used to abort a pending transmit or receive request.
-  If the token is in the transmit or receive request queues, after calling this
+  If the token is in the transmit or receive request queues, then after calling this
   function, Token->Status will be set to EFI_ABORTED and then Token->Event will
   be signaled. If the token is not in one of the queues, which usually means the
   asynchronous operation has completed, this function will not signal the token

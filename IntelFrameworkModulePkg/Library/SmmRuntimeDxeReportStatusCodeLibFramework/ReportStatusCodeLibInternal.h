@@ -27,11 +27,11 @@
 #include <Library/DevicePathLib.h>
 
 #include <Guid/StatusCodeDataTypeId.h>
+#include <Guid/StatusCodeDataTypeDebug.h>
 #include <Guid/EventGroup.h>
 #include <Protocol/StatusCode.h>
 
-#include <FrameworkModuleBase.h>
-#include <DebugInfo.h>
+extern EFI_REPORT_STATUS_CODE  mReportStatusCode;
 
 /**
   Locatet he report status code service.
@@ -129,7 +129,7 @@ InternalReportStatusCodeEx (
   IN UINTN                  ExtendedDataSize
   );
 
-extern EFI_REPORT_STATUS_CODE  mReportStatusCode;
+
 
 #endif // __REPORT_STATUS_CODE_LIB_INTERNAL__H
 

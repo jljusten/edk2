@@ -17,14 +17,14 @@
 //
 // The package level header files this module uses
 //
-#include <FrameworkPei.h>
-#include <FrameworkModulePei.h>
+#include <PiPei.h>
 #include <WinNtPeim.h>
 
 //
 // The protocols, PPI and GUID defintions for this module
 //
 #include <Guid/StatusCodeDataTypeId.h>
+#include <Guid/StatusCodeDataTypeDebug.h>
 #include <Ppi/NtThunk.h>
 //
 // The Library classes this module consumes
@@ -131,7 +131,7 @@ OemHookStatusCodeReport (
   UINT32          ErrorLevel;
   UINT32          LineNumber;
   UINTN           CharCount;
-  VA_LIST         Marker;
+  BASE_LIST       Marker;
 
   Buffer[0] = '\0';
 
@@ -142,7 +142,7 @@ OemHookStatusCodeReport (
     //
     CharCount = AsciiSPrint (
                   Buffer,
-                  EFI_STATUS_CODE_DATA_MAX_SIZE,
+                  sizeof (Buffer),
                   "\n\rASSERT!: %a (%d): %a\n\r",
                   Filename,
                   LineNumber,
@@ -167,9 +167,9 @@ OemHookStatusCodeReport (
     //
     // Print DEBUG() information into output buffer.
     //
-    CharCount = AsciiVSPrint (
+    CharCount = AsciiBSPrint (
                   Buffer,
-                  EFI_STATUS_CODE_DATA_MAX_SIZE,
+                  sizeof (Buffer),
                   Format,
                   Marker
                   );
@@ -179,7 +179,7 @@ OemHookStatusCodeReport (
     //
     CharCount = AsciiSPrint (
                   Buffer,
-                  EFI_STATUS_CODE_DATA_MAX_SIZE,
+                  sizeof (Buffer),
                   "ERROR: C%x:V%x I%x",
                   CodeType,
                   Value,
@@ -193,7 +193,7 @@ OemHookStatusCodeReport (
     if (CallerId != NULL) {
       CharCount += AsciiSPrint (
                      &Buffer[CharCount - 1],
-                     (EFI_STATUS_CODE_DATA_MAX_SIZE - (sizeof (Buffer[0]) * CharCount)),
+                     (sizeof (Buffer) - (sizeof (Buffer[0]) * CharCount)),
                      " %g",
                      CallerId
                      );
@@ -202,7 +202,7 @@ OemHookStatusCodeReport (
     if (Data != NULL) {
       CharCount += AsciiSPrint (
                      &Buffer[CharCount - 1],
-                     (EFI_STATUS_CODE_DATA_MAX_SIZE - (sizeof (Buffer[0]) * CharCount)),
+                     (sizeof (Buffer) - (sizeof (Buffer[0]) * CharCount)),
                      " %p",
                      Data
                      );
@@ -210,13 +210,13 @@ OemHookStatusCodeReport (
 
     CharCount += AsciiSPrint (
                    &Buffer[CharCount - 1],
-                   (EFI_STATUS_CODE_DATA_MAX_SIZE - (sizeof (Buffer[0]) * CharCount)),
+                   (sizeof (Buffer) - (sizeof (Buffer[0]) * CharCount)),
                    "\n\r"
                    );
   } else if ((CodeType & EFI_STATUS_CODE_TYPE_MASK) == EFI_PROGRESS_CODE) {
     CharCount = AsciiSPrint (
                   Buffer,
-                  EFI_STATUS_CODE_DATA_MAX_SIZE,
+                  sizeof (Buffer),
                   "PROGRESS CODE: V%x I%x\n\r",
                   Value,
                   Instance
@@ -224,7 +224,7 @@ OemHookStatusCodeReport (
   } else {
     CharCount = AsciiSPrint (
                   Buffer,
-                  EFI_STATUS_CODE_DATA_MAX_SIZE,
+                  sizeof (Buffer),
                   "Undefined: C%x:V%x I%x\n\r",
                   CodeType,
                   Value,

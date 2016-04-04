@@ -1,7 +1,7 @@
 /** @file
-  Processor or Compiler specific defines and types for Ia32 architecture.
+  Processor or Compiler specific defines and types for IA-32 architecture.
 
-  Copyright (c) 2006 - 2008, Intel Corporation<BR>                                                         
+  Copyright (c) 2006 - 2009, Intel Corporation<BR>                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -295,7 +295,11 @@ typedef INT32   INTN;
 // use the correct C calling convention. All protocol member functions and
 // EFI intrinsics are required to modify their member functions with EFIAPI.
 //
-#if defined(_MSC_EXTENSIONS)
+#ifdef EFIAPI
+  ///
+  /// If EFIAPI is already defined, then we use that definition.
+  ///
+#elif defined(_MSC_EXTENSIONS)
   ///
   /// Microsoft* compiler specific method for EFIAPI calling convension
   /// 
@@ -337,11 +341,16 @@ typedef INT32   INTN;
   #else
     #define ASM_PFX(name) _##name
   #endif 
+  ///
+  /// For GNU assembly code, .global or .globl can declare global symbols.
+  /// Define this macro to unify the usage.
+  ///
+  #define ASM_GLOBAL .globl
 #endif
 
 /**
   Return the pointer to the first instruction of a function given a function pointer.
-  On IA32 CPU architectures, these two pointer values are the same, 
+  On IA-32 CPU architectures, these two pointer values are the same, 
   so the implementation of this macro is very simple.
   
   @param  FunctionPointer   A pointer to a function.

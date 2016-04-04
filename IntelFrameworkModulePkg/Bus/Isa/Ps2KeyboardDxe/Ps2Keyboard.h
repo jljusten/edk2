@@ -35,6 +35,13 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/BaseMemoryLib.h>
 
 //
+// Global Variables
+//
+extern EFI_DRIVER_BINDING_PROTOCOL   gKeyboardControllerDriver;
+extern EFI_COMPONENT_NAME_PROTOCOL   gPs2KeyboardComponentName;
+extern EFI_COMPONENT_NAME2_PROTOCOL  gPs2KeyboardComponentName2;
+
+//
 // Driver Private Data
 //
 #define KEYBOARD_BUFFER_MAX_COUNT         32
@@ -120,14 +127,6 @@ typedef struct {
 #define TABLE_END 0x0
 
 //
-// Global Variables
-//
-extern EFI_DRIVER_BINDING_PROTOCOL   gKeyboardControllerDriver;
-extern EFI_COMPONENT_NAME_PROTOCOL   gPs2KeyboardComponentName;
-extern EFI_COMPONENT_NAME2_PROTOCOL  gPs2KeyboardComponentName2;
-
-
-//
 // Driver entry point
 //
 /**
@@ -180,6 +179,12 @@ InstallPs2KeyboardDriver (
 #define SCANCODE_MENU_BREAK             0xDD
 #define SCANCODE_SYS_REQ_MAKE           0x37
 #define SCANCODE_MAX_MAKE               0x60
+
+//
+// Keyboard Controller Status
+//
+#define KBC_PARE  0x80  // Parity Error
+#define KBC_TIM   0x40  // General Time Out
 
 //
 // Other functions that are used among .c files

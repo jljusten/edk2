@@ -21,7 +21,7 @@
 #
 #------------------------------------------------------------------------------
 
-
+#include <EdkIIGlueBase.h>
 #------------------------------------------------------------------------------
 # UINTN
 # EFIAPI
@@ -29,9 +29,9 @@
 #   UINTN  Value
 #   );
 #------------------------------------------------------------------------------
-.global _AsmWriteDr2;
-.align 16;
-_AsmWriteDr2:
+.global ASM_PFX(AsmWriteDr2)
+.align 16
+ASM_PFX(AsmWriteDr2):
     mov     %rcx, %dr2
     mov     %rcx, %rax
     ret

@@ -659,7 +659,7 @@ ExportFormPackages (
   for (Link = PackageList->FormPkgHdr.ForwardLink; Link != &PackageList->FormPkgHdr; Link = Link->ForwardLink) {
     FormPackage = CR (Link, HII_IFR_PACKAGE_INSTANCE, IfrEntry, HII_IFR_PACKAGE_SIGNATURE);
     PackageLength += FormPackage->FormPkgHdr.Length;
-    if (PackageLength + *ResultSize + UsedSize <= BufferSize) {
+    if ((Buffer != NULL) && (PackageLength + *ResultSize + UsedSize <= BufferSize)) {
       //
       // Invoke registered notification if exists
       //
@@ -3229,8 +3229,7 @@ HiiExportPackageLists (
                  (EFI_HII_PACKAGE_LIST_HEADER *)((UINT8 *) Buffer + UsedSize)
                  );
       ASSERT_EFI_ERROR (Status);
-    }
-    else if (Handle != NULL && Node->Handle == Handle) {
+    } else if (Handle != NULL && Node->Handle == Handle) {
       Status = ExportPackageList (
                  Private,
                  Handle,

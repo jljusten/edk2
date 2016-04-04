@@ -1,7 +1,7 @@
 /** @file
   The file provides services to retrieve font information.
   
-  Copyright (c) 2006 - 2008, Intel Corporation
+  Copyright (c) 2006 - 2009, Intel Corporation
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -90,10 +90,10 @@ typedef struct {
 /**
   Describes font output-related information.
 
-  This structure is used for describing the way in which a string
+  This structure is used for describing the way a string
   should be rendered in a particular font. FontInfo specifies the
-  basic font information and ForegroundColor and BackgroundColor
-  specify the color in which they should be displayed. The flags
+  basic font information, and ForegroundColor and BackgroundColor
+  specify the color in which the characters should be displayed. The flags
   in FontInfoMask describe where the system default should be
   supplied instead of the specified information. The flags also
   describe what options can be used to make a match between the
@@ -194,7 +194,7 @@ typedef struct _EFI_FONT_DISPLAY_INFO {
                           string on the row where it is
                           displayed. Non-printing characters
                           will have the offset ~0. The caller is
-                          responsible to allocate a buffer large
+                          responsible for allocating a buffer large
                           enough so that there is one entry for
                           each character in the string, not
                           including the null-terminator. It is
@@ -231,7 +231,7 @@ EFI_STATUS
 
   This function renders a string as a bitmap or to the screen
   and can clip or wrap the string. The bitmap is either supplied
-  by the caller or else is allocated by the function. The
+  by the caller or allocated by the function. The
   strings are drawn with the font, size and style specified and
   can be drawn transparently or opaquely. The function can also
   return information about each row and each character's
@@ -251,8 +251,7 @@ EFI_STATUS
   EFI_HII_OUT_FLAG_CLIP_CLEAN_Y is set, then it modifies the
   behavior of EFI_HII_OUT_FLAG_CLIP so that if a row's bottom
   most pixel cannot fit, then it will not be drawn at all. This
-  flag requires that EFI_HII_OUT_FLAG_CLIP be set. Draft for
-  Review HII Protocols Version 2.1 November 3, 2006 1285 If
+  flag requires that EFI_HII_OUT_FLAG_CLIP be set. If
   EFI_HII_OUT_FLAG_WRAP is set, then text will be wrapped at the
   right-most line-break opportunity prior to a character whose
   right-most extent would exceed Width. If no line-break
@@ -439,8 +438,6 @@ EFI_STATUS
   @retval EFI_SUCCESS            Matching font returned successfully.
   
   @retval EFI_NOT_FOUND          No matching font was found.
-  
-  @retval EFI_INVALID_PARAMETER  StringInfoIn->FontInfoMask is an invalid combination.
 
   @retval EFI_OUT_OF_RESOURCES   There were insufficient resources to complete the request.
   

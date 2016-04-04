@@ -27,6 +27,13 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 CONST EFI_GUID gZeroGuid  = { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
 
 //
+// Module Global:
+//  Since this driver will only ever produce one instance of the Logging Hub
+//  protocol you are not required to dynamically allocate the PrivateData.
+//
+DATA_HUB_INSTANCE mPrivateData;
+
+//
 // Worker functions private to this file
 //
 DATA_HUB_FILTER_DRIVER  *
@@ -236,19 +243,22 @@ DataHubGetNextRecord (
       // Use the MTC from the Filter Driver.
       //
       FilterMonotonicCount = FilterDriver->GetNextMonotonicCount;
+       
+      //
+      // The GetNextMonotonicCount field remembers the last value from the previous time.
+      // But we already processed this vaule, so we need to find the next one.
+      //
+      *Record = GetNextDataRecord (&Private->DataListHead, ClassFilter, &FilterMonotonicCount);
       if (FilterMonotonicCount != 0) {
-        //
-        // The GetNextMonotonicCount field remembers the last value from the previous time.
-        // But we already processed this vaule, so we need to find the next one.
-        //
-        *Record         = GetNextDataRecord (&Private->DataListHead, ClassFilter, &FilterMonotonicCount);
         *MonotonicCount = FilterMonotonicCount;
-        if (FilterMonotonicCount == 0) {
-          //
-          // If there is no new record to get exit now.
-          //
-          return EFI_NOT_FOUND;
-        }
+      }
+      
+      if ((FilterDriver->GetNextMonotonicCount != 0) && (FilterMonotonicCount == 0)) {
+        //
+        // If there is no new record to get exit now.
+        //
+        *MonotonicCount = 0;
+        return EFI_NOT_FOUND;
       }
     }
   }
@@ -531,12 +541,6 @@ GetNextDataRecord (
 
   return Record;
 }
-//
-// Module Global:
-//  Since this driver will only ever produce one instance of the Logging Hub
-//  protocol you are not required to dynamically allocate the PrivateData.
-//
-DATA_HUB_INSTANCE mPrivateData;
 
 /**
 

@@ -46,6 +46,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 
 [LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  MemoryAllocationLib
   UefiLib
   UefiBootServicesTableLib
   UefiDriverEntryPoint

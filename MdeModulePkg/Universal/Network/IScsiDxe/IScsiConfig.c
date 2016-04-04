@@ -15,6 +15,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "IScsiImpl.h"
 
 EFI_GUID        mVendorGuid              = ISCSI_CONFIG_GUID;
+CHAR16          mVendorStorageName[]     = L"ISCSI_CONFIG_IFR_NVDATA";
 BOOLEAN         mIScsiDeviceListUpdated  = FALSE;
 UINTN           mNumberOfIScsiDevices    = 0;
 ISCSI_FORM_CALLBACK_INFO  *mCallbackInfo = NULL;
@@ -358,9 +359,10 @@ IScsiFormExtractConfig (
   ISCSI_FORM_CALLBACK_INFO         *Private;
   EFI_HII_CONFIG_ROUTING_PROTOCOL  *HiiConfigRouting;
 
-  if (Request == NULL) {
+  if (Request == NULL || Progress == NULL || Results == NULL) {
     return EFI_INVALID_PARAMETER;
   }
+  *Progress = Request;
 
   if (!mIScsiDeviceListUpdated) {
     //
@@ -425,7 +427,7 @@ IScsiFormExtractConfig (
 
   @retval EFI_SUCCESS             The results have been distributed or are
                                   awaiting distribution.  
-  @retval EFI_OUT_OF_MEMORY       Not enough memory to store the
+  @retval EFI_OUT_OF_RESOURCES    Not enough memory to store the
                                   parts of the results that must be
                                   stored awaiting possible future
                                   protocols.
@@ -443,6 +445,20 @@ IScsiFormRouteConfig (
   OUT EFI_STRING                             *Progress
   )
 {
+  if (Configuration == NULL || Progress == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  //
+  // Check routing data in <ConfigHdr>.
+  // Note: if only one Storage is used, then this checking could be skipped.
+  //
+  if (!HiiIsConfigHdrMatch (Configuration, &mVendorGuid, mVendorStorageName)) {
+    *Progress = Configuration;
+    return EFI_NOT_FOUND;
+  }
+
+  *Progress = Configuration + StrLen (Configuration);
   return EFI_SUCCESS;
 }
 
@@ -504,14 +520,14 @@ IScsiFormCallback (
   //
   // Retrive uncommitted data from Browser
   //
-  BufferSize = sizeof (ISCSI_CONFIG_IFR_NVDATA);
-  IfrNvData = AllocateZeroPool (BufferSize);
+  IfrNvData = AllocateZeroPool (sizeof (ISCSI_CONFIG_IFR_NVDATA));
   ASSERT (IfrNvData != NULL);
-  Status = GetBrowserData (NULL, NULL, &BufferSize, (UINT8 *) IfrNvData);
-  if (EFI_ERROR (Status)) {
-    gBS->FreePool (IfrNvData);
-    return Status;
+  if (!HiiGetBrowserData (&mVendorGuid, mVendorStorageName, sizeof (ISCSI_CONFIG_IFR_NVDATA), (UINT8 *) IfrNvData)) {
+    FreePool (IfrNvData);
+    return EFI_NOT_FOUND;
   }
+  
+  Status = EFI_SUCCESS;
 
   switch (QuestionId) {
   case KEY_INITIATOR_NAME:
@@ -716,7 +732,7 @@ IScsiFormCallback (
 
       UnicodeSPrint (PortString, (UINTN) 128, L"Port %s", ConfigFormEntry->MacString);
       DeviceFormTitleToken = (EFI_STRING_ID) STR_ISCSI_DEVICE_FORM_TITLE;
-      HiiLibSetString (Private->RegisteredHandle, DeviceFormTitleToken, PortString);
+      HiiSetString (Private->RegisteredHandle, DeviceFormTitleToken, PortString, NULL);
 
       IScsiConvertDeviceConfigDataToIfrNvData (ConfigFormEntry, IfrNvData);
 
@@ -730,11 +746,10 @@ IScsiFormCallback (
     //
     // Pass changed uncommitted data back to Form Browser
     //
-    BufferSize = sizeof (ISCSI_CONFIG_IFR_NVDATA);
-    Status = SetBrowserData (NULL, NULL, BufferSize, (UINT8 *) IfrNvData, NULL);
+    HiiSetBrowserData (&mVendorGuid, mVendorStorageName, sizeof (ISCSI_CONFIG_IFR_NVDATA), (UINT8 *) IfrNvData, NULL);
   }
 
-  gBS->FreePool (IfrNvData);
+  FreePool (IfrNvData);
   return Status;
 }
 
@@ -761,12 +776,14 @@ IScsiConfigUpdateForm (
   ISCSI_CONFIG_FORM_ENTRY     *ConfigFormEntry;
   BOOLEAN                     EntryExisted;
   EFI_STATUS                  Status;
-  EFI_HII_UPDATE_DATA         UpdateData;
   EFI_SIMPLE_NETWORK_PROTOCOL *Snp;
   CHAR16                      PortString[128];
   UINT16                      FormIndex;
   UINTN                       BufferSize;
-
+  VOID                        *StartOpCodeHandle;
+  VOID                        *EndOpCodeHandle;
+  EFI_IFR_GUID_LABEL          *StartLabel;
+  EFI_IFR_GUID_LABEL          *EndLabel;
 
   ConfigFormEntry = NULL;
   EntryExisted    = FALSE;
@@ -840,13 +857,13 @@ IScsiConfigUpdateForm (
       // Compose the Port string and create a new EFI_STRING_ID.
       //
       UnicodeSPrint (PortString, 128, L"Port %s", ConfigFormEntry->MacString);
-      HiiLibNewString (mCallbackInfo->RegisteredHandle, &ConfigFormEntry->PortTitleToken, PortString);
+      ConfigFormEntry->PortTitleToken = HiiSetString (mCallbackInfo->RegisteredHandle, 0, PortString, NULL);
 
       //
       // Compose the help string of this port and create a new EFI_STRING_ID.
       //
       UnicodeSPrint (PortString, 128, L"Set the iSCSI parameters on port %s", ConfigFormEntry->MacString);
-      HiiLibNewString (mCallbackInfo->RegisteredHandle, &ConfigFormEntry->PortTitleHelpToken, PortString);
+      ConfigFormEntry->PortTitleHelpToken = HiiSetString (mCallbackInfo->RegisteredHandle, 0, PortString, NULL);
 
       InsertTailList (&mIScsiConfigFormList, &ConfigFormEntry->Link);
       mNumberOfIScsiDevices++;
@@ -861,36 +878,56 @@ IScsiConfigUpdateForm (
   //
   // Allocate space for creation of Buffer
   //
-  UpdateData.BufferSize = 0x1000;
-  UpdateData.Data = AllocateZeroPool (0x1000);
-  UpdateData.Offset = 0;
+
+  //
+  // Init OpCode Handle
+  //
+  StartOpCodeHandle = HiiAllocateOpCodeHandle ();
+  ASSERT (StartOpCodeHandle != NULL);
+
+  EndOpCodeHandle = HiiAllocateOpCodeHandle ();
+  ASSERT (EndOpCodeHandle != NULL);
+
+  //
+  // Create Hii Extend Label OpCode as the start opcode
+  //
+  StartLabel = (EFI_IFR_GUID_LABEL *) HiiCreateGuidOpCode (StartOpCodeHandle, &gEfiIfrTianoGuid, NULL, sizeof (EFI_IFR_GUID_LABEL));
+  StartLabel->ExtendOpCode = EFI_IFR_EXTEND_OP_LABEL;
+  StartLabel->Number       = DEVICE_ENTRY_LABEL;
+
+  //
+  // Create Hii Extend Label OpCode as the end opcode
+  //
+  EndLabel = (EFI_IFR_GUID_LABEL *) HiiCreateGuidOpCode (EndOpCodeHandle, &gEfiIfrTianoGuid, NULL, sizeof (EFI_IFR_GUID_LABEL));
+  EndLabel->ExtendOpCode = EFI_IFR_EXTEND_OP_LABEL;
+  EndLabel->Number       = LABEL_END;
 
   FormIndex = 0;
   NET_LIST_FOR_EACH (Entry, &mIScsiConfigFormList) {
     ConfigFormEntry = NET_LIST_USER_STRUCT (Entry, ISCSI_CONFIG_FORM_ENTRY, Link);
 
-    CreateGotoOpCode (
-      FORMID_DEVICE_FORM,
-      ConfigFormEntry->PortTitleToken,
-      ConfigFormEntry->PortTitleHelpToken,
-      EFI_IFR_FLAG_CALLBACK,
-      (UINT16)(KEY_DEVICE_ENTRY_BASE + FormIndex),
-      &UpdateData
+    HiiCreateGotoOpCode (
+      StartOpCodeHandle,                            // Container for dynamic created opcodes
+      FORMID_DEVICE_FORM,                           // Target Form ID
+      ConfigFormEntry->PortTitleToken,              // Prompt text
+      ConfigFormEntry->PortTitleHelpToken,          // Help text
+      EFI_IFR_FLAG_CALLBACK,                        // Question flag
+      (UINT16)(KEY_DEVICE_ENTRY_BASE + FormIndex)   // Question ID
       );
 
     FormIndex++;
   }
 
-  IfrLibUpdateForm (
+  HiiUpdateForm (
     mCallbackInfo->RegisteredHandle,
     &mVendorGuid,
     FORMID_MAIN_FORM,
-    DEVICE_ENTRY_LABEL,
-    FALSE,
-    &UpdateData
+    StartOpCodeHandle, // Label DEVICE_ENTRY_LABEL
+    EndOpCodeHandle    // LABEL_END
     );
 
-  gBS->FreePool (UpdateData.Data);
+  HiiFreeOpCodeHandle (StartOpCodeHandle);
+  HiiFreeOpCodeHandle (EndOpCodeHandle);
 
   return EFI_SUCCESS;
 }
@@ -911,7 +948,6 @@ IScsiConfigFormInit (
 {
   EFI_STATUS                  Status;
   EFI_HII_DATABASE_PROTOCOL   *HiiDatabase;
-  EFI_HII_PACKAGE_LIST_HEADER *PackageList;
   ISCSI_FORM_CALLBACK_INFO    *CallbackInfo;
 
   Status = gBS->LocateProtocol (&gEfiHiiDatabaseProtocolGuid, NULL, (VOID **)&HiiDatabase);
@@ -954,19 +990,16 @@ IScsiConfigFormInit (
   //
   // Publish our HII data
   //
-  PackageList = HiiLibPreparePackageList (2, &mVendorGuid, IScsiDxeStrings, IScsiConfigDxeBin);
-  ASSERT (PackageList != NULL);
-  
-  Status = HiiDatabase->NewPackageList (
-                           HiiDatabase,
-                           PackageList,
-                           CallbackInfo->DriverHandle,
-                           &CallbackInfo->RegisteredHandle
-                           );
-  FreePool (PackageList);
-  if (EFI_ERROR (Status)) {
+  CallbackInfo->RegisteredHandle = HiiAddPackages (
+                                     &mVendorGuid,
+                                     CallbackInfo->DriverHandle,
+                                     IScsiDxeStrings,
+                                     IScsiConfigDxeBin,
+                                     NULL
+                                     );
+  if (CallbackInfo->RegisteredHandle == NULL) {
     FreePool(CallbackInfo);
-    return Status;
+    return EFI_OUT_OF_RESOURCES;
   }
 
   mCallbackInfo = CallbackInfo;

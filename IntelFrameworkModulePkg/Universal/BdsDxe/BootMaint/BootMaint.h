@@ -63,7 +63,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 extern EFI_GUID mBootMaintGuid;
 extern EFI_GUID mFileExplorerGuid;
-
+extern CHAR16   mFileExplorerStorageName[];
+extern CHAR16   mBootMaintStorageName[];
 //
 // These are the VFR compiler generated data representing our VFR data.
 //
@@ -1192,19 +1193,6 @@ EfiLibFileInfo (
   );
 
 /**
-  This function converts an input device structure to a Unicode string.
-
-  @param DevPath                  A pointer to the device path structure.
-
-  @return A new allocated Unicode string that represents the device path.
-
-**/
-CHAR16 *
-DevicePathToStr (
-  EFI_DEVICE_PATH_PROTOCOL     *DevPath
-  );
-
-/**
   Find the first instance of this Protocol in the system and return it's interface.
 
   @param ProtocolGuid    Provides the protocol to search for
@@ -1236,26 +1224,6 @@ EfiReallocatePool (
   IN VOID                 *OldPool,
   IN UINTN                OldSize,
   IN UINTN                NewSize
-  );
-
-/**
-  Read the EFI variable (VendorGuid/Name) and return a dynamically allocated
-  buffer, and the size of the buffer. If failure return NULL.
-
-  @param  Name                  String part of EFI variable name
-  @param  VendorGuid            GUID part of EFI variable name
-  @param  VarSize               Returns the size of the EFI variable that was read
-
-  @return Dynamically allocated memory that contains a copy of the EFI variable.
-  @return Caller is responsible freeing the buffer.
-  @retval NULL                  Variable was not read
-
-**/
-VOID *
-BdsLibGetVariableAndSize (
-  IN CHAR16               *Name,
-  IN EFI_GUID             *VendorGuid,
-  OUT UINTN               *VarSize
   );
 
 /**
@@ -1598,7 +1566,6 @@ extern COM_ATTR                   DataBitsList[4];
 extern COM_ATTR                   ParityList[5];
 extern COM_ATTR                   StopBitsList[3];
 extern EFI_GUID                   TerminalTypeGuid[4];
-extern EFI_HII_UPDATE_DATA        gUpdateData;
 extern STRING_DEPOSITORY          *FileOptionStrDepository;
 extern STRING_DEPOSITORY          *ConsoleOptionStrDepository;
 extern STRING_DEPOSITORY          *BootOptionStrDepository;
@@ -1608,5 +1575,13 @@ extern STRING_DEPOSITORY          *DriverOptionHelpStrDepository;
 extern STRING_DEPOSITORY          *TerminalStrDepository;
 extern EFI_DEVICE_PATH_PROTOCOL   EndDevicePath[];
 extern EFI_GUID                   EfiLegacyDevOrderGuid;
+
+//
+// Shared IFR form update data
+//
+extern VOID                        *mStartOpCodeHandle;
+extern VOID                        *mEndOpCodeHandle;
+extern EFI_IFR_GUID_LABEL          *mStartLabel;
+extern EFI_IFR_GUID_LABEL          *mEndLabel;
 
 #endif

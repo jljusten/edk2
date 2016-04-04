@@ -20,8 +20,8 @@
 # Notes:
 #
 #------------------------------------------------------------------------------
-
-.globl _InternalMemZeroMem
+#include <EdkIIGlueBase.h>
+.globl ASM_PFX(InternalMemZeroMem)
 
 #------------------------------------------------------------------------------
 #  VOID *
@@ -30,7 +30,7 @@
 #    IN UINTN  Count
 #    );
 #------------------------------------------------------------------------------
-_InternalMemZeroMem:
+ASM_PFX(InternalMemZeroMem):
     push    %edi
     xorl    %eax,%eax
     movl    8(%esp),%edi

@@ -21,7 +21,7 @@
 #
 #------------------------------------------------------------------------------
 
-
+#include <EdkIIGlueBase.h>
 #------------------------------------------------------------------------------
 # UINT64
 # EFIAPI
@@ -30,9 +30,9 @@
 #   IN      UINTN                     Ecx
 #   );
 #------------------------------------------------------------------------------
-.global _AsmMwait;
-.align 16;
-_AsmMwait:
+.global ASM_PFX(AsmMwait)
+.align 16
+ASM_PFX(AsmMwait):
     mov    %ecx,%eax
     mov    %edx,%ecx
     mwait  %rax,%rcx

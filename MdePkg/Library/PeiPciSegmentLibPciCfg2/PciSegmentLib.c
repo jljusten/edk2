@@ -1,7 +1,7 @@
 /** @file
   PCI Segment Library implementation using PCI CFG2 PPI.
 
-  Copyright (c) 2007 - 2008, Intel Corporation All rights
+  Copyright (c) 2007 - 2009, Intel Corporation All rights
   reserved. This program and the accompanying materials are
   licensed and made available under the terms and conditions of
   the BSD License which accompanies this distribution.  The full
@@ -25,14 +25,14 @@
 
 /**
   Assert the validity of a PCI Segment address.
-  A valid PCI Segment address should not contain 1's in bits 31:28
+  A valid PCI Segment address should not contain 1's in bits 28..31 and 48..63
 
   @param  A The address to validate.
   @param  M Additional bits to assert to be zero.
 
 **/
 #define ASSERT_INVALID_PCI_SEGMENT_ADDRESS(A,M) \
-  ASSERT (((A) & (0xf0000000 | (M))) == 0)
+  ASSERT (((A) & (0xffff0000f0000000ULL | (M))) == 0)
 
 /**
   Translate PCI Lib address into format of PCI CFG2 PPI.
@@ -165,7 +165,7 @@ PeiPciSegmentLibPciCfg2WriteWorker (
   Register a PCI device so PCI configuration registers may be accessed after 
   SetVirtualAddressMap().
   
-  If Address > 0x0FFFFFFF, then ASSERT().
+  If any reserved bits in Address are set, then ASSERT().
 
   @param  Address Address that encodes the PCI Bus, Device, Function and
                   Register.
@@ -185,6 +185,7 @@ PciSegmentRegisterForRuntimeAccess (
   IN UINTN  Address
   )
 {
+  ASSERT_INVALID_PCI_SEGMENT_ADDRESS (Address, 0);
   return RETURN_UNSUPPORTED;
 }
 
@@ -218,7 +219,7 @@ PciSegmentRead8 (
   Writes the 8-bit PCI configuration register specified by Address with the value specified by Value.
   Value is returned.  This function must guarantee that all PCI read and write operations are serialized.
   
-  If Address > 0x0FFFFFFF, then ASSERT().
+  If any reserved bits in Address are set, then ASSERT().
 
   @param  Address     Address that encodes the PCI Segment, Bus, Device, Function, and Register.
   @param  Value       The value to write.
@@ -1208,7 +1209,7 @@ PciSegmentBitFieldAndThenOr32 (
   and 16-bit PCI configuration read cycles may be used at the beginning and the
   end of the range.
 
-  If StartAddress > 0x0FFFFFFF, then ASSERT().
+  If any reserved bits in StartAddress are set, then ASSERT().
   If ((StartAddress & 0xFFF) + Size) > 0x1000, then ASSERT().
   If Size > 0 and Buffer is NULL, then ASSERT().
 
@@ -1258,7 +1259,7 @@ PciSegmentReadBuffer (
     //
     // Read a word if StartAddress is word aligned
     //
-    *(volatile UINT16 *)Buffer = PciSegmentRead16 (StartAddress);
+    WriteUnaligned16 (Buffer, PciSegmentRead16 (StartAddress));
     StartAddress += sizeof (UINT16);
     Size -= sizeof (UINT16);
     Buffer = (UINT16*)Buffer + 1;
@@ -1268,7 +1269,7 @@ PciSegmentReadBuffer (
     //
     // Read as many double words as possible
     //
-    *(volatile UINT32 *)Buffer = PciSegmentRead32 (StartAddress);
+    WriteUnaligned32 (Buffer, PciSegmentRead32 (StartAddress));
     StartAddress += sizeof (UINT32);
     Size -= sizeof (UINT32);
     Buffer = (UINT32*)Buffer + 1;
@@ -1278,7 +1279,7 @@ PciSegmentReadBuffer (
     //
     // Read the last remaining word if exist
     //
-    *(volatile UINT16 *)Buffer = PciSegmentRead16 (StartAddress);
+    WriteUnaligned16 (Buffer, PciSegmentRead16 (StartAddress));
     StartAddress += sizeof (UINT16);
     Size -= sizeof (UINT16);
     Buffer = (UINT16*)Buffer + 1;
@@ -1307,7 +1308,7 @@ PciSegmentReadBuffer (
   8-bit and 16-bit PCI configuration write cycles may be used at the beginning
   and the end of the range.
 
-  If StartAddress > 0x0FFFFFFF, then ASSERT().
+  If any reserved bits in StartAddress are set, then ASSERT().
   If ((StartAddress & 0xFFF) + Size) > 0x1000, then ASSERT().
   If Size > 0 and Buffer is NULL, then ASSERT().
 
@@ -1357,7 +1358,7 @@ PciSegmentWriteBuffer (
     //
     // Write a word if StartAddress is word aligned
     //
-    PciSegmentWrite16 (StartAddress, *(UINT16*)Buffer);
+    PciSegmentWrite16 (StartAddress, ReadUnaligned16 (Buffer));
     StartAddress += sizeof (UINT16);
     Size -= sizeof (UINT16);
     Buffer = (UINT16*)Buffer + 1;
@@ -1367,7 +1368,7 @@ PciSegmentWriteBuffer (
     //
     // Write as many double words as possible
     //
-    PciSegmentWrite32 (StartAddress, *(UINT32*)Buffer);
+    PciSegmentWrite32 (StartAddress, ReadUnaligned32 (Buffer));
     StartAddress += sizeof (UINT32);
     Size -= sizeof (UINT32);
     Buffer = (UINT32*)Buffer + 1;
@@ -1377,7 +1378,7 @@ PciSegmentWriteBuffer (
     //
     // Write the last remaining word if exist
     //
-    PciSegmentWrite16 (StartAddress, *(UINT16*)Buffer);
+    PciSegmentWrite16 (StartAddress, ReadUnaligned16 (Buffer));
     StartAddress += sizeof (UINT16);
     Size -= sizeof (UINT16);
     Buffer = (UINT16*)Buffer + 1;

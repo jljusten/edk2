@@ -129,7 +129,8 @@ BootManagerCallback (
   Registers HII packages for the Boot Manger to HII Database.
   It also registers the browser call back function.
 
-  @return Status of gBS->InstallMultipleProtocolInterfaces() and gHiiDatabase->NewPackageList()
+  @retval  EFI_SUCCESS           HII packages for the Boot Manager were registered successfully.
+  @retval  EFI_OUT_OF_RESOURCES  HII packages for the Boot Manager failed to be registered.
 
 **/
 EFI_STATUS
@@ -138,7 +139,6 @@ InitializeBootManager (
   )
 {
   EFI_STATUS                  Status;
-  EFI_HII_PACKAGE_LIST_HEADER *PackageList;
 
   //
   // Install Device Path Protocol and Config Access protocol to driver handle
@@ -156,17 +156,18 @@ InitializeBootManager (
   //
   // Publish our HII data
   //
-  PackageList = HiiLibPreparePackageList (2, &mBootManagerGuid, BootManagerVfrBin, BdsDxeStrings);
-  ASSERT (PackageList != NULL);
-
-  Status = gHiiDatabase->NewPackageList (
-                           gHiiDatabase,
-                           PackageList,
-                           gBootManagerPrivate.DriverHandle,
-                           &gBootManagerPrivate.HiiHandle
-                           );
-  FreePool (PackageList);
-
+  gBootManagerPrivate.HiiHandle = HiiAddPackages (
+                                    &mBootManagerGuid,
+                                    gBootManagerPrivate.DriverHandle,
+                                    BootManagerVfrBin,
+                                    BdsDxeStrings,
+                                    NULL
+                                    );
+  if (gBootManagerPrivate.HiiHandle == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+  } else {
+    Status = EFI_SUCCESS;
+  }
   return Status;
 }
 
@@ -185,7 +186,6 @@ CallBootManager (
   EFI_STATUS                  Status;
   BDS_COMMON_OPTION           *Option;
   LIST_ENTRY                  *Link;
-  EFI_HII_UPDATE_DATA         UpdateData;
   CHAR16                      *ExitData;
   UINTN                       ExitDataSize;
   EFI_STRING_ID               Token;
@@ -197,6 +197,10 @@ CallBootManager (
   EFI_HII_HANDLE              HiiHandle;
   EFI_BROWSER_ACTION_REQUEST  ActionRequest;
   UINTN                       TempSize;
+  VOID                        *StartOpCodeHandle;
+  VOID                        *EndOpCodeHandle;
+  EFI_IFR_GUID_LABEL          *StartLabel;
+  EFI_IFR_GUID_LABEL          *EndLabel;
 
   gOption = NULL;
   InitializeListHead (&BdsBootOptionList);
@@ -222,10 +226,25 @@ CallBootManager (
   //
   // Allocate space for creation of UpdateData Buffer
   //
-  UpdateData.BufferSize = 0x1000;
-  UpdateData.Offset = 0;
-  UpdateData.Data = AllocateZeroPool (0x1000);
-  ASSERT (UpdateData.Data != NULL);
+  StartOpCodeHandle = HiiAllocateOpCodeHandle ();
+  ASSERT (StartOpCodeHandle != NULL);
+
+  EndOpCodeHandle = HiiAllocateOpCodeHandle ();
+  ASSERT (EndOpCodeHandle != NULL);
+
+  //
+  // Create Hii Extend Label OpCode as the start opcode
+  //
+  StartLabel = (EFI_IFR_GUID_LABEL *) HiiCreateGuidOpCode (StartOpCodeHandle, &gEfiIfrTianoGuid, NULL, sizeof (EFI_IFR_GUID_LABEL));
+  StartLabel->ExtendOpCode = EFI_IFR_EXTEND_OP_LABEL;
+  StartLabel->Number       = LABEL_BOOT_OPTION;
+
+  //
+  // Create Hii Extend Label OpCode as the end opcode
+  //
+  EndLabel = (EFI_IFR_GUID_LABEL *) HiiCreateGuidOpCode (EndOpCodeHandle, &gEfiIfrTianoGuid, NULL, sizeof (EFI_IFR_GUID_LABEL));
+  EndLabel->ExtendOpCode = EFI_IFR_EXTEND_OP_LABEL;
+  EndLabel->Number       = LABEL_BOOT_OPTION_END;
 
   mKeyInput = 0;
 
@@ -244,7 +263,7 @@ CallBootManager (
       continue;
     }
 
-    HiiLibNewString (HiiHandle, &Token, Option->Description);
+    Token = HiiSetString (HiiHandle, 0, Option->Description, NULL);
 
     TempStr = DevicePathToStr (Option->DevicePath);
     TempSize = StrSize (TempStr);
@@ -253,34 +272,35 @@ CallBootManager (
     StrCat (HelpString, L"Device Path : ");
     StrCat (HelpString, TempStr);
 
-    HiiLibNewString (HiiHandle, &HelpToken, HelpString);
+    HelpToken = HiiSetString (HiiHandle, 0, HelpString, NULL);
 
-    CreateActionOpCode (
+    HiiCreateActionOpCode (
+      StartOpCodeHandle,
       mKeyInput,
       Token,
       HelpToken,
       EFI_IFR_FLAG_CALLBACK,
-      0,
-      &UpdateData
+      0
       );
   }
 
-  IfrLibUpdateForm (
+  HiiUpdateForm (
     HiiHandle,
     &mBootManagerGuid,
     BOOT_MANAGER_FORM_ID,
-    LABEL_BOOT_OPTION,
-    FALSE,
-    &UpdateData
+    StartOpCodeHandle,
+    EndOpCodeHandle
     );
-  FreePool (UpdateData.Data);
+
+  HiiFreeOpCodeHandle (StartOpCodeHandle);
+  HiiFreeOpCodeHandle (EndOpCodeHandle);
 
   ActionRequest = EFI_BROWSER_ACTION_REQUEST_NONE;
   Status = gFormBrowser2->SendForm (
                            gFormBrowser2,
                            &HiiHandle,
                            1,
-                           NULL,
+                           &mBootManagerGuid,
                            0,
                            NULL,
                            &ActionRequest

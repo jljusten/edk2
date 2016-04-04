@@ -31,6 +31,13 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/ReportStatusCodeLib.h>
 
 //
+// Global Variables
+//
+extern EFI_DRIVER_BINDING_PROTOCOL   gPS2MouseAbsolutePointerDriver;
+extern EFI_COMPONENT_NAME_PROTOCOL   gPs2MouseAbsolutePointerComponentName;
+extern EFI_COMPONENT_NAME2_PROTOCOL  gPs2MouseAbsolutePointerComponentName2;
+
+//
 // PS/2 mouse sample rate
 //
 typedef enum {
@@ -96,13 +103,6 @@ typedef struct {
 #define PS2_MOUSE_ABSOLUTE_POINTER_DEV_FROM_THIS(a)  CR (a, PS2_MOUSE_ABSOLUTE_POINTER_DEV, AbsolutePointerProtocol, PS2_MOUSE_ABSOLUTE_POINTER_DEV_SIGNATURE)
 
 //
-// Global Variables
-//
-extern EFI_DRIVER_BINDING_PROTOCOL   gPS2MouseAbsolutePointerDriver;
-extern EFI_COMPONENT_NAME_PROTOCOL   gPs2MouseAbsolutePointerComponentName;
-extern EFI_COMPONENT_NAME2_PROTOCOL  gPs2MouseAbsolutePointerComponentName2;
-
-//
 // Function prototypes
 //
 EFI_STATUS
@@ -153,7 +153,7 @@ PS2MouseAbsolutePointerDriverStop (
                                 languages specified in SupportedLanguages. The
                                 number of languages supported by a driver is up
                                 to the driver writer. Language is specified
-                                in RFC 3066 or ISO 639-2 language code format.
+                                in RFC 4646 or ISO 639-2 language code format.
 
   @param  DriverName[out]       A pointer to the Unicode string to return.
                                 This Unicode string is the name of the
@@ -218,7 +218,7 @@ Ps2MouseAbsolutePointerComponentNameGetDriverName (
                                 languages specified in SupportedLanguages. The
                                 number of languages supported by a driver is up
                                 to the driver writer. Language is specified in
-                                RFC 3066 or ISO 639-2 language code format.
+                                RFC 4646 or ISO 639-2 language code format.
 
   @param  ControllerName[out]   A pointer to the Unicode string to return.
                                 This Unicode string is the name of the

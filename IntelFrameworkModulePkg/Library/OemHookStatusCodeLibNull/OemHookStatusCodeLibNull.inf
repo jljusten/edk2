@@ -1,8 +1,7 @@
 #/** @file
-# Memory Status Code Library for UEFI drivers
+#  Null instance of OEM Hook Status Code Library with empty functions.
 #
-# Lib to provide memory journal status code reporting Routines
-# Copyright (c) 2006 - 2007, Intel Corporation.
+#  Copyright (c) 2006 - 2009, Intel Corporation.
 #
 #  All rights reserved. This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -18,12 +17,9 @@
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = OemHookStatusCodeLibNull
   FILE_GUID                      = 54D2878F-25CD-4a2b-8420-EBD18E609C76
-  MODULE_TYPE                    = PEIM
+  MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = OemHookStatusCodeLib 
-  EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
-
 
 #
 # The following information is for reference only and not required by the build tools.
@@ -33,8 +29,6 @@
 
 [Sources.common]
   OemHookStatusCodeLibNull.c
-
-
 
 [Packages]
   MdePkg/MdePkg.dec

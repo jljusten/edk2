@@ -96,6 +96,7 @@ InstallProcessorDataHub (
                        &DataRecord,
                        sizeof (DataRecord.DataRecordHeader) + sizeof (DataRecord.VariableRecord.ProcessorCoreFrequency)
                        );
+  ASSERT_EFI_ERROR (Status);
   //
   // Record Type 3
   //
@@ -104,9 +105,8 @@ InstallProcessorDataHub (
   ASSERT (UString != NULL);
   AsciiStrToUnicodeStr (AString, UString);
 
-  Status = HiiLibNewString (gStringHandle, &Token, UString);
-
-  if (EFI_ERROR (Status)) {
+  Token = HiiSetString (gStringHandle, 0, UString, NULL);
+  if (Token == 0) {
     gBS->FreePool (UString);
     return ;
   }
@@ -123,7 +123,7 @@ InstallProcessorDataHub (
                        &DataRecord,
                        sizeof (DataRecord.DataRecordHeader) + sizeof (DataRecord.VariableRecord.ProcessorVersion)
                        );
-
+  ASSERT_EFI_ERROR (Status);
   return ;
 }
 
@@ -232,9 +232,8 @@ InstallMiscDataHub (
   CopyMem (UString, FIRMWARE_BIOS_VERSIONE, sizeof(FIRMWARE_BIOS_VERSIONE));
   AsciiStrToUnicodeStr (AString, UString + sizeof(FIRMWARE_BIOS_VERSIONE) / sizeof(CHAR16) - 1);
 
-  Status = HiiLibNewString (gStringHandle, &Token, UString);
-
-  if (EFI_ERROR (Status)) {
+  Token = HiiSetString (gStringHandle, 0, UString, NULL);
+  if (Token == 0) {
     gBS->FreePool (UString);
     return ;
   }
@@ -262,6 +261,7 @@ InstallMiscDataHub (
                        &DataRecord,
                        sizeof (DataRecord.Header) + sizeof (DataRecord.Record.MiscBiosVendor)
                        );
+  ASSERT_EFI_ERROR (Status);
 
   //
   // System information (TYPE 1)
@@ -281,9 +281,8 @@ InstallMiscDataHub (
   CopyMem (UString, FIRMWARE_PRODUCT_NAME, sizeof(FIRMWARE_PRODUCT_NAME));
   AsciiStrToUnicodeStr (AString, UString + sizeof(FIRMWARE_PRODUCT_NAME) / sizeof(CHAR16) - 1);
 
-  Status = HiiLibNewString (gStringHandle, &Token, UString);
-
-  if (EFI_ERROR (Status)) {
+  Token = HiiSetString (gStringHandle, 0, UString, NULL);
+  if (Token == 0) {
     gBS->FreePool (UString);
     return ;
   }
@@ -307,6 +306,7 @@ InstallMiscDataHub (
                        &DataRecord,
                        sizeof (DataRecord.Header) + sizeof (DataRecord.Record.MiscSystemManufacturer)
                        );
+  ASSERT_EFI_ERROR (Status);
 
   return ;
 }
@@ -345,7 +345,13 @@ DataHubGenEntrypoint (
     return Status;
   }
   
-  HiiLibAddPackages (1, &gEfiMiscProducerGuid, NULL, &gStringHandle, DataHubGenDxeStrings);
+  gStringHandle = HiiAddPackages (
+                    &gEfiMiscProducerGuid,
+                    NULL,
+                    DataHubGenDxeStrings,
+                    NULL
+                    );
+  ASSERT (gStringHandle != NULL);
 
   InstallProcessorDataHub (Smbios);
   InstallCacheDataHub     (Smbios);

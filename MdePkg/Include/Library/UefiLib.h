@@ -113,8 +113,8 @@ typedef struct {
   based on a specified GUID.
   
   This function searches the list of configuration tables stored in the EFI System Table
-  for a table with a GUID that matches TableGuid.  If a match is found, then a pointer to
-  the configuration table is returned in Table., and EFI_SUCCESS is returned. If a matching GUID
+  for a table with a GUID that matches TableGuid. If a match is found, then a pointer to
+  the configuration table is returned in Table, and EFI_SUCCESS is returned. If a matching GUID
   is not found, then EFI_NOT_FOUND is returned.
   If TableGuid is NULL, then ASSERT().
   If Table is NULL, then ASSERT().
@@ -948,7 +948,7 @@ EfiInitializeFwVolDevicepathNode (
   This library function abstracts validating a device path node.
   Check the MEDIA_FW_VOL_FILEPATH_DEVICE_PATH data structure to see if it's valid.  
   If it is valid, then return the GUID file name from the device path node.  Otherwise, 
-  return NULL.  This device path changed in the DXE CIS version 0.92 in a non back ward 
+  return NULL.  This device path changed in the DXE CIS version 0.92 in a non backward 
   compatible way to not conflict with the UEFI 2.0 specification.  This function abstracts 
   the differences from the caller.
   If FvDevicePathNode is NULL, then ASSERT().
@@ -1067,14 +1067,16 @@ AsciiErrorPrint (
   ...
   );
 
+
 /**
   Prints a formatted Unicode string to a graphics console device specified by 
   ConsoleOutputHandle defined in the EFI_SYSTEM_TABLE at the given (X,Y) coordinates.
 
   This function prints a formatted Unicode string to the graphics console device 
   specified by ConsoleOutputHandle in EFI_SYSTEM_TABLE and returns the number of 
-  Unicode characters printed.  If the length of the formatted Unicode string is
-  greater than PcdUefiLibMaxPrintBufferSize, then only the first 
+  Unicode characters displayed, not including partial characters that may be clipped 
+  by the right edge of the display.  If the length of the formatted Unicode string is
+  greater than PcdUefiLibMaxPrintBufferSize, then at most the first 
   PcdUefiLibMaxPrintBufferSize characters are printed.  The EFI_HII_FONT_PROTOCOL
   is used to convert the string to a bitmap using the glyphs registered with the 
   HII database.  No wrapping is performed, so any portions of the string the fall
@@ -1087,8 +1089,8 @@ AsciiErrorPrint (
   If Format is NULL, then ASSERT().
   If Format is not aligned on a 16-bit boundary, then ASSERT().
 
-  @param  X            X coordinate to print the string.
-  @param  Y            Y coordinate to print the string.
+  @param  PointX       X coordinate to print the string.
+  @param  PointY       Y coordinate to print the string.
   @param  ForeGround   The foreground color of the string being printed.  This is
                        an optional parameter that may be NULL.  If it is NULL,
                        then the foreground color of the current ConOut device
@@ -1108,8 +1110,8 @@ AsciiErrorPrint (
 UINTN
 EFIAPI
 PrintXY (
-  IN UINTN                            X,
-  IN UINTN                            Y,
+  IN UINTN                            PointX,
+  IN UINTN                            PointY,
   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *ForeGround, OPTIONAL
   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *BackGround, OPTIONAL
   IN CONST CHAR16                     *Format,
@@ -1122,8 +1124,9 @@ PrintXY (
 
   This function prints a formatted ASCII string to the graphics console device 
   specified by ConsoleOutputHandle in EFI_SYSTEM_TABLE and returns the number of 
-  ASCII characters printed.  If the length of the formatted ASCII string is
-  greater than PcdUefiLibMaxPrintBufferSize, then only the first 
+  ASCII characters displayed, not including partial characters that may be clipped 
+  by the right edge of the display.  If the length of the formatted ASCII string is
+  greater than PcdUefiLibMaxPrintBufferSize, then at most the first 
   PcdUefiLibMaxPrintBufferSize characters are printed.  The EFI_HII_FONT_PROTOCOL
   is used to convert the string to a bitmap using the glyphs registered with the 
   HII database.  No wrapping is performed, so any portions of the string the fall
@@ -1135,8 +1138,8 @@ PrintXY (
   string is printed, and 0 is returned.
   If Format is NULL, then ASSERT().
 
-  @param  X            X coordinate to print the string.
-  @param  Y            Y coordinate to print the string.
+  @param  PointX       X coordinate to print the string.
+  @param  PointY       Y coordinate to print the string.
   @param  ForeGround   The foreground color of the string being printed.  This is
                        an optional parameter that may be NULL.  If it is NULL,
                        then the foreground color of the current ConOut device
@@ -1156,8 +1159,8 @@ PrintXY (
 UINTN
 EFIAPI
 AsciiPrintXY (
-  IN UINTN                            X,
-  IN UINTN                            Y,
+  IN UINTN                            PointX,
+  IN UINTN                            PointY,
   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *ForeGround, OPTIONAL
   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *BackGround, OPTIONAL
   IN CONST CHAR8                      *Format,
@@ -1203,7 +1206,7 @@ EfiLibInstallDriverBinding (
   Initializes a driver by installing the Driver Binding Protocol together with the
   optional Component Name, optional Driver Configure and optional Driver Diagnostic
   Protocols onto the driver's DriverBindingHandle. If DriverBindingHandle is NULL,
-  then the protocols are  installed onto a newly created handle. DriverBindingHandle
+  then the protocols are installed onto a newly created handle. DriverBindingHandle
   is typically the same as the driver's ImageHandle, but it can be different if the
   driver produces multiple Driver Binding Protocols. 
   If DriverBinding is NULL, then ASSERT(). 

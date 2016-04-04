@@ -26,8 +26,8 @@
 #       BaseMemoryLibSse2
 #
 #------------------------------------------------------------------------------
-
-.globl _InternalMemCompareMem
+#include <EdkIIGlueBase.h>
+.globl ASM_PFX(InternalMemCompareMem)
 
 #------------------------------------------------------------------------------
 # INTN
@@ -38,7 +38,7 @@
 #   IN      UINTN                     Length
 #   );
 #------------------------------------------------------------------------------
-_InternalMemCompareMem:
+ASM_PFX(InternalMemCompareMem):
     push    %esi
     push    %edi
     movl    12(%esp), %esi

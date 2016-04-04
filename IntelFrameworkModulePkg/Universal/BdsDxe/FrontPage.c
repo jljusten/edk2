@@ -14,6 +14,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "Bds.h"
 #include "FrontPage.h"
+#include "Language.h"
 
 EFI_GUID  mFrontPageGuid      = FRONT_PAGE_FORMSET_GUID;
 
@@ -93,6 +94,10 @@ FakeExtractConfig (
   OUT EFI_STRING                             *Results
   )
 {
+  if (Request == NULL || Progress == NULL || Results == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+  *Progress = Request;
   return EFI_NOT_FOUND;
 }
 
@@ -120,6 +125,17 @@ FakeRouteConfig (
   OUT EFI_STRING                             *Progress
   )
 {
+  if (Configuration == NULL || Progress == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  *Progress = Configuration;
+  if (!HiiIsConfigHdrMatch (Configuration, &mBootMaintGuid, mBootMaintStorageName)
+      && !HiiIsConfigHdrMatch (Configuration, &mFileExplorerGuid, mFileExplorerStorageName)) {
+    return EFI_NOT_FOUND;
+  }
+
+  *Progress = Configuration + StrLen (Configuration);
   return EFI_SUCCESS;
 }
 
@@ -155,7 +171,6 @@ FrontPageCallback (
   CHAR8                         *LanguageString;
   CHAR8                         *LangCode;
   CHAR8                         *Lang;
-  CHAR8                         OldLang[ISO_639_2_ENTRY_SIZE];
   UINTN                         Index;
   EFI_STATUS                    Status;
   CHAR8                         *PlatformSupportedLanguages;
@@ -183,7 +198,7 @@ FrontPageCallback (
     //
     // Collect the languages from what our current Language support is based on our VFR
     //
-    LanguageString = HiiLibGetSupportedLanguages (gFrontPagePrivate.HiiHandle);
+    LanguageString = HiiGetSupportedLanguages (gFrontPagePrivate.HiiHandle);
     ASSERT (LanguageString != NULL);
     //
     // Allocate working buffer for RFC 4646 language in supported LanguageString.
@@ -194,7 +209,7 @@ FrontPageCallback (
     Index = 0;
     LangCode = LanguageString;
     while (*LangCode != 0) {
-      HiiLibGetNextLanguage (&LangCode, Lang);
+      GetNextLanguage (&LangCode, Lang);
 
       if (Index == Value->u8) {
         break;
@@ -229,25 +244,12 @@ FrontPageCallback (
                       AsciiStrSize (BestLanguage),
                       Lang
                       );
-
-      if (!FeaturePcdGet (PcdUefiVariableDefaultLangDeprecate)) {
-        //
-        // Set UEFI deprecated variable "Lang" for backwards compatibility
-        //
-        Status = ConvertRfc3066LanguageToIso639Language (BestLanguage, OldLang);
-        if (!EFI_ERROR (Status)) {
-          Status = gRT->SetVariable (
-                          L"Lang",
-                          &gEfiGlobalVariableGuid,
-                          EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
-                          ISO_639_2_ENTRY_SIZE,
-                          OldLang
-                          );
-        }
-      }
+      ASSERT_EFI_ERROR(Status);
       FreePool (BestLanguage);
+    } else {
+      ASSERT (FALSE);
     }
-  
+
     FreePool (PlatformSupportedLanguages);
     FreePool (Lang);
     FreePool (LanguageString);
@@ -297,20 +299,21 @@ InitializeFrontPage (
   )
 {
   EFI_STATUS                  Status;
-  EFI_HII_PACKAGE_LIST_HEADER *PackageList;
-  EFI_HII_UPDATE_DATA         UpdateData;
-  IFR_OPTION                  *OptionList;
   CHAR8                       *LanguageString;
   CHAR8                       *LangCode;
   CHAR8                       *Lang;
   CHAR8                       *CurrentLang;
   CHAR8                       *BestLanguage;
   UINTN                       OptionCount;
-  EFI_STRING_ID               Token;
   CHAR16                      *StringBuffer;
   UINTN                       BufferSize;
-  UINTN                       Index;
   EFI_HII_HANDLE              HiiHandle;
+  VOID                        *OptionsOpCodeHandle;
+  VOID                        *StartOpCodeHandle;
+  VOID                        *EndOpCodeHandle;
+  EFI_IFR_GUID_LABEL          *StartLabel;
+  EFI_IFR_GUID_LABEL          *EndLabel;
+  BOOLEAN                     FirstFlag;
 
   if (InitializeHiiData) {
     //
@@ -364,37 +367,49 @@ InitializeFrontPage (
     //
     // Publish our HII data
     //
-    PackageList = HiiLibPreparePackageList (2, &mFrontPageGuid, FrontPageVfrBin, BdsDxeStrings);
-    ASSERT (PackageList != NULL);
-
-    Status = gHiiDatabase->NewPackageList (
-                             gHiiDatabase,
-                             PackageList,
-                             gFrontPagePrivate.DriverHandle,
-                             &gFrontPagePrivate.HiiHandle
-                             );
-    FreePool (PackageList);
-    if (EFI_ERROR (Status)) {
-      return Status;
+    gFrontPagePrivate.HiiHandle = HiiAddPackages (
+                                    &mFrontPageGuid,
+                                    gFrontPagePrivate.DriverHandle,
+                                    FrontPageVfrBin,
+                                    BdsDxeStrings,
+                                    NULL
+                                    );
+    if (gFrontPagePrivate.HiiHandle == NULL) {
+      return EFI_OUT_OF_RESOURCES;
     }
   }
 
 
   //
-  // Allocate space for creation of UpdateData Buffer
+  // Init OpCode Handle and Allocate space for creation of UpdateData Buffer
   //
-  UpdateData.BufferSize = 0x1000;
-  UpdateData.Data = AllocateZeroPool (0x1000);
-  ASSERT (UpdateData.Data != NULL);
+  StartOpCodeHandle = HiiAllocateOpCodeHandle ();
+  ASSERT (StartOpCodeHandle != NULL);
 
-  OptionList = AllocateZeroPool (0x1000);
-  ASSERT (OptionList != NULL);
+  EndOpCodeHandle = HiiAllocateOpCodeHandle ();
+  ASSERT (EndOpCodeHandle != NULL);
+
+  OptionsOpCodeHandle = HiiAllocateOpCodeHandle ();
+  ASSERT (OptionsOpCodeHandle != NULL);
+  //
+  // Create Hii Extend Label OpCode as the start opcode
+  //
+  StartLabel = (EFI_IFR_GUID_LABEL *) HiiCreateGuidOpCode (StartOpCodeHandle, &gEfiIfrTianoGuid, NULL, sizeof (EFI_IFR_GUID_LABEL));
+  StartLabel->ExtendOpCode = EFI_IFR_EXTEND_OP_LABEL;
+  StartLabel->Number       = LABEL_SELECT_LANGUAGE;
+
+  //
+  // Create Hii Extend Label OpCode as the end opcode
+  //
+  EndLabel = (EFI_IFR_GUID_LABEL *) HiiCreateGuidOpCode (EndOpCodeHandle, &gEfiIfrTianoGuid, NULL, sizeof (EFI_IFR_GUID_LABEL));
+  EndLabel->ExtendOpCode = EFI_IFR_EXTEND_OP_LABEL;
+  EndLabel->Number       = LABEL_END;
 
   //
   // Collect the languages from what our current Language support is based on our VFR
   //
   HiiHandle = gFrontPagePrivate.HiiHandle;
-  LanguageString = HiiLibGetSupportedLanguages (HiiHandle);
+  LanguageString = HiiGetSupportedLanguages (HiiHandle);
   ASSERT (LanguageString != NULL);
   //
   // Allocate working buffer for RFC 4646 language in supported LanguageString.
@@ -420,11 +435,25 @@ InitializeFrontPage (
   ASSERT (BestLanguage != NULL);
 
   OptionCount = 0;
+  LangCode    = LanguageString;
+  FirstFlag   = FALSE;
+  
+  if (gFrontPagePrivate.LanguageToken == NULL) {
+    while (*LangCode != 0) {
+      GetNextLanguage (&LangCode, Lang);
+      OptionCount ++;
+    }
+    gFrontPagePrivate.LanguageToken = AllocatePool (OptionCount * sizeof (EFI_STRING_ID));
+    ASSERT (gFrontPagePrivate.LanguageToken != NULL);
+    FirstFlag = TRUE;
+  }
+
+  OptionCount = 0;
   LangCode = LanguageString;
   while (*LangCode != 0) {
-    HiiLibGetNextLanguage (&LangCode, Lang);
+    GetNextLanguage (&LangCode, Lang);
 
-    if (gFrontPagePrivate.LanguageToken == NULL) {
+    if (FirstFlag) {
       //
       // Get Language Name from String Package. The StringId of Printable Language
       // Name is always 1 which is generated by StringGather Tool.
@@ -455,20 +484,30 @@ InitializeFrontPage (
       }
       ASSERT_EFI_ERROR (Status);
 
-      Token = 0;
-      Status = HiiLibNewString (HiiHandle, &Token, StringBuffer);
+      //
+      // Save the string Id for each language
+      //
+      gFrontPagePrivate.LanguageToken[OptionCount] = HiiSetString (HiiHandle, 0, StringBuffer, NULL);
       FreePool (StringBuffer);
-    } else {
-      Token = gFrontPagePrivate.LanguageToken[OptionCount];
     }
 
     if (AsciiStrCmp (Lang, BestLanguage) == 0) {
-      OptionList[OptionCount].Flags = EFI_IFR_OPTION_DEFAULT;
+      HiiCreateOneOfOptionOpCode (
+        OptionsOpCodeHandle,
+        gFrontPagePrivate.LanguageToken[OptionCount],
+        EFI_IFR_OPTION_DEFAULT,
+        EFI_IFR_NUMERIC_SIZE_1,
+        (UINT8) OptionCount
+        );
     } else {
-      OptionList[OptionCount].Flags = 0;
+      HiiCreateOneOfOptionOpCode (
+        OptionsOpCodeHandle,
+        gFrontPagePrivate.LanguageToken[OptionCount],
+        0,
+        EFI_IFR_NUMERIC_SIZE_1,
+        (UINT8) OptionCount
+        );
     }
-    OptionList[OptionCount].StringToken = Token;
-    OptionList[OptionCount].Value.u8 = (UINT8) OptionCount;
 
     OptionCount++;
   }
@@ -480,8 +519,8 @@ InitializeFrontPage (
   FreePool (Lang);
   FreePool (LanguageString);
 
-  UpdateData.Offset = 0;
-  CreateOneOfOpCode (
+  HiiCreateOneOfOpCode (
+    StartOpCodeHandle,
     FRONT_PAGE_KEY_LANGUAGE,
     0,
     0,
@@ -489,31 +528,21 @@ InitializeFrontPage (
     STRING_TOKEN (STR_LANGUAGE_SELECT_HELP),
     EFI_IFR_FLAG_CALLBACK,
     EFI_IFR_NUMERIC_SIZE_1,
-    OptionList,
-    OptionCount,
-    &UpdateData
+    OptionsOpCodeHandle,
+    NULL
     );
 
-  Status = IfrLibUpdateForm (
+  Status = HiiUpdateForm (
              HiiHandle,
              &mFrontPageGuid,
              FRONT_PAGE_FORM_ID,
-             LABEL_SELECT_LANGUAGE,
-             FALSE,
-             &UpdateData
+             StartOpCodeHandle, // LABEL_SELECT_LANGUAGE
+             EndOpCodeHandle    // LABEL_END
              );
 
-  //
-  // Save the string Id for each language
-  //
-  gFrontPagePrivate.LanguageToken = AllocatePool (OptionCount * sizeof (EFI_STRING_ID));
-  ASSERT (gFrontPagePrivate.LanguageToken != NULL);
-  for (Index = 0; Index < OptionCount; Index++) {
-    gFrontPagePrivate.LanguageToken[Index] = OptionList[Index].StringToken;
-  }
-
-  FreePool (UpdateData.Data);
-  FreePool (OptionList);
+  HiiFreeOpCodeHandle (StartOpCodeHandle);
+  HiiFreeOpCodeHandle (EndOpCodeHandle);
+  HiiFreeOpCodeHandle (OptionsOpCodeHandle);
   return Status;
 }
 
@@ -545,7 +574,7 @@ CallFrontPage (
                             gFormBrowser2,
                             &gFrontPagePrivate.HiiHandle,
                             1,
-                            NULL,
+                            &mFrontPageGuid,
                             0,
                             NULL,
                             &ActionRequest
@@ -578,11 +607,13 @@ GetProducerString (
   OUT     CHAR16                    **String
   )
 {
-  EFI_STATUS      Status;
+  EFI_STRING      TmpString;
 
-  Status = HiiLibGetStringFromToken (ProducerGuid, Token, String);
-  if (EFI_ERROR (Status)) {
+  TmpString = HiiGetPackageString (ProducerGuid, Token, NULL);
+  if (TmpString == NULL) {
     *String = GetStringById (STRING_TOKEN (STR_MISSING_STRING));
+  } else {
+    *String = TmpString;
   }
 
   return EFI_SUCCESS;
@@ -698,7 +729,7 @@ UpdateFrontPageStrings (
         BiosVendor = (EFI_MISC_BIOS_VENDOR_DATA *) (DataHeader + 1);
         GetProducerString (&Record->ProducerName, BiosVendor->BiosVersion, &NewString);
         TokenToUpdate = STRING_TOKEN (STR_FRONT_PAGE_BIOS_VERSION);
-        HiiLibSetString (gFrontPagePrivate.HiiHandle, TokenToUpdate, NewString);
+        HiiSetString (gFrontPagePrivate.HiiHandle, TokenToUpdate, NewString, NULL);
         FreePool (NewString);
         Find[0] = TRUE;
       }
@@ -709,7 +740,7 @@ UpdateFrontPageStrings (
         SystemManufacturer = (EFI_MISC_SYSTEM_MANUFACTURER_DATA *) (DataHeader + 1);
         GetProducerString (&Record->ProducerName, SystemManufacturer->SystemProductName, &NewString);
         TokenToUpdate = STRING_TOKEN (STR_FRONT_PAGE_COMPUTER_MODEL);
-        HiiLibSetString (gFrontPagePrivate.HiiHandle, TokenToUpdate, NewString);
+        HiiSetString (gFrontPagePrivate.HiiHandle, TokenToUpdate, NewString, NULL);
         FreePool (NewString);
         Find[1] = TRUE;
       }
@@ -720,7 +751,7 @@ UpdateFrontPageStrings (
         ProcessorVersion = (EFI_PROCESSOR_VERSION_DATA *) (DataHeader + 1);
         GetProducerString (&Record->ProducerName, *ProcessorVersion, &NewString);
         TokenToUpdate = STRING_TOKEN (STR_FRONT_PAGE_CPU_MODEL);
-        HiiLibSetString (gFrontPagePrivate.HiiHandle, TokenToUpdate, NewString);
+        HiiSetString (gFrontPagePrivate.HiiHandle, TokenToUpdate, NewString, NULL);
         FreePool (NewString);
         Find[2] = TRUE;
       }
@@ -731,7 +762,7 @@ UpdateFrontPageStrings (
         ProcessorFrequency = (EFI_PROCESSOR_CORE_FREQUENCY_DATA *) (DataHeader + 1);
         ConvertProcessorToString (ProcessorFrequency, &NewString);
         TokenToUpdate = STRING_TOKEN (STR_FRONT_PAGE_CPU_SPEED);
-        HiiLibSetString (gFrontPagePrivate.HiiHandle, TokenToUpdate, NewString);
+        HiiSetString (gFrontPagePrivate.HiiHandle, TokenToUpdate, NewString, NULL);
         FreePool (NewString);
         Find[3] = TRUE;
       }
@@ -745,7 +776,7 @@ UpdateFrontPageStrings (
           &NewString
           );
         TokenToUpdate = STRING_TOKEN (STR_FRONT_PAGE_MEMORY_SIZE);
-        HiiLibSetString (gFrontPagePrivate.HiiHandle, TokenToUpdate, NewString);
+        HiiSetString (gFrontPagePrivate.HiiHandle, TokenToUpdate, NewString, NULL);
         FreePool (NewString);
         Find[4] = TRUE;
       }

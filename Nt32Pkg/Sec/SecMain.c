@@ -106,6 +106,31 @@ EFI_STATUS
 SecNt32PeCoffRelocateImage (
   IN OUT PE_COFF_LOADER_IMAGE_CONTEXT         *ImageContext
   );
+
+VOID
+SecPrint (
+  CHAR8  *Format,
+  ...
+  )
+{
+  va_list  Marker;
+  UINTN    CharCount;
+  CHAR8    Buffer[EFI_STATUS_CODE_DATA_MAX_SIZE];
+
+  va_start (Marker, Format);
+  
+  _vsnprintf (Buffer, sizeof (Buffer), Format, Marker);
+
+  CharCount = strlen (Buffer);
+  WriteFile (
+    GetStdHandle (STD_OUTPUT_HANDLE), 
+    Buffer,
+    CharCount,
+    (LPDWORD)&CharCount,
+    NULL
+    );
+}
+
 INTN
 EFIAPI
 main (
@@ -146,7 +171,7 @@ Returns:
   MemorySizeStr      = (CHAR16 *) FixedPcdGetPtr (PcdWinNtMemorySizeForSecMain);
   FirmwareVolumesStr = (CHAR16 *) FixedPcdGetPtr (PcdWinNtFirmwareVolume);
 
-  printf ("\nEDK SEC Main NT Emulation Environment from www.TianoCore.org\n");
+  SecPrint ("\nEDK II SEC Main NT Emulation Environment from www.TianoCore.org\n");
 
   //
   // Make some Windows calls to Set the process to the highest priority in the
@@ -161,7 +186,7 @@ Returns:
   gSystemMemoryCount  = CountSeperatorsInString (MemorySizeStr, '!') + 1;
   gSystemMemory       = calloc (gSystemMemoryCount, sizeof (NT_SYSTEM_MEMORY));
   if (gSystemMemory == NULL) {
-    wprintf (L"ERROR : Can not allocate memory for %s.  Exiting.\n", MemorySizeStr);
+    SecPrint ("ERROR : Can not allocate memory for %S.  Exiting.\n", MemorySizeStr);
     exit (1);
   }
   //
@@ -170,13 +195,13 @@ Returns:
   gFdInfoCount  = CountSeperatorsInString (FirmwareVolumesStr, '!') + 1;
   gFdInfo       = calloc (gFdInfoCount, sizeof (NT_FD_INFO));
   if (gFdInfo == NULL) {
-    wprintf (L"ERROR : Can not allocate memory for %s.  Exiting.\n", FirmwareVolumesStr);
+    SecPrint ("ERROR : Can not allocate memory for %S.  Exiting.\n", FirmwareVolumesStr);
     exit (1);
   }
   //
   // Setup Boot Mode. If BootModeStr == "" then BootMode = 0 (BOOT_WITH_FULL_CONFIGURATION)
   //
-  printf ("  BootMode 0x%02x\n", FixedPcdGet32 (PcdWinNtBootMode));
+  SecPrint ("  BootMode 0x%02x\n", FixedPcdGet32 (PcdWinNtBootMode));
 
   //
   //  Allocate 128K memory to emulate temp memory for PEI.
@@ -186,7 +211,7 @@ Returns:
   InitialStackMemorySize  = STACK_SIZE;
   InitialStackMemory = (EFI_PHYSICAL_ADDRESS) (UINTN) VirtualAlloc (NULL, (SIZE_T) (InitialStackMemorySize), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
   if (InitialStackMemory == 0) {
-    printf ("ERROR : Can not allocate enough space for SecStack\n");
+    SecPrint ("ERROR : Can not allocate enough space for SecStack\n");
     exit (1);
   }
 
@@ -196,14 +221,14 @@ Returns:
     *StackPointer = 0x5AA55AA5;
   }
   
-  wprintf (L"  SEC passing in %d bytes of temp RAM to PEI\n", InitialStackMemorySize);
+  SecPrint ("  SEC passing in %d bytes of temp RAM to PEI\n", InitialStackMemorySize);
 
   //
   // Open All the firmware volumes and remember the info in the gFdInfo global
   //
   FileNamePtr = (CHAR16 *)malloc (StrLen ((CHAR16 *)FirmwareVolumesStr) * sizeof(CHAR16));
   if (FileNamePtr == NULL) {
-    printf ("ERROR : Can not allocate memory for firmware volume string\n");
+    SecPrint ("ERROR : Can not allocate memory for firmware volume string\n");
     exit (1);
   }
 
@@ -231,17 +256,17 @@ Returns:
               &gFdInfo[Index].Size
               );
     if (EFI_ERROR (Status)) {
-      printf ("ERROR : Can not open Firmware Device File %S (0x%X).  Exiting.\n", FileName, Status);
+      SecPrint ("ERROR : Can not open Firmware Device File %S (0x%X).  Exiting.\n", FileName, Status);
       exit (1);
     }
 
-    printf ("  FD loaded from");
+    SecPrint ("  FD loaded from");
     //
     // printf can't print filenames directly as the \ gets interperted as an
     //  escape character.
     //
     for (Index2 = 0; FileName[Index2] != '\0'; Index2++) {
-      printf ("%c", FileName[Index2]);
+      SecPrint ("%c", FileName[Index2]);
     }
 
     if (PeiCoreFile == NULL) {
@@ -251,11 +276,11 @@ Returns:
       //
       Status = SecFfsFindPeiCore ((EFI_FIRMWARE_VOLUME_HEADER *) (UINTN) gFdInfo[Index].Address, &PeiCoreFile);
       if (!EFI_ERROR (Status)) {
-        printf (" contains SEC Core");
+        SecPrint (" contains SEC Core");
       }
     }
 
-    printf ("\n");
+    SecPrint ("\n");
   }
   //
   // Calculate memory regions and store the information in the gSystemMemory
@@ -280,7 +305,7 @@ Returns:
     MemorySizeStr = MemorySizeStr + Index1 + 1;
   }
 
-  printf ("\n");
+  SecPrint ("\n");
 
   //
   // Hand off to PEI Core
@@ -291,7 +316,7 @@ Returns:
   // If we get here, then the PEI Core returned. This is an error as PEI should
   //  always hand off to DXE.
   //
-  printf ("ERROR : PEI Core returned\n");
+  SecPrint ("ERROR : PEI Core returned\n");
   exit (1);
 }
 
@@ -438,7 +463,7 @@ Returns:
 // TODO:    Data - add argument and description to function comment
 {
   CHAR8           *Format;
-  VA_LIST         Marker;
+  BASE_LIST       Marker;
   CHAR8           PrintBuffer[BYTES_PER_RECORD * 2];
   CHAR8           *Filename;
   CHAR8           *Description;
@@ -451,14 +476,14 @@ Returns:
     //
     // Processes ASSERT ()
     //
-    printf ("ASSERT %s(%d): %s\n", Filename, (int)LineNumber, Description);
+    SecPrint ("ASSERT %s(%d): %s\n", Filename, (int)LineNumber, Description);
 
   } else if (ReportStatusCodeExtractDebugInfo (Data, &ErrorLevel, &Marker, &Format)) {
     //
     // Process DEBUG () macro 
     //
-    AsciiVSPrint (PrintBuffer, BYTES_PER_RECORD, Format, Marker);
-    printf (PrintBuffer);
+    AsciiBSPrint (PrintBuffer, BYTES_PER_RECORD, Format, Marker);
+    SecPrint (PrintBuffer);
   }
 
   return EFI_SUCCESS;
@@ -737,7 +762,7 @@ Returns:
   //
   // Align buffer on section boundry
   //
-  ImageContext.ImageAddress += ImageContext.SectionAlignment;
+  ImageContext.ImageAddress += ImageContext.SectionAlignment - 1;
   ImageContext.ImageAddress &= ~(ImageContext.SectionAlignment - 1);
 
   Status = PeCoffLoaderLoadImage (&ImageContext);
@@ -995,9 +1020,9 @@ SecNt32PeCoffRelocateImage (
 
     if ((Library != NULL) && (DllEntryPoint != NULL)) {
       ImageContext->EntryPoint  = (EFI_PHYSICAL_ADDRESS) (UINTN) DllEntryPoint;
-      wprintf (L"LoadLibraryEx (%s,\n               NULL, DONT_RESOLVE_DLL_REFERENCES)\n", DllFileName);
+      SecPrint ("LoadLibraryEx (%S,\n               NULL, DONT_RESOLVE_DLL_REFERENCES)\n", DllFileName);
     } else {
-      wprintf (L"WARNING: No source level debug %s. \n", DllFileName);
+      SecPrint ("WARNING: No source level debug %S. \n", DllFileName);
     }
 
     free (DllFileName);
@@ -1055,7 +1080,7 @@ SecTemporaryRamSupport (
   //
 
   //
-  // Simulate to invalid CAR, terminate CAR
+  // Simulate to invalid temporary memory, terminate temporary memory
   // 
   //ZeroMem ((VOID*)(UINTN)TemporaryMemoryBase, CopySize);
   

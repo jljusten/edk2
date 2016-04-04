@@ -1,10 +1,11 @@
 /** @file
-  The file defines the protocol to obtain input from the
-  ConsoleIn device. The EFI specification requires that the
-  EFI_SIMPLE_TEXT_INPUT_PROTOCOL supports the same languages as
-  the corresponding
+  Simple Text Input Ex protocol from the UEFI 2.0 specification.
+  
+  This protocol defines an extension to the EFI_SIMPLE_TEXT_INPUT_PROTOCOL
+  which exposes much more state and modifier information from the input device,
+  also allows one to register a notification for a particular keystroke.
 
-  Copyright (c) 2006 - 2008, Intel Corporation 
+  Copyright (c) 2006 - 2009, Intel Corporation 
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -17,9 +18,6 @@
 
 #ifndef __SIMPLE_TEXT_IN_EX_H__
 #define __SIMPLE_TEXT_IN_EX_H__
-
-#include <ProcessorBind.h>
-#include <Pi/PiMultiPhase.h>
 
 #define EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL_GUID \
   {0xdd9e7534, 0x7762, 0x4698, { 0x8c, 0x14, 0xf5, 0x85, 0x17, 0xa6, 0x25, 0xaa } }
@@ -61,8 +59,8 @@ EFI_STATUS
 
 
 ///
-/// EFI_KEY_TOGGLE_STATE. The toggle state are defined.
-/// They are EFI_TOGGLE_STATE_VALID, EFI_SCROLL_LOCK_ACTIVE
+/// EFI_KEY_TOGGLE_STATE. The toggle states are defined.
+/// They are: EFI_TOGGLE_STATE_VALID, EFI_SCROLL_LOCK_ACTIVE
 /// EFI_NUM_LOCK_ACTIVE, EFI_CAPS_LOCK_ACTIVE
 ///
 typedef UINT8 EFI_KEY_TOGGLE_STATE;
@@ -152,29 +150,28 @@ typedef struct {
   there is no pending keystroke the function returns
   EFI_NOT_READY. If there is a pending keystroke, then
   KeyData.Key.ScanCode is the EFI scan code defined in Error!
-  Reference source not found.. The KeyData.Key.UnicodeChar is the
-  actual printable character or is zero if the key does not
+  Reference source not found. The KeyData.Key.UnicodeChar is the
+  actual printable character, or is zero if the key does not
   represent a printable character (control key, function key,
   etc.). The KeyData.KeyState is shift state for the character
   reflected in KeyData.Key.UnicodeChar or KeyData.Key.ScanCode .
-  When interpreting the data from this function, it should be
-  noted that if a class of printable characters that are
+  When interpreting the data from this function, printable characters that are
   normally adjusted by shift modifiers (e.g. Shift Key + "f"
-  key) would be presented solely as a KeyData.Key.UnicodeChar
-  without the associated shift state. So in the previous example
-  of a Shift Key + "f" key being pressed, the only pertinent
+  key) are presented solely as a KeyData.Key.UnicodeChar
+  without the associated shift state. For example,
+  if Shift Key + "f" key are pressed, the only pertinent
   data returned would be KeyData.Key.UnicodeChar with the value
-  of "F". This of course would not typically be the case for
-  non-printable characters such as the pressing of the Right
-  Shift Key + F10 key since the corresponding returned data
+  of "F". This would not typically be the case for
+  non-printable characters such as pressing the Right
+  Shift Key + F10 key, since the corresponding returned data
   would be reflected both in the KeyData.KeyState.KeyShiftState
   and KeyData.Key.ScanCode values. UEFI drivers which implement
   the EFI_SIMPLE_TEXT_INPUT_EX protocol are required to return
   KeyData.Key and KeyData.KeyState values. These drivers must
   always return the most current state of
   KeyData.KeyState.KeyShiftState and
-  KeyData.KeyState.KeyToggleState. It should also be noted that
-  certain input devices may not be able to produce shift or toggle
+  KeyData.KeyState.KeyToggleState. 
+  Certain input devices may not be able to produce shift or toggle
   state information, and in those cases the high order bit in the
   respective Toggle and Shift state fields should not be active.
 
@@ -241,7 +238,7 @@ EFI_STATUS
 
 /**
   The RegisterKeystrokeNotify() function registers a function
-  which will be called when a specified keystroke will occur.
+  to be called when a specified keystroke will occur.
   
   @param This                     A pointer to the EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL instance.
   
@@ -274,8 +271,8 @@ EFI_STATUS
 );
 
 /**
-  The UnregisterKeystrokeNotify() function removes the
-  notification which was previously registered.
+  The UnregisterKeystrokeNotify() function removes a
+  notification that was previously registered.
   
   @param This               A pointer to the EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL instance.
   

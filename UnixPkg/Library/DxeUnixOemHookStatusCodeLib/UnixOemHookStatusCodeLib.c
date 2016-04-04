@@ -15,6 +15,7 @@
 **/
 #include "PiDxe.h"
 #include <Guid/StatusCodeDataTypeId.h>
+#include <Guid/StatusCodeDataTypeDebug.h>
 #include "UnixDxe.h"
 #include <Library/OemHookStatusCodeLib.h>
 #include <Library/DebugLib.h>
@@ -22,8 +23,6 @@
 #include <Library/PrintLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/ReportStatusCodeLib.h>
-#include <FrameworkModuleBase.h>
-#include <DebugInfo.h>
 
 //
 // Cache of UnixThunk protocol 
@@ -111,8 +110,7 @@ OemHookStatusCodeReport (
   UINT32          ErrorLevel;
   UINT32          LineNumber;
   UINTN           CharCount;
-  VA_LIST         Marker;
-  EFI_DEBUG_INFO  *DebugInfo;
+  BASE_LIST       Marker;
 
   Buffer[0] = '\0';
 
@@ -123,7 +121,7 @@ OemHookStatusCodeReport (
     //
     CharCount = AsciiSPrint (
                   Buffer,
-                  EFI_STATUS_CODE_DATA_MAX_SIZE,
+                  sizeof (Buffer),
                   "\n\rASSERT!: %a (%d): %a\n\r",
                   Filename,
                   LineNumber,
@@ -146,30 +144,19 @@ OemHookStatusCodeReport (
     //
     // Print DEBUG() information into output buffer.
     //
-    CharCount = AsciiVSPrint (
+    CharCount = AsciiBSPrint (
                   Buffer, 
-                  EFI_STATUS_CODE_DATA_MAX_SIZE, 
+                  sizeof (Buffer), 
                   Format, 
                   Marker
                   );
-  } else if (Data != NULL && 
-             CompareGuid (&Data->Type, &gEfiStatusCodeSpecificDataGuid) &&
-             (CodeType & EFI_STATUS_CODE_TYPE_MASK) == EFI_DEBUG_CODE) {
-    //
-    // Print specific data into output buffer.
-    //
-    DebugInfo = (EFI_DEBUG_INFO *) (Data + 1);
-    Marker    = (VA_LIST) (DebugInfo + 1);
-    Format    = (CHAR8 *) (((UINT64 *) Marker) + 12);
-
-    CharCount = AsciiVSPrint (Buffer, EFI_STATUS_CODE_DATA_MAX_SIZE, Format, Marker);
   } else if ((CodeType & EFI_STATUS_CODE_TYPE_MASK) == EFI_ERROR_CODE) {
     //
     // Print ERROR information into output buffer.
     //
     CharCount = AsciiSPrint (
                   Buffer, 
-                  EFI_STATUS_CODE_DATA_MAX_SIZE, 
+                  sizeof (Buffer), 
                   "ERROR: C%x:V%x I%x", 
                   CodeType, 
                   Value, 
@@ -183,7 +170,7 @@ OemHookStatusCodeReport (
     if (CallerId != NULL) {
       CharCount += AsciiSPrint (
                      &Buffer[CharCount - 1],
-                     (EFI_STATUS_CODE_DATA_MAX_SIZE - (sizeof (Buffer[0]) * CharCount)),
+                     (sizeof (Buffer) - (sizeof (Buffer[0]) * CharCount)),
                      " %g",
                      CallerId
                      );
@@ -192,7 +179,7 @@ OemHookStatusCodeReport (
     if (Data != NULL) {
       CharCount += AsciiSPrint (
                      &Buffer[CharCount - 1],
-                     (EFI_STATUS_CODE_DATA_MAX_SIZE - (sizeof (Buffer[0]) * CharCount)),
+                     (sizeof (Buffer) - (sizeof (Buffer[0]) * CharCount)),
                      " %x",
                      Data
                      );
@@ -200,13 +187,13 @@ OemHookStatusCodeReport (
 
     CharCount += AsciiSPrint (
                    &Buffer[CharCount - 1],
-                   (EFI_STATUS_CODE_DATA_MAX_SIZE - (sizeof (Buffer[0]) * CharCount)),
+                   (sizeof (Buffer) - (sizeof (Buffer[0]) * CharCount)),
                    "\n\r"
                    );
   } else if ((CodeType & EFI_STATUS_CODE_TYPE_MASK) == EFI_PROGRESS_CODE) {
     CharCount = AsciiSPrint (
                   Buffer, 
-                  EFI_STATUS_CODE_DATA_MAX_SIZE, 
+                  sizeof (Buffer), 
                   "PROGRESS CODE: V%x I%x\n\r", 
                   Value, 
                   Instance
@@ -214,7 +201,7 @@ OemHookStatusCodeReport (
   } else {
     CharCount = AsciiSPrint (
                   Buffer, 
-                  EFI_STATUS_CODE_DATA_MAX_SIZE, 
+                  sizeof (Buffer), 
                   "Undefined: C%x:V%x I%x\n\r", 
                   CodeType, 
                   Value, 

@@ -50,21 +50,9 @@
   ##  @libraryclass  Defines a set of methods related recovery mode.
   RecoveryLib|Include/Library/RecoveryLib.h
   
-  ##  @libraryclass  Basic platform driver override functions.
-  #   This library is only intended to be used by Platform Driver Override Dxe Driver and Application.
-  PlatformDriverOverrideLib|Include/Library/PlatformDriverOverrideLib.h
-
   ##  @libraryclass  Provides HII related functions.
   HiiLib|Include/Library/HiiLib.h
-
-  ##  @libraryclass  Provides a set of interfaces to do IFR opcode creation and interact with a UEFI Form Browser.
-  IfrSupportLib|Include/Library/IfrSupportLib.h
-  
-  ##  @libraryclass  Defines APIs that is related to IFR operations but specific to EDK II
-  #                  implementation.
-  ##
-  ExtendedIfrSupportLib|Include/Library/ExtendedIfrSupportLib.h
-  
+    
   ##  @libraryclass  Defines a set of interfaces on how to process capusle image update.
   CapsuleLib|Include/Library/CapsuleLib.h
   
@@ -74,6 +62,11 @@
   ##  @libraryclass  Provides APIs for system memory test.
   ##
   MemoryTestLib|Include/Library/MemoryTestLib.h
+
+  ##  @libraryclass    Provides global variables that are pointers 
+  ##  to the UEFI HII related protocols. 
+  ##
+  UefiHiiServicesLib|Include/Library/UefiHiiServicesLib.h
 
 [Guids.common]
   ## MdeModule package token space guid
@@ -120,10 +113,6 @@
   ## Include/Guid/VariableFormat.h
   gEfiVariableGuid           = { 0xddcf3616, 0x3275, 0x4164, { 0x98, 0xb6, 0xfe, 0x85, 0x70, 0x7f, 0xfe, 0x7d }}
   
-  ## Platform Override Variable guid
-  ## Include/Guid/OverrideVariable.h
-  gEfiOverrideVariableGuid       = { 0x8e3d4ad5, 0xf762, 0x438a, { 0xa1, 0xc1, 0x5b, 0x9f, 0xe6, 0x8c, 0x6b, 0x15 }}
-  
   ## Performance protocol guid that also acts as the performance HOB guid and performance variable GUID
   ## Include/Guid/Performance.h
   gPerformanceProtocolGuid       = { 0x76B6BDFA, 0x2ACD, 0x4462, { 0x9E, 0x3F, 0xCB, 0x58, 0xC9, 0x69, 0xD9, 0x37 }}
@@ -132,24 +121,23 @@
   ## Include/Guid/Crc32GuidedSectionExtraction.h
   gEfiCrc32GuidedSectionExtractionGuid = { 0xFC1BCDB0, 0x7D31, 0x49aa, {0x93, 0x6A, 0xA4, 0x60, 0x0D, 0x9D, 0xD0, 0x83 } }
 
+  ## Include/Guid/NicIp4ConfigNvData.h
+  gEfiNicIp4ConfigVariableGuid   = {0xd8944553, 0xc4dd, 0x41f4, { 0x9b, 0x30, 0xe1, 0x39, 0x7c, 0xfb, 0x26, 0x7b }}
+
 [Protocols.common] 
   ## Load File protocol provides capability to load and unload EFI image into memory and execute it.
   ## Include/Protocol/LoadPe32Image.h
+  ## This protocol is deprecated. Native EDKII module should NOT use this protocol to load/unload image.
+  ## If developer need implement such functionality, they should use BasePeCoffLib.
   gEfiLoadPeImageProtocolGuid    = { 0x5CB5C776, 0x60D5, 0x45EE, { 0x88, 0x3C, 0x45, 0x27, 0x08, 0xCD, 0x74, 0x3F }}
   
-  ## Print protocol defines six basic print functions to print the format unicode and ascii string.
+  ## Print protocol defines basic print functions to print the format unicode and ascii string.
   ## Include/Protocol/Print2.h
-  gEfiPrint2ProtocolGuid          = { 0x5bcc3dbc, 0x8c57, 0x450a, { 0xbb, 0x0c, 0xa1, 0xc0, 0xbd, 0xde, 0x48, 0x0c }}
+  gEfiPrint2ProtocolGuid          = { 0xf05976ef, 0x83f1, 0x4f3d, { 0x86, 0x19, 0xf7, 0x59, 0x5d, 0x41, 0xe5, 0x38 } }
 
   ## This protocol defines the generic memory test interfaces in Dxe phase.
   ## Include/Protocol/GenericMemoryTest.h
   gEfiGenericMemTestProtocolGuid = { 0x309DE7F1, 0x7F5E, 0x4ACE, { 0xB4, 0x9C, 0x53, 0x1B, 0xE5, 0xAA, 0x95, 0xEF }}
-  
-  ## Include/Protocol/NicIp4Config.h
-  gEfiNicIp4ConfigProtocolGuid   = {0xdca3d4d, 0x12da, 0x4728,  { 0xbf, 0x7e, 0x86, 0xce, 0xb9, 0x28, 0xd0, 0x67 }}
-  
-  ## Include/Protocol/NicIp4Config.h
-  gEfiNicIp4ConfigVariableGuid   = {0xd8944553, 0xc4dd, 0x41f4, { 0x9b, 0x30, 0xe1, 0x39, 0x7c, 0xfb, 0x26, 0x7b }}
   
   ## Include/Protocol/Dpc.h
   gEfiDpcProtocolGuid            = {0x480f8ae9, 0xc46, 0x4aa9,  { 0xbc, 0x89, 0xdb, 0x9f, 0xba, 0x61, 0x98, 0x6 }}
@@ -233,7 +221,12 @@
   ##
   #  If TRUE, FULL FTW protocol services (total six APIs) will be produced.
   #  If FASLE, only FTW Write service is available.
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFullFtwServiceEnable|TRUE|BOOLEAN|0x0001200a
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFullFtwServiceEnable|TRUE|BOOLEAN|0x0001200b
+
+  ##
+  #  If TRUE, DXE IPL must support the UEFI decompression algorithm.
+  #  If FALSE, DXE IPL will not support UEFI decompression to save space.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSupportUefiDecompress|TRUE|BOOLEAN|0x0001200c
 
 [PcdsFeatureFlag.IA32]
   ## 

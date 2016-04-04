@@ -25,7 +25,7 @@
 
   @par Revision Reference:
   This protocol is defined in Framework for EFI Compatibility Support Module spec
-  Version 0.96
+  Version 0.97.
 
 **/
 
@@ -40,6 +40,14 @@
   }
 
 typedef struct _EFI_LEGACY_BIOS_PROTOCOL EFI_LEGACY_BIOS_PROTOCOL;
+
+//
+// Flags returned by CheckPciRom()
+//
+#define NO_ROM            0x00
+#define ROM_FOUND         0x01
+#define VALID_LEGACY_ROM  0x02
+#define ROM_WITH_CONFIG   0x04     // Not defined in CSM Specification0.96
 
 //
 /// @bug These macros appear in no specifications and are kept for backward

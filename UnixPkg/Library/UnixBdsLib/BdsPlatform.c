@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2006 - 2007, Intel Corporation                                                         
+Copyright (c) 2006 - 2009, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -66,8 +66,9 @@ SetupVariableInit (
 // BDS Platform Functions
 //
 VOID
+EFIAPI
 PlatformBdsInit (
-  IN EFI_BDS_ARCH_PROTOCOL_INSTANCE  *PrivateData
+  VOID
   )
 /*++
 
@@ -77,8 +78,6 @@ Routine Description:
   and so crc check.
 
 Arguments:
-
-  PrivateData  - The EFI_BDS_ARCH_PROTOCOL_INSTANCE instance
 
 Returns:
 
@@ -102,6 +101,7 @@ Returns:
   //
   gBS->CalculateCrc32 ((VOID *) gST, sizeof (EFI_SYSTEM_TABLE), &gST->Hdr.CRC32);
 
+  SetupVariableInit ();
 }
 
 EFI_STATUS
@@ -299,8 +299,8 @@ Returns:
 }
 
 VOID
+EFIAPI
 PlatformBdsPolicyBehavior (
-  IN EFI_BDS_ARCH_PROTOCOL_INSTANCE  *PrivateData,
   IN OUT LIST_ENTRY                  *DriverOptionList,
   IN OUT LIST_ENTRY                  *BootOptionList
   )
@@ -314,8 +314,6 @@ Routine Description:
   
 Arguments:
 
-  PrivateData      - The EFI_BDS_ARCH_PROTOCOL_INSTANCE instance
-  
   DriverOptionList - The header of the driver option link list
   
   BootOptionList   - The header of the boot option link list
@@ -326,8 +324,9 @@ Returns:
   
 --*/
 {
-  EFI_STATUS  Status;
-  UINT16      Timeout;
+  EFI_STATUS     Status;
+  UINT16         Timeout;
+  EFI_BOOT_MODE  BootMode;
 
   //
   // Init the time out value
@@ -342,13 +341,13 @@ Returns:
   //
   // Get current Boot Mode
   //
-  Status = BdsLibGetBootMode (&PrivateData->BootMode);
+  Status = BdsLibGetBootMode (&BootMode);
 
   //
   // Go the different platform policy with different boot mode
   // Notes: this part code can be change with the table policy
   //
-  switch (PrivateData->BootMode) {
+  switch (BootMode) {
 
   case BOOT_ASSUMING_NO_CONFIGURATION_CHANGES:
   case BOOT_WITH_MINIMAL_CONFIGURATION:
@@ -441,6 +440,7 @@ Returns:
 }
 
 VOID
+EFIAPI
 PlatformBdsBootSuccess (
   IN  BDS_COMMON_OPTION   *Option
   )
@@ -477,6 +477,7 @@ Returns:
 }
 
 VOID
+EFIAPI
 PlatformBdsBootFail (
   IN  BDS_COMMON_OPTION  *Option,
   IN  EFI_STATUS         Status,

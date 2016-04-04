@@ -49,7 +49,6 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
 
-
 [LibraryClasses]
   MemoryAllocationLib
   BaseLib
@@ -59,12 +58,13 @@
   BaseMemoryLib
   DebugLib
   PrintLib
-  IfrSupportLib
   HiiLib
+  DevicePathLib
 
 [Guids]
   gEfiIfrTianoGuid                              ## CONSUMES  ## GUID
   gEfiIfrFrameworkGuid                          ## CONSUMES  ## GUID
+  gEfiHiiPlatformSetupFormsetGuid
 
 [Protocols]
   gEfiHiiConfigAccessProtocolGuid               ## CONSUMES

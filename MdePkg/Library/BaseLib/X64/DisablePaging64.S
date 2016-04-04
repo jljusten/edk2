@@ -28,24 +28,35 @@
 # EFIAPI
 # InternalX86DisablePaging64 (
 #   IN      UINT16                    Cs,
-#   IN      UINT64                    EntryPoint,
-#   IN      UINT64                    Context1,  OPTIONAL
+#   IN      UINT32                    EntryPoint,
+#   IN      UINT32                    Context1,  OPTIONAL
 #   IN      UINT32                    Context2,  OPTIONAL
-#   IN      UINT64                    NewStack
+#   IN      UINT32                    NewStack
 #   );
 #------------------------------------------------------------------------------
 
-.global ASM_PFX(InternalX86DisablePaging64)
+ASM_GLOBAL ASM_PFX(InternalX86DisablePaging64)
 ASM_PFX(InternalX86DisablePaging64):
     cli    
-    shl    $0x20,%rcx                     # rcx[32..47] <- Cs
-    lea    L1, %eax
+    lea    L1(%rip), %rsi                 # rsi <- The start address of transition code
+    mov    0x28(%rsp), %edi               # rdi <- New stack
+    sub    $64, %edi                      # rdi <- use 64 byte in stack to hold transition code  
+    mov    %edi, %r10d                    # r10 <- The start address of transicition code below 4G
+    lea    _mTransitionEnd(%rip), %rax    # rax <- end of transition code
+    sub    %rsi, %rax                     # rax <- The size of transition piece code
+    push   %rcx                           # save rcx to stack
+    mov    %rax, %rcx                     # rcx <- The size of transition piece code
+    rep
+    movsb                                 # copy transition code to (new stack - 64byte) below 4G
+    pop    %rcx                           # restore rcx
+   
     mov    %r8d, %esi 
-    or     %rax, %rcx                     # rcx[0..47] <- Cs:@F
     mov    %r9d, %edi 
     mov    0x28(%rsp), %eax               # eax <- New Stack
-    push   %rcx
-    ret                                   # switch to compatibility mode
+    push   %rcx                           # push Cs to stack
+    push   %r10
+    .byte  0x48, 0xcb                     # retq: Use far return to load CS register from stack
+                                          # (Use raw byte code since some GNU assemblers generates incorrect code for "retq")  
 L1:
     mov    %eax,%esp                      # set up new stack
     mov    %cr0,%rax
@@ -64,4 +75,4 @@ L1:
     push   %rsi                           # push Context1
     callq  *%rbx                          # transfer control to EntryPoint
     jmp    .                              # no one should get here
-
+_mTransitionEnd :

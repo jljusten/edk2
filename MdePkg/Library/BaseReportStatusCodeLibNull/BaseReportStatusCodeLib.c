@@ -133,10 +133,15 @@ EFIAPI
 ReportStatusCodeExtractDebugInfo (
   IN CONST EFI_STATUS_CODE_DATA  *Data,
   OUT UINT32                     *ErrorLevel,
-  OUT VA_LIST                    *Marker,
+  OUT BASE_LIST                  *Marker,
   OUT CHAR8                      **Format
   )
 {
+  ASSERT (Data       != NULL);
+  ASSERT (ErrorLevel != NULL);
+  ASSERT (Marker     != NULL);
+  ASSERT (Format     != NULL);
+
   return FALSE;
 }
 

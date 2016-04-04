@@ -16,7 +16,8 @@
   Module Name:  FrameworkLegacy16.h
 
   @par Revision Reference:
-  These definitions are from Compatibility Support Module Spec Version 0.96.
+  These definitions are from Compatibility Support Module Spec 
+  Version 0.97.
 
 **/
 
@@ -85,6 +86,22 @@ typedef enum {
   Legacy16SetKeyboardLeds       = 0x0007,
   Legacy16InstallPciHandler     = 0x0008
 } EFI_COMPATIBILITY_FUNCTIONS;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// EFI_DISPATCH_OPROM_TABLE
+///////////////////////////////////////////////////////////////////////////////
+
+typedef struct {
+  UINT16  PnPInstallationCheckSegment;
+  UINT16  PnPInstallationCheckOffset;
+  UINT16  OpromSegment;
+  UINT8   PciBus;
+  UINT8   PciDeviceFunction;
+  UINT8   NumberBbsEntries;
+  VOID    *BbsTablePointer; /// @bug: variable size on 32/64-bit systems.
+  UINT16  RuntimeSegment;
+} EFI_DISPATCH_OPROM_TABLE;
 
 //
 // EFI_TO_COMPATIBILITY16_INIT_TABLE

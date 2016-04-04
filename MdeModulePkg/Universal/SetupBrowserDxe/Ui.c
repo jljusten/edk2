@@ -978,7 +978,7 @@ UpdateStatusBar (
     break;
 
   case NV_UPDATE_REQUIRED:
-    if (gClassOfVfr != EFI_FRONT_PAGE_SUBCLASS) {
+    if (gClassOfVfr != FORMSET_CLASS_FRONT_PAGE) {
       if (State) {
         gST->ConOut->SetAttribute (gST->ConOut, INFO_TEXT);
         PrintStringAt (
@@ -1448,6 +1448,102 @@ AdjustDateAndTimePosition (
   return PadLineNumber;
 }
 
+/**
+  Find HII Handle in the HII database associated with given Device Path.
+
+  If DevicePath is NULL, then ASSERT.
+
+  @param  DevicePath             Device Path associated with the HII package list
+                                 handle.
+
+  @retval Handle                 HII package list Handle associated with the Device
+                                        Path.
+  @retval NULL                   Hii Package list handle is not found.
+
+**/
+EFI_HII_HANDLE
+EFIAPI
+DevicePathToHiiHandle (
+  IN EFI_DEVICE_PATH_PROTOCOL   *DevicePath
+  )
+{
+  EFI_STATUS                  Status;
+  EFI_DEVICE_PATH_PROTOCOL    *TmpDevicePath;
+  UINTN                       BufferSize;
+  UINTN                       HandleCount;
+  UINTN                       Index;
+  EFI_HANDLE                  Handle;
+  EFI_HANDLE                  DriverHandle;
+  EFI_HII_HANDLE              *HiiHandles;
+  EFI_HII_HANDLE              HiiHandle;
+
+  ASSERT (DevicePath != NULL);
+
+  TmpDevicePath = DevicePath;
+  //
+  // Locate Device Path Protocol handle buffer
+  //
+  Status = gBS->LocateDevicePath (
+                  &gEfiDevicePathProtocolGuid,
+                  &TmpDevicePath,
+                  &DriverHandle
+                  );
+  if (EFI_ERROR (Status) || !IsDevicePathEnd (TmpDevicePath)) {
+    return NULL;
+  }
+
+  //
+  // Retrieve all HII Handles from HII database
+  //
+  BufferSize = 0x1000;
+  HiiHandles = AllocatePool (BufferSize);
+  ASSERT (HiiHandles != NULL);
+  Status = mHiiDatabase->ListPackageLists (
+                           mHiiDatabase,
+                           EFI_HII_PACKAGE_TYPE_ALL,
+                           NULL,
+                           &BufferSize,
+                           HiiHandles
+                           );
+  if (Status == EFI_BUFFER_TOO_SMALL) {
+    FreePool (HiiHandles);
+    HiiHandles = AllocatePool (BufferSize);
+    ASSERT (HiiHandles != NULL);
+
+    Status = mHiiDatabase->ListPackageLists (
+                             mHiiDatabase,
+                             EFI_HII_PACKAGE_TYPE_ALL,
+                             NULL,
+                             &BufferSize,
+                             HiiHandles
+                             );
+  }
+
+  if (EFI_ERROR (Status)) {
+    FreePool (HiiHandles);
+    return NULL;
+  }
+
+  //
+  // Search Hii Handle by Driver Handle
+  //
+  HiiHandle = NULL;
+  HandleCount = BufferSize / sizeof (EFI_HII_HANDLE);
+  for (Index = 0; Index < HandleCount; Index++) {
+    Status = mHiiDatabase->GetPackageListHandle (
+                             mHiiDatabase,
+                             HiiHandles[Index],
+                             &Handle
+                             );
+    if (!EFI_ERROR (Status) && (Handle == DriverHandle)) {
+      HiiHandle = HiiHandles[Index];
+      break;
+    }
+  }
+
+  FreePool (HiiHandles);
+  return HiiHandle;
+}
 
 /**
   Display menu and wait for user to select one menu option, then return it.
@@ -1533,7 +1629,7 @@ UiDisplayMenu (
 
   ZeroMem (&Key, sizeof (EFI_INPUT_KEY));
 
-  if (gClassOfVfr == EFI_FRONT_PAGE_SUBCLASS) {
+  if (gClassOfVfr == FORMSET_CLASS_FRONT_PAGE) {
     TopRow  = LocalScreen.TopRow + FRONT_PAGE_HEADER_HEIGHT + SCROLL_ARROW_HEIGHT;
     Row     = LocalScreen.TopRow + FRONT_PAGE_HEADER_HEIGHT + SCROLL_ARROW_HEIGHT;
   } else {
@@ -2106,7 +2202,7 @@ UiDisplayMenu (
     case CfUpdateHelpString:
       ControlFlag = CfPrepareToReadKey;
 
-        if ((Repaint || NewLine) && (gClassOfVfr != EFI_GENERAL_APPLICATION_SUBCLASS)) {
+        if (Repaint || NewLine) {
         //
         // Don't print anything if it is a NULL help token
         //
@@ -2228,7 +2324,7 @@ UiDisplayMenu (
         break;
 
       case ' ':
-        if (gClassOfVfr != EFI_FRONT_PAGE_SUBCLASS) {
+        if (gClassOfVfr != FORMSET_CLASS_FRONT_PAGE) {
           if (MenuOption->ThisTag->Operand == EFI_IFR_CHECKBOX_OP && !MenuOption->GrayOut) {
             ScreenOperation = UiSelect;
           }
@@ -2382,7 +2478,7 @@ UiDisplayMenu (
             }
           }
 
-          Selection->Handle = HiiLibDevicePathToHiiHandle (DevicePath);
+          Selection->Handle = DevicePathToHiiHandle (DevicePath);
           if (Selection->Handle == NULL) {
             //
             // If target Hii Handle not found, exit
@@ -2489,7 +2585,7 @@ UiDisplayMenu (
       //
       ControlFlag = CfCheckSelection;
 
-      if (gClassOfVfr == EFI_FRONT_PAGE_SUBCLASS) {
+      if (gClassOfVfr == FORMSET_CLASS_FRONT_PAGE) {
         //
         // There is no parent menu for FrontPage
         //

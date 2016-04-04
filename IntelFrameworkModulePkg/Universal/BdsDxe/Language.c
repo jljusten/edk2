@@ -15,16 +15,16 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "Language.h"
 #include "FrontPage.h"
 
-#define NARROW_GLYPH_NUMBER 8
-#define WIDE_GLYPH_NUMBER   75
-
 EFI_GUID  mFontPackageGuid = {
   0x78941450, 0x90ab, 0x4fb1, {0xb7, 0x5f, 0x58, 0x92, 0x14, 0xe2, 0x4a, 0xc}
 };
 
+#define NARROW_GLYPH_NUMBER 8
+#define WIDE_GLYPH_NUMBER   75
+
 typedef struct {
   ///
-  /// This 4-bytes total array length is required by HiiLibPreparePackageList()
+  /// This 4-bytes total array length is required by HiiAddPackages()
   ///
   UINT32                 Length;
 
@@ -260,13 +260,55 @@ ExportFonts (
   )
 {
   EFI_HII_HANDLE               HiiHandle;
-  EFI_HII_PACKAGE_LIST_HEADER  *PackageList;
 
-  PackageList = HiiLibPreparePackageList (1, &mFontPackageGuid, &mFontBin);
-  ASSERT (PackageList != NULL);
+  HiiHandle = HiiAddPackages (
+                &mFontPackageGuid,
+                mBdsImageHandle,
+                &mFontBin,
+                NULL
+                );
+  ASSERT (HiiHandle != NULL);
+}
 
-  gHiiDatabase->NewPackageList (gHiiDatabase, PackageList, mBdsImageHandle, &HiiHandle);
-  FreePool (PackageList);
+/**
+  Get next language from language code list (with separator ';').
+
+  If LangCode is NULL, then ASSERT.
+  If Lang is NULL, then ASSERT.
+
+  @param  LangCode    On input: point to first language in the list. On
+                                 output: point to next language in the list, or
+                                 NULL if no more language in the list.
+  @param  Lang           The first language in the list.
+
+**/
+VOID
+EFIAPI
+GetNextLanguage (
+  IN OUT CHAR8      **LangCode,
+  OUT CHAR8         *Lang
+  )
+{
+  UINTN  Index;
+  CHAR8  *StringPtr;
+
+  ASSERT (LangCode != NULL);
+  ASSERT (*LangCode != NULL);
+  ASSERT (Lang != NULL);
+
+  Index = 0;
+  StringPtr = *LangCode;
+  while (StringPtr[Index] != 0 && StringPtr[Index] != ';') {
+    Index++;
+  }
+
+  CopyMem (Lang, StringPtr, Index);
+  Lang[Index] = 0;
+
+  if (StringPtr[Index] == ';') {
+    Index++;
+  }
+  *LangCode = StringPtr + Index;
 }
 
 /**
@@ -284,7 +326,7 @@ InitializeLanguage (
   EFI_STATUS  Status;
   UINTN       Size;
   CHAR8       *Lang;
-  CHAR8       LangCode[ISO_639_2_ENTRY_SIZE];
+  CHAR8       LangCode[ISO_639_2_ENTRY_SIZE + 1];
   CHAR8       *LangCodes;
   CHAR8       *PlatformLang;
   CHAR8       *PlatformLangCodes;
@@ -303,7 +345,7 @@ InitializeLanguage (
                       L"LangCodes",
                       &gEfiGlobalVariableGuid,
                       EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
-                      AsciiStrLen (LangCodes),
+                      AsciiStrSize (LangCodes),
                       LangCodes
                       );
     }
@@ -327,7 +369,7 @@ InitializeLanguage (
     //
     // Find current LangCode from Lang NV Variable
     //
-    Size = ISO_639_2_ENTRY_SIZE;
+    Size = ISO_639_2_ENTRY_SIZE + 1;
     Status = gRT->GetVariable (
                     L"Lang",
                     &gEfiGlobalVariableGuid,
@@ -356,7 +398,7 @@ InitializeLanguage (
                       L"Lang",
                       &gEfiGlobalVariableGuid,
                       EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
-                      ISO_639_2_ENTRY_SIZE,
+                      ISO_639_2_ENTRY_SIZE + 1,
                       Lang
                       );
     }

@@ -22,24 +22,25 @@ BOOLEAN            mHiiPackageListUpdated = FALSE;
 HII_VENDOR_DEVICE_PATH  mUefiHiiVendorDevicePath = {
   {
     {
-      HARDWARE_DEVICE_PATH,
-      HW_VENDOR_DP,
       {
-        (UINT8) (sizeof (VENDOR_DEVICE_PATH)),
-        (UINT8) ((sizeof (VENDOR_DEVICE_PATH)) >> 8)
-      }
+        HARDWARE_DEVICE_PATH,
+        HW_VENDOR_DP,
+        {
+          (UINT8) (sizeof (HII_VENDOR_DEVICE_PATH_NODE)),
+          (UINT8) ((sizeof (HII_VENDOR_DEVICE_PATH_NODE)) >> 8)
+        }
+      },
+      EFI_CALLER_ID_GUID
     },
-    //
-    // {2A1F1827-03E2-4b2f-83DE-89B6073A0182}
-    //
-    { 0x2a1f1827, 0x3e2, 0x4b2f, { 0x83, 0xde, 0x89, 0xb6, 0x7, 0x3a, 0x1, 0x82 } }
+    0,
+    0
   },
   {
     END_DEVICE_PATH_TYPE,
     END_ENTIRE_DEVICE_PATH_SUBTYPE,
     { 
-      (UINT8) (END_DEVICE_PATH_LENGTH),
-      (UINT8) ((END_DEVICE_PATH_LENGTH) >> 8)
+      (UINT8) (sizeof (EFI_DEVICE_PATH_PROTOCOL)),
+      (UINT8) ((sizeof (EFI_DEVICE_PATH_PROTOCOL)) >> 8)
     }
   }
 };
@@ -188,7 +189,7 @@ GetStorageFromConfigString (
       Name = Storage->Name;
     }
     
-    if (IsConfigHdrMatch (ConfigString, &Storage->Guid, Name)) {
+    if (HiiIsConfigHdrMatch (ConfigString, &Storage->Guid, Name)) {
       return Storage;
     }
 
@@ -220,6 +221,7 @@ InstallDefaultConfigAccessProtocol (
 {
   EFI_STATUS                                  Status;
   CONFIG_ACCESS_PRIVATE                       *ConfigAccessInstance;
+  HII_VENDOR_DEVICE_PATH                      *HiiVendorPath;
 
   ASSERT (ThunkContext->IfrPackageCount != 0);
 
@@ -228,11 +230,23 @@ InstallDefaultConfigAccessProtocol (
                            &gConfigAccessPrivateTempate
                            );
   ASSERT (ConfigAccessInstance != NULL);
-  
+
+  //
+  // Use memory address as unique ID to distinguish from different device paths
+  // This function may be called multi times by the framework HII driver.
+  //
+  HiiVendorPath = AllocateCopyPool (
+                           sizeof (HII_VENDOR_DEVICE_PATH), 
+                           &mUefiHiiVendorDevicePath
+                           );
+  ASSERT (HiiVendorPath != NULL);
+
+  HiiVendorPath->Node.UniqueId = (UINT64) ((UINTN) HiiVendorPath);
+
   Status = gBS->InstallMultipleProtocolInterfaces (
           &ThunkContext->UefiHiiDriverHandle,
           &gEfiDevicePathProtocolGuid,          
-          &mUefiHiiVendorDevicePath,
+          HiiVendorPath,
           &gEfiHiiConfigAccessProtocolGuid,
           &ConfigAccessInstance->ConfigAccessProtocol,
           NULL
@@ -260,7 +274,8 @@ UninstallDefaultConfigAccessProtocol (
 {
   EFI_STATUS                      Status;
   EFI_HII_CONFIG_ACCESS_PROTOCOL  *ConfigAccess;
-  
+  HII_VENDOR_DEVICE_PATH          *HiiVendorPath;
+
   Status = gBS->HandleProtocol (
                   ThunkContext->UefiHiiDriverHandle,
                   &gEfiHiiConfigAccessProtocolGuid,
@@ -268,10 +283,17 @@ UninstallDefaultConfigAccessProtocol (
                   );
   ASSERT_EFI_ERROR (Status);
 
+  Status = gBS->HandleProtocol (
+                  ThunkContext->UefiHiiDriverHandle,
+                  &gEfiDevicePathProtocolGuid,
+                  (VOID **) &HiiVendorPath
+                  );
+  ASSERT_EFI_ERROR (Status);
+
   Status = gBS->UninstallMultipleProtocolInterfaces (
                   ThunkContext->UefiHiiDriverHandle,
                   &gEfiDevicePathProtocolGuid,
-                  &mUefiHiiVendorDevicePath,
+                  HiiVendorPath,
                   &gEfiHiiConfigAccessProtocolGuid,
                   ConfigAccess,
                   NULL
@@ -649,10 +671,8 @@ CreateIfrDataArray (
   FRAMEWORK_EFI_IFR_DATA_ARRAY      *IfrDataArray;
   FRAMEWORK_EFI_IFR_DATA_ENTRY      *IfrDataEntry;
   UINTN                             BrowserDataSize;
-  FORMSET_STORAGE                  *BufferStorage;
-  EFI_STATUS                        Status;
+  FORMSET_STORAGE                   *BufferStorage;
   UINTN                             Size;
-  UINTN                             StringSize;
   EFI_STRING                        String;
 
   *NvMapAllocated = FALSE;
@@ -669,17 +689,14 @@ CreateIfrDataArray (
       break;
 
     case EFI_IFR_TYPE_STRING:
-      StringSize = 0;
-      Status = HiiLibGetString (ConfigAccess->ThunkContext->UefiHiiHandle, Value->string, String, &StringSize);
-      ASSERT (Status == EFI_BUFFER_TOO_SMALL);
+      if (Value->string == 0) {
+        Size = 0;
+      } else {
+        String = HiiGetString (ConfigAccess->ThunkContext->UefiHiiHandle, Value->string, NULL);
+        ASSERT (String != NULL);
 
-      String = AllocateZeroPool (StringSize);
-      ASSERT (String != NULL);
-
-      Status = HiiLibGetString (ConfigAccess->ThunkContext->UefiHiiHandle, Value->string, String, &StringSize);
-      ASSERT_EFI_ERROR (Status);
-
-      Size = StringSize;
+        Size = StrSize (String);
+      }
       break;
       
     default:
@@ -712,9 +729,7 @@ CreateIfrDataArray (
       IfrDataArray->NvRamMap = ConfigAccess->ThunkContext->NvMapOverride;
     }
     
-    Status = GetBrowserData (&BufferStorage->Guid, BufferStorage->Name, &BrowserDataSize, IfrDataArray->NvRamMap);
-    ASSERT_EFI_ERROR (Status);
-
+    ASSERT (HiiGetBrowserData (&BufferStorage->Guid, BufferStorage->Name, BrowserDataSize, (UINT8 *) IfrDataArray->NvRamMap));
     IfrDataEntry = (FRAMEWORK_EFI_IFR_DATA_ENTRY *) (IfrDataArray + 1);
 
     switch (Type) {
@@ -727,9 +742,11 @@ CreateIfrDataArray (
         break;
 
       case EFI_IFR_TYPE_STRING:
-        ASSERT (String != NULL);
-        StrCpy ((CHAR16 *) &IfrDataEntry->Data, String);
-        FreePool (String);
+        if (Size != 0) {
+          ASSERT (String != NULL);
+          StrCpy ((CHAR16 *) &IfrDataEntry->Data, String);
+          FreePool (String);
+        }
         break;
       default:
         ASSERT (FALSE);
@@ -769,9 +786,9 @@ SyncBrowserDataForNvMapOverride (
   IN          EFI_QUESTION_ID               QuestionId
   )
 {
-  FORMSET_STORAGE                  *BufferStorage;
-  EFI_STATUS                        Status;
-  UINTN                             BrowserDataSize;
+  FORMSET_STORAGE   *BufferStorage;
+  BOOLEAN           CheckFlag;
+  UINTN             BrowserDataSize;
 
   if (ConfigAccess->ThunkContext->NvMapOverride != NULL) {
 
@@ -793,8 +810,8 @@ SyncBrowserDataForNvMapOverride (
     
     BrowserDataSize = BufferStorage->Size;
 
-    Status = SetBrowserData (&BufferStorage->Guid, BufferStorage->Name, BrowserDataSize, ConfigAccess->ThunkContext->NvMapOverride, NULL);
-    ASSERT_EFI_ERROR (Status);
+    CheckFlag = HiiSetBrowserData (&BufferStorage->Guid, BufferStorage->Name, BrowserDataSize, ConfigAccess->ThunkContext->NvMapOverride, NULL);
+    ASSERT (CheckFlag);
   }
 
 }
@@ -1041,7 +1058,7 @@ ThunkCallback (
   if (EFI_ERROR (Status)) {
     if (Packet != NULL) {
       do {
-        IfrLibCreatePopUp (1, &Key, Packet->String);
+        CreatePopUp (EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE, &Key, Packet->String, NULL);
       } while (Key.UnicodeChar != CHAR_CARRIAGE_RETURN);
     }
     //

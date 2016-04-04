@@ -2,7 +2,7 @@
   The file provides basic SMBus host controller management 
   and basic data transactions over the SMBus.
 
-  Copyright (c) 2006 - 2008, Intel Corporation                                                          
+  Copyright (c) 2006 - 2009, Intel Corporation                                                          
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -32,7 +32,7 @@ typedef struct _EFI_SMBUS_HC_PROTOCOL EFI_SMBUS_HC_PROTOCOL;
   operation as defined in the System Management Bus (SMBus)
   Specification. The resulting transaction will be either that
   the SMBus slave devices accept this transaction or that this
-  function returns with error. Status Codes Returned
+  function returns with error. 
   
   @param This     A pointer to the EFI_SMBUS_HC_PROTOCOL instance.
                   SlaveAddress The SMBus slave address of the device
@@ -51,8 +51,8 @@ typedef struct _EFI_SMBUS_HC_PROTOCOL EFI_SMBUS_HC_PROTOCOL;
                   EFI_SMBUS_DEVICE_COMMAND is defined in
                   EFI_PEI_SMBUS_PPI.Execute() in the Platform
                   Initialization SMBus PPI Specification.
-                  Operation Signifies which particular SMBus
-                  hardware protocol instance that it will use to
+ @param Operation Signifies the particular SMBus
+                  hardware protocol instance it will use to
                   execute the SMBus transactions. This SMBus
                   hardware protocol is defined by the SMBus
                   Specification and is not related to PI
@@ -64,8 +64,9 @@ typedef struct _EFI_SMBUS_HC_PROTOCOL EFI_SMBUS_HC_PROTOCOL;
   @param PecCheck Defines if Packet Error Code (PEC) checking
                   is required for this operation. SMBus Host
                   Controller Code Definitions Version 1.0
-                  August 21, 2006 13 Length Signifies the
-                  number of bytes that this operation will do.
+                  August 21, 2006 13 
+                  
+ @param Length    Signifies the number of bytes that this operation will do.
                   The maximum number of bytes can be revision
                   specific and operation specific. This field
                   will contain the actual number of bytes that
@@ -248,10 +249,10 @@ EFI_STATUS
   @param  This            A pointer to the EFI_SMBUS_HC_PROTOCOL instance.
   
   @param  SlaveAddress    Address that the host controller detects
-                          as sending a message and calls all the registered function.
+                          as sending a message, and that calls all the registered function.
 
   @param  Data            Data that the host controller detects as sending
-                          message and calls all the registered function.
+                          message, and that calls all the registered function.
 
 
   @param  NotifyFunction  The function to call when the bus

@@ -31,11 +31,11 @@ typedef struct _EFI_DRIVER_DIAGNOSTICS2_PROTOCOL  EFI_DRIVER_DIAGNOSTICS2_PROTOC
   @param  ControllerHandle The handle of the controller to run diagnostics on.
   @param  ChildHandle      The handle of the child controller to run diagnostics on
                            This is an optional parameter that may be NULL.  It will
-                           be NULL for device drivers.  It will also be NULL for a
+                           be NULL for device drivers.  It will also be NULL for 
                            bus drivers that wish to run diagnostics on the bus
                            controller.  It will not be NULL for a bus driver that
                            wishes to run diagnostics on one of its child controllers.
-  @param  DiagnosticType   Indicates type of diagnostics to perform on the controller
+  @param  DiagnosticType   Indicates the type of diagnostics to perform on the controller
                            specified by ControllerHandle and ChildHandle.   See
                            "Related Definitions" for the list of supported types.
   @param  Language         A pointer to a Null-terminated ASCII string
@@ -45,7 +45,7 @@ typedef struct _EFI_DRIVER_DIAGNOSTICS2_PROTOCOL  EFI_DRIVER_DIAGNOSTICS2_PROTOC
                            languages specified in SupportedLanguages.
                            The number of languages supported by a
                            driver is up to the driver writer. Language
-                           is specified in RFC 3066 language code format.
+                           is specified in RFC 4646 language code format.
   @param  ErrorType        A GUID that defines the format of the data returned in Buffer.
   @param  BufferSize       The size, in bytes, of the data returned in Buffer.
   @param  Buffer           A buffer that contains a Null-terminated Unicode string
@@ -100,7 +100,7 @@ EFI_STATUS
 struct _EFI_DRIVER_DIAGNOSTICS2_PROTOCOL {
   EFI_DRIVER_DIAGNOSTICS2_RUN_DIAGNOSTICS RunDiagnostics;
   ///
-  /// A Null-terminated ASCII string that contains one or more RFC 3066
+  /// A Null-terminated ASCII string that contains one or more RFC 4646
   /// language codes.  This is the list of language codes that this protocol supports.  
   ///    
   CHAR8                                   *SupportedLanguages;

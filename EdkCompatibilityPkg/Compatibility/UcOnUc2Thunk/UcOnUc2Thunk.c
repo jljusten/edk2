@@ -30,13 +30,8 @@ Module Name:
 #include <Library/UefiLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/HiiLib.h>
-
-
-///
-/// The size of a 3 character ISO639 language code.
-///
-#define ISO_639_2_ENTRY_SIZE            3
-
+#include <Library/BaseMemoryLib.h>
+#include <Library/LanguageLib.h>
 
 /**
   Performs a case-insensitive comparison of two Null-terminated Unicode 
@@ -249,10 +244,9 @@ Uc2NotificationEvent (
     //
     // Fill in rest of private data structure
     //
-    Private->UC.SupportedLanguages = AllocateZeroPool (ISO_639_2_ENTRY_SIZE + 1);
-    Status = ConvertRfc3066LanguageToIso639Language (Private->UC2->SupportedLanguages, Private->UC.SupportedLanguages);
+    Private->UC.SupportedLanguages = ConvertLanguagesRfc4646ToIso639 (Private->UC2->SupportedLanguages);
 
-    if (!EFI_ERROR (Status)) {
+    if (Private->UC.SupportedLanguages != NULL) {
 
       //
       // Install Firmware Volume Protocol onto same handle

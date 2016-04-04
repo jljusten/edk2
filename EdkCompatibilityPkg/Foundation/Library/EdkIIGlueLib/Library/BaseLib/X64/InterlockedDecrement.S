@@ -21,7 +21,7 @@
 #
 #------------------------------------------------------------------------------
 
-
+#include <EdkIIGlueBase.h>
 #------------------------------------------------------------------------------
 # UINT32
 # EFIAPI
@@ -29,8 +29,8 @@
 #   IN      UINT32                    *Value
 #   );
 #------------------------------------------------------------------------------
-.global _InternalSyncDecrement;
-_InternalSyncDecrement:
+.global ASM_PFX(InternalSyncDecrement)
+ASM_PFX(InternalSyncDecrement):
     lock    decl (%rcx)
     mov     (%rcx), %eax
     ret

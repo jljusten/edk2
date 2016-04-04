@@ -5,7 +5,7 @@
   All assertions for I/O operations are handled in MMIO functions in the IoLib
   Library.
 
-  Copyright (c) 2006 - 2008, Intel Corporation<BR>
+  Copyright (c) 2006 - 2009, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -18,6 +18,8 @@
 
 
 #include <PiDxe.h>
+
+#include <Guid/EventGroup.h>
 
 #include <Library/BaseLib.h>
 #include <Library/PciExpressLib.h>
@@ -128,11 +130,12 @@ DxeRuntimePciExpressLibConstructor (
   //
   // Register SetVirtualAddressMap () notify function
   //
-  Status = gBS->CreateEvent (
-                  EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE,
+  Status = gBS->CreateEventEx (
+                  EVT_NOTIFY_SIGNAL,
                   TPL_NOTIFY,
                   DxeRuntimePciExpressLibVirtualNotify,
                   NULL,
+                  &gEfiEventVirtualAddressChangeGuid,
                   &mDxeRuntimePciExpressLibVirtualNotifyEvent
                   );
   ASSERT_EFI_ERROR (Status);
@@ -214,7 +217,7 @@ GetPciExpressAddress (
   //
   // See if there is a physical address match at the exact same index as the last address match
   //
-  if (mDxeRuntimePciExpressLibRegistrationTable[mDxeRuntimePciExpressLibLastRuntimeRange].PhysicalAddress == (Address & 0x0ffff000)) {
+  if (mDxeRuntimePciExpressLibRegistrationTable[mDxeRuntimePciExpressLibLastRuntimeRange].PhysicalAddress == (Address & (~0x00000fff))) {
     //
     // Convert the physical address to a virtual address and return the virtual address
     //
@@ -222,10 +225,10 @@ GetPciExpressAddress (
   }
 
   //
-  // Search the entire table for a phyical address match
+  // Search the entire table for a physical address match
   //
   for (Index = 0; Index < mDxeRuntimePciExpressLibNumberOfRuntimeRanges; Index++) {
-    if (mDxeRuntimePciExpressLibRegistrationTable[Index].PhysicalAddress == (Address & 0x0ffff000)) {
+    if (mDxeRuntimePciExpressLibRegistrationTable[Index].PhysicalAddress == (Address & (~0x00000fff))) {
       //
       // Cache the matching index value
       //
@@ -1471,6 +1474,10 @@ PciExpressReadBuffer (
 {
   UINTN   ReturnValue;
 
+  //
+  // Make sure Address is valid
+  //
+  ASSERT (((StartAddress) & ~0xfffffff) == 0);
   ASSERT (((StartAddress & 0xFFF) + Size) <= 0x1000);
 
   if (Size == 0) {
@@ -1570,6 +1577,10 @@ PciExpressWriteBuffer (
 {
   UINTN                             ReturnValue;
 
+  //
+  // Make sure Address is valid
+  //
+  ASSERT (((StartAddress) & ~0xfffffff) == 0);
   ASSERT (((StartAddress & 0xFFF) + Size) <= 0x1000);
 
   if (Size == 0) {

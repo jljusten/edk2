@@ -5,7 +5,7 @@
   information from configuration applications, routing the
   results to the appropriate drivers.
   
-  Copyright (c) 2006 - 2008, Intel Corporation
+  Copyright (c) 2006 - 2009, Intel Corporation
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -78,7 +78,7 @@ typedef struct _EFI_HII_CONFIG_ROUTING_PROTOCOL EFI_HII_CONFIG_ROUTING_PROTOCOL;
                                   values corresponding to all requested
                                   names.
 
-  @retval EFI_OUT_OF_MEMORY       Not enough memory to store the
+  @retval EFI_OUT_OF_RESOURCES    Not enough memory to store the
                                   parts of the results that must be
                                   stored awaiting possible future
                                   protocols.
@@ -87,8 +87,9 @@ typedef struct _EFI_HII_CONFIG_ROUTING_PROTOCOL EFI_HII_CONFIG_ROUTING_PROTOCOL;
                                   for the Request parameter
                                   would result in this type of
                                   error. The Progress parameter
-                                  is set to NULL. EFI_NOT_FOUND
-                                  Routing data doesn't match any
+                                  is set to NULL. 
+  
+  @retval EFI_NOT_FOUND           Routing data doesn't match any
                                   known driver. Progress set to
                                   the "G" in "GUID" of the
                                   routing header that doesn't
@@ -107,7 +108,7 @@ typedef struct _EFI_HII_CONFIG_ROUTING_PROTOCOL EFI_HII_CONFIG_ROUTING_PROTOCOL;
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_HII_ROUTING_EXTRACT_CONFIG)(
+(EFIAPI * EFI_HII_EXTRACT_CONFIG)(
   IN CONST  EFI_HII_CONFIG_ROUTING_PROTOCOL *This,
   IN CONST  EFI_STRING                      Request,
   OUT       EFI_STRING                      *Progress,
@@ -123,7 +124,7 @@ EFI_STATUS
   call has deceptively few inputs but the implementation is likely
   to be somewhat complex. The requirement is to scan all IFR in
   the HII database to determine the list of names and then request
-  the configuration using the corresponding drivers??
+  the configuration using the corresponding drivers.
   EFI_HII_CONFIG_ACCESS_PROTOCOL.ExtractConfig() interfaces below.
   
   @param This     Points to the EFI_HII_CONFIG_ROUTING_PROTOCOL instance.
@@ -138,7 +139,7 @@ EFI_STATUS
                                   values corresponding to all requested
                                   names.
   
-  @retval EFI_OUT_OF_MEMORY       Not enough memory to store the
+  @retval EFI_OUT_OF_RESOURCES    Not enough memory to store the
                                   parts of the results that must be
                                   stored awaiting possible future
                                   protocols.
@@ -151,7 +152,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_HII_ROUTING_EXPORT_CONFIG)(
+(EFIAPI * EFI_HII_EXPORT_CONFIG)(
   IN CONST  EFI_HII_CONFIG_ROUTING_PROTOCOL *This,
   OUT       EFI_STRING                      *Results
 );
@@ -183,7 +184,7 @@ EFI_STATUS
   @retval EFI_SUCCESS             The results have been distributed or are
                                   awaiting distribution.
   
-  @retval EFI_OUT_OF_MEMORY       Not enough memory to store the
+  @retval EFI_OUT_OF_RESOURCES    Not enough memory to store the
                                   parts of the results that must be
                                   stored awaiting possible future
                                   protocols.
@@ -198,7 +199,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_HII_ROUTING_ROUTE_CONFIG)(
+(EFIAPI * EFI_HII_ROUTE_CONFIG)(
   IN CONST  EFI_HII_CONFIG_ROUTING_PROTOCOL *This,
   IN CONST  EFI_STRING                      Configuration,
   OUT       EFI_STRING                      *Progress
@@ -242,7 +243,7 @@ EFI_STATUS
                                   to the null terminator at the end of the
                                   ConfigRequest string.
 
-  @retval EFI_OUT_OF_MEMORY       Not enough memory to allocate
+  @retval EFI_OUT_OF_RESOURCES    Not enough memory to allocate
                                   Config. Progress points to the
                                   first character of ConfigRequest.
 
@@ -256,8 +257,8 @@ EFI_STATUS
   @retval EFI_NOT_FOUND           Target for the specified routing data
                                   was not found. Progress points to the
                                   'G' in "GUID" of the errant routing
-                                  data. EFI_DEVICE_ERROR Block not large
-                                  enough. Progress undefined.
+                                  data. 
+  @retval EFI_DEVICE_ERROR 				Block not large enough. Progress undefined.
 
   @retval EFI_INVALID_PARAMETER   Encountered non <BlockName>
                                   formatted string. Block is
@@ -268,7 +269,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_HII_ROUTING_BLOCK_TO_CONFIG)(
+(EFIAPI * EFI_HII_BLOCK_TO_CONFIG)(
   IN CONST  EFI_HII_CONFIG_ROUTING_PROTOCOL *This,
   IN CONST  EFI_STRING                      ConfigRequest,
   IN CONST  UINT8                           *Block,
@@ -324,7 +325,7 @@ EFI_STATUS
 
   @retval EFI_SUCCESS            The request succeeded. Progress points to the null
                                  terminator at the end of the ConfigResp string.
-  @retval EFI_OUT_OF_RESOURCES   Not enough memory to allocate Config.     Progress
+  @retval EFI_OUT_OF_RESOURCES   Not enough memory to allocate Config. Progress
                                  points to the first character of ConfigResp.
   @retval EFI_INVALID_PARAMETER  Passing in a NULL for the ConfigResp or
                                  Block parameter would result in this type of
@@ -338,7 +339,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_HII_ROUTING_CONFIG_TO_BLOCK)(
+(EFIAPI * EFI_HII_CONFIG_TO_BLOCK)(
   IN CONST  EFI_HII_CONFIG_ROUTING_PROTOCOL *This,
   IN CONST  EFI_STRING                      ConfigResp,
   IN OUT    UINT8                           *Block,
@@ -396,11 +397,11 @@ EFI_STATUS
 /// instance of this protocol in the system.
 ///
 struct _EFI_HII_CONFIG_ROUTING_PROTOCOL {
-  EFI_HII_ROUTING_EXTRACT_CONFIG  ExtractConfig;
-  EFI_HII_ROUTING_EXPORT_CONFIG   ExportConfig;
-  EFI_HII_ROUTING_ROUTE_CONFIG    RouteConfig;
-  EFI_HII_ROUTING_BLOCK_TO_CONFIG BlockToConfig;
-  EFI_HII_ROUTING_CONFIG_TO_BLOCK ConfigToBlock;
+  EFI_HII_EXTRACT_CONFIG  ExtractConfig;
+  EFI_HII_EXPORT_CONFIG   ExportConfig;
+  EFI_HII_ROUTE_CONFIG    RouteConfig;
+  EFI_HII_BLOCK_TO_CONFIG BlockToConfig;
+  EFI_HII_CONFIG_TO_BLOCK ConfigToBlock;
   EFI_HII_GET_ALT_CFG             GetAltConfig;
 };
 

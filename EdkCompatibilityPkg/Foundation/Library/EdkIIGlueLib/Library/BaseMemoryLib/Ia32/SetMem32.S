@@ -20,8 +20,8 @@
 # Notes:
 #
 #------------------------------------------------------------------------------
-
-.globl _InternalMemSetMem32
+#include <EdkIIGlueBase.h>
+.globl ASM_PFX(InternalMemSetMem32)
 
 #------------------------------------------------------------------------------
 #  VOID *
@@ -31,7 +31,7 @@
 #    IN UINT32 Value
 #    )
 #------------------------------------------------------------------------------
-_InternalMemSetMem32:
+ASM_PFX(InternalMemSetMem32):
     push    %edi
     movl    16(%esp),%eax
     movl    8(%esp),%edi
