@@ -74,6 +74,12 @@
 
 
 [Protocols]
-  gEfiPciIoProtocolGuid                         # PROTOCOL ALWAYS_CONSUMED
-  gEfiUsb2HcProtocolGuid                        # PROTOCOL ALWAYS_CONSUMED
+  gEfiPciIoProtocolGuid                         ## TO_START
+  gEfiUsb2HcProtocolGuid                        ## BY_START
 
+# [Event]
+#   ##
+#   # Periodic timer event for checking the result of interrupt transfer execution.
+#   #
+#   EVENT_TYPE_PERIODIC_TIMER                   ## PRODUCES
+#

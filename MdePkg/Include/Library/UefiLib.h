@@ -138,14 +138,16 @@ EfiGetSystemConfigurationTable (
   instances specified by ProtocolGuid.
 
   This function causes the notification function to be executed for every protocol of type
-  ProtocolGuid instance that exists in the system when this function is invoked.
-  In addition, every time a protocol of type ProtocolGuid instance is installed or reinstalled,
-  the notification function is also executed.  This function returns the notification event
-  that was created. 
+  ProtocolGuid instance that exists in the system when this function is invoked. If there are
+  no instances of ProtocolGuid in the handle database at the time this function is invoked,
+  then the notification function is still executed one time. In addition, every time a protocol
+  of type ProtocolGuid instance is installed or reinstalled, the notification function is also
+  executed. This function returns the notification event that was created. 
   If ProtocolGuid is NULL, then ASSERT().
   If NotifyTpl is not a legal TPL value, then ASSERT().
   If NotifyFunction is NULL, then ASSERT().
   If Registration is NULL, then ASSERT().
+
 
   @param  ProtocolGuid    Supplies GUID of the protocol upon whose installation the event is fired.
   @param  NotifyTpl       Supplies the task priority level of the event notifications.
@@ -1151,12 +1153,13 @@ EfiLibInstallDriverBindingComponentName2 (
   Configuration, Driver Configuration 2, Driver Diagnostics, and Driver Diagnostics 2 Protocols.
 
   Initializes a driver by installing the Driver Binding Protocol together with the optional
-  Component Name, optional Component Name 2, optional Driver Configuration, optional Driver
-  Configuration 2, optional Driver Diagnostic, and optional Driver Diagnostic 2 Protocols
-  onto the driver's DriverBindingHandle. DriverBindingHandle is typically the same as the
-  driver's ImageHandle, but it can be different if the driver produces multiple Driver Binding Protocols. 
+  Component Name, optional Component Name 2, optional Driver Configuration, optional Driver Configuration 2,
+  optional Driver Diagnostic, and optional Driver Diagnostic 2 Protocols onto the driver's DriverBindingHandle.
+  DriverBindingHandle is typically the same as the driver's ImageHandle, but it can be different if the driver
+  produces multiple Driver Binding Protocols. 
   If DriverBinding is NULL, then ASSERT(). 
-  If the installation fails, then ASSERT().  
+  If the installation fails, then ASSERT().
+
 
   @param  ImageHandle           The image handle of the driver.
   @param  SystemTable           The EFI System Table that was passed to the driver's entry point.

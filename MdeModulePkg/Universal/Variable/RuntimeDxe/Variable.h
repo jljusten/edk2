@@ -36,6 +36,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/MemoryAllocationLib.h>
 #include <Guid/VariableInfo.h>
 #include <Guid/GlobalVariable.h>
+#include <Guid/EventGroup.h>
 #include <VariableFormat.h>
 
 #define VARIABLE_RECLAIM_THRESHOLD (1024)
@@ -68,5 +69,29 @@ typedef struct {
   UINTN       DataSize;
   VOID        *Data;
 } VARIABLE_CACHE_ENTRY;
+
+/**
+  Writes a buffer to variable storage space, in the working block.
+
+  This function writes a buffer to variable storage space into firmware
+  volume block device. The destination is specified by parameter
+  VariableBase. Fault Tolerant Write protocol is used for writing.
+
+  @param  VariableBase   Base address of variable to write
+  @param  Buffer         Point to the data buffer
+  @param  BufferSize     The number of bytes of the data Buffer
+
+  @retval EFI_SUCCESS    The function completed successfully
+  @retval EFI_NOT_FOUND  Fail to locate Fault Tolerant Write protocol
+  @retval EFI_ABORTED    The function could not complete successfully
+
+**/
+EFI_STATUS
+FtwVariableSpace (
+  IN EFI_PHYSICAL_ADDRESS   VariableBase,
+  IN UINT8                  *Buffer,
+  IN UINTN                  BufferSize
+  );
+
 
 #endif

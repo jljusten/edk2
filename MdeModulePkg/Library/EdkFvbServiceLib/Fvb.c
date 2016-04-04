@@ -298,11 +298,12 @@ FvbLibInitialize (
   //
   // Register SetVirtualAddressMap () notify function
   //
-  Status = gBS->CreateEvent (
-                  EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE,
+  Status = gBS->CreateEventEx (
+                  EVT_NOTIFY_SIGNAL,
                   TPL_NOTIFY,
                   FvbVirtualAddressChangeNotifyEvent,
                   NULL,
+                  &gEfiEventVirtualAddressChangeGuid,
                   &mSetVirtualMapChangedEvent
                   );
   ASSERT_EFI_ERROR (Status);
@@ -708,11 +709,11 @@ EfiFvbEraseCustomBlockRange (
     return EFI_INVALID_PARAMETER;
   }
 
-  if (!(mFvbEntry[Instance].FvbExtension)) {
+  if (mFvbEntry[Instance].FvbExtension == NULL) {
     return EFI_UNSUPPORTED;
   }
 
-  if (!(mFvbEntry[Instance].FvbExtension->EraseFvbCustomBlock)) {
+  if (mFvbEntry[Instance].FvbExtension->EraseFvbCustomBlock == NULL) {
     return EFI_UNSUPPORTED;
   }
 

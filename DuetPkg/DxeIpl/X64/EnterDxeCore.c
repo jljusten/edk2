@@ -1,6 +1,7 @@
-/*++
+/** @file
+  x64 specific code to enter DxeCore
 
-Copyright (c) 2005, Intel Corporation                                                         
+Copyright (c) 2006 - 2007, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -9,21 +10,23 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
-Module Name:
-  x64PcRtc.dxs
+**/
 
-Abstract:
-  Dependency expression source file.
-  
---*/  
+#include "DxeIpl.h"
 
-
-#include "EfiDepex.h"
-
-#include EFI_ARCH_PROTOCOL_DEFINITION (Cpu)
-#include EFI_ARCH_PROTOCOL_DEFINITION (Metronome)
-#include EFI_PROTOCOL_DEFINITION (CpuIo)
-
-DEPENDENCY_START
-  EFI_CPU_ARCH_PROTOCOL_GUID AND EFI_METRONOME_ARCH_PROTOCOL_GUID AND EFI_CPU_IO_PROTOCOL_GUID 
-DEPENDENCY_END
+VOID
+EnterDxeMain (
+  IN VOID *StackTop,
+  IN VOID *DxeCoreEntryPoint,
+  IN VOID *Hob,
+  IN VOID *PageTable
+  )
+{
+  AsmWriteCr3 ((UINTN) PageTable);
+  SwitchStack (
+    (SWITCH_STACK_ENTRY_POINT)(UINTN)DxeCoreEntryPoint,
+    Hob,
+    NULL,
+    StackTop
+    );
+}

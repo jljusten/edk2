@@ -131,6 +131,24 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   MSFT:*_*_IPF_APP_FLAGS    = /D EFI64 $(MSFT_MACRO)
   MSFT:*_*_IPF_PP_FLAGS     = /D EFI64 $(MSFT_MACRO)
 
+###################################################################################################
+#
+# Components Section - list of the modules and components that will be processed by compilation
+#                      tools and the EDK II tools to generate PE32/PE32+/Coff image files.
+#
+# Note: The EDK II DSC file is not used to specify how compiled binary images get placed
+#       into firmware volume images. This section is just a list of modules to compile from
+#       source into UEFI-compliant binaries.
+#       It is the FDF file that contains information on combining binary files into firmware
+#       volume images, whose concept is beyond UEFI and is described in PI specification.
+#       Binary modules do not need to be listed in this section, as they should be
+#       specified in the FDF file. For example: Shell binary (Shell_Full.efi), FAT binary (Fat.efi),
+#       Logo (Logo.bmp), and etc.
+#       There may also be modules listed in this section that are not required in the FDF file,
+#       When a module listed here is excluded from FDF file, then UEFI-compliant binary will be
+#       generated for it, but the binary will not be put into any firmware volume.
+#
+###################################################################################################
 
 [Components.Common]
 
@@ -223,6 +241,17 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   EdkCompatibilityPkg/Compatibility/ReadOnlyVariableOnReadOnlyVariable2Thunk/ReadOnlyVariableOnReadOnlyVariable2Thunk.inf
   EdkCompatibilityPkg/Compatibility/Uc2OnUcThunk/Uc2OnUcThunk.inf
   EdkCompatibilityPkg/Compatibility/UcOnUc2Thunk/UcOnUc2Thunk.inf
+
+  #
+  # User needs to turn on the compatibility switches for VFRC and EDK II build tool for Framework HII modules 
+  # following the example shown below: 
+  #
+  #  $SomePackage/FrameworkHiiModule/FrameworkHiiModule.inf {
+  #    <BuildOptions>
+  #    *_*_*_VFR_FLAGS = -c # for VFR files in the module
+  #    *_*_*_BUILD_FLAGS = -c # for UNI files in the module
+  # }
+
 
 [Components.IA32,Components.X64,Components.IPF]
   EdkCompatibilityPkg/Foundation/Library/EdkIIGlueLib/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
