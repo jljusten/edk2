@@ -434,6 +434,12 @@ SnpReset (
   MmioWrite32 (LAN9118_PMT_CTRL, PmConf);
   gBS->Stall (LAN9118_STALL);
 
+  // Reactivate the LEDs
+  Status = ConfigureHardware (HW_CONF_USE_LEDS, Snp);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
   // Check that a buffer size was specified in SnpInitialize
   if (gTxBuffer != 0) {
     HwConf = MmioRead32 (LAN9118_HW_CFG);        // Read the HW register
@@ -1062,19 +1068,28 @@ SnpGetStatus (
   if (Interrupts & INSTS_TXE) {
     DEBUG ((EFI_D_ERROR, "LAN9118: Transmitter error. Restarting..."));
 
-    // Initiate a software reset
+    // Software reset, the TXE interrupt is cleared by the reset.
     Status = SoftReset (0, Snp);
     if (EFI_ERROR (Status)) {
       DEBUG ((EFI_D_ERROR, "\n\tSoft Reset Failed: Hardware Error\n"));
       return EFI_DEVICE_ERROR;
     }
 
-    // Acknowledge the TXE
-    MmioWrite32 (LAN9118_INT_STS, INSTS_TXE);
-    gBS->Stall (LAN9118_STALL);
+    // Reactivate the LEDs
+    Status = ConfigureHardware (HW_CONF_USE_LEDS, Snp);
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
 
-    // Restart the transmitter
+    //
+    // Restart the transmitter and if necessary the receiver.
+    // Do not ask for FIFO reset as it has already been done
+    // by SoftReset().
+    //
     StartTx (START_TX_MAC | START_TX_CFG, Snp);
+    if (Snp->Mode->ReceiveFilterSetting != 0) {
+      StartRx (0, Snp);
+    }
   }
 
   // Update the media status
@@ -1397,12 +1412,6 @@ SnpReceive (
   PLength = GET_RXSTATUS_PACKET_LENGTH(RxFifoStatus);
   LanDriver->Stats.RxTotalBytes += (PLength - 4);
 
-  // Check buffer size
-  if (*BuffSize < PLength) {
-    *BuffSize = PLength;
-    return EFI_BUFFER_TOO_SMALL;
-  }
-
   // If padding is applied, read more DWORDs
   if (PLength % 4) {
     Padding = 4 - (PLength % 4);
@@ -1410,6 +1419,12 @@ SnpReceive (
   } else {
     ReadLimit = PLength/4;
     Padding = 0;
+  }
+
+  // Check buffer size
+  if (*BuffSize < (PLength + Padding)) {
+    *BuffSize = PLength + Padding;
+    return EFI_BUFFER_TOO_SMALL;
   }
 
   // Set the amount of data to be transfered out of FIFO for THIS packet
@@ -1442,19 +1457,25 @@ SnpReceive (
   if (MmioRead32 (LAN9118_INT_STS) & INSTS_RXE) {
     DEBUG ((EFI_D_WARN, "Warning: Receiver Error. Restarting...\n"));
 
-    // Initiate a software reset
+    // Software reset, the RXE interrupt is cleared by the reset.
     Status = SoftReset (0, Snp);
     if (EFI_ERROR (Status)) {
       DEBUG ((EFI_D_ERROR, "Error: Soft Reset Failed: Hardware Error.\n"));
       return EFI_DEVICE_ERROR;
     }
 
-    // Acknowledge the RXE
-    MmioWrite32 (LAN9118_INT_STS, INSTS_RXE);
-    gBS->Stall (LAN9118_STALL);
+    // Reactivate the LEDs
+    Status = ConfigureHardware (HW_CONF_USE_LEDS, Snp);
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
 
-    // Restart the rx (and do not clear FIFO)
+    //
+    // Restart the receiver and the transmitter without reseting the FIFOs
+    // as it has been done by SoftReset().
+    //
     StartRx (0, Snp);
+    StartTx (START_TX_MAC | START_TX_CFG, Snp);
 
     // Say that command could not be sent
     return EFI_DEVICE_ERROR;

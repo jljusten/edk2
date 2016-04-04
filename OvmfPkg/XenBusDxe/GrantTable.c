@@ -34,10 +34,10 @@
 
 #include <IndustryStandard/Xen/memory.h>
 
-#include "XenHypercall.h"
+#include <Library/XenHypercallLib.h>
+#include <Library/SynchronizationLib.h>
 
 #include "GrantTable.h"
-#include "InterlockedCompareExchange16.h"
 
 #define NR_RESERVED_ENTRIES 8
 
@@ -139,8 +139,7 @@ XenGrantTableEndAccess (
 
 VOID
 XenGrantTableInit (
-  IN XENBUS_DEVICE  *Dev,
-  IN UINT64         MmioAddr
+  IN XENBUS_DEVICE  *Dev
   )
 {
   xen_add_to_physmap_t Parameters;
@@ -155,13 +154,13 @@ XenGrantTableInit (
     XenGrantTablePutFreeEntry ((grant_ref_t)Index);
   }
 
-  GrantTable = (VOID*)(UINTN) MmioAddr;
+  GrantTable = (VOID*)(UINTN) Dev->XenIo->GrantTableAddress;
   for (Index = 0; Index < NR_GRANT_FRAMES; Index++) {
     Parameters.domid = DOMID_SELF;
     Parameters.idx = Index;
     Parameters.space = XENMAPSPACE_grant_table;
-    Parameters.gpfn = (((xen_pfn_t) GrantTable) >> EFI_PAGE_SHIFT) + Index;
-    ReturnCode = XenHypercallMemoryOp (Dev, XENMEM_add_to_physmap, &Parameters);
+    Parameters.gpfn = (xen_pfn_t) ((UINTN) GrantTable >> EFI_PAGE_SHIFT) + Index;
+    ReturnCode = XenHypercallMemoryOp (XENMEM_add_to_physmap, &Parameters);
     if (ReturnCode != 0) {
       DEBUG ((EFI_D_ERROR, "Xen GrantTable, add_to_physmap hypercall error: %d\n", ReturnCode));
     }
@@ -182,9 +181,9 @@ XenGrantTableDeinit (
 
   for (Index = NR_GRANT_FRAMES - 1; Index >= 0; Index--) {
     Parameters.domid = DOMID_SELF;
-    Parameters.gpfn = (((xen_pfn_t) GrantTable) >> EFI_PAGE_SHIFT) + Index;
+    Parameters.gpfn = (xen_pfn_t) ((UINTN) GrantTable >> EFI_PAGE_SHIFT) + Index;
     DEBUG ((EFI_D_INFO, "Xen GrantTable, removing %X\n", Parameters.gpfn));
-    ReturnCode = XenHypercallMemoryOp (Dev, XENMEM_remove_from_physmap, &Parameters);
+    ReturnCode = XenHypercallMemoryOp (XENMEM_remove_from_physmap, &Parameters);
     if (ReturnCode != 0) {
       DEBUG ((EFI_D_ERROR, "Xen GrantTable, remove_from_physmap hypercall error: %d\n", ReturnCode));
     }

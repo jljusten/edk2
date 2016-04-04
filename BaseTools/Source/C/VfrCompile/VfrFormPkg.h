@@ -2,7 +2,7 @@
   
   The definition of CFormPkg's member function
 
-Copyright (c) 2004 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -310,6 +310,10 @@ public:
   VOID UpdateHeader (IN EFI_IFR_OP_HEADER *Header) {
     mHeader = Header;
   }
+
+  UINT8 GetOpCode () {
+    return mHeader->OpCode;
+  }
 };
 
 extern UINT8 gScopeCount;
@@ -595,6 +599,7 @@ public:
 
 static CIfrQuestionHeader *gCurrentQuestion  = NULL;
 static CIfrMinMaxStepData *gCurrentMinMaxData = NULL;
+static BOOLEAN            gIsOrderedList = FALSE;
 
 /*
  * The definition of all of the UEFI IFR Objects
@@ -1358,6 +1363,10 @@ public:
     }
     return VFR_RETURN_SUCCESS;
   }
+
+  UINT8 GetNumericFlags () {
+    return mNumeric->Flags;
+  }
 };
 
 class CIfrOneOf : public CIfrObj, public CIfrOpHeader, public CIfrQuestionHeader, public CIfrMinMaxStepData {
@@ -1710,6 +1719,7 @@ public:
   }
 
   EFI_VFR_RETURN_CODE SetFlags (IN UINT8 LFlags) {
+    mOneOfOption->Flags = 0;
     if (_FLAG_TEST_AND_CLEAR (LFlags, EFI_IFR_OPTION_DEFAULT)) {
       mOneOfOption->Flags |= EFI_IFR_OPTION_DEFAULT;
     }
@@ -2651,6 +2661,21 @@ public:
   ) : CIfrObj (EFI_IFR_MATCH_OP, (CHAR8 **)&mMatch),
       CIfrOpHeader (EFI_IFR_MATCH_OP, &mMatch->Header) {
     SetLineNo (LineNo);
+  }
+};
+
+class CIfrMatch2 : public CIfrObj, public CIfrOpHeader {
+private:
+  EFI_IFR_MATCH2 *mMatch2;
+
+public:
+  CIfrMatch2 (
+  IN UINT32   LineNo,
+  IN EFI_GUID *Guid
+  ) : CIfrObj (EFI_IFR_MATCH2_OP, (CHAR8 **)&mMatch2),
+      CIfrOpHeader (EFI_IFR_MATCH2_OP, &mMatch2->Header) {
+    SetLineNo (LineNo);
+    memmove (&mMatch2->SyntaxType, Guid, sizeof (EFI_GUID));
   }
 };
 

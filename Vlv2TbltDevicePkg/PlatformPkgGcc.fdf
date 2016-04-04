@@ -1,7 +1,7 @@
 #/** @file
 # FDF file of Platform.
 #
-# Copyright (c) 2008  - 2014, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2008  - 2015, Intel Corporation. All rights reserved.<BR>
 #                                                                                  
 # This program and the accompanying materials are licensed and made available under
 # the terms and conditions of the BSD License that accompanies this distribution.  
@@ -22,15 +22,18 @@ DEFINE FLASH_NUM_BLOCKS = 0x300           #The number of blocks in 3Mb FLASH Dev
 DEFINE FLASH_AREA_BASE_ADDRESS                                = 0xFF800000
 DEFINE FLASH_AREA_SIZE                                        = 0x00800000
 
+DEFINE FLASH_REGION_VLVMICROCODE_OFFSET                       = 0x00000000 
+DEFINE FLASH_REGION_VLVMICROCODE_SIZE                         = 0x00030000
+DEFINE FLASH_REGION_VLVMICROCODE_BASE                         = 0xFFD00000
 
-DEFINE FLASH_REGION_VPD_OFFSET                                = 0x00000000
+DEFINE FLASH_REGION_VPD_OFFSET                                = 0x00030000
 DEFINE FLASH_REGION_VPD_SIZE                                  = 0x0003E000
 
-DEFINE FLASH_REGION_NVSTORAGE_SUBREGION_NV_FTW_WORKING_OFFSET = 0x0003E000
+DEFINE FLASH_REGION_NVSTORAGE_SUBREGION_NV_FTW_WORKING_OFFSET = 0x0006E000
 DEFINE FLASH_REGION_NVSTORAGE_SUBREGION_NV_FTW_WORKING_SIZE   = 0x00002000
 
 
-DEFINE FLASH_REGION_NVSTORAGE_SUBREGION_NV_FTW_SPARE_OFFSET   = 0x00040000
+DEFINE FLASH_REGION_NVSTORAGE_SUBREGION_NV_FTW_SPARE_OFFSET   = 0x00070000
 DEFINE FLASH_REGION_NVSTORAGE_SUBREGION_NV_FTW_SPARE_SIZE     = 0x00040000
 
 !if $(MINNOW2_FSP_BUILD) == TRUE
@@ -44,19 +47,15 @@ DEFINE FLASH_REGION_AZALIABIN_BASE                            = 0xFFDF8000
 
 !endif
 
-DEFINE FLASH_REGION_VLVMICROCODE_OFFSET                       = 0x00100000
-DEFINE FLASH_REGION_VLVMICROCODE_SIZE                         = 0x00030000
-DEFINE FLASH_REGION_VLVMICROCODE_BASE                         = 0xFFE00000
-
-DEFINE FLASH_REGION_FVMAIN_OFFSET                             = 0x00130000
-DEFINE FLASH_REGION_FVMAIN_SIZE                               = 0x0016C000
+DEFINE FLASH_REGION_FVMAIN_OFFSET                             = 0x00100000
+DEFINE FLASH_REGION_FVMAIN_SIZE                               = 0x00196000
 
 
-DEFINE FLASH_REGION_FV_RECOVERY2_OFFSET                       = 0x0029C000
-DEFINE FLASH_REGION_FV_RECOVERY2_SIZE                         = 0x0002F000
+DEFINE FLASH_REGION_FV_RECOVERY2_OFFSET                       = 0x00296000
+DEFINE FLASH_REGION_FV_RECOVERY2_SIZE                         = 0x0002C000
 
-DEFINE FLASH_REGION_FV_RECOVERY_OFFSET                         = 0x002CB000
-DEFINE FLASH_REGION_FV_RECOVERY_SIZE                           = 0x00035000
+DEFINE FLASH_REGION_FV_RECOVERY_OFFSET                        = 0x002C2000
+DEFINE FLASH_REGION_FV_RECOVERY_SIZE                          = 0x0003E000
 
 ################################################################################
 #
@@ -114,6 +113,15 @@ SET gPlatformModuleTokenSpaceGuid.PcdFlashAreaSize                   = $(FLASH_A
 # Since the Fce tool don't have gcc version, we can't handle default variable in Linux, 
 # so we hardcode the default value of variable here.
 # Please note that we MUST update the binary once the default value is changed. 
+
+#
+  # CPU Microcodes
+  #
+
+$(FLASH_REGION_VLVMICROCODE_OFFSET)|$(FLASH_REGION_VLVMICROCODE_SIZE)
+gPlatformModuleTokenSpaceGuid.PcdFlashMicroCodeAddress|gPlatformModuleTokenSpaceGuid.PcdFlashMicroCodeSize
+FV = MICROCODE_FV
+
 $(FLASH_REGION_VPD_OFFSET)|$(FLASH_REGION_VPD_SIZE)
 gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase|gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize
 FILE = $(WORKSPACE)/Vlv2TbltDevicePkg/Stitch/Gcc/NvStorageVariable.bin
@@ -137,13 +145,6 @@ FILE = $(WORKSPACE)/Vlv2TbltDevicePkg/Stitch/Gcc/NvStorageFtwSpare.bin
   FILE = Vlv2TbltDevicePkg/FspAzaliaConfigData/AzaliaConfig.bin
 
 !endif
-  #
-  # CPU Microcodes
-  #
-
-$(FLASH_REGION_VLVMICROCODE_OFFSET)|$(FLASH_REGION_VLVMICROCODE_SIZE)
-gPlatformModuleTokenSpaceGuid.PcdFlashMicroCodeAddress|gPlatformModuleTokenSpaceGuid.PcdFlashMicroCodeSize
-FV = MICROCODE_FV
 
   #
   # Main Block
@@ -251,6 +252,9 @@ INF SecurityPkg/Tcg/TrEEConfig/TrEEConfigPei.inf
 INF SecurityPkg/Tcg/TcgPei/TcgPei.inf
 INF SecurityPkg/Tcg/PhysicalPresencePei/PhysicalPresencePei.inf
 !endif
+!if $(FTPM_ENABLE) == TRUE
+INF  SecurityPkg/Tcg/TrEEPei/TrEEPei.inf #use PCD config
+!endif
 INF MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf
 
 !if $(ACPI50_ENABLE) == TRUE
@@ -304,6 +308,10 @@ INF $(PLATFORM_PACKAGE)/PlatformPei/PlatformPei.inf
 
 !if $(MINNOW2_FSP_BUILD) == FALSE
 INF RuleOverride = BINARY $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/IA32/SeCUma.inf
+!endif
+
+!if $(FTPM_ENABLE) == TRUE
+INF RuleOverride = BINARY $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/IA32/fTPMInitPeim.inf
 !endif
 
 !if $(SOURCE_DEBUG_ENABLE) == TRUE
@@ -454,10 +462,23 @@ INF RuleOverride = BINARY $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET
 INF IntelFrameworkModulePkg/Universal/LegacyRegionDxe/LegacyRegionDxe.inf
 INF Vlv2TbltDevicePkg/VlvPlatformInitDxe/VlvPlatformInitDxe.inf
 !endif
+!if $(MINNOW2_FSP_BUILD) == FALSE
+  !if $(SEC_ENABLE) == TRUE
+  INF  RuleOverride = BINARY $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/$(DXE_ARCHITECTURE)/HeciDrv.inf
+  INF  RuleOverride = BINARY $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/$(DXE_ARCHITECTURE)/SeCPolicyInitDxe.inf
+  !endif
+!endif
 !if $(TPM_ENABLED) == TRUE
 INF SecurityPkg/Tcg/TcgConfigDxe/TcgConfigDxe.inf
 INF SecurityPkg/Tcg/TcgDxe/TcgDxe.inf
 INF RuleOverride = DRIVER_ACPITABLE SecurityPkg/Tcg/TcgSmm/TcgSmm.inf
+!endif
+!if $(FTPM_ENABLE) == TRUE
+INF RuleOverride = BINARY $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/IA32/Tpm2DeviceSeCPei.inf
+INF RuleOverride = BINARY $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/$(DXE_ARCHITECTURE)/Tpm2DeviceSeCDxe.inf
+INF SecurityPkg/Tcg/MemoryOverwriteControl/TcgMor.inf
+INF SecurityPkg/Tcg/TrEEDxe/TrEEDxe.inf
+INF RuleOverride = BINARY $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/$(DXE_ARCHITECTURE)/FtpmSmm.inf
 !endif
 
 #
@@ -556,7 +577,7 @@ INF MdeModulePkg/Bus/Scsi/ScsiDiskDxe/ScsiDiskDxe.inf
 # Console
 #
 INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
-INF Vlv2TbltDevicePkg/Override/MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
 INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
 INF IntelFrameworkModulePkg/Universal/Console/VgaClassDxe/VgaClassDxe.inf
 INF MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
@@ -967,6 +988,7 @@ FV = BiosUpdate
   FILE SMM = $(NAMED_GUID) {
     SMM_DEPEX SMM_DEPEX                |.depex
     PE32      PE32                     |.efi
+    RAW       BIN  Optional            |.aml
     UI        STRING="$(MODULE_NAME)" Optional
     VERSION   STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
   }

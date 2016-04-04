@@ -1,6 +1,6 @@
 /** @file
 
-  Copyright (c) 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2014 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -47,13 +47,15 @@ FspGetExceptionHandler(
   It needs to be done as soon as possible after the stack is setup.
 
   @param[in,out] PeiFspData             Pointer of the FSP global data.
-  @param[in]     BootFirmwareVolume     Point to the address of BootFirmwareVolume in stack.
+  @param[in]     BootLoaderStack        BootLoader stack.
+  @param[in]     ApiIdx                 The index of the FSP API.
 
 **/
 VOID
 FspGlobalDataInit (
   IN OUT  FSP_GLOBAL_DATA    *PeiFspData,
-  IN      VOID              **BootFirmwareVolume
+  IN UINT32                   BootLoaderStack,
+  IN UINT8                    ApiIdx
   );
 
 
@@ -78,7 +80,19 @@ FspDataPointerFixUp (
 **/
 UINT32
 EFIAPI
-GetFspBaseAddress (
+AsmGetFspBaseAddress (
+  VOID
+  );
+
+/**
+  This interface gets FspInfoHeader pointer
+
+  @return   FSP binary base address.
+
+**/
+UINT32
+EFIAPI
+AsmGetFspInfoHeader (
   VOID
   );
 

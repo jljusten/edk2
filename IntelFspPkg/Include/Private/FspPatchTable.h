@@ -1,6 +1,6 @@
 /** @file
 
-  Copyright (c) 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2014 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -16,7 +16,7 @@
 
 #pragma pack(1)
 
-#define FSP_PATCH_TABLE_SIGNATURE  SIGNATURE_32 ('F', 'S', 'P', 'P')
+#define FSP_PATCH_TABLE_SIGNATURE  FSP_FSPP_SIGNATURE
 
 typedef struct  {
   UINT32  Signature;

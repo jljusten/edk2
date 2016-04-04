@@ -1,8 +1,8 @@
 /** @file
   Main file for Mode shell Debug1 function.
 
-  (C) Copyright 2013-2014, Hewlett-Packard Development Company, L.P.
-  Copyright (c) 2010 - 2014, Intel Corporation. All rights reserved.<BR>
+  (C) Copyright 2013-2015 Hewlett-Packard Development Company, L.P.<BR>
+  Copyright (c) 2010 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which acModeanies this distribution.  The full text of the license may be found at
@@ -24,6 +24,7 @@ STATIC CONST CHAR16 NameEfiBootServicesData[]        = L"BootServiceData";
 STATIC CONST CHAR16 NameEfiRuntimeServicesCode[]     = L"RuntimeCode";
 STATIC CONST CHAR16 NameEfiRuntimeServicesData[]     = L"RuntimeData";
 STATIC CONST CHAR16 NameEfiConventionalMemory[]      = L"Available";
+STATIC CONST CHAR16 NameEfiPersistentMemory[]        = L"Persistent";
 STATIC CONST CHAR16 NameEfiUnusableMemory[]          = L"UnusableMemory";
 STATIC CONST CHAR16 NameEfiACPIReclaimMemory[]       = L"ACPIReclaimMemory";
 STATIC CONST CHAR16 NameEfiACPIMemoryNVS[]           = L"ACPIMemoryNVS";
@@ -136,7 +137,7 @@ ShellCommandRunMemMap (
   Status = ShellCommandLineParse (SfoParamList, &Package, &ProblemParam, TRUE);
   if (EFI_ERROR(Status)) {
     if (Status == EFI_VOLUME_CORRUPTED && ProblemParam != NULL) {
-      ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_PROBLEM), gShellDebug1HiiHandle, ProblemParam);
+      ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_PROBLEM), gShellDebug1HiiHandle, L"memmap", ProblemParam);  
       FreePool(ProblemParam);
       ShellStatus = SHELL_INVALID_PARAMETER;
     } else {
@@ -144,7 +145,7 @@ ShellCommandRunMemMap (
     }
   } else {
     if (ShellCommandLineGetCount(Package) > 1) {
-      ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_TOO_MANY), gShellDebug1HiiHandle);
+      ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_TOO_MANY), gShellDebug1HiiHandle, L"memmap");  
       ShellStatus = SHELL_INVALID_PARAMETER;
     } else {
       Status = gBS->GetMemoryMap(&Size, Buffer, &MapKey, &ItemSize, &Version);
@@ -154,7 +155,7 @@ ShellCommandRunMemMap (
         Status = gBS->GetMemoryMap(&Size, Buffer, &MapKey, &ItemSize, &Version);
       }
       if (EFI_ERROR(Status)) {
-        ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_MEMMAP_GET_FAILED), gShellDebug1HiiHandle, Status);
+        ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_MEMMAP_GET_FAILED), gShellDebug1HiiHandle, L"memmap");  
         ShellStatus = SHELL_ACCESS_DENIED;
       } else {
         ASSERT(Version == EFI_MEMORY_DESCRIPTOR_VERSION);
@@ -204,6 +205,11 @@ ShellCommandRunMemMap (
               break;
             case EfiConventionalMemory:
               ShellPrintHiiEx(-1, -1, NULL, (EFI_STRING_ID)(!Sfo?STRING_TOKEN (STR_MEMMAP_LIST_ITEM):STRING_TOKEN (STR_MEMMAP_LIST_ITEM_SFO)), gShellDebug1HiiHandle, NameEfiConventionalMemory, ((EFI_MEMORY_DESCRIPTOR*)Walker)->PhysicalStart, ((EFI_MEMORY_DESCRIPTOR*)Walker)->PhysicalStart+MultU64x64(SIZE_4KB,((EFI_MEMORY_DESCRIPTOR*)Walker)->NumberOfPages)-1, ((EFI_MEMORY_DESCRIPTOR*)Walker)->NumberOfPages, ((EFI_MEMORY_DESCRIPTOR*)Walker)->Attribute);
+              AvailPages += ((EFI_MEMORY_DESCRIPTOR*)Walker)->NumberOfPages;
+              TotalPages += ((EFI_MEMORY_DESCRIPTOR*)Walker)->NumberOfPages;
+              break;
+            case EfiPersistentMemory:
+              ShellPrintHiiEx(-1, -1, NULL, (EFI_STRING_ID)(!Sfo?STRING_TOKEN (STR_MEMMAP_LIST_ITEM):STRING_TOKEN (STR_MEMMAP_LIST_ITEM_SFO)), gShellDebug1HiiHandle, NameEfiPersistentMemory, ((EFI_MEMORY_DESCRIPTOR*)Walker)->PhysicalStart, ((EFI_MEMORY_DESCRIPTOR*)Walker)->PhysicalStart+MultU64x64(SIZE_4KB,((EFI_MEMORY_DESCRIPTOR*)Walker)->NumberOfPages)-1, ((EFI_MEMORY_DESCRIPTOR*)Walker)->NumberOfPages, ((EFI_MEMORY_DESCRIPTOR*)Walker)->Attribute);
               AvailPages += ((EFI_MEMORY_DESCRIPTOR*)Walker)->NumberOfPages;
               TotalPages += ((EFI_MEMORY_DESCRIPTOR*)Walker)->NumberOfPages;
               break;

@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2013, ARM Limited. All rights reserved.
+*  Copyright (c) 2013-2015, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -15,14 +15,12 @@
 #ifndef __BDS_ENTRY_H__
 #define __BDS_ENTRY_H__
 
-typedef UINT8* EFI_LOAD_OPTION;
-
 /**
   This is defined by the UEFI specs, don't change it
 **/
 typedef struct {
   UINT16                      LoadOptionIndex;
-  EFI_LOAD_OPTION             LoadOption;
+  EFI_LOAD_OPTION             *LoadOption;
   UINTN                       LoadOptionSize;
 
   UINT32                      Attributes;
@@ -160,9 +158,9 @@ BdsBootLinuxAtag (
 /**
   Start a Linux kernel from a Device Path
 
-  @param  LinuxKernel           Device Path to the Linux Kernel
-  @param  Parameters            Linux kernel arguments
-  @param  Fdt                   Device Path to the Flat Device Tree
+  @param[in]  LinuxKernelDevicePath  Device Path to the Linux Kernel
+  @param[in]  InitrdDevicePath       Device Path to the Initrd
+  @param[in]  Arguments              Linux kernel arguments
 
   @retval EFI_SUCCESS           All drivers have been connected
   @retval EFI_NOT_FOUND         The Linux kernel Device Path has not been found
@@ -173,8 +171,7 @@ EFI_STATUS
 BdsBootLinuxFdt (
   IN  EFI_DEVICE_PATH_PROTOCOL* LinuxKernelDevicePath,
   IN  EFI_DEVICE_PATH_PROTOCOL* InitrdDevicePath,
-  IN  CONST CHAR8*              Arguments,
-  IN  EFI_DEVICE_PATH_PROTOCOL* FdtDevicePath
+  IN  CONST CHAR8*              Arguments
   );
 
 /**
@@ -220,6 +217,14 @@ BdsLoadImage (
   IN     EFI_ALLOCATE_TYPE     Type,
   IN OUT EFI_PHYSICAL_ADDRESS* Image,
   OUT    UINTN                 *FileSize
+  );
+
+/**
+ * Call BS.ExitBootServices with the appropriate Memory Map information
+ */
+EFI_STATUS
+ShutdownUefiBootServices (
+  VOID
   );
 
 #endif

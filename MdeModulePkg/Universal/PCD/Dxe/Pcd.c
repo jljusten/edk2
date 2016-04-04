@@ -3,7 +3,7 @@
   produce the implementation of native PCD protocol and EFI_PCD_PROTOCOL defined in
   PI 1.2 Vol3.
 
-Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -129,7 +129,8 @@ PcdDxeInit (
   )
 {
   EFI_STATUS Status;
-  
+  VOID       *Registration;
+
   //
   // Make sure the Pcd Protocol is not already installed in the system
   //
@@ -151,21 +152,28 @@ PcdDxeInit (
   ASSERT_EFI_ERROR (Status);
 
   //
-  // Only install PcdInfo PROTOCOL when PCD info content is present. 
+  // Install GET_PCD_INFO_PROTOCOL to handle dynamic type PCD
+  // Install EFI_GET_PCD_INFO_PROTOCOL to handle dynamicEx type PCD
   //
-  if (mPcdDatabase.DxeDb->PcdNameTableOffset != 0) {
-    //
-    // Install GET_PCD_INFO_PROTOCOL to handle dynamic type PCD
-    // Install EFI_GET_PCD_INFO_PROTOCOL to handle dynamicEx type PCD
-    //
-    Status = gBS->InstallMultipleProtocolInterfaces (
-                    &mPcdHandle,
-                    &gGetPcdInfoProtocolGuid,     &mGetPcdInfoInstance,
-                    &gEfiGetPcdInfoProtocolGuid,  &mEfiGetPcdInfoInstance,
-                    NULL
-                    );
-    ASSERT_EFI_ERROR (Status);
-  }
+  Status = gBS->InstallMultipleProtocolInterfaces (
+                  &mPcdHandle,
+                  &gGetPcdInfoProtocolGuid,     &mGetPcdInfoInstance,
+                  &gEfiGetPcdInfoProtocolGuid,  &mEfiGetPcdInfoInstance,
+                  NULL
+                  );
+  ASSERT_EFI_ERROR (Status);
+
+  //
+  // Register callback function upon VariableLockProtocol
+  // to lock the variables referenced by DynamicHii PCDs with RO property set in *.dsc.
+  //
+  EfiCreateProtocolNotifyEvent (
+    &gEdkiiVariableLockProtocolGuid,
+    TPL_CALLBACK,
+    VariableLockCallBack,
+    NULL,
+    &Registration
+    );
 
   return Status;
 }
@@ -261,8 +269,22 @@ DxePcdSetSku (
   IN  UINTN         SkuId
   )
 {
-  mPcdDatabase.DxeDb->SystemSkuId = (SKU_ID) SkuId;
-  
+  SKU_ID    *SkuIdTable;
+  UINTN     Index;
+
+  SkuIdTable = (SKU_ID *) ((UINT8 *) mPcdDatabase.DxeDb + mPcdDatabase.DxeDb->SkuIdTableOffset);
+  for (Index = 0; Index < SkuIdTable[0]; Index++) {
+    if (SkuId == SkuIdTable[Index + 1]) {
+      mPcdDatabase.DxeDb->SystemSkuId = (SKU_ID) SkuId;
+      return;
+    }
+  }
+
+  //
+  // Invalid input SkuId, the default SKU Id will be used for the system.
+  //
+  DEBUG ((EFI_D_INFO, "PcdDxe - Invalid input SkuId, the default SKU Id will be used.\n"));
+  mPcdDatabase.DxeDb->SystemSkuId = (SKU_ID) 0;
   return;
 }
 

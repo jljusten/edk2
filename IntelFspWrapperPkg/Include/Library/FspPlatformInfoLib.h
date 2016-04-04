@@ -69,6 +69,45 @@ UpdateFspUpdConfigs (
   );
 
 /**
+  Get BootLoader Tolum size.
+
+  @note At this point, memory is NOT ready, PeiServices are available to use.
+
+  @return BootLoader Tolum size.
+**/
+UINT32
+EFIAPI
+GetBootLoaderTolumSize (
+  VOID
+  );
+
+/**
+  Get TempRamExit parameter.
+
+  @note At this point, memory is ready, PeiServices are available to use.
+
+  @return TempRamExit parameter.
+**/
+VOID *
+EFIAPI
+GetTempRamExitParam (
+  VOID
+  );
+
+/**
+  Get FspSiliconInit parameter.
+
+  @note At this point, memory is ready, PeiServices are available to use.
+
+  @return FspSiliconInit parameter.
+**/
+VOID *
+EFIAPI
+GetFspSiliconInitParam (
+  VOID
+  );
+
+/**
   Get S3 PEI memory information.
 
   @note At this point, memory is ready, and PeiServices are available to use.

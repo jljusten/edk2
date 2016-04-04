@@ -19,7 +19,7 @@
   They will do basic validation for authentication data structure, then call crypto library
   to verify the signature.
 
-Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2009 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -54,14 +54,6 @@ CONST UINT8 mRsaE[] = { 0x01, 0x00, 0x01 };
 // Hash context pointer
 //
 VOID  *mHashCtx = NULL;
-
-//
-// The serialization of the values of the VariableName, VendorGuid and Attributes
-// parameters of the SetVariable() call and the TimeStamp component of the
-// EFI_VARIABLE_AUTHENTICATION_2 descriptor followed by the variable's new value
-// i.e. (VariableName, VendorGuid, Attributes, TimeStamp, Data)
-//
-UINT8 *mSerializationRuntimeBuffer = NULL;
 
 //
 // Requirement for different signature type which have been defined in UEFI spec.
@@ -129,36 +121,6 @@ InCustomMode (
   return FALSE;
 }
 
-
-/**
-  Internal function to delete a Variable given its name and GUID, no authentication
-  required.
-
-  @param[in]      VariableName            Name of the Variable.
-  @param[in]      VendorGuid              GUID of the Variable.
-
-  @retval EFI_SUCCESS              Variable deleted successfully.
-  @retval Others                   The driver failded to start the device.
-
-**/
-EFI_STATUS
-DeleteVariable (
-  IN  CHAR16                    *VariableName,
-  IN  EFI_GUID                  *VendorGuid
-  )
-{
-  EFI_STATUS              Status;
-  VARIABLE_POINTER_TRACK  Variable;
-
-  Status = FindVariable (VariableName, VendorGuid, &Variable, &mVariableModuleGlobal->VariableGlobal, FALSE);
-  if (EFI_ERROR (Status)) {
-    return EFI_SUCCESS;
-  }
-
-  ASSERT (Variable.CurrPtr != NULL);
-  return UpdateVariable (VariableName, VendorGuid, NULL, 0, 0, 0, 0, &Variable, NULL);
-}
-
 /**
   Initializes for authenticated varibale service.
 
@@ -209,15 +171,6 @@ AutenticatedVariableServiceInitialize (
   mMaxCertDbSize = PcdGet32 (PcdMaxVariableSize) - sizeof (VARIABLE_HEADER) - sizeof (EFI_CERT_DB_NAME);
   mCertDbStore   = AllocateRuntimePool (mMaxCertDbSize);
   if (mCertDbStore == NULL) {
-    return EFI_OUT_OF_RESOURCES;
-  }
-
-  //
-  // Prepare runtime buffer for serialized data of time-based authenticated
-  // Variable, i.e. (VariableName, VendorGuid, Attributes, TimeStamp, Data).
-  //
-  mSerializationRuntimeBuffer = AllocateRuntimePool (PcdGet32 (PcdMaxVariableSize) + sizeof (EFI_GUID) + sizeof (UINT32) + sizeof (EFI_TIME));
-  if (mSerializationRuntimeBuffer == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -324,7 +277,25 @@ AutenticatedVariableServiceInitialize (
   SecureBootEnable = SECURE_BOOT_DISABLE;
   FindVariable (EFI_SECURE_BOOT_ENABLE_NAME, &gEfiSecureBootEnableDisableGuid, &Variable, &mVariableModuleGlobal->VariableGlobal, FALSE);
   if (Variable.CurrPtr != NULL) {
-    SecureBootEnable = *(GetVariableDataPtr (Variable.CurrPtr));
+    if (mPlatformMode == SETUP_MODE){
+      //
+      // PK is cleared in runtime. "SecureBootMode" is not updated before reboot 
+      // Delete "SecureBootMode" in SetupMode
+      //
+      Status = UpdateVariable (
+                 EFI_SECURE_BOOT_ENABLE_NAME,
+                 &gEfiSecureBootEnableDisableGuid,
+                 &SecureBootEnable,
+                 0,
+                 EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
+                 0,
+                 0,
+                 &Variable,
+                 NULL
+                 );
+    } else {
+      SecureBootEnable = *(GetVariableDataPtr (Variable.CurrPtr));
+    }
   } else if (mPlatformMode == USER_MODE) {
     //
     // "SecureBootEnable" not exist, initialize it in USER_MODE.
@@ -1282,6 +1253,56 @@ ProcessVarWithKek (
 }
 
 /**
+  Check if it is to delete auth variable.
+
+  @param[in] Data               Data pointer.
+  @param[in] DataSize           Size of Data.
+  @param[in] Variable           The variable information which is used to keep track of variable usage.
+  @param[in] Attributes         Attribute value of the variable.
+
+  @retval TRUE                  It is to delete auth variable.
+  @retval FALSE                 It is not to delete auth variable.
+
+**/
+BOOLEAN
+IsDeleteAuthVariable (
+  IN  VOID                      *Data,
+  IN  UINTN                     DataSize,
+  IN  VARIABLE_POINTER_TRACK    *Variable,
+  IN  UINT32                    Attributes
+  )
+{
+  BOOLEAN                       Del;
+  UINTN                         PayloadSize;
+
+  Del = FALSE;
+
+  //
+  // To delete a variable created with the EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS
+  // or the EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS attribute,
+  // SetVariable must be used with attributes matching the existing variable
+  // and the DataSize set to the size of the AuthInfo descriptor.
+  //
+  if ((Variable->CurrPtr != NULL) &&
+      (Attributes == Variable->CurrPtr->Attributes) &&
+      ((Attributes & (EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS | EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS)) != 0)) {
+    if ((Attributes & EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS) != 0) {
+      PayloadSize = DataSize - AUTHINFO2_SIZE (Data);
+      if (PayloadSize == 0) {
+        Del = TRUE;
+      }
+    } else {
+      PayloadSize = DataSize - AUTHINFO_SIZE;
+      if (PayloadSize == 0) {
+        Del = TRUE;
+      }
+    }
+  }
+
+  return Del;
+}
+
+/**
   Process variable with EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS/EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS set
 
   Caution: This function may receive untrusted input.
@@ -1295,8 +1316,7 @@ ProcessVarWithKek (
   @param[in]  VendorGuid                  Variable vendor GUID.
 
   @param[in]  Data                        Data pointer.
-  @param[in]  DataSize                    Size of Data found. If size is less than the
-                                          data, this value contains the required size.
+  @param[in]  DataSize                    Size of Data.
   @param[in]  Variable                    The variable information which is used to keep track of variable usage.
   @param[in]  Attributes                  Attribute value of the variable.
 
@@ -1335,8 +1355,32 @@ ProcessVariable (
   CertBlock   = NULL;
   PubKey      = NULL;
   IsDeletion  = FALSE;
+  Status      = EFI_SUCCESS;
 
-  if (NeedPhysicallyPresent(VariableName, VendorGuid) && !UserPhysicalPresent()) {
+  if (IsDeleteAuthVariable (Data, DataSize, Variable, Attributes) && UserPhysicalPresent()) {
+    //
+    // Allow the delete operation of common authenticated variable at user physical presence.
+    //
+    if ((Attributes & EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS) != 0) {
+      Status = DeleteCertsFromDb (VariableName, VendorGuid);
+    }
+    if (!EFI_ERROR (Status)) {
+      Status = UpdateVariable (
+                 VariableName,
+                 VendorGuid,
+                 NULL,
+                 0,
+                 0,
+                 0,
+                 0,
+                 Variable,
+                 NULL
+                 );
+    }
+    return Status;
+  }
+
+  if (NeedPhysicallyPresent (VariableName, VendorGuid) && !UserPhysicalPresent()) {
     //
     // This variable is protected, only physical present user could modify its value.
     //
@@ -2150,7 +2194,6 @@ VerifyTimeBasedPayload (
   UINT8                            *Buffer;
   UINTN                            Length;
   UINT8                            *SignerCerts;
-  UINT8                            *WrapSigData;
   UINTN                            CertStackSize;
   UINT8                            *CertsInCertDb;
   UINT32                           CertsSizeinDb;
@@ -2159,7 +2202,6 @@ VerifyTimeBasedPayload (
   CertData               = NULL;
   NewData                = NULL;
   Attr                   = Attributes;
-  WrapSigData            = NULL;
   SignerCerts            = NULL;
   RootCert               = NULL;
   CertsInCertDb          = NULL;
@@ -2221,11 +2263,21 @@ VerifyTimeBasedPayload (
   PayloadSize = DataSize - OFFSET_OF_AUTHINFO2_CERT_DATA - (UINTN) SigDataSize;
 
   //
-  // Construct a buffer to fill with (VariableName, VendorGuid, Attributes, TimeStamp, Data).
+  // Construct a serialization buffer of the values of the VariableName, VendorGuid and Attributes
+  // parameters of the SetVariable() call and the TimeStamp component of the
+  // EFI_VARIABLE_AUTHENTICATION_2 descriptor followed by the variable's new value
+  // i.e. (VariableName, VendorGuid, Attributes, TimeStamp, Data)
   //
   NewDataSize = PayloadSize + sizeof (EFI_TIME) + sizeof (UINT32) +
                 sizeof (EFI_GUID) + StrSize (VariableName) - sizeof (CHAR16);
-  NewData = mSerializationRuntimeBuffer;
+  //
+  // Here is to reuse scratch data area(at the end of volatile variable store)
+  // to reduce SMRAM consumption for SMM variable driver.
+  // The scratch buffer is enough to hold the serialized data and safe to use,
+  // because it will be used at here to do verification only first
+  // and then used in UpdateVariable() for a time based auth variable set.
+  //
+  NewData = (UINT8 *) GetEndPointer ((VARIABLE_STORE_HEADER *) ((UINTN) mVariableModuleGlobal->VariableGlobal.VolatileVariableBase));
 
   Buffer = NewData;
   Length = StrLen (VariableName) * sizeof (CHAR16);

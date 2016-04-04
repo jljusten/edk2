@@ -19,11 +19,6 @@
 #include <Uefi.h>
 
 //
-// Xen interface version used
-//
-#define  __XEN_INTERFACE_VERSION__ 0x00040400
-
-//
 // Libraries
 //
 #include <Library/UefiBootServicesTableLib.h>
@@ -44,7 +39,7 @@
 //
 // Consumed Protocols
 //
-#include <Protocol/PciIo.h>
+#include <Protocol/XenIo.h>
 
 
 //
@@ -78,10 +73,6 @@ extern EFI_COMPONENT_NAME_PROTOCOL  gXenBusDxeComponentName;
 //
 #include <IndustryStandard/Xen/xen.h>
 
-#define PCI_VENDOR_ID_XEN                0x5853
-#define PCI_DEVICE_ID_XEN_PLATFORM       0x0001
-
-
 typedef struct _XENBUS_DEVICE_PATH XENBUS_DEVICE_PATH;
 typedef struct _XENBUS_DEVICE XENBUS_DEVICE;
 
@@ -91,12 +82,11 @@ struct _XENBUS_DEVICE {
   UINT32                        Signature;
   EFI_DRIVER_BINDING_PROTOCOL   *This;
   EFI_HANDLE                    ControllerHandle;
-  EFI_PCI_IO_PROTOCOL           *PciIo;
+  XENIO_PROTOCOL                *XenIo;
   EFI_EVENT                     ExitBootEvent;
   EFI_DEVICE_PATH_PROTOCOL      *DevicePath;
   LIST_ENTRY                    ChildList;
 
-  VOID                          *Hyperpage;
   shared_info_t                 *SharedInfo;
 };
 
@@ -132,7 +122,7 @@ INT32
 EFIAPI
 TestAndClearBit (
   IN INT32 Bit,
-  IN volatile VOID *Address
+  IN VOID  *Address
   );
 
 CHAR8*

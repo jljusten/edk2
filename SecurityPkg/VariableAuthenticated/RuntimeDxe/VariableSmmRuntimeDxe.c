@@ -473,10 +473,6 @@ RuntimeServiceGetVariable (
     return EFI_INVALID_PARAMETER;
   }
 
-  if ((*DataSize != 0) && (Data == NULL)) {
-    return EFI_INVALID_PARAMETER;
-  }
-
   TempDataSize          = *DataSize;
   VariableNameSize      = StrSize (VariableName);
   SmmVariableHeader     = NULL;
@@ -541,7 +537,11 @@ RuntimeServiceGetVariable (
     goto Done;
   }
 
-  CopyMem (Data, (UINT8 *)SmmVariableHeader->Name + SmmVariableHeader->NameSize, SmmVariableHeader->DataSize);
+  if (Data != NULL) {
+    CopyMem (Data, (UINT8 *)SmmVariableHeader->Name + SmmVariableHeader->NameSize, SmmVariableHeader->DataSize);
+  } else {
+    Status = EFI_INVALID_PARAMETER;
+  }
 
 Done:
   ReleaseLockOnlyAtBootTime (&mVariableServicesLock);
@@ -1019,6 +1019,7 @@ VariableSmmRuntimeInitialize (
   VOID                                      *SmmVariableWriteRegistration;
   EFI_EVENT                                 OnReadyToBootEvent;
   EFI_EVENT                                 ExitBootServiceEvent;
+  EFI_EVENT                                 LegacyBootEvent;
 
   EfiInitializeLock (&mVariableServicesLock, TPL_NOTIFY);
 
@@ -1085,6 +1086,17 @@ VariableSmmRuntimeInitialize (
          &gEfiEventExitBootServicesGuid,
          &ExitBootServiceEvent
          ); 
+
+  //
+  // Register the event to inform SMM variable that it is at runtime for legacy boot.
+  // Reuse OnExitBootServices() here.
+  //
+  EfiCreateEventLegacyBootEx(
+    TPL_NOTIFY,
+    OnExitBootServices,
+    NULL,
+    &LegacyBootEvent
+    );
 
   //
   // Register the event to convert the pointer for runtime.

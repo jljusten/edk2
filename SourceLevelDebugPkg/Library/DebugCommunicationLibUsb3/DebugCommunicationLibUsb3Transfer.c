@@ -1,7 +1,7 @@
 /** @file
   Debug Port Library implementation based on usb3 debug port.
 
-  Copyright (c) 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2014 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -262,7 +262,7 @@ XhcCheckUrbResult (
       // Internal buffer is used by next read.
       //
       Handle->DataCount = (UINT8) (Handle->UrbIn.DataLen - EvtTrb->Length);
-      CopyMem (Handle->Data, (VOID *)(UINTN)Handle->UrbIn.Data, Handle->DataCount);
+      CopyMem ((VOID *)(UINTN)Handle->Data, (VOID *)(UINTN)Handle->UrbIn.Data, Handle->DataCount);
       //
       // Fill this TRB complete with CycleBit, otherwise next read will fail with old TRB.
       //
@@ -277,7 +277,7 @@ XhcCheckUrbResult (
       //
       // The length of data which were transferred.
       //
-      CheckedUrb->Completed += (CheckedUrb->DataLen - EvtTrb->Length);
+      CheckedUrb->Completed += (((TRANSFER_TRB_NORMAL*)TRBPtr)->Length - EvtTrb->Length);
     } else {
       CheckedUrb->Result  |= EFI_USB_ERR_TIMEOUT;
     }
@@ -356,58 +356,31 @@ XhcExecTransfer (
   )
 {
   TRANSFER_RING           *Ring;
-  UINT64                  Begin;
-  UINT64                  TimeoutTicker;
-  UINT64                  TimerRound;
   TRB_TEMPLATE            *Trb;
+  UINTN                   Loop;
+  UINTN                   Index;
 
-  Begin         = 0;
-  TimeoutTicker = 0;  
-  TimerRound    = 0;
-
-  XhcRingDoorBell (Handle, Urb);
-
-  if (Timeout != 0) {
-    Begin = GetPerformanceCounter ();
-    TimeoutTicker = DivU64x32 (
-                      MultU64x64 (
-                        Handle->TimerFrequency,
-                        Timeout
-                        ),
-                      1000000u
-                      );
-    TimerRound = DivU64x64Remainder (
-                   TimeoutTicker,
-                   DivU64x32 (Handle->TimerCycle, 2),
-                   &TimeoutTicker
-                   );
+  Loop = Timeout / XHC_DEBUG_PORT_1_MILLISECOND;
+  if (Timeout == 0) {
+    Loop = 0xFFFFFFFF;
   }
-
+  XhcRingDoorBell (Handle, Urb);
   //
   // Event Ring Not Empty bit can only be set to 1 by XHC after ringing door bell with some delay.
   //
-  while (TRUE) {
-    if (Timeout != 0) {
-      if (TimerRound == 0) {
-        if (IsTimerTimeout (Handle, Begin, TimeoutTicker)) {
-          //
-          // If time out occurs.
-          //
-          Urb->Result |= EFI_USB_ERR_TIMEOUT;
-          break;
-        }
-      } else {
-        if (IsTimerTimeout (Handle, Begin, DivU64x32 (Handle->TimerCycle, 2))) {
-          TimerRound --;
-        }
-      }
-    }
+  for (Index = 0; Index < Loop; Index++) {
     XhcCheckUrbResult (Handle, Urb);
     if (Urb->Finished) {
       break;
     }
+    MicroSecondDelay (XHC_DEBUG_PORT_1_MILLISECOND);
   }
-  
+  if (Index == Loop) {
+    //
+    // If time out occurs.
+    //
+    Urb->Result |= EFI_USB_ERR_TIMEOUT;
+  } 
   //
   // If URB transfer is error, restore transfer ring to original value before URB transfer
   // This will make the current transfer TRB is always at the latest unused one in transfer ring.
@@ -459,7 +432,6 @@ XhcCreateTransferTrb (
   XhcSyncTrsRing (Handle, EPRing);
 
   Urb->Trb = EPRing->RingEnqueue;
-  Trb = (TRB *)(UINTN)EPRing->RingEnqueue;
   Trb = (TRB *)(UINTN)EPRing->RingEnqueue;
   Trb->TrbNormal.TRBPtrLo  = XHC_LOW_32BIT (Urb->Data);
   Trb->TrbNormal.TRBPtrHi  = XHC_HIGH_32BIT (Urb->Data);

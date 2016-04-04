@@ -19,17 +19,6 @@
 #include <OvmfPlatforms.h>
 
 //
-// Power Management PCI Configuration Register fields
-//
-#define PMBA_RTE  BIT0
-#define PMIOSE    BIT0
-
-//
-// Offset in the Power Management Base Address to the ACPI Timer
-//
-#define ACPI_TIMER_OFFSET  0x8
-
-//
 // Cached ACPI Timer IO Address
 //
 STATIC UINT32 mAcpiTimerIoAddr;
@@ -49,7 +38,8 @@ AcpiTimerLibConstructor (
 {
   UINT16 HostBridgeDevId;
   UINTN Pmba;
-  UINTN PmRegMisc;
+  UINTN AcpiCtlReg;
+  UINT8 AcpiEnBit;
 
   //
   // Query Host Bridge DID to determine platform type
@@ -57,12 +47,14 @@ AcpiTimerLibConstructor (
   HostBridgeDevId = PciRead16 (OVMF_HOSTBRIDGE_DID);
   switch (HostBridgeDevId) {
     case INTEL_82441_DEVICE_ID:
-      Pmba      = POWER_MGMT_REGISTER_PIIX4 (0x40);
-      PmRegMisc = POWER_MGMT_REGISTER_PIIX4 (0x80);
+      Pmba       = POWER_MGMT_REGISTER_PIIX4 (PIIX4_PMBA);
+      AcpiCtlReg = POWER_MGMT_REGISTER_PIIX4 (PIIX4_PMREGMISC);
+      AcpiEnBit  = PIIX4_PMREGMISC_PMIOSE;
       break;
     case INTEL_Q35_MCH_DEVICE_ID:
-      Pmba      = POWER_MGMT_REGISTER_Q35 (0x40);
-      PmRegMisc = POWER_MGMT_REGISTER_Q35 (0x80);
+      Pmba       = POWER_MGMT_REGISTER_Q35 (ICH9_PMBASE);
+      AcpiCtlReg = POWER_MGMT_REGISTER_Q35 (ICH9_ACPI_CNTL);
+      AcpiEnBit  = ICH9_ACPI_CNTL_ACPI_EN;
       break;
     default:
       DEBUG ((EFI_D_ERROR, "%a: Unknown Host Bridge Device ID: 0x%04x\n",
@@ -76,7 +68,7 @@ AcpiTimerLibConstructor (
   //
   // Check to see if the Power Management Base Address is already enabled
   //
-  if ((PciRead8 (PmRegMisc) & PMIOSE) == 0) {
+  if ((PciRead8 (AcpiCtlReg) & AcpiEnBit) == 0) {
     //
     // If the Power Management Base Address is not programmed,
     // then program the Power Management Base Address from a PCD.
@@ -84,9 +76,9 @@ AcpiTimerLibConstructor (
     PciAndThenOr32 (Pmba, (UINT32) ~0xFFC0, PcdGet16 (PcdAcpiPmBaseAddress));
 
     //
-    // Enable PMBA I/O port decodes in PMREGMISC
+    // Enable PMBA I/O port decodes
     //
-    PciOr8 (PmRegMisc, PMIOSE);
+    PciOr8 (AcpiCtlReg, AcpiEnBit);
   }
 
   return RETURN_SUCCESS;

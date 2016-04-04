@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011-2014, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2015, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -20,6 +20,7 @@
 extern EFI_HARDWARE_INTERRUPT_PROTOCOL gHardwareInterruptV3Protocol;
 
 STATIC UINTN mGicDistributorBase;
+STATIC UINTN mGicRedistributorsBase;
 
 /**
   Enable interrupt source Source.
@@ -43,7 +44,7 @@ GicV3EnableInterruptSource (
     return EFI_UNSUPPORTED;
   }
 
-  ArmGicEnableInterrupt (mGicDistributorBase, Source);
+  ArmGicEnableInterrupt (mGicDistributorBase, mGicRedistributorsBase, Source);
 
   return EFI_SUCCESS;
 }
@@ -70,7 +71,7 @@ GicV3DisableInterruptSource (
     return EFI_UNSUPPORTED;
   }
 
-  ArmGicDisableInterrupt (mGicDistributorBase, Source);
+  ArmGicDisableInterrupt (mGicDistributorBase, mGicRedistributorsBase, Source);
 
   return EFI_SUCCESS;
 }
@@ -99,7 +100,7 @@ GicV3GetInterruptSourceState (
     return EFI_UNSUPPORTED;
   }
 
-  *InterruptState = ArmGicIsInterruptEnabled (mGicDistributorBase, Source);
+  *InterruptState = ArmGicIsInterruptEnabled (mGicDistributorBase, mGicRedistributorsBase, Source);
 
   return EFI_SUCCESS;
 }
@@ -238,13 +239,23 @@ GicV3DxeInitialize (
   UINTN                   Index;
   UINT32                  RegOffset;
   UINTN                   RegShift;
-  UINT32                  CpuTarget;
+  UINT64                  CpuTarget;
+  UINT64                  MpId;
 
   // Make sure the Interrupt Controller Protocol is not already installed in the system.
   ASSERT_PROTOCOL_ALREADY_INSTALLED (NULL, &gHardwareInterruptProtocolGuid);
 
-  mGicDistributorBase = PcdGet32 (PcdGicDistributorBase);
-  mGicNumInterrupts = ArmGicGetMaxNumInterrupts (mGicDistributorBase);
+  mGicDistributorBase    = PcdGet32 (PcdGicDistributorBase);
+  mGicRedistributorsBase = PcdGet32 (PcdGicRedistributorsBase);
+  mGicNumInterrupts      = ArmGicGetMaxNumInterrupts (mGicDistributorBase);
+
+  //
+  // We will be driving this GIC in native v3 mode, i.e., with Affinity
+  // Routing enabled. So ensure that the ARE bit is set.
+  //
+  if (!FeaturePcdGet (PcdArmGicV3WithV2Legacy)) {
+    MmioOr32 (mGicDistributorBase + ARM_GIC_ICDDCR, ARM_GIC_ICDDCR_ARE);
+  }
 
   for (Index = 0; Index < mGicNumInterrupts; Index++) {
     GicV3DisableInterruptSource (&gHardwareInterruptV3Protocol, Index);
@@ -263,21 +274,31 @@ GicV3DxeInitialize (
   // Targets the interrupts to the Primary Cpu
   //
 
-  // Only Primary CPU will run this code. We can identify our GIC CPU ID by reading
-  // the GIC Distributor Target register. The 8 first GICD_ITARGETSRn are banked to each
-  // connected CPU. These 8 registers hold the CPU targets fields for interrupts 0-31.
-  // More Info in the GIC Specification about "Interrupt Processor Targets Registers"
-  //
-  // Read the first Interrupt Processor Targets Register (that corresponds to the 4
-  // first SGIs)
-  CpuTarget = MmioRead32 (mGicDistributorBase + ARM_GIC_ICDIPTR);
+  if (FeaturePcdGet (PcdArmGicV3WithV2Legacy)) {
+    // Only Primary CPU will run this code. We can identify our GIC CPU ID by reading
+    // the GIC Distributor Target register. The 8 first GICD_ITARGETSRn are banked to each
+    // connected CPU. These 8 registers hold the CPU targets fields for interrupts 0-31.
+    // More Info in the GIC Specification about "Interrupt Processor Targets Registers"
+    //
+    // Read the first Interrupt Processor Targets Register (that corresponds to the 4
+    // first SGIs)
+    CpuTarget = MmioRead32 (mGicDistributorBase + ARM_GIC_ICDIPTR);
 
-  // The CPU target is a bit field mapping each CPU to a GIC CPU Interface. This value
-  // is 0 when we run on a uniprocessor platform.
-  if (CpuTarget != 0) {
-    // The 8 first Interrupt Processor Targets Registers are read-only
-    for (Index = 8; Index < (mGicNumInterrupts / 4); Index++) {
-      MmioWrite32 (mGicDistributorBase + ARM_GIC_ICDIPTR + (Index * 4), CpuTarget);
+    // The CPU target is a bit field mapping each CPU to a GIC CPU Interface. This value
+    // is 0 when we run on a uniprocessor platform.
+    if (CpuTarget != 0) {
+      // The 8 first Interrupt Processor Targets Registers are read-only
+      for (Index = 8; Index < (mGicNumInterrupts / 4); Index++) {
+        MmioWrite32 (mGicDistributorBase + ARM_GIC_ICDIPTR + (Index * 4), CpuTarget);
+      }
+    }
+  } else {
+    MpId = ArmReadMpidr ();
+    CpuTarget = MpId & (ARM_CORE_AFF0 | ARM_CORE_AFF1 | ARM_CORE_AFF2 | ARM_CORE_AFF3);
+
+    // Route the SPIs to the primary CPU. SPIs start at the INTID 32
+    for (Index = 0; Index < (mGicNumInterrupts - 32); Index++) {
+      MmioWrite32 (mGicDistributorBase + ARM_GICD_IROUTER + (Index * 8), CpuTarget | ARM_GICD_IROUTER_IRM);
     }
   }
 

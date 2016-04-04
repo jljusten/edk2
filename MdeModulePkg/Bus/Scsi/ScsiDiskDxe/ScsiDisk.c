@@ -1,7 +1,7 @@
 /** @file
   SCSI disk driver that layers on every SCSI IO protocol in the system.
 
-Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -230,15 +230,16 @@ ScsiDiskDriverBindingStart (
     return Status;
   }
 
-  ScsiDiskDevice->Signature         = SCSI_DISK_DEV_SIGNATURE;
-  ScsiDiskDevice->ScsiIo            = ScsiIo;
-  ScsiDiskDevice->BlkIo.Revision    = EFI_BLOCK_IO_PROTOCOL_REVISION3;
-  ScsiDiskDevice->BlkIo.Media       = &ScsiDiskDevice->BlkIoMedia;
-  ScsiDiskDevice->BlkIo.Reset       = ScsiDiskReset;
-  ScsiDiskDevice->BlkIo.ReadBlocks  = ScsiDiskReadBlocks;
-  ScsiDiskDevice->BlkIo.WriteBlocks = ScsiDiskWriteBlocks;
-  ScsiDiskDevice->BlkIo.FlushBlocks = ScsiDiskFlushBlocks;
-  ScsiDiskDevice->Handle            = Controller;
+  ScsiDiskDevice->Signature            = SCSI_DISK_DEV_SIGNATURE;
+  ScsiDiskDevice->ScsiIo               = ScsiIo;
+  ScsiDiskDevice->BlkIo.Revision       = EFI_BLOCK_IO_PROTOCOL_REVISION3;
+  ScsiDiskDevice->BlkIo.Media          = &ScsiDiskDevice->BlkIoMedia;
+  ScsiDiskDevice->BlkIo.Media->IoAlign = ScsiIo->IoAlign;
+  ScsiDiskDevice->BlkIo.Reset          = ScsiDiskReset;
+  ScsiDiskDevice->BlkIo.ReadBlocks     = ScsiDiskReadBlocks;
+  ScsiDiskDevice->BlkIo.WriteBlocks    = ScsiDiskWriteBlocks;
+  ScsiDiskDevice->BlkIo.FlushBlocks    = ScsiDiskFlushBlocks;
+  ScsiDiskDevice->Handle               = Controller;
 
   ScsiIo->GetDeviceType (ScsiIo, &(ScsiDiskDevice->DeviceType));
   switch (ScsiDiskDevice->DeviceType) {
@@ -1149,7 +1150,7 @@ ScsiDiskTestUnitReady (
   UINT8       Index;
   UINT8       MaxRetry;
 
-  SenseDataLength     = 0;
+  SenseDataLength     = (UINT8) (ScsiDiskDevice->SenseDataNumber * sizeof (EFI_SCSI_SENSE_DATA));
   *NumberOfSenseKeys  = 0;
 
   //
@@ -1158,7 +1159,7 @@ ScsiDiskTestUnitReady (
   Status = ScsiTestUnitReadyCommand (
             ScsiDiskDevice->ScsiIo,
             SCSI_DISK_TIMEOUT,
-            NULL,
+            ScsiDiskDevice->SenseData,
             &SenseDataLength,
             &HostAdapterStatus,
             &TargetStatus
@@ -1204,6 +1205,12 @@ ScsiDiskTestUnitReady (
   } else if (Status == EFI_DEVICE_ERROR) {
     *NeedRetry = FALSE;
     return EFI_DEVICE_ERROR;
+  }
+
+  if (SenseDataLength != 0) {
+    *NumberOfSenseKeys = SenseDataLength / sizeof (EFI_SCSI_SENSE_DATA);
+    *SenseDataArray    = ScsiDiskDevice->SenseData;
+    return EFI_SUCCESS;
   }
 
   MaxRetry = 3;
@@ -1739,14 +1746,6 @@ GetMediaInfo (
   }
 
   ScsiDiskDevice->BlkIo.Media->MediaPresent = TRUE;
-  
-  if (ScsiDiskDevice->DeviceType == EFI_SCSI_TYPE_DISK) {
-    ScsiDiskDevice->BlkIo.Media->BlockSize = 0x200;
-  }
-
-  if (ScsiDiskDevice->DeviceType == EFI_SCSI_TYPE_CDROM) {
-    ScsiDiskDevice->BlkIo.Media->BlockSize = 0x800;
-  }
 }
 
 /**
@@ -3101,7 +3100,7 @@ ScsiDiskInfoIdentify (
   EFI_STATUS      Status;
   SCSI_DISK_DEV   *ScsiDiskDevice;
 
-  if (CompareGuid (&This->Interface, &gEfiDiskInfoScsiInterfaceGuid)) {
+  if (CompareGuid (&This->Interface, &gEfiDiskInfoScsiInterfaceGuid) || CompareGuid (&This->Interface, &gEfiDiskInfoUfsInterfaceGuid)) {
     //
     // Physical SCSI bus does not support this data class. 
     //
@@ -3170,7 +3169,7 @@ ScsiDiskInfoWhichIde (
 {
   SCSI_DISK_DEV   *ScsiDiskDevice;
 
-  if (CompareGuid (&This->Interface, &gEfiDiskInfoScsiInterfaceGuid)) {
+  if (CompareGuid (&This->Interface, &gEfiDiskInfoScsiInterfaceGuid) || CompareGuid (&This->Interface, &gEfiDiskInfoUfsInterfaceGuid)) {
     //
     // This is not an IDE physical device.
     //
@@ -3300,6 +3299,10 @@ InitializeInstallDiskInfo (
           return;
         }
       } while (--IdentifyRetry > 0);
+    } else if ((DevicePathType (ChildDevicePathNode) == MESSAGING_DEVICE_PATH) &&
+       (DevicePathSubType (ChildDevicePathNode) == MSG_UFS_DP)) {
+      CopyGuid (&ScsiDiskDevice->DiskInfo.Interface, &gEfiDiskInfoUfsInterfaceGuid);
+      break;
     }
     DevicePathNode = ChildDevicePathNode;
   }

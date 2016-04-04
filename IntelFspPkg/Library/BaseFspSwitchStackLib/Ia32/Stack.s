@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-# Copyright (c) 2014, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2014 - 2015, Intel Corporation. All rights reserved.<BR>
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -15,8 +15,6 @@
 #
 #------------------------------------------------------------------------------
 
-ASM_GLOBAL ASM_PFX(Pei2LoaderSwitchStack)
-ASM_GLOBAL ASM_PFX(Loader2PeiSwitchStack)
 
 #------------------------------------------------------------------------------
 # UINT32
@@ -27,38 +25,54 @@ ASM_GLOBAL ASM_PFX(Loader2PeiSwitchStack)
 #------------------------------------------------------------------------------
 ASM_GLOBAL ASM_PFX(Pei2LoaderSwitchStack)
 ASM_PFX(Pei2LoaderSwitchStack):
-    jmp     ASM_PFX(Loader2PeiSwitchStack)
+    xorl    %eax, %eax
+    jmp     ASM_PFX(FspSwitchStack)
 
 #------------------------------------------------------------------------------
 # UINT32
 # EFIAPI
 # Loader2PeiSwitchStack (
+#   VOID
 #   )
 #------------------------------------------------------------------------------
 ASM_GLOBAL ASM_PFX(Loader2PeiSwitchStack)
 ASM_PFX(Loader2PeiSwitchStack):
-#Save current contexts
-    push    $exit
-    pushf
+    jmp     ASM_PFX(FspSwitchStack)
+
+#------------------------------------------------------------------------------
+# UINT32
+# EFIAPI
+# FspSwitchStack (
+#   VOID
+#   )
+#------------------------------------------------------------------------------
+ASM_GLOBAL ASM_PFX(FspSwitchStack)
+ASM_PFX(FspSwitchStack):
+    #
+    #Save current contexts
+    #
+    push    %eax
     pushf
     cli
     pusha
-    push    $0x0
-    push    $0x0
+    sub     $0x08, %esp
     sidt    (%esp)
 
+    #
     # Load new stack
+    #
     push   %esp
     call   ASM_PFX(SwapStack)
-    mov    %eax,%esp
+    movl   %eax, %esp
 
+    #
     # Restore previous contexts
+    #
     lidt    (%esp)
-    add     $8,%esp
+    add     $0x08,%esp
     popa
     popf
-    popf
-exit:
+    add     $0x04,%esp
     ret
 
 

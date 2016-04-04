@@ -60,6 +60,7 @@
 //  Timeout value for reading packet (unit is microsecond)
 //
 #define READ_PACKET_TIMEOUT     (500 * 1000)
+#define DEBUG_TIMER_INTERVAL    (100 * 1000)
 
 #define SOFT_INTERRUPT_SIGNATURE    SIGNATURE_32('S','O','F','T')
 #define SYSTEM_RESET_SIGNATURE      SIGNATURE_32('S','Y','S','R')
@@ -92,6 +93,7 @@ typedef struct {
 #define DEBUG_AGENT_FLAG_STEPPING              BIT3
 #define DEBUG_AGENT_FLAG_CHECK_MAILBOX_IN_HOB  BIT4
 #define DEBUG_AGENT_FLAG_INIT_ARCH             BIT5|BIT6
+#define DEBUG_AGENT_FLAG_INTERRUPT_FLAG        BIT7
 #define DEBUG_AGENT_FLAG_BREAK_ON_NEXT_SMI     BIT32
 #define DEBUG_AGENT_FLAG_PRINT_ERROR_LEVEL     (BIT33|BIT34|BIT35|BIT36)
 #define DEBUG_AGENT_FLAG_BREAK_BOOT_SCRIPT     BIT37
@@ -102,6 +104,7 @@ typedef struct {
 #define DEBUG_MAILBOX_LAST_ACK                        4
 #define DEBUG_MAILBOX_SEQUENCE_NO_INDEX               5
 #define DEBUG_MAILBOX_HOST_SEQUENCE_NO_INDEX          6
+#define DEBUG_MAILBOX_DEBUG_TIMER_FREQUENCY           7
 
 #pragma pack(1)
 typedef union {
@@ -115,7 +118,8 @@ typedef union {
     UINT32  SteppingFlag      : 1;   // 1: Agent is running stepping command
     UINT32  CheckMailboxInHob : 1;   // 1: Need to check mailbox saved in HOB
     UINT32  InitArch          : 2;   // value of DEBUG_DATA_RESPONSE_ARCH_MODE
-    UINT32  Reserved1         : 25;
+    UINT32  InterruptFlag     : 1;   // 1: EFLAGS.IF is set
+    UINT32  Reserved1         : 24;
     //
     // Higher 32bits to control the behavior of DebugAgent
     //
@@ -137,6 +141,7 @@ typedef struct {
   UINT8                      LastAck;      // The last ack packet type
   UINT8                      SequenceNo;
   UINT8                      HostSequenceNo;
+  UINT32                     DebugTimerFrequency;
   UINT8                      CheckSum;     // Mailbox checksum
   UINT8                      ToBeCheckSum; // To be Mailbox checksum at the next
 } DEBUG_AGENT_MAILBOX;
@@ -338,7 +343,7 @@ IsDebugAgentInitialzed (
   );
 
 /**
-  Caculate Mailbox checksum and update the checksum field.
+  Calculate Mailbox checksum and update the checksum field.
 
   @param[in]  Mailbox  Debug Agent Mailbox pointer.
 
@@ -467,6 +472,31 @@ EFI_STATUS
 ReadRemainingBreakPacket (
   IN     DEBUG_PORT_HANDLE      Handle,
   IN OUT DEBUG_PACKET_HEADER    *DebugHeader
+  );
+
+/**
+  Read data from debug channel and save the data in buffer.
+
+  Reads NumberOfBytes data bytes from a debug device into the buffer
+  specified by Buffer. The number of bytes actually read is returned.
+  If the return value is less than NumberOfBytes, then the rest operation failed.
+  If NumberOfBytes is zero, then return 0.
+
+  @param  Handle           Debug port handle.
+  @param  Buffer           Pointer to the data buffer to store the data read from the debug device.
+  @param  NumberOfBytes    Number of bytes which will be read.
+  @param  Timeout          Timeout value for reading from debug device. It unit is Microsecond.
+
+  @retval 0                Read data failed, no data is to be read.
+  @retval >0               Actual number of bytes read from debug device.
+
+**/
+UINTN
+DebugAgentReadBuffer (
+  IN     DEBUG_PORT_HANDLE     Handle,
+  IN OUT UINT8                 *Buffer,
+  IN     UINTN                 NumberOfBytes,
+  IN     UINTN                 Timeout
   );
 
 #endif

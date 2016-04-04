@@ -27,12 +27,17 @@
 #ifndef __XEN_PUBLIC_XEN_H__
 #define __XEN_PUBLIC_XEN_H__
 
+//
+// Xen interface version used by Tianocore
+//
+#define __XEN_INTERFACE_VERSION__ 0x00040400
+
 #include "xen-compat.h"
 
 #if defined(MDE_CPU_IA32) || defined(MDE_CPU_X64)
 #include "arch-x86/xen.h"
 #elif defined(__arm__) || defined (__aarch64__)
-#include "arch-arm.h"
+#include "arch-arm/xen.h"
 #else
 #error "Unsupported architecture"
 #endif

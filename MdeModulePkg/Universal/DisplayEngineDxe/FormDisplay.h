@@ -113,8 +113,9 @@ extern BOOLEAN           gMisMatch;
 //
 // It take 23 characters including the NULL to print a 64 bits number with "[" and "]".
 // pow(2, 64) = [18446744073709551616]
+// with extra '-' flat, set the width to 24.
 //
-#define MAX_NUMERIC_INPUT_WIDTH 23
+#define MAX_NUMERIC_INPUT_WIDTH 24
 
 #define EFI_HII_EXPRESSION_INCONSISTENT_IF   0
 #define EFI_HII_EXPRESSION_NO_SUBMIT_IF      1
@@ -631,6 +632,21 @@ EFIAPI
 RefreshTimeOutProcess (
   IN  EFI_EVENT    Event,
   IN  VOID         *Context
+  );
+
+/**
+  Record the highlight menu and top of screen menu info.
+
+  @param  Highlight               The menu opton which is highlight.
+  @param  TopOfScreen             The menu opton which is at the top of the form.
+  @param  SkipValue               The skip line info for the top of screen menu.
+
+**/
+VOID
+UpdateHighlightMenuInfo (
+  IN  LIST_ENTRY                      *Highlight,
+  IN  LIST_ENTRY                      *TopOfScreen,
+  IN  UINTN                           SkipValue
   );
 
 #endif

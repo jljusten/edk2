@@ -1,7 +1,7 @@
 /** @file
   UEFI Memory pool management functions.
 
-Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -41,19 +41,24 @@ typedef struct {
   UINTN       Size;
 } POOL_TAIL;
 
-
-#define POOL_SHIFT  7
-
 #define POOL_OVERHEAD (SIZE_OF_POOL_HEAD + sizeof(POOL_TAIL))
 
 #define HEAD_TO_TAIL(a)   \
   ((POOL_TAIL *) (((CHAR8 *) (a)) + (a)->Size - sizeof(POOL_TAIL)));
 
+//
+// Each element is the sum of the 2 previous ones: this allows us to migrate
+// blocks between bins by splitting them up, while not wasting too much memory
+// as we would in a strict power-of-2 sequence
+//
+STATIC CONST UINT16 mPoolSizeTable[] = {
+  64, 128, 192, 320, 512, 832, 1344, 2176, 3520, 5696, 9216, 14912, 24128
+};
 
-#define SIZE_TO_LIST(a)   ((a) >> POOL_SHIFT)
-#define LIST_TO_SIZE(a)   ((a+1) << POOL_SHIFT)
+#define SIZE_TO_LIST(a)   (GetPoolIndexFromSize (a))
+#define LIST_TO_SIZE(a)   (mPoolSizeTable [a])
 
-#define MAX_POOL_LIST       SIZE_TO_LIST(DEFAULT_PAGE_ALLOCATION)
+#define MAX_POOL_LIST     (sizeof (mPoolSizeTable) / sizeof (mPoolSizeTable[0]))
 
 #define MAX_POOL_SIZE     (MAX_ADDRESS - POOL_OVERHEAD)
 
@@ -80,6 +85,29 @@ POOL            mPoolHead[EfiMaxMemoryType];
 //
 LIST_ENTRY      mPoolHeadList = INITIALIZE_LIST_HEAD_VARIABLE (mPoolHeadList);
 
+/**
+  Get pool size table index from the specified size.
+
+  @param  Size          The specified size to get index from pool table.
+
+  @return               The index of pool size table.
+
+**/
+STATIC
+UINTN
+GetPoolIndexFromSize (
+  UINTN   Size
+  )
+{
+  UINTN   Index;
+
+  for (Index = 0; Index < MAX_POOL_LIST; Index++) {
+    if (mPoolSizeTable [Index] >= Size) {
+      return Index;
+    }
+  }
+  return MAX_POOL_LIST;
+}
 
 /**
   Called to initialize the pool.
@@ -126,10 +154,11 @@ LookupPoolHead (
   }
 
   //
-  // MemoryType values in the range 0x80000000..0xFFFFFFFF are reserved for use by UEFI 
-  // OS loaders that are provided by operating system vendors
+  // MemoryType values in the range 0x80000000..0xFFFFFFFF are reserved for use by UEFI
+  // OS loaders that are provided by operating system vendors.
+  // MemoryType values in the range 0x70000000..0x7FFFFFFF are reserved for OEM use.
   //
-  if ((INT32)MemoryType < 0) {
+  if ((UINT32) MemoryType >= MEMORY_TYPE_OEM_RESERVED_MIN) {
 
     for (Link = mPoolHeadList.ForwardLink; Link != &mPoolHeadList; Link = Link->ForwardLink) {
       Pool = CR(Link, POOL, Link, POOL_SIGNATURE);
@@ -169,6 +198,7 @@ LookupPoolHead (
                                  pool
 
   @retval EFI_INVALID_PARAMETER  PoolType not valid or Buffer is NULL. 
+                                 PoolType was EfiPersistentMemory.
   @retval EFI_OUT_OF_RESOURCES   Size exceeds max pool size or allocation failed.
   @retval EFI_SUCCESS            Pool successfully allocated.
 
@@ -186,8 +216,8 @@ CoreInternalAllocatePool (
   //
   // If it's not a valid type, fail it
   //
-  if ((PoolType >= EfiMaxMemoryType && PoolType <= 0x7fffffff) ||
-       PoolType == EfiConventionalMemory) {
+  if ((PoolType >= EfiMaxMemoryType && PoolType < MEMORY_TYPE_OEM_RESERVED_MIN) ||
+       (PoolType == EfiConventionalMemory) || (PoolType == EfiPersistentMemory)) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -272,10 +302,21 @@ CoreAllocatePoolI (
   VOID        *Buffer;
   UINTN       Index;
   UINTN       FSize;
-  UINTN       Offset;
+  UINTN       Offset, MaxOffset;
   UINTN       NoPages;
+  UINTN       Granularity;
 
   ASSERT_LOCKED (&gMemoryLock);
+
+  if  (PoolType == EfiACPIReclaimMemory   ||
+       PoolType == EfiACPIMemoryNVS       ||
+       PoolType == EfiRuntimeServicesCode ||
+       PoolType == EfiRuntimeServicesData) {
+
+    Granularity = EFI_ACPI_RUNTIME_PAGE_ALLOCATION_ALIGNMENT;
+  } else {
+    Granularity = DEFAULT_PAGE_ALLOCATION;
+  }
 
   //
   // Adjust the size by the pool header & tail overhead
@@ -300,10 +341,10 @@ CoreAllocatePoolI (
   // If allocation is over max size, just allocate pages for the request
   // (slow)
   //
-  if (Index >= MAX_POOL_LIST) {
-    NoPages = EFI_SIZE_TO_PAGES(Size) + EFI_SIZE_TO_PAGES (DEFAULT_PAGE_ALLOCATION) - 1;
-    NoPages &= ~(UINTN)(EFI_SIZE_TO_PAGES (DEFAULT_PAGE_ALLOCATION) - 1);
-    Head = CoreAllocatePoolPages (PoolType, NoPages, DEFAULT_PAGE_ALLOCATION);
+  if (Index >= SIZE_TO_LIST (Granularity)) {
+    NoPages = EFI_SIZE_TO_PAGES(Size) + EFI_SIZE_TO_PAGES (Granularity) - 1;
+    NoPages &= ~(UINTN)(EFI_SIZE_TO_PAGES (Granularity) - 1);
+    Head = CoreAllocatePoolPages (PoolType, NoPages, Granularity);
     goto Done;
   }
 
@@ -312,35 +353,56 @@ CoreAllocatePoolI (
   //
   if (IsListEmpty (&Pool->FreeList[Index])) {
 
+    Offset = LIST_TO_SIZE (Index);
+    MaxOffset = Granularity;
+
+    //
+    // Check the bins holding larger blocks, and carve one up if needed
+    //
+    while (++Index < SIZE_TO_LIST (Granularity)) {
+      if (!IsListEmpty (&Pool->FreeList[Index])) {
+        Free = CR (Pool->FreeList[Index].ForwardLink, POOL_FREE, Link, POOL_FREE_SIGNATURE);
+        RemoveEntryList (&Free->Link);
+        NewPage = (VOID *) Free;
+        MaxOffset = LIST_TO_SIZE (Index);
+        goto Carve;
+      }
+    }
+
     //
     // Get another page
     //
-    NewPage = CoreAllocatePoolPages(PoolType, EFI_SIZE_TO_PAGES (DEFAULT_PAGE_ALLOCATION), DEFAULT_PAGE_ALLOCATION);
+    NewPage = CoreAllocatePoolPages(PoolType, EFI_SIZE_TO_PAGES (Granularity), Granularity);
     if (NewPage == NULL) {
       goto Done;
     }
 
     //
-    // Carve up new page into free pool blocks
+    // Serve the allocation request from the head of the allocated block
     //
-    Offset = 0;
-    while (Offset < DEFAULT_PAGE_ALLOCATION) {
+Carve:
+    Head = (POOL_HEAD *) NewPage;
+
+    //
+    // Carve up remaining space into free pool blocks
+    //
+    Index--;
+    while (Offset < MaxOffset) {
       ASSERT (Index < MAX_POOL_LIST);
       FSize = LIST_TO_SIZE(Index);
 
-      while (Offset + FSize <= DEFAULT_PAGE_ALLOCATION) {
+      while (Offset + FSize <= MaxOffset) {
         Free = (POOL_FREE *) &NewPage[Offset];
         Free->Signature = POOL_FREE_SIGNATURE;
         Free->Index     = (UINT32)Index;
         InsertHeadList (&Pool->FreeList[Index], &Free->Link);
         Offset += FSize;
       }
-
       Index -= 1;
     }
 
-    ASSERT (Offset == DEFAULT_PAGE_ALLOCATION);
-    Index = SIZE_TO_LIST(Size);
+    ASSERT (Offset == MaxOffset);
+    goto Done;
   }
 
   //
@@ -464,9 +526,9 @@ CoreFreePoolI (
   UINTN       NoPages;
   UINTN       Size;
   CHAR8       *NewPage;
-  UINTN       FSize;
   UINTN       Offset;
   BOOLEAN     AllFree;
+  UINTN       Granularity;
 
   ASSERT(Buffer != NULL);
   //
@@ -508,6 +570,16 @@ CoreFreePoolI (
   Pool->Used -= Size;
   DEBUG ((DEBUG_POOL, "FreePool: %p (len %lx) %,ld\n", Head->Data, (UINT64)(Head->Size - POOL_OVERHEAD), (UINT64) Pool->Used));
 
+  if  (Head->Type == EfiACPIReclaimMemory   ||
+       Head->Type == EfiACPIMemoryNVS       ||
+       Head->Type == EfiRuntimeServicesCode ||
+       Head->Type == EfiRuntimeServicesData) {
+
+    Granularity = EFI_ACPI_RUNTIME_PAGE_ALLOCATION_ALIGNMENT;
+  } else {
+    Granularity = DEFAULT_PAGE_ALLOCATION;
+  }
+
   //
   // Determine the pool list
   //
@@ -517,13 +589,13 @@ CoreFreePoolI (
   //
   // If it's not on the list, it must be pool pages
   //
-  if (Index >= MAX_POOL_LIST) {
+  if (Index >= SIZE_TO_LIST (Granularity)) {
 
     //
     // Return the memory pages back to free memory
     //
-    NoPages = EFI_SIZE_TO_PAGES(Size) + EFI_SIZE_TO_PAGES (DEFAULT_PAGE_ALLOCATION) - 1;
-    NoPages &= ~(UINTN)(EFI_SIZE_TO_PAGES (DEFAULT_PAGE_ALLOCATION) - 1);
+    NoPages = EFI_SIZE_TO_PAGES(Size) + EFI_SIZE_TO_PAGES (Granularity) - 1;
+    NoPages &= ~(UINTN)(EFI_SIZE_TO_PAGES (Granularity) - 1);
     CoreFreePoolPages ((EFI_PHYSICAL_ADDRESS) (UINTN) Head, NoPages);
 
   } else {
@@ -541,28 +613,22 @@ CoreFreePoolI (
     // See if all the pool entries in the same page as Free are freed pool
     // entries
     //
-    NewPage = (CHAR8 *)((UINTN)Free & ~((DEFAULT_PAGE_ALLOCATION) -1));
+    NewPage = (CHAR8 *)((UINTN)Free & ~(Granularity - 1));
     Free = (POOL_FREE *) &NewPage[0];
     ASSERT(Free != NULL);
 
     if (Free->Signature == POOL_FREE_SIGNATURE) {
 
-      Index = Free->Index;
-
       AllFree = TRUE;
       Offset = 0;
 
-      while ((Offset < DEFAULT_PAGE_ALLOCATION) && (AllFree)) {
-        FSize = LIST_TO_SIZE(Index);
-        while (Offset + FSize <= DEFAULT_PAGE_ALLOCATION) {
-          Free = (POOL_FREE *) &NewPage[Offset];
-          ASSERT(Free != NULL);
-          if (Free->Signature != POOL_FREE_SIGNATURE) {
-            AllFree = FALSE;
-          }
-          Offset += FSize;
+      while ((Offset < Granularity) && (AllFree)) {
+        Free = (POOL_FREE *) &NewPage[Offset];
+        ASSERT(Free != NULL);
+        if (Free->Signature != POOL_FREE_SIGNATURE) {
+          AllFree = FALSE;
         }
-        Index -= 1;
+        Offset += LIST_TO_SIZE(Free->Index);
       }
 
       if (AllFree) {
@@ -574,24 +640,19 @@ CoreFreePoolI (
         //
         Free = (POOL_FREE *) &NewPage[0];
         ASSERT(Free != NULL);
-        Index = Free->Index;
         Offset = 0;
 
-        while (Offset < DEFAULT_PAGE_ALLOCATION) {
-          FSize = LIST_TO_SIZE(Index);
-          while (Offset + FSize <= DEFAULT_PAGE_ALLOCATION) {
-            Free = (POOL_FREE *) &NewPage[Offset];
-            ASSERT(Free != NULL);
-            RemoveEntryList (&Free->Link);
-            Offset += FSize;
-          }
-          Index -= 1;
+        while (Offset < Granularity) {
+          Free = (POOL_FREE *) &NewPage[Offset];
+          ASSERT(Free != NULL);
+          RemoveEntryList (&Free->Link);
+          Offset += LIST_TO_SIZE(Free->Index);
         }
 
         //
         // Free the page
         //
-        CoreFreePoolPages ((EFI_PHYSICAL_ADDRESS) (UINTN)NewPage, EFI_SIZE_TO_PAGES (DEFAULT_PAGE_ALLOCATION));
+        CoreFreePoolPages ((EFI_PHYSICAL_ADDRESS) (UINTN)NewPage, EFI_SIZE_TO_PAGES (Granularity));
       }
     }
   }

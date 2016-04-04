@@ -1,7 +1,7 @@
 /** @file
   DevicePathFromText protocol as defined in the UEFI 2.0 specification.
 
-Copyright (c) 2013 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2013 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -1810,6 +1810,65 @@ DevPathFromTextNVMe (
 }
 
 /**
+  Converts a text device path node to UFS device path structure.
+
+  @param TextDeviceNode  The input Text device path node.
+
+  @return A pointer to the newly-created UFS device path structure.
+
+**/
+EFI_DEVICE_PATH_PROTOCOL *
+DevPathFromTextUfs (
+  IN CHAR16 *TextDeviceNode
+  )
+{
+  CHAR16            *PunStr;
+  CHAR16            *LunStr;
+  UFS_DEVICE_PATH   *Ufs;
+
+  PunStr = GetNextParamStr (&TextDeviceNode);
+  LunStr = GetNextParamStr (&TextDeviceNode);
+  Ufs    = (UFS_DEVICE_PATH *) CreateDeviceNode (
+                                 MESSAGING_DEVICE_PATH,
+                                 MSG_UFS_DP,
+                                 (UINT16) sizeof (UFS_DEVICE_PATH)
+                                 );
+
+  Ufs->Pun = (UINT8) Strtoi (PunStr);
+  Ufs->Lun = (UINT8) Strtoi (LunStr);
+
+  return (EFI_DEVICE_PATH_PROTOCOL *) Ufs;
+}
+
+/**
+  Converts a text device path node to SD (Secure Digital) device path structure.
+
+  @param TextDeviceNode  The input Text device path node.
+
+  @return A pointer to the newly-created SD device path structure.
+
+**/
+EFI_DEVICE_PATH_PROTOCOL *
+DevPathFromTextSd (
+  IN CHAR16 *TextDeviceNode
+  )
+{
+  CHAR16            *SlotNumberStr;
+  SD_DEVICE_PATH    *Sd;
+
+  SlotNumberStr = GetNextParamStr (&TextDeviceNode);
+  Sd            = (SD_DEVICE_PATH *) CreateDeviceNode (
+                                       MESSAGING_DEVICE_PATH,
+                                       MSG_SD_DP,
+                                       (UINT16) sizeof (SD_DEVICE_PATH)
+                                       );
+
+  Sd->SlotNumber = (UINT8) Strtoi (SlotNumberStr);
+
+  return (EFI_DEVICE_PATH_PROTOCOL *) Sd;
+}
+
+/**
   Converts a text device path node to Debug Port device path structure.
 
   @param TextDeviceNode  The input Text device path node.
@@ -2666,6 +2725,113 @@ DevPathFromTextVlan (
 }
 
 /**
+  Converts a text device path node to Bluetooth device path structure.
+
+  @param TextDeviceNode  The input Text device path node.
+
+  @return A pointer to the newly-created Bluetooth device path structure.
+
+**/
+EFI_DEVICE_PATH_PROTOCOL *
+DevPathFromTextBluetooth (
+  IN CHAR16 *TextDeviceNode
+  )
+{
+  CHAR16                  *BluetoothStr;
+  CHAR16                  *Walker;
+  CHAR16                  *TempNumBuffer;
+  UINTN                   TempBufferSize;
+  INT32                   Index;
+  BLUETOOTH_DEVICE_PATH   *BluetoothDp;
+
+  BluetoothStr = GetNextParamStr (&TextDeviceNode);
+  BluetoothDp = (BLUETOOTH_DEVICE_PATH *) CreateDeviceNode (
+                                   MESSAGING_DEVICE_PATH,
+                                   MSG_BLUETOOTH_DP,
+                                   (UINT16) sizeof (BLUETOOTH_DEVICE_PATH)
+                                   );
+
+  Index = sizeof (BLUETOOTH_ADDRESS) - 1;
+  while (!IS_NULL(BluetoothStr) && Index >= 0) {
+    Walker = SplitStr (&BluetoothStr, L':');
+    TempBufferSize = StrSize (Walker) + StrLen (L"0x") * sizeof (CHAR16);
+    TempNumBuffer = AllocateZeroPool (TempBufferSize);
+    if (TempNumBuffer == NULL) {
+      break;
+    }
+    StrnCpy (TempNumBuffer, L"0x", TempBufferSize / sizeof (CHAR16));
+    StrnCat (TempNumBuffer + StrLen (L"0x"), Walker, TempBufferSize / sizeof (CHAR16) - StrLen (L"0x") );
+    BluetoothDp->BD_ADDR.Address[Index] = (UINT8)Strtoi (TempNumBuffer);
+    FreePool (TempNumBuffer);
+    Index--;
+  }
+  
+  return (EFI_DEVICE_PATH_PROTOCOL *) BluetoothDp;
+}
+
+/**
+  Converts a text device path node to Wi-Fi device path structure.
+
+  @param TextDeviceNode  The input Text device path node.
+
+  @return A pointer to the newly-created Wi-Fi device path structure.
+
+**/
+EFI_DEVICE_PATH_PROTOCOL *
+DevPathFromTextWiFi (
+  IN CHAR16 *TextDeviceNode
+  )
+{
+  CHAR16                *SSIdStr;
+  CHAR8                 *AsciiStr;
+  WIFI_DEVICE_PATH      *WiFiDp;
+
+  SSIdStr = GetNextParamStr (&TextDeviceNode);
+  WiFiDp  = (WIFI_DEVICE_PATH *) CreateDeviceNode (
+                                   MESSAGING_DEVICE_PATH,
+                                   MSG_WIFI_DP,
+                                   (UINT16) sizeof (WIFI_DEVICE_PATH)
+                                   );
+
+  AsciiStr = WiFiDp->SSId;
+  StrToAscii (SSIdStr, &AsciiStr);
+
+  return (EFI_DEVICE_PATH_PROTOCOL *) WiFiDp;
+}
+
+/**
+  Converts a text device path node to URI device path structure.
+
+  @param TextDeviceNode  The input Text device path node.
+
+  @return A pointer to the newly-created URI device path structure.
+
+**/
+EFI_DEVICE_PATH_PROTOCOL *
+DevPathFromTextUri (
+  IN CHAR16 *TextDeviceNode
+  )
+{
+  CHAR16           *UriStr;
+  UINTN            UriLength;
+  URI_DEVICE_PATH  *Uri;
+
+  UriStr = GetNextParamStr (&TextDeviceNode);
+  UriLength = StrnLenS (UriStr, MAX_UINT16 - sizeof (URI_DEVICE_PATH));
+  Uri    = (URI_DEVICE_PATH *) CreateDeviceNode (
+                                 MESSAGING_DEVICE_PATH,
+                                 MSG_URI_DP,
+                                 (UINT16) (sizeof (URI_DEVICE_PATH) + UriLength)
+                                 );
+
+  while (UriLength-- != 0) {
+    Uri->Uri[UriLength] = (CHAR8) UriStr[UriLength];
+  }
+
+  return (EFI_DEVICE_PATH_PROTOCOL *) Uri;
+}
+
+/**
   Converts a media text device path node to media device path structure.
 
   @param TextDeviceNode  The input Text device path node.
@@ -3079,6 +3245,8 @@ GLOBAL_REMOVE_IF_UNREFERENCED DEVICE_PATH_FROM_TEXT_TABLE mUefiDevicePathLibDevP
   {L"SAS",                     DevPathFromTextSAS                     },
   {L"SasEx",                   DevPathFromTextSasEx                   },
   {L"NVMe",                    DevPathFromTextNVMe                    },
+  {L"UFS",                     DevPathFromTextUfs                     },
+  {L"SD",                      DevPathFromTextSd                      },
   {L"DebugPort",               DevPathFromTextDebugPort               },
   {L"MAC",                     DevPathFromTextMAC                     },
   {L"IPv4",                    DevPathFromTextIPv4                    },
@@ -3104,7 +3272,9 @@ GLOBAL_REMOVE_IF_UNREFERENCED DEVICE_PATH_FROM_TEXT_TABLE mUefiDevicePathLibDevP
   {L"Unit",                    DevPathFromTextUnit                    },
   {L"iSCSI",                   DevPathFromTextiSCSI                   },
   {L"Vlan",                    DevPathFromTextVlan                    },
-
+  {L"Uri",                     DevPathFromTextUri                     },
+  {L"Bluetooth",               DevPathFromTextBluetooth               },
+  {L"WiFi",                    DevPathFromTextWiFi                    },
   {L"MediaPath",               DevPathFromTextMediaPath               },
   {L"HD",                      DevPathFromTextHD                      },
   {L"CDROM",                   DevPathFromTextCDROM                   },

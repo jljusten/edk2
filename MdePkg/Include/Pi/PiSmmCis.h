@@ -1,8 +1,8 @@
 /** @file
-  Common definitions in the Platform Initialization Specification version 1.2
+  Common definitions in the Platform Initialization Specification version 1.4
   VOLUME 4 System Management Mode Core Interface version.
 
-  Copyright (c) 2009 - 2013, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -26,10 +26,10 @@ typedef struct _EFI_SMM_SYSTEM_TABLE2  EFI_SMM_SYSTEM_TABLE2;
 ///
 #define SMM_SMST_SIGNATURE            SIGNATURE_32 ('S', 'M', 'S', 'T')
 ///
-/// The System Management System Table (SMST) revision is 1.2
+/// The System Management System Table (SMST) revision is 1.4
 ///
 #define SMM_SPECIFICATION_MAJOR_REVISION  1
-#define SMM_SPECIFICATION_MINOR_REVISION  30
+#define SMM_SPECIFICATION_MINOR_REVISION  40
 #define EFI_SMM_SYSTEM_TABLE2_REVISION    ((SMM_SPECIFICATION_MAJOR_REVISION<<16) | (SMM_SPECIFICATION_MINOR_REVISION))
 
 /**
@@ -112,8 +112,9 @@ EFI_STATUS
   @param[in]  Function          Points to the notification function.
   @param[out] Registration      A pointer to a memory location to receive the registration value.
 
-  @retval EFI_SUCCESS           Successfully returned the registration record that has been added.
-  @retval EFI_INVALID_PARAMETER One or more of Protocol, Function and Registration is NULL.
+  @retval EFI_SUCCESS           Successfully returned the registration record
+                                that has been added or unhooked.
+  @retval EFI_INVALID_PARAMETER Protocol is NULL or Registration is NULL.
   @retval EFI_OUT_OF_RESOURCES  Not enough memory resource to finish the request.
   @retval EFI_NOT_FOUND         If the registration is not found when Function == NULL.
 **/

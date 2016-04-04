@@ -30,11 +30,10 @@
 
 [LibraryClasses]
   IoLib
+  MemoryAllocationLib
   ArmLib
   PrintLib
   FdtLib
-  SerialPortLib
-  HobLib
 
 [Sources.common]
   Virt.c
@@ -62,6 +61,3 @@
   gArmTokenSpaceGuid.PcdArmPrimaryCore
   gArmTokenSpaceGuid.PcdFdBaseAddress
   gArmTokenSpaceGuid.PcdFdSize
-
-[Guids]
-  gEarlyPL011BaseAddressGuid

@@ -1,8 +1,8 @@
 /** @file
   Include file that supports UEFI.
 
-  This include file must contain things defined in the UEFI 2.4 specification.
-  If a code construct is defined in the UEFI 2.4 specification it must be included
+  This include file must contain things defined in the UEFI 2.5 specification.
+  If a code construct is defined in the UEFI 2.5 specification it must be included
   by this include file.
 
 Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
@@ -63,21 +63,35 @@ typedef enum {
 //
 // Memory cacheability attributes
 //
-#define EFI_MEMORY_UC   0x0000000000000001ULL
-#define EFI_MEMORY_WC   0x0000000000000002ULL
-#define EFI_MEMORY_WT   0x0000000000000004ULL
-#define EFI_MEMORY_WB   0x0000000000000008ULL
-#define EFI_MEMORY_UCE  0x0000000000000010ULL
+#define EFI_MEMORY_UC               0x0000000000000001ULL
+#define EFI_MEMORY_WC               0x0000000000000002ULL
+#define EFI_MEMORY_WT               0x0000000000000004ULL
+#define EFI_MEMORY_WB               0x0000000000000008ULL
+#define EFI_MEMORY_UCE              0x0000000000000010ULL
 //
 // Physical memory protection attributes
 //
-#define EFI_MEMORY_WP   0x0000000000001000ULL
-#define EFI_MEMORY_RP   0x0000000000002000ULL
-#define EFI_MEMORY_XP   0x0000000000004000ULL
+// Note: UEFI spec 2.5 and following: use EFI_MEMORY_RO as write-protected physical memory
+// protection attribute. Also, EFI_MEMORY_WP means cacheability attribute.
+//
+#define EFI_MEMORY_WP               0x0000000000001000ULL
+#define EFI_MEMORY_RP               0x0000000000002000ULL
+#define EFI_MEMORY_XP               0x0000000000004000ULL
+#define EFI_MEMORY_RO               0x0000000000020000ULL
+//
+// Physical memory persistence attribute. 
+// The memory region supports byte-addressable non-volatility.
+//
+#define EFI_MEMORY_NV               0x0000000000008000ULL
+//
+// The memory region provides higher reliability relative to other memory in the system.
+// If all memory has the same reliability, then this bit is not used.
+//
+#define EFI_MEMORY_MORE_RELIABLE    0x0000000000010000ULL
 //
 // Runtime memory attribute
 //
-#define EFI_MEMORY_RUNTIME  0x8000000000000000ULL
+#define EFI_MEMORY_RUNTIME          0x8000000000000000ULL
 
 ///
 /// Memory descriptor version number.
@@ -119,6 +133,11 @@ typedef struct {
 
   @param[in]       Type         The type of allocation to perform.
   @param[in]       MemoryType   The type of memory to allocate.
+                                MemoryType values in the range 0x70000000..0x7FFFFFFF
+                                are reserved for OEM use. MemoryType values in the range
+                                0x80000000..0xFFFFFFFF are reserved for use by UEFI OS loaders
+                                that are provided by operating system vendors. The only illegal
+                                memory type values are those in the range EfiMaxMemoryType..0x6FFFFFFF.
   @param[in]       Pages        The number of contiguous 4 KB pages to allocate.
   @param[in, out]  Memory       The pointer to a physical address. On input, the way in which the address is
                                 used depends on the value of Type.
@@ -127,8 +146,9 @@ typedef struct {
   @retval EFI_INVALID_PARAMETER 1) Type is not AllocateAnyPages or
                                 AllocateMaxAddress or AllocateAddress.
                                 2) MemoryType is in the range
+                                EfiMaxMemoryType..0x6FFFFFFF.
                                 3) Memory is NULL.
-                                EfiMaxMemoryType..0x7FFFFFFF.
+                                4) MemoryType was EfiPersistentMemory.
   @retval EFI_OUT_OF_RESOURCES  The pages could not be allocated.
   @retval EFI_NOT_FOUND         The requested pages could not be found.
 
@@ -200,6 +220,11 @@ EFI_STATUS
   Allocates pool memory.
 
   @param[in]   PoolType         The type of pool to allocate.
+                                MemoryType values in the range 0x70000000..0x7FFFFFFF
+                                are reserved for OEM use. MemoryType values in the range
+                                0x80000000..0xFFFFFFFF are reserved for use by UEFI OS loaders
+                                that are provided by operating system vendors. The only illegal
+                                memory type values are those in the range EfiMaxMemoryType..0x6FFFFFFF.
   @param[in]   Size             The number of bytes to allocate from the pool.
   @param[out]  Buffer           A pointer to a pointer to the allocated buffer if the call succeeds;
                                 undefined otherwise.
@@ -207,6 +232,7 @@ EFI_STATUS
   @retval EFI_SUCCESS           The requested number of bytes was allocated.
   @retval EFI_OUT_OF_RESOURCES  The pool requested could not be allocated.
   @retval EFI_INVALID_PARAMETER PoolType was invalid or Buffer is NULL.
+                                PoolType was EfiPersistentMemory.
 
 **/
 typedef
@@ -973,39 +999,6 @@ EFI_STATUS
   IN CHAR16                   *WatchdogData OPTIONAL
   );
 
-///
-/// Enumeration of reset types.
-///
-typedef enum {
-  ///
-  /// Used to induce a system-wide reset. This sets all circuitry within the 
-  /// system to its initial state.  This type of reset is asynchronous to system
-  /// operation and operates withgout regard to cycle boundaries.  EfiColdReset 
-  /// is tantamount to a system power cycle.
-  ///
-  EfiResetCold,
-  ///
-  /// Used to induce a system-wide initialization. The processors are set to their
-  /// initial state, and pending cycles are not corrupted.  If the system does 
-  /// not support this reset type, then an EfiResetCold must be performed.
-  ///
-  EfiResetWarm,
-  ///
-  /// Used to induce an entry into a power state equivalent to the ACPI G2/S5 or G3
-  /// state.  If the system does not support this reset type, then when the system
-  /// is rebooted, it should exhibit the EfiResetCold attributes.
-  ///
-  EfiResetShutdown,
-  ///
-  /// Used to induce a system-wide reset. The exact type of the reset is defined by
-  /// the EFI_GUID that follows the Null-terminated Unicode string passed into
-  /// ResetData. If the platform does not recognize the EFI_GUID in ResetData the 
-  /// platform must pick a supported reset type to perform. The platform may
-  /// optionally log the parameters from any non-normal reset that occurs.
-  ///
-  EfiResetPlatformSpecific
-} EFI_RESET_TYPE;
-
 /**
   Resets the entire platform.
 
@@ -1762,6 +1755,7 @@ EFI_STATUS
 // EFI Runtime Services Table
 //
 #define EFI_SYSTEM_TABLE_SIGNATURE      SIGNATURE_64 ('I','B','I',' ','S','Y','S','T')
+#define EFI_2_50_SYSTEM_TABLE_REVISION  ((2 << 16) | (50))
 #define EFI_2_40_SYSTEM_TABLE_REVISION  ((2 << 16) | (40))
 #define EFI_2_31_SYSTEM_TABLE_REVISION  ((2 << 16) | (31))
 #define EFI_2_30_SYSTEM_TABLE_REVISION  ((2 << 16) | (30))
@@ -1770,7 +1764,7 @@ EFI_STATUS
 #define EFI_2_00_SYSTEM_TABLE_REVISION  ((2 << 16) | (00))
 #define EFI_1_10_SYSTEM_TABLE_REVISION  ((1 << 16) | (10))
 #define EFI_1_02_SYSTEM_TABLE_REVISION  ((1 << 16) | (02))
-#define EFI_SYSTEM_TABLE_REVISION       EFI_2_40_SYSTEM_TABLE_REVISION
+#define EFI_SYSTEM_TABLE_REVISION       EFI_2_50_SYSTEM_TABLE_REVISION
 #define EFI_SPECIFICATION_VERSION       EFI_SYSTEM_TABLE_REVISION
 
 #define EFI_RUNTIME_SERVICES_SIGNATURE  SIGNATURE_64 ('R','U','N','T','S','E','R','V')
@@ -2026,19 +2020,69 @@ EFI_STATUS
   );
 
 //
+// EFI Load Option. This data structure describes format of UEFI boot option variables.
+//
+// NOTE: EFI Load Option is a byte packed buffer of variable length fields.
+// The first two fields have fixed length. They are declared as members of the
+// EFI_LOAD_OPTION structure. All the other fields are variable length fields.
+// They are listed in the comment block below for reference purposes.
+//
+#pragma pack(1)
+typedef struct _EFI_LOAD_OPTION {
+  ///
+  /// The attributes for this load option entry. All unused bits must be zero
+  /// and are reserved by the UEFI specification for future growth.
+  ///
+  UINT32                           Attributes;
+  ///
+  /// Length in bytes of the FilePathList. OptionalData starts at offset
+  /// sizeof(UINT32) + sizeof(UINT16) + StrSize(Description) + FilePathListLength
+  /// of the EFI_LOAD_OPTION descriptor.
+  ///
+  UINT16                           FilePathListLength;
+  ///
+  /// The user readable description for the load option.
+  /// This field ends with a Null character.
+  ///
+  // CHAR16                        Description[];
+  ///
+  /// A packed array of UEFI device paths. The first element of the array is a
+  /// device path that describes the device and location of the Image for this
+  /// load option. The FilePathList[0] is specific to the device type. Other
+  /// device paths may optionally exist in the FilePathList, but their usage is
+  /// OSV specific. Each element in the array is variable length, and ends at
+  /// the device path end structure. Because the size of Description is
+  /// arbitrary, this data structure is not guaranteed to be aligned on a
+  /// natural boundary. This data structure may have to be copied to an aligned
+  /// natural boundary before it is used.
+  ///
+  // EFI_DEVICE_PATH_PROTOCOL      FilePathList[];
+  ///
+  /// The remaining bytes in the load option descriptor are a binary data buffer
+  /// that is passed to the loaded image. If the field is zero bytes long, a
+  /// NULL pointer is passed to the loaded image. The number of bytes in
+  /// OptionalData can be computed by subtracting the starting offset of
+  /// OptionalData from total size in bytes of the EFI_LOAD_OPTION.
+  ///
+  // UINT8                         OptionalData[];
+} EFI_LOAD_OPTION;
+#pragma pack()
+
+//
 // EFI Load Options Attributes
 //
-#define LOAD_OPTION_ACTIVE            0x00000001
-#define LOAD_OPTION_FORCE_RECONNECT   0x00000002
-#define LOAD_OPTION_HIDDEN            0x00000008
-#define LOAD_OPTION_CATEGORY          0x00001F00
+#define LOAD_OPTION_ACTIVE              0x00000001
+#define LOAD_OPTION_FORCE_RECONNECT     0x00000002
+#define LOAD_OPTION_HIDDEN              0x00000008
+#define LOAD_OPTION_CATEGORY            0x00001F00
 
-#define LOAD_OPTION_CATEGORY_BOOT     0x00000000
-#define LOAD_OPTION_CATEGORY_APP      0x00000100
+#define LOAD_OPTION_CATEGORY_BOOT       0x00000000
+#define LOAD_OPTION_CATEGORY_APP        0x00000100
 
-#define EFI_BOOT_OPTION_SUPPORT_KEY   0x00000001
-#define EFI_BOOT_OPTION_SUPPORT_APP   0x00000002
-#define EFI_BOOT_OPTION_SUPPORT_COUNT 0x00000300
+#define EFI_BOOT_OPTION_SUPPORT_KEY     0x00000001
+#define EFI_BOOT_OPTION_SUPPORT_APP     0x00000002
+#define EFI_BOOT_OPTION_SUPPORT_SYSPREP 0x00000010
+#define EFI_BOOT_OPTION_SUPPORT_COUNT   0x00000300
 
 ///
 /// EFI Boot Key Data

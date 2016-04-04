@@ -1,21 +1,123 @@
 /** @file
+  Implementation for PlatformBdsLib library class interfaces.
 
-Copyright (c) 2004 - 2008, Intel Corporation. All rights reserved.<BR>
-Copyright (c) 2014, ARM Ltd. All rights reserved.<BR>
+  Copyright (C) 2015, Red Hat, Inc.
+  Copyright (c) 2014, ARM Ltd. All rights reserved.<BR>
+  Copyright (c) 2004 - 2008, Intel Corporation. All rights reserved.<BR>
 
-This program and the accompanying materials
-are licensed and made available under the terms and conditions of the BSD License
-which accompanies this distribution.  The full text of the license may be found at
-http://opensource.org/licenses/bsd-license.php
+  This program and the accompanying materials are licensed and made available
+  under the terms and conditions of the BSD License which accompanies this
+  distribution. The full text of the license may be found at
+  http://opensource.org/licenses/bsd-license.php
 
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS, WITHOUT
+  WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
+#include <IndustryStandard/Pci22.h>
+#include <Library/DevicePathLib.h>
+#include <Library/PcdLib.h>
+#include <Library/PlatformBdsLib.h>
+#include <Library/QemuBootOrderLib.h>
+#include <Protocol/DevicePath.h>
+#include <Protocol/GraphicsOutput.h>
+#include <Protocol/PciIo.h>
+#include <Protocol/PciRootBridgeIo.h>
+
 #include "IntelBdsPlatform.h"
 
-#include <Library/QemuBootOrderLib.h>
+#define DP_NODE_LEN(Type) { (UINT8)sizeof (Type), (UINT8)(sizeof (Type) >> 8) }
+
+
+#pragma pack (1)
+typedef struct {
+  VENDOR_DEVICE_PATH         SerialDxe;
+  UART_DEVICE_PATH           Uart;
+  VENDOR_DEFINED_DEVICE_PATH Vt100;
+  EFI_DEVICE_PATH_PROTOCOL   End;
+} PLATFORM_SERIAL_CONSOLE;
+#pragma pack ()
+
+#define SERIAL_DXE_FILE_GUID { \
+          0xD3987D4B, 0x971A, 0x435F, \
+          { 0x8C, 0xAF, 0x49, 0x67, 0xEB, 0x62, 0x72, 0x41 } \
+          }
+
+STATIC PLATFORM_SERIAL_CONSOLE mSerialConsole = {
+  //
+  // VENDOR_DEVICE_PATH SerialDxe
+  //
+  {
+    { HARDWARE_DEVICE_PATH, HW_VENDOR_DP, DP_NODE_LEN (VENDOR_DEVICE_PATH) },
+    SERIAL_DXE_FILE_GUID
+  },
+
+  //
+  // UART_DEVICE_PATH Uart
+  //
+  {
+    { MESSAGING_DEVICE_PATH, MSG_UART_DP, DP_NODE_LEN (UART_DEVICE_PATH) },
+    0,                                      // Reserved
+    FixedPcdGet64 (PcdUartDefaultBaudRate), // BaudRate
+    FixedPcdGet8 (PcdUartDefaultDataBits),  // DataBits
+    FixedPcdGet8 (PcdUartDefaultParity),    // Parity
+    FixedPcdGet8 (PcdUartDefaultStopBits)   // StopBits
+  },
+
+  //
+  // VENDOR_DEFINED_DEVICE_PATH Vt100
+  //
+  {
+    {
+      MESSAGING_DEVICE_PATH, MSG_VENDOR_DP,
+      DP_NODE_LEN (VENDOR_DEFINED_DEVICE_PATH)
+    },
+    EFI_VT_100_GUID
+  },
+
+  //
+  // EFI_DEVICE_PATH_PROTOCOL End
+  //
+  {
+    END_DEVICE_PATH_TYPE, END_ENTIRE_DEVICE_PATH_SUBTYPE,
+    DP_NODE_LEN (EFI_DEVICE_PATH_PROTOCOL)
+  }
+};
+
+
+#pragma pack (1)
+typedef struct {
+  USB_CLASS_DEVICE_PATH    Keyboard;
+  EFI_DEVICE_PATH_PROTOCOL End;
+} PLATFORM_USB_KEYBOARD;
+#pragma pack ()
+
+STATIC PLATFORM_USB_KEYBOARD mUsbKeyboard = {
+  //
+  // USB_CLASS_DEVICE_PATH Keyboard
+  //
+  {
+    {
+      MESSAGING_DEVICE_PATH, MSG_USB_CLASS_DP,
+      DP_NODE_LEN (USB_CLASS_DEVICE_PATH)
+    },
+    0xFFFF, // VendorId: any
+    0xFFFF, // ProductId: any
+    3,      // DeviceClass: HID
+    1,      // DeviceSubClass: boot
+    1       // DeviceProtocol: keyboard
+  },
+
+  //
+  // EFI_DEVICE_PATH_PROTOCOL End
+  //
+  {
+    END_DEVICE_PATH_TYPE, END_ENTIRE_DEVICE_PATH_SUBTYPE,
+    DP_NODE_LEN (EFI_DEVICE_PATH_PROTOCOL)
+  }
+};
+
 
 //
 // BDS Platform Functions
@@ -33,236 +135,206 @@ PlatformBdsInit (
 {
 }
 
+
+/**
+  Check if the handle satisfies a particular condition.
+
+  @param[in] Handle      The handle to check.
+  @param[in] ReportText  A caller-allocated string passed in for reporting
+                         purposes. It must never be NULL.
+
+  @retval TRUE   The condition is satisfied.
+  @retval FALSE  Otherwise. This includes the case when the condition could not
+                 be fully evaluated due to an error.
+**/
+typedef
+BOOLEAN
+(EFIAPI *FILTER_FUNCTION) (
+  IN EFI_HANDLE   Handle,
+  IN CONST CHAR16 *ReportText
+  );
+
+
+/**
+  Process a handle.
+
+  @param[in] Handle      The handle to process.
+  @param[in] ReportText  A caller-allocated string passed in for reporting
+                         purposes. It must never be NULL.
+**/
+typedef
+VOID
+(EFIAPI *CALLBACK_FUNCTION)  (
+  IN EFI_HANDLE   Handle,
+  IN CONST CHAR16 *ReportText
+  );
+
+/**
+  Locate all handles that carry the specified protocol, filter them with a
+  callback function, and pass each handle that passes the filter to another
+  callback.
+
+  @param[in] ProtocolGuid  The protocol to look for.
+
+  @param[in] Filter        The filter function to pass each handle to. If this
+                           parameter is NULL, then all handles are processed.
+
+  @param[in] Process       The callback function to pass each handle to that
+                           clears the filter.
+**/
 STATIC
-EFI_STATUS
-GetConsoleDevicePathFromVariable (
-  IN  CHAR16*             ConsoleVarName,
-  IN  CHAR16*             DefaultConsolePaths,
-  OUT EFI_DEVICE_PATH**   DevicePaths
+VOID
+FilterAndProcess (
+  IN EFI_GUID          *ProtocolGuid,
+  IN FILTER_FUNCTION   Filter         OPTIONAL,
+  IN CALLBACK_FUNCTION Process
   )
 {
-  EFI_STATUS                Status;
-  UINTN                     Size;
-  EFI_DEVICE_PATH_PROTOCOL* DevicePathInstances;
-  EFI_DEVICE_PATH_PROTOCOL* DevicePathInstance;
-  CHAR16*                   DevicePathStr;
-  CHAR16*                   NextDevicePathStr;
-  EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL  *EfiDevicePathFromTextProtocol;
+  EFI_STATUS Status;
+  EFI_HANDLE *Handles;
+  UINTN      NoHandles;
+  UINTN      Idx;
 
-  Status = GetGlobalEnvironmentVariable (ConsoleVarName, NULL, NULL, (VOID**)&DevicePathInstances);
+  Status = gBS->LocateHandleBuffer (ByProtocol, ProtocolGuid,
+                  NULL /* SearchKey */, &NoHandles, &Handles);
   if (EFI_ERROR (Status)) {
-    // In case no default console device path has been defined we assume a driver handles the console (eg: SimpleTextInOutSerial)
-    if ((DefaultConsolePaths == NULL) || (DefaultConsolePaths[0] == L'\0')) {
-      *DevicePaths = NULL;
-      return EFI_SUCCESS;
-    }
-
-    Status = gBS->LocateProtocol (&gEfiDevicePathFromTextProtocolGuid, NULL, (VOID **)&EfiDevicePathFromTextProtocol);
-    ASSERT_EFI_ERROR (Status);
-
-    DevicePathInstances = NULL;
-
-    // Extract the Device Path instances from the multi-device path string
-    while ((DefaultConsolePaths != NULL) && (DefaultConsolePaths[0] != L'\0')) {
-      NextDevicePathStr = StrStr (DefaultConsolePaths, L";");
-      if (NextDevicePathStr == NULL) {
-        DevicePathStr = DefaultConsolePaths;
-        DefaultConsolePaths = NULL;
-      } else {
-        DevicePathStr = (CHAR16*)AllocateCopyPool ((NextDevicePathStr - DefaultConsolePaths + 1) * sizeof (CHAR16), DefaultConsolePaths);
-        *(DevicePathStr + (NextDevicePathStr - DefaultConsolePaths)) = L'\0';
-        DefaultConsolePaths = NextDevicePathStr;
-        if (DefaultConsolePaths[0] == L';') {
-          DefaultConsolePaths++;
-        }
-      }
-
-      DevicePathInstance = EfiDevicePathFromTextProtocol->ConvertTextToDevicePath (DevicePathStr);
-      ASSERT (DevicePathInstance != NULL);
-      DevicePathInstances = AppendDevicePathInstance (DevicePathInstances, DevicePathInstance);
-
-      if (NextDevicePathStr != NULL) {
-        FreePool (DevicePathStr);
-      }
-      FreePool (DevicePathInstance);
-    }
-
-    // Set the environment variable with this device path multi-instances
-    Size = GetDevicePathSize (DevicePathInstances);
-    if (Size > 0) {
-      gRT->SetVariable (
-          ConsoleVarName,
-          &gEfiGlobalVariableGuid,
-          EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
-          Size,
-          DevicePathInstances
-          );
-    } else {
-      Status = EFI_INVALID_PARAMETER;
-    }
+    //
+    // This is not an error, just an informative condition.
+    //
+    DEBUG ((EFI_D_VERBOSE, "%a: %g: %r\n", __FUNCTION__, ProtocolGuid,
+      Status));
+    return;
   }
 
-  if (!EFI_ERROR (Status)) {
-    *DevicePaths = DevicePathInstances;
+  ASSERT (NoHandles > 0);
+  for (Idx = 0; Idx < NoHandles; ++Idx) {
+    CHAR16        *DevicePathText;
+    STATIC CHAR16 Fallback[] = L"<device path unavailable>";
+
+    //
+    // The ConvertDevicePathToText() function handles NULL input transparently.
+    //
+    DevicePathText = ConvertDevicePathToText (
+                       DevicePathFromHandle (Handles[Idx]),
+                       FALSE, // DisplayOnly
+                       FALSE  // AllowShortcuts
+                       );
+    if (DevicePathText == NULL) {
+      DevicePathText = Fallback;
+    }
+
+    if (Filter == NULL || Filter (Handles[Idx], DevicePathText)) {
+      Process (Handles[Idx], DevicePathText);
+    }
+
+    if (DevicePathText != Fallback) {
+      FreePool (DevicePathText);
+    }
   }
-  return Status;
+  gBS->FreePool (Handles);
 }
 
+
+/**
+  This FILTER_FUNCTION checks if a handle corresponds to a PCI display device.
+**/
 STATIC
-EFI_STATUS
-InitializeConsolePipe (
-  IN EFI_DEVICE_PATH    *ConsoleDevicePaths,
-  IN EFI_GUID           *Protocol,
-  OUT EFI_HANDLE        *Handle,
-  OUT VOID*             *Interface
+BOOLEAN
+EFIAPI
+IsPciDisplay (
+  IN EFI_HANDLE   Handle,
+  IN CONST CHAR16 *ReportText
   )
 {
-  EFI_STATUS                Status;
-  UINTN                     Size;
-  UINTN                     NoHandles;
-  EFI_HANDLE                *Buffer;
-  EFI_DEVICE_PATH_PROTOCOL* DevicePath;
+  EFI_STATUS          Status;
+  EFI_PCI_IO_PROTOCOL *PciIo;
+  PCI_TYPE00          Pci;
 
-  // Connect all the Device Path Consoles
-  while (ConsoleDevicePaths != NULL) {
-    DevicePath = GetNextDevicePathInstance (&ConsoleDevicePaths, &Size);
-
-    Status = BdsConnectDevicePath (DevicePath, Handle, NULL);
-    DEBUG_CODE_BEGIN ();
-      if (EFI_ERROR (Status)) {
-        // We convert back to the text representation of the device Path
-        EFI_DEVICE_PATH_TO_TEXT_PROTOCOL* DevicePathToTextProtocol;
-        CHAR16* DevicePathTxt;
-        EFI_STATUS Status;
-
-        Status = gBS->LocateProtocol (&gEfiDevicePathToTextProtocolGuid, NULL, (VOID **)&DevicePathToTextProtocol);
-        if (!EFI_ERROR (Status)) {
-          DevicePathTxt = DevicePathToTextProtocol->ConvertDevicePathToText (DevicePath, TRUE, TRUE);
-
-          DEBUG ((EFI_D_ERROR, "Fail to start the console with the Device Path '%s'. (Error '%r')\n", DevicePathTxt, Status));
-
-          FreePool (DevicePathTxt);
-        }
-      }
-    DEBUG_CODE_END ();
-
-    // If the console splitter driver is not supported by the platform then use the first Device Path
-    // instance for the console interface.
-    if (!EFI_ERROR (Status) && (*Interface == NULL)) {
-      Status = gBS->HandleProtocol (*Handle, Protocol, Interface);
-    }
-  }
-
-  // No Device Path has been defined for this console interface. We take the first protocol implementation
-  if (*Interface == NULL) {
-    Status = gBS->LocateHandleBuffer (ByProtocol, Protocol, NULL, &NoHandles, &Buffer);
-    if (EFI_ERROR (Status)) {
-      BdsConnectAllDrivers ();
-      Status = gBS->LocateHandleBuffer (ByProtocol, Protocol, NULL, &NoHandles, &Buffer);
-    }
-
-    if (!EFI_ERROR (Status)) {
-      *Handle = Buffer[0];
-      Status = gBS->HandleProtocol (*Handle, Protocol, Interface);
-      ASSERT_EFI_ERROR (Status);
-    }
-    FreePool (Buffer);
-  } else {
-    Status = EFI_SUCCESS;
-  }
-
-  return Status;
-}
-
-/**
-  Connect the predefined platform default console device. Always try to find
-  and enable the vga device if have.
-
-  @param PlatformConsole          Predefined platform default console device array.
-
-  @retval EFI_SUCCESS             Success connect at least one ConIn and ConOut
-                                  device, there must have one ConOut device is
-                                  active vga device.
-  @return Return the status of BdsLibConnectAllDefaultConsoles ()
-
-**/
-EFI_STATUS
-PlatformBdsConnectConsole (
-  VOID
-  )
-{
-  EFI_STATUS                Status;
-  EFI_DEVICE_PATH*          ConOutDevicePaths;
-  EFI_DEVICE_PATH*          ConInDevicePaths;
-  EFI_DEVICE_PATH*          ConErrDevicePaths;
-
-  // By getting the Console Device Paths from the environment variables before initializing the console pipe, we
-  // create the 3 environment variables (ConIn, ConOut, ConErr) that allows to initialize all the console interface
-  // of newly installed console drivers
-  Status = GetConsoleDevicePathFromVariable (L"ConOut", (CHAR16*)PcdGetPtr (PcdDefaultConOutPaths), &ConOutDevicePaths);
-  ASSERT_EFI_ERROR (Status);
-  Status = GetConsoleDevicePathFromVariable (L"ConIn", (CHAR16*)PcdGetPtr (PcdDefaultConInPaths), &ConInDevicePaths);
-  ASSERT_EFI_ERROR (Status);
-  Status = GetConsoleDevicePathFromVariable (L"ErrOut", (CHAR16*)PcdGetPtr (PcdDefaultConOutPaths), &ConErrDevicePaths);
-  ASSERT_EFI_ERROR (Status);
-
-  // Initialize the Consoles
-  Status = InitializeConsolePipe (ConOutDevicePaths, &gEfiSimpleTextOutProtocolGuid, &gST->ConsoleOutHandle, (VOID **)&gST->ConOut);
-  ASSERT_EFI_ERROR (Status);
-  Status = InitializeConsolePipe (ConInDevicePaths, &gEfiSimpleTextInProtocolGuid, &gST->ConsoleInHandle, (VOID **)&gST->ConIn);
-  ASSERT_EFI_ERROR (Status);
-  Status = InitializeConsolePipe (ConErrDevicePaths, &gEfiSimpleTextOutProtocolGuid, &gST->StandardErrorHandle, (VOID **)&gST->StdErr);
+  Status = gBS->HandleProtocol (Handle, &gEfiPciIoProtocolGuid,
+                  (VOID**)&PciIo);
   if (EFI_ERROR (Status)) {
-    // In case of error, we reuse the console output for the error output
-    gST->StandardErrorHandle = gST->ConsoleOutHandle;
-    gST->StdErr = gST->ConOut;
+    //
+    // This is not an error worth reporting.
+    //
+    return FALSE;
   }
 
-  return Status;
+  Status = PciIo->Pci.Read (PciIo, EfiPciIoWidthUint32, 0 /* Offset */,
+                        sizeof Pci / sizeof (UINT32), &Pci);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "%a: %s: %r\n", __FUNCTION__, ReportText, Status));
+    return FALSE;
+  }
+
+  return IS_PCI_DISPLAY (&Pci);
 }
+
 
 /**
-  Connect with predefined platform connect sequence,
-  the OEM/IBV can customize with their own connect sequence.
+  This CALLBACK_FUNCTION attempts to connect a handle non-recursively, asking
+  the matching driver to produce all first-level child handles.
 **/
+STATIC
 VOID
-PlatformBdsConnectSequence (
-  VOID
+EFIAPI
+Connect (
+  IN EFI_HANDLE   Handle,
+  IN CONST CHAR16 *ReportText
   )
 {
+  EFI_STATUS Status;
+
+  Status = gBS->ConnectController (
+                  Handle, // ControllerHandle
+                  NULL,   // DriverImageHandle
+                  NULL,   // RemainingDevicePath -- produce all children
+                  FALSE   // Recursive
+                  );
+  DEBUG ((EFI_ERROR (Status) ? EFI_D_ERROR : EFI_D_VERBOSE, "%a: %s: %r\n",
+    __FUNCTION__, ReportText, Status));
 }
+
 
 /**
-  Load the predefined driver option, OEM/IBV can customize this
-  to load their own drivers
-
-  @param BdsDriverLists  - The header of the driver option link list.
-
+  This CALLBACK_FUNCTION retrieves the EFI_DEVICE_PATH_PROTOCOL from the
+  handle, and adds it to ConOut and ErrOut.
 **/
+STATIC
 VOID
-PlatformBdsGetDriverOption (
-  IN OUT LIST_ENTRY              *BdsDriverLists
+EFIAPI
+AddOutput (
+  IN EFI_HANDLE   Handle,
+  IN CONST CHAR16 *ReportText
   )
 {
+  EFI_STATUS               Status;
+  EFI_DEVICE_PATH_PROTOCOL *DevicePath;
+
+  DevicePath = DevicePathFromHandle (Handle);
+  if (DevicePath == NULL) {
+    DEBUG ((EFI_D_ERROR, "%a: %s: handle %p: device path not found\n",
+      __FUNCTION__, ReportText, Handle));
+    return;
+  }
+
+  Status = BdsLibUpdateConsoleVariable (L"ConOut", DevicePath, NULL);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "%a: %s: adding to ConOut: %r\n", __FUNCTION__,
+      ReportText, Status));
+    return;
+  }
+
+  Status = BdsLibUpdateConsoleVariable (L"ErrOut", DevicePath, NULL);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "%a: %s: adding to ErrOut: %r\n", __FUNCTION__,
+      ReportText, Status));
+    return;
+  }
+
+  DEBUG ((EFI_D_VERBOSE, "%a: %s: added to ConOut and ErrOut\n", __FUNCTION__,
+    ReportText));
 }
 
-/**
-  Perform the platform diagnostic, such like test memory. OEM/IBV also
-  can customize this function to support specific platform diagnostic.
-
-  @param MemoryTestLevel  The memory test intensive level
-  @param QuietBoot        Indicate if need to enable the quiet boot
-  @param BaseMemoryTest   A pointer to BdsMemoryTest()
-
-**/
-VOID
-PlatformBdsDiagnostics (
-  IN EXTENDMEM_COVERAGE_LEVEL    MemoryTestLevel,
-  IN BOOLEAN                     QuietBoot,
-  IN BASEM_MEMORY_TEST           BaseMemoryTest
-  )
-{
-}
 
 /**
   The function will execute with as the platform policy, current policy
@@ -284,19 +356,66 @@ PlatformBdsPolicyBehavior (
   IN BASEM_MEMORY_TEST               BaseMemoryTest
   )
 {
-  EFI_STATUS Status;
-
-  Status = PlatformBdsConnectConsole ();
-  ASSERT_EFI_ERROR (Status);
+  //
+  // Locate the PCI root bridges and make the PCI bus driver connect each,
+  // non-recursively. This will produce a number of child handles with PciIo on
+  // them.
+  //
+  FilterAndProcess (&gEfiPciRootBridgeIoProtocolGuid, NULL, Connect);
 
   //
-  // Process QEMU's -kernel command line option
+  // Find all display class PCI devices (using the handles from the previous
+  // step), and connect them non-recursively. This should produce a number of
+  // child handles with GOPs on them.
+  //
+  FilterAndProcess (&gEfiPciIoProtocolGuid, IsPciDisplay, Connect);
+
+  //
+  // Now add the device path of all handles with GOP on them to ConOut and
+  // ErrOut.
+  //
+  FilterAndProcess (&gEfiGraphicsOutputProtocolGuid, NULL, AddOutput);
+
+  //
+  // Add the hardcoded short-form USB keyboard device path to ConIn.
+  //
+  BdsLibUpdateConsoleVariable (L"ConIn",
+    (EFI_DEVICE_PATH_PROTOCOL *)&mUsbKeyboard, NULL);
+
+  //
+  // Add the hardcoded serial console device path to ConIn, ConOut, ErrOut.
+  //
+  BdsLibUpdateConsoleVariable (L"ConIn",
+    (EFI_DEVICE_PATH_PROTOCOL *)&mSerialConsole, NULL);
+  BdsLibUpdateConsoleVariable (L"ConOut",
+    (EFI_DEVICE_PATH_PROTOCOL *)&mSerialConsole, NULL);
+  BdsLibUpdateConsoleVariable (L"ErrOut",
+    (EFI_DEVICE_PATH_PROTOCOL *)&mSerialConsole, NULL);
+
+  //
+  // Connect the consoles based on the above variables.
+  //
+  BdsLibConnectAllDefaultConsoles ();
+
+  //
+  // Show the splash screen.
+  //
+  EnableQuietBoot (PcdGetPtr (PcdLogoFile));
+
+  //
+  // Connect the rest of the devices.
+  //
+  BdsLibConnectAll ();
+
+  //
+  // Process QEMU's -kernel command line option. Note that the kernel booted
+  // this way should receive ACPI tables, which is why we connect all devices
+  // first (see above) -- PCI enumeration blocks ACPI table installation, if
+  // there is a PCI host.
   //
   TryRunningQemuKernel ();
 
-  BdsLibConnectAll ();
   BdsLibEnumerateAllBootOption (BootOptionList);
-
   SetBootOrderFromQemu (BootOptionList);
   //
   // The BootOrder variable may have changed, reload the in-memory list with
@@ -355,25 +474,4 @@ PlatformBdsLockNonUpdatableFlash (
   )
 {
   return;
-}
-
-
-/**
-  Lock the ConsoleIn device in system table. All key
-  presses will be ignored until the Password is typed in. The only way to
-  disable the password is to type it in to a ConIn device.
-
-  @param  Password        Password used to lock ConIn device.
-
-  @retval EFI_SUCCESS     lock the Console In Spliter virtual handle successfully.
-  @retval EFI_UNSUPPORTED Password not found
-
-**/
-EFI_STATUS
-EFIAPI
-LockKeyboards (
-  IN  CHAR16    *Password
-  )
-{
-    return EFI_UNSUPPORTED;
 }

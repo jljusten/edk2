@@ -20,7 +20,7 @@
   PACKAGE_NAME                   = MdeModulePkg
   PACKAGE_UNI_FILE               = MdeModulePkg.uni
   PACKAGE_GUID                   = BA0D78D6-2CAF-414b-BD4D-B6762A894288
-  PACKAGE_VERSION                = 0.94
+  PACKAGE_VERSION                = 0.96
 
 [Includes]
   Include
@@ -104,6 +104,12 @@
 
   ## @libraryclass   Provides sorting functions
   SortLib|Include/Library/SortLib.h
+
+  ## @libraryclass   Provides core boot manager functions
+  UefiBootManagerLib|Include/Library/UefiBootManagerLib.h
+
+  ## @libraryclass   Provides core boot manager functions
+  PlatformBootManagerLib|Include/Library/PlatformBootManagerLib.h
 
 [Guids]
   ## MdeModule package token space guid
@@ -282,6 +288,11 @@
   ## Include/Protocol/VarErrorFlag.h
   gEdkiiVarErrorFlagGuid               = { 0x4b37fe8, 0xf6ae, 0x480b, { 0xbd, 0xd5, 0x37, 0xd9, 0x8c, 0x5e, 0x89, 0xaa } }
 
+  ## GUID indicates the LZMA custom compress/decompress algorithm.
+  #  Include/Guid/LzmaDecompress.h
+  gLzmaCustomDecompressGuid      = { 0xEE4E5898, 0x3914, 0x4259, { 0x9D, 0x6E, 0xDC, 0x7B, 0xD7, 0x94, 0x03, 0xCF }}
+  gLzmaF86CustomDecompressGuid     = { 0xD42AE6BD, 0x1352, 0x4bfb, { 0x90, 0x9A, 0xCA, 0x72, 0xA6, 0xEA, 0xE8, 0x89 }}
+
 [Ppis]
   ## Include/Ppi/AtaController.h
   gPeiAtaControllerPpiGuid       = { 0xa45e60d1, 0xc719, 0x44aa, { 0xb0, 0x7a, 0xaa, 0x77, 0x7f, 0x85, 0x90, 0x6d }}
@@ -297,9 +308,6 @@
 
   ## Include/Ppi/UsbIo.h
   gPeiUsbIoPpiGuid               = { 0x7C29785C, 0x66B9, 0x49FC, { 0xB7, 0x97, 0x1C, 0xA5, 0x55, 0x0E, 0xF2, 0x83 }}
-
-  ## Include/Ppi/Capsule.h
-  gPeiCapsulePpiGuid             = { 0x3acf33ee, 0xd892, 0x40f4, { 0xa2, 0xfc, 0x38, 0x54, 0xd2, 0xe1, 0x32, 0x3d }}
 
   ## Include/Ppi/SecPerformance.h
   gPeiSecPerformancePpiGuid      = { 0x0ecc666b, 0x4662, 0x47f9, { 0x9d, 0xd5, 0xd0, 0x96, 0xff, 0x7d, 0xa4, 0x9e }}
@@ -318,6 +326,9 @@
 
   ## Include/Ppi/SerialPortPei.h
   gPeiSerialPortPpiGuid         =  { 0x490e9d85, 0x8aef, 0x4193, { 0x8e, 0x56, 0xf7, 0x34, 0xa9, 0xff, 0xac, 0x8b}}
+
+  ## Include/Ppi/UfsHostController.h
+  gEdkiiPeiUfsHostControllerPpiGuid  =  { 0xdc54b283, 0x1a77, 0x4cd6, { 0x83, 0xbb, 0xfd, 0xda, 0x46, 0x9a, 0x2e, 0xc6 }}
 
 [Protocols]
   ## Load File protocol provides capability to load and unload EFI image into memory and execute it.
@@ -395,6 +406,12 @@
 
   ## Include/Protocol/FormBrowserEx2.h
   gEdkiiFormBrowserEx2ProtocolGuid = { 0xa770c357, 0xb693, 0x4e6d, { 0xa6, 0xcf, 0xd2, 0x1c, 0x72, 0x8e, 0x55, 0xb } }
+
+  ## Include/Protocol/UfsHostController.h
+  gEdkiiUfsHostControllerProtocolGuid = { 0xebc01af5, 0x7a9, 0x489e, { 0xb7, 0xce, 0xdc, 0x8, 0x9e, 0x45, 0x9b, 0x2f } }
+  
+  ## Include/Protocol/EsrtManagement.h
+  gEsrtManagementProtocolGuid         = { 0xa340c064, 0x723c, 0x4a9c, { 0xa4, 0xdd, 0xd5, 0xb4, 0x7a, 0x26, 0xfb, 0xb0 }}
 
 #
 # [Error.gEfiMdeModulePkgTokenSpaceGuid]
@@ -717,12 +734,12 @@
   # Note that this value must be less than (PcdFlashNvStorageVariableSize - EFI_FIRMWARE_VOLUME_HEADER.HeaderLength - sizeof (VARIABLE_STORE_HEADER) - PcdHwErrStorageSize).<BR>
   # If the value is 0, it means user variable share the same NV storage with system variable,
   # this is designed to keep the compatibility for the platform that does not allocate special region for user variable.<BR>
-  # If the value is non-0, the below 4 types of variables will be regarded as System Variable, their property could be got by VarCheck protocol,
+  # If the value is non-0, the below 4 types of variables will be regarded as System Variable after EndOfDxe, their property could be got by VarCheck protocol,
   # otherwise the variable will be regarded as user variable.<BR>
   #  1) UEFI defined variables (gEfiGlobalVariableGuid and gEfiImageSecurityDatabaseGuid(auth variable) variables at least).<BR>
   #  2) Variables managed by Variable driver internally.<BR>
   #  3) Variables need to be locked, they MUST be set by VariableLock protocol.<BR>
-  #  4) Important during platform boot, their property SHOULD be set by VarCheck protocol.<BR>
+  #  4) Important variables during platform boot, their property SHOULD be set by VarCheck protocol.<BR>
   # The PCD is used to guarantee the space of system variable and not populated by user variable.<BR>
   # @Prompt Maximum user NV variable space size.
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxUserNvVariableSpaceSize|0x00|UINT32|0x00000009
@@ -737,6 +754,12 @@
   #  (PcdFlashNvStorageVariableSize - EFI_FIRMWARE_VOLUME_HEADER.HeaderLength - sizeof (VARIABLE_STORE_HEADER) - PcdHwErrStorageSize) - PcdBoottimeReservedNvVariableSpaceSize.<BR>
   # @Prompt Boottime reserved NV variable space size.
   gEfiMdeModulePkgTokenSpaceGuid.PcdBoottimeReservedNvVariableSpaceSize|0x00|UINT32|0x30000007
+
+  ## Reclaim variable space at EndOfDxe.<BR><BR>
+  # The value is FALSE as default for compatibility that variable driver tries to reclaim variable space at ReadyToBoot event.<BR>
+  # If the value is set to TRUE, variable driver tries to reclaim variable space at EndOfDxe event.<BR>
+  # @Prompt Reclaim variable space at EndOfDxe.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdReclaimVariableSpaceAtEndOfDxe|FALSE|BOOLEAN|0x30000008
 
   ## The size of volatile buffer. This buffer is used to store VOLATILE attribute variables.
   # @Prompt Variable storage size.
@@ -878,6 +901,8 @@
   #  EfiMemoryMappedIO              0x0800<BR>
   #  EfiMemoryMappedIOPortSpace     0x1000<BR>
   #  EfiPalCode                     0x2000<BR>
+  #  EfiPersistentMemory            0x4000<BR>
+  #  OEM Reserved       0x4000000000000000<BR>
   #  OS Reserved        0x8000000000000000<BR>
   #
   # e.g. Reserved+ACPINvs+ACPIReclaim+RuntimeCode+RuntimeData are needed, 0x661 should be used.<BR>
@@ -905,6 +930,19 @@
   # @Prompt Serial Port Extended Transmit FIFO Size in Bytes
   gEfiMdeModulePkgTokenSpaceGuid.PcdSerialExtendedTxFifoSize|64|UINT32|0x00010068
   
+  ## This PCD points to the file name GUID of the BootManagerMenuApp
+  #  Platform can customize the PCD to point to different application for Boot Manager Menu
+  gEfiMdeModulePkgTokenSpaceGuid.PcdBootManagerMenuFile|{ 0xdc, 0x5b, 0xc2, 0xee, 0xf2, 0x67, 0x95, 0x4d, 0xb1, 0xd5, 0xf8, 0x1b, 0x20, 0x39, 0xd1, 0x1d }|VOID*|0x0001006b
+
+  ## This PCD points to the formset GUID of the driver health management form
+  #  The form will be popped up by BDS core when there are Configuration Required driver health intances.
+  #  Platform can customize the PCD to point to different formset.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdDriverHealthConfigureForm|{ 0xf4, 0xd9, 0x96, 0x42, 0xfc, 0xf6, 0xde, 0x4d, 0x86, 0x85, 0x8c, 0xe2, 0xd7, 0x9d, 0x90, 0xf0 }|VOID*|0x0001006c
+
+  ## The number of bytes between registers in serial device.  The default is 1 byte.
+  # @Prompt Serial Port Register Stride in Bytes
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterStride|1|UINT32|0x0001006d
+  
 [PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
   ## This PCD defines the Console output row. The default value is 25 according to UEFI spec.
   #  This PCD could be set to 0 then console output would be at max column and max row.
@@ -925,6 +963,29 @@
   #  If this PCD is set to 0 then video resolution would be at highest resolution.
   # @Prompt Video vertical resolution.
   gEfiMdeModulePkgTokenSpaceGuid.PcdVideoVerticalResolution|600|UINT32|0x4000000a
+
+  #  The 4 PCDs below are used to specify the video resolution and text mode of text setup.
+  #  To make text setup work in this resolution, PcdVideoHorizontalResolution, PcdVideoVerticalResolution,
+  #  PcdConOutColumn and PcdConOutRow should be created as PcdsDynamic or PcdsDynamicEx in platform DSC file.
+  #  Then BDS setup will update these PCDs defined in MdeModulePkg.dec and reconnect console drivers
+  #  (GraphicsConsole, Terminal, Consplitter) to make the video resolution and text mode work
+  #  for text setup.
+
+  ## Specify the video horizontal resolution of text setup.
+  # @Prompt Video Horizontal Resolution of Text Setup
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoHorizontalResolution|800|UINT32|0x4000000b
+
+  ## Specify the video vertical resolution of text setup.
+  # @Prompt Video Vertical Resolution of Text Setup
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoVerticalResolution|600|UINT32|0x4000000c
+
+  ## Specify the console output column of text setup.
+  # @Prompt Console Output Column of Text Setup
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetupConOutColumn|80|UINT32|0x4000000d
+
+  ## Specify the console output row of text setup.
+  # @Prompt Console Output Row of Text Setup
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetupConOutRow|25|UINT32|0x4000000e
 
 [PcdsFixedAtBuild, PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
   ## Base address of the NV variable range in flash device.
@@ -1157,7 +1218,17 @@
 
   ## SMBIOS version.
   # @Prompt SMBIOS version.
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion|0x0208|UINT16|0x00010055
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion|0x0300|UINT16|0x00010055
+
+  ## SMBIOS Docrev field in SMBIOS 3.0 (64-bit) Entry Point Structure.
+  # @Prompt SMBIOS Docrev field in SMBIOS 3.0 (64-bit) Entry Point Structure.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosDocRev|0x0|UINT8|0x0001006A
+
+  ## SMBIOS produce method.
+  #  BIT0 set indicates 32-bit entry point and table are produced.<BR>
+  #  BIT1 set indicates 64-bit entry point and table are produced.<BR>
+  # @Prompt The policy to produce SMBIOS entry point and table.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosEntryPointProvideMethod|0x3|UINT32|0x00010069
 
   ## This PCD specifies the additional pad size in FPDT Basic Boot Performance Table for
   #  the extension FPDT boot records received after ReadyToBoot and before ExitBootService.
@@ -1188,6 +1259,27 @@
   # performance for large Disk I/O requests.
   # @Prompt Disk I/O - Number of Data Buffer block.
   gEfiMdeModulePkgTokenSpaceGuid.PcdDiskIoDataBufferBlockNum|64|UINT32|0x30001039
+
+  ## This PCD specifies the PCI-based UFS host controller mmio base address.
+  # Define the mmio base address of the pci-based UFS host controller. If there are multiple UFS
+  # host controllers, their mmio base addresses are calculated one by one from this base address.
+  # @Prompt Mmio base address of pci-based UFS host controller.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdUfsPciHostControllerMmioBase|0xd0000000|UINT32|0x10000061
+
+  ## Specify Max ESRT cache entry number supported for FMP instances
+  #
+  # @Prompt Max FMP ESRT entry number to be synced & cached in repository.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMaxFmpEsrtCacheNum|32|UINT32|0x0000006b
+
+  ## Specify Max ESRT cache entry number supported for Non FMP instances
+  #
+  # @Prompt Max Non-FMP ESRT entry number to be cached in repository.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMaxNonFmpEsrtCacheNum|32|UINT32|0x0000006c
+
+  ## Specify of Capsule Flag defined by CapsuleGuid to request system reboot after capsule process
+  #
+  # @Prompt Flag to request system reboot after processing capsule.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSystemRebootAfterCapsuleProcessFlag|0x0001|UINT16|0x0000006d
 
 [PcdsPatchableInModule]
   ## Specify memory size with page number for PEI code when

@@ -29,7 +29,9 @@
 [Sources]
   AcpiPlatform.c
   Qemu.c
+  QemuFwCfgAcpi.c
   Xen.c
+  EntryPoint.c
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -55,16 +57,17 @@
 
 [Protocols]
   gEfiAcpiTableProtocolGuid                     # PROTOCOL ALWAYS_CONSUMED
+  gEfiPciEnumerationCompleteProtocolGuid        # PROTOCOL SOMETIMES_CONSUMED
 
 [Guids]
   gEfiXenInfoGuid
 
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiTableStorageFile
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPciDisableBusEnumeration
   gUefiCpuPkgTokenSpaceGuid.PcdCpuLocalApicBaseAddress
   gPcAtChipsetPkgTokenSpaceGuid.Pcd8259LegacyModeEdgeLevel
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFdBaseAddress
 
 [Depex]
-  gEfiAcpiTableProtocolGuid AND gEfiPciEnumerationCompleteProtocolGuid
-
+  gEfiAcpiTableProtocolGuid

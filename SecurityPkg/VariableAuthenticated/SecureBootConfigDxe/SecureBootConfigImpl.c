@@ -1,7 +1,7 @@
 /** @file
   HII Config Access protocol implementation of SecureBoot configuration module.
 
-Copyright (c) 2011 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2011 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -1643,15 +1643,17 @@ LoadPeImage (
   // Note the size of FileHeader field is constant for both IA32 and X64 arch
   //
   if ((NtHeader32->FileHeader.Machine == EFI_IMAGE_MACHINE_IA32)
-      || (NtHeader32->FileHeader.Machine == EFI_IMAGE_MACHINE_EBC)) {
+      || (NtHeader32->FileHeader.Machine == EFI_IMAGE_MACHINE_EBC)
+      || (NtHeader32->FileHeader.Machine == EFI_IMAGE_MACHINE_ARMTHUMB_MIXED)) {
     //
-    // IA-32 Architecture
+    // 32-bits Architecture
     //
     mImageType = ImageType_IA32;
     mSecDataDir = (EFI_IMAGE_SECURITY_DATA_DIRECTORY*) &(NtHeader32->OptionalHeader.DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_SECURITY]);
   }
   else if ((NtHeader32->FileHeader.Machine == EFI_IMAGE_MACHINE_IA64)
-          || (NtHeader32->FileHeader.Machine == EFI_IMAGE_MACHINE_X64)) {
+          || (NtHeader32->FileHeader.Machine == EFI_IMAGE_MACHINE_X64)
+          || (NtHeader32->FileHeader.Machine == EFI_IMAGE_MACHINE_AARCH64)) {
     //
     // 64-bits Architecture
     //
@@ -1924,7 +1926,7 @@ Done:
 }
 
 /**
-  Recognize the Hash algorithm in PE/COFF Authenticode and caculate hash of
+  Recognize the Hash algorithm in PE/COFF Authenticode and calculate hash of
   Pe/Coff image based on the authenticated image hashing in PE/COFF Specification
   8.0 Appendix A
 

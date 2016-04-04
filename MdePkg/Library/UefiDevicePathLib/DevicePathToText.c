@@ -1,7 +1,7 @@
 /** @file
   DevicePathToText protocol as defined in the UEFI 2.0 specification.
 
-Copyright (c) 2013 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2013 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -728,6 +728,64 @@ DevPathToTextNVMe (
     Nvme->NamespaceId,
     Uuid[7], Uuid[6], Uuid[5], Uuid[4],
     Uuid[3], Uuid[2], Uuid[1], Uuid[0]
+    );
+}
+
+/**
+  Converts a UFS device path structure to its string representative.
+
+  @param Str             The string representative of input device.
+  @param DevPath         The input device path structure.
+  @param DisplayOnly     If DisplayOnly is TRUE, then the shorter text representation
+                         of the display node is used, where applicable. If DisplayOnly
+                         is FALSE, then the longer text representation of the display node
+                         is used.
+  @param AllowShortcuts  If AllowShortcuts is TRUE, then the shortcut forms of text
+                         representation for a device node can be used, where applicable.
+
+**/
+VOID
+DevPathToTextUfs (
+  IN OUT POOL_PRINT  *Str,
+  IN VOID            *DevPath,
+  IN BOOLEAN         DisplayOnly,
+  IN BOOLEAN         AllowShortcuts
+  )
+{
+  UFS_DEVICE_PATH  *Ufs;
+
+  Ufs = DevPath;
+  UefiDevicePathLibCatPrint (Str, L"UFS(0x%x,0x%x)", Ufs->Pun, Ufs->Lun);
+}
+
+/**
+  Converts a SD (Secure Digital) device path structure to its string representative.
+
+  @param Str             The string representative of input device.
+  @param DevPath         The input device path structure.
+  @param DisplayOnly     If DisplayOnly is TRUE, then the shorter text representation
+                         of the display node is used, where applicable. If DisplayOnly
+                         is FALSE, then the longer text representation of the display node
+                         is used.
+  @param AllowShortcuts  If AllowShortcuts is TRUE, then the shortcut forms of text
+                         representation for a device node can be used, where applicable.
+
+**/
+VOID
+DevPathToTextSd (
+  IN OUT POOL_PRINT  *Str,
+  IN VOID            *DevPath,
+  IN BOOLEAN         DisplayOnly,
+  IN BOOLEAN         AllowShortcuts
+  )
+{
+  SD_DEVICE_PATH             *Sd;
+
+  Sd = DevPath;
+  UefiDevicePathLibCatPrint (
+    Str,
+    L"SD(0x%x)",
+    Sd->SlotNumber
     );
 }
 
@@ -1468,6 +1526,108 @@ DevPathToTextVlan (
 }
 
 /**
+  Converts a Bluetooth device path structure to its string representative.
+
+  @param Str             The string representative of input device.
+  @param DevPath         The input device path structure.
+  @param DisplayOnly     If DisplayOnly is TRUE, then the shorter text representation
+                         of the display node is used, where applicable. If DisplayOnly
+                         is FALSE, then the longer text representation of the display node
+                         is used.
+  @param AllowShortcuts  If AllowShortcuts is TRUE, then the shortcut forms of text
+                         representation for a device node can be used, where applicable.
+
+**/
+VOID
+DevPathToTextBluetooth (
+  IN OUT POOL_PRINT  *Str,
+  IN VOID            *DevPath,
+  IN BOOLEAN         DisplayOnly,
+  IN BOOLEAN         AllowShortcuts
+  )
+{
+  BLUETOOTH_DEVICE_PATH  *Bluetooth;
+
+  Bluetooth = DevPath;
+  UefiDevicePathLibCatPrint (
+    Str,
+    L"Bluetooth(%02x:%02x:%02x:%02x:%02x:%02x)",
+    Bluetooth->BD_ADDR.Address[5],
+    Bluetooth->BD_ADDR.Address[4],
+    Bluetooth->BD_ADDR.Address[3],
+    Bluetooth->BD_ADDR.Address[2],
+    Bluetooth->BD_ADDR.Address[1],
+    Bluetooth->BD_ADDR.Address[0]
+    );
+}
+
+/**
+  Converts a Wi-Fi device path structure to its string representative.
+
+  @param Str             The string representative of input device.
+  @param DevPath         The input device path structure.
+  @param DisplayOnly     If DisplayOnly is TRUE, then the shorter text representation
+                         of the display node is used, where applicable. If DisplayOnly
+                         is FALSE, then the longer text representation of the display node
+                         is used.
+  @param AllowShortcuts  If AllowShortcuts is TRUE, then the shortcut forms of text
+                         representation for a device node can be used, where applicable.
+
+**/
+VOID
+DevPathToTextWiFi (
+  IN OUT POOL_PRINT  *Str,
+  IN VOID            *DevPath,
+  IN BOOLEAN         DisplayOnly,
+  IN BOOLEAN         AllowShortcuts
+  )
+{
+  WIFI_DEVICE_PATH      *WiFi;
+
+  WiFi = DevPath;
+  UefiDevicePathLibCatPrint (Str, L"WiFi(%a)", WiFi->SSId);
+}
+
+/**
+  Converts a URI device path structure to its string representative.
+
+  @param Str             The string representative of input device.
+  @param DevPath         The input device path structure.
+  @param DisplayOnly     If DisplayOnly is TRUE, then the shorter text representation
+                         of the display node is used, where applicable. If DisplayOnly
+                         is FALSE, then the longer text representation of the display node
+                         is used.
+  @param AllowShortcuts  If AllowShortcuts is TRUE, then the shortcut forms of text
+                         representation for a device node can be used, where applicable.
+
+**/
+VOID
+DevPathToTextUri (
+  IN OUT POOL_PRINT  *Str,
+  IN VOID            *DevPath,
+  IN BOOLEAN         DisplayOnly,
+  IN BOOLEAN         AllowShortcuts
+  )
+{
+  URI_DEVICE_PATH    *Uri;
+  UINTN              UriLength;
+  CHAR8              *UriStr;
+
+  //
+  // Uri in the device path may not be null terminated.
+  //
+  Uri       = DevPath;
+  UriLength = DevicePathNodeLength (Uri) - sizeof (URI_DEVICE_PATH);
+  UriStr = AllocatePool (UriLength + 1);
+  ASSERT (UriStr != NULL);
+
+  CopyMem (UriStr, Uri->Uri, UriLength);
+  UriStr[UriLength] = '\0';
+  UefiDevicePathLibCatPrint (Str, L"Uri(%a)", UriStr);
+  FreePool (UriStr);
+}
+
+/**
   Converts a Hard drive device path structure to its string representative.
 
   @param Str             The string representative of input device.
@@ -1869,6 +2029,8 @@ GLOBAL_REMOVE_IF_UNREFERENCED const DEVICE_PATH_TO_TEXT_TABLE mUefiDevicePathLib
   {MESSAGING_DEVICE_PATH, MSG_FIBRECHANNELEX_DP,            DevPathToTextFibreEx        },
   {MESSAGING_DEVICE_PATH, MSG_SASEX_DP,                     DevPathToTextSasEx          },
   {MESSAGING_DEVICE_PATH, MSG_NVME_NAMESPACE_DP,            DevPathToTextNVMe           },
+  {MESSAGING_DEVICE_PATH, MSG_UFS_DP,                       DevPathToTextUfs            },
+  {MESSAGING_DEVICE_PATH, MSG_SD_DP,                        DevPathToTextSd             },
   {MESSAGING_DEVICE_PATH, MSG_1394_DP,                      DevPathToText1394           },
   {MESSAGING_DEVICE_PATH, MSG_USB_DP,                       DevPathToTextUsb            },
   {MESSAGING_DEVICE_PATH, MSG_USB_WWID_DP,                  DevPathToTextUsbWWID        },
@@ -1884,6 +2046,9 @@ GLOBAL_REMOVE_IF_UNREFERENCED const DEVICE_PATH_TO_TEXT_TABLE mUefiDevicePathLib
   {MESSAGING_DEVICE_PATH, MSG_VENDOR_DP,                    DevPathToTextVendor         },
   {MESSAGING_DEVICE_PATH, MSG_ISCSI_DP,                     DevPathToTextiSCSI          },
   {MESSAGING_DEVICE_PATH, MSG_VLAN_DP,                      DevPathToTextVlan           },
+  {MESSAGING_DEVICE_PATH, MSG_URI_DP,                       DevPathToTextUri            },
+  {MESSAGING_DEVICE_PATH, MSG_BLUETOOTH_DP,                 DevPathToTextBluetooth      },
+  {MESSAGING_DEVICE_PATH, MSG_WIFI_DP,                      DevPathToTextWiFi           },
   {MEDIA_DEVICE_PATH,     MEDIA_HARDDRIVE_DP,               DevPathToTextHardDrive      },
   {MEDIA_DEVICE_PATH,     MEDIA_CDROM_DP,                   DevPathToTextCDROM          },
   {MEDIA_DEVICE_PATH,     MEDIA_VENDOR_DP,                  DevPathToTextVendor         },

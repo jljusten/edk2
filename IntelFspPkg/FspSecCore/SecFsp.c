@@ -1,6 +1,6 @@
 /** @file
 
-  Copyright (c) 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2014 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -12,8 +12,6 @@
 **/
 
 #include "SecFsp.h"
-
-UINT32  FspImageSizeOffset = FSP_INFO_HEADER_OFF + OFFSET_IN_FSP_INFO_HEADER(ImageSize);
 
 /**
 
@@ -34,7 +32,7 @@ FspGetExceptionHandler(
   IA32_IDT_GATE_DESCRIPTOR *IdtGateDescriptor;
   FSP_INFO_HEADER          *FspInfoHeader;
 
-  FspInfoHeader     = (FSP_INFO_HEADER *)(GetFspBaseAddress() + FSP_INFO_HEADER_OFF);
+  FspInfoHeader     = (FSP_INFO_HEADER *)AsmGetFspInfoHeader();
   ExceptionHandler  = IdtEntryTemplate;
   IdtGateDescriptor = (IA32_IDT_GATE_DESCRIPTOR *)&ExceptionHandler;
   Entry = (IdtGateDescriptor->Bits.OffsetHigh << 16) | IdtGateDescriptor->Bits.OffsetLow;
@@ -99,10 +97,10 @@ SecGetPlatformData (
   TopOfCar = PcdGet32 (PcdTemporaryRamBase) + PcdGet32 (PcdTemporaryRamSize);
 
   FspPlatformData->DataPtr   = NULL;
-  FspPlatformData->CodeRegionSize      = 0;
+  FspPlatformData->MicrocodeRegionBase = 0;
+  FspPlatformData->MicrocodeRegionSize = 0;
   FspPlatformData->CodeRegionBase      = 0;
-  FspPlatformData->MicorcodeRegionBase = 0;
-  FspPlatformData->MicorcodeRegionSize = 0;
+  FspPlatformData->CodeRegionSize      = 0;
 
   //
   // Pointer to the size field
@@ -116,7 +114,7 @@ SecGetPlatformData (
       //
       DwordSize = 4;
       StackPtr  = StackPtr - 1 - DwordSize;
-      CopyMem (&(FspPlatformData->CodeRegionBase), StackPtr, (DwordSize << 2));
+      CopyMem (&(FspPlatformData->MicrocodeRegionBase), StackPtr, (DwordSize << 2));
       StackPtr--;
     } else if (*(StackPtr - 1) == FSP_PER0_SIGNATURE) {
       //
@@ -140,13 +138,15 @@ SecGetPlatformData (
   It needs to be done as soon as possible after the stack is setup.
 
   @param[in,out] PeiFspData             Pointer of the FSP global data.
-  @param[in]     BootFirmwareVolume     Point to the address of BootFirmwareVolume in stack.
+  @param[in]     BootLoaderStack        BootLoader stack.
+  @param[in]     ApiIdx                 The index of the FSP API.
 
 **/
 VOID
 FspGlobalDataInit (
   IN OUT  FSP_GLOBAL_DATA    *PeiFspData,
-  IN      VOID              **BootFirmwareVolume
+  IN UINT32                   BootLoaderStack,
+  IN UINT8                    ApiIdx
   )
 {
   VOID              *UpdDataRgnPtr;
@@ -162,7 +162,7 @@ FspGlobalDataInit (
   ZeroMem  ((VOID *)PeiFspData, sizeof(FSP_GLOBAL_DATA));
 
   PeiFspData->Signature          = FSP_GLOBAL_DATA_SIGNATURE;
-  PeiFspData->CoreStack          = *(UINTN *)(BootFirmwareVolume + 2);
+  PeiFspData->CoreStack          = BootLoaderStack;
   PeiFspData->PerfIdx            = 2;
 
   SetFspMeasurePoint (FSP_PERF_ID_API_FSPINIT_ENTRY);
@@ -171,8 +171,13 @@ FspGlobalDataInit (
   // Get FSP Header offset
   // It may have multiple FVs, so look into the last one for FSP header
   //
-  PeiFspData->FspInfoHeader      = (FSP_INFO_HEADER *)(GetFspBaseAddress() + FSP_INFO_HEADER_OFF);
+  PeiFspData->FspInfoHeader      = (FSP_INFO_HEADER *)AsmGetFspInfoHeader();
   SecGetPlatformData (PeiFspData);
+
+  //
+  // Set API calling mode
+  //
+  SetFspApiCallingMode (ApiIdx == 1 ? 0 : 1);
 
   //
   // Initialize UPD pointer.
@@ -202,8 +207,13 @@ FspGlobalDataInit (
   }
   ImageId[Idx] = 0;
 
-  DEBUG ((DEBUG_INFO | DEBUG_INIT, "\n============= PEIM FSP  (%a 0x%08X) =============\n", \
-         ImageId, PeiFspData->FspInfoHeader->ImageRevision));
+  DEBUG ((DEBUG_INFO | DEBUG_INIT, "\n============= PEIM FSP v1.%x (%a v%x.%x.%x.%x) =============\n", \
+         PeiFspData->FspInfoHeader->HeaderRevision - 1, \
+         ImageId, \
+         (PeiFspData->FspInfoHeader->ImageRevision >> 24) & 0xff, \
+         (PeiFspData->FspInfoHeader->ImageRevision >> 16) & 0xff, \
+         (PeiFspData->FspInfoHeader->ImageRevision >> 8) & 0xff, \
+         (PeiFspData->FspInfoHeader->ImageRevision >> 0) & 0xff));
 
 }
 
@@ -229,29 +239,69 @@ FspDataPointerFixUp (
   This function check the FSP API calling condition.
 
   @param[in]  ApiIdx           Internal index of the FSP API.
+  @param[in]  ApiParam         Parameter of the FSP API.
 
 **/
 EFI_STATUS
 EFIAPI
 FspApiCallingCheck (
-  UINT32   ApiIdx
+  IN UINT32   ApiIdx,
+  IN VOID     *ApiParam
   )
 {
-  EFI_STATUS       Status;
-  FSP_GLOBAL_DATA *FspData;
+  EFI_STATUS                Status;
+  FSP_GLOBAL_DATA           *FspData;
+  FSP_INIT_PARAMS           *FspInitParams;
+  FSP_INIT_RT_COMMON_BUFFER *FspRtBuffer;
+
+  FspInitParams = (FSP_INIT_PARAMS *) ApiParam;
+  FspRtBuffer = ((FSP_INIT_RT_COMMON_BUFFER *)FspInitParams->RtBufferPtr);
 
   Status = EFI_SUCCESS;
-  FspData  = GetFspGlobalDataPointer ();
+  FspData = GetFspGlobalDataPointer ();
   if (ApiIdx == 1) {
     //
     // FspInit check
     //
     if ((UINT32)FspData != 0xFFFFFFFF) {
       Status = EFI_UNSUPPORTED;
+    } else if ((FspRtBuffer == NULL) || ((FspRtBuffer->BootLoaderTolumSize % EFI_PAGE_SIZE) != 0)) {
+      Status = EFI_INVALID_PARAMETER;
     }
   } else if (ApiIdx == 2) {
     //
     // NotifyPhase check
+    //
+    if ((FspData == NULL) || ((UINT32)FspData == 0xFFFFFFFF)) {
+      Status = EFI_UNSUPPORTED;
+    } else {
+      if (FspData->Signature != FSP_GLOBAL_DATA_SIGNATURE) {
+        Status = EFI_UNSUPPORTED;
+      }
+    }
+  } else if (ApiIdx == 3) {
+    //
+    // FspMemoryInit check
+    //
+    if ((UINT32)FspData != 0xFFFFFFFF) {
+      Status = EFI_UNSUPPORTED;
+    } else if ((FspRtBuffer == NULL) || ((FspRtBuffer->BootLoaderTolumSize % EFI_PAGE_SIZE) != 0)) {
+      Status = EFI_INVALID_PARAMETER;
+    }
+  } else if (ApiIdx == 4) {
+    //
+    // TempRamExit check
+    //
+    if ((FspData == NULL) || ((UINT32)FspData == 0xFFFFFFFF)) {
+      Status = EFI_UNSUPPORTED;
+    } else {
+      if (FspData->Signature != FSP_GLOBAL_DATA_SIGNATURE) {
+        Status = EFI_UNSUPPORTED;
+      }
+    }
+  } else if (ApiIdx == 5) {
+    //
+    // FspSiliconInit check
     //
     if ((FspData == NULL) || ((UINT32)FspData == 0xFFFFFFFF)) {
       Status = EFI_UNSUPPORTED;
@@ -265,4 +315,18 @@ FspApiCallingCheck (
   }
 
   return Status;
+}
+
+/**
+  This function gets the boot FV offset in FSP.
+  @return the boot firmware volumen offset inside FSP binary
+
+**/
+UINT32
+EFIAPI
+GetBootFirmwareVolumeOffset (
+  VOID
+  )
+{ 
+  return PcdGet32 (PcdFspBootFirmwareVolumeBase) - PcdGet32 (PcdFspAreaBaseAddress);
 }

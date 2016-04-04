@@ -5,7 +5,7 @@
   from a software point of view. The path must persist from boot to boot, so 
   it can not contain things like PCI bus numbers that change from boot to boot.
 
-Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials are licensed and made available under 
 the terms and conditions of the BSD License that accompanies this distribution.  
 The full text of the license may be found at
@@ -20,7 +20,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define __EFI_DEVICE_PATH_PROTOCOL_H__
 
 #include <Guid/PcAnsi.h>
-
+#include <IndustryStandard/Bluetooth.h>
 ///
 /// Device Path protocol.
 ///
@@ -273,14 +273,14 @@ typedef struct {
 #define ACPI_ADR_DISPLAY_TYPE_INTERNAL_DIGITAL  4
 
 #define ACPI_DISPLAY_ADR(_DeviceIdScheme, _HeadId, _NonVgaOutput, _BiosCanDetect, _VendorInfo, _Type, _Port, _Index) \
-          ((UINT32)( (((_DeviceIdScheme) & 0x1) << 31) |  \
-                      (((_HeadId)         & 0x7) << 18) |  \
-                      (((_NonVgaOutput)   & 0x1) << 17) |  \
-                      (((_BiosCanDetect)  & 0x1) << 16) |  \
-                      (((_VendorInfo)     & 0xf) << 12) |  \
-                      (((_Type)           & 0xf) << 8)  |  \
-                      (((_Port)           & 0xf) << 4)  |  \
-                       ((_Index)          & 0xf) ))
+          ((UINT32)(  ((UINT32)((_DeviceIdScheme) & 0x1) << 31) |  \
+                      (((_HeadId)                 & 0x7) << 18) |  \
+                      (((_NonVgaOutput)           & 0x1) << 17) |  \
+                      (((_BiosCanDetect)          & 0x1) << 16) |  \
+                      (((_VendorInfo)             & 0xf) << 12) |  \
+                      (((_Type)                   & 0xf) << 8)  |  \
+                      (((_Port)                   & 0xf) << 4)  |  \
+                       ((_Index)                  & 0xf) ))
 
 ///
 /// Messaging Device Paths.
@@ -796,6 +796,43 @@ typedef struct {
 } NVME_NAMESPACE_DEVICE_PATH;
 
 ///
+/// Uniform Resource Identifiers (URI) Device Path SubType
+///
+#define MSG_URI_DP                0x18
+typedef struct {
+  EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Instance of the URI pursuant to RFC 3986.
+  ///
+  CHAR8                           Uri[];
+} URI_DEVICE_PATH;
+
+///
+/// Universal Flash Storage (UFS) Device Path SubType.
+///
+#define MSG_UFS_DP                0x19
+typedef struct {
+  EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Target ID on the UFS bus (PUN).
+  ///
+  UINT8                           Pun;
+  ///
+  /// Logical Unit Number (LUN).
+  ///
+  UINT8                           Lun;
+} UFS_DEVICE_PATH;
+
+///
+/// SD (Secure Digital) Device Path SubType.
+///
+#define MSG_SD_DP                 0x1A
+typedef struct {
+  EFI_DEVICE_PATH_PROTOCOL        Header;
+  UINT8                           SlotNumber;
+} SD_DEVICE_PATH;
+
+///
 /// iSCSI Device Path SubType
 ///
 #define MSG_ISCSI_DP              0x13
@@ -845,6 +882,30 @@ typedef struct {
   ///
   UINT16                          VlanId;
 } VLAN_DEVICE_PATH;
+
+///
+/// Bluetooth Device Path SubType.
+///
+#define MSG_BLUETOOTH_DP     0x1b
+typedef struct {
+  EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// 48bit Bluetooth device address.
+  ///
+  BLUETOOTH_ADDRESS               BD_ADDR;
+} BLUETOOTH_DEVICE_PATH;
+
+///
+/// Wi-Fi Device Path SubType.
+///
+#define MSG_WIFI_DP               0x1C
+typedef struct {
+  EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Service set identifier. A 32-byte octets string.
+  ///
+  UINT8                           SSId[32];
+} WIFI_DEVICE_PATH;
 
 //
 // Media Device Path
@@ -1094,6 +1155,11 @@ typedef union {
   SAS_DEVICE_PATH                            Sas;
   SASEX_DEVICE_PATH                          SasEx;
   NVME_NAMESPACE_DEVICE_PATH                 NvmeNamespace;
+  URI_DEVICE_PATH                            Uri;
+  BLUETOOTH_DEVICE_PATH                      Bluetooth;
+  WIFI_DEVICE_PATH                           WiFi;
+  UFS_DEVICE_PATH                            Ufs;
+  SD_DEVICE_PATH                             Sd;
   HARDDRIVE_DEVICE_PATH                      HardDrive;
   CDROM_DEVICE_PATH                          CD;
 
@@ -1144,6 +1210,11 @@ typedef union {
   SAS_DEVICE_PATH                            *Sas;
   SASEX_DEVICE_PATH                          *SasEx;
   NVME_NAMESPACE_DEVICE_PATH                 *NvmeNamespace;
+  URI_DEVICE_PATH                            *Uri;
+  BLUETOOTH_DEVICE_PATH                      *Bluetooth;
+  WIFI_DEVICE_PATH                           *WiFi;
+  UFS_DEVICE_PATH                            *Ufs;
+  SD_DEVICE_PATH                             *Sd;
   HARDDRIVE_DEVICE_PATH                      *HardDrive;
   CDROM_DEVICE_PATH                          *CD;
 

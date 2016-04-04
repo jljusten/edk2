@@ -293,7 +293,7 @@ TriggerSoftInterrupt (
 }
 
 /**
-  Caculate Mailbox checksum and update the checksum field.
+  Calculate Mailbox checksum and update the checksum field.
 
   @param[in]  Mailbox  Debug Agent Mailbox pointer.
 
@@ -380,10 +380,92 @@ UpdateMailboxContent (
                                               - CalculateSum8 ((UINT8 *)&Value, sizeof(UINT8));
     Mailbox->HostSequenceNo = (UINT8) Value;
     break;
+  case DEBUG_MAILBOX_DEBUG_TIMER_FREQUENCY:
+    Mailbox->ToBeCheckSum = Mailbox->CheckSum + CalculateSum8 ((UINT8 *)&Mailbox->DebugTimerFrequency, sizeof(UINT32))
+                                              - CalculateSum8 ((UINT8 *)&Value, sizeof(UINT32));
+    Mailbox->DebugTimerFrequency = (UINT32) Value;
+    break;
   }
   UpdateMailboxChecksum (Mailbox);
   ReleaseMpSpinLock (&mDebugMpContext.MailboxSpinLock);
 }
+
+/**
+  Read data from debug device and save the data in buffer.
+
+  Reads NumberOfBytes data bytes from a debug device into the buffer
+  specified by Buffer. The number of bytes actually read is returned.
+  If the return value is less than NumberOfBytes, then the rest operation failed.
+  If NumberOfBytes is zero, then return 0.
+
+  @param  Handle           Debug port handle.
+  @param  Buffer           Pointer to the data buffer to store the data read from the debug device.
+  @param  NumberOfBytes    Number of bytes which will be read.
+  @param  Timeout          Timeout value for reading from debug device. It unit is Microsecond.
+
+  @retval 0                Read data failed, no data is to be read.
+  @retval >0               Actual number of bytes read from debug device.
+
+**/
+UINTN
+DebugAgentReadBuffer (
+  IN DEBUG_PORT_HANDLE     Handle,
+  IN UINT8                 *Buffer,
+  IN UINTN                 NumberOfBytes,
+  IN UINTN                 Timeout
+  )
+{
+  UINTN                    Index;
+  UINT32                   Begin;
+  UINT32                   TimeoutTicker;
+  UINT32                   TimerRound;
+  UINT32                   TimerFrequency;
+  UINT32                   TimerCycle;
+  
+  Begin         = 0;
+  TimeoutTicker = 0;  
+  TimerRound    = 0;
+  TimerFrequency = GetMailboxPointer()->DebugTimerFrequency;
+  TimerCycle = GetApicTimerInitCount ();
+
+  if (Timeout != 0) {
+    Begin = GetApicTimerCurrentCount ();
+    TimeoutTicker = (UINT32) DivU64x32 (
+                      MultU64x64 (
+                        TimerFrequency,
+                        Timeout
+                        ),
+                      1000000u
+                      );
+    TimerRound = (UINT32) DivU64x32Remainder (TimeoutTicker,  TimerCycle / 2, &TimeoutTicker);
+  }
+  Index = 0;
+  while (Index < NumberOfBytes) {
+    if (DebugPortPollBuffer (Handle)) {
+      DebugPortReadBuffer (Handle, Buffer + Index, 1, 0);
+      Index ++; 
+      continue;
+    }
+    if (Timeout != 0) {
+      if (TimerRound == 0) {
+        if (IsDebugTimerTimeout (TimerCycle, Begin, TimeoutTicker)) {
+          //
+          // If time out occurs.
+          //
+          return 0;
+        }
+      } else {
+        if (IsDebugTimerTimeout (TimerCycle, Begin, TimerCycle / 2)) {
+          TimerRound --;
+          Begin = GetApicTimerCurrentCount ();
+        }
+      }
+    }
+  }
+
+  return Index;
+}
+
 /**
   Set debug flag in mailbox.
 
@@ -589,7 +671,7 @@ ReadRemainingBreakPacket (
   //
   // Has received start symbol, try to read the rest part
   //
-  if (DebugPortReadBuffer (Handle, (UINT8 *)DebugHeader + OFFSET_OF (DEBUG_PACKET_HEADER, Command), sizeof (DEBUG_PACKET_HEADER) - OFFSET_OF (DEBUG_PACKET_HEADER, Command), READ_PACKET_TIMEOUT) == 0) {
+  if (DebugAgentReadBuffer (Handle, (UINT8 *)DebugHeader + OFFSET_OF (DEBUG_PACKET_HEADER, Command), sizeof (DEBUG_PACKET_HEADER) - OFFSET_OF (DEBUG_PACKET_HEADER, Command), READ_PACKET_TIMEOUT) == 0) {
     //
     // Timeout occur, exit
     //
@@ -703,7 +785,7 @@ CommandGo (
 }
 
 /**
-  Exectue Stepping command.
+  Execute Stepping command.
 
   @param[in] CpuContext        Pointer to saved CPU context.
 
@@ -718,6 +800,39 @@ CommandStepping (
   Eflags = (IA32_EFLAGS32 *) &CpuContext->Eflags;
   Eflags->Bits.TF = 1;
   Eflags->Bits.RF = 1;
+  //
+  // Save and clear EFLAGS.IF to avoid interrupt happen when executing Stepping
+  //
+  SetDebugFlag (DEBUG_AGENT_FLAG_INTERRUPT_FLAG, Eflags->Bits.IF);
+  Eflags->Bits.IF = 0;
+  //
+  // Set Stepping Flag
+  //
+  SetDebugFlag (DEBUG_AGENT_FLAG_STEPPING, 1);
+}
+
+/**
+  Do some cleanup after Stepping command done.
+
+  @param[in] CpuContext        Pointer to saved CPU context.
+
+**/
+VOID
+CommandSteppingCleanup (
+  IN DEBUG_CPU_CONTEXT          *CpuContext
+  )
+{
+  IA32_EFLAGS32                *Eflags;
+
+  Eflags = (IA32_EFLAGS32 *) &CpuContext->Eflags;
+  //
+  // Restore EFLAGS.IF
+  //
+  Eflags->Bits.IF = GetDebugFlag (DEBUG_AGENT_FLAG_INTERRUPT_FLAG);
+  //
+  // Clear Stepping flag
+  //
+  SetDebugFlag (DEBUG_AGENT_FLAG_STEPPING, 0);
 }
 
 /**
@@ -1046,9 +1161,9 @@ ReceivePacket (
     //
     // Find the valid start symbol
     //
-    Received = DebugPortReadBuffer (Handle, &DebugHeader->StartSymbol, sizeof (DebugHeader->StartSymbol), TimeoutForStartSymbol);
+    Received = DebugAgentReadBuffer (Handle, &DebugHeader->StartSymbol, sizeof (DebugHeader->StartSymbol), TimeoutForStartSymbol);
     if (Received < sizeof (DebugHeader->StartSymbol)) {
-      DebugAgentMsgPrint (DEBUG_AGENT_WARNING, "DebugPortReadBuffer(StartSymbol) timeout\n");
+      DebugAgentMsgPrint (DEBUG_AGENT_WARNING, "DebugAgentReadBuffer(StartSymbol) timeout\n");
       return RETURN_TIMEOUT;
     }
 
@@ -1060,14 +1175,14 @@ ReceivePacket (
     //
     // Read Package header till field Length
     //
-    Received = DebugPortReadBuffer (
+    Received = DebugAgentReadBuffer (
                  Handle,
                  (UINT8 *) DebugHeader + OFFSET_OF (DEBUG_PACKET_HEADER, Command),
                  OFFSET_OF (DEBUG_PACKET_HEADER, Length) + sizeof (DebugHeader->Length) - sizeof (DebugHeader->StartSymbol),
                  Timeout
                  );
     if (Received == 0) {
-      DebugAgentMsgPrint (DEBUG_AGENT_ERROR, "DebugPortReadBuffer(Command) timeout\n");
+      DebugAgentMsgPrint (DEBUG_AGENT_ERROR, "DebugAgentReadBuffer(Command) timeout\n");
       return RETURN_TIMEOUT;
     }
     if (DebugHeader->Length < sizeof (DEBUG_PACKET_HEADER)) {
@@ -1086,9 +1201,9 @@ ReceivePacket (
       //
       // Read the payload data include the CRC field
       //
-      Received = DebugPortReadBuffer (Handle, &DebugHeader->SequenceNo, (UINT8) (DebugHeader->Length - OFFSET_OF (DEBUG_PACKET_HEADER, SequenceNo)), Timeout);
+      Received = DebugAgentReadBuffer (Handle, &DebugHeader->SequenceNo, (UINT8) (DebugHeader->Length - OFFSET_OF (DEBUG_PACKET_HEADER, SequenceNo)), Timeout);
       if (Received == 0) {
-        DebugAgentMsgPrint (DEBUG_AGENT_ERROR, "DebugPortReadBuffer(SequenceNo) timeout\n");
+        DebugAgentMsgPrint (DEBUG_AGENT_ERROR, "DebugAgentReadBuffer(SequenceNo) timeout\n");
         return RETURN_TIMEOUT;
       }
       //
@@ -1220,8 +1335,12 @@ GetBreakCause (
       if ((CpuContext->Dr6 & BIT14) != 0) {
         Cause = DEBUG_DATA_BREAK_CAUSE_STEPPING;
         //
-        // If it's single step, no need to check DR0, to ensure single step work in PeCoffExtraActionLib
-        // (right after triggering a breakpoint to report image load/unload).
+        // DR6.BIT14 Indicates (when set) that the debug exception was
+        // triggered by the single step execution mode.
+        // The single-step mode is the highest priority debug exception.
+        // This is single step, no need to check DR0, to ensure single step
+        // work in PeCoffExtraActionLib (right after triggering a breakpoint
+        // to report image load/unload).
         //
         return Cause;
 
@@ -1352,31 +1471,32 @@ CopyMemByWidth (
   2. Compute the CRC of the compressed data buffer;
   3. Compress the data and send to the debug channel.
 
+  @param[in]  Handle           The debug channel handle to send the compressed data buffer.
   @param[in]  Data             The data buffer.
   @param[in]  Length           The length of the data buffer.
+  @param[in]  Send             TRUE to send the compressed data buffer.
   @param[out] CompressedLength Return the length of the compressed data buffer.
                                It may be larger than the Length in some cases.
   @param[out] CompressedCrc    Return the CRC of the compressed data buffer.
-  @param[in]  Handle           The debug channel handle to send the compressed data buffer.
 **/
 VOID
-CompressDataThenSend (
+CompressData (
+  IN  DEBUG_PORT_HANDLE Handle,
   IN  UINT8             *Data,
   IN  UINT8             Length,
+  IN  BOOLEAN           Send,
   OUT UINTN             *CompressedLength,  OPTIONAL
-  OUT UINT16            *CompressedCrc,     OPTIONAL
-  IN  DEBUG_PORT_HANDLE Handle              OPTIONAL
+  OUT UINT16            *CompressedCrc      OPTIONAL
   )
 {
-  UINTN  Index;
-  UINT8  LastChar;
-  UINT8  LastCharCount;
-  UINT8  CurrentChar;
-  UINTN  CompressedIndex;
+  UINTN                 Index;
+  UINT8                 LastChar;
+  UINT8                 LastCharCount;
+  UINT8                 CurrentChar;
+  UINTN                 CompressedIndex;
 
   ASSERT (Length > 0);
-
-  LastChar = Data[0] + 1; // Just ensure it's different from the first byte.
+  LastChar      = Data[0] + 1; // Just ensure it's different from the first byte.
   LastCharCount = 0;
 
   for (Index = 0, CompressedIndex = 0; Index <= Length; Index++) {
@@ -1391,7 +1511,7 @@ CompressDataThenSend (
         if (CompressedCrc != NULL) {
           *CompressedCrc = CalculateCrc16 (&LastChar, 1, *CompressedCrc);
         }
-        if (Handle != NULL) {
+        if (Send) {
           DebugPortWriteBuffer (Handle, &LastChar, 1);
         }
         
@@ -1403,7 +1523,7 @@ CompressDataThenSend (
           *CompressedCrc = CalculateCrc16 (&LastChar, 1, *CompressedCrc);
           *CompressedCrc = CalculateCrc16 (&LastCharCount, 1, *CompressedCrc);
         }
-        if (Handle != NULL) {
+        if (Send) {
           DebugPortWriteBuffer (Handle, &LastChar, 1);
           DebugPortWriteBuffer (Handle, &LastChar, 1);
           DebugPortWriteBuffer (Handle, &LastCharCount, 1);
@@ -1486,11 +1606,12 @@ ReadMemoryAndSendResponsePacket (
       //
       // Get the compressed data size without modifying the packet.
       //
-      CompressDataThenSend (
+      CompressData (
+        Handle,
         (UINT8 *) (DebugHeader + 1),
         CurrentDataSize,
+        FALSE,
         &CompressedDataSize,
-        NULL,
         NULL
         );
     } else {
@@ -1503,12 +1624,13 @@ ReadMemoryAndSendResponsePacket (
       // Compute the CRC of the packet head without modifying the packet.
       //
       DebugHeader->Crc = CalculateCrc16 ((UINT8 *) DebugHeader, sizeof (DEBUG_PACKET_HEADER), 0);
-      CompressDataThenSend (
+      CompressData (
+        Handle,
         (UINT8 *) (DebugHeader + 1),
         CurrentDataSize,
+        FALSE,
         NULL,
-        &DebugHeader->Crc,
-        NULL
+        &DebugHeader->Crc
         );
       //
       // Send out the packet head.
@@ -1517,12 +1639,13 @@ ReadMemoryAndSendResponsePacket (
       //
       // Compress and send out the packet data.
       //
-      CompressDataThenSend (
+      CompressData (
+        Handle,
         (UINT8 *) (DebugHeader + 1),
         CurrentDataSize,
+        TRUE,
         NULL,
-        NULL,
-        Handle
+        NULL
         );
     } else {
 
@@ -1681,7 +1804,7 @@ SendBreakPacketToHost (
     // Poll Attach symbols from HOST and ack OK
     //
     do {
-      DebugPortReadBuffer (Handle, &InputCharacter, 1, 0);
+      DebugAgentReadBuffer (Handle, &InputCharacter, 1, 0);
     } while (InputCharacter != DEBUG_STARTING_SYMBOL_ATTACH);
     SendAckPacket (DEBUG_COMMAND_OK);
 
@@ -1870,10 +1993,6 @@ CommandCommunication (
       if (Data8 == DEBUG_DATA_BREAK_CAUSE_IMAGE_LOAD || Data8 == DEBUG_DATA_BREAK_CAUSE_IMAGE_UNLOAD) {
         CpuContext->Dr0 = 0;
       }
-      //
-      // Clear Stepping Flag
-      //
-      SetDebugFlag (DEBUG_AGENT_FLAG_STEPPING, 0);
 
       if (!HaltDeferred) {
         //
@@ -1988,10 +2107,6 @@ CommandCommunication (
       }
 
       mDebugMpContext.BreakAtCpuIndex = (UINT32) (-1);
-      //
-      // Set Stepping Flag
-      //
-      SetDebugFlag (DEBUG_AGENT_FLAG_STEPPING, 1);
       ReleaseMpSpinLock (&mDebugMpContext.DebugPortSpinLock);
       //
       // Executing stepping command directly without sending ACK packet,
@@ -2285,9 +2400,16 @@ InterruptProcess (
     // Check if this exception is issued by Debug Agent itself
     // If yes, fill the debug agent exception buffer and LongJump() back to
     // the saved CPU content in CommandCommunication()
+    // If exception is issued when executing Stepping, will be handled in
+    // exception handle procedure.
     //
     if (GetDebugFlag (DEBUG_AGENT_FLAG_AGENT_IN_PROGRESS) == 1) {
-      DebugAgentMsgPrint (DEBUG_AGENT_ERROR, "Debug agent meet one Exception, ExceptionNum is %d, EIP = 0x%x.\n", Vector, (UINTN)CpuContext->Eip);
+      DebugAgentMsgPrint (
+        DEBUG_AGENT_ERROR,
+        "Debug agent meet one Exception, ExceptionNum is %d, EIP = 0x%x.\n",
+        Vector,
+        (UINTN)CpuContext->Eip
+        );
       ExceptionBuffer = (DEBUG_AGENT_EXCEPTION_BUFFER *) (UINTN) GetMailboxPointer()->ExceptionBufferPointer;
       ExceptionBuffer->ExceptionContent.ExceptionNum  = (UINT8) Vector;
       ExceptionBuffer->ExceptionContent.ExceptionData = (UINT32) CpuContext->ExceptionData;
@@ -2327,6 +2449,10 @@ InterruptProcess (
       if (MultiProcessorDebugSupport()) {
         mDebugMpContext.BreakAtCpuIndex = ProcessorIndex;
       }
+      //
+      // Clear Stepping Flag and restore EFLAGS.IF
+      //
+      CommandSteppingCleanup (CpuContext);
       SendAckPacket (DEBUG_COMMAND_OK);
       CommandCommunication (Vector, CpuContext, BreakReceived);
       break;
@@ -2408,7 +2534,7 @@ InterruptProcess (
         //
         CurrentDebugTimerInitCount = GetApicTimerInitCount ();
         if (mDebugMpContext.DebugTimerInitCount != CurrentDebugTimerInitCount) {
-          InitializeDebugTimer ();
+          InitializeDebugTimer (NULL);
         }
       }
 
@@ -2493,13 +2619,24 @@ InterruptProcess (
 
   default:
     if (Vector <= DEBUG_EXCEPT_SIMD) {
+      DebugAgentMsgPrint (
+        DEBUG_AGENT_ERROR,
+        "Exception happened, ExceptionNum is %d, EIP = 0x%x.\n",
+        Vector,
+        (UINTN) CpuContext->Eip
+        );
       if (BreakCause == DEBUG_DATA_BREAK_CAUSE_STEPPING) {
         //
-        // Stepping is finished, send Ack package.
+        // If exception happened when executing Stepping, send Ack package.
+        // HOST consider Stepping command was finished.
         //
         if (MultiProcessorDebugSupport()) {
           mDebugMpContext.BreakAtCpuIndex = ProcessorIndex;
         }
+        //
+        // Clear Stepping flag and restore EFLAGS.IF
+        //
+        CommandSteppingCleanup (CpuContext);
         SendAckPacket (DEBUG_COMMAND_OK);
       } else {
         //

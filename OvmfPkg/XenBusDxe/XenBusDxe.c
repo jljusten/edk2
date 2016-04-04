@@ -23,17 +23,17 @@
 
 **/
 
-#include <IndustryStandard/Pci.h>
-#include <IndustryStandard/Acpi.h>
 #include <Library/DebugLib.h>
+#include <Library/XenHypercallLib.h>
 
 #include "XenBusDxe.h"
 
-#include "XenHypercall.h"
 #include "GrantTable.h"
 #include "XenStore.h"
 #include "XenBus.h"
 
+#include <IndustryStandard/Xen/hvm/params.h>
+#include <IndustryStandard/Xen/memory.h>
 
 ///
 /// Driver Binding Protocol instance
@@ -50,6 +50,46 @@ EFI_DRIVER_BINDING_PROTOCOL gXenBusDxeDriverBinding = {
 
 STATIC EFI_LOCK       mMyDeviceLock = EFI_INITIALIZE_LOCK_VARIABLE (TPL_CALLBACK);
 STATIC XENBUS_DEVICE *mMyDevice = NULL;
+
+/**
+  Map the shared_info_t page into memory.
+
+  @param Dev    A XENBUS_DEVICE instance.
+
+  @retval EFI_SUCCESS     Dev->SharedInfo whill contain a pointer to
+                          the shared info page
+  @retval EFI_LOAD_ERROR  The shared info page could not be mapped. The
+                          hypercall returned an error.
+**/
+STATIC
+EFI_STATUS
+XenGetSharedInfoPage (
+  IN OUT XENBUS_DEVICE *Dev
+  )
+{
+  xen_add_to_physmap_t Parameter;
+
+  ASSERT (Dev->SharedInfo == NULL);
+
+  Parameter.domid = DOMID_SELF;
+  Parameter.space = XENMAPSPACE_shared_info;
+  Parameter.idx = 0;
+
+  //
+  // using reserved page because the page is not released when Linux is
+  // starting because of the add_to_physmap. QEMU might try to access the
+  // page, and fail because it have no right to do so (segv).
+  //
+  Dev->SharedInfo = AllocateReservedPages (1);
+  Parameter.gpfn = (UINTN) Dev->SharedInfo >> EFI_PAGE_SHIFT;
+  if (XenHypercallMemoryOp (XENMEM_add_to_physmap, &Parameter) != 0) {
+    FreePages (Dev->SharedInfo, 1);
+    Dev->SharedInfo = NULL;
+    return EFI_LOAD_ERROR;
+  }
+
+  return EFI_SUCCESS;
+}
 
 /**
   Unloads an image.
@@ -125,6 +165,7 @@ XenBusDxeUnload (
   @param  SystemTable           A pointer to the EFI System Table.
 
   @retval EFI_SUCCESS           The operation completed successfully.
+  @retval EFI_ABORTED           Xen hypercalls are not available.
   @retval Others                An unexpected error occurred.
 **/
 EFI_STATUS
@@ -135,6 +176,10 @@ XenBusDxeDriverEntryPoint (
   )
 {
   EFI_STATUS  Status;
+
+  if (! XenHypercallIsAvailable ()) {
+    return EFI_ABORTED;
+  }
 
   //
   // Install UEFI Driver Model protocol(s).
@@ -191,34 +236,22 @@ XenBusDxeDriverBindingSupported (
   )
 {
   EFI_STATUS          Status;
-  EFI_PCI_IO_PROTOCOL *PciIo;
-  PCI_TYPE00          Pci;
+  XENIO_PROTOCOL      *XenIo;
 
   Status = gBS->OpenProtocol (
                      ControllerHandle,
-                     &gEfiPciIoProtocolGuid,
-                     (VOID **)&PciIo,
+                     &gXenIoProtocolGuid,
+                     (VOID **)&XenIo,
                      This->DriverBindingHandle,
                      ControllerHandle,
                      EFI_OPEN_PROTOCOL_BY_DRIVER
                      );
+
   if (EFI_ERROR (Status)) {
     return Status;
   }
 
-  Status = PciIo->Pci.Read (PciIo, EfiPciIoWidthUint32, 0,
-                            sizeof Pci / sizeof (UINT32), &Pci);
-
-  if (Status == EFI_SUCCESS) {
-    if (Pci.Hdr.VendorId == PCI_VENDOR_ID_XEN &&
-        Pci.Hdr.DeviceId == PCI_DEVICE_ID_XEN_PLATFORM) {
-      Status = EFI_SUCCESS;
-    } else {
-      Status = EFI_UNSUPPORTED;
-    }
-  }
-
-  gBS->CloseProtocol (ControllerHandle, &gEfiPciIoProtocolGuid,
+  gBS->CloseProtocol (ControllerHandle, &gXenIoProtocolGuid,
          This->DriverBindingHandle, ControllerHandle);
 
   return Status;
@@ -284,19 +317,18 @@ XenBusDxeDriverBindingStart (
 {
   EFI_STATUS Status;
   XENBUS_DEVICE *Dev;
-  EFI_PCI_IO_PROTOCOL *PciIo;
-  EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *BarDesc;
-  UINT64 MmioAddr;
+  XENIO_PROTOCOL *XenIo;
   EFI_DEVICE_PATH_PROTOCOL *DevicePath;
 
   Status = gBS->OpenProtocol (
                      ControllerHandle,
-                     &gEfiPciIoProtocolGuid,
-                     (VOID **) &PciIo,
+                     &gXenIoProtocolGuid,
+                     (VOID**)&XenIo,
                      This->DriverBindingHandle,
                      ControllerHandle,
                      EFI_OPEN_PROTOCOL_BY_DRIVER
                      );
+
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -318,7 +350,7 @@ XenBusDxeDriverBindingStart (
   Dev->Signature = XENBUS_DEVICE_SIGNATURE;
   Dev->This = This;
   Dev->ControllerHandle = ControllerHandle;
-  Dev->PciIo = PciIo;
+  Dev->XenIo = XenIo;
   Dev->DevicePath = DevicePath;
   InitializeListHead (&Dev->ChildList);
 
@@ -334,27 +366,6 @@ XenBusDxeDriverBindingStart (
   mMyDevice = Dev;
   EfiReleaseLock (&mMyDeviceLock);
 
-  //
-  // The BAR1 of this PCI device is used for shared memory and is supposed to
-  // look like MMIO. The address space of the BAR1 will be used to map the
-  // Grant Table.
-  //
-  Status = PciIo->GetBarAttributes (PciIo, PCI_BAR_IDX1, NULL, (VOID**) &BarDesc);
-  ASSERT_EFI_ERROR (Status);
-  ASSERT (BarDesc->ResType == ACPI_ADDRESS_SPACE_TYPE_MEM);
-
-  /* Get a Memory address for mapping the Grant Table. */
-  DEBUG ((EFI_D_INFO, "XenBus: BAR at %LX\n", BarDesc->AddrRangeMin));
-  MmioAddr = BarDesc->AddrRangeMin;
-  FreePool (BarDesc);
-
-  Status = XenHyperpageInit (Dev);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((EFI_D_ERROR, "XenBus: Unable to retrieve the hyperpage.\n"));
-    Status = EFI_UNSUPPORTED;
-    goto ErrorAllocated;
-  }
-
   Status = XenGetSharedInfoPage (Dev);
   if (EFI_ERROR (Status)) {
     DEBUG ((EFI_D_ERROR, "XenBus: Unable to get the shared info page.\n"));
@@ -362,7 +373,7 @@ XenBusDxeDriverBindingStart (
     goto ErrorAllocated;
   }
 
-  XenGrantTableInit (Dev, MmioAddr);
+  XenGrantTableInit (Dev);
 
   Status = XenStoreInit (Dev);
   ASSERT_EFI_ERROR (Status);
@@ -382,7 +393,7 @@ ErrorAllocated:
   gBS->CloseProtocol (ControllerHandle, &gEfiDevicePathProtocolGuid,
                       This->DriverBindingHandle, ControllerHandle);
 ErrorOpenningProtocol:
-  gBS->CloseProtocol (ControllerHandle, &gEfiPciIoProtocolGuid,
+  gBS->CloseProtocol (ControllerHandle, &gXenIoProtocolGuid,
                       This->DriverBindingHandle, ControllerHandle);
   return Status;
 }
@@ -472,7 +483,7 @@ XenBusDxeDriverBindingStop (
 
   gBS->CloseProtocol (ControllerHandle, &gEfiDevicePathProtocolGuid,
          This->DriverBindingHandle, ControllerHandle);
-  gBS->CloseProtocol (ControllerHandle, &gEfiPciIoProtocolGuid,
+  gBS->CloseProtocol (ControllerHandle, &gXenIoProtocolGuid,
          This->DriverBindingHandle, ControllerHandle);
 
   mMyDevice = NULL;

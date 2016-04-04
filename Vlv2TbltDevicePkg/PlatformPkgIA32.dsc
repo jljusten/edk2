@@ -1,7 +1,7 @@
 #/** @file
 # Platform description.
 #
-# Copyright (c) 2012  - 2014, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2012  - 2015, Intel Corporation. All rights reserved.<BR>
 #                                                                                  
 # This program and the accompanying materials are licensed and made available under
 # the terms and conditions of the BSD License that accompanies this distribution.  
@@ -77,6 +77,9 @@
 
   DEFINE   PLATFORM_PCIEXPRESS_BASE   = 0E0000000
 
+  DEFINE SEC_ENABLE = TRUE
+  DEFINE SEC_DEBUG_INFO_ENABLE = TRUE
+  DEFINE FTPM_ENABLE = TRUE
 
 ################################################################################
 #
@@ -266,9 +269,18 @@
   ShellLib|ShellPkg/Library/UefiShellLib/UefiShellLib.inf
   FileHandleLib|MdePkg/Library/UefiFileHandleLib/UefiFileHandleLib.inf
   SortLib|MdeModulePkg/Library/UefiSortLib/UefiSortLib.inf
-
+!if $(FTPM_ENABLE) == TRUE
+  BaseCryptLib|CryptoPkg/Library/BaseCryptLib/BaseCryptLib.inf
+  OpensslLib|CryptoPkg/Library/OpensslLib/OpensslLib.inf
+  IntrinsicLib|CryptoPkg/Library/IntrinsicLib/IntrinsicLib.inf
+!endif
   TpmMeasurementLib|SecurityPkg/Library/DxeTpmMeasurementLib/DxeTpmMeasurementLib.inf
   TrEEPhysicalPresenceLib|SecurityPkg/Library/DxeTrEEPhysicalPresenceLib/DxeTrEEPhysicalPresenceLib.inf
+!if $(FTPM_ENABLE) == TRUE  
+  TrEEPpVendorLib|SecurityPkg/Library/TrEEPpVendorLibNull/TrEEPpVendorLibNull.inf
+!endif  
+  
+  
   Tpm2CommandLib|SecurityPkg/Library/Tpm2CommandLib/Tpm2CommandLib.inf
 !if $(MINNOW2_FSP_BUILD) == TRUE
   FspApiLib|IntelFspWrapperPkg/Library/BaseFspApiLib/BaseFspApiLib.inf
@@ -319,8 +331,9 @@
  !if $(MINNOW2_FSP_BUILD) == TRUE
  PlatformFspLib|Vlv2TbltDevicePkg/Library/PlatformFspLib/PlatformFspLib.inf
  !endif
-
-
+!if $(FTPM_ENABLE) == TRUE 
+  Tpm2DeviceLib|Vlv2TbltDevicePkg/Library/Tpm2DeviceLibSeCPei/Tpm2DeviceLibSeC.inf
+!endif
 
 [LibraryClasses.IA32]
   #
@@ -379,6 +392,7 @@
   MemoryAllocationLib|MdePkg/Library/SmmMemoryAllocationLib/SmmMemoryAllocationLib.inf
   LockBoxLib|MdeModulePkg/Library/SmmLockBoxLib/SmmLockBoxSmmLib.inf
   PerformanceLib|MdePkg/Library/BasePerformanceLibNull/BasePerformanceLibNull.inf
+  SmmMemLib|MdePkg/Library/SmmMemLib/SmmMemLib.inf
 
   BaseCryptLib|CryptoPkg/Library/BaseCryptLib/SmmCryptLib.inf
   !if $(TARGET) != RELEASE
@@ -396,6 +410,7 @@
   SmmServicesTableLib|MdeModulePkg/Library/PiSmmCoreSmmServicesTableLib/PiSmmCoreSmmServicesTableLib.inf
   ReportStatusCodeLib|MdeModulePkg/Library/SmmReportStatusCodeLib/SmmReportStatusCodeLib.inf
   SmmCorePlatformHookLib|MdeModulePkg/Library/SmmCorePlatformHookLibNull/SmmCorePlatformHookLibNull.inf
+  SmmMemLib|MdePkg/Library/SmmMemLib/SmmMemLib.inf
 
 !if $(TPM_ENABLED) == TRUE
   BaseCryptLib|CryptoPkg/Library/BaseCryptLib/SmmCryptLib.inf
@@ -583,7 +598,7 @@
 [PcdsFixedAtBuild.common]
 !if $(MINNOW2_FSP_BUILD) == TRUE
 # $(FLASH_REGION_VLVMICROCODE_BASE)
-  gFspWrapperTokenSpaceGuid.PcdCpuMicrocodePatchAddress|0xFFE00000
+  gFspWrapperTokenSpaceGuid.PcdCpuMicrocodePatchAddress|0xFFD00000
 # $(FLASH_REGION_VLVMICROCODE_SIZE)
   gFspWrapperTokenSpaceGuid.PcdCpuMicrocodePatchRegionSize|0x00030000
   gFspWrapperTokenSpaceGuid.PcdFlashMicroCodeOffset|0x60
@@ -678,9 +693,129 @@
   #  Note this PCD could be set to TRUE for best boot performance and set to FALSE for best device compatibility.
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdFastPS2Detection|TRUE
 
+  #######################################################################################################
+  #
+  # Begin of MRC parameters
+  #
+  
+  ## Memory Parameter Patchable.
+  #  FALSE - MRC Parameters are fixed for MinnowBoard Max<BR>
+  #  TRUE  - MRC Parameters are patchable by following PCDs<BR>
+  # @Prompt Memory Parameter Patchable.
+  # @ValidList 0x80000001 | 0, 1  
+  gVlvRefCodePkgTokenSpaceGuid.PcdMemoryParameterPatchable|FALSE
+  
+  ## Memory Down or DIMM slot.
+  #  0 - DIMM<BR>
+  #  1 - Memory Down<BR>
+  # @Prompt Enable Memory Down
+  # @ValidList 0x80000001 | 0, 1
+  gVlvRefCodePkgTokenSpaceGuid.PcdEnableMemoryDown|1
+     
+  ## The speed of DRAM.
+  #  0 - 800 MHz<BR>
+  #  1 - 1066 MHz<BR>
+  #  2 - 1333 MHz<BR>
+  #  3 - 1600 MHz<BR>
+  # @Prompt DRAM Speed
+  # @ValidList 0x80000001 | 0, 1, 2, 3
+  gVlvRefCodePkgTokenSpaceGuid.PcdDramSpeed|1
+
+  ## DRAM Type.
+  #  0 - DDR3<BR>
+  #  1 - DDR3L<BR>
+  #  2 - DDR3U<BR>
+  #  3 - DDR3All<BR>
+  #  4 - LPDDR2<BR>
+  #  5 - LPDDR3<BR>
+  #  6 - DDR4<BR>
+  # @Prompt DRAM Type
+  # @ValidList 0x80000001 | 0, 1, 2, 3, 4, 5, 6
+  gVlvRefCodePkgTokenSpaceGuid.PcdDramType|1
+    
+  ## Please populate DIMM slot 0 if only one DIMM is supported.
+  #  0 - Disable<BR>
+  #  1 - Enable<BR>
+  # @Prompt DIMM 0 Enable 
+  # @ValidList 0x80000001 | 0, 1
+  gVlvRefCodePkgTokenSpaceGuid.PcdEnableDimm0|1
+
+  ## DIMM 1 has to be identical to DIMM 0.
+  #  0 - Disable<BR>
+  #  1 - Enable<BR>
+  # @Prompt DIMM 1 Enable Type
+  # @ValidList 0x80000001 | 0, 1
+  gVlvRefCodePkgTokenSpaceGuid.PcdEnableDimm1|0
+  
+  ## DRAM device data width.
+  #  0 - x8<BR>
+  #  1 - x16<BR>
+  #  2 - x32<BR>
+  # @Prompt DIMM_DWIDTH
+  # @ValidList 0x80000001 | 0, 1, 2
+  gVlvRefCodePkgTokenSpaceGuid.PcdDimmDataWidth|1
+
+  ## DRAM device data density.
+  #  0 - 1 Gbit<BR>
+  #  1 - 2 Gbit<BR>
+  #  2 - 4 Gbit<BR>
+  #  3 - 8 Gbit<BR>
+  # @Prompt DIMM_Density
+  # @ValidList 0x80000001 | 0, 1, 2, 3
+  gVlvRefCodePkgTokenSpaceGuid.PcdDimmDensity|2
+  
+  ## DRAM device data bus width.
+  #  0 - 8 bits<BR>
+  #  1 - 16 bits<BR>
+  #  2 - 32 bits<BR>
+  #  3 - 64 bits<BR>
+  # @Prompt DIMM_BusWidth
+  # @ValidList 0x80000001 | 0, 1, 2, 3
+  gVlvRefCodePkgTokenSpaceGuid.PcdDimmBusWidth|3
+
+  ## Ranks Per DIMM or Sides Per DIMM.
+  #  0 - 1 Rank<BR>
+  #  1 - 2 Ranks<BR>
+  # @Prompt DIMM_Sides
+  # @ValidList 0x80000001 | 0, 1
+  gVlvRefCodePkgTokenSpaceGuid.PcdRankPerDimm|0
+
+  ## tCL.<BR><BR>
+  # @Prompt tCL
+  gVlvRefCodePkgTokenSpaceGuid.PcdTcl|11
+
+  ## tRP and tRCD in DRAM clk - 5:12.5ns, 6:15ns, etc.
+  # @Prompt tRP_tRCD 
+  gVlvRefCodePkgTokenSpaceGuid.PcdTrpTrcd|11
+
+  ## tWR in DRAM clk. 
+  # @Prompt tWR 
+  gVlvRefCodePkgTokenSpaceGuid.PcdTwr|12
+  
+  ## tWTR in DRAM clk.  
+  # @Prompt tWTR 
+  gVlvRefCodePkgTokenSpaceGuid.PcdTwtr|6
+  
+  ## tRRD in DRAM clk. 
+  # @Prompt tRRD 
+  gVlvRefCodePkgTokenSpaceGuid.PcdTrrd|6
+   
+  ## tRTP in DRAM clk.  
+  # @Prompt tRTP 
+  gVlvRefCodePkgTokenSpaceGuid.PcdTrtp|6
+
+  ## tFAW in DRAM clk.
+  # @Prompt tFAW 
+  gVlvRefCodePkgTokenSpaceGuid.PcdTfaw|32
+  
+  #
+  # End of MRC parameters.
+  # 
+  ###############################################################################################
+
 [PcdsDynamicHii.common.DEFAULT]
-  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdPlatformBootTimeOut|L"Timeout"|gEfiGlobalVariableGuid|0x0|5 # Variable: L"Timeout"
-  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdHardwareErrorRecordLevel|L"HwErrRecSupport"|gEfiGlobalVariableGuid|0x0|1 # Variable: L"HwErrRecSupport"
+  gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut|L"Timeout"|gEfiGlobalVariableGuid|0x0|5 # Variable: L"Timeout"
+  gEfiMdePkgTokenSpaceGuid.PcdHardwareErrorRecordLevel|L"HwErrRecSupport"|gEfiGlobalVariableGuid|0x0|1 # Variable: L"HwErrRecSupport"
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdBootState|L"BootState"|gEfiBootStateGuid|0x0|TRUE
 
 [PcdsDynamicDefault.common.DEFAULT]
@@ -688,13 +823,18 @@
   !if $(TPM_ENABLED) == TRUE
     gEfiSecurityPkgTokenSpaceGuid.PcdTpmInstanceGuid|{0x7b, 0x3a, 0xcd, 0x72, 0xA5, 0xFE, 0x5e, 0x4f, 0x91, 0x65, 0x4d, 0xd1, 0x21, 0x87, 0xbb, 0x13}
   !endif
+  !if $(FTPM_ENABLE) == TRUE
+    gEfiSecurityPkgTokenSpaceGuid.PcdTpmInstanceGuid|{0x7b, 0x3a, 0xcd, 0x72, 0xA5, 0xFE, 0x5e, 0x4f, 0x91, 0x65, 0x4d, 0xd1, 0x21, 0x87, 0xbb, 0x13}
+  !endif
 
   ## This PCD defines the video horizontal resolution.
   #  This PCD could be set to 0 then video resolution could be at highest resolution.
-  gEfiMdeModulePkgTokenSpaceGuid.PcdVideoHorizontalResolution|0
+  #gEfiMdeModulePkgTokenSpaceGuid.PcdVideoHorizontalResolution|0
+  gEfiMdeModulePkgTokenSpaceGuid.PcdVideoHorizontalResolution|800
   ## This PCD defines the video vertical resolution.
   #  This PCD could be set to 0 then video resolution could be at highest resolution.
-  gEfiMdeModulePkgTokenSpaceGuid.PcdVideoVerticalResolution|0
+  #gEfiMdeModulePkgTokenSpaceGuid.PcdVideoVerticalResolution|0
+  gEfiMdeModulePkgTokenSpaceGuid.PcdVideoVerticalResolution|600
 
   ## This PCD defines the Console output column and the default value is 25 according to UEFI spec.
   #  This PCD could be set to 0 then console output could be at max column and max row.
@@ -704,13 +844,13 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutColumn|100
 
   ## The PCD is used to specify the video horizontal resolution of text setup.
-  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdSetupVideoHorizontalResolution|800
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoHorizontalResolution|800
   ## The PCD is used to specify the video vertical resolution of text setup.
-  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdSetupVideoVerticalResolution|600
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoVerticalResolution|600
   ## The PCD is used to specify the console output column of text setup.
-  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdSetupConOutColumn|100
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetupConOutColumn|100
   ## The PCD is used to specify the console output column of text setup.
-  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdSetupConOutRow|31
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetupConOutRow|31
 
 !if $(TPM_ENABLED) == TRUE
   gEfiSecurityPkgTokenSpaceGuid.PcdTpmInitializationPolicy|1
@@ -728,6 +868,12 @@
   gEfiVLVTokenSpaceGuid.PcdFTPMResponse|0
   gEfiVLVTokenSpaceGuid.PcdFTPMNotRespond|FALSE
   gEfiVLVTokenSpaceGuid.PcdFTPMStatus|0
+  gEfiMdeModulePkgTokenSpaceGuid.PcdS3BootScriptTablePrivateSmmDataPtr|0
+  gEfiMdeModulePkgTokenSpaceGuid.PcdS3BootScriptTablePrivateDataPtr|0
+  gEfiCpuTokenSpaceGuid.PcdCpuS3DataAddress|0
+  gEfiCpuTokenSpaceGuid.PcdCpuHotPlugDataAddress|0
+  gEfiCpuTokenSpaceGuid.PcdCpuCallbackSignal|0
+  gEfiCpuTokenSpaceGuid.PcdCpuConfigContextBuffer|0
 
 [Components.IA32]
 
@@ -768,10 +914,18 @@
   $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/IA32/MemoryInit.inf {
     <PcdsPatchableInModule>
       gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000046
+    <BuildOptions>
+      !if $(FTPM_ENABLE)==TRUE
+        *_*_IA32_CC_FLAGS = /D FTPM_ENABLE
+      !endif
   }
 
 !if $(RC_BINARY_RELEASE) == TRUE
   $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/IA32/SeCUma.inf
+!endif
+
+!if $(FTPM_ENABLE) == TRUE
+$(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/IA32/fTPMInitPeim.inf
 !endif
 
 !if $(RC_BINARY_RELEASE) == TRUE
@@ -795,6 +949,9 @@
     }
 !endif
 
+!if $(FTPM_ENABLE) == TRUE
+  $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/IA32/Tpm2DeviceSeCPei.inf
+!endif
 
 !if $(TPM_ENABLED) == TRUE
   SecurityPkg/Tcg/PhysicalPresencePei/PhysicalPresencePei.inf
@@ -855,6 +1012,17 @@
 !endif
  MdeModulePkg/Universal/FaultTolerantWritePei/FaultTolerantWritePei.inf
 
+!if $(FTPM_ENABLE) == TRUE
+   SecurityPkg/Tcg/TrEEPei/TrEEPei.inf {
+    <PcdsPatchableInModule>
+      gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000046
+    <LibraryClasses>
+      DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
+      NULL|SecurityPkg/Library\HashInstanceLibSha1/HashInstanceLibSha1.inf
+      NULL|SecurityPkg/Library/HashInstanceLibSha256/HashInstanceLibSha256.inf
+      PcdLib|MdePkg/Library/PeiPcdLib/PeiPcdLib.inf
+  }
+!endif
 !if $(TPM_ENABLED) == TRUE
   SecurityPkg/Tcg/TrEEConfig/TrEEConfigPei.inf {
     <LibraryClasses>
@@ -949,6 +1117,9 @@
 !if $(TPM_ENABLED) == TRUE
       NULL|SecurityPkg/Library/DxeTpmMeasureBootLib/DxeTpmMeasureBootLib.inf
 !endif
+!if $(FTPM_ENABLE) == TRUE
+      NULL|SecurityPkg/Library/DxeTpm2MeasureBootLib/DxeTpm2MeasureBootLib.inf
+!endif
   }
   $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/$(DXE_ARCHITECTURE)/MpCpu.inf
   $(PLATFORM_PACKAGE)/Metronome/Metronome.inf
@@ -962,6 +1133,11 @@
       DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
       PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
       SerialPortLib|$(PLATFORM_PACKAGE)/Library/SerialPortLib/SerialPortLib.inf
+    !if $(FTPM_ENABLE) == TRUE  
+      Tpm2DeviceLib|Vlv2TbltDevicePkg/Library/Tpm2DeviceLibSeCDxe/Tpm2DeviceLibSeC.inf
+    !else
+      TrEEPhysicalPresenceLib|$(PLATFORM_PACKAGE)/Library/DxeTrEEPhysicalPresenceLibNull/DxeTrEEPhysicalPresenceLibNull.inf
+    !endif  
   }
 
   $(PLATFORM_PACKAGE)/UiApp/UiApp.inf
@@ -1065,6 +1241,32 @@
   $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/$(DXE_ARCHITECTURE)/Dptf.inf
   $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/$(DXE_ARCHITECTURE)/PnpDxe.inf
 
+!if $(SEC_ENABLE) == TRUE
+  $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/$(DXE_ARCHITECTURE)/HeciDrv.inf {
+!if $(SEC_DEBUG_INFO_ENABLE) == TRUE
+    <BuildOptions>
+      *_*_X64_CC_FLAGS      = /DSEC_DEBUG_INFO=1
+!else
+    <BuildOptions>
+      *_*_X64_CC_FLAGS      = /DSEC_DEBUG_INFO=0
+!endif
+  }
+  
+  $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/$(DXE_ARCHITECTURE)/SeCPolicyInitDxe.inf
+!endif
+
+!if $(FTPM_ENABLE) == TRUE
+  $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/$(DXE_ARCHITECTURE)/Tpm2DeviceSeCDxe.inf
+  SecurityPkg/Tcg/MemoryOverwriteControl/TcgMor.inf
+  SecurityPkg/Tcg/TrEEDxe/TrEEDxe.inf{
+    <LibraryClasses>
+      NULL|SecurityPkg/Library/HashInstanceLibSha1/HashInstanceLibSha1.inf
+      NULL|SecurityPkg/Library/HashInstanceLibSha256/HashInstanceLibSha256.inf
+      PcdLib|MdePkg/Library\DxePcdLib/DxePcdLib.inf
+      Tpm2DeviceLib|Vlv2TbltDevicePkg/Library/Tpm2DeviceLibSeCDxe/Tpm2DeviceLibSeC.inf
+  }
+  $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/$(DXE_ARCHITECTURE)/FtpmSmm.inf
+!endif
 !if $(TPM_ENABLED) == TRUE
   SecurityPkg/Tcg/TrEEConfig/TrEEConfigPei.inf {
     <LibraryClasses>
@@ -1199,7 +1401,7 @@
 # Console
 #
   MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
-  Vlv2TbltDevicePkg/Override/MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+  MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
   MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
   IntelFrameworkModulePkg/Universal/Console/VgaClassDxe/VgaClassDxe.inf
   MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
@@ -1353,6 +1555,11 @@
   DEFINE X64_BUILD_ENABLE =
 !endif
 
+!if $(FTPM_ENABLE) == TRUE
+  DEFINE DSC_FTPM_BUILD_OPTIONS = /DFTPM_ENABLE
+!else
+  DEFINE DSC_FTPM_BUILD_OPTIONS = 
+!endif
 !if $(TPM_ENABLED) == TRUE
   DEFINE DSC_TPM_BUILD_OPTIONS = /DTPM_ENABLED
 !else
@@ -1360,7 +1567,7 @@
 !endif
 
 
-  DEFINE EDK_EDKII_DSC_FEATURE_BUILD_OPTIONS = $(MINNOW2_FSP_OPTION) $(MINNOW2_BUILD_OPTION) $(ENBDT_PF_ENABLE) $(EXTERNAL_VGA_BUILD_OPTION) $(PCIE_ENUM_WA_BUILD_OPTION) $(X0_WA_ENABLE_BUILD_OPTION) $(A0_WA_ENABLE_BUILD_OPTION) $(MICROCODE_FREE_BUILD_OPTIONS) $(SIMICS_BUILD_OPTIONS) $(HYBRID_BUILD_OPTIONS) $(COMPACT_BUILD_OPTIONS) $(VP_BUILD_OPTIONS) $(SYSCTL_ID_BUILD_OPTION) $(CLKGEN_CONFIG_EXTRA_BUILD_OPTION) $(SYSCTL_X0_CONVERT_BOARD_OPTION) $(ENBDT_S3_SUPPORT_OPTIONS) $(SATA_SUPPORT_BUILD_OPTION) $(PCIESC_SUPPORT_BUILD_OPTION) $(DSC_FTPM_ERROR_WR_BUILD_OPTIONS) $(DSC_TPM_BUILD_OPTIONS) $(DSC_BYTI_SECURE_BOOT_BUILD_OPTIONS)
+  DEFINE EDK_EDKII_DSC_FEATURE_BUILD_OPTIONS = $(MINNOW2_FSP_OPTION) $(MINNOW2_BUILD_OPTION) $(ENBDT_PF_ENABLE) $(EXTERNAL_VGA_BUILD_OPTION) $(PCIE_ENUM_WA_BUILD_OPTION) $(X0_WA_ENABLE_BUILD_OPTION) $(A0_WA_ENABLE_BUILD_OPTION) $(MICROCODE_FREE_BUILD_OPTIONS) $(SIMICS_BUILD_OPTIONS) $(HYBRID_BUILD_OPTIONS) $(COMPACT_BUILD_OPTIONS) $(VP_BUILD_OPTIONS) $(SYSCTL_ID_BUILD_OPTION) $(CLKGEN_CONFIG_EXTRA_BUILD_OPTION) $(SYSCTL_X0_CONVERT_BOARD_OPTION) $(ENBDT_S3_SUPPORT_OPTIONS) $(SATA_SUPPORT_BUILD_OPTION) $(PCIESC_SUPPORT_BUILD_OPTION) $(DSC_FTPM_BUILD_OPTIONS) $(DSC_FTPM_ERROR_WR_BUILD_OPTIONS) $(DSC_TPM_BUILD_OPTIONS) $(DSC_BYTI_SECURE_BOOT_BUILD_OPTIONS)
 !if $(PERFORMANCE_ENABLE) == TRUE
   DEFINE PDB_BUILD_OPTION = /Zi
 !endif

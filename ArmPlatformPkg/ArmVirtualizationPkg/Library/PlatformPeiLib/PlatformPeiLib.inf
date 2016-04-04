@@ -37,12 +37,16 @@
   FdtLib
 
 [FixedPcd]
-  gArmTokenSpaceGuid.PcdFvBaseAddress
   gArmTokenSpaceGuid.PcdFvSize
-  gArmVirtualizationTokenSpaceGuid.PcdDeviceTreeInitialBaseAddress
+  gArmVirtualizationTokenSpaceGuid.PcdDeviceTreeAllocationPadding
 
 [Pcd]
-  gArmVirtualizationTokenSpaceGuid.PcdDeviceTreeBaseAddress
+  gArmTokenSpaceGuid.PcdFvBaseAddress
+  gArmVirtualizationTokenSpaceGuid.PcdDeviceTreeInitialBaseAddress
+
+[Guids]
+  gEarlyPL011BaseAddressGuid
+  gFdtHobGuid
 
 [Depex]
   gEfiPeiMemoryDiscoveredPpiGuid

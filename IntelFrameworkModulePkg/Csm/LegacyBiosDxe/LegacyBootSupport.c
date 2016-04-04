@@ -1,6 +1,6 @@
 /** @file
 
-Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
 
 This program and the accompanying materials
 are licensed and made available under the terms and conditions
@@ -1238,6 +1238,24 @@ GenericLegacyBoot (
                            0x40000,
                            &Granularity
                            );
+
+  if ((Private->Legacy16Table->TableLength >= OFFSET_OF (EFI_COMPATIBILITY16_TABLE, HiPermanentMemoryAddress)) &&
+      ((Private->Legacy16Table->UmaAddress != 0) && (Private->Legacy16Table->UmaSize != 0))) {
+    //
+    // Here we could reduce UmaAddress down as far as Private->OptionRom, taking into
+    // account the granularity of the access control.
+    //
+    DEBUG((EFI_D_INFO, "Unlocking UMB RAM region 0x%x-0x%x\n", Private->Legacy16Table->UmaAddress,
+                        Private->Legacy16Table->UmaAddress + Private->Legacy16Table->UmaSize));
+
+    Private->LegacyRegion->UnLock (
+                             Private->LegacyRegion,
+                             Private->Legacy16Table->UmaAddress,
+                             Private->Legacy16Table->UmaSize,
+                             &Granularity
+                             );
+  }
+
   //
   // Lock attributes of the Legacy Region if chipset supports
   //
@@ -1253,18 +1271,20 @@ GenericLegacyBoot (
   //
   EnableAllControllers (Private);
   if ((mBootMode == BOOT_LEGACY_OS) || (mBootMode == BOOT_UNCONVENTIONAL_DEVICE)) {
+
     //
-    // Report Status Code to indicate legacy boot event will be signalled
+    // Signal all the events that are waiting on EVT_SIGNAL_LEGACY_BOOT
+    //
+    EfiSignalEventLegacyBoot ();
+
+    //
+    // Report Status Code to indicate legacy boot event was signalled
     //
     REPORT_STATUS_CODE (
       EFI_PROGRESS_CODE,
       (EFI_SOFTWARE_DXE_BS_DRIVER | EFI_SW_DXE_BS_PC_LEGACY_BOOT_EVENT)
       );
 
-    //
-    // Signal all the events that are waiting on EVT_SIGNAL_LEGACY_BOOT
-    //
-    EfiSignalEventLegacyBoot ();
     DEBUG ((EFI_D_INFO, "Legacy INT19 Boot...\n"));
 
     //
@@ -1593,9 +1613,18 @@ EfiMemoryTypeToE820Type (
   case EfiBootServicesCode:
   case EfiBootServicesData:
   case EfiConventionalMemory:
+  //
+  // The memory of EfiRuntimeServicesCode and EfiRuntimeServicesData are
+  // usable memory for legacy OS, because legacy OS is not aware of EFI runtime concept.
+  // In ACPI specification, EfiRuntimeServiceCode and EfiRuntimeServiceData
+  // should be mapped to AddressRangeReserved. This statement is for UEFI OS, not for legacy OS.
+  //
   case EfiRuntimeServicesCode:
   case EfiRuntimeServicesData:
     return EfiAcpiAddressRangeMemory;
+
+  case EfiPersistentMemory:
+    return EfiAddressRangePersistentMemory;
 
   case EfiACPIReclaimMemory:
     return EfiAcpiAddressRangeACPI;

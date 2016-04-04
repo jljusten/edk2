@@ -1,6 +1,6 @@
 /** @file
   
-  Copyright (c) 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2014 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -54,7 +54,9 @@ CHAR16 *mMemoryTypeString[] = {
   L"EfiMemoryMappedIO",
   L"EfiMemoryMappedIOPortSpace",
   L"EfiPalCode",
+  L"EfiPersistentMemory",
   L"EfiOSReserved",
+  L"EfiOemReserved",
 };
 
 CHAR16 *mSubsystemString[] = {
@@ -213,6 +215,38 @@ GetDriverNameString (
 }
 
 /**
+  Memory type to string.
+
+  @param[in] MemoryType Memory type.
+
+  @return Pointer to string.
+
+**/
+CHAR16 *
+ProfileMemoryTypeToStr (
+  IN EFI_MEMORY_TYPE    MemoryType
+  )
+{
+  UINTN     Index;
+
+  if ((UINT32) MemoryType >= 0x80000000) {
+    //
+    // OS reserved memory type.
+    //
+    Index = EfiMaxMemoryType;
+  } else if ((UINT32) MemoryType >= 0x70000000) {
+    //
+    // OEM reserved memory type.
+    //
+    Index = EfiMaxMemoryType + 1;
+  } else {
+    Index = MemoryType;
+  }
+
+  return mMemoryTypeString[Index];
+}
+
+/**
   Dump memory profile allocate information.
 
   @param[in] DriverInfo         Pointer to memory profile driver info.
@@ -239,7 +273,7 @@ DumpMemoryProfileAllocInfo (
   Print (L"      CallerAddress - 0x%016lx (Offset: 0x%08x)\n", AllocInfo->CallerAddress, (UINTN) (AllocInfo->CallerAddress - DriverInfo->ImageBase));
   Print (L"      SequenceId    - 0x%08x\n", AllocInfo->SequenceId);
   Print (L"      Action        - 0x%08x (%s)\n", AllocInfo->Action, mActionString[(AllocInfo->Action < sizeof(mActionString)/sizeof(mActionString[0])) ? AllocInfo->Action : 0]);
-  Print (L"      MemoryType    - 0x%08x (%s)\n", AllocInfo->MemoryType, mMemoryTypeString[(AllocInfo->MemoryType < sizeof(mMemoryTypeString)/sizeof(mMemoryTypeString[0])) ? AllocInfo->MemoryType : (sizeof(mMemoryTypeString)/sizeof(mMemoryTypeString[0]) - 1)]);
+  Print (L"      MemoryType    - 0x%08x (%s)\n", AllocInfo->MemoryType, ProfileMemoryTypeToStr (AllocInfo->MemoryType));
   Print (L"      Buffer        - 0x%016lx\n", AllocInfo->Buffer);
   Print (L"      Size          - 0x%016lx\n", AllocInfo->Size);
 
@@ -281,7 +315,7 @@ DumpMemoryProfileDriverInfo (
   Print (L"    FileType                - 0x%02x (%s)\n", DriverInfo->FileType, mFileTypeString[(DriverInfo->FileType < sizeof(mFileTypeString)/sizeof(mFileTypeString[0])) ? DriverInfo->FileType : 0]);
   Print (L"    CurrentUsage            - 0x%016lx\n", DriverInfo->CurrentUsage);
   Print (L"    PeakUsage               - 0x%016lx\n", DriverInfo->PeakUsage);
-  for (TypeIndex = 0; TypeIndex <= EfiMaxMemoryType; TypeIndex++) {
+  for (TypeIndex = 0; TypeIndex < sizeof (DriverInfo->CurrentUsageByType) / sizeof (DriverInfo->CurrentUsageByType[0]); TypeIndex++) {
     if ((DriverInfo->CurrentUsageByType[TypeIndex] != 0) ||
         (DriverInfo->PeakUsageByType[TypeIndex] != 0)) {
       Print (L"    CurrentUsage[0x%02x]      - 0x%016lx (%s)\n", TypeIndex, DriverInfo->CurrentUsageByType[TypeIndex], mMemoryTypeString[TypeIndex]);
@@ -326,7 +360,7 @@ DumpMemoryProfileContext (
   Print (L"  Revision                      - 0x%04x\n", Context->Header.Revision);  
   Print (L"  CurrentTotalUsage             - 0x%016lx\n", Context->CurrentTotalUsage);
   Print (L"  PeakTotalUsage                - 0x%016lx\n", Context->PeakTotalUsage);
-  for (TypeIndex = 0; TypeIndex <= EfiMaxMemoryType; TypeIndex++) {
+  for (TypeIndex = 0; TypeIndex < sizeof (Context->CurrentTotalUsageByType) / sizeof (Context->CurrentTotalUsageByType[0]); TypeIndex++) {
     if ((Context->CurrentTotalUsageByType[TypeIndex] != 0) ||
         (Context->PeakTotalUsageByType[TypeIndex] != 0)) {
       Print (L"  CurrentTotalUsage[0x%02x]       - 0x%016lx (%s)\n", TypeIndex, Context->CurrentTotalUsageByType[TypeIndex], mMemoryTypeString[TypeIndex]);

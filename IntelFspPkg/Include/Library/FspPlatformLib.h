@@ -1,6 +1,6 @@
 /** @file
 
-  Copyright (c) 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2014 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -28,7 +28,7 @@ FspGetSystemMemorySize (
   );
 
 /**
-  Migrate bootloader data before destroying CAR.
+  Migrate BootLoader data before destroying CAR.
 
 **/
 VOID
@@ -38,8 +38,18 @@ FspMigrateTemporaryMemory (
   );
 
 /**
+  Set a new stack frame for the continuation function.
+
+**/
+VOID
+EFIAPI
+FspSetNewStackFrame (
+  VOID
+  );
+
+/**
   This function transfer control to the ContinuationFunc passed in by the
-  bootloader.
+  BootLoader.
 
 **/
 VOID
@@ -49,8 +59,8 @@ FspInitDone (
   );
 
 /**
-  This function handle NotifyPhase API call from the bootloader.
-  It gives control back to the bootloader after it is handled. If the
+  This function handle NotifyPhase API call from the BootLoader.
+  It gives control back to the BootLoader after it is handled. If the
   Notification code is a ReadyToBoot event, this function will return
   and FSP continues the remaining execution until it reaches the DxeIpl.
 

@@ -2,7 +2,7 @@
 # ARM processor package.
 #
 # Copyright (c) 2009 - 2010, Apple Inc. All rights reserved.<BR>
-# Copyright (c) 2011 - 2014, ARM Limited. All rights reserved.
+# Copyright (c) 2011 - 2015, ARM Limited. All rights reserved.
 #
 #    This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -69,6 +69,9 @@
   # Linux (instead of PSCI)
   gArmTokenSpaceGuid.PcdArmLinuxSpinTable|FALSE|BOOLEAN|0x00000033
 
+  # Define if the GICv3 controller should use the GICv2 legacy
+  gArmTokenSpaceGuid.PcdArmGicV3WithV2Legacy|FALSE|BOOLEAN|0x00000042
+
 [PcdsFixedAtBuild.common]
   gArmTokenSpaceGuid.PcdTrustzoneSupport|FALSE|BOOLEAN|0x00000006
 
@@ -79,8 +82,7 @@
   gArmTokenSpaceGuid.PcdArmUncachedMemoryMask|0x0000000080000000|UINT64|0x00000002
   # This PCD will free the unallocated buffers if their size reach this threshold.
   # We set the default value to 512MB.
-  gArmTokenSpaceGuid.PcdArmFreeUncachedMemorySizeThreshold|0x20000000|UINT64|0x00000043
-  gArmTokenSpaceGuid.PcdArmCacheOperationThreshold|1024|UINT32|0x00000003
+  gArmTokenSpaceGuid.PcdArmFreeUncachedMemorySizeThreshold|0x20000000|UINT64|0x00000003
   gArmTokenSpaceGuid.PcdCpuVectorBaseAddress|0xffff0000|UINT32|0x00000004
   gArmTokenSpaceGuid.PcdCpuResetAddress|0x00000000|UINT32|0x00000005
 
@@ -91,14 +93,6 @@
   gArmTokenSpaceGuid.PcdSecureFdSize|0|UINT32|0x00000016
   gArmTokenSpaceGuid.PcdSecureFvBaseAddress|0x0|UINT64|0x0000002F
   gArmTokenSpaceGuid.PcdSecureFvSize|0x0|UINT32|0x00000030
-
-  #
-  # ARM Normal (or Non Secure) Firmware PCDs
-  #
-  gArmTokenSpaceGuid.PcdFdBaseAddress|0|UINT64|0x0000002B
-  gArmTokenSpaceGuid.PcdFdSize|0|UINT32|0x0000002C
-  gArmTokenSpaceGuid.PcdFvBaseAddress|0|UINT64|0x0000002D
-  gArmTokenSpaceGuid.PcdFvSize|0|UINT32|0x0000002E
 
   #
   # ARM Hypervisor Firmware PCDs
@@ -127,6 +121,15 @@
   # Maximum file size for TFTP servers that do not support 'tsize' extension
   gArmTokenSpaceGuid.PcdMaxTftpFileSize|0x01000000|UINT32|0x00000000
 
+  #
+  # ARM Normal (or Non Secure) Firmware PCDs
+  #
+  gArmTokenSpaceGuid.PcdFdSize|0|UINT32|0x0000002C
+  gArmTokenSpaceGuid.PcdFvSize|0|UINT32|0x0000002E
+
+[PcdsFixedAtBuild.common, PcdsPatchableInModule.common]
+  gArmTokenSpaceGuid.PcdFdBaseAddress|0|UINT64|0x0000002B
+  gArmTokenSpaceGuid.PcdFvBaseAddress|0|UINT64|0x0000002D
 
 [PcdsFixedAtBuild.ARM]
   #
@@ -207,16 +210,18 @@
 
 
 #
-# These PCDs are also defined as 'PcdsDynamic' to be redefined when using UEFI in a
-# context of virtual machine.
+# These PCDs are also defined as 'PcdsDynamic' or 'PcdsPatchableInModule' to be
+# redefined when using UEFI in a context of virtual machine.
 #
-[PcdsFixedAtBuild.common, PcdsDynamic.common]
+[PcdsFixedAtBuild.common, PcdsDynamic.common, PcdsPatchableInModule.common]
+
   # System Memory (DRAM): These PCDs define the region of in-built system memory
   # Some platforms can get DRAM extensions, these additional regions will be declared
   # to UEFI by ArmPlatformLib
   gArmTokenSpaceGuid.PcdSystemMemoryBase|0|UINT64|0x00000029
   gArmTokenSpaceGuid.PcdSystemMemorySize|0|UINT64|0x0000002A
 
+[PcdsFixedAtBuild.common, PcdsDynamic.common]
   #
   # ARM Architectural Timer
   #
@@ -240,5 +245,7 @@
   # ARM Generic Interrupt Controller
   #
   gArmTokenSpaceGuid.PcdGicDistributorBase|0|UINT32|0x0000000C
+  # Base address for the GIC Redistributor region that contains the boot CPU
+  gArmTokenSpaceGuid.PcdGicRedistributorsBase|0|UINT32|0x0000000E
   gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase|0|UINT32|0x0000000D
   gArmTokenSpaceGuid.PcdGicSgiIntId|0|UINT32|0x00000025

@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2013-2014, ARM Limited. All rights reserved.
+#  Copyright (c) 2013-2015, ARM Limited. All rights reserved.
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -51,13 +51,18 @@
 [LibraryClasses.common.SEC]
   PrePiLib|EmbeddedPkg/Library/PrePiLib/PrePiLib.inf
   ExtractGuidedSectionLib|EmbeddedPkg/Library/PrePiExtractGuidedSectionLib/PrePiExtractGuidedSectionLib.inf
-  LzmaDecompressLib|IntelFrameworkModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
+  LzmaDecompressLib|MdeModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
   MemoryAllocationLib|EmbeddedPkg/Library/PrePiMemoryAllocationLib/PrePiMemoryAllocationLib.inf
   HobLib|EmbeddedPkg/Library/PrePiHobLib/PrePiHobLib.inf
   PrePiHobListPointerLib|ArmPlatformPkg/Library/PrePiHobListPointerLib/PrePiHobListPointerLib.inf
   PerformanceLib|MdeModulePkg/Library/PeiPerformanceLib/PeiPerformanceLib.inf
   PlatformPeiLib|ArmPlatformPkg/PlatformPei/PlatformPeiLib.inf
+
+[LibraryClasses.common.SEC, LibraryClasses.common.PEIM]
   MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
+
+[LibraryClasses.common.UEFI_DRIVER, LibraryClasses.common.UEFI_APPLICATION, LibraryClasses.common.DXE_RUNTIME_DRIVER, LibraryClasses.common.DXE_DRIVER]
+  PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
 
 [BuildOptions]
   *_*_*_PLATFORM_FLAGS == -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include -I$(WORKSPACE)/ArmPlatformPkg/ArmJunoPkg/Include
@@ -124,6 +129,17 @@
   gArmTokenSpaceGuid.PcdGicDistributorBase|0x2C010000
   gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase|0x2C02F000
 
+  #
+  # PLDA PCI Root Complex
+  #
+  gArmPlatformTokenSpaceGuid.PcdPciBusMax|255
+  gArmPlatformTokenSpaceGuid.PcdPciIoBase|0x5f800000
+  gArmPlatformTokenSpaceGuid.PcdPciIoSize|0x00800000
+  gArmPlatformTokenSpaceGuid.PcdPciMmio32Base|0x50000000
+  gArmPlatformTokenSpaceGuid.PcdPciMmio32Size|0x08000000
+  gArmPlatformTokenSpaceGuid.PcdPciMmio64Base|0x4000000000
+  gArmPlatformTokenSpaceGuid.PcdPciMmio64Size|0x100000000
+
   # List of Device Paths that support BootMonFs
   gArmPlatformTokenSpaceGuid.PcdBootMonFsSupportedDevicePaths|L"VenHw(E7223039-5836-41E1-B542-D7EC736C5E59)"
 
@@ -132,9 +148,10 @@
   #
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDescription|L"Linux from NOR Flash"
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDevicePath|L"VenHw(E7223039-5836-41E1-B542-D7EC736C5E59)/Image"
-  gArmPlatformTokenSpaceGuid.PcdFdtDevicePath|L"VenHw(E7223039-5836-41E1-B542-D7EC736C5E59)/juno.dtb"
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|"console=ttyAMA0,115200 earlyprintk=pl011,0x7ff80000 root=/dev/sda1 rootwait verbose debug"
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootType|2
+
+  # Support the Linux EFI stub by default
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|L"console=ttyAMA0,115200 earlycon=pl011,0x7ff80000 root=/dev/sda1 rootwait verbose debug"
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootType|0
 
   # Use the serial console (ConIn & ConOut) and the Graphic driver (ConOut)
   gArmPlatformTokenSpaceGuid.PcdDefaultConOutPaths|L"VenHw(D3987D4B-971A-435F-8CAF-4967EB627241)/Uart(115200,8,N,1)/VenPcAnsi();VenHw(CE660500-824D-11E0-AC72-0002A5D5C51B)"
@@ -151,6 +168,18 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdVideoHorizontalResolution|1920
   gEfiMdeModulePkgTokenSpaceGuid.PcdVideoVerticalResolution|1080
 
+[PcdsDynamicDefault.common]
+  #
+  # The size of a dynamic PCD of the (VOID*) type can not be increased at run
+  # time from its size at build time. Set the "PcdFdtDevicePaths" PCD to a 128
+  # character "empty" string, to allow to be able to set FDT text device paths
+  # up to 128 characters long.
+  #
+  gEmbeddedTokenSpaceGuid.PcdFdtDevicePaths|L"                                                                                                                                "
+
+  # Not all Juno platforms support PCI. This dynamic PCD disables or enable
+  # PCI support.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPciDisableBusEnumeration|TRUE
 
 ################################################################################
 #
@@ -221,7 +250,24 @@
   MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
   MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
 
+  # Required by PCI
+  UefiCpuPkg/CpuIo2Dxe/CpuIo2Dxe.inf
+
+  #
+  # PCI Support
+  #
+  MdeModulePkg/Bus/Pci/PciBusDxe/PciBusDxe.inf
+  ArmPlatformPkg/ArmJunoPkg/Drivers/PciHostBridgeDxe/PciHostBridgeDxe.inf
+
+  #
+  # SATA Controller
+  #
+  MdeModulePkg/Bus/Ata/AtaBusDxe/AtaBusDxe.inf
+  EmbeddedPkg/Drivers/SataSiI3132Dxe/SataSiI3132Dxe.inf
+
+  #
   # Networking stack
+  #
   EmbeddedPkg/Drivers/Lan9118Dxe/Lan9118Dxe.inf
 
   #

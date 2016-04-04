@@ -1,7 +1,7 @@
 /** @file
   EFI PEI Core dispatch services
   
-Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -18,11 +18,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 /// temporary memory is filled with this initial value during SEC phase
 ///
 #define INIT_CAR_VALUE 0x5AA55AA5
-
-typedef struct {
-  EFI_STATUS_CODE_DATA  DataHeader;
-  EFI_HANDLE            Handle;
-} PEIM_FILE_HANDLE_EXTENDED_DATA;
 
 /**
 
@@ -659,7 +654,6 @@ PeiDispatcher (
   UINTN                               SaveCurrentPeimCount;
   UINTN                               SaveCurrentFvCount;
   EFI_PEI_FILE_HANDLE                 SaveCurrentFileHandle;
-  PEIM_FILE_HANDLE_EXTENDED_DATA      ExtendedData;
   EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI   *TemporaryRamSupportPpi;
   UINT64                              NewStackSize;
   UINTN                               HeapTemporaryRamSize;
@@ -827,13 +821,11 @@ PeiDispatcher (
                 //
                 PERF_START (PeimFileHandle, "PEIM", NULL, 0);
 
-                ExtendedData.Handle = (EFI_HANDLE)PeimFileHandle;
-
                 REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
                   EFI_PROGRESS_CODE,
                   (EFI_SOFTWARE_PEI_CORE | EFI_SW_PC_INIT_BEGIN),
-                  (VOID *)(&ExtendedData),
-                  sizeof (ExtendedData)
+                  (VOID *)(&PeimFileHandle),
+                  sizeof (PeimFileHandle)
                   );
 
                 Status = VerifyPeim (Private, CoreFvHandle->FvHandle, PeimFileHandle, AuthenticationState);
@@ -853,8 +845,8 @@ PeiDispatcher (
                 REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
                   EFI_PROGRESS_CODE,
                   (EFI_SOFTWARE_PEI_CORE | EFI_SW_PC_INIT_END),
-                  (VOID *)(&ExtendedData),
-                  sizeof (ExtendedData)
+                  (VOID *)(&PeimFileHandle),
+                  sizeof (PeimFileHandle)
                   );
                 PERF_END (PeimFileHandle, "PEIM", NULL, 0);
 
@@ -863,7 +855,7 @@ PeiDispatcher (
 
             if (Private->SwitchStackSignal) {
               //
-              // Before switch stack from temporary memory to permenent memory, caculate the heap and stack
+              // Before switch stack from temporary memory to permenent memory, calculate the heap and stack
               // usage in temporary memory for debuging.
               //
               DEBUG_CODE_BEGIN ();
@@ -913,7 +905,7 @@ PeiDispatcher (
               ASSERT (NewStackSize >= SecCoreData->StackSize);
 
               //
-              // Caculate stack offset and heap offset between temporary memory and new permement 
+              // Calculate stack offset and heap offset between temporary memory and new permement 
               // memory seperately.
               //
               TopOfOldStack = (UINTN)SecCoreData->StackBase + SecCoreData->StackSize;
@@ -969,7 +961,7 @@ PeiDispatcher (
                 DEBUG ((EFI_D_INFO, "Heap Offset = 0x%lX Stack Offset = 0x%lX\n", (UINT64) Private->HeapOffset, (UINT64) Private->StackOffset));
 
                 //
-                // Caculate new HandOffTable and PrivateData address in permanent memory's stack
+                // Calculate new HandOffTable and PrivateData address in permanent memory's stack
                 //
                 if (StackOffsetPositive) {
                   SecCoreData = (CONST EFI_SEC_PEI_HAND_OFF *)((UINTN)(VOID *)SecCoreData + StackOffset);

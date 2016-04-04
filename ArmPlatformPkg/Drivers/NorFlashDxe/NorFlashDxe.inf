@@ -26,6 +26,7 @@
   NorFlashDxe.c
   NorFlashFvbDxe.c
   NorFlashBlockIoDxe.c
+  NorFlashVariableDep.c
 
 [Packages]
   MdePkg/MdePkg.dec

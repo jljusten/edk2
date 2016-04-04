@@ -1,7 +1,7 @@
 /** @file
   Data structure and functions to allocate and free memory space.
 
-Copyright (c) 2006 - 2008, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -22,6 +22,15 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define EFI_ACPI_RUNTIME_PAGE_ALLOCATION_ALIGNMENT  (EFI_PAGE_SIZE * 2)
 #define DEFAULT_PAGE_ALLOCATION                     (EFI_PAGE_SIZE * 2)
 
+#elif defined (MDE_CPU_AARCH64)
+///
+/// 64-bit ARM systems allow the OS to execute with 64 KB page size,
+/// so for improved interoperability with the firmware, align the
+/// runtime regions to 64 KB as well
+///
+#define EFI_ACPI_RUNTIME_PAGE_ALLOCATION_ALIGNMENT  (SIZE_64KB)
+#define DEFAULT_PAGE_ALLOCATION                     (EFI_PAGE_SIZE)
+
 #else
 ///
 /// For genric EFI machines make the default allocations 4K aligned
@@ -31,6 +40,21 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #endif
 
+//
+// +---------------------------------------------------+
+// | 0..(EfiMaxMemoryType - 1)    - Normal memory type |
+// +---------------------------------------------------+
+// | EfiMaxMemoryType..0x6FFFFFFF - Ilegal             |
+// +---------------------------------------------------+
+// | 0x70000000..0x7FFFFFFF       - OEM reserved       |
+// +---------------------------------------------------+
+// | 0x80000000..0xFFFFFFFF       - OS reserved        |
+// +---------------------------------------------------+
+//
+#define MEMORY_TYPE_OS_RESERVED_MIN                 0x80000000
+#define MEMORY_TYPE_OS_RESERVED_MAX                 0xFFFFFFFF
+#define MEMORY_TYPE_OEM_RESERVED_MIN                0x70000000
+#define MEMORY_TYPE_OEM_RESERVED_MAX                0x7FFFFFFF
 
 //
 // MEMORY_MAP_ENTRY

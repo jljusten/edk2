@@ -1,8 +1,8 @@
 /** @file
   function definitions for internal to shell functions.
 
-  (C) Copyright 2014, Hewlett-Packard Development Company, L.P.
-  Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
+  (C) Copyright 2014 Hewlett-Packard Development Company, L.P.<BR>
+  Copyright (c) 2009 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -139,7 +139,7 @@ typedef enum {
 
   @retval EFI_SUCCESS           The operation was successful
   @retval EFI_OUT_OF_RESOURCES  A memory allocation failed.
-  @return                       some other error occured
+  @return                       some other error occurred
 **/
 EFI_STATUS
 EFIAPI
@@ -161,7 +161,7 @@ SetLastError(
 /**
   Sets all the alias' that were registered with the ShellCommandLib library.
 
-  @retval EFI_SUCCESS           all init commands were run sucessfully.
+  @retval EFI_SUCCESS           all init commands were run successfully.
 **/
 EFI_STATUS
 EFIAPI
@@ -175,10 +175,10 @@ SetBuiltInAlias(
   loaded image protocol installed on it.  the FilePath will point to the device path
   for the file that was loaded.
 
-  @param[in, out] DevPath       on a sucessful return the device path to the loaded image
-  @param[in, out] FilePath      on a sucessful return the device path to the file
+  @param[in, out] DevPath       on a successful return the device path to the loaded image
+  @param[in, out] FilePath      on a successful return the device path to the file
 
-  @retval EFI_SUCCESS           the 2 device paths were sucessfully returned.
+  @retval EFI_SUCCESS           the 2 device paths were successfully returned.
   @return other                 a error from gBS->HandleProtocol
 
   @sa HandleProtocol
@@ -294,7 +294,7 @@ RunCommand(
   );
 
 /**
-  Function determins if the CommandName COULD be a valid command.  It does not determine whether
+  Function determines if the CommandName COULD be a valid command.  It does not determine whether
   this is a valid command.  It only checks for invalid characters.
 
   @param[in] CommandName    The name to check
@@ -314,7 +314,7 @@ IsValidCommandName(
   @param[in] Handle             The handle to the already opened file.
   @param[in] Name               The name of the script file.
 
-  @retval EFI_SUCCESS           the script completed sucessfully
+  @retval EFI_SUCCESS           the script completed successfully
 **/
 EFI_STATUS
 EFIAPI
@@ -331,7 +331,7 @@ RunScriptFileHandle (
   @param[in] CmdLine            the command line to run.
   @param[in] ParamProtocol      the shell parameters protocol pointer
 
-  @retval EFI_SUCCESS           the script completed sucessfully
+  @retval EFI_SUCCESS           the script completed successfully
 **/
 EFI_STATUS
 EFIAPI
@@ -342,6 +342,23 @@ RunScriptFile (
   IN EFI_SHELL_PARAMETERS_PROTOCOL  *ParamProtocol
   );
 
+/**
+  Return the pointer to the first occurrence of any character from a list of characters.
+
+  @param[in] String           the string to parse
+  @param[in] CharacterList    the list of character to look for
+  @param[in] EscapeCharacter  An escape character to skip
+
+  @return the location of the first character in the string
+  @retval CHAR_NULL no instance of any character in CharacterList was found in String
+**/
+CONST CHAR16*
+EFIAPI
+FindFirstCharacter(
+  IN CONST CHAR16 *String,
+  IN CONST CHAR16 *CharacterList,
+  IN CONST CHAR16 EscapeCharacter
+  );
 
 #endif //_SHELL_INTERNAL_HEADER_
 

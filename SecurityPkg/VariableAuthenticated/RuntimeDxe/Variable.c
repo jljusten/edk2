@@ -58,6 +58,11 @@ BOOLEAN                mEndOfDxe              = FALSE;
 ///
 BOOLEAN                mEnableLocking         = TRUE;
 
+//
+// It will record the current boot error flag before EndOfDxe.
+//
+VAR_ERROR_FLAG         mCurrentBootVarErrFlag = VAR_ERROR_FLAG_NO_ERROR;
+
 /**
 
   SecureBoot Hook for auth variable update.
@@ -579,6 +584,17 @@ RecordVarErrorFlag (
     }
   );
 
+  if (!mEndOfDxe) {
+    //
+    // Before EndOfDxe, just record the current boot variable error flag to local variable,
+    // and leave the variable error flag in NV flash as the last boot variable error flag.
+    // After EndOfDxe in InitializeVarErrorFlag (), the variable error flag in NV flash
+    // will be initialized to this local current boot variable error flag.
+    //
+    mCurrentBootVarErrFlag &= Flag;
+    return;
+  }
+
   //
   // Record error flag (it should have be initialized).
   //
@@ -637,7 +653,7 @@ InitializeVarErrorFlag (
     return;
   }
 
-  Flag = VAR_ERROR_FLAG_NO_ERROR;
+  Flag = mCurrentBootVarErrFlag;
   DEBUG ((EFI_D_INFO, "Initialize variable error flag (%02x)\n", Flag));
 
   Status = FindVariable (
@@ -2823,6 +2839,8 @@ VariableLockRequestToLock (
 {
   VARIABLE_ENTRY                  *Entry;
   CHAR16                          *Name;
+  LIST_ENTRY                      *Link;
+  VARIABLE_ENTRY                  *LockedEntry;
 
   if (VariableName == NULL || VariableName[0] == 0 || VendorGuid == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -2841,11 +2859,23 @@ VariableLockRequestToLock (
 
   AcquireLockOnlyAtBootTime(&mVariableModuleGlobal->VariableGlobal.VariableServicesLock);
 
+  for ( Link = GetFirstNode (&mLockedVariableList)
+      ; !IsNull (&mLockedVariableList, Link)
+      ; Link = GetNextNode (&mLockedVariableList, Link)
+      ) {
+    LockedEntry = BASE_CR (Link, VARIABLE_ENTRY, Link);
+    Name = (CHAR16 *) ((UINTN) LockedEntry + sizeof (*LockedEntry));
+    if (CompareGuid (&LockedEntry->Guid, VendorGuid) && (StrCmp (Name, VariableName) == 0)) {
+      goto Done;
+    }
+  }
+
   Name = (CHAR16 *) ((UINTN) Entry + sizeof (*Entry));
   StrnCpy   (Name, VariableName, StrLen (VariableName));
   CopyGuid (&Entry->Guid, VendorGuid);
   InsertTailList (&mLockedVariableList, &Entry->Link);
 
+Done:
   ReleaseLockOnlyAtBootTime (&mVariableModuleGlobal->VariableGlobal.VariableServicesLock);
 
   return EFI_SUCCESS;
@@ -3587,6 +3617,15 @@ ReclaimForOS(
   EFI_STATUS                     Status;
   UINTN                          RemainingCommonRuntimeVariableSpace;
   UINTN                          RemainingHwErrVariableSpace;
+  STATIC BOOLEAN                 Reclaimed;
+
+  //
+  // This function will be called only once at EndOfDxe or ReadyToBoot event.
+  //
+  if (Reclaimed) {
+    return;
+  }
+  Reclaimed = TRUE;
 
   Status  = EFI_SUCCESS;
 
