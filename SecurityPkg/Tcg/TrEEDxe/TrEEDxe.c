@@ -1,7 +1,7 @@
 /** @file
   This module implements TrEE Protocol.
   
-Copyright (c) 2013 - 2015, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2013 - 2016, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials 
 are licensed and made available under the terms and conditions of the BSD License 
 which accompanies this distribution.  The full text of the license may be found at 
@@ -15,11 +15,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <PiDxe.h>
 #include <IndustryStandard/Acpi.h>
 #include <IndustryStandard/PeImage.h>
-#include <IndustryStandard/SmBios.h>
 #include <IndustryStandard/TcpaAcpi.h>
 
 #include <Guid/GlobalVariable.h>
-#include <Guid/SmBios.h>
 #include <Guid/HobList.h>
 #include <Guid/TcgEventHob.h>
 #include <Guid/EventGroup.h>
@@ -56,8 +54,6 @@ typedef struct {
   CHAR16                                 *VariableName;
   EFI_GUID                               *VendorGuid;
 } VARIABLE_TYPE;
-
-#define  EFI_TCG_LOG_AREA_SIZE        0x10000
 
 #define  TREE_DEFAULT_MAX_COMMAND_SIZE        0x1000
 #define  TREE_DEFAULT_MAX_RESPONSE_SIZE       0x1000
@@ -951,19 +947,19 @@ SetupEventLog (
       Status = gBS->AllocatePages (
                       AllocateMaxAddress,
                       EfiACPIMemoryNVS,
-                      EFI_SIZE_TO_PAGES (EFI_TCG_LOG_AREA_SIZE),
+                      EFI_SIZE_TO_PAGES (PcdGet32 (PcdTcgLogAreaMinLen)),
                       &Lasa
                       );
       if (EFI_ERROR (Status)) {
         return Status;
       }
       mTcgDxeData.EventLogAreaStruct[Index].Lasa = Lasa;
-      mTcgDxeData.EventLogAreaStruct[Index].Laml = EFI_TCG_LOG_AREA_SIZE;
+      mTcgDxeData.EventLogAreaStruct[Index].Laml = PcdGet32 (PcdTcgLogAreaMinLen);
       //
       // To initialize them as 0xFF is recommended 
       // because the OS can know the last entry for that.
       //
-      SetMem ((VOID *)(UINTN)Lasa, EFI_TCG_LOG_AREA_SIZE, 0xFF);
+      SetMem ((VOID *)(UINTN)Lasa, PcdGet32 (PcdTcgLogAreaMinLen), 0xFF);
   }
 
   //
@@ -971,10 +967,10 @@ SetupEventLog (
   //
     if (PcdGet8 (PcdTpmPlatformClass) == TCG_PLATFORM_TYPE_CLIENT) {
       mTcgClientAcpiTemplate.Lasa = mTcgDxeData.EventLogAreaStruct[0].Lasa;
-      mTcgClientAcpiTemplate.Laml = EFI_TCG_LOG_AREA_SIZE;
+      mTcgClientAcpiTemplate.Laml = PcdGet32 (PcdTcgLogAreaMinLen);
     } else {
       mTcgServerAcpiTemplate.Lasa = mTcgDxeData.EventLogAreaStruct[0].Lasa;
-      mTcgServerAcpiTemplate.Laml = EFI_TCG_LOG_AREA_SIZE;
+      mTcgServerAcpiTemplate.Laml = PcdGet32 (PcdTcgLogAreaMinLen);
     }
 
   //
@@ -1046,42 +1042,13 @@ MeasureHandoffTables (
   )
 {
   EFI_STATUS                        Status;
-  SMBIOS_TABLE_ENTRY_POINT          *SmbiosTable;
   TCG_PCR_EVENT_HDR                 TcgEvent;
   EFI_HANDOFF_TABLE_POINTERS        HandoffTables;
   UINTN                             ProcessorNum;
   EFI_CPU_PHYSICAL_LOCATION         *ProcessorLocBuf;
 
   ProcessorLocBuf = NULL;
-
-  //
-  // Measure SMBIOS with EV_EFI_HANDOFF_TABLES to PCR[1]
-  //
-  Status = EfiGetSystemConfigurationTable (
-             &gEfiSmbiosTableGuid,
-             (VOID **) &SmbiosTable
-             );
-
-  if (!EFI_ERROR (Status) && SmbiosTable != NULL) {
-    TcgEvent.PCRIndex  = 1;
-    TcgEvent.EventType = EV_EFI_HANDOFF_TABLES;
-    TcgEvent.EventSize = sizeof (HandoffTables);
-
-    HandoffTables.NumberOfTables = 1;
-    HandoffTables.TableEntry[0].VendorGuid  = gEfiSmbiosTableGuid;
-    HandoffTables.TableEntry[0].VendorTable = SmbiosTable;
-
-    DEBUG ((DEBUG_INFO, "The Smbios Table starts at: 0x%x\n", SmbiosTable->TableAddress));
-    DEBUG ((DEBUG_INFO, "The Smbios Table size: 0x%x\n", SmbiosTable->TableLength));
-
-    Status = TcgDxeHashLogExtendEvent (
-               0,
-               (UINT8*)(UINTN)SmbiosTable->TableAddress,
-               SmbiosTable->TableLength,
-               &TcgEvent,
-               (UINT8*)&HandoffTables
-               );
-  }
+  Status = EFI_SUCCESS;
 
   if (PcdGet8 (PcdTpmPlatformClass) == TCG_PLATFORM_TYPE_SERVER) {
     //
@@ -1206,26 +1173,14 @@ MeasureVariable (
        );
   }
 
-  if (EventType == EV_EFI_VARIABLE_DRIVER_CONFIG) {
-    //
-    // Digest is the event data (EFI_VARIABLE_DATA_TREE)
-    //
-    Status = TcgDxeHashLogExtendEvent (
-               0,
-               (UINT8*)VarLog,
-               TcgEvent.EventSize,
-               &TcgEvent,
-               (UINT8*)VarLog
-               );
-  } else {
-    Status = TcgDxeHashLogExtendEvent (
-               0,
-               (UINT8*)VarData,
-               VarSize,
-               &TcgEvent,
-               (UINT8*)VarLog
-               );
-  }
+  Status = TcgDxeHashLogExtendEvent (
+             0,
+             (UINT8*)VarLog,
+             TcgEvent.EventSize,
+             &TcgEvent,
+             (UINT8*)VarLog
+             );
+
   FreePool (VarLog);
   return Status;
 }
@@ -1568,7 +1523,7 @@ OnReadyToBoot (
                EFI_CALLING_EFI_APPLICATION
                );
     if (EFI_ERROR (Status)) {
-      DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_CALLING_EFI_APPLICATION));
+      DEBUG ((EFI_D_ERROR, "%a not Measured. Error!\n", EFI_CALLING_EFI_APPLICATION));
     }
 
     //
@@ -1601,7 +1556,7 @@ OnReadyToBoot (
                EFI_RETURNING_FROM_EFI_APPLICATOIN
                );
     if (EFI_ERROR (Status)) {
-      DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_RETURNING_FROM_EFI_APPLICATOIN));
+      DEBUG ((EFI_D_ERROR, "%a not Measured. Error!\n", EFI_RETURNING_FROM_EFI_APPLICATOIN));
     }
   }
 
@@ -1714,7 +1669,7 @@ OnExitBootServices (
              EFI_EXIT_BOOT_SERVICES_INVOCATION
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_EXIT_BOOT_SERVICES_INVOCATION));
+    DEBUG ((EFI_D_ERROR, "%a not Measured. Error!\n", EFI_EXIT_BOOT_SERVICES_INVOCATION));
   }
 
   //
@@ -1724,7 +1679,7 @@ OnExitBootServices (
              EFI_EXIT_BOOT_SERVICES_SUCCEEDED
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_EXIT_BOOT_SERVICES_SUCCEEDED));
+    DEBUG ((EFI_D_ERROR, "%a not Measured. Error!\n", EFI_EXIT_BOOT_SERVICES_SUCCEEDED));
   }
 }
 
@@ -1753,7 +1708,7 @@ OnExitBootServicesFailed (
              EFI_EXIT_BOOT_SERVICES_FAILED
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((EFI_D_ERROR, "%s not Measured. Error!\n", EFI_EXIT_BOOT_SERVICES_FAILED));
+    DEBUG ((EFI_D_ERROR, "%a not Measured. Error!\n", EFI_EXIT_BOOT_SERVICES_FAILED));
   }
 
 }

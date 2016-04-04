@@ -1,7 +1,8 @@
 /** @file
   Utility functions used by the Dp application.
 
-  Copyright (c) 2009 - 2015, Intel Corporation. All rights reserved.
+  Copyright (c) 2009 - 2016, Intel Corporation. All rights reserved.
+  (C) Copyright 2015 Hewlett Packard Enterprise Development LP<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -131,7 +132,7 @@ IsPhase(
   
 **/
 VOID
-GetShortPdbFileName (
+DpGetShortPdbFileName (
   IN  CHAR8     *PdbFileName,
   OUT CHAR16    *UnicodeBuffer
   )
@@ -163,8 +164,8 @@ GetShortPdbFileName (
     for (IndexA = StartIndex; IndexA < EndIndex; IndexA++) {
       UnicodeBuffer[IndexU] = (CHAR16) PdbFileName[IndexA];
       IndexU++;
-      if (IndexU >= DXE_PERFORMANCE_STRING_LENGTH) {
-        UnicodeBuffer[DXE_PERFORMANCE_STRING_LENGTH] = 0;
+      if (IndexU >= DP_GAUGE_STRING_LENGTH) {
+        UnicodeBuffer[DP_GAUGE_STRING_LENGTH] = 0;
         break;
       }
     }
@@ -188,7 +189,7 @@ GetShortPdbFileName (
 
 **/
 VOID
-GetNameFromHandle (
+DpGetNameFromHandle (
   IN EFI_HANDLE   Handle
   )
 {
@@ -204,6 +205,10 @@ GetNameFromHandle (
   UINTN                       StringSize;
   CHAR8                       *PlatformLanguage;
   EFI_COMPONENT_NAME2_PROTOCOL      *ComponentName2;
+
+  Image = NULL;
+  LoadedImageDevicePath = NULL;
+  DevicePath = NULL;
 
   //
   // Method 1: Get the name string from image PDB
@@ -236,7 +241,7 @@ GetNameFromHandle (
     PdbFileName = PeCoffLoaderGetPdbPointer (Image->ImageBase);
 
     if (PdbFileName != NULL) {
-      GetShortPdbFileName (PdbFileName, mGaugeString);
+      DpGetShortPdbFileName (PdbFileName, mGaugeString);
       return;
     }
   }
@@ -261,7 +266,7 @@ GetNameFromHandle (
                                );
     if (!EFI_ERROR (Status)) {
       SHELL_FREE_NON_NULL (PlatformLanguage);
-      StrCpyS (mGaugeString, DP_GAUGE_STRING_LENGTH + 1, StringPtr);
+      StrnCpyS (mGaugeString, DP_GAUGE_STRING_LENGTH + 1, StringPtr, DP_GAUGE_STRING_LENGTH);
       mGaugeString[DP_GAUGE_STRING_LENGTH] = 0;
       return;
     }
@@ -274,9 +279,13 @@ GetNameFromHandle (
                   );
   if (!EFI_ERROR (Status) && (LoadedImageDevicePath != NULL)) {
     DevicePath = LoadedImageDevicePath;
+  } else if (Image != NULL) {
+    DevicePath = Image->FilePath;
+  }
 
+  if (DevicePath != NULL) {
     //
-    // Try to get image GUID from LoadedImageDevicePath protocol
+    // Try to get image GUID from image DevicePath
     //
     NameGuid = NULL;
     while (!IsDevicePathEndType (DevicePath)) {
@@ -305,7 +314,7 @@ GetNameFromHandle (
         //
         // Method 3. Get the name string from FFS UI section
         //
-        StrCpyS (mGaugeString, DP_GAUGE_STRING_LENGTH + 1, NameString);
+        StrnCpyS (mGaugeString, DP_GAUGE_STRING_LENGTH + 1, NameString, DP_GAUGE_STRING_LENGTH);
         mGaugeString[DP_GAUGE_STRING_LENGTH] = 0;
         FreePool (NameString);
       } else {
@@ -319,9 +328,9 @@ GetNameFromHandle (
       //
       // Method 5: Get the name string from image DevicePath
       //
-      NameString = ConvertDevicePathToText (LoadedImageDevicePath, TRUE, FALSE);
+      NameString = ConvertDevicePathToText (DevicePath, TRUE, FALSE);
       if (NameString != NULL) {
-        StrCpyS (mGaugeString, DP_GAUGE_STRING_LENGTH + 1, NameString);
+        StrnCpyS (mGaugeString, DP_GAUGE_STRING_LENGTH + 1, NameString, DP_GAUGE_STRING_LENGTH);
         mGaugeString[DP_GAUGE_STRING_LENGTH] = 0;
         FreePool (NameString);
         return;
@@ -334,7 +343,7 @@ GetNameFromHandle (
   //
   StringPtr = HiiGetString (gDpHiiHandle, STRING_TOKEN (STR_DP_ERROR_NAME), NULL);
   ASSERT (StringPtr != NULL);
-  StrCpyS (mGaugeString, DP_GAUGE_STRING_LENGTH + 1, StringPtr);
+  StrnCpyS (mGaugeString, DP_GAUGE_STRING_LENGTH + 1, StringPtr, DP_GAUGE_STRING_LENGTH);
   FreePool (StringPtr);
 }
 

@@ -38,6 +38,7 @@
   UncachedMemoryAllocationLib|Include/Library/UncachedMemoryAllocationLib.h
   DefaultExceptionHandlerLib|Include/Library/DefaultExceptionHandlerLib.h
   ArmDisassemblerLib|Include/Library/ArmDisassemblerLib.h
+  ArmGicArchLib|Include/Library/ArmGicArchLib.h
 
 [Guids.common]
   gArmTokenSpaceGuid       = { 0xBB11ECFE, 0x820F, 0x4968, { 0xBB, 0xA6, 0xF7, 0x6A, 0xFE, 0x30, 0x25, 0x96 } }
@@ -71,6 +72,12 @@
 
   # Define if the GICv3 controller should use the GICv2 legacy
   gArmTokenSpaceGuid.PcdArmGicV3WithV2Legacy|FALSE|BOOLEAN|0x00000042
+
+[PcdsFeatureFlag.ARM]
+  # Whether to map normal memory as non-shareable. FALSE is the safe choice, but
+  # TRUE may be appropriate to fix performance problems if you don't care about
+  # hardware coherency (i.e., no virtualization or cache coherent DMA)
+  gArmTokenSpaceGuid.PcdNormalMemoryNonshareableOverride|FALSE|BOOLEAN|0x00000043
 
 [PcdsFixedAtBuild.common]
   gArmTokenSpaceGuid.PcdTrustzoneSupport|FALSE|BOOLEAN|0x00000006
@@ -115,7 +122,6 @@
   #
   # BdsLib
   #
-  gArmTokenSpaceGuid.PcdArmMachineType|0|UINT32|0x0000001E
   # The compressed Linux kernel is expected to be under 128MB from the beginning of the System Memory
   gArmTokenSpaceGuid.PcdArmLinuxKernelMaxOffset|0x08000000|UINT32|0x0000001F
   # Maximum file size for TFTP servers that do not support 'tsize' extension

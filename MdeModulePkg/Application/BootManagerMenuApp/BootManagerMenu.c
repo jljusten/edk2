@@ -242,7 +242,48 @@ IsBootManagerMenu (
 
   return (BOOLEAN) (!EFI_ERROR (Status) && (BootOption->OptionNumber == BootManagerMenu.OptionNumber));
 }
- 
+
+/**
+  Return whether to ignore the boot option.
+
+  @param BootOption  Pointer to EFI_BOOT_MANAGER_LOAD_OPTION to check.
+
+  @retval TRUE  Ignore the boot optin.
+  @retval FALSE Do not ignore the boot option.
+**/
+BOOLEAN
+IgnoreBootOption (
+  IN   EFI_BOOT_MANAGER_LOAD_OPTION  *BootOption
+  )
+{
+  EFI_STATUS                    Status;
+  EFI_DEVICE_PATH_PROTOCOL      *ImageDevicePath;
+
+  //
+  // Ignore myself.
+  //
+  Status = gBS->HandleProtocol (gImageHandle, &gEfiLoadedImageDevicePathProtocolGuid, (VOID **) &ImageDevicePath);
+  ASSERT_EFI_ERROR (Status);
+  if (CompareMem (BootOption->FilePath, ImageDevicePath, GetDevicePathSize (ImageDevicePath)) == 0) {
+    return TRUE;
+  }
+
+  //
+  // Do not ignore Boot Manager Menu.
+  //
+  if (IsBootManagerMenu (BootOption)) {
+    return FALSE;
+  }
+
+  //
+  // Ignore the hidden/inactive boot option.
+  //
+  if (((BootOption->Attributes & LOAD_OPTION_HIDDEN) != 0) || ((BootOption->Attributes & LOAD_OPTION_ACTIVE) == 0)) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
 
 /**
   This funciton uses to initialize boot menu data
@@ -267,8 +308,8 @@ InitializeBootMenuData (
       
   if (BootOption == NULL || BootMenuData == NULL) {
     return EFI_INVALID_PARAMETER;
-  } 
-  
+  }
+
   BootMenuData->TitleToken[0] = STRING_TOKEN (STR_BOOT_POPUP_MENU_TITLE_STRING);
   BootMenuData->PtrTokens     = AllocateZeroPool (BootOptionCount * sizeof (EFI_STRING_ID));
   ASSERT (BootMenuData->PtrTokens != NULL);
@@ -277,13 +318,10 @@ InitializeBootMenuData (
   // Skip boot option which created by BootNext Variable
   //
   for (StrIndex = 0, Index = 0; Index < BootOptionCount; Index++) {
-    //
-    // Don't display the hidden/inactive boot option except setup application.
-    //
-    if ((((BootOption[Index].Attributes & LOAD_OPTION_HIDDEN) != 0) || ((BootOption[Index].Attributes & LOAD_OPTION_ACTIVE) == 0)) &&
-        !IsBootManagerMenu (&BootOption[Index])) {      
+    if (IgnoreBootOption (&BootOption[Index])) {
       continue;
     }
+
     ASSERT (BootOption[Index].Description != NULL);
     BootMenuData->PtrTokens[StrIndex++] = HiiSetString (
                                             gStringPackHandle, 
@@ -627,13 +665,10 @@ BootFromSelectOption (
   ASSERT (BootOptions != NULL);
 
   for (ItemNum = 0, Index = 0; Index < BootOptionCount; Index++) {
-    //
-    // Don't display the hidden/inactive boot option except setup application.
-    //
-    if ((((BootOptions[Index].Attributes & LOAD_OPTION_HIDDEN) != 0) || ((BootOptions[Index].Attributes & LOAD_OPTION_ACTIVE) == 0)) &&
-        !IsBootManagerMenu (&BootOptions[Index])) {      
+    if (IgnoreBootOption (&BootOptions[Index])) {
       continue;
     }
+
     if (ItemNum++ == SelectItem) {
       EfiBootManagerBoot (&BootOptions[Index]);
       break;
@@ -775,8 +810,10 @@ BdsSetConsoleMode (
                   //
                   // Update text mode PCD.
                   //
-                  PcdSet32 (PcdConOutColumn, mSetupTextModeColumn);
-                  PcdSet32 (PcdConOutRow, mSetupTextModeRow);
+                  Status = PcdSet32S (PcdConOutColumn, mSetupTextModeColumn);
+                  ASSERT_EFI_ERROR (Status);
+                  Status = PcdSet32S (PcdConOutRow, mSetupTextModeRow);
+                  ASSERT_EFI_ERROR (Status);
                   FreePool (Info);
                   return EFI_SUCCESS;
                 }
@@ -817,11 +854,14 @@ BdsSetConsoleMode (
   // Set PCD to Inform GraphicsConsole to change video resolution.
   // Set PCD to Inform Consplitter to change text mode.
   //
-  PcdSet32 (PcdVideoHorizontalResolution, NewHorizontalResolution);
-  PcdSet32 (PcdVideoVerticalResolution, NewVerticalResolution);
-  PcdSet32 (PcdConOutColumn, NewColumns);
-  PcdSet32 (PcdConOutRow, NewRows);
-  
+  Status = PcdSet32S (PcdVideoHorizontalResolution, NewHorizontalResolution);
+  ASSERT_EFI_ERROR (Status);
+  Status = PcdSet32S (PcdVideoVerticalResolution, NewVerticalResolution);
+  ASSERT_EFI_ERROR (Status);
+  Status = PcdSet32S (PcdConOutColumn, NewColumns);
+  ASSERT_EFI_ERROR (Status);
+  Status = PcdSet32S (PcdConOutRow, NewRows);
+  ASSERT_EFI_ERROR (Status);
   
   //
   // Video mode is changed, so restart graphics console driver and higher level driver.

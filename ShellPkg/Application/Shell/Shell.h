@@ -124,14 +124,6 @@ typedef struct {
 
 extern SHELL_INFO ShellInfoObject;
 
-typedef enum {
-  Internal_Command,
-  Script_File_Name,
-  Efi_Application,
-  File_Sys_Change,
-  Unknown_Invalid
-} SHELL_OPERATION_TYPES;
-
 /**
   Converts the command line to it's post-processed form.  this replaces variables and alias' per UEFI Shell spec.
 
@@ -294,6 +286,25 @@ RunCommand(
   );
 
 /**
+  Function will process and run a command line.
+
+  This will determine if the command line represents an internal shell 
+  command or dispatch an external application.
+
+  @param[in] CmdLine      The command line to parse.
+  @param[out] CommandStatus   The status from the command line.
+
+  @retval EFI_SUCCESS     The command was completed.
+  @retval EFI_ABORTED     The command's operation was aborted.
+**/
+EFI_STATUS
+EFIAPI
+RunShellCommand(
+  IN CONST CHAR16   *CmdLine,
+  OUT EFI_STATUS    *CommandStatus
+  );
+
+/**
   Function determines if the CommandName COULD be a valid command.  It does not determine whether
   this is a valid command.  It only checks for invalid characters.
 
@@ -359,6 +370,40 @@ FindFirstCharacter(
   IN CONST CHAR16 *CharacterList,
   IN CONST CHAR16 EscapeCharacter
   );
+
+/**
+  Cleans off leading and trailing spaces and tabs.
+
+  @param[in] String pointer to the string to trim them off.
+**/
+EFI_STATUS
+EFIAPI
+TrimSpaces(
+  IN CHAR16 **String
+  );
+
+/**
+  
+  Create a new buffer list and stores the old one to OldBufferList  
+
+  @param OldBufferList   The temporary list head used to store the nodes in BufferToFreeList.
+**/
+VOID
+SaveBufferList (
+  OUT LIST_ENTRY     *OldBufferList
+  );
+
+/**
+  Restore previous nodes into BufferToFreeList .
+
+  @param OldBufferList   The temporary list head used to store the nodes in BufferToFreeList.
+**/
+VOID
+RestoreBufferList (
+  IN OUT LIST_ENTRY     *OldBufferList
+  );
+
+
 
 #endif //_SHELL_INTERNAL_HEADER_
 

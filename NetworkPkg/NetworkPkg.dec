@@ -20,7 +20,7 @@
   DEC_SPECIFICATION              = 0x00010005
   PACKAGE_NAME                   = NetworkPkg
   PACKAGE_GUID                   = 947988BE-8D5C-471a-893D-AD181C46BEBB
-  PACKAGE_VERSION                = 0.95
+  PACKAGE_VERSION                = 0.96
   PACKAGE_UNI_FILE               = NetworkPkg.uni
 
 [Includes]
@@ -69,13 +69,26 @@
   # @Prompt Private Key's size.
   gEfiNetworkPkgTokenSpaceGuid.PcdIpsecUefiCertificateKeySize|0x3d5|UINT32|0x00000006
 
-[PcdsDynamicEx]
+[PcdsFixedAtBuild, PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
   ## IPv6 DHCP Unique Identifier (DUID) Type configuration (From RFCs 3315 and 6355).
   # 01 = DUID Based on Link-layer Address Plus Time [DUID-LLT]
   # 04 = UUID-Based DHCPv6 Unique Identifier (DUID-UUID)
   # 02 = DUID Assigned by Vendor Based on Enterprise Number [DUID-EN] (not supported)
   # 03 = DUID Based on Link-layer Address [DUID-LL] (not supported)
+  # @Prompt Type Value of Dhcp6 Unique Identifier (DUID).
   gEfiNetworkPkgTokenSpaceGuid.PcdDhcp6UidType|4|UINT8|0x10000001
+
+  ## Network boot policy to stop UEFI iSCSI if applicable.
+  # 0x00 = Always use UEFI iSCSI and ignore AIP.
+  # 0x01 = Stop UEFI iSCSI if iSCSI HBA adapter produces AIP protocol with Network Boot.
+  # 0x02 = Stop UEFI iSCSI if iSCSI HBA adapter supports booting from iSCSI IPv4 targets.
+  # 0x04 = Stop UEFI iSCSI if iSCSI HBA adapter supports booting from iSCSI IPv6 targets.
+  # 0x08 = Stop UEFI iSCSI if iSCSI HBA adapter supports an offload engine for iSCSI boot.
+  # 0x10 = Stop UEFI iSCSI if iSCSI HBA adapter supports multipath I/O for iSCSI boot.
+  # 0x20 = Stop UEFI iSCSI if iSCSI HBA adapter is currently configured to boot from iSCSI IPv4 targets.
+  # 0x40 = Stop UEFI iSCSI if iSCSI HBA adapter is currently configured to boot from iSCSI IPv6 targets.
+  # @Prompt Type Value of network boot policy used in iSCSI.
+  gEfiNetworkPkgTokenSpaceGuid.PcdIScsiAIPNetworkBootPolicy|0x08|UINT8|0x10000007
 
 [UserExtensions.TianoCore."ExtraFiles"]
   NetworkPkgExtra.uni

@@ -169,6 +169,7 @@ XenPvBlockFrontInitialization (
   XEN_BLOCK_FRONT_DEVICE *Dev;
   XenbusState State;
   UINT64 Value;
+  CHAR8 *Params;
 
   ASSERT (NodeName != NULL);
 
@@ -185,6 +186,20 @@ XenPvBlockFrontInitialization (
     Dev->MediaInfo.CdRom = FALSE;
   }
   FreePool (DeviceType);
+
+  if (Dev->MediaInfo.CdRom) {
+    Status = XenBusIo->XsBackendRead (XenBusIo, XST_NIL, "params", (VOID**)&Params);
+    if (Status != XENSTORE_STATUS_SUCCESS) {
+      DEBUG ((EFI_D_ERROR, "%a: Failed to read params (%d)\n", __FUNCTION__, Status));
+      goto Error;
+    }
+    if (AsciiStrLen (Params) == 0 || AsciiStrCmp (Params, "aio:") == 0) {
+      FreePool (Params);
+      DEBUG ((EFI_D_INFO, "%a: Empty cdrom\n", __FUNCTION__));
+      goto Error;
+    }
+    FreePool (Params);
+  }
 
   Status = XenBusReadUint64 (XenBusIo, "backend-id", FALSE, &Value);
   if (Status != XENSTORE_STATUS_SUCCESS || Value > MAX_UINT16) {
@@ -278,7 +293,7 @@ Again:
     //
     // This is not supported by the driver.
     //
-    DEBUG ((EFI_D_ERROR, "XenPvBlk: Unsupported sector-size value %d, "
+    DEBUG ((EFI_D_ERROR, "XenPvBlk: Unsupported sector-size value %Lu, "
             "it must be a multiple of 512\n", Value));
     goto Error2;
   }
@@ -384,7 +399,7 @@ XenPvBlockFrontShutdown (
       break;
     }
     DEBUG ((EFI_D_INFO,
-            "XenPvBlk: waiting backend state %d, current: %d\n",
+            "XenPvBlk: waiting backend state %d, current: %Lu\n",
             XenbusStateInitWait, Value));
     XenBusIo->WaitForWatch (XenBusIo, Dev->StateWatchToken);
   }
@@ -596,11 +611,11 @@ XenPvBlockAsyncIoPoll (
           if (Status != BLKIF_RSP_OKAY) {
             DEBUG ((EFI_D_ERROR,
                     "XenPvBlk: "
-                    "%a error %d on %a at sector %p, num bytes %p\n",
+                    "%a error %d on %a at sector %Lx, num bytes %Lx\n",
                     Response->operation == BLKIF_OP_READ ? "read" : "write",
                     Status, IoData->Dev->NodeName,
-                    IoData->Sector,
-                    IoData->Size));
+                    (UINT64)IoData->Sector,
+                    (UINT64)IoData->Size));
           }
 
           for (Index = 0; Index < IoData->NumRef; Index++) {

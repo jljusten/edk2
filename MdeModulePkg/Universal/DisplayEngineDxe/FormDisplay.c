@@ -1,7 +1,7 @@
 /** @file
 Entry and initialization module for the browser.
 
-Copyright (c) 2007 - 2015, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2016, Intel Corporation. All rights reserved.<BR>
 Copyright (c) 2014, Hewlett-Packard Development Company, L.P.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
@@ -604,7 +604,6 @@ UiAddMenuOption (
   UI_MENU_OPTION   *MenuOption;
   UINTN            Index;
   UINTN            Count;
-  CHAR16           *String;
   UINT16           NumberOfLines;
   UINT16           GlyphWidth;
   UINT16           Width;
@@ -621,9 +620,6 @@ UiAddMenuOption (
   PromptId = GetPrompt (Statement->OpCode);
   ASSERT (PromptId != 0);
 
-  String = GetToken (PromptId, gFormData->HiiHandle);
-  ASSERT (String != NULL);
-
   if (Statement->OpCode->OpCode == EFI_IFR_DATE_OP || Statement->OpCode->OpCode == EFI_IFR_TIME_OP) {
     Count = 3;
   }
@@ -633,7 +629,7 @@ UiAddMenuOption (
     ASSERT (MenuOption);
 
     MenuOption->Signature   = UI_MENU_OPTION_SIGNATURE;
-    MenuOption->Description = String;
+    MenuOption->Description = GetToken (PromptId, gFormData->HiiHandle);
     MenuOption->Handle      = gFormData->HiiHandle;
     MenuOption->ThisTag     = Statement;
     MenuOption->NestInStatement = NestIn;
@@ -697,11 +693,11 @@ UiAddMenuOption (
       (Statement->OpCode->OpCode != EFI_IFR_DATE_OP) && 
       (Statement->OpCode->OpCode != EFI_IFR_TIME_OP)) {
       Width  = GetWidth (MenuOption, NULL);
-      for (; GetLineByWidth (String, Width, &GlyphWidth,&ArrayEntry, &OutputString) != 0x0000;) {
+      for (; GetLineByWidth (MenuOption->Description, Width, &GlyphWidth,&ArrayEntry, &OutputString) != 0x0000;) {
         //
         // If there is more string to process print on the next row and increment the Skip value
         //
-        if (StrLen (&String[ArrayEntry]) != 0) {
+        if (StrLen (&MenuOption->Description[ArrayEntry]) != 0) {
           NumberOfLines++;
         }
         FreePool (OutputString);
@@ -1782,14 +1778,15 @@ FindTopMenu (
 
   TopRow    = gStatementDimensions.TopRow    + SCROLL_ARROW_HEIGHT;
   BottomRow = gStatementDimensions.BottomRow - SCROLL_ARROW_HEIGHT;
-
-  if (gMisMatch) {
+  //
+  // When option mismatch happens,there exist two cases,one is reenter the form, just like the if case below,
+  // and the other is exit current form and enter last form, it can be covered by the else case.
+  //
+  if (gMisMatch && gFormData->HiiHandle == gHighligthMenuInfo.HiiHandle && gFormData->FormId == gHighligthMenuInfo.FormId) {
     //
     // Reenter caused by option mismatch or auto exit caused by refresh form(refresh interval/guid), 
     // base on the record highlight info to find the highlight menu.
     //
-    ASSERT (gFormData->HiiHandle == gHighligthMenuInfo.HiiHandle &&
-            gFormData->FormId == gHighligthMenuInfo.FormId);
 
     *HighlightMenu = FindHighLightMenuOption(NULL);
     if (*HighlightMenu != NULL) {
@@ -1840,7 +1837,6 @@ FindTopMenu (
       *SkipValue = 0;
     }
 
-    gMisMatch = FALSE;
   } else if (FormData->HighLightedStatement != NULL) {
     if (IsSavedHighlightStatement (FormData->HighLightedStatement)) {
       //
@@ -1913,6 +1909,8 @@ FindTopMenu (
     }
     *SkipValue     = 0;
   }
+
+  gMisMatch = FALSE;
 
   //
   // First enter to show the menu, update highlight info.
@@ -2259,7 +2257,8 @@ FxConfirmPopup (
   do {
     CreateDialog (&Key, gEmptyString, CfmStr, gConfirmOpt, gEmptyString, NULL);
   } while (((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) != (gConfirmOptYes[0] | UPPER_LOWER_CASE_OFFSET)) &&
-           ((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) != (gConfirmOptNo[0] | UPPER_LOWER_CASE_OFFSET)));
+           ((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) != (gConfirmOptNo[0] | UPPER_LOWER_CASE_OFFSET)) &&
+           (Key.ScanCode != SCAN_ESC));
 
   if ((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) == (gConfirmOptYes[0] | UPPER_LOWER_CASE_OFFSET)) {
     RetVal = TRUE;
@@ -2946,7 +2945,7 @@ UiDisplayMenu (
           //
           if (HelpLine > 2 * RowCount - 2) {
             HelpPageCount = (HelpLine - RowCount + 1) / (RowCount - 2) + 1;
-            if ((HelpLine - RowCount + 1) % (RowCount - 2) > 1) {
+            if ((HelpLine - RowCount + 1) % (RowCount - 2) != 0) {
               HelpPageCount += 1;
             }
           } else {
@@ -3727,6 +3726,35 @@ UiDisplayMenu (
 }
 
 /**
+  Free the UI Menu Option structure data.
+
+  @param   MenuOptionList         Point to the menu option list which need to be free.
+
+**/
+
+VOID
+FreeMenuOptionData(
+  LIST_ENTRY           *MenuOptionList
+  )
+{
+  LIST_ENTRY           *Link;
+  UI_MENU_OPTION       *Option;
+
+  //
+  // Free menu option list
+  //
+  while (!IsListEmpty (MenuOptionList)) {
+    Link = GetFirstNode (MenuOptionList);
+    Option = MENU_OPTION_FROM_LINK (Link);
+    if (Option->Description != NULL){
+      FreePool(Option->Description);
+    }
+    RemoveEntryList (&Option->Link);
+    FreePool (Option);
+  }
+}
+
+/**
 
   Base on the browser status info to show an pop up message.
 
@@ -3997,6 +4025,11 @@ FormDisplay (
   gOldFormEntry.HiiHandle = FormData->HiiHandle;
   CopyGuid (&gOldFormEntry.FormSetGuid, &FormData->FormSetGuid);
   gOldFormEntry.FormId    = FormData->FormId;
+
+  //
+  //Free the Ui menu option list.
+  //
+  FreeMenuOptionData(&gMenuOption);
 
   return Status;
 }

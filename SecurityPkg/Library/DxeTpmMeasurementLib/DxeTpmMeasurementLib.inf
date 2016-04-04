@@ -46,4 +46,4 @@
 
 [Protocols]
   gEfiTcgProtocolGuid           ## SOMETIMES_CONSUMES
-  gEfiTrEEProtocolGuid          ## SOMETIMES_CONSUMES
+  gEfiTcg2ProtocolGuid          ## SOMETIMES_CONSUMES

@@ -20,6 +20,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <Guid/GlobalVariable.h>
 #include <Guid/PcAnsi.h>
+#include <Guid/TtyTerm.h>
 #include <Guid/StatusCodeDataTypeVariable.h>
 
 #include <Protocol/SimpleTextOut.h>
@@ -98,6 +99,8 @@ typedef struct {
   EFI_EVENT                           TwoSecondTimeOut;
   UINT32                              InputState;
   UINT32                              ResetState;
+  UINT16                              TtyEscapeStr[3];
+  INTN                                TtyEscapeIndex;
 
   //
   // Esc could not be output to the screen by user,
@@ -117,6 +120,7 @@ typedef struct {
 #define INPUT_STATE_LEFTOPENBRACKET       0x04
 #define INPUT_STATE_O                     0x08
 #define INPUT_STATE_2                     0x10
+#define INPUT_STATE_LEFTOPENBRACKET_2     0x20
 
 #define RESET_STATE_DEFAULT               0x00
 #define RESET_STATE_ESC_R                 0x01
@@ -136,6 +140,7 @@ typedef union {
 #define VT100TYPE                 1
 #define VT100PLUSTYPE             2
 #define VTUTF8TYPE                3
+#define TTYTERMTYPE               4
 
 #define LEFTOPENBRACKET           0x5b  // '['
 #define ACAP                      0x41

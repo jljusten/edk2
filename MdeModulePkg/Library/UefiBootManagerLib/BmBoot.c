@@ -2,6 +2,7 @@
   Library functions which relates with booting.
 
 Copyright (c) 2011 - 2015, Intel Corporation. All rights reserved.<BR>
+(C) Copyright 2015 Hewlett Packard Enterprise Development LP<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -52,6 +53,28 @@ EfiBootManagerRegisterLegacyBootSupport (
 }
 
 /**
+  Return TRUE when the boot option is auto-created instead of manually added.
+
+  @param BootOption Pointer to the boot option to check.
+
+  @retval TRUE  The boot option is auto-created.
+  @retval FALSE The boot option is manually added.
+**/
+BOOLEAN
+BmIsAutoCreateBootOption (
+  EFI_BOOT_MANAGER_LOAD_OPTION    *BootOption
+  )
+{
+  if ((BootOption->OptionalDataSize == sizeof (EFI_GUID)) &&
+      CompareGuid ((EFI_GUID *) BootOption->OptionalData, &mBmAutoCreateBootOptionGuid)
+      ) {
+    return TRUE;
+  } else {
+    return FALSE;
+  }
+}
+
+/**
   For a bootable Device path, return its boot type.
 
   @param  DevicePath                   The bootable device Path to check
@@ -69,6 +92,8 @@ EfiBootManagerRegisterLegacyBootSupport (
   @retval MessageNetworkBoot           If given device path contains MESSAGING_DEVICE_PATH type device path node
                                        and its last device path node's subtype is MSG_MAC_ADDR_DP, MSG_VLAN_DP,
                                        MSG_IPv4_DP or MSG_IPv6_DP.
+  @retval MessageHttpBoot              If given device path contains MESSAGING_DEVICE_PATH type device path node
+                                       and its last device path node's subtype is MSG_URI_DP.
   @retval UnsupportedBoot              If tiven device path doesn't match the above condition, it's not supported.
 
 **/
@@ -113,7 +138,7 @@ BmDevicePathType (
         // If the device path not only point to driver device, it is not a messaging device path,
         //
         if (!IsDevicePathEndType (NextNode)) {
-          break;
+          continue;
         }
 
         switch (DevicePathSubType (Node)) {
@@ -138,6 +163,10 @@ BmDevicePathType (
         case MSG_IPv4_DP:
         case MSG_IPv6_DP:
           return BmMessageNetworkBoot;
+          break;
+
+        case MSG_URI_DP:
+          return BmMessageHttpBoot;
           break;
         }
     }
@@ -199,7 +228,7 @@ BmFindBootOptionInVariable (
   if (OptionNumber == LoadOptionNumberUnassigned) {
     BootOptions = EfiBootManagerGetLoadOptions (&BootOptionCount, LoadOptionTypeBoot);
 
-    Index = BmFindLoadOption (OptionToFind, BootOptions, BootOptionCount);
+    Index = EfiBootManagerFindLoadOption (OptionToFind, BootOptions, BootOptionCount);
     if (Index != -1) {
       OptionNumber = BootOptions[Index].OptionNumber;
     }
@@ -686,6 +715,10 @@ BmGetMiscDescription (
     Description = L"Network";
     break;
 
+  case BmMessageHttpBoot:
+    Description = L"Http";
+    break;
+
   default:
     Status = gBS->HandleProtocol (Handle, &gEfiSimpleFileSystemProtocolGuid, (VOID **) &Fs);
     if (!EFI_ERROR (Status)) {
@@ -946,7 +979,6 @@ BmFindUsbDevice (
   EFI_DEVICE_PATH_PROTOCOL  *UsbIoDevicePath;
   EFI_USB_IO_PROTOCOL       *UsbIo;
   UINTN                     Index;
-  UINTN                     UsbIoDevicePathSize;
   BOOLEAN                   Matched;
 
   ASSERT (UsbIoHandleCount != NULL);  
@@ -978,7 +1010,6 @@ BmFindUsbDevice (
     UsbIoDevicePath = DevicePathFromHandle (UsbIoHandles[Index]);
     Matched         = FALSE;
     if (!EFI_ERROR (Status) && (UsbIoDevicePath != NULL)) {
-      UsbIoDevicePathSize = GetDevicePathSize (UsbIoDevicePath) - END_DEVICE_PATH_LENGTH;
 
       //
       // Compare starting part of UsbIoHandle's device path with ParentDevicePath.
@@ -1061,6 +1092,76 @@ BmExpandUsbDevicePath (
   }
 
   return FileBuffer;
+}
+
+/**
+  Expand File-path device path node to be full device path in platform.
+
+  @param FilePath      The device path pointing to a load option.
+                       It could be a short-form device path.
+  @param FullPath      Return the full device path of the load option after
+                       short-form device path expanding.
+                       Caller is responsible to free it.
+  @param FileSize      Return the load option size.
+
+  @return The load option buffer. Caller is responsible to free the memory.
+**/
+VOID *
+BmExpandFileDevicePath (
+  IN  EFI_DEVICE_PATH_PROTOCOL    *FilePath,
+  OUT EFI_DEVICE_PATH_PROTOCOL    **FullPath,
+  OUT UINTN                       *FileSize
+  )
+{
+  EFI_STATUS                      Status;
+  UINTN                           Index;
+  UINTN                           HandleCount;
+  EFI_HANDLE                      *Handles;
+  EFI_BLOCK_IO_PROTOCOL           *BlockIo;
+  UINTN                           MediaType;
+  EFI_DEVICE_PATH_PROTOCOL        *FullDevicePath;
+  VOID                            *FileBuffer;
+  UINT32                          AuthenticationStatus;
+  
+  EfiBootManagerConnectAll ();
+  Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiSimpleFileSystemProtocolGuid, NULL, &HandleCount, &Handles);
+  if (EFI_ERROR (Status)) {
+    HandleCount = 0;
+    Handles = NULL;
+  }
+
+  //
+  // Enumerate all removable media devices followed by all fixed media devices,
+  //   followed by media devices which don't layer on block io.
+  //
+  for (MediaType = 0; MediaType < 3; MediaType++) {
+    for (Index = 0; Index < HandleCount; Index++) {
+      Status = gBS->HandleProtocol (Handles[Index], &gEfiBlockIoProtocolGuid, (VOID *) &BlockIo);
+      if (EFI_ERROR (Status)) {
+        BlockIo = NULL;
+      }
+      if ((MediaType == 0 && BlockIo != NULL && BlockIo->Media->RemovableMedia) ||
+          (MediaType == 1 && BlockIo != NULL && !BlockIo->Media->RemovableMedia) ||
+          (MediaType == 2 && BlockIo == NULL)
+          ) {
+        FullDevicePath = AppendDevicePath (DevicePathFromHandle (Handles[Index]), FilePath);
+        FileBuffer = GetFileBufferByFilePath (TRUE, FullDevicePath, FileSize, &AuthenticationStatus);
+        if (FileBuffer != NULL) {
+          *FullPath = FullDevicePath;
+          FreePool (Handles);
+          return FileBuffer;
+        }
+        FreePool (FullDevicePath);
+      }
+    }
+  }
+
+  if (Handles != NULL) {
+    FreePool (Handles);
+  }
+
+  *FullPath = NULL;
+  return NULL;
 }
 
 /**
@@ -1464,6 +1565,12 @@ BmGetLoadOptionBuffer (
     // Expand the Harddrive device path
     //
     return BmExpandPartitionDevicePath (FilePath, FullPath, FileSize);
+  } else if ((DevicePathType (FilePath) == MEDIA_DEVICE_PATH) &&
+             (DevicePathSubType (FilePath) == MEDIA_FILEPATH_DP)) {
+    //
+    // Expand the File-path device path
+    //
+    return BmExpandFileDevicePath (FilePath, FullPath, FileSize);
   } else {
     for (Node = FilePath; !IsDevicePathEnd (Node); Node = NextDevicePathNode (Node)) {
       if ((DevicePathType (Node) == MESSAGING_DEVICE_PATH) &&
@@ -1680,11 +1787,9 @@ EfiBootManagerBoot (
   // 6. Adjust the different type memory page number just before booting
   //    and save the updated info into the variable for next boot to use
   //
-  if ((BootOption->Attributes & LOAD_OPTION_CATEGORY) == LOAD_OPTION_CATEGORY_BOOT) {
-    if (PcdGetBool (PcdResetOnMemoryTypeInformationChange)) {
-      BmSetMemoryTypeInformationVariable ();
-    }
-  }
+  BmSetMemoryTypeInformationVariable (
+    (BOOLEAN) ((BootOption->Attributes & LOAD_OPTION_CATEGORY) == LOAD_OPTION_CATEGORY_BOOT)
+    );
 
   DEBUG_CODE_BEGIN();
     if (BootOption->Description == NULL) {
@@ -1731,8 +1836,10 @@ EfiBootManagerBoot (
   Status = gBS->HandleProtocol (ImageHandle, &gEfiLoadedImageProtocolGuid, (VOID **) &ImageInfo);
   ASSERT_EFI_ERROR (Status);
 
-  ImageInfo->LoadOptionsSize  = BootOption->OptionalDataSize;
-  ImageInfo->LoadOptions      = BootOption->OptionalData;
+  if (!BmIsAutoCreateBootOption (BootOption)) {
+    ImageInfo->LoadOptionsSize = BootOption->OptionalDataSize;
+    ImageInfo->LoadOptions     = BootOption->OptionalData;
+  }
 
   //
   // Clean to NULL because the image is loaded directly from the firmwares boot manager.
@@ -1856,6 +1963,66 @@ BmMatchPartitionDevicePathNode (
     (Node->SignatureType == HardDriveDevicePath->SignatureType) &&
     (CompareMem (Node->Signature, HardDriveDevicePath->Signature, sizeof (Node->Signature)) == 0)
     );
+}
+
+/**
+  Enumerate all boot option descriptions and append " 2"/" 3"/... to make
+  unique description.
+
+  @param BootOptions            Array of boot options.
+  @param BootOptionCount        Count of boot options.
+**/
+VOID
+BmMakeBootOptionDescriptionUnique (
+  EFI_BOOT_MANAGER_LOAD_OPTION         *BootOptions,
+  UINTN                                BootOptionCount
+  )
+{
+  UINTN                                Base;
+  UINTN                                Index;
+  UINTN                                DescriptionSize;
+  UINTN                                MaxSuffixSize;
+  BOOLEAN                              *Visited;
+  UINTN                                MatchCount;
+
+  if (BootOptionCount == 0) {
+    return;
+  }
+
+  //
+  // Calculate the maximum buffer size for the number suffix.
+  // The initial sizeof (CHAR16) is for the blank space before the number.
+  //
+  MaxSuffixSize = sizeof (CHAR16);
+  for (Index = BootOptionCount; Index != 0; Index = Index / 10) {
+    MaxSuffixSize += sizeof (CHAR16);
+  }
+
+  Visited = AllocateZeroPool (sizeof (BOOLEAN) * BootOptionCount);
+  ASSERT (Visited != NULL);
+
+  for (Base = 0; Base < BootOptionCount; Base++) {
+    if (!Visited[Base]) {
+      MatchCount      = 1;
+      Visited[Base]   = TRUE;
+      DescriptionSize = StrSize (BootOptions[Base].Description);
+      for (Index = Base + 1; Index < BootOptionCount; Index++) {
+        if (!Visited[Index] && StrCmp (BootOptions[Base].Description, BootOptions[Index].Description) == 0) {
+          Visited[Index] = TRUE;
+          MatchCount++;
+          FreePool (BootOptions[Index].Description);
+          BootOptions[Index].Description = AllocatePool (DescriptionSize + MaxSuffixSize);
+          UnicodeSPrint (
+            BootOptions[Index].Description, DescriptionSize + MaxSuffixSize,
+            L"%s %d",
+            BootOptions[Base].Description, MatchCount
+            );
+        }
+      }
+    }
+  }
+
+  FreePool (Visited);
 }
 
 /**
@@ -2044,6 +2211,7 @@ BmEnumerateBootOptions (
     FreePool (Handles);
   }
 
+  BmMakeBootOptionDescriptionUnique (BootOptions, *BootOptionCount);
   return BootOptions;
 }
 
@@ -2087,15 +2255,13 @@ EfiBootManagerRefreshAllBootOption (
   for (Index = 0; Index < NvBootOptionCount; Index++) {
     if (((DevicePathType (NvBootOptions[Index].FilePath) != BBS_DEVICE_PATH) || 
          (DevicePathSubType (NvBootOptions[Index].FilePath) != BBS_BBS_DP)
-        ) &&
-        (NvBootOptions[Index].OptionalDataSize == sizeof (EFI_GUID)) &&
-        CompareGuid ((EFI_GUID *) NvBootOptions[Index].OptionalData, &mBmAutoCreateBootOptionGuid)
+        ) && BmIsAutoCreateBootOption (&NvBootOptions[Index])
        ) {
       //
       // Only check those added by BDS
       // so that the boot options added by end-user or OS installer won't be deleted
       //
-      if (BmFindLoadOption (&NvBootOptions[Index], BootOptions, BootOptionCount) == (UINTN) -1) {
+      if (EfiBootManagerFindLoadOption (&NvBootOptions[Index], BootOptions, BootOptionCount) == (UINTN) -1) {
         Status = EfiBootManagerDeleteLoadOptionVariable (NvBootOptions[Index].OptionNumber, LoadOptionTypeBoot);
         //
         // Deleting variable with current variable implementation shouldn't fail.
@@ -2109,7 +2275,7 @@ EfiBootManagerRefreshAllBootOption (
   // Add new EFI boot options to NV
   //
   for (Index = 0; Index < BootOptionCount; Index++) {
-    if (BmFindLoadOption (&BootOptions[Index], NvBootOptions, NvBootOptionCount) == (UINTN) -1) {
+    if (EfiBootManagerFindLoadOption (&BootOptions[Index], NvBootOptions, NvBootOptionCount) == (UINTN) -1) {
       EfiBootManagerAddLoadOptionVariable (&BootOptions[Index], (UINTN) -1);
       //
       // Try best to add the boot options so continue upon failure.
@@ -2190,7 +2356,7 @@ BmRegisterBootManagerMenu (
     UINTN                           BootOptionCount;
 
     BootOptions = EfiBootManagerGetLoadOptions (&BootOptionCount, LoadOptionTypeBoot);
-    ASSERT (BmFindLoadOption (BootOption, BootOptions, BootOptionCount) == -1);
+    ASSERT (EfiBootManagerFindLoadOption (BootOption, BootOptions, BootOptionCount) == -1);
     EfiBootManagerFreeLoadOptions (BootOptions, BootOptionCount);
     );
 

@@ -302,6 +302,8 @@ InitializeVirtFdtDxe (
   UINT64                         FwCfgSelectorSize;
   UINT64                         FwCfgDataAddress;
   UINT64                         FwCfgDataSize;
+  UINT64                         FwCfgDmaAddress;
+  UINT64                         FwCfgDmaSize;
 
   Hob = GetFirstGuidHob(&gFdtHobGuid);
   if (Hob == NULL || GET_GUID_HOB_DATA_SIZE (Hob) != sizeof (UINT64)) {
@@ -382,6 +384,19 @@ InitializeVirtFdtDxe (
 
       DEBUG ((EFI_D_INFO, "Found FwCfg @ 0x%Lx/0x%Lx\n", FwCfgSelectorAddress,
         FwCfgDataAddress));
+
+      if (fdt64_to_cpu (((UINT64 *)RegProp)[1]) >= 0x18) {
+        FwCfgDmaAddress = FwCfgDataAddress + 0x10;
+        FwCfgDmaSize    = 0x08;
+
+        //
+        // See explanation above.
+        //
+        ASSERT (FwCfgDmaAddress <= MAX_UINTN - FwCfgDmaSize + 1);
+
+        PcdSet64 (PcdFwCfgDmaAddress, FwCfgDmaAddress);
+        DEBUG ((EFI_D_INFO, "Found FwCfg DMA @ 0x%Lx\n", FwCfgDmaAddress));
+      }
       break;
 
     case PropertyTypeVirtio:
@@ -441,6 +456,7 @@ InitializeVirtFdtDxe (
 
       PcdSet32 (PcdGicDistributorBase, (UINT32)DistBase);
       PcdSet32 (PcdGicInterruptInterfaceBase, (UINT32)CpuBase);
+      PcdSet32 (PcdArmGicRevision, 2);
 
       DEBUG ((EFI_D_INFO, "Found GIC @ 0x%Lx/0x%Lx\n", DistBase, CpuBase));
       break;
@@ -470,6 +486,7 @@ InitializeVirtFdtDxe (
 
       PcdSet32 (PcdGicDistributorBase, (UINT32)DistBase);
       PcdSet32 (PcdGicRedistributorsBase, (UINT32)RedistBase);
+      PcdSet32 (PcdArmGicRevision, 3);
 
       DEBUG ((EFI_D_INFO, "Found GIC v3 (re)distributor @ 0x%Lx (0x%Lx)\n",
         DistBase, RedistBase));

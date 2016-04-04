@@ -57,13 +57,11 @@
   TimerLib|ArmPkg/Library/ArmArchTimerLib/ArmArchTimerLib.inf
   NorFlashPlatformLib|ArmVirtPkg/Library/NorFlashQemuLib/NorFlashQemuLib.inf
 
-!ifdef INTEL_BDS
   CapsuleLib|MdeModulePkg/Library/DxeCapsuleLibNull/DxeCapsuleLibNull.inf
   GenericBdsLib|IntelFrameworkModulePkg/Library/GenericBdsLib/GenericBdsLib.inf
   PlatformBdsLib|ArmVirtPkg/Library/PlatformIntelBdsLib/PlatformIntelBdsLib.inf
   CustomizedDisplayLib|MdeModulePkg/Library/CustomizedDisplayLib/CustomizedDisplayLib.inf
   QemuBootOrderLib|OvmfPkg/Library/QemuBootOrderLib/QemuBootOrderLib.inf
-!endif
 
 [LibraryClasses.common.UEFI_DRIVER]
   UefiScsiLib|MdePkg/Library/UefiScsiLib/UefiScsiLib.inf
@@ -99,8 +97,6 @@
   gArmVirtTokenSpaceGuid.PcdKludgeMapPciMmioAsCached|TRUE
 
 [PcdsFixedAtBuild.common]
-  gArmPlatformTokenSpaceGuid.PcdFirmwareVendor|"QEMU"
-
   gArmPlatformTokenSpaceGuid.PcdCoreCount|1
 !if $(ARCH) == AARCH64
   gArmTokenSpaceGuid.PcdVFPEnabled|1
@@ -127,19 +123,13 @@
   ## PL011 - Serial Terminal
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultBaudRate|38400
 
-  #
-  # ARM OS Loader
-  #
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootDescription|L"Linux (EFI stub) on virtio31:hd0:part0"
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootDevicePath|L"VenHw(837DCA9E-E874-4D82-B29A-23FE0E23D1E2,003E000A00000000)/HD(1,MBR,0x00000000,0x3F,0x19FC0)/Image"
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|"root=/dev/vda2 console=ttyAMA0 earlycon uefi_debug"
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootType|0
-
-  #
-  # Settings for ARM BDS -- use the serial console (ConIn & ConOut).
-  #
-  gArmPlatformTokenSpaceGuid.PcdDefaultConOutPaths|L"VenHw(D3987D4B-971A-435F-8CAF-4967EB627241)/Uart(38400,8,N,1)/VenVt100()"
-  gArmPlatformTokenSpaceGuid.PcdDefaultConInPaths|L"VenHw(D3987D4B-971A-435F-8CAF-4967EB627241)/Uart(38400,8,N,1)/VenVt100()"
+  ## Default Terminal Type
+  ## 0-PCANSI, 1-VT100, 2-VT00+, 3-UTF8, 4-TTYTERM
+!if $(TTY_TERMINAL) == TRUE
+  gEfiMdePkgTokenSpaceGuid.PcdDefaultTerminalType|4
+!else
+  gEfiMdePkgTokenSpaceGuid.PcdDefaultTerminalType|1
+!endif
   gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut|3
 
   #
@@ -163,16 +153,21 @@
   # initial location of the device tree blob passed by QEMU -- base of DRAM
   gArmVirtTokenSpaceGuid.PcdDeviceTreeInitialBaseAddress|0x40000000
 
-!ifdef INTEL_BDS
   gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange|FALSE
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdShellFile|{ 0x83, 0xA5, 0x04, 0x7C, 0x3E, 0x9E, 0x1C, 0x4F, 0xAD, 0x65, 0xE0, 0x52, 0x68, 0xD0, 0xB4, 0xD1 }
-!endif
 
   #
   # The maximum physical I/O addressability of the processor, set with
   # BuildCpuHob().
   #
   gEmbeddedTokenSpaceGuid.PcdPrePiCpuIoSize|16
+
+[PcdsFixedAtBuild.AARCH64]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetNxForStack|TRUE
+
+  # KVM limits it IPA space to 40 bits (1 TB), so there is no need to
+  # support anything bigger, even if the host hardware does
+  gEmbeddedTokenSpaceGuid.PcdPrePiCpuMemorySize|40
 
 [PcdsDynamicDefault.common]
   ## If TRUE, OvmfPkg/AcpiPlatformDxe will not wait for PCI
@@ -193,6 +188,7 @@
   gArmTokenSpaceGuid.PcdGicDistributorBase|0x0
   gArmTokenSpaceGuid.PcdGicRedistributorsBase|0x0
   gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase|0x0
+  gArmVirtTokenSpaceGuid.PcdArmGicRevision|0x0
 
   ## PL031 RealTimeClock
   gArmPlatformTokenSpaceGuid.PcdPL031RtcBase|0x0
@@ -210,6 +206,7 @@
 
   gArmVirtTokenSpaceGuid.PcdFwCfgSelectorAddress|0x0
   gArmVirtTokenSpaceGuid.PcdFwCfgDataAddress|0x0
+  gArmVirtTokenSpaceGuid.PcdFwCfgDmaAddress|0x0
 
   #
   # Set video resolution for boot options and for text setup.
@@ -220,6 +217,13 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoHorizontalResolution|640
   gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoVerticalResolution|480
 
+  #
+  # SMBIOS entry point version
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion|0x0300
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosDocRev|0x0
+  gUefiOvmfPkgTokenSpaceGuid.PcdQemuSmbiosValidated|FALSE
+
 ################################################################################
 #
 # Components Section - list of all EDK II Modules needed by this Platform
@@ -229,10 +233,7 @@
   #
   # PEI Phase modules
   #
-  ArmPlatformPkg/PrePeiCore/PrePeiCoreUniCore.inf {
-    <LibraryClasses>
-      ArmPlatformGlobalVariableLib|ArmPlatformPkg/Library/ArmPlatformGlobalVariableLib/Pei/PeiArmPlatformGlobalVariableLib.inf
-  }
+  ArmPlatformPkg/PrePeiCore/PrePeiCoreUniCore.inf
   MdeModulePkg/Core/Pei/PeiMain.inf
   MdeModulePkg/Universal/PCD/Pei/Pcd.inf
   ArmPlatformPkg/PlatformPei/PlatformPeim.inf
@@ -260,7 +261,10 @@
   #
   ArmPkg/Drivers/CpuDxe/CpuDxe.inf
   MdeModulePkg/Core/RuntimeDxe/RuntimeDxe.inf
-  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
+  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf {
+    <LibraryClasses>
+      NULL|MdeModulePkg/Library/VarCheckUefiLib/VarCheckUefiLib.inf
+  }
 !if $(SECURE_BOOT_ENABLE) == TRUE
   MdeModulePkg/Universal/SecurityStubDxe/SecurityStubDxe.inf {
     <LibraryClasses>
@@ -281,7 +285,7 @@
   MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
   MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
   MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
-  EmbeddedPkg/SerialDxe/SerialDxe.inf
+  MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
 
   MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
 
@@ -298,6 +302,7 @@
   # Platform Driver
   #
   ArmVirtPkg/VirtFdtDxe/VirtFdtDxe.inf
+  ArmVirtPkg/HighMemDxe/HighMemDxe.inf
   OvmfPkg/VirtioBlkDxe/VirtioBlk.inf
   OvmfPkg/VirtioScsiDxe/VirtioScsi.inf
   OvmfPkg/VirtioNetDxe/VirtioNet.inf
@@ -313,19 +318,24 @@
   # Bds
   #
   MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
-!ifdef INTEL_BDS
   MdeModulePkg/Universal/DisplayEngineDxe/DisplayEngineDxe.inf
   MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
   IntelFrameworkModulePkg/Universal/BdsDxe/BdsDxe.inf
-!else
-  ArmPlatformPkg/Bds/Bds.inf
-!endif
 
   #
   # SCSI Bus and Disk Driver
   #
   MdeModulePkg/Bus/Scsi/ScsiBusDxe/ScsiBusDxe.inf
   MdeModulePkg/Bus/Scsi/ScsiDiskDxe/ScsiDiskDxe.inf
+
+  #
+  # SMBIOS Support
+  #
+  MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf {
+    <LibraryClasses>
+      NULL|OvmfPkg/Library/SmbiosVersionLib/DetectSmbiosVersionLib.inf
+  }
+  OvmfPkg/SmbiosPlatformDxe/SmbiosPlatformDxe.inf
 
   #
   # ACPI Support
@@ -357,3 +367,15 @@
   MdeModulePkg/Bus/Pci/XhciDxe/XhciDxe.inf
   MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
   MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
+
+[Components.ARM]
+  #
+  # The ARM/Linux kernel has no built in EFI boot stub (yet), so we still need
+  # an intermediate OS loader. Add the LinuxLoader UEFI application so we can
+  # invoke it from the shell.
+  #
+  MdeModulePkg/Universal/FvSimpleFileSystemDxe/FvSimpleFileSystemDxe.inf
+  ArmPkg/Application/LinuxLoader/LinuxLoader.inf {
+    <LibraryClasses>
+      BdsLib|ArmPkg/Library/BdsLib/BdsLib.inf
+  }

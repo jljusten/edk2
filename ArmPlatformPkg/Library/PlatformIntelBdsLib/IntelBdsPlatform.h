@@ -19,7 +19,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/DevicePathToText.h>
 
 #include <Library/BaseMemoryLib.h>
-#include <Library/BdsLib.h>
 #include <Library/DebugLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/UefiBootServicesTableLib.h>
@@ -31,5 +30,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/PlatformBdsLib.h>
 
 #include <Guid/GlobalVariable.h>
+#include <Guid/EventGroup.h>
 
 #endif // _INTEL_BDS_PLATFORM_H

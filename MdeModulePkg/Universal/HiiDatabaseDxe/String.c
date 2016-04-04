@@ -1333,7 +1333,7 @@ HiiNewString (
     StringPackage->StringPkgHdr->StringInfoOffset = HeaderSize;
     CopyMem (StringPackage->StringPkgHdr->LanguageWindow, mLanguageWindow, 16 * sizeof (CHAR16));
     StringPackage->StringPkgHdr->LanguageName     = 1;
-    AsciiStrCpyS (StringPackage->StringPkgHdr->Language, sizeof(StringPackage->StringPkgHdr->Language) / sizeof (CHAR8), (CHAR8 *) Language);
+    AsciiStrCpyS (StringPackage->StringPkgHdr->Language, (HeaderSize - OFFSET_OF(EFI_HII_STRING_PACKAGE_HDR,Language)) / sizeof (CHAR8), (CHAR8 *) Language);
 
     //
     // Calculate the length of the string blocks, including string block to record
@@ -1834,12 +1834,6 @@ HiiGetLanguages (
        Link = Link->ForwardLink
       ) {
     StringPackage = CR (Link, HII_STRING_PACKAGE_INSTANCE, StringEntry, HII_STRING_PACKAGE_SIGNATURE);
-    if (AsciiStrnCmp (StringPackage->StringPkgHdr->Language, UEFI_CONFIG_LANG, AsciiStrLen (UEFI_CONFIG_LANG)) == 0) {
-      //
-      // Skip string package used for keyword protocol.
-      //
-      continue;
-    }
     ResultSize += AsciiStrSize (StringPackage->StringPkgHdr->Language);
     if (ResultSize <= *LanguagesSize) {
       AsciiStrCpyS (Languages, *LanguagesSize / sizeof (CHAR8), StringPackage->StringPkgHdr->Language);

@@ -87,6 +87,8 @@ SMM_CORE_SMI_HANDLERS  mSmmCoreSmiHandlers[] = {
 UINTN                           mFullSmramRangeCount;
 EFI_SMRAM_DESCRIPTOR            *mFullSmramRanges;
 
+EFI_LOADED_IMAGE_PROTOCOL       *mSmmCoreLoadedImage;
+
 /**
   Place holder function until all the SMM System Table Service are available.
 
@@ -379,6 +381,37 @@ SmmEndOfDxeHandler (
 }
 
 /**
+  Determine if two buffers overlap in memory.
+
+  @param[in] Buff1  Pointer to first buffer
+  @param[in] Size1  Size of Buff1
+  @param[in] Buff2  Pointer to second buffer
+  @param[in] Size2  Size of Buff2
+
+  @retval TRUE      Buffers overlap in memory.
+  @retval FALSE     Buffer doesn't overlap.
+
+**/
+BOOLEAN
+InternalIsBufferOverlapped (
+  IN UINT8      *Buff1,
+  IN UINTN      Size1,
+  IN UINT8      *Buff2,
+  IN UINTN      Size2
+  )
+{
+  //
+  // If buff1's end is less than the start of buff2, then it's ok.
+  // Also, if buff1's start is beyond buff2's end, then it's ok.
+  //
+  if (((Buff1 + Size1) <= Buff2) || (Buff1 >= (Buff2 + Size2))) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+/**
   The main entry point to SMM Foundation.
 
   Note: This function is only used by SMRAM invocation.  It is never used by DXE invocation.
@@ -396,13 +429,18 @@ SmmEntryPoint (
   EFI_STATUS                  Status;
   EFI_SMM_COMMUNICATE_HEADER  *CommunicateHeader;
   BOOLEAN                     InLegacyBoot;
+  BOOLEAN                     IsOverlapped;
 
   PERF_START (NULL, "SMM", NULL, 0) ;
 
   //
-  // Update SMST using the context
+  // Update SMST with contents of the SmmEntryContext structure
   //
-  CopyMem (&gSmmCoreSmst.SmmStartupThisAp, SmmEntryContext, sizeof (EFI_SMM_ENTRY_CONTEXT));
+  gSmmCoreSmst.SmmStartupThisAp      = SmmEntryContext->SmmStartupThisAp;
+  gSmmCoreSmst.CurrentlyExecutingCpu = SmmEntryContext->CurrentlyExecutingCpu;
+  gSmmCoreSmst.NumberOfCpus          = SmmEntryContext->NumberOfCpus;
+  gSmmCoreSmst.CpuSaveStateSize      = SmmEntryContext->CpuSaveStateSize;
+  gSmmCoreSmst.CpuSaveState          = SmmEntryContext->CpuSaveState;
 
   //
   // Call platform hook before Smm Dispatch
@@ -427,9 +465,17 @@ SmmEntryPoint (
       //
       // Synchronous SMI for SMM Core or request from Communicate protocol
       //
-      if (!SmmIsBufferOutsideSmmValid ((UINTN)gSmmCorePrivate->CommunicationBuffer, gSmmCorePrivate->BufferSize)) {
+      IsOverlapped = InternalIsBufferOverlapped (
+                       (UINT8 *) gSmmCorePrivate->CommunicationBuffer,
+                       gSmmCorePrivate->BufferSize,
+                       (UINT8 *) gSmmCorePrivate,
+                       sizeof (*gSmmCorePrivate)
+                       );
+      if (!SmmIsBufferOutsideSmmValid ((UINTN)gSmmCorePrivate->CommunicationBuffer, gSmmCorePrivate->BufferSize) || IsOverlapped) {
         //
-        // If CommunicationBuffer is not in valid address scope, return EFI_INVALID_PARAMETER
+        // If CommunicationBuffer is not in valid address scope,
+        // or there is overlap between gSmmCorePrivate and CommunicationBuffer,
+        // return EFI_INVALID_PARAMETER
         //
         gSmmCorePrivate->CommunicationBuffer = NULL;
         gSmmCorePrivate->ReturnStatus = EFI_INVALID_PARAMETER;
@@ -474,6 +520,51 @@ SmmEntryPoint (
   }
 
   PERF_END (NULL, "SMM", NULL, 0) ;
+}
+
+/**
+  Install LoadedImage protocol for SMM Core.
+**/
+VOID
+SmmCoreInstallLoadedImage (
+  VOID
+  )
+{
+  EFI_STATUS                 Status;
+  EFI_HANDLE                 Handle;
+
+  //
+  // Allocate a Loaded Image Protocol in EfiBootServicesData
+  //
+  Status = gBS->AllocatePool (EfiBootServicesData, sizeof(EFI_LOADED_IMAGE_PROTOCOL), (VOID **)&mSmmCoreLoadedImage);
+  ASSERT_EFI_ERROR (Status);
+
+  ZeroMem (mSmmCoreLoadedImage, sizeof (EFI_LOADED_IMAGE_PROTOCOL));
+  //
+  // Fill in the remaining fields of the Loaded Image Protocol instance.
+  // Note: ImageBase is an SMRAM address that can not be accessed outside of SMRAM if SMRAM window is closed.
+  //
+  mSmmCoreLoadedImage->Revision      = EFI_LOADED_IMAGE_PROTOCOL_REVISION;
+  mSmmCoreLoadedImage->ParentHandle  = gSmmCorePrivate->SmmIplImageHandle;
+  mSmmCoreLoadedImage->SystemTable   = gST;
+
+  mSmmCoreLoadedImage->ImageBase     = (VOID *)(UINTN)gSmmCorePrivate->PiSmmCoreImageBase;
+  mSmmCoreLoadedImage->ImageSize     = gSmmCorePrivate->PiSmmCoreImageSize;
+  mSmmCoreLoadedImage->ImageCodeType = EfiRuntimeServicesCode;
+  mSmmCoreLoadedImage->ImageDataType = EfiRuntimeServicesData;
+
+  //
+  // Create a new image handle in the UEFI handle database for the SMM Driver
+  //
+  Handle = NULL;
+  Status = gBS->InstallMultipleProtocolInterfaces (
+                  &Handle,
+                  &gEfiLoadedImageProtocolGuid, mSmmCoreLoadedImage,
+                  NULL
+                  );
+  ASSERT_EFI_ERROR (Status);
+
+  return ;
 }
 
 /**
@@ -523,10 +614,10 @@ SmmMain (
   //
   // Copy FullSmramRanges to SMRAM
   //
-  mFullSmramRangeCount = gSmmCorePrivate->FullSmramRangeCount;
+  mFullSmramRangeCount = gSmmCorePrivate->SmramRangeCount;
   mFullSmramRanges = AllocatePool (mFullSmramRangeCount * sizeof (EFI_SMRAM_DESCRIPTOR));
   ASSERT (mFullSmramRanges != NULL);
-  CopyMem (mFullSmramRanges, gSmmCorePrivate->FullSmramRanges, mFullSmramRangeCount * sizeof (EFI_SMRAM_DESCRIPTOR));
+  CopyMem (mFullSmramRanges, gSmmCorePrivate->SmramRanges, mFullSmramRangeCount * sizeof (EFI_SMRAM_DESCRIPTOR));
 
   //
   // Register all SMI Handlers required by the SMM Core
@@ -541,6 +632,8 @@ SmmMain (
   }
 
   RegisterSmramProfileHandler ();
+
+  SmmCoreInstallLoadedImage ();
 
   return EFI_SUCCESS;
 }

@@ -29,6 +29,8 @@
 
 #define SerialPrint(txt)  SerialPortWrite (txt, AsciiStrLen(txt)+1);
 
+extern UINT64 mSystemMemoryEnd;
+
 RETURN_STATUS
 EFIAPI
 TimerConstructor (
@@ -39,7 +41,6 @@ VOID
 PrePiMain (
   IN  UINTN                     UefiMemoryBase,
   IN  UINTN                     StacksBase,
-  IN  UINTN                     GlobalVariableBase,
   IN  UINT64                    StartTimeStamp
   );
 

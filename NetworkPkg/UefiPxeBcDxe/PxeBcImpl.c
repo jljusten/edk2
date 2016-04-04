@@ -204,6 +204,18 @@ EfiPxeBcStart (
     if (EFI_ERROR (Status)) {
       goto ON_ERROR;
     }
+
+    //
+    //DHCP4 service allows only one of its children to be configured in  
+    //the active state, If the DHCP4 D.O.R.A started by IP4 auto  
+    //configuration and has not been completed, the Dhcp4 state machine 
+    //will not be in the right state for the PXE to start a new round D.O.R.A. 
+    //so we need to switch it's policy to static.
+    //
+    Status = PxeBcSetIp4Policy (Private);
+    if (EFI_ERROR (Status)) {
+      goto ON_ERROR;
+    }
   }
 
   //
@@ -2316,6 +2328,10 @@ EfiPxeLoadFile (
   EFI_STATUS                  Status;
   BOOLEAN                     MediaPresent;
 
+  if (FilePath == NULL || !IsDevicePathEnd (FilePath)) {
+    return EFI_INVALID_PARAMETER;
+  }
+  
   VirtualNic = PXEBC_VIRTUAL_NIC_FROM_LOADFILE (This);
   Private    = VirtualNic->Private;
   PxeBc      = &Private->PxeBc;
@@ -2376,6 +2392,16 @@ EfiPxeLoadFile (
     //   3. unsupported.
     //
     PxeBc->Stop (PxeBc);
+  } else {
+    //
+    // The DHCP4 can have only one configured child instance so we need to stop
+    // reset the DHCP4 child before we return. Otherwise these programs which 
+    // also need to use DHCP4 will be impacted.
+    //
+    if (!PxeBc->Mode->UsingIpv6) {
+      Private->Dhcp4->Stop (Private->Dhcp4);
+      Private->Dhcp4->Configure (Private->Dhcp4, NULL);
+    }
   }
 
   return Status;

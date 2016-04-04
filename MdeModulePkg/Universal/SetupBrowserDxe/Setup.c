@@ -68,8 +68,6 @@ FORM_BROWSER_FORMSET  *mSystemLevelFormSet;
 CHAR16            *gEmptyString;
 CHAR16            *mUnknownString = L"!";
 
-EFI_GUID  gZeroGuid = {0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0}};
-
 extern EFI_GUID        mCurrentFormSetGuid;
 extern EFI_HII_HANDLE  mCurrentHiiHandle;
 extern UINT16          mCurrentFormId;
@@ -491,6 +489,7 @@ SendForm (
   // If EDKII_FORM_DISPLAY_ENGINE_PROTOCOL not found, return EFI_UNSUPPORTED.
   //
   if (mFormDisplay == NULL) {
+    DEBUG ((DEBUG_ERROR, "Fatal Error! EDKII_FORM_DISPLAY_ENGINE_PROTOCOL not found!"));
     return EFI_UNSUPPORTED;
   }
 
@@ -5542,8 +5541,9 @@ SaveBrowserContext (
   VOID
   )
 {
-  BROWSER_CONTEXT  *Context;
-  FORM_ENTRY_INFO     *MenuList;
+  BROWSER_CONTEXT      *Context;
+  FORM_ENTRY_INFO      *MenuList;
+  FORM_BROWSER_FORMSET *FormSet;
 
   gBrowserContextCount++;
   if (gBrowserContextCount == 1) {
@@ -5569,6 +5569,10 @@ SaveBrowserContext (
   Context->HiiHandle            = mCurrentHiiHandle;
   Context->FormId               = mCurrentFormId;
   CopyGuid (&Context->FormSetGuid, &mCurrentFormSetGuid);
+  Context->SystemLevelFormSet   = mSystemLevelFormSet;
+  Context->CurFakeQestId        = mCurFakeQestId;
+  Context->HiiPackageListUpdated = mHiiPackageListUpdated;
+  Context->FinishRetrieveCall   = mFinishRetrieveCall;
 
   //
   // Save the menu history data.
@@ -5579,6 +5583,17 @@ SaveBrowserContext (
     RemoveEntryList (&MenuList->Link);
 
     InsertTailList(&Context->FormHistoryList, &MenuList->Link);
+  }
+
+  //
+  // Save formset list.
+  //
+  InitializeListHead(&Context->FormSetList);
+  while (!IsListEmpty (&gBrowserFormSetList)) {
+    FormSet = FORM_BROWSER_FORMSET_FROM_LINK (gBrowserFormSetList.ForwardLink);
+    RemoveEntryList (&FormSet->Link);
+
+    InsertTailList(&Context->FormSetList, &FormSet->Link);
   }
 
   //
@@ -5599,7 +5614,8 @@ RestoreBrowserContext (
 {
   LIST_ENTRY       *Link;
   BROWSER_CONTEXT  *Context;
-  FORM_ENTRY_INFO     *MenuList;
+  FORM_ENTRY_INFO      *MenuList;
+  FORM_BROWSER_FORMSET *FormSet;
 
   ASSERT (gBrowserContextCount != 0);
   gBrowserContextCount--;
@@ -5626,6 +5642,10 @@ RestoreBrowserContext (
   mCurrentHiiHandle     = Context->HiiHandle;
   mCurrentFormId        = Context->FormId;
   CopyGuid (&mCurrentFormSetGuid, &Context->FormSetGuid);
+  mSystemLevelFormSet   = Context->SystemLevelFormSet;
+  mCurFakeQestId        = Context->CurFakeQestId;
+  mHiiPackageListUpdated = Context->HiiPackageListUpdated;
+  mFinishRetrieveCall   = Context->FinishRetrieveCall;
 
   //
   // Restore the menu history data.
@@ -5635,6 +5655,16 @@ RestoreBrowserContext (
     RemoveEntryList (&MenuList->Link);
 
     InsertTailList(&mPrivateData.FormBrowserEx2.FormViewHistoryHead, &MenuList->Link);
+  }
+
+  //
+  // Restore the Formset data.
+  //
+  while (!IsListEmpty (&Context->FormSetList)) {
+    FormSet = FORM_BROWSER_FORMSET_FROM_LINK (Context->FormSetList.ForwardLink);
+    RemoveEntryList (&FormSet->Link);
+
+    InsertTailList(&gBrowserFormSetList, &FormSet->Link);
   }
 
   //
@@ -5891,6 +5921,7 @@ SetScope (
   @retval EFI_INVALID_PARAMETER  KeyData is NULL or HelpString is NULL on register.
   @retval EFI_NOT_FOUND          KeyData is not found to be unregistered.
   @retval EFI_UNSUPPORTED        Key represents a printable character. It is conflicted with Browser.
+  @retval EFI_ALREADY_STARTED    Key already been registered for one hot key.
 **/
 EFI_STATUS
 EFIAPI
@@ -5936,20 +5967,19 @@ RegisterHotKey (
       return EFI_NOT_FOUND;
     }
   }
-  
-  //
-  // Register HotKey into List.
-  //
-  if (HotKey == NULL) {
-    //
-    // Create new Key, and add it into List.
-    //
-    HotKey = AllocateZeroPool (sizeof (BROWSER_HOT_KEY));
-    ASSERT (HotKey != NULL);
-    HotKey->Signature = BROWSER_HOT_KEY_SIGNATURE;
-    HotKey->KeyData   = AllocateCopyPool (sizeof (EFI_INPUT_KEY), KeyData);
-    InsertTailList (&gBrowserHotKeyList, &HotKey->Link);
+
+  if (HotKey != NULL) {
+    return EFI_ALREADY_STARTED;
   }
+
+  //
+  // Create new Key, and add it into List.
+  //
+  HotKey = AllocateZeroPool (sizeof (BROWSER_HOT_KEY));
+  ASSERT (HotKey != NULL);
+  HotKey->Signature = BROWSER_HOT_KEY_SIGNATURE;
+  HotKey->KeyData   = AllocateCopyPool (sizeof (EFI_INPUT_KEY), KeyData);
+  InsertTailList (&gBrowserHotKeyList, &HotKey->Link);
 
   //
   // Fill HotKey information.

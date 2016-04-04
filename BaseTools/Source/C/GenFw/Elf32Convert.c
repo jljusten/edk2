@@ -101,7 +101,7 @@ STATIC UINT32 mCoffAlignment = 0x20;
 //
 // PE section alignment.
 //
-STATIC const UINT16 mCoffNbrSections = 5;
+STATIC const UINT16 mCoffNbrSections = 4;
 
 //
 // ELF sections to offset in Coff file.
@@ -116,6 +116,7 @@ STATIC UINT32 mTextOffset;
 STATIC UINT32 mDataOffset;
 STATIC UINT32 mHiiRsrcOffset;
 STATIC UINT32 mRelocOffset;
+STATIC UINT32 mDebugOffset;
 
 //
 // Initialization Function
@@ -217,6 +218,15 @@ CoffAlign (
   return (Offset + mCoffAlignment - 1) & ~(mCoffAlignment - 1);
 }
 
+STATIC
+UINT32
+DebugRvaAlign (
+  UINT32 Offset
+  )
+{
+  return (Offset + 3) & ~3;
+}
+
 //
 // filter functions
 //
@@ -306,6 +316,16 @@ ScanSections32 (
   }
 
   //
+  // Move the PE/COFF header right before the first section. This will help us
+  // save space when converting to TE.
+  //
+  if (mCoffAlignment > mCoffOffset) {
+    mNtHdrOffset += mCoffAlignment - mCoffOffset;
+    mTableOffset += mCoffAlignment - mCoffOffset;
+    mCoffOffset = mCoffAlignment;
+  }
+
+  //
   // First text sections.
   //
   mCoffOffset = CoffAlign(mCoffOffset);
@@ -320,12 +340,8 @@ ScanSections32 (
         if ((shdr->sh_addr & (shdr->sh_addralign - 1)) == 0) {
           // if the section address is aligned we must align PE/COFF
           mCoffOffset = (mCoffOffset + shdr->sh_addralign - 1) & ~(shdr->sh_addralign - 1);
-        } else if ((shdr->sh_addr % shdr->sh_addralign) != (mCoffOffset % shdr->sh_addralign)) {
-          // ARM RVCT tools have behavior outside of the ELF specification to try
-          // and make images smaller.  If sh_addr is not aligned to sh_addralign
-          // then the section needs to preserve sh_addr MOD sh_addralign.
-          // Normally doing nothing here works great.
-          Error (NULL, 0, 3000, "Invalid", "Unsupported section alignment.");
+        } else {
+          Error (NULL, 0, 3000, "Invalid", "Section address not aligned to its own alignment.");
         }
       }
 
@@ -354,9 +370,8 @@ ScanSections32 (
     assert (FALSE);
   }
 
-  if (mEhdr->e_machine != EM_ARM) {
-    mCoffOffset = CoffAlign(mCoffOffset);
-  }
+  mDebugOffset = DebugRvaAlign(mCoffOffset);
+  mCoffOffset = CoffAlign(mCoffOffset);
 
   if (SectionCount > 1 && mOutImageType == FW_EFI_IMAGE) {
     Warning (NULL, 0, 0, NULL, "Mulitple sections in %s are merged into 1 text section. Source level debug might not work correctly.", mInImageName);
@@ -376,12 +391,8 @@ ScanSections32 (
         if ((shdr->sh_addr & (shdr->sh_addralign - 1)) == 0) {
           // if the section address is aligned we must align PE/COFF
           mCoffOffset = (mCoffOffset + shdr->sh_addralign - 1) & ~(shdr->sh_addralign - 1);
-        } else if ((shdr->sh_addr % shdr->sh_addralign) != (mCoffOffset % shdr->sh_addralign)) {
-          // ARM RVCT tools have behavior outside of the ELF specification to try
-          // and make images smaller.  If sh_addr is not aligned to sh_addralign
-          // then the section needs to preserve sh_addr MOD sh_addralign.
-          // Normally doing nothing here works great.
-          Error (NULL, 0, 3000, "Invalid", "Unsupported section alignment.");
+        } else {
+          Error (NULL, 0, 3000, "Invalid", "Section address not aligned to its own alignment.");
         }
       }
 
@@ -398,10 +409,27 @@ ScanSections32 (
       SectionCount ++;
     }
   }
-  mCoffOffset = CoffAlign(mCoffOffset);
 
   if (SectionCount > 1 && mOutImageType == FW_EFI_IMAGE) {
     Warning (NULL, 0, 0, NULL, "Mulitple sections in %s are merged into 1 data section. Source level debug might not work correctly.", mInImageName);
+  }
+
+  //
+  // Make room for .debug data in .data (or .text if .data is empty) instead of
+  // putting it in a section of its own. This is explicitly allowed by the
+  // PE/COFF spec, and prevents bloat in the binary when using large values for
+  // section alignment.
+  //
+  if (SectionCount > 0) {
+    mDebugOffset = DebugRvaAlign(mCoffOffset);
+  }
+  mCoffOffset = mDebugOffset + sizeof(EFI_IMAGE_DEBUG_DIRECTORY_ENTRY) +
+                sizeof(EFI_IMAGE_DEBUG_CODEVIEW_NB10_ENTRY) +
+                strlen(mInImageName) + 1;
+
+  mCoffOffset = CoffAlign(mCoffOffset);
+  if (SectionCount == 0) {
+    mDataOffset = mCoffOffset;
   }
 
   //
@@ -416,12 +444,8 @@ ScanSections32 (
         if ((shdr->sh_addr & (shdr->sh_addralign - 1)) == 0) {
           // if the section address is aligned we must align PE/COFF
           mCoffOffset = (mCoffOffset + shdr->sh_addralign - 1) & ~(shdr->sh_addralign - 1);
-        } else if ((shdr->sh_addr % shdr->sh_addralign) != (mCoffOffset % shdr->sh_addralign)) {
-          // ARM RVCT tools have behavior outside of the ELF specification to try
-          // and make images smaller.  If sh_addr is not aligned to sh_addralign
-          // then the section needs to preserve sh_addr MOD sh_addralign.
-          // Normally doing nothing here works great.
-          Error (NULL, 0, 3000, "Invalid", "Unsupported section alignment.");
+        } else {
+          Error (NULL, 0, 3000, "Invalid", "Section address not aligned to its own alignment.");
         }
       }
       if (shdr->sh_size != 0) {
@@ -692,6 +716,7 @@ WriteSections32 (
             // break skipped
 
           case R_ARM_PC24:
+          case R_ARM_REL32:
           case R_ARM_XPC25:
           case R_ARM_THM_PC22:
           case R_ARM_THM_JUMP19:
@@ -779,9 +804,7 @@ WriteRelocations32 (
   UINTN                            RelSize;
   UINTN                            RelOffset;
   UINTN                            K;
-  UINT8                            *Targ;
   Elf32_Phdr                       *DynamicSegment;
-  Elf32_Phdr                       *TargetSegment;
 
   for (Index = 0, FoundRelocations = FALSE; Index < mEhdr->e_shnum; Index++) {
     Elf_Shdr *RelShdr = GetShdrByIndex(Index);
@@ -820,6 +843,7 @@ WriteRelocations32 (
               // break skipped
 
             case R_ARM_PC24:
+            case R_ARM_REL32:
             case R_ARM_XPC25:
             case R_ARM_THM_PC22:
             case R_ARM_THM_JUMP19:
@@ -931,6 +955,31 @@ WriteRelocations32 (
           Error (NULL, 0, 3000, "Invalid", "%s bad ARM dynamic relocations.", mInImageName);
         }
 
+        for (Index = 0; Index < mEhdr->e_shnum; Index++) {
+          Elf_Shdr *shdr = GetShdrByIndex(Index);
+
+          //
+          // The PT_DYNAMIC section contains DT_REL relocations whose r_offset
+          // field is relative to the base of a segment (or the entire image),
+          // and not to the base of an ELF input section as is the case for
+          // SHT_REL sections. This means that we cannot fix up such relocations
+          // unless we cross-reference ELF sections and segments, considering
+          // that the output placement recorded in mCoffSectionsOffset[] is
+          // section based, not segment based.
+          //
+          // Fortunately, there is a simple way around this: we require that the
+          // in-memory layout of the ELF and PE/COFF versions of the binary is
+          // identical. That way, r_offset will retain its validity as a PE/COFF
+          // image offset, and we can record it in the COFF fixup table
+          // unmodified.
+          //
+          if (shdr->sh_addr != mCoffSectionsOffset[Index]) {
+            Error (NULL, 0, 3000,
+              "Invalid", "%s: PT_DYNAMIC relocations require identical ELF and PE/COFF section offsets.",
+              mInImageName);
+          }
+        }
+
         for (K = 0; K < RelSize; K += RelElementSize) {
 
           if (DynamicSegment->p_paddr == 0) {
@@ -947,14 +996,7 @@ WriteRelocations32 (
             break;
 
           case  R_ARM_RABS32:
-            TargetSegment = GetPhdrByIndex (ELF32_R_SYM (Rel->r_info) - 1);
-
-            // Note: r_offset in a memory address.  Convert it to a pointer in the coff file.
-            Targ = mCoffFile + mCoffSectionsOffset[ ELF32_R_SYM( Rel->r_info ) ] + Rel->r_offset - TargetSegment->p_vaddr;
-
-            *(UINT32 *)Targ = *(UINT32 *)Targ + mCoffSectionsOffset [ELF32_R_SYM( Rel->r_info )];
-
-            CoffAddFixup (mCoffSectionsOffset[ELF32_R_SYM (Rel->r_info)] + (Rel->r_offset - TargetSegment->p_vaddr), EFI_IMAGE_REL_BASED_HIGHLOW);
+            CoffAddFixup (Rel->r_offset, EFI_IMAGE_REL_BASED_HIGHLOW);
             break;
           
           default:
@@ -998,28 +1040,18 @@ WriteDebug32 (
   )
 {
   UINT32                              Len;
-  UINT32                              DebugOffset;
   EFI_IMAGE_OPTIONAL_HEADER_UNION     *NtHdr;
   EFI_IMAGE_DATA_DIRECTORY            *DataDir;
   EFI_IMAGE_DEBUG_DIRECTORY_ENTRY     *Dir;
   EFI_IMAGE_DEBUG_CODEVIEW_NB10_ENTRY *Nb10;
 
   Len = strlen(mInImageName) + 1;
-  DebugOffset = mCoffOffset;
 
-  mCoffOffset += sizeof(EFI_IMAGE_DEBUG_DIRECTORY_ENTRY)
-    + sizeof(EFI_IMAGE_DEBUG_CODEVIEW_NB10_ENTRY)
-    + Len;
-  mCoffOffset = CoffAlign(mCoffOffset);
-
-  mCoffFile = realloc(mCoffFile, mCoffOffset);
-  memset(mCoffFile + DebugOffset, 0, mCoffOffset - DebugOffset);
-
-  Dir = (EFI_IMAGE_DEBUG_DIRECTORY_ENTRY*)(mCoffFile + DebugOffset);
+  Dir = (EFI_IMAGE_DEBUG_DIRECTORY_ENTRY*)(mCoffFile + mDebugOffset);
   Dir->Type = EFI_IMAGE_DEBUG_TYPE_CODEVIEW;
   Dir->SizeOfData = sizeof(EFI_IMAGE_DEBUG_CODEVIEW_NB10_ENTRY) + Len;
-  Dir->RVA = DebugOffset + sizeof(EFI_IMAGE_DEBUG_DIRECTORY_ENTRY);
-  Dir->FileOffset = DebugOffset + sizeof(EFI_IMAGE_DEBUG_DIRECTORY_ENTRY);
+  Dir->RVA = mDebugOffset + sizeof(EFI_IMAGE_DEBUG_DIRECTORY_ENTRY);
+  Dir->FileOffset = mDebugOffset + sizeof(EFI_IMAGE_DEBUG_DIRECTORY_ENTRY);
 
   Nb10 = (EFI_IMAGE_DEBUG_CODEVIEW_NB10_ENTRY*)(Dir + 1);
   Nb10->Signature = CODEVIEW_SIGNATURE_NB10;
@@ -1028,20 +1060,8 @@ WriteDebug32 (
 
   NtHdr = (EFI_IMAGE_OPTIONAL_HEADER_UNION *)(mCoffFile + mNtHdrOffset);
   DataDir = &NtHdr->Pe32.OptionalHeader.DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_DEBUG];
-  DataDir->VirtualAddress = DebugOffset;
-  DataDir->Size = mCoffOffset - DebugOffset;
-  if (DataDir->Size == 0) {
-    // If no debug, null out the directory entry and don't add the .debug section
-    DataDir->VirtualAddress = 0;
-    NtHdr->Pe32.FileHeader.NumberOfSections--;
-  } else {
-    DataDir->VirtualAddress = DebugOffset;
-    CreateSectionHeader (".debug", DebugOffset, mCoffOffset - DebugOffset,
-            EFI_IMAGE_SCN_CNT_INITIALIZED_DATA
-            | EFI_IMAGE_SCN_MEM_DISCARDABLE
-            | EFI_IMAGE_SCN_MEM_READ);
-
-  }
+  DataDir->VirtualAddress = mDebugOffset;
+  DataDir->Size = Dir->SizeOfData + sizeof(EFI_IMAGE_DEBUG_DIRECTORY_ENTRY);
 }
 
 STATIC

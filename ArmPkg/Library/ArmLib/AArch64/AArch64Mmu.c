@@ -34,24 +34,26 @@ ArmMemoryAttributeToPageAttribute (
 {
   switch (Attributes) {
   case ARM_MEMORY_REGION_ATTRIBUTE_WRITE_BACK:
-    return TT_ATTR_INDX_MEMORY_WRITE_BACK;
-  case ARM_MEMORY_REGION_ATTRIBUTE_WRITE_THROUGH:
-    return TT_ATTR_INDX_MEMORY_WRITE_THROUGH;
-  case ARM_MEMORY_REGION_ATTRIBUTE_DEVICE:
-    return TT_ATTR_INDX_DEVICE_MEMORY;
-  case ARM_MEMORY_REGION_ATTRIBUTE_UNCACHED_UNBUFFERED:
-    return TT_ATTR_INDX_MEMORY_NON_CACHEABLE;
   case ARM_MEMORY_REGION_ATTRIBUTE_NONSECURE_WRITE_BACK:
-    return TT_ATTR_INDX_MEMORY_WRITE_BACK;
+    return TT_ATTR_INDX_MEMORY_WRITE_BACK | TT_SH_INNER_SHAREABLE;
+
+  case ARM_MEMORY_REGION_ATTRIBUTE_WRITE_THROUGH:
   case ARM_MEMORY_REGION_ATTRIBUTE_NONSECURE_WRITE_THROUGH:
-    return TT_ATTR_INDX_MEMORY_WRITE_THROUGH;
-  case ARM_MEMORY_REGION_ATTRIBUTE_NONSECURE_DEVICE:
-    return TT_ATTR_INDX_DEVICE_MEMORY;
+    return TT_ATTR_INDX_MEMORY_WRITE_THROUGH | TT_SH_INNER_SHAREABLE;
+
+  // Uncached and device mappings are treated as outer shareable by default,
+  case ARM_MEMORY_REGION_ATTRIBUTE_UNCACHED_UNBUFFERED:
   case ARM_MEMORY_REGION_ATTRIBUTE_NONSECURE_UNCACHED_UNBUFFERED:
     return TT_ATTR_INDX_MEMORY_NON_CACHEABLE;
+
   default:
     ASSERT(0);
-    return TT_ATTR_INDX_DEVICE_MEMORY;
+  case ARM_MEMORY_REGION_ATTRIBUTE_DEVICE:
+  case ARM_MEMORY_REGION_ATTRIBUTE_NONSECURE_DEVICE:
+    if (ArmReadCurrentEL () == AARCH64_EL2)
+      return TT_ATTR_INDX_DEVICE_MEMORY | TT_TABLE_XN;
+    else
+      return TT_ATTR_INDX_DEVICE_MEMORY | TT_TABLE_UXN | TT_TABLE_PXN;
   }
 }
 
@@ -95,48 +97,6 @@ PageAttributeToGcdAttribute (
   }
 
   return GcdAttributes;
-}
-
-UINT64
-GcdAttributeToPageAttribute (
-  IN UINT64 GcdAttributes
-  )
-{
-  UINT64  PageAttributes;
-
-  switch (GcdAttributes & 0xFF) {
-  case EFI_MEMORY_UC:
-    PageAttributes = TT_ATTR_INDX_DEVICE_MEMORY;
-    break;
-  case EFI_MEMORY_WC:
-    PageAttributes = TT_ATTR_INDX_MEMORY_NON_CACHEABLE;
-    break;
-  case EFI_MEMORY_WT:
-    PageAttributes = TT_ATTR_INDX_MEMORY_WRITE_THROUGH;
-    break;
-  case EFI_MEMORY_WB:
-    PageAttributes = TT_ATTR_INDX_MEMORY_WRITE_BACK;
-    break;
-  default:
-    DEBUG ((EFI_D_ERROR, "GcdAttributeToPageAttribute: 0x%X attributes is not supported.\n", GcdAttributes));
-    ASSERT (0);
-    // If no match has been found then we mark the memory as device memory.
-    // The only side effect of using device memory should be a slow down in the performance.
-    PageAttributes = TT_ATTR_INDX_DEVICE_MEMORY;
-  }
-
-  // Determine protection attributes
-  if (GcdAttributes & EFI_MEMORY_WP) {
-    // Read only cases map to write-protect
-    PageAttributes |= TT_AP_RO_RO;
-  }
-
-  // Process eXecute Never attribute
-  if (GcdAttributes & EFI_MEMORY_XP) {
-    PageAttributes |= (TT_PXN_MASK | TT_UXN_MASK);
-  }
-
-  return PageAttributes;
 }
 
 ARM_MEMORY_REGION_ATTRIBUTES
@@ -244,7 +204,7 @@ GetBlockEntryListFromAddress (
   IN  UINT64        RegionStart,
   OUT UINTN        *TableLevel,
   IN OUT UINT64    *BlockEntrySize,
-  IN OUT UINT64   **LastBlockEntry
+  OUT UINT64      **LastBlockEntry
   )
 {
   UINTN   RootTableLevel;
@@ -276,54 +236,36 @@ GetBlockEntryListFromAddress (
     return NULL;
   }
 
-  // Ensure the required size is aligned on 4KB boundary
-  if ((*BlockEntrySize & (SIZE_4KB - 1)) != 0) {
+  // Ensure the required size is aligned on 4KB boundary and not 0
+  if ((*BlockEntrySize & (SIZE_4KB - 1)) != 0 || *BlockEntrySize == 0) {
     ASSERT_EFI_ERROR (EFI_INVALID_PARAMETER);
     return NULL;
   }
 
-  //
-  // Calculate LastBlockEntry from T0SZ - this is the last block entry of the root Translation table
-  //
   T0SZ = ArmGetTCR () & TCR_T0SZ_MASK;
   // Get the Table info from T0SZ
   GetRootTranslationTableInfo (T0SZ, &RootTableLevel, &RootTableEntryCount);
-  // The last block of the root table depends on the number of entry in this table
-  *LastBlockEntry = TT_LAST_BLOCK_ADDRESS(RootTable, RootTableEntryCount);
 
   // If the start address is 0x0 then we use the size of the region to identify the alignment
   if (RegionStart == 0) {
     // Identify the highest possible alignment for the Region Size
-    for (BaseAddressAlignment = 0; BaseAddressAlignment < 64; BaseAddressAlignment++) {
-      if ((1 << BaseAddressAlignment) & *BlockEntrySize) {
-        break;
-      }
-    }
+    BaseAddressAlignment = LowBitSet64 (*BlockEntrySize);
   } else {
     // Identify the highest possible alignment for the Base Address
-    for (BaseAddressAlignment = 0; BaseAddressAlignment < 64; BaseAddressAlignment++) {
-      if ((1 << BaseAddressAlignment) & RegionStart) {
-        break;
-      }
-    }
+    BaseAddressAlignment = LowBitSet64 (RegionStart);
   }
 
-  // Identify the Page Level the RegionStart must belongs to
-  PageLevel = 3 - ((BaseAddressAlignment - 12) / 9);
+  // Identify the Page Level the RegionStart must belong to. Note that PageLevel
+  // should be at least 1 since block translations are not supported at level 0
+  PageLevel = MAX (3 - ((BaseAddressAlignment - 12) / 9), 1);
 
   // If the required size is smaller than the current block size then we need to go to the page below.
   // The PageLevel was calculated on the Base Address alignment but did not take in account the alignment
   // of the allocation size
-  if (*BlockEntrySize < TT_BLOCK_ENTRY_SIZE_AT_LEVEL (PageLevel)) {
+  while (*BlockEntrySize < TT_BLOCK_ENTRY_SIZE_AT_LEVEL (PageLevel)) {
     // It does not fit so we need to go a page level above
     PageLevel++;
   }
-
-  // Expose the found PageLevel to the caller
-  *TableLevel = PageLevel;
-
-  // Now, we have the Table Level we can get the Block Size associated to this table
-  *BlockEntrySize = TT_BLOCK_ENTRY_SIZE_AT_LEVEL (PageLevel);
 
   //
   // Get the Table Descriptor for the corresponding PageLevel. We need to decompose RegionStart to get appropriate entries
@@ -337,13 +279,10 @@ GetBlockEntryListFromAddress (
       // Go to the next table
       TranslationTable = (UINT64*)(*BlockEntry & TT_ADDRESS_MASK_DESCRIPTION_TABLE);
 
-      // If we are at the last level then update the output
+      // If we are at the last level then update the last level to next level
       if (IndexLevel == PageLevel) {
-        // And get the appropriate BlockEntry at the next level
-        BlockEntry = (UINT64*)TT_GET_ENTRY_FOR_ADDRESS (TranslationTable, IndexLevel + 1, RegionStart);
-
-        // Set the last block for this new table
-        *LastBlockEntry = TT_LAST_BLOCK_ADDRESS(TranslationTable, TT_ENTRY_COUNT);
+        // Enter the next level
+        PageLevel++;
       }
     } else if ((*BlockEntry & TT_TYPE_MASK) == TT_TYPE_BLOCK_ENTRY) {
       // If we are not at the last level then we need to split this BlockEntry
@@ -356,7 +295,8 @@ GetBlockEntryListFromAddress (
         if (Attributes & TT_PXN_MASK) {
           TableAttributes = TT_TABLE_PXN;
         }
-        if (Attributes & TT_UXN_MASK) {
+        // XN maps to UXN in the EL1&0 translation regime
+        if (Attributes & TT_XN_MASK) {
           TableAttributes = TT_TABLE_XN;
         }
         if (Attributes & TT_NS) {
@@ -377,11 +317,10 @@ GetBlockEntryListFromAddress (
         }
 
         // Create a new translation table
-        TranslationTable = (UINT64*)AllocatePages (EFI_SIZE_TO_PAGES((TT_ENTRY_COUNT * sizeof(UINT64)) + TT_ALIGNMENT_DESCRIPTION_TABLE));
+        TranslationTable = (UINT64*)AllocateAlignedPages (EFI_SIZE_TO_PAGES(TT_ENTRY_COUNT * sizeof(UINT64)), TT_ALIGNMENT_DESCRIPTION_TABLE);
         if (TranslationTable == NULL) {
           return NULL;
         }
-        TranslationTable = (UINT64*)((UINTN)TranslationTable & TT_ADDRESS_MASK_DESCRIPTION_TABLE);
 
         // Populate the newly created lower level table
         SubTableBlockEntry = TranslationTable;
@@ -392,11 +331,6 @@ GetBlockEntryListFromAddress (
 
         // Fill the BlockEntry with the new TranslationTable
         *BlockEntry = ((UINTN)TranslationTable & TT_ADDRESS_MASK_DESCRIPTION_TABLE) | TableAttributes | TT_TYPE_TABLE_ENTRY;
-        // Update the last block entry with the newly created translation table
-        *LastBlockEntry = TT_LAST_BLOCK_ADDRESS(TranslationTable, TT_ENTRY_COUNT);
-
-        // Block Entry points at the beginning of the Translation Table
-        BlockEntry = TranslationTable;
       }
     } else {
       if (IndexLevel != PageLevel) {
@@ -405,61 +339,59 @@ GetBlockEntryListFromAddress (
         //
 
         // Create a new translation table
-        TranslationTable = (UINT64*)AllocatePages (EFI_SIZE_TO_PAGES((TT_ENTRY_COUNT * sizeof(UINT64)) + TT_ALIGNMENT_DESCRIPTION_TABLE));
+        TranslationTable = (UINT64*)AllocateAlignedPages (EFI_SIZE_TO_PAGES(TT_ENTRY_COUNT * sizeof(UINT64)), TT_ALIGNMENT_DESCRIPTION_TABLE);
         if (TranslationTable == NULL) {
           return NULL;
         }
-        TranslationTable = (UINT64*)((UINTN)TranslationTable & TT_ADDRESS_MASK_DESCRIPTION_TABLE);
 
         ZeroMem (TranslationTable, TT_ENTRY_COUNT * sizeof(UINT64));
 
         // Fill the new BlockEntry with the TranslationTable
         *BlockEntry = ((UINTN)TranslationTable & TT_ADDRESS_MASK_DESCRIPTION_TABLE) | TT_TYPE_TABLE_ENTRY;
-        // Update the last block entry with the newly created translation table
-        *LastBlockEntry = TT_LAST_BLOCK_ADDRESS(TranslationTable, TT_ENTRY_COUNT);
-      } else {
-        //
-        // Case when the new region is part of an existing page table
-        //
-        *LastBlockEntry = TT_LAST_BLOCK_ADDRESS(TranslationTable, TT_ENTRY_COUNT);
       }
     }
   }
+
+  // Expose the found PageLevel to the caller
+  *TableLevel = PageLevel;
+
+  // Now, we have the Table Level we can get the Block Size associated to this table
+  *BlockEntrySize = TT_BLOCK_ENTRY_SIZE_AT_LEVEL (PageLevel);
+
+  // The last block of the root table depends on the number of entry in this table,
+  // otherwise it is always the (TT_ENTRY_COUNT - 1)th entry in the table.
+  *LastBlockEntry = TT_LAST_BLOCK_ADDRESS(TranslationTable,
+      (PageLevel == RootTableLevel) ? RootTableEntryCount : TT_ENTRY_COUNT);
 
   return BlockEntry;
 }
 
 STATIC
 RETURN_STATUS
-FillTranslationTable (
-  IN  UINT64                        *RootTable,
-  IN  ARM_MEMORY_REGION_DESCRIPTOR  *MemoryRegion
+UpdateRegionMapping (
+  IN  UINT64  *RootTable,
+  IN  UINT64  RegionStart,
+  IN  UINT64  RegionLength,
+  IN  UINT64  Attributes,
+  IN  UINT64  BlockEntryMask
   )
 {
-  UINT64  Attributes;
   UINT32  Type;
-  UINT64  RegionStart;
-  UINT64  RemainingRegionLength;
-  UINT64 *BlockEntry;
-  UINT64 *LastBlockEntry;
+  UINT64  *BlockEntry;
+  UINT64  *LastBlockEntry;
   UINT64  BlockEntrySize;
   UINTN   TableLevel;
 
   // Ensure the Length is aligned on 4KB boundary
-  if ((MemoryRegion->Length == 0) || ((MemoryRegion->Length & (SIZE_4KB - 1)) != 0)) {
+  if ((RegionLength == 0) || ((RegionLength & (SIZE_4KB - 1)) != 0)) {
     ASSERT_EFI_ERROR (EFI_INVALID_PARAMETER);
     return RETURN_INVALID_PARAMETER;
   }
 
-  // Variable initialization
-  Attributes = ArmMemoryAttributeToPageAttribute (MemoryRegion->Attributes) | TT_AF;
-  RemainingRegionLength = MemoryRegion->Length;
-  RegionStart = MemoryRegion->VirtualBase;
-
   do {
     // Get the first Block Entry that matches the Virtual Address and also the information on the Table Descriptor
     // such as the the size of the Block Entry and the address of the last BlockEntry of the Table Descriptor
-    BlockEntrySize = RemainingRegionLength;
+    BlockEntrySize = RegionLength;
     BlockEntry = GetBlockEntryListFromAddress (RootTable, RegionStart, &TableLevel, &BlockEntrySize, &LastBlockEntry);
     if (BlockEntry == NULL) {
       // GetBlockEntryListFromAddress() return NULL when it fails to allocate new pages from the Translation Tables
@@ -474,16 +406,40 @@ FillTranslationTable (
 
     do {
       // Fill the Block Entry with attribute and output block address
-      *BlockEntry = (RegionStart & TT_ADDRESS_MASK_BLOCK_ENTRY) | Attributes | Type;
+      *BlockEntry &= BlockEntryMask;
+      *BlockEntry |= (RegionStart & TT_ADDRESS_MASK_BLOCK_ENTRY) | Attributes | Type;
 
       // Go to the next BlockEntry
       RegionStart += BlockEntrySize;
-      RemainingRegionLength -= BlockEntrySize;
+      RegionLength -= BlockEntrySize;
       BlockEntry++;
-    } while ((RemainingRegionLength >= BlockEntrySize) && (BlockEntry <= LastBlockEntry));
-  } while (RemainingRegionLength != 0);
+
+      // Break the inner loop when next block is a table
+      // Rerun GetBlockEntryListFromAddress to avoid page table memory leak
+      if (TableLevel != 3 &&
+          (*BlockEntry & TT_TYPE_MASK) == TT_TYPE_TABLE_ENTRY) {
+            break;
+      }
+    } while ((RegionLength >= BlockEntrySize) && (BlockEntry <= LastBlockEntry));
+  } while (RegionLength != 0);
 
   return RETURN_SUCCESS;
+}
+
+STATIC
+RETURN_STATUS
+FillTranslationTable (
+  IN  UINT64                        *RootTable,
+  IN  ARM_MEMORY_REGION_DESCRIPTOR  *MemoryRegion
+  )
+{
+  return UpdateRegionMapping (
+           RootTable,
+           MemoryRegion->VirtualBase,
+           MemoryRegion->Length,
+           ArmMemoryAttributeToPageAttribute (MemoryRegion->Attributes) | TT_AF,
+           0
+           );
 }
 
 RETURN_STATUS
@@ -510,16 +466,100 @@ SetMemoryAttributes (
     return Status;
   }
 
-  // Flush d-cache so descriptors make it back to uncached memory for subsequent table walks
-  // flush and invalidate pages
-  ArmCleanInvalidateDataCache ();
+  // Invalidate all TLB entries so changes are synced
+  ArmInvalidateTlb ();
 
-  ArmInvalidateInstructionCache ();
+  return RETURN_SUCCESS;
+}
+
+STATIC
+RETURN_STATUS
+SetMemoryRegionAttribute (
+  IN  EFI_PHYSICAL_ADDRESS      BaseAddress,
+  IN  UINT64                    Length,
+  IN  UINT64                    Attributes,
+  IN  UINT64                    BlockEntryMask
+  )
+{
+  RETURN_STATUS                Status;
+  UINT64                       *RootTable;
+
+  RootTable = ArmGetTTBR0BaseAddress ();
+
+  Status = UpdateRegionMapping (RootTable, BaseAddress, Length, Attributes, BlockEntryMask);
+  if (RETURN_ERROR (Status)) {
+    return Status;
+  }
 
   // Invalidate all TLB entries so changes are synced
   ArmInvalidateTlb ();
 
   return RETURN_SUCCESS;
+}
+
+RETURN_STATUS
+ArmSetMemoryRegionNoExec (
+  IN  EFI_PHYSICAL_ADDRESS      BaseAddress,
+  IN  UINT64                    Length
+  )
+{
+  UINT64    Val;
+
+  if (ArmReadCurrentEL () == AARCH64_EL1) {
+    Val = TT_PXN_MASK | TT_UXN_MASK;
+  } else {
+    Val = TT_XN_MASK;
+  }
+
+  return SetMemoryRegionAttribute (
+           BaseAddress,
+           Length,
+           Val,
+           ~TT_ADDRESS_MASK_BLOCK_ENTRY);
+}
+
+RETURN_STATUS
+ArmClearMemoryRegionNoExec (
+  IN  EFI_PHYSICAL_ADDRESS      BaseAddress,
+  IN  UINT64                    Length
+  )
+{
+  UINT64 Mask;
+
+  // XN maps to UXN in the EL1&0 translation regime
+  Mask = ~(TT_ADDRESS_MASK_BLOCK_ENTRY | TT_PXN_MASK | TT_XN_MASK);
+
+  return SetMemoryRegionAttribute (
+           BaseAddress,
+           Length,
+           0,
+           Mask);
+}
+
+RETURN_STATUS
+ArmSetMemoryRegionReadOnly (
+  IN  EFI_PHYSICAL_ADDRESS      BaseAddress,
+  IN  UINT64                    Length
+  )
+{
+  return SetMemoryRegionAttribute (
+           BaseAddress,
+           Length,
+           TT_AP_RO_RO,
+           ~TT_ADDRESS_MASK_BLOCK_ENTRY);
+}
+
+RETURN_STATUS
+ArmClearMemoryRegionReadOnly (
+  IN  EFI_PHYSICAL_ADDRESS      BaseAddress,
+  IN  UINT64                    Length
+  )
+{
+  return SetMemoryRegionAttribute (
+           BaseAddress,
+           Length,
+           TT_AP_NO_RO,
+           ~(TT_ADDRESS_MASK_BLOCK_ENTRY | TT_AP_MASK));
 }
 
 RETURN_STATUS
@@ -588,7 +628,8 @@ ArmConfigureMmu (
       return RETURN_UNSUPPORTED;
     }
   } else if (ArmReadCurrentEL () == AARCH64_EL1) {
-    TCR = T0SZ | TCR_TG0_4KB;
+    // Due to Cortex-A57 erratum #822227 we must set TG1[1] == 1, regardless of EPD1.
+    TCR = T0SZ | TCR_TG0_4KB | TCR_TG1_4KB | TCR_EPD1;
 
     // Set the Physical Address Size using MaxAddress
     if (MaxAddress < SIZE_4GB) {
@@ -617,12 +658,11 @@ ArmConfigureMmu (
   ArmSetTCR (TCR);
 
   // Allocate pages for translation table
-  TranslationTablePageCount = EFI_SIZE_TO_PAGES((RootTableEntryCount * sizeof(UINT64)) + TT_ALIGNMENT_DESCRIPTION_TABLE);
-  TranslationTable = AllocatePages (TranslationTablePageCount);
+  TranslationTablePageCount = EFI_SIZE_TO_PAGES(RootTableEntryCount * sizeof(UINT64));
+  TranslationTable = (UINT64*)AllocateAlignedPages (TranslationTablePageCount, TT_ALIGNMENT_DESCRIPTION_TABLE);
   if (TranslationTable == NULL) {
     return RETURN_OUT_OF_RESOURCES;
   }
-  TranslationTable = (VOID*)((UINTN)TranslationTable & TT_ADDRESS_MASK_DESCRIPTION_TABLE);
   // We set TTBR0 just after allocating the table to retrieve its location from the subsequent
   // functions without needing to pass this value across the functions. The MMU is only enabled
   // after the translation tables are populated.

@@ -15,8 +15,47 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "PlatformBootManager.h"
 
+/**
+  Perform the platform diagnostic, such like test memory. OEM/IBV also
+  can customize this function to support specific platform diagnostic.
 
-EFI_GUID mUefiShellFileGuid = { 0x7C04A583, 0x9E3E, 0x4f1c, 0xAD, 0x65, 0xE0, 0x52, 0x68, 0xD0, 0xB4, 0xD1 };
+  @param MemoryTestLevel  The memory test intensive level
+  @param QuietBoot        Indicate if need to enable the quiet boot
+
+**/
+VOID
+PlatformBootManagerDiagnostics (
+  IN EXTENDMEM_COVERAGE_LEVEL    MemoryTestLevel,
+  IN BOOLEAN                     QuietBoot
+  )
+{
+  EFI_STATUS                     Status;
+
+  //
+  // Here we can decide if we need to show
+  // the diagnostics screen
+  // Notes: this quiet boot code should be remove
+  // from the graphic lib
+  //
+  if (QuietBoot) {
+    BootLogoEnableLogo (ImageFormatBmp, PcdGetPtr(PcdLogoFile), EdkiiPlatformLogoDisplayAttributeCenter, 0, 0);
+
+    //
+    // Perform system diagnostic
+    //
+    Status = PlatformBootManagerMemoryTest (MemoryTestLevel);
+    if (EFI_ERROR (Status)) {
+      BootLogoDisableLogo ();
+    }
+
+    return;
+  }
+
+  //
+  // Perform system diagnostic
+  //
+  Status = PlatformBootManagerMemoryTest (MemoryTestLevel);
+}
 
 /**
   Return the index of the load option in the load option array.
@@ -178,7 +217,7 @@ PlatformBootManagerBeforeConsole (
   //
   // Register UEFI Shell
   //
-  PlatformRegisterFvBootOption (&mUefiShellFileGuid, L"UEFI Shell", LOAD_OPTION_ACTIVE);
+  PlatformRegisterFvBootOption (PcdGetPtr (PcdShellFile), L"UEFI Shell", LOAD_OPTION_ACTIVE);
 }
 
 /**
@@ -197,12 +236,19 @@ PlatformBootManagerAfterConsole (
   VOID
   )
 {
-  Print (
-    L"\n"
-    L"F2    to enter Boot Manager Menu.\n"
-    L"Enter to boot directly.\n"
-    L"\n"
-    );
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL  Black;
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL  White;
+
+  Black.Blue = Black.Green = Black.Red = Black.Reserved = 0;
+  White.Blue = White.Green = White.Red = White.Reserved = 0xFF;
+
+  EfiBootManagerConnectAll ();
+  EfiBootManagerRefreshAllBootOption ();
+
+  PlatformBootManagerDiagnostics (QUICK, TRUE);
+  
+  PrintXY (10, 10, &White, &Black, L"F2    to enter Boot Manager Menu.                                            ");
+  PrintXY (10, 30, &White, &Black, L"Enter to boot directly.");
 }
 
 /**
@@ -216,5 +262,21 @@ PlatformBootManagerWaitCallback (
   UINT16          TimeoutRemain
   )
 {
-  Print (L"\r%-2d seconds remained...", TimeoutRemain);
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL Black;
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL White;
+  UINT16                        Timeout;
+
+  Timeout = PcdGet16 (PcdPlatformBootTimeOut);
+
+  Black.Blue = Black.Green = Black.Red = Black.Reserved = 0;
+  White.Blue = White.Green = White.Red = White.Reserved = 0xFF;
+
+  BootLogoUpdateProgress (
+    White,
+    Black,
+    L"Start boot option",
+    White,
+    (Timeout - TimeoutRemain) * 100 / Timeout,
+    0
+    );
 }

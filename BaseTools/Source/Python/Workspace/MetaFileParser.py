@@ -2,6 +2,7 @@
 # This file is used to parse meta files
 #
 # Copyright (c) 2008 - 2015, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2015, Hewlett Packard Enterprise Development, L.P.<BR>
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -342,9 +343,14 @@ class MetaFileParser(object):
         Name, Value = self._ValueList[1], self._ValueList[2]
         # Sometimes, we need to make differences between EDK and EDK2 modules 
         if Name == 'INF_VERSION':
-            try:
-                self._Version = int(Value, 0)
-            except:
+            if re.match(r'0[xX][\da-f-A-F]{5,8}', Value):
+                self._Version = int(Value, 0)   
+            elif re.match(r'\d+\.\d+', Value):
+                ValueList = Value.split('.')
+                Major = '%04o' % int(ValueList[0], 0)
+                Minor = '%04o' % int(ValueList[1], 0)
+                self._Version = int('0x' + Major + Minor, 0)
+            else:
                 EdkLogger.error('Parser', FORMAT_INVALID, "Invalid version number",
                                 ExtraData=self._CurrentLine, File=self.MetaFile, Line=self._LineIndex + 1)
 
@@ -1010,11 +1016,6 @@ class DscParser(MetaFileParser):
                                 File=self.MetaFile, Line=self._LineIndex + 1,
                                 ExtraData=self._CurrentLine)
             self._DirectiveStack.append((ItemType, self._LineIndex + 1, self._CurrentLine))
-        elif self._From > 0:
-            EdkLogger.error('Parser', FORMAT_INVALID,
-                            "No '!include' allowed in included file",
-                            ExtraData=self._CurrentLine, File=self.MetaFile,
-                            Line=self._LineIndex + 1)
 
         #
         # Model, Value1, Value2, Value3, Arch, ModuleType, BelongsToItem=-1, BelongsToFile=-1,
@@ -1479,6 +1480,12 @@ class DscParser(MetaFileParser):
             Parser = DscParser(IncludedFile1, self._FileType, IncludedFileTable,
                                Owner=Owner, From=Owner)
 
+            # Does not allow lower level included file to include upper level included file
+            if Parser._From != Owner and int(Owner) > int (Parser._From):
+                EdkLogger.error('parser', FILE_ALREADY_EXIST, File=self._FileWithError,
+                    Line=self._LineIndex + 1, ExtraData="{0} is already included at a higher level.".format(IncludedFile1))
+
+
             # set the parser status with current status
             Parser._SectionName = self._SectionName
             Parser._SectionType = self._SectionType
@@ -1518,7 +1525,7 @@ class DscParser(MetaFileParser):
 
         ValList, Valid, Index = AnalyzeDscPcd(self._ValueList[2], self._ItemType)
         if not Valid:
-            EdkLogger.error('build', FORMAT_INVALID, "Pcd format incorrect.", File=self._FileWithError, Line=self._LineIndex+1,
+            EdkLogger.error('build', FORMAT_INVALID, "Pcd format incorrect.", File=self._FileWithError, Line=self._LineIndex + 1,
                             ExtraData="%s.%s|%s" % (self._ValueList[0], self._ValueList[1], self._ValueList[2]))
         PcdValue = ValList[Index]
         if PcdValue:

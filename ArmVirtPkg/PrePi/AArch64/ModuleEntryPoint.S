@@ -25,8 +25,10 @@ GCC_ASM_IMPORT(ArmReadMpidr)
 GCC_ASM_IMPORT(ArmPlatformPeiBootAction)
 GCC_ASM_IMPORT(ArmPlatformStackSet)
 GCC_ASM_EXPORT(_ModuleEntryPoint)
+ASM_GLOBAL ASM_PFX(mSystemMemoryEnd)
 
-StartupAddr:        .8byte ASM_PFX(CEntryPoint)
+StartupAddr:                  .8byte ASM_PFX(CEntryPoint)
+ASM_PFX(mSystemMemoryEnd):    .8byte 0
 
 ASM_PFX(_ModuleEntryPoint):
   //
@@ -80,6 +82,8 @@ _SetupStackPosition:
   ldr   x2, PcdGet64 (PcdSystemMemorySize)
   sub   x2, x2, #1
   add   x1, x1, x2      // x1 = SystemMemoryTop = PcdSystemMemoryBase + PcdSystemMemorySize
+  adr   x2, mSystemMemoryEnd
+  str   x1, [x2]
 
   // Calculate Top of the Firmware Device
   ldr   x2, PcdGet64 (PcdFdBaseAddress)
@@ -154,16 +158,10 @@ _GetStackBase:
   cmp   x0, #1
   bne   _PrepareArguments
 
-_ReserveGlobalVariable:
-  LoadConstantToReg (FixedPcdGet32(PcdPeiGlobalVariableSize), x0)
-  // InitializePrimaryStack($GlobalVariableSize, $Tmp1, $Tmp2)
-  InitializePrimaryStack(x0, x1, x2)
-
 _PrepareArguments:
   mov   x0, x10
   mov   x1, x11
   mov   x2, x12
-  mov   x3, sp
 
   // Move sec startup address into a data register
   // Ensure we're jumping to FV version of the code (not boot remapped alias)
@@ -173,7 +171,6 @@ _PrepareArguments:
   //    x0 = MpId
   //    x1 = UefiMemoryBase
   //    x2 = StacksBase
-  //    x3 = GlobalVariableBase
   blr   x4
 
 _NeverReturn:

@@ -206,13 +206,9 @@ INF  MdeModulePkg/Universal/MemoryTest/NullMemoryTestDxe/NullMemoryTestDxe.inf
 INF  MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
 INF  Nt32Pkg/WinNtThunkDxe/WinNtThunkDxe.inf
 INF  Nt32Pkg/CpuRuntimeDxe/CpuRuntimeDxe.inf
-!if $(USE_NEW_BDS) == TRUE
 INF  MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
-INF  MdeModulePkg/Application/BootManagerMenuApp/BootManagerMenuApp.inf
+INF  MdeModulePkg/Application/UiApp/UiApp.inf
 INF  MdeModulePkg/Universal/DriverHealthManagerDxe/DriverHealthManagerDxe.inf
-!else
-INF  IntelFrameworkModulePkg/Universal/BdsDxe/BdsDxe.inf
-!endif
 INF  MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
 INF  Nt32Pkg/MiscSubClassPlatformDxe/MiscSubClassPlatformDxe.inf
 INF  Nt32Pkg/TimerDxe/TimerDxe.inf
@@ -252,7 +248,6 @@ INF  MdeModulePkg/Universal/DriverSampleDxe/DriverSampleDxe.inf
 INF  MdeModulePkg/Universal/Network/DpcDxe/DpcDxe.inf
 INF  MdeModulePkg/Universal/Network/ArpDxe/ArpDxe.inf
 INF  MdeModulePkg/Universal/Network/Dhcp4Dxe/Dhcp4Dxe.inf
-INF  MdeModulePkg/Universal/Network/Ip4ConfigDxe/Ip4ConfigDxe.inf
 INF  MdeModulePkg/Universal/Network/Ip4Dxe/Ip4Dxe.inf
 INF  MdeModulePkg/Universal/Network/MnpDxe/MnpDxe.inf
 INF  MdeModulePkg/Universal/Network/VlanConfigDxe/VlanConfigDxe.inf
@@ -262,6 +257,10 @@ INF  MdeModulePkg/Universal/Network/Udp4Dxe/Udp4Dxe.inf
 INF  Nt32Pkg/SnpNt32Dxe/SnpNt32Dxe.inf
 INF  MdeModulePkg/Universal/Network/UefiPxeBcDxe/UefiPxeBcDxe.inf
 INF  MdeModulePkg/Universal/Network/IScsiDxe/IScsiDxe.inf
+INF  NetworkPkg/HttpBootDxe/HttpBootDxe.inf
+INF  NetworkPkg/DnsDxe/DnsDxe.inf
+INF  NetworkPkg/HttpDxe/HttpDxe.inf
+INF  NetworkPkg/HttpUtilitiesDxe/HttpUtilitiesDxe.inf
 ################################################################################
 #
 # FILE statements are provided so that a platform integrator can include

@@ -15,13 +15,7 @@
 #ifndef __ARMGIC_H
 #define __ARMGIC_H
 
-//
-// GIC definitions
-//
-typedef enum {
-  ARM_GIC_ARCH_REVISION_2,
-  ARM_GIC_ARCH_REVISION_3
-} ARM_GIC_ARCH_REVISION;
+#include <Library/ArmGicArchLib.h>
 
 //
 // GIC Distributor
@@ -102,12 +96,6 @@ typedef enum {
 
 // Bit Mask for
 #define ARM_GIC_ICCIAR_ACKINTID                 0x3FF
-
-ARM_GIC_ARCH_REVISION
-EFIAPI
-ArmGicGetSupportedArchRevision (
-  VOID
-  );
 
 UINTN
 EFIAPI
@@ -229,6 +217,100 @@ ArmGicIsInterruptEnabled (
   IN UINTN                  GicDistributorBase,
   IN UINTN                  GicRedistributorBase,
   IN UINTN                  Source
+  );
+
+//
+// GIC revision 2 specific declarations
+//
+
+// Interrupts from 1020 to 1023 are considered as special interrupts (eg: spurious interrupts)
+#define ARM_GIC_IS_SPECIAL_INTERRUPTS(Interrupt) (((Interrupt) >= 1020) && ((Interrupt) <= 1023))
+
+VOID
+EFIAPI
+ArmGicV2SetupNonSecure (
+  IN  UINTN         MpId,
+  IN  INTN          GicDistributorBase,
+  IN  INTN          GicInterruptInterfaceBase
+  );
+
+VOID
+EFIAPI
+ArmGicV2EnableInterruptInterface (
+  IN  INTN          GicInterruptInterfaceBase
+  );
+
+VOID
+EFIAPI
+ArmGicV2DisableInterruptInterface (
+  IN  INTN          GicInterruptInterfaceBase
+  );
+
+UINTN
+EFIAPI
+ArmGicV2AcknowledgeInterrupt (
+  IN  UINTN          GicInterruptInterfaceBase
+  );
+
+VOID
+EFIAPI
+ArmGicV2EndOfInterrupt (
+  IN UINTN                  GicInterruptInterfaceBase,
+  IN UINTN                  Source
+  );
+
+//
+// GIC revision 3 specific declarations
+//
+
+#define ICC_SRE_EL2_SRE         (1 << 0)
+
+#define ARM_GICD_IROUTER_IRM BIT31
+
+UINT32
+EFIAPI
+ArmGicV3GetControlSystemRegisterEnable (
+  VOID
+  );
+
+VOID
+EFIAPI
+ArmGicV3SetControlSystemRegisterEnable (
+  IN UINT32         ControlSystemRegisterEnable
+  );
+
+VOID
+EFIAPI
+ArmGicV3EnableInterruptInterface (
+  VOID
+  );
+
+VOID
+EFIAPI
+ArmGicV3DisableInterruptInterface (
+  VOID
+  );
+
+UINTN
+EFIAPI
+ArmGicV3AcknowledgeInterrupt (
+  VOID
+  );
+
+VOID
+EFIAPI
+ArmGicV3EndOfInterrupt (
+  IN UINTN                  Source
+  );
+
+VOID
+ArmGicV3SetBinaryPointer (
+  IN UINTN                  BinaryPoint
+  );
+
+VOID
+ArmGicV3SetPriorityMask (
+  IN UINTN                  Priority
   );
 
 #endif

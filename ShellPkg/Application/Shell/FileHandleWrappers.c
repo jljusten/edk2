@@ -509,7 +509,8 @@ FileInterfaceStdInRead(
         if (StrStr(CurrentString + TabPos, L":") == NULL) {
           Cwd = ShellInfoObject.NewEfiShellProtocol->GetCurDir(NULL);
           if (Cwd != NULL) {
-            StrCpyS(TabStr, (*BufferSize)/sizeof(CHAR16), Cwd);
+            StrnCpyS(TabStr, (*BufferSize)/sizeof(CHAR16), Cwd, (*BufferSize)/sizeof(CHAR16) - 1);
+            StrCatS(TabStr, (*BufferSize)/sizeof(CHAR16), L"\\");
             if (TabStr[StrLen(TabStr)-1] == L'\\' && *(CurrentString + TabPos) == L'\\' ) {
               TabStr[StrLen(TabStr)-1] = CHAR_NULL;
             }
@@ -523,7 +524,7 @@ FileInterfaceStdInRead(
             StrnCatS(TabStr, (*BufferSize)/sizeof(CHAR16), CurrentString + TabPos, StringLen - TabPos);
           }
         } else {
-          StrCpyS(TabStr, (*BufferSize)/sizeof(CHAR16), CurrentString + TabPos);
+          StrnCpyS(TabStr, (*BufferSize)/sizeof(CHAR16), CurrentString + TabPos, (*BufferSize)/sizeof(CHAR16) - 1);
         }
         StrnCatS(TabStr, (*BufferSize)/sizeof(CHAR16), L"*", (*BufferSize)/sizeof(CHAR16) - 1 - StrLen(TabStr));
         FoundFileList = NULL;
@@ -1670,8 +1671,10 @@ FileInterfaceFileRead(
   OUT VOID                    *Buffer
   )
 {
-  CHAR8       *AsciiBuffer;
+  CHAR8       *AsciiStrBuffer;
+  CHAR16      *UscStrBuffer;
   UINTN       Size;
+  UINTN       CharNum;
   EFI_STATUS  Status;
   if (((EFI_FILE_PROTOCOL_FILE*)This)->Unicode) {
     //
@@ -1682,10 +1685,27 @@ FileInterfaceFileRead(
     //
     // Ascii
     //
-    AsciiBuffer = AllocateZeroPool((Size = *BufferSize));
-    Status = (((EFI_FILE_PROTOCOL_FILE*)This)->Orig->Read(((EFI_FILE_PROTOCOL_FILE*)This)->Orig, &Size, AsciiBuffer));
-    UnicodeSPrint(Buffer, *BufferSize, L"%a", AsciiBuffer);
-    FreePool(AsciiBuffer);
+    Size  = (*BufferSize) / sizeof(CHAR16);
+    AsciiStrBuffer = AllocateZeroPool(Size + sizeof(CHAR8));
+    if (AsciiStrBuffer == NULL) {
+      return EFI_OUT_OF_RESOURCES;
+    }
+    UscStrBuffer = AllocateZeroPool(*BufferSize + sizeof(CHAR16));
+    if (UscStrBuffer== NULL) {
+      SHELL_FREE_NON_NULL(AsciiStrBuffer);
+      return EFI_OUT_OF_RESOURCES;
+    }
+    Status = (((EFI_FILE_PROTOCOL_FILE*)This)->Orig->Read(((EFI_FILE_PROTOCOL_FILE*)This)->Orig, &Size, AsciiStrBuffer));
+    if (!EFI_ERROR(Status)) {
+      CharNum = UnicodeSPrint(UscStrBuffer, *BufferSize + sizeof(CHAR16), L"%a", AsciiStrBuffer);
+      if (CharNum == Size) {
+        CopyMem (Buffer, UscStrBuffer, *BufferSize);
+      } else {
+        Status = EFI_UNSUPPORTED;
+      }
+    }
+    SHELL_FREE_NON_NULL(AsciiStrBuffer);
+    SHELL_FREE_NON_NULL(UscStrBuffer);
     return (Status);
   }
 }

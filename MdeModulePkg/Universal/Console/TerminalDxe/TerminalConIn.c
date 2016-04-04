@@ -2,7 +2,7 @@
   Implementation for EFI_SIMPLE_TEXT_INPUT_PROTOCOL protocol.
 
 (C) Copyright 2014 Hewlett-Packard Development Company, L.P.<BR>
-Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -454,6 +454,7 @@ TranslateRawDataToEfiKey (
   case PCANSITYPE:
   case VT100TYPE:
   case VT100PLUSTYPE:
+  case TTYTERMTYPE:
     AnsiRawDataToUnicode (TerminalDevice);
     UnicodeToEfiKey (TerminalDevice);
     break;
@@ -546,7 +547,7 @@ TerminalConInTimerHandler (
     Status = SerialIo->SetAttributes (
                         SerialIo,
                         Mode->BaudRate,
-                        Mode->ReceiveFifoDepth,
+                        0, // the device's default FIFO depth
                         (UINT32) SerialInTimeOut,
                         (EFI_PARITY_TYPE) (Mode->Parity),
                         (UINT8) Mode->DataBits,
@@ -561,10 +562,11 @@ TerminalConInTimerHandler (
   }
   //
   // Check whether serial buffer is empty.
+  // Skip the key transfer loop only if the SerialIo protocol instance
+  // successfully reports EFI_SERIAL_INPUT_BUFFER_EMPTY.
   //
   Status = SerialIo->GetControl (SerialIo, &Control);
-
-  if ((Control & EFI_SERIAL_INPUT_BUFFER_EMPTY) == 0) {
+  if (EFI_ERROR (Status) || ((Control & EFI_SERIAL_INPUT_BUFFER_EMPTY) == 0)) {
     //
     // Fetch all the keys in the serial buffer,
     // and insert the byte stream into RawFIFO.
@@ -1222,7 +1224,8 @@ UnicodeToEfiKey (
         continue;
       }
 
-      if (UnicodeChar == 'O' && TerminalDevice->TerminalType == VT100TYPE) {
+      if (UnicodeChar == 'O' && (TerminalDevice->TerminalType == VT100TYPE ||
+                                 TerminalDevice->TerminalType == TTYTERMTYPE)) {
         TerminalDevice->InputState |= INPUT_STATE_O;
         TerminalDevice->ResetState = RESET_STATE_DEFAULT;
         continue;
@@ -1370,6 +1373,22 @@ UnicodeToEfiKey (
         default :
           break;
         }
+      } else if (TerminalDevice->TerminalType == TTYTERMTYPE) {
+        /* Also accept VT100 escape codes for F1-F4 for TTY term */
+        switch (UnicodeChar) {
+        case 'P':
+          Key.ScanCode = SCAN_F1;
+          break;
+        case 'Q':
+          Key.ScanCode = SCAN_F2;
+          break;
+        case 'R':
+          Key.ScanCode = SCAN_F3;
+          break;
+        case 'S':
+          Key.ScanCode = SCAN_F4;
+          break;
+        }
       }
 
       if (Key.ScanCode != SCAN_NULL) {
@@ -1393,7 +1412,8 @@ UnicodeToEfiKey (
       if (TerminalDevice->TerminalType == PCANSITYPE    ||
           TerminalDevice->TerminalType == VT100TYPE     ||
           TerminalDevice->TerminalType == VT100PLUSTYPE ||
-          TerminalDevice->TerminalType == VTUTF8TYPE) {
+          TerminalDevice->TerminalType == VTUTF8TYPE    ||
+          TerminalDevice->TerminalType == TTYTERMTYPE) {
         switch (UnicodeChar) {
         case 'A':
           Key.ScanCode = SCAN_UP;
@@ -1512,6 +1532,21 @@ UnicodeToEfiKey (
         }
       }
 
+      /*
+       * The VT220 escape codes that the TTY terminal accepts all have
+       * numeric codes, and there are no ambiguous prefixes shared with
+       * other terminal types.
+       */
+      if (TerminalDevice->TerminalType == TTYTERMTYPE &&
+          Key.ScanCode == SCAN_NULL &&
+          UnicodeChar >= '0' &&
+          UnicodeChar <= '9') {
+        TerminalDevice->TtyEscapeStr[0] = UnicodeChar;
+        TerminalDevice->TtyEscapeIndex = 1;
+        TerminalDevice->InputState |= INPUT_STATE_LEFTOPENBRACKET_2;
+        continue;
+      }
+
       if (Key.ScanCode != SCAN_NULL) {
         Key.UnicodeChar = 0;
         EfiKeyFiFoInsertOneKey (TerminalDevice, &Key);
@@ -1524,6 +1559,65 @@ UnicodeToEfiKey (
 
       break;
 
+
+    case INPUT_STATE_ESC | INPUT_STATE_LEFTOPENBRACKET | INPUT_STATE_LEFTOPENBRACKET_2:
+      /*
+       * Here we handle the VT220 escape codes that we accept.  This
+       * state is only used by the TTY terminal type.
+       */
+      Key.ScanCode = SCAN_NULL;
+      if (TerminalDevice->TerminalType == TTYTERMTYPE) {
+
+        if (UnicodeChar == '~' && TerminalDevice->TtyEscapeIndex <= 2) {
+          UINT16 EscCode;
+          TerminalDevice->TtyEscapeStr[TerminalDevice->TtyEscapeIndex] = 0; /* Terminate string */
+          EscCode = (UINT16) StrDecimalToUintn(TerminalDevice->TtyEscapeStr);
+          switch (EscCode) {
+          case 3:
+              Key.ScanCode = SCAN_DELETE;
+              break;
+          case 11:
+          case 12:
+          case 13:
+          case 14:
+          case 15:
+            Key.ScanCode = SCAN_F1 + EscCode - 11;
+            break;
+          case 17:
+          case 18:
+          case 19:
+          case 20:
+          case 21:
+            Key.ScanCode = SCAN_F6 + EscCode - 17;
+            break;
+          case 23:
+          case 24:
+            Key.ScanCode = SCAN_F11 + EscCode - 23;
+            break;
+          default:
+            break;
+          }
+        } else if (TerminalDevice->TtyEscapeIndex == 1){
+          /* 2 character escape code   */
+          TerminalDevice->TtyEscapeStr[TerminalDevice->TtyEscapeIndex++] = UnicodeChar;
+          continue;
+        }
+        else {
+          DEBUG ((EFI_D_ERROR, "Unexpected state in escape2\n"));
+        }
+      }
+      TerminalDevice->ResetState = RESET_STATE_DEFAULT;
+
+      if (Key.ScanCode != SCAN_NULL) {
+        Key.UnicodeChar = 0;
+        EfiKeyFiFoInsertOneKey (TerminalDevice, &Key);
+        TerminalDevice->InputState = INPUT_STATE_DEFAULT;
+        UnicodeToEfiKeyFlushState (TerminalDevice);
+        continue;
+      }
+
+      UnicodeToEfiKeyFlushState (TerminalDevice);
+      break;
 
     default:
       //
@@ -1559,8 +1653,14 @@ UnicodeToEfiKey (
     }
 
     if (UnicodeChar == DEL) {
-      Key.ScanCode    = SCAN_DELETE;
-      Key.UnicodeChar = 0;
+      if (TerminalDevice->TerminalType == TTYTERMTYPE) {
+        Key.ScanCode    = SCAN_NULL;
+        Key.UnicodeChar = CHAR_BACKSPACE;
+      }
+      else {
+        Key.ScanCode    = SCAN_DELETE;
+        Key.UnicodeChar = 0;
+      }
     } else {
       Key.ScanCode    = SCAN_NULL;
       Key.UnicodeChar = UnicodeChar;

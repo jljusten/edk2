@@ -4,7 +4,7 @@
   This local APIC library instance supports x2APIC capable processors
   which have xAPIC and x2APIC modes.
 
-  Copyright (c) 2010 - 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2010 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -15,6 +15,7 @@
 
 **/
 
+#include <Register/Cpuid.h>
 #include <Register/LocalApic.h>
 
 #include <Library/BaseLib.h>
@@ -658,6 +659,39 @@ SendInitSipiSipiAllExcludingSelf (
 }
 
 /**
+  Initialize the state of the SoftwareEnable bit in the Local APIC
+  Spurious Interrupt Vector register.
+
+  @param  Enable  If TRUE, then set SoftwareEnable to 1
+                  If FALSE, then set SoftwareEnable to 0.
+
+**/
+VOID
+EFIAPI
+InitializeLocalApicSoftwareEnable (
+  IN BOOLEAN  Enable
+  )
+{
+  LOCAL_APIC_SVR  Svr;
+
+  //
+  // Set local APIC software-enabled bit.
+  //
+  Svr.Uint32 = ReadLocalApicReg (XAPIC_SPURIOUS_VECTOR_OFFSET);
+  if (Enable) {
+    if (Svr.Bits.SoftwareEnable == 0) {
+      Svr.Bits.SoftwareEnable = 1;
+      WriteLocalApicReg (XAPIC_SPURIOUS_VECTOR_OFFSET, Svr.Uint32);
+    }
+  } else {
+    if (Svr.Bits.SoftwareEnable == 1) {
+      Svr.Bits.SoftwareEnable = 0;
+      WriteLocalApicReg (XAPIC_SPURIOUS_VECTOR_OFFSET, Svr.Uint32);
+    }
+  }
+}
+
+/**
   Programming Virtual Wire Mode.
 
   This function programs the local APIC for virtual wire mode following
@@ -773,7 +807,6 @@ InitializeApicTimer (
   IN UINT8   Vector
   )
 {
-  LOCAL_APIC_SVR       Svr;
   LOCAL_APIC_DCR       Dcr;
   LOCAL_APIC_LVT_TIMER LvtTimer;
   UINT32               Divisor;
@@ -781,9 +814,7 @@ InitializeApicTimer (
   //
   // Ensure local APIC is in software-enabled state.
   //
-  Svr.Uint32 = ReadLocalApicReg (XAPIC_SPURIOUS_VECTOR_OFFSET);
-  Svr.Bits.SoftwareEnable = 1;
-  WriteLocalApicReg (XAPIC_SPURIOUS_VECTOR_OFFSET, Svr.Uint32);
+  InitializeLocalApicSoftwareEnable (TRUE);
 
   //
   // Program init-count register.
@@ -818,6 +849,8 @@ InitializeApicTimer (
 /**
   Get the state of the local APIC timer.
 
+  This function will ASSERT if the local APIC is not software enabled.
+
   @param DivideValue   Return the divide value for the DCR. It is one of 1,2,4,8,16,32,64,128.
   @param PeriodicMode  Return the timer mode. If TRUE, timer mode is peridoic. Othewise, timer mode is one-shot.
   @param Vector        Return the timer interrupt vector number.
@@ -833,6 +866,13 @@ GetApicTimerState (
   UINT32 Divisor;
   LOCAL_APIC_DCR Dcr;
   LOCAL_APIC_LVT_TIMER LvtTimer;
+
+  //
+  // Check the APIC Software Enable/Disable bit (bit 8) in Spurious-Interrupt
+  // Vector Register.
+  // This bit will be 1, if local APIC is software enabled.
+  //
+  ASSERT ((ReadLocalApicReg(XAPIC_SPURIOUS_VECTOR_OFFSET) & BIT8) != 0);
 
   if (DivideValue != NULL) {
     Dcr.Uint32 = ReadLocalApicReg (XAPIC_TIMER_DIVIDE_CONFIGURATION_OFFSET);

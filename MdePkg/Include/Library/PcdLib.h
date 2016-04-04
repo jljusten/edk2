@@ -342,13 +342,13 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 #define PatchPcdSetPtr(TokenName, Size, Buffer) \
-                                            LibPatchPcdSetPtr (                        \
-                                              _gPcd_BinaryPatch_##TokenName,           \
+                                            LibPatchPcdSetPtrAndSize (                 \
+                                              (VOID *)_gPcd_BinaryPatch_##TokenName,   \
+                                              &_gPcd_BinaryPatch_Size_##TokenName,     \
                                               (UINTN)_PCD_PATCHABLE_##TokenName##_SIZE, \
                                               (Size),                                  \
                                               (Buffer)                                 \
                                               )
-
 /**
   Retrieves an 8-bit PCD token value based on a token name.
   
@@ -432,6 +432,63 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 #define PcdGetBool(TokenName)               _PCD_GET_MODE_BOOL_##TokenName
 
+
+/**
+  Retrieves the size of a fixed PCD token based on a token name.
+
+  Returns the size of the token specified by TokenName.
+  If TokenName is not a valid token in the token space, then the module will not build.
+
+  @param[in]  TokenName  The name of the PCD token to retrieve a current value size for.
+
+  @return     Return the size
+
+**/
+#define FixedPcdGetSize(TokenName)    _PCD_SIZE_##TokenName
+
+
+/**
+  Retrieves the size of a binary patchable PCD token based on a token name.
+
+  Returns the size of the token specified by TokenName.
+  If TokenName is not a valid token in the token space, then the module will not build.
+
+  @param[in]  TokenName  The name of the PCD token to retrieve a current value size for.
+
+  @return     Return the size
+
+**/
+#define PatchPcdGetSize(TokenName)    _gPcd_BinaryPatch_Size_##TokenName
+
+
+/**
+  Retrieves the size of the PCD token based on a token name.
+  
+  Returns the size of the token specified by TokenName.
+  If TokenName is not a valid token in the token space, then the module will not build.
+  
+  @param[in]   TokenName  The name of the PCD token to retrieve a current value size for.
+
+  @return      Return the size
+
+**/
+#define PcdGetSize(TokenName)         _PCD_GET_MODE_SIZE_##TokenName
+
+
+/**
+  Retrieve the size of a given PCD token.
+  
+  Returns the size of the token specified by TokenNumber and Guid. 
+  If Guid is NULL, then ASSERT(). 
+
+  @param[in]  Guid          Pointer to a 128-bit unique value that designates 
+                            which namespace to retrieve a value from.
+  @param[in]  TokenNumber   The PCD token number to retrieve a current value size for.
+
+  @return     Return the size.
+
+**/
+#define PcdGetExSize(Guid, TokenName) LibPcdGetExSize ((Guid), PcdTokenEx(Guid,TokenName))
 
 #ifndef DISABLE_NEW_DEPRECATED_INTERFACES
 /**
@@ -2000,7 +2057,7 @@ LibPcdGetNextTokenSpace (
   If SizeOfBuffer is NULL, then ASSERT().
   If SizeOfBuffer > 0 and Buffer is NULL, then ASSERT().
 
-  @param[in] PatchVariable      A pointer to the global variable in a module that is 
+  @param[out] PatchVariable     A pointer to the global variable in a module that is 
                                 the target of the set operation.
   @param[in] MaximumDatumSize   The maximum size allowed for the PCD entry specified by PatchVariable.
   @param[in, out] SizeOfBuffer  A pointer to the size, in bytes, of Buffer.
@@ -2012,7 +2069,7 @@ LibPcdGetNextTokenSpace (
 VOID *
 EFIAPI
 LibPatchPcdSetPtr (
-  IN        VOID        *PatchVariable,
+  OUT        VOID       *PatchVariable,
   IN        UINTN       MaximumDatumSize,
   IN OUT    UINTN       *SizeOfBuffer,
   IN CONST  VOID        *Buffer
@@ -2032,7 +2089,7 @@ LibPatchPcdSetPtr (
   If SizeOfBuffer is NULL, then ASSERT().
   If SizeOfBuffer > 0 and Buffer is NULL, then ASSERT().
 
-  @param[in] PatchVariable      A pointer to the global variable in a module that is
+  @param[out] PatchVariable     A pointer to the global variable in a module that is
                                 the target of the set operation.
   @param[in] MaximumDatumSize   The maximum size allowed for the PCD entry specified by PatchVariable.
   @param[in, out] SizeOfBuffer  A pointer to the size, in bytes, of Buffer.
@@ -2044,7 +2101,77 @@ LibPatchPcdSetPtr (
 RETURN_STATUS
 EFIAPI
 LibPatchPcdSetPtrS (
-  IN       VOID     *PatchVariable,
+  OUT      VOID     *PatchVariable,
+  IN       UINTN    MaximumDatumSize,
+  IN OUT   UINTN    *SizeOfBuffer,
+  IN CONST VOID     *Buffer
+  );
+
+/**
+  Sets a value and size of a patchable PCD entry that is type pointer.
+  
+  Sets the PCD entry specified by PatchVariable to the value specified by Buffer 
+  and SizeOfBuffer. Buffer is returned.  If SizeOfBuffer is greater than 
+  MaximumDatumSize, then set SizeOfBuffer to MaximumDatumSize and return 
+  NULL to indicate that the set operation was not actually performed.  
+  If SizeOfBuffer is set to MAX_ADDRESS, then SizeOfBuffer must be set to 
+  MaximumDatumSize and NULL must be returned.
+  
+  If PatchVariable is NULL, then ASSERT().
+  If SizeOfPatchVariable is NULL, then ASSERT().
+  If SizeOfBuffer is NULL, then ASSERT().
+  If SizeOfBuffer > 0 and Buffer is NULL, then ASSERT().
+
+  @param[out] PatchVariable     A pointer to the global variable in a module that is 
+                                the target of the set operation.
+  @param[out] SizeOfPatchVariable A pointer to the size, in bytes, of PatchVariable.
+  @param[in] MaximumDatumSize   The maximum size allowed for the PCD entry specified by PatchVariable.
+  @param[in, out] SizeOfBuffer  A pointer to the size, in bytes, of Buffer.
+  @param[in] Buffer             A pointer to the buffer to used to set the target variable.
+  
+  @return Return the pointer to the Buffer that was set.
+
+**/
+VOID *
+EFIAPI
+LibPatchPcdSetPtrAndSize (
+  OUT       VOID        *PatchVariable,
+  OUT       UINTN       *SizeOfPatchVariable,
+  IN        UINTN       MaximumDatumSize,
+  IN OUT    UINTN       *SizeOfBuffer,
+  IN CONST  VOID        *Buffer
+  );
+
+/**
+  Sets a value and size of a patchable PCD entry that is type pointer.
+
+  Sets the PCD entry specified by PatchVariable to the value specified
+  by Buffer and SizeOfBuffer. If SizeOfBuffer is greater than MaximumDatumSize,
+  then set SizeOfBuffer to MaximumDatumSize and return RETURN_INVALID_PARAMETER
+  to indicate that the set operation was not actually performed.
+  If SizeOfBuffer is set to MAX_ADDRESS, then SizeOfBuffer must be set to
+  MaximumDatumSize and RETURN_INVALID_PARAMETER must be returned.
+
+  If PatchVariable is NULL, then ASSERT().
+  If SizeOfPatchVariable is NULL, then ASSERT().
+  If SizeOfBuffer is NULL, then ASSERT().
+  If SizeOfBuffer > 0 and Buffer is NULL, then ASSERT().
+
+  @param[out] PatchVariable     A pointer to the global variable in a module that is
+                                the target of the set operation.
+  @param[out] SizeOfPatchVariable A pointer to the size, in bytes, of PatchVariable.
+  @param[in] MaximumDatumSize   The maximum size allowed for the PCD entry specified by PatchVariable.
+  @param[in, out] SizeOfBuffer  A pointer to the size, in bytes, of Buffer.
+  @param[in] Buffer             A pointer to the buffer to used to set the target variable.
+  
+  @return The status of the set operation.
+
+**/
+RETURN_STATUS
+EFIAPI
+LibPatchPcdSetPtrAndSizeS (
+  OUT      VOID     *PatchVariable,
+  OUT      UINTN    *SizeOfPatchVariable,
   IN       UINTN    MaximumDatumSize,
   IN OUT   UINTN    *SizeOfBuffer,
   IN CONST VOID     *Buffer

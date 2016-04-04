@@ -673,6 +673,7 @@ ShellOpenFileByName(
   EFI_STATUS                    Status;
   EFI_FILE_INFO                 *FileInfo;
   CHAR16                        *FileNameCopy;
+  EFI_STATUS                    Status2;
 
   //
   // ASSERT if FileName is NULL
@@ -702,8 +703,9 @@ ShellOpenFileByName(
       }
       PathCleanUpDirectories (FileNameCopy);
       if (PathRemoveLastItem (FileNameCopy)) {
-        ShellCreateDirectory (FileNameCopy, FileHandle);
-        ShellCloseFile (FileHandle);
+        if (!EFI_ERROR(ShellCreateDirectory (FileNameCopy, FileHandle))) {
+          ShellCloseFile (FileHandle);
+        }
       }
       SHELL_FREE_NON_NULL (FileNameCopy);
     }
@@ -718,8 +720,12 @@ ShellOpenFileByName(
       FileInfo = FileFunctionMap.GetFileInfo(*FileHandle);
       ASSERT(FileInfo != NULL);
       FileInfo->Attribute = Attributes;
-      Status = FileFunctionMap.SetFileInfo(*FileHandle, FileInfo);
+      Status2 = FileFunctionMap.SetFileInfo(*FileHandle, FileInfo);
       FreePool(FileInfo);
+      if (EFI_ERROR (Status2)) {
+        gEfiShellProtocol->CloseFile(*FileHandle);
+      }
+      Status = Status2;
     }
     return (Status);
   }
@@ -1275,6 +1281,8 @@ ShellExecute (
   name. If the DeviceName is not NULL, it returns the current directory name
   on specified drive.
 
+  Note that the current directory string should exclude the tailing backslash character.
+
   @param DeviceName             the name of the drive to get directory on
 
   @retval NULL                  the directory does not exist
@@ -1707,13 +1715,14 @@ ShellFindFilePath (
 
   Path = ShellGetEnvironmentVariable(L"cwd");
   if (Path != NULL) {
-    Size = StrSize(Path);
+    Size = StrSize(Path) + sizeof(CHAR16);
     Size += StrSize(FileName);
     TestPath = AllocateZeroPool(Size);
     if (TestPath == NULL) {
       return (NULL);
     }
     StrCpyS(TestPath, Size/sizeof(CHAR16), Path);
+    StrCatS(TestPath, Size/sizeof(CHAR16), L"\\");
     StrCatS(TestPath, Size/sizeof(CHAR16), FileName);
     Status = ShellOpenFileByName(TestPath, &Handle, EFI_FILE_MODE_READ, 0);
     if (!EFI_ERROR(Status)){
@@ -2521,7 +2530,7 @@ ShellCommandLineGetCount(
 }
 
 /**
-  Determins if a parameter is duplicated.
+  Determines if a parameter is duplicated.
 
   If Param is not NULL then it will point to a callee allocated string buffer
   with the parameter value if a duplicate is found.

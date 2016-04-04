@@ -1,5 +1,6 @@
 #/** @file
 #
+#  (C) Copyright 2015 Hewlett-Packard Development Company, L.P.<BR>
 #  Copyright (c) 2011-2014, ARM Ltd. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
@@ -66,16 +67,16 @@
   gArmMpCoreInfoPpiGuid
 
 [Guids]
-  gArmGlobalVariableGuid
   gArmMpCoreInfoGuid
 
 [FeaturePcd]
   gEmbeddedTokenSpaceGuid.PcdPrePiProduceMemoryTypeInformationHob
   gArmPlatformTokenSpaceGuid.PcdSendSgiToBringUpSecondaryCores
 
-[FixedPcd]
+[Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString
 
+[FixedPcd]
   gArmTokenSpaceGuid.PcdVFPEnabled
 
   gArmTokenSpaceGuid.PcdFdBaseAddress
@@ -86,8 +87,6 @@
 
   gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize
   gArmPlatformTokenSpaceGuid.PcdCPUCoreSecondaryStackSize
-
-  gArmPlatformTokenSpaceGuid.PcdPeiGlobalVariableSize
 
   gArmTokenSpaceGuid.PcdGicDistributorBase
   gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase

@@ -467,9 +467,18 @@ DRQClear2 (
   @param IdeRegisters     A pointer to EFI_IDE_REGISTERS data structure.
   @param Timeout          The time to complete the command, uses 100ns as a unit.
 
-  @retval EFI_SUCCESS          DRQ bit set within the time out.
-  @retval EFI_TIMEOUT          DRQ bit not set within the time out.
-  @retval EFI_ABORTED          DRQ bit not set caused by the command abort.
+  @retval EFI_SUCCESS           BSY bit cleared and DRQ bit set within the
+                                timeout.
+
+  @retval EFI_TIMEOUT           BSY bit not cleared within the timeout.
+
+  @retval EFI_ABORTED           Polling abandoned due to command abort.
+
+  @retval EFI_DEVICE_ERROR      Polling abandoned due to a non-abort error.
+
+  @retval EFI_NOT_READY         BSY bit cleared within timeout, and device
+                                reported "command complete" by clearing DRQ
+                                bit.
 
   @note  Read Status Register will clear interrupt status.
 
@@ -542,9 +551,19 @@ DRQReady (
   @param IdeRegisters     A pointer to EFI_IDE_REGISTERS data structure.
   @param Timeout          The time to complete the command, uses 100ns as a unit.
 
-  @retval EFI_SUCCESS           DRQ bit set within the time out.
-  @retval EFI_TIMEOUT           DRQ bit not set within the time out.
-  @retval EFI_ABORTED           DRQ bit not set caused by the command abort.
+  @retval EFI_SUCCESS           BSY bit cleared and DRQ bit set within the
+                                timeout.
+
+  @retval EFI_TIMEOUT           BSY bit not cleared within the timeout.
+
+  @retval EFI_ABORTED           Polling abandoned due to command abort.
+
+  @retval EFI_DEVICE_ERROR      Polling abandoned due to a non-abort error.
+
+  @retval EFI_NOT_READY         BSY bit cleared within timeout, and device
+                                reported "command complete" by clearing DRQ
+                                bit.
+
   @note  Read Alternate Status Register will not clear interrupt status.
 
 **/
@@ -1948,8 +1967,14 @@ AtaPacketReadWrite (
     // to see whether indicates device is ready to transfer data.
     //
     Status = DRQReady2 (PciIo, IdeRegisters, Timeout);
-    if (EFI_ERROR (Status)) {
+    if ((Status == EFI_NOT_READY) && Read) {
+      //
+      // Device provided less data than we intended to read -- exit early.
+      //
       return CheckStatusRegister (PciIo, IdeRegisters);
+    }
+    if (EFI_ERROR (Status)) {
+      return Status;
     }
 
     //
@@ -2613,6 +2638,11 @@ DetectAndConfigIdeDevice (
   PciIo        = Instance->PciIo;
 
   for (IdeDevice = 0; IdeDevice < EfiIdeMaxDevice; IdeDevice++) {
+    //
+    // Select Master or Slave device to get the return signature for ATA DEVICE DIAGNOSTIC cmd.
+    //
+    IdeWritePortB (PciIo, IdeRegisters->Head, (UINT8)((IdeDevice << 4) | 0xe0));
+
     //
     // Send ATA Device Execut Diagnostic command.
     // This command should work no matter DRDY is ready or not

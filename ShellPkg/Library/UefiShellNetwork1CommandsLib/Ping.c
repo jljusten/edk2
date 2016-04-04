@@ -18,7 +18,7 @@
 
 #define PING_IP4_COPY_ADDRESS(Dest, Src) (CopyMem ((Dest), (Src), sizeof (EFI_IPv4_ADDRESS)))
 
-UINT64          CurrentTick = 0;
+UINT64          mCurrentTick = 0;
 
 //
 // Function templates to match the IPv4 and IPv6 commands that we use.
@@ -235,16 +235,16 @@ ReadTime (
 
   ASSERT (gCpu != NULL);
 
-  Status = gCpu->GetTimerValue (gCpu, 0, &CurrentTick, &TimerPeriod);
+  Status = gCpu->GetTimerValue (gCpu, 0, &mCurrentTick, &TimerPeriod);
   if (EFI_ERROR (Status)) {
     //
     // The WinntGetTimerValue will return EFI_UNSUPPORTED. Set the
     // TimerPeriod by ourselves.
     //
-    CurrentTick += 1000000;
+    mCurrentTick += 1000000;
   }
   
-  return CurrentTick;
+  return mCurrentTick;
 }
 
 
@@ -598,7 +598,7 @@ PingGenerateToken (
   //
   Request->Type        = (UINT8)(Private->IpChoice==PING_IP_CHOICE_IP6?ICMP_V6_ECHO_REQUEST:ICMP_V4_ECHO_REQUEST);
   Request->Code        = 0;
-  Request->SequenceNum = SequenceNum;
+  Request->SequenceNum = SequenceNum; 
   Request->Identifier  = 0;
   Request->Checksum    = 0;
 
@@ -606,6 +606,7 @@ PingGenerateToken (
   // Assembly token for transmit.
   //
   if (Private->IpChoice==PING_IP_CHOICE_IP6) {
+    Request->TimeStamp   = TimeStamp;
     ((EFI_IP6_TRANSMIT_DATA*)TxData)->ExtHdrsLength                   = 0;
     ((EFI_IP6_TRANSMIT_DATA*)TxData)->ExtHdrs                         = NULL;
     ((EFI_IP6_TRANSMIT_DATA*)TxData)->OverrideData                    = 0;
@@ -804,11 +805,6 @@ Ping6OnTimerRoutine (
       RemoveEntryList (&TxInfo->Link);
       PingDestroyTxInfo (TxInfo, Private->IpChoice);
 
-      //
-      // We dont need to wait for this some other time...
-      //
-      Private->RxCount++;
-
       if (IsListEmpty (&Private->TxList) && (Private->TxCount == Private->SendNum)) {
         //
         // All the left icmp6 echo request in the list timeout.
@@ -955,7 +951,7 @@ PingCreateIpInstance (
       //
       Status = gBS->HandleProtocol (
                       HandleBuffer[HandleIndex],
-                      Private->IpChoice == PING_IP_CHOICE_IP6?&gEfiIp6ConfigProtocolGuid:&gEfiIp4ConfigProtocolGuid,
+                      Private->IpChoice == PING_IP_CHOICE_IP6?&gEfiIp6ConfigProtocolGuid:&gEfiIp4Config2ProtocolGuid,
                       (VOID **) &IpXCfg
                       );
 
@@ -973,8 +969,9 @@ PingCreateIpInstance (
                            NULL
                            );
       } else {
-        Status = ((EFI_IP4_CONFIG_PROTOCOL*)IpXCfg)->GetData (
+        Status = ((EFI_IP4_CONFIG2_PROTOCOL*)IpXCfg)->GetData (
                            IpXCfg,
+                           Ip4Config2DataTypeInterfaceInfo,
                            &IfInfoSize,
                            NULL
                            );
@@ -1009,8 +1006,9 @@ PingCreateIpInstance (
                            IpXInterfaceInfo
                            );
       } else {
-        Status = ((EFI_IP4_CONFIG_PROTOCOL*)IpXCfg)->GetData (
+        Status = ((EFI_IP4_CONFIG2_PROTOCOL*)IpXCfg)->GetData (
                            IpXCfg,
+                           Ip4Config2DataTypeInterfaceInfo,
                            &IfInfoSize,
                            IpXInterfaceInfo
                            );
@@ -1045,7 +1043,7 @@ PingCreateIpInstance (
         //
         // IP4 address check
         //
-        if (EFI_IP4_EQUAL (&Private->SrcAddress, &((EFI_IP4_IPCONFIG_DATA*)IpXInterfaceInfo)->StationAddress)) {
+        if (EFI_IP4_EQUAL (&Private->SrcAddress, &((EFI_IP4_CONFIG2_INTERFACE_INFO*)IpXInterfaceInfo)->StationAddress)) {
           //
           // Match a certain interface address.
           //
@@ -1137,11 +1135,6 @@ PingCreateIpInstance (
     //
     // Configure the ip4 instance for icmp4 packet exchange.
     //
-//    PING_IP4_COPY_ADDRESS (&Ip4Config.StationAddress,     &Private->SrcAddress);
-//    Ip4Config.SubnetMask.Addr[0] = 0xFF;
-//    Ip4Config.SubnetMask.Addr[1] = 0xFF;
-//    Ip4Config.SubnetMask.Addr[2] = 0xFF;
-//    Ip4Config.SubnetMask.Addr[3] = 0x00;
     Ip4Config.DefaultProtocol   = 1;
     Ip4Config.AcceptAnyProtocol = FALSE;
     Ip4Config.AcceptBroadcast   = FALSE;
@@ -1429,6 +1422,10 @@ ON_EXIT:
 
   @param[in] ImageHandle  Handle to the Image (NULL if Internal).
   @param[in] SystemTable  Pointer to the System Table (NULL if Internal).
+
+  @retval SHELL_SUCCESS  The ping processed successfullly.
+  @retval others         The ping processed unsuccessfully.
+  
 **/
 SHELL_STATUS
 EFIAPI

@@ -5,6 +5,7 @@
   HTTP Protocol (HTTP)
 
   Copyright (c) 2015, Intel Corporation. All rights reserved.<BR>
+  (C) Copyright 2015 Hewlett Packard Enterprise Development LP<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution. The full text of the license may be found at
@@ -54,7 +55,8 @@ typedef enum {
   HttpMethodHead,
   HttpMethodPut,
   HttpMethodDelete,
-  HttpMethodTrace
+  HttpMethodTrace,
+  HttpMethodMax
 } EFI_HTTP_METHOD;
 
 ///
@@ -93,11 +95,11 @@ typedef enum {
   HTTP_STATUS_412_PRECONDITION_FAILED,
   HTTP_STATUS_413_REQUEST_ENTITY_TOO_LARGE,
   HTTP_STATUS_414_REQUEST_URI_TOO_LARGE,
-  HTTP_STATUS_415_UNSUPPORETD_MEDIA_TYPE,
+  HTTP_STATUS_415_UNSUPPORTED_MEDIA_TYPE,
   HTTP_STATUS_416_REQUESTED_RANGE_NOT_SATISFIED,
   HTTP_STATUS_417_EXPECTATION_FAILED,
   HTTP_STATUS_500_INTERNAL_SERVER_ERROR,
-  HTTP_STATUS_501_NOT_IMIPLEMENTED,
+  HTTP_STATUS_501_NOT_IMPLEMENTED,
   HTTP_STATUS_502_BAD_GATEWAY,
   HTTP_STATUS_503_SERVICE_UNAVAILABLE,
   HTTP_STATUS_504_GATEWAY_TIME_OUT,

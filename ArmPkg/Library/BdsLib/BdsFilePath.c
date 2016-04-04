@@ -752,14 +752,14 @@ BdsPxeLoadImage (
     return Status;
   }
 
-  Status = LoadFileProtocol->LoadFile (LoadFileProtocol, *DevicePath, TRUE, &BufferSize, NULL);
+  Status = LoadFileProtocol->LoadFile (LoadFileProtocol, RemainingDevicePath, TRUE, &BufferSize, NULL);
   if (Status == EFI_BUFFER_TOO_SMALL) {
     Status = gBS->AllocatePages (Type, EfiBootServicesCode, EFI_SIZE_TO_PAGES(BufferSize), Image);
     if (EFI_ERROR (Status)) {
       return Status;
     }
 
-    Status = LoadFileProtocol->LoadFile (LoadFileProtocol, *DevicePath, TRUE, &BufferSize, (VOID*)(UINTN)(*Image));
+    Status = LoadFileProtocol->LoadFile (LoadFileProtocol, RemainingDevicePath, TRUE, &BufferSize, (VOID*)(UINTN)(*Image));
     if (!EFI_ERROR (Status) && (ImageSize != NULL)) {
       *ImageSize = BufferSize;
     }
@@ -1198,7 +1198,7 @@ BdsTftpLoadImage (
   if (Mtftp4GetFileSize (Mtftp4, AsciiFilePath, &FileSize) == EFI_SUCCESS) {
     TftpBufferSize = FileSize;
   } else {
-    TftpBufferSize = SIZE_8MB;
+    TftpBufferSize = SIZE_16MB;
   }
 
   TftpContext = AllocatePool (sizeof (BDS_TFTP_CONTEXT));
@@ -1209,7 +1209,7 @@ BdsTftpLoadImage (
   TftpContext->FileSize = FileSize;
 
   for (; TftpBufferSize <= FixedPcdGet32 (PcdMaxTftpFileSize);
-         TftpBufferSize = (TftpBufferSize + SIZE_8MB) & (~(SIZE_8MB-1))) {
+         TftpBufferSize = (TftpBufferSize + SIZE_16MB) & (~(SIZE_16MB-1))) {
     //
     // Allocate a buffer to hold the whole file.
     //

@@ -1,7 +1,7 @@
 /** @file
   The implementation of policy entry operation function in IpSecConfig application.
 
-  Copyright (c) 2009 - 2012, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2016, Intel Corporation. All rights reserved.<BR>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -1104,7 +1104,7 @@ CreatePadEntry (
   ValueStr = ShellCommandLineGetValue (ParamPackage, L"--peer-id");
   if (ValueStr != NULL) {
     (*PadId)->PeerIdValid = TRUE;
-    StrnCpy ((CHAR16 *) (*PadId)->Id.PeerId, ValueStr, ARRAY_SIZE ((*PadId)->Id.PeerId) - 1);
+    StrnCpyS ((CHAR16 *) (*PadId)->Id.PeerId, MAX_PEERID_LEN / sizeof (CHAR16), ValueStr, MAX_PEERID_LEN / sizeof (CHAR16) - 1);
     *Mask |= PEER_ID;
   }
 
@@ -1398,8 +1398,10 @@ CombineSpdEntry (
   //
   // Process Data
   //
+  OldData->SaIdCount = 0;
+
   if ((Mask & NAME) != 0) {
-    AsciiStrCpy ((CHAR8 *) OldData->Name, (CHAR8 *) NewData->Name);
+    AsciiStrCpyS ((CHAR8 *) OldData->Name, MAX_PEERID_LEN, (CHAR8 *) NewData->Name);
   }
 
   if ((Mask & PACKET_FLAG) != 0) {
@@ -1862,37 +1864,30 @@ EditOperatePolicyEntry (
                &CreateNew
                );
     if (!EFI_ERROR (Status)) {
+      //
+      // If the Selector already existed, this Entry will be updated by set data.
+      //
+      Status = mIpSecConfig->SetData (
+                               mIpSecConfig,
+                               Context->DataType,
+                               Context->Selector, /// New created selector.
+                               Data, /// Old date which has been modified, need to be set data.
+                               Selector
+                               );
+      ASSERT_EFI_ERROR (Status);
+      
       if (CreateNew) {
         //
-        // Insert new entry before old entry
+        // Edit the entry to a new one. So, we need delete the old entry.
         //
         Status = mIpSecConfig->SetData (
                                  mIpSecConfig,
                                  Context->DataType,
-                                 Context->Selector,
-                                 Data,
-                                 Selector
-                                 );
-        ASSERT_EFI_ERROR (Status);
-        //
-        // Delete old entry
-        //
-        Status = mIpSecConfig->SetData (
-                                 mIpSecConfig,
-                                 Context->DataType,
-                                 Selector,
-                                 NULL,
+                                 Selector, /// Old selector.
+                                 NULL, /// NULL means to delete this Entry specified by Selector.
                                  NULL
                                  );
         ASSERT_EFI_ERROR (Status);
-      } else {
-        Status = mIpSecConfig->SetData (
-                                 mIpSecConfig,
-                                 Context->DataType,
-                                 Context->Selector,
-                                 Data,
-                                 NULL
-                                 );
       }
     }
 

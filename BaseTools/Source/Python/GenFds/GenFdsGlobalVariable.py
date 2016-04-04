@@ -31,6 +31,7 @@ from AutoGen.BuildEngine import BuildRule
 import Common.DataType as DataType
 from Common.Misc import PathClass
 from Common.LongFilePathSupport import OpenLongFilePath as open
+from Common.MultipleWorkspace import MultipleWorkspace as mws
 
 ## Global variables
 #
@@ -273,7 +274,7 @@ class GenFdsGlobalVariable:
     #   @param  ArchList            The Arch list of platform
     #
     def SetDir (OutputDir, FdfParser, WorkSpace, ArchList):
-        GenFdsGlobalVariable.VerboseLogger( "GenFdsGlobalVariable.OutputDir :%s" %OutputDir)
+        GenFdsGlobalVariable.VerboseLogger("GenFdsGlobalVariable.OutputDir :%s" % OutputDir)
 #        GenFdsGlobalVariable.OutputDirDict = OutputDir
         GenFdsGlobalVariable.FdfParser = FdfParser
         GenFdsGlobalVariable.WorkSpace = WorkSpace
@@ -291,7 +292,7 @@ class GenFdsGlobalVariable:
         # Create FV Address inf file
         #
         GenFdsGlobalVariable.FvAddressFileName = os.path.join(GenFdsGlobalVariable.FfsDir, 'FvAddress.inf')
-        FvAddressFile = open (GenFdsGlobalVariable.FvAddressFileName, 'w')
+        FvAddressFile = open(GenFdsGlobalVariable.FvAddressFileName, 'w')
         #
         # Add [Options]
         #
@@ -303,7 +304,7 @@ class GenFdsGlobalVariable:
                 break
 
         FvAddressFile.writelines("EFI_BOOT_DRIVER_BASE_ADDRESS = " + \
-                                       BsAddress          + \
+                                       BsAddress + \
                                        T_CHAR_LF)
 
         RtAddress = '0'
@@ -312,7 +313,7 @@ class GenFdsGlobalVariable:
                 RtAddress = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, Arch, GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag].RtBaseAddress
 
         FvAddressFile.writelines("EFI_RUNTIME_DRIVER_BASE_ADDRESS = " + \
-                                       RtAddress          + \
+                                       RtAddress + \
                                        T_CHAR_LF)
 
         FvAddressFile.close()
@@ -322,12 +323,13 @@ class GenFdsGlobalVariable:
     #   @param  String           String that may contain macro
     #
     def ReplaceWorkspaceMacro(String):
+        String = mws.handleWsMacro(String)
         Str = String.replace('$(WORKSPACE)', GenFdsGlobalVariable.WorkSpaceDir)
         if os.path.exists(Str):
             if not os.path.isabs(Str):
                 Str = os.path.abspath(Str)
         else:
-            Str = os.path.join(GenFdsGlobalVariable.WorkSpaceDir, String)
+            Str = mws.join(GenFdsGlobalVariable.WorkSpaceDir, String)
         return os.path.normpath(Str)
 
     ## Check if the input files are newer than output files
@@ -384,13 +386,13 @@ class GenFdsGlobalVariable:
         CommandFile = Output + '.txt'
         if Ui not in [None, '']:
             #Cmd += ["-n", '"' + Ui + '"']
-            SectionData = array.array('B', [0,0,0,0])
+            SectionData = array.array('B', [0, 0, 0, 0])
             SectionData.fromstring(Ui.encode("utf_16_le"))
             SectionData.append(0)
             SectionData.append(0)
             Len = len(SectionData)
             GenFdsGlobalVariable.SectionHeader.pack_into(SectionData, 0, Len & 0xff, (Len >> 8) & 0xff, (Len >> 16) & 0xff, 0x15)
-            SaveFileOnChange(Output,  SectionData.tostring())
+            SaveFileOnChange(Output, SectionData.tostring())
         elif Ver not in [None, '']:
             Cmd += ["-n", Ver]
             if BuildNumber:
@@ -459,12 +461,12 @@ class GenFdsGlobalVariable:
         Cmd = ["GenFv"]
         if BaseAddress not in [None, '']:
             Cmd += ["-r", BaseAddress]
-        
+
         if ForceRebase == False:
-            Cmd +=["-F", "FALSE"]
+            Cmd += ["-F", "FALSE"]
         elif ForceRebase == True:
-            Cmd +=["-F", "TRUE"]
-            
+            Cmd += ["-F", "TRUE"]
+
         if Capsule:
             Cmd += ["-c"]
         if Dump:
@@ -568,7 +570,7 @@ class GenFdsGlobalVariable:
         if VendorId != None:
             Cmd += ["-f", VendorId]
 
-        Cmd += ["-o", Output]    
+        Cmd += ["-o", Output]
         GenFdsGlobalVariable.CallExternalTool(Cmd, "Failed to generate option rom")
 
     @staticmethod
@@ -604,7 +606,7 @@ class GenFdsGlobalVariable:
                 sys.stdout.write('\n')
 
         try:
-            PopenObject = subprocess.Popen(' '.join(cmd), stdout=subprocess.PIPE, stderr= subprocess.PIPE, shell=True)
+            PopenObject = subprocess.Popen(' '.join(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         except Exception, X:
             EdkLogger.error("GenFds", COMMAND_FAILURE, ExtraData="%s: %s" % (str(X), cmd[0]))
         (out, error) = PopenObject.communicate()
@@ -616,7 +618,7 @@ class GenFdsGlobalVariable:
             returnValue[0] = PopenObject.returncode
             return
         if PopenObject.returncode != 0 or GenFdsGlobalVariable.VerboseMode or GenFdsGlobalVariable.DebugLevel != -1:
-            GenFdsGlobalVariable.InfLogger ("Return Value = %d" %PopenObject.returncode)
+            GenFdsGlobalVariable.InfLogger ("Return Value = %d" % PopenObject.returncode)
             GenFdsGlobalVariable.InfLogger (out)
             GenFdsGlobalVariable.InfLogger (error)
             if PopenObject.returncode != 0:
@@ -629,7 +631,7 @@ class GenFdsGlobalVariable:
     def InfLogger (msg):
         EdkLogger.info(msg)
 
-    def ErrorLogger (msg, File = None, Line = None, ExtraData = None):
+    def ErrorLogger (msg, File=None, Line=None, ExtraData=None):
         EdkLogger.error('GenFds', GENFDS_ERROR, msg, File, Line, ExtraData)
 
     def DebugLogger (Level, msg):
@@ -640,7 +642,7 @@ class GenFdsGlobalVariable:
     #   @param  Str           String that may contain macro
     #   @param  MacroDict     Dictionary that contains macro value pair
     #
-    def MacroExtend (Str, MacroDict = {}, Arch = 'COMMON'):
+    def MacroExtend (Str, MacroDict={}, Arch='COMMON'):
         if Str == None :
             return None
 
@@ -697,10 +699,10 @@ class GenFdsGlobalVariable:
                         
                     PcdValue = PcdObj.DefaultValue
                     return PcdValue
-                
-            for Package in GenFdsGlobalVariable.WorkSpace.GetPackageList(GenFdsGlobalVariable.ActivePlatform, 
-                                                                         Arch, 
-                                                                         GenFdsGlobalVariable.TargetName, 
+
+            for Package in GenFdsGlobalVariable.WorkSpace.GetPackageList(GenFdsGlobalVariable.ActivePlatform,
+                                                                         Arch,
+                                                                         GenFdsGlobalVariable.TargetName,
                                                                          GenFdsGlobalVariable.ToolChainTag):
                 PcdDict = Package.Pcds
                 for Key in PcdDict:

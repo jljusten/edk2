@@ -1,6 +1,7 @@
 #
 #  Copyright (c) 2011-2015, ARM Limited. All rights reserved.
 #  Copyright (c) 2014, Linaro Limited. All rights reserved.
+#  Copyright (c) 2015, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -52,11 +53,12 @@ NumBlocks     = 0x200
 
 #
 # Implement the Linux kernel header layout so that the Xen loader will identify
-# it as something bootable, and execute it with a FDT pointer in x0. This area
-# will be reused to store a copy of the FDT so round it up to 8 KB.
+# it as something bootable, and execute it with a FDT pointer in x0 or r2.
+# This area will be reused to store a copy of the FDT so round it up to 8 KB.
 #
 0x00000000|0x00002000
 DATA = {
+!if $(ARCH) == AARCH64
   0x01, 0x00, 0x00, 0x10,                         # code0: adr x1, .
   0xff, 0x07, 0x00, 0x14,                         # code1: b 0x2000
   0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, # text_offset: 512 KB
@@ -67,6 +69,22 @@ DATA = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, # res4
   0x41, 0x52, 0x4d, 0x64,                         # magic: "ARM\x64"
   0x00, 0x00, 0x00, 0x00                          # res5
+!else
+  0x08, 0x10, 0x4f, 0xe2, # adr r1, .
+  0x02, 0x00, 0xa0, 0xe1, # mov r0, r2 (DTB)
+  0x00, 0x00, 0xa0, 0xe1, # nop
+  0x00, 0x00, 0xa0, 0xe1, # nop
+  0x00, 0x00, 0xa0, 0xe1, # nop
+  0x00, 0x00, 0xa0, 0xe1, # nop
+  0x00, 0x00, 0xa0, 0xe1, # nop
+  0x00, 0x00, 0xa0, 0xe1, # nop
+
+  0xf6, 0x07, 0x00, 0xea, # b 0x2000
+  0x18, 0x28, 0x6f, 0x01, # magic
+  0x00, 0x00, 0x00, 0x00, # start
+  0x00, 0x00, 0x20, 0x00, # image size: 2 MB
+  0x01, 0x02, 0x03, 0x04  # endiannness flag
+!endif
 }
 
 0x00002000|0x001fe000
@@ -134,7 +152,7 @@ READ_LOCK_STATUS   = TRUE
   #
   INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
   INF MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
-  INF EmbeddedPkg/SerialDxe/SerialDxe.inf
+  INF MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
 
   INF ArmPkg/Drivers/ArmGic/ArmGicDxe.inf
   INF ArmPkg/Drivers/TimerDxe/TimerDxe.inf
@@ -220,20 +238,20 @@ READ_LOCK_STATUS   = TRUE
 ############################################################################
 
 [Rule.Common.SEC]
-  FILE SEC = $(NAMED_GUID) RELOCS_STRIPPED {
-    TE  TE Align = 4K                   $(INF_OUTPUT)/$(MODULE_NAME).efi
+  FILE SEC = $(NAMED_GUID) RELOCS_STRIPPED FIXED {
+    TE  TE Align = Auto                 $(INF_OUTPUT)/$(MODULE_NAME).efi
   }
 
 [Rule.Common.PEI_CORE]
-  FILE PEI_CORE = $(NAMED_GUID) {
-    TE     TE Align = 8                 $(INF_OUTPUT)/$(MODULE_NAME).efi
+  FILE PEI_CORE = $(NAMED_GUID) FIXED {
+    TE     TE Align = Auto              $(INF_OUTPUT)/$(MODULE_NAME).efi
     UI     STRING ="$(MODULE_NAME)" Optional
   }
 
 [Rule.Common.PEIM]
-  FILE PEIM = $(NAMED_GUID) {
+  FILE PEIM = $(NAMED_GUID) FIXED {
      PEI_DEPEX PEI_DEPEX Optional       $(INF_OUTPUT)/$(MODULE_NAME).depex
-     TE       TE Align = 8              $(INF_OUTPUT)/$(MODULE_NAME).efi
+     TE       TE Align = Auto           $(INF_OUTPUT)/$(MODULE_NAME).efi
      UI       STRING="$(MODULE_NAME)" Optional
   }
 

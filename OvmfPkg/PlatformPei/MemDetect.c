@@ -214,6 +214,12 @@ PublishPeiMemory (
     MemorySize = PcdGet32 (PcdS3AcpiReservedMemorySize);
   } else {
     LowerMemorySize = GetSystemMemorySizeBelow4gb ();
+    if (FeaturePcdGet (PcdSmmSmramRequire)) {
+      //
+      // TSEG is chipped from the end of low RAM
+      //
+      LowerMemorySize -= FixedPcdGet8 (PcdQ35TsegMbytes) * SIZE_1MB;
+    }
 
     PeiMemoryCap = GetPeiMemoryCap ();
     DEBUG ((EFI_D_INFO, "%a: mPhysMemAddressWidth=%d PeiMemoryCap=%u KB\n",
@@ -222,7 +228,16 @@ PublishPeiMemory (
     //
     // Determine the range of memory to use during PEI
     //
-    MemoryBase = PcdGet32 (PcdOvmfDxeMemFvBase) + PcdGet32 (PcdOvmfDxeMemFvSize);
+    // Technically we could lay the permanent PEI RAM over SEC's temporary
+    // decompression and scratch buffer even if "secure S3" is needed, since
+    // their lifetimes don't overlap. However, PeiFvInitialization() will cover
+    // RAM up to PcdOvmfDecompressionScratchEnd with an EfiACPIMemoryNVS memory
+    // allocation HOB, and other allocations served from the permanent PEI RAM
+    // shouldn't overlap with that HOB.
+    //
+    MemoryBase = mS3Supported && FeaturePcdGet (PcdSmmSmramRequire) ?
+      PcdGet32 (PcdOvmfDecompressionScratchEnd) :
+      PcdGet32 (PcdOvmfDxeMemFvBase) + PcdGet32 (PcdOvmfDxeMemFvSize);
     MemorySize = LowerMemorySize - MemoryBase;
     if (MemorySize > PeiMemoryCap) {
       MemoryBase = LowerMemorySize - PeiMemoryCap;
@@ -268,7 +283,18 @@ QemuInitializeRam (
     // Create memory HOBs
     //
     AddMemoryRangeHob (0, BASE_512KB + BASE_128KB);
-    AddMemoryRangeHob (BASE_1MB, LowerMemorySize);
+
+    if (FeaturePcdGet (PcdSmmSmramRequire)) {
+      UINT32 TsegSize;
+
+      TsegSize = FixedPcdGet8 (PcdQ35TsegMbytes) * SIZE_1MB;
+      AddMemoryRangeHob (BASE_1MB, LowerMemorySize - TsegSize);
+      AddReservedMemoryBaseSizeHob (LowerMemorySize - TsegSize, TsegSize,
+        TRUE);
+    } else {
+      AddMemoryRangeHob (BASE_1MB, LowerMemorySize);
+    }
+
     if (UpperMemorySize != 0) {
       AddUntestedMemoryBaseSizeHob (BASE_4GB, UpperMemorySize);
     }
@@ -381,24 +407,41 @@ InitializeRamRegions (
   }
 
   if (mBootMode != BOOT_ON_S3_RESUME) {
-    //
-    // Reserve the lock box storage area
-    //
-    // Since this memory range will be used on S3 resume, it must be
-    // reserved as ACPI NVS.
-    //
-    // If S3 is unsupported, then various drivers might still write to the
-    // LockBox area. We ought to prevent DXE from serving allocation requests
-    // such that they would overlap the LockBox storage.
-    //
-    ZeroMem (
-      (VOID*)(UINTN) PcdGet32 (PcdOvmfLockBoxStorageBase),
-      (UINTN) PcdGet32 (PcdOvmfLockBoxStorageSize)
-      );
-    BuildMemoryAllocationHob (
-      (EFI_PHYSICAL_ADDRESS)(UINTN) PcdGet32 (PcdOvmfLockBoxStorageBase),
-      (UINT64)(UINTN) PcdGet32 (PcdOvmfLockBoxStorageSize),
-      mS3Supported ? EfiACPIMemoryNVS : EfiBootServicesData
-      );
+    if (!FeaturePcdGet (PcdSmmSmramRequire)) {
+      //
+      // Reserve the lock box storage area
+      //
+      // Since this memory range will be used on S3 resume, it must be
+      // reserved as ACPI NVS.
+      //
+      // If S3 is unsupported, then various drivers might still write to the
+      // LockBox area. We ought to prevent DXE from serving allocation requests
+      // such that they would overlap the LockBox storage.
+      //
+      ZeroMem (
+        (VOID*)(UINTN) PcdGet32 (PcdOvmfLockBoxStorageBase),
+        (UINTN) PcdGet32 (PcdOvmfLockBoxStorageSize)
+        );
+      BuildMemoryAllocationHob (
+        (EFI_PHYSICAL_ADDRESS)(UINTN) PcdGet32 (PcdOvmfLockBoxStorageBase),
+        (UINT64)(UINTN) PcdGet32 (PcdOvmfLockBoxStorageSize),
+        mS3Supported ? EfiACPIMemoryNVS : EfiBootServicesData
+        );
+    }
+
+    if (FeaturePcdGet (PcdSmmSmramRequire)) {
+      UINT32 TsegSize;
+
+      //
+      // Make sure the TSEG area that we reported as a reserved memory resource
+      // cannot be used for reserved memory allocations.
+      //
+      TsegSize = FixedPcdGet8 (PcdQ35TsegMbytes) * SIZE_1MB;
+      BuildMemoryAllocationHob (
+        GetSystemMemorySizeBelow4gb() - TsegSize,
+        TsegSize,
+        EfiReservedMemoryType
+        );
+    }
   }
 }

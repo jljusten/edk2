@@ -1,6 +1,7 @@
 # FLASH layout file for Beagle board.
 #
 # Copyright (c) 2009, Apple Inc. All rights reserved.<BR>
+# Copyright (c) 2015, Intel Corporation. All rights reserved.<BR>
 #
 #    This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -27,7 +28,7 @@
 
 
 [FD.BeagleBoard_EFI]
-BaseAddress   = 0x80008000|gArmTokenSpaceGuid.PcdFdBaseAddress  #The base address of the FLASH Device.
+BaseAddress   = 0x80007DF8|gArmTokenSpaceGuid.PcdFdBaseAddress  #The base address of the FLASH Device.
 Size          = 0x000B0000|gArmTokenSpaceGuid.PcdFdSize         #The size in bytes of the FLASH Device
 ErasePolarity = 1
 BlockSize     = 0x1
@@ -48,7 +49,16 @@ NumBlocks     = 0xB0000
 # RegionType <FV, DATA, or FILE>
 #
 ################################################################################
-0x00000000|0x000B0000
+0x00000000|0x00000200
+FILE = BeagleBoardPkg/ConfigurationHeader.bin
+
+0x00000200|0x00000008
+DATA = {
+  0xF8, 0xFD, 0x0A, 0x00,   # image size:   0xB0000 - 0x208 == 0xAFDF8
+  0x00, 0x80, 0x00, 0x80    # entry point:  0x80008000
+}
+
+0x00000208|0x000AFDF8
 gArmTokenSpaceGuid.PcdFvBaseAddress|gArmTokenSpaceGuid.PcdFvSize
 FV = FVMAIN_COMPACT
 
@@ -82,6 +92,7 @@ READ_ENABLED_CAP   = TRUE
 READ_STATUS        = TRUE
 READ_LOCK_CAP      = TRUE
 READ_LOCK_STATUS   = TRUE
+FvNameGuid         = d0dd3e90-343d-4cb3-8f69-772214989282
 
   INF MdeModulePkg/Core/Dxe/DxeMain.inf
 
@@ -100,7 +111,7 @@ READ_LOCK_STATUS   = TRUE
   INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
   INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
   INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
-  INF EmbeddedPkg/SerialDxe/SerialDxe.inf
+  INF MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
   INF MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
 
   INF EmbeddedPkg/ResetRuntimeDxe/ResetRuntimeDxe.inf
@@ -172,6 +183,9 @@ READ_LOCK_STATUS   = TRUE
   INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
   INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
   INF ArmPlatformPkg/Bds/Bds.inf
+
+  # Legacy Linux Loader
+  INF ArmPkg/Application/LinuxLoader/LinuxLoader.inf
 
 
 [FV.FVMAIN_COMPACT]

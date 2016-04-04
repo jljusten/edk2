@@ -905,6 +905,7 @@ PlatformEarlyInitEntry (
       PlatformInfo->BoardId == BOARD_ID_BB_RVP ||
       PlatformInfo->BoardId == BOARD_ID_BS_RVP ||
       PlatformInfo->BoardId == BOARD_ID_MINNOW2 ||
+      PlatformInfo->BoardId == BOARD_ID_MINNOW2_TURBOT||
       PlatformInfo->BoardId == BOARD_ID_CVH) {
     ConfigureLpssAndSccGpio(&SystemConfiguration, PlatformInfo);
 

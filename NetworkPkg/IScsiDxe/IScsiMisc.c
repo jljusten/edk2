@@ -1,7 +1,7 @@
 /** @file
   Miscellaneous routines for iSCSI driver.
 
-Copyright (c) 2004 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -683,7 +683,7 @@ IScsiGetNicInfoByIndex (
 
 
 /**
-  Get the NIC's PCI location and return it accroding to the composited
+  Get the NIC's PCI location and return it according to the composited
   format defined in iSCSI Boot Firmware Table.
 
   @param[in]   Controller        The handle of the controller.
@@ -1054,7 +1054,7 @@ IScsiGetConfigData (
       // Check the autoconfig path to see whether it should be retried.
       //
       if (AttemptTmp->SessionConfigData.IpMode == IP_MODE_AUTOCONFIG &&
-          AttemptTmp->AutoConfigureMode != IP_MODE_AUTOCONFIG_SUCCESS) {
+          !AttemptTmp->AutoConfigureSuccess) {
         if (mPrivate->Ipv6Flag &&
             AttemptTmp->AutoConfigureMode == IP_MODE_AUTOCONFIG_IP6) {
           //
@@ -1197,6 +1197,7 @@ IScsiGetConfigData (
 
       AttemptConfigData->AutoConfigureMode =
         (UINT8) (mPrivate->Ipv6Flag ? IP_MODE_AUTOCONFIG_IP6 : IP_MODE_AUTOCONFIG_IP4);
+      AttemptConfigData->AutoConfigureSuccess = FALSE;
     }
     
     //
@@ -1352,6 +1353,7 @@ IScsiGetTcpConnDevicePath (
   EFI_DEVICE_PATH_PROTOCOL  *DevicePath;
   EFI_STATUS                Status;
   EFI_DEV_PATH              *DPathNode;
+  UINTN                     PathLen;
 
   if (Session->State != SESSION_STATE_LOGGED_IN) {
     return NULL;
@@ -1390,21 +1392,58 @@ IScsiGetTcpConnDevicePath (
         DPathNode->Ipv4.StaticIpAddress = 
           (BOOLEAN) (!Session->ConfigData->SessionConfigData.InitiatorInfoFromDhcp);
 
-        IP4_COPY_ADDRESS (
-          &DPathNode->Ipv4.GatewayIpAddress,
-          &Session->ConfigData->SessionConfigData.Gateway
-          );
+        //
+        //  Add a judgement here to support previous versions of IPv4_DEVICE_PATH.
+        //  In previous versions of IPv4_DEVICE_PATH, GatewayIpAddress and SubnetMask
+        //  do not exist.
+        //  In new version of IPv4_DEVICE_PATH, structcure length is 27.
+        //
 
-        IP4_COPY_ADDRESS (
-          &DPathNode->Ipv4.SubnetMask,
-          &Session->ConfigData->SessionConfigData.SubnetMask
-          );
+        PathLen = DevicePathNodeLength (&DPathNode->Ipv4);
+        
+        if (PathLen == IP4_NODE_LEN_NEW_VERSIONS) {  
+            
+          IP4_COPY_ADDRESS (
+            &DPathNode->Ipv4.GatewayIpAddress,
+            &Session->ConfigData->SessionConfigData.Gateway
+            );
+
+          IP4_COPY_ADDRESS (
+            &DPathNode->Ipv4.SubnetMask,
+            &Session->ConfigData->SessionConfigData.SubnetMask
+            );
+        }
+        
         break;
       } else if (Conn->Ipv6Flag && DevicePathSubType (&DPathNode->DevPath) == MSG_IPv6_DP) {
         DPathNode->Ipv6.LocalPort       = 0;
-        DPathNode->Ipv6.IpAddressOrigin = 0;
-        DPathNode->Ipv6.PrefixLength    = IP6_PREFIX_LENGTH;
-        ZeroMem (&DPathNode->Ipv6.GatewayIpAddress, sizeof (EFI_IPv6_ADDRESS));
+
+        //
+        //  Add a judgement here to support previous versions of IPv6_DEVICE_PATH.
+        //  In previous versions of IPv6_DEVICE_PATH, IpAddressOrigin, PrefixLength
+        //  and GatewayIpAddress do not exist.
+        //  In new version of IPv6_DEVICE_PATH, structure length is 60, while in 
+        //  old versions, the length is 43.
+        //
+
+        PathLen = DevicePathNodeLength (&DPathNode->Ipv6);
+        
+        if (PathLen == IP6_NODE_LEN_NEW_VERSIONS ) { 
+
+          DPathNode->Ipv6.IpAddressOrigin = 0;
+          DPathNode->Ipv6.PrefixLength    = IP6_PREFIX_LENGTH;
+          ZeroMem (&DPathNode->Ipv6.GatewayIpAddress, sizeof (EFI_IPv6_ADDRESS));
+        }
+        else if (PathLen == IP6_NODE_LEN_OLD_VERSIONS) { 
+
+          //
+          //  StaticIPAddress is a field in old versions of IPv6_DEVICE_PATH, while ignored in new 
+          //  version. Set StaticIPAddress through its' offset in old IPv6_DEVICE_PATH.
+          //
+          *((UINT8 *)(&DPathNode->Ipv6) + IP6_OLD_IPADDRESS_OFFSET) = 
+            (BOOLEAN) (!Session->ConfigData->SessionConfigData.InitiatorInfoFromDhcp);
+        }
+        
         break;
       }
     }

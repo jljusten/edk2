@@ -1,5 +1,6 @@
 #
 #  Copyright (c) 2012-2015, ARM Limited. All rights reserved.
+#  Copyright (c) 2015, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -26,7 +27,9 @@
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
   FLASH_DEFINITION               = ArmPlatformPkg/ArmVExpressPkg/ArmVExpress-CTA15-A7.fdf
-  DEFINE EDK2_SKIP_PEICORE=1
+
+  DEFINE EDK2_SKIP_PEICORE = 1
+  DEFINE ARM_BIGLITTLE_TC2 = 1 # We build for the TC2 hardware by default
 
 !include ArmPlatformPkg/ArmVExpressPkg/ArmVExpress.dsc.inc
 
@@ -122,16 +125,6 @@
 !endif
 
   #
-  # SEC Phase Global Variables :
-  # - 0x00-0x04: Debugger Exception Handler Pointer address
-  # - 0x04-0x08: Normal Exception Handler Pointer
-  # - 0x0C-0x10: MpSafe Serial Console SpinLock
-  # - 0x10-0x20: KfScb 8 Bakery Locks of 2Bytes each
-  # - 0x20-0x30: CCI 8 Bakery Locks of 2Bytes each
-  # - 0x30-0x48: ARM SMC Events (8 cores * 3 max_event * sizeof(UINT8))
-  gArmPlatformTokenSpaceGuid.PcdSecGlobalVariableSize|0x48
-
-  #
   # ARM PrimeCell
   #
 
@@ -174,17 +167,14 @@
   #
   # Define the device path to the FDT for the platform
   #
-  gEmbeddedTokenSpaceGuid.PcdFdtDevicePaths|L"VenHw(1F15DA3C-37FF-4070-B471-BB4AF12A724A)/MemoryMapped(0x0,0x0E800000,0x0E803000)"
+  gEmbeddedTokenSpaceGuid.PcdFdtDevicePaths|L"VenHw(E7223039-5836-41E1-B542-D7EC736C5E59)/ca15a7"
 
   #
   # ARM OS Loader
   #
-  # Versatile Express machine type (ARM VERSATILE EXPRESS = 2272) required for ARM Linux:
-  gArmTokenSpaceGuid.PcdArmMachineType|2272
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDescription|L"Linux from NorFlash"
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootDevicePath|L"VenHw(1F15DA3C-37FF-4070-B471-BB4AF12A724A)/MemoryMapped(0x0,0xE000000,0xE800000)"
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|"console=ttyAMA0,38400 earlyprintk debug verbose"
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootType|2
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootDevicePath|L"Fv(73DCB643-3862-4904-9076-A94AF1890243)/LinuxLoader.efi"
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|L"VenHw(E7223039-5836-41E1-B542-D7EC736C5E59)/kernel -c \"console=ttyAMA0,38400 earlyprintk debug verbose\""
 
   # Use the serial console (ConIn & ConOut) and the Graphic driver (ConOut)
   # PL111 - CLCD
@@ -215,7 +205,6 @@
     <LibraryClasses>
       ArmLib|ArmPkg/Library/ArmLib/ArmV7/ArmV7Lib.inf
       ArmPlatformLib|ArmPlatformPkg/ArmVExpressPkg/Library/ArmVExpressLibCTA15-A7/ArmVExpressLib.inf
-      ArmPlatformGlobalVariableLib|ArmPlatformPkg/Library/ArmPlatformGlobalVariableLib/PrePi/PrePiArmPlatformGlobalVariableLib.inf
   }
 
   #
@@ -234,7 +223,10 @@
   MdeModulePkg/Core/RuntimeDxe/RuntimeDxe.inf
   MdeModulePkg/Universal/SecurityStubDxe/SecurityStubDxe.inf
   MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
-  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
+  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf {
+    <LibraryClasses>
+      NULL|MdeModulePkg/Library/VarCheckUefiLib/VarCheckUefiLib.inf
+  }
   MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
   MdeModulePkg/Universal/MonotonicCounterRuntimeDxe/MonotonicCounterRuntimeDxe.inf
   EmbeddedPkg/ResetRuntimeDxe/ResetRuntimeDxe.inf
@@ -245,7 +237,7 @@
   MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
   MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
   MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
-  EmbeddedPkg/SerialDxe/SerialDxe.inf
+  MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
 
   MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
 

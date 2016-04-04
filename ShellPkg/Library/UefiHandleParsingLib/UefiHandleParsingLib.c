@@ -1,8 +1,9 @@
 /** @file
   Provides interface to advanced shell functionality for parsing both handle and protocol database.
 
+  Copyright (c) 2010 - 2015, Intel Corporation. All rights reserved.<BR>
   (C) Copyright 2013-2015 Hewlett-Packard Development Company, L.P.<BR>
-  Copyright (c) 2010 - 2014, Intel Corporation. All rights reserved.<BR>
+  (C) Copyright 2015 Hewlett Packard Enterprise Development LP<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -108,9 +109,9 @@ HandleParsingLibConstructor (
   return (EFI_SUCCESS);
 }
 
-/** 
+/**
   Initialization function for HII packages.
- 
+
 **/
 VOID
 HandleParsingHiiInit (VOID)
@@ -180,10 +181,7 @@ LoadedImageProtocolDumpInformation(
   HandleParsingHiiInit();
 
   Temp = HiiGetString(mHandleParsingHiiHandle, STRING_TOKEN(STR_LI_DUMP_MAIN), NULL);
-  RetVal = AllocateZeroPool (PcdGet16 (PcdShellPrintBufferSize));
-  if (Temp == NULL || RetVal == NULL) {
-    SHELL_FREE_NON_NULL(Temp);
-    SHELL_FREE_NON_NULL(RetVal);
+  if (Temp == NULL) {
     return NULL;
   }
 
@@ -198,29 +196,30 @@ LoadedImageProtocolDumpInformation(
 
   if (EFI_ERROR (Status)) {
     SHELL_FREE_NON_NULL (Temp);
-    SHELL_FREE_NON_NULL (RetVal);
     return NULL;
   }
 
   DataType = ConvertMemoryType(LoadedImage->ImageDataType);
   CodeType = ConvertMemoryType(LoadedImage->ImageCodeType);
 
-  RetVal = CatSPrint(RetVal,
-                      Temp,
-                      LoadedImage->Revision,
-                      LoadedImage->ParentHandle,
-                      LoadedImage->SystemTable,
-                      LoadedImage->DeviceHandle,
-                      LoadedImage->FilePath,
-                      LoadedImage->LoadOptionsSize,
-                      LoadedImage->LoadOptions,
-                      LoadedImage->ImageBase,
-                      LoadedImage->ImageSize,
-                      CodeType,
-                      DataType,
-                      LoadedImage->Unload);
+  RetVal = CatSPrint(
+             NULL,
+             Temp,
+             LoadedImage->Revision,
+             LoadedImage->ParentHandle,
+             LoadedImage->SystemTable,
+             LoadedImage->DeviceHandle,
+             LoadedImage->FilePath,
+             LoadedImage->LoadOptionsSize,
+             LoadedImage->LoadOptions,
+             LoadedImage->ImageBase,
+             LoadedImage->ImageSize,
+             CodeType,
+             DataType,
+             LoadedImage->Unload
+             );
 
-  
+
   SHELL_FREE_NON_NULL(Temp);
   SHELL_FREE_NON_NULL(CodeType);
   SHELL_FREE_NON_NULL(DataType);
@@ -258,10 +257,7 @@ GraphicsOutputProtocolDumpInformation(
   HandleParsingHiiInit();
 
   Temp = HiiGetString(mHandleParsingHiiHandle, STRING_TOKEN(STR_GOP_DUMP_MAIN), NULL);
-  RetVal = AllocateZeroPool (PcdGet16 (PcdShellPrintBufferSize));
-  if (Temp == NULL || RetVal == NULL) {
-    SHELL_FREE_NON_NULL(Temp);
-    SHELL_FREE_NON_NULL(RetVal);
+  if (Temp == NULL) {
     return NULL;
   }
 
@@ -276,29 +272,29 @@ GraphicsOutputProtocolDumpInformation(
 
   if (EFI_ERROR (Status)) {
     SHELL_FREE_NON_NULL (Temp);
-    SHELL_FREE_NON_NULL (RetVal);
     return NULL;
   }
 
   Fmt = ConvertPixelFormat(GraphicsOutput->Mode->Info->PixelFormat);
 
-  RetVal = CatSPrint(RetVal,
-                      Temp,
-                      GraphicsOutput->Mode->MaxMode,
-                      GraphicsOutput->Mode->Mode,
-                      GraphicsOutput->Mode->FrameBufferBase,
-                      (UINT64)GraphicsOutput->Mode->FrameBufferSize,
-                      (UINT64)GraphicsOutput->Mode->SizeOfInfo,
-                      GraphicsOutput->Mode->Info->Version,
-                      GraphicsOutput->Mode->Info->HorizontalResolution,
-                      GraphicsOutput->Mode->Info->VerticalResolution,
-                      Fmt,
-                      GraphicsOutput->Mode->Info->PixelsPerScanLine,
-                      GraphicsOutput->Mode->Info->PixelFormat!=PixelBitMask?0:GraphicsOutput->Mode->Info->PixelInformation.RedMask,
-                      GraphicsOutput->Mode->Info->PixelFormat!=PixelBitMask?0:GraphicsOutput->Mode->Info->PixelInformation.GreenMask,
-                      GraphicsOutput->Mode->Info->PixelFormat!=PixelBitMask?0:GraphicsOutput->Mode->Info->PixelInformation.BlueMask
-                      );
-  
+  RetVal = CatSPrint(
+             NULL,
+             Temp,
+             GraphicsOutput->Mode->MaxMode,
+             GraphicsOutput->Mode->Mode,
+             GraphicsOutput->Mode->FrameBufferBase,
+             (UINT64)GraphicsOutput->Mode->FrameBufferSize,
+             (UINT64)GraphicsOutput->Mode->SizeOfInfo,
+             GraphicsOutput->Mode->Info->Version,
+             GraphicsOutput->Mode->Info->HorizontalResolution,
+             GraphicsOutput->Mode->Info->VerticalResolution,
+             Fmt,
+             GraphicsOutput->Mode->Info->PixelsPerScanLine,
+             GraphicsOutput->Mode->Info->PixelFormat!=PixelBitMask?0:GraphicsOutput->Mode->Info->PixelInformation.RedMask,
+             GraphicsOutput->Mode->Info->PixelFormat!=PixelBitMask?0:GraphicsOutput->Mode->Info->PixelInformation.GreenMask,
+             GraphicsOutput->Mode->Info->PixelFormat!=PixelBitMask?0:GraphicsOutput->Mode->Info->PixelInformation.BlueMask
+             );
+
   SHELL_FREE_NON_NULL(Temp);
   SHELL_FREE_NON_NULL(Fmt);
 
@@ -356,7 +352,7 @@ PciRootBridgeIoDumpInformation(
   FreePool(Temp);
   RetVal = Temp2;
   Temp2 = NULL;
- 
+
   Temp = HiiGetString(mHandleParsingHiiHandle, STRING_TOKEN(STR_PCIRB_DUMP_SEG), NULL);
   if (Temp == NULL) {
     SHELL_FREE_NON_NULL(RetVal);
@@ -376,13 +372,13 @@ PciRootBridgeIoDumpInformation(
     if (Temp == NULL) {
       SHELL_FREE_NON_NULL(RetVal);
       return NULL;
-    }    
+    }
     Temp2 = CatSPrint(RetVal, Temp, Attributes);
     FreePool(Temp);
     FreePool(RetVal);
     RetVal = Temp2;
     Temp2 = NULL;
-    
+
     Temp = HiiGetString(mHandleParsingHiiHandle, STRING_TOKEN(STR_PCIRB_DUMP_SUPPORTS), NULL);
     if (Temp == NULL) {
       SHELL_FREE_NON_NULL(RetVal);
@@ -429,7 +425,7 @@ PciRootBridgeIoDumpInformation(
         Temp2 = NULL;
       }
 
-      Temp2 = CatSPrint(RetVal, 
+      Temp2 = CatSPrint(RetVal,
         L"%H%02x    %016lx  %016lx  %02x%N\r\n",
         Configuration->SpecificFlag,
         Configuration->AddrRangeMin,
@@ -618,23 +614,17 @@ AdapterInformationDumpInformation (
   CHAR16                            *GuidStr;
   CHAR16                            *TempStr;
   CHAR16                            *RetVal;
+  CHAR16                            *TempRetVal;
   VOID                              *InformationBlock;
   UINTN                             InformationBlockSize;
-   
+
   if (!Verbose) {
     return (CatSPrint(NULL, L"AdapterInfo"));
   }
 
   InfoTypesBuffer   = NULL;
   InformationBlock  = NULL;
-  
-  //
-  // Allocate print buffer to store data
-  //
-  RetVal = AllocateZeroPool (PcdGet16(PcdShellPrintBufferSize));
-  if (RetVal == NULL) {
-    return NULL;
-  }
+
 
   Status = gBS->OpenProtocol (
                   (EFI_HANDLE) (TheHandle),
@@ -646,7 +636,6 @@ AdapterInformationDumpInformation (
                   );
 
   if (EFI_ERROR (Status)) {
-    SHELL_FREE_NON_NULL (RetVal);
     return NULL;
   }
 
@@ -655,22 +644,23 @@ AdapterInformationDumpInformation (
   //
   Status = EfiAdptrInfoProtocol->GetSupportedTypes (
                                    EfiAdptrInfoProtocol,
-                                   &InfoTypesBuffer, 
+                                   &InfoTypesBuffer,
                                    &InfoTypesBufferCount
                                    );
+  RetVal = NULL;
   if (EFI_ERROR (Status)) {
     TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_GET_SUPP_TYPES_FAILED), NULL);
     if (TempStr != NULL) {
-      RetVal = CatSPrint (RetVal, TempStr, Status);
+      RetVal = CatSPrint (NULL, TempStr, Status);
     } else {
       goto ERROR_EXIT;
-    }  
+    }
   } else {
     TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_SUPP_TYPE_HEADER), NULL);
     if (TempStr == NULL) {
       goto ERROR_EXIT;
     }
-    RetVal = CatSPrint (RetVal, TempStr);
+    RetVal = CatSPrint (NULL, TempStr);
     SHELL_FREE_NON_NULL (TempStr);
 
     for (GuidIndex = 0; GuidIndex < InfoTypesBufferCount; GuidIndex++) {
@@ -678,7 +668,9 @@ AdapterInformationDumpInformation (
       if (TempStr == NULL) {
         goto ERROR_EXIT;
       }
-      RetVal = CatSPrint (RetVal, TempStr, (GuidIndex + 1), InfoTypesBuffer[GuidIndex]);
+      TempRetVal = CatSPrint (RetVal, TempStr, (GuidIndex + 1), InfoTypesBuffer[GuidIndex]);
+      SHELL_FREE_NON_NULL (RetVal);
+      RetVal = TempRetVal;
       SHELL_FREE_NON_NULL (TempStr);
 
       TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_GUID_STRING), NULL);
@@ -687,32 +679,46 @@ AdapterInformationDumpInformation (
       }
 
       if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoMediaStateGuid)) {
-        RetVal = CatSPrint (RetVal, TempStr, L"gEfiAdapterInfoMediaStateGuid");
+        TempRetVal = CatSPrint (RetVal, TempStr, L"gEfiAdapterInfoMediaStateGuid");
+        SHELL_FREE_NON_NULL (RetVal);
+        RetVal = TempRetVal;
       } else if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoNetworkBootGuid)) {
-        RetVal = CatSPrint (RetVal, TempStr, L"gEfiAdapterInfoNetworkBootGuid");
+        TempRetVal = CatSPrint (RetVal, TempStr, L"gEfiAdapterInfoNetworkBootGuid");
+        SHELL_FREE_NON_NULL (RetVal);
+        RetVal = TempRetVal;
       } else if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoSanMacAddressGuid)) {
-        RetVal = CatSPrint (RetVal, TempStr, L"gEfiAdapterInfoSanMacAddressGuid");
+        TempRetVal = CatSPrint (RetVal, TempStr, L"gEfiAdapterInfoSanMacAddressGuid");
+        SHELL_FREE_NON_NULL (RetVal);
+        RetVal = TempRetVal;
+      } else if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoUndiIpv6SupportGuid)) {
+        TempRetVal = CatSPrint (RetVal, TempStr, L"gEfiAdapterInfoUndiIpv6SupportGuid");
+        SHELL_FREE_NON_NULL (RetVal);
+        RetVal = TempRetVal;
       } else {
 
         GuidStr = GetStringNameFromGuid (&InfoTypesBuffer[GuidIndex], NULL);
-       
+
         if (GuidStr != NULL) {
           if (StrCmp(GuidStr, L"UnknownDevice") == 0) {
-            RetVal = CatSPrint (RetVal, TempStr, L"UnknownInfoType");
-            
+            TempRetVal = CatSPrint (RetVal, TempStr, L"UnknownInfoType");
+            SHELL_FREE_NON_NULL (RetVal);
+            RetVal = TempRetVal;
+
             SHELL_FREE_NON_NULL (TempStr);
             SHELL_FREE_NON_NULL(GuidStr);
             //
             // So that we never have to pass this UnknownInfoType to the parsing function "GetInformation" service of AIP
             //
-            continue; 
+            continue;
           } else {
-            RetVal = CatSPrint (RetVal, TempStr, GuidStr);
+            TempRetVal = CatSPrint (RetVal, TempStr, GuidStr);
+            SHELL_FREE_NON_NULL (RetVal);
+            RetVal = TempRetVal;
             SHELL_FREE_NON_NULL(GuidStr);
           }
         }
       }
-      
+
       SHELL_FREE_NON_NULL (TempStr);
 
       Status = EfiAdptrInfoProtocol->GetInformation (
@@ -727,57 +733,80 @@ AdapterInformationDumpInformation (
         if (TempStr == NULL) {
           goto ERROR_EXIT;
         }
-        RetVal = CatSPrint (RetVal, TempStr, Status);
+        TempRetVal = CatSPrint (RetVal, TempStr, Status);
+        SHELL_FREE_NON_NULL (RetVal);
+        RetVal = TempRetVal;
       } else {
         if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoMediaStateGuid)) {
           TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_MEDIA_STATE), NULL);
           if (TempStr == NULL) {
             goto ERROR_EXIT;
           }
-          RetVal = CatSPrint (
-                     RetVal,
-                     TempStr,
-                     ((EFI_ADAPTER_INFO_MEDIA_STATE *)InformationBlock)->MediaState,
-                     ((EFI_ADAPTER_INFO_MEDIA_STATE *)InformationBlock)->MediaState
-                     );
+          TempRetVal = CatSPrint (
+                         RetVal,
+                         TempStr,
+                         ((EFI_ADAPTER_INFO_MEDIA_STATE *)InformationBlock)->MediaState,
+                         ((EFI_ADAPTER_INFO_MEDIA_STATE *)InformationBlock)->MediaState
+                         );
+          SHELL_FREE_NON_NULL (RetVal);
+          RetVal = TempRetVal;
         } else if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoNetworkBootGuid)) {
           TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_NETWORK_BOOT_INFO), NULL);
           if (TempStr == NULL) {
             goto ERROR_EXIT;
           }
-          RetVal = CatSPrint (
-                     RetVal,
-                     TempStr,
-                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiIpv4BootCapablity,
-                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiIpv6BootCapablity, 
-                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->FCoeBootCapablity, 
-                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->OffloadCapability, 
-                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiMpioCapability, 
-                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiIpv4Boot, 
-                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiIpv6Boot,
-                     ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->FCoeBoot
-                     );
-        } else if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoSanMacAddressGuid) == TRUE) { 
+          TempRetVal = CatSPrint (
+                         RetVal,
+                         TempStr,
+                         ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiIpv4BootCapablity,
+                         ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiIpv6BootCapablity,
+                         ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->FCoeBootCapablity,
+                         ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->OffloadCapability,
+                         ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiMpioCapability,
+                         ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiIpv4Boot,
+                         ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->iScsiIpv6Boot,
+                         ((EFI_ADAPTER_INFO_NETWORK_BOOT *)InformationBlock)->FCoeBoot
+                         );
+          SHELL_FREE_NON_NULL (RetVal);
+          RetVal = TempRetVal;
+        } else if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoSanMacAddressGuid) == TRUE) {
           TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_SAN_MAC_ADDRESS_INFO), NULL);
           if (TempStr == NULL) {
             goto ERROR_EXIT;
           }
-          RetVal = CatSPrint (
-                     RetVal,
-                     TempStr,
-                     ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[0], 
-                     ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[1], 
-                     ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[2],
-                     ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[3], 
-                     ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[4], 
-                     ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[5]
-                     );   
+          TempRetVal = CatSPrint (
+                         RetVal,
+                         TempStr,
+                         ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[0],
+                         ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[1],
+                         ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[2],
+                         ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[3],
+                         ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[4],
+                         ((EFI_ADAPTER_INFO_SAN_MAC_ADDRESS *)InformationBlock)->SanMacAddress.Addr[5]
+                         );
+          SHELL_FREE_NON_NULL (RetVal);
+          RetVal = TempRetVal;
+        } else if (CompareGuid (&InfoTypesBuffer[GuidIndex], &gEfiAdapterInfoUndiIpv6SupportGuid) == TRUE) {
+          TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_UNDI_IPV6_INFO), NULL);
+          if (TempStr == NULL) {
+            goto ERROR_EXIT;
+          }
+
+          TempRetVal = CatSPrint (
+                         RetVal,
+                         TempStr,
+                         ((EFI_ADAPTER_INFO_UNDI_IPV6_SUPPORT *)InformationBlock)->Ipv6Support
+                         );   
+          SHELL_FREE_NON_NULL (RetVal);
+          RetVal = TempRetVal;
         } else {
           TempStr = HiiGetString (mHandleParsingHiiHandle, STRING_TOKEN(STR_UNKNOWN_INFO_TYPE), NULL);
           if (TempStr == NULL) {
             goto ERROR_EXIT;
           }
-          RetVal = CatSPrint (RetVal, TempStr, &InfoTypesBuffer[GuidIndex]);
+          TempRetVal = CatSPrint (RetVal, TempStr, &InfoTypesBuffer[GuidIndex]);
+          SHELL_FREE_NON_NULL (RetVal);
+          RetVal = TempRetVal;
         }
       }
       SHELL_FREE_NON_NULL (TempStr);
@@ -821,7 +850,7 @@ STATIC CONST EFI_GUID WinNtSerialPortGuid    = LOCAL_EFI_WIN_NT_SERIAL_PORT_GUID
 #define LOCAL_EFI_ISA_IO_PROTOCOL_GUID \
   { \
   0x7ee2bd44, 0x3da0, 0x11d4, { 0x9a, 0x38, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d } \
-  } 
+  }
 #define LOCAL_EFI_ISA_ACPI_PROTOCOL_GUID \
   { \
   0x64a892dc, 0x5561, 0x4536, { 0x92, 0xc7, 0x79, 0x9b, 0xfc, 0x18, 0x33, 0x55 } \
@@ -909,6 +938,7 @@ STATIC CONST GUID_INFO_BLOCK mGuidStringList[] = {
   {STRING_TOKEN(STR_IPV4_SB),               &gEfiIp4ServiceBindingProtocolGuid,               NULL},
   {STRING_TOKEN(STR_IPV4),                  &gEfiIp4ProtocolGuid,                             NULL},
   {STRING_TOKEN(STR_IPV4_CFG),              &gEfiIp4ConfigProtocolGuid,                       NULL},
+  {STRING_TOKEN(STR_IPV4_CFG2),             &gEfiIp4Config2ProtocolGuid,                      NULL},
   {STRING_TOKEN(STR_UDPV4_SB),              &gEfiUdp4ServiceBindingProtocolGuid,              NULL},
   {STRING_TOKEN(STR_UDPV4),                 &gEfiUdp4ProtocolGuid,                            NULL},
   {STRING_TOKEN(STR_MTFTPV4_SB),            &gEfiMtftp4ServiceBindingProtocolGuid,            NULL},
@@ -1013,6 +1043,124 @@ STATIC CONST GUID_INFO_BLOCK mGuidStringList[] = {
   {STRING_TOKEN(STR_DISK_INFO),             &gEfiDiskInfoProtocolGuid,                        NULL},
 
 //
+// PI Spec 1.0
+//
+  {STRING_TOKEN(STR_BDS_ARCH),              &gEfiBdsArchProtocolGuid,                         NULL},
+  {STRING_TOKEN(STR_CPU_ARCH),              &gEfiCpuArchProtocolGuid,                         NULL},
+  {STRING_TOKEN(STR_MET_ARCH),              &gEfiMetronomeArchProtocolGuid,                   NULL},
+  {STRING_TOKEN(STR_MON_ARCH),              &gEfiMonotonicCounterArchProtocolGuid,            NULL},
+  {STRING_TOKEN(STR_RTC_ARCH),              &gEfiRealTimeClockArchProtocolGuid,               NULL},
+  {STRING_TOKEN(STR_RESET_ARCH),            &gEfiResetArchProtocolGuid,                       NULL},
+  {STRING_TOKEN(STR_RT_ARCH),               &gEfiRuntimeArchProtocolGuid,                     NULL},
+  {STRING_TOKEN(STR_SEC_ARCH),              &gEfiSecurityArchProtocolGuid,                    NULL},
+  {STRING_TOKEN(STR_TIMER_ARCH),            &gEfiTimerArchProtocolGuid,                       NULL},
+  {STRING_TOKEN(STR_VAR_ARCH),              &gEfiVariableWriteArchProtocolGuid,               NULL},
+  {STRING_TOKEN(STR_V_ARCH),                &gEfiVariableArchProtocolGuid,                    NULL},
+  {STRING_TOKEN(STR_SECP),                  &gEfiSecurityPolicyProtocolGuid,                  NULL},
+  {STRING_TOKEN(STR_WDT_ARCH),              &gEfiWatchdogTimerArchProtocolGuid,               NULL},
+  {STRING_TOKEN(STR_SCR),                   &gEfiStatusCodeRuntimeProtocolGuid,               NULL},
+  {STRING_TOKEN(STR_SMB_HC),                &gEfiSmbusHcProtocolGuid,                         NULL},
+  {STRING_TOKEN(STR_FV_2),                  &gEfiFirmwareVolume2ProtocolGuid,                 NULL},
+  {STRING_TOKEN(STR_FV_BLOCK),              &gEfiFirmwareVolumeBlockProtocolGuid,             NULL},
+  {STRING_TOKEN(STR_CAP_ARCH),              &gEfiCapsuleArchProtocolGuid,                     NULL},
+  {STRING_TOKEN(STR_MP_SERVICE),            &gEfiMpServiceProtocolGuid,                       NULL},
+  {STRING_TOKEN(STR_HBRAP),                 &gEfiPciHostBridgeResourceAllocationProtocolGuid, NULL},
+  {STRING_TOKEN(STR_PCIP),                  &gEfiPciPlatformProtocolGuid,                     NULL},
+  {STRING_TOKEN(STR_PCIO),                  &gEfiPciOverrideProtocolGuid,                     NULL},
+  {STRING_TOKEN(STR_PCIE),                  &gEfiPciEnumerationCompleteProtocolGuid,          NULL},
+  {STRING_TOKEN(STR_IPCID),                 &gEfiIncompatiblePciDeviceSupportProtocolGuid,    NULL},
+  {STRING_TOKEN(STR_PCIHPI),                &gEfiPciHotPlugInitProtocolGuid,                  NULL},
+  {STRING_TOKEN(STR_PCIHPR),                &gEfiPciHotPlugRequestProtocolGuid,               NULL},
+  {STRING_TOKEN(STR_SMBIOS),                &gEfiSmbiosProtocolGuid,                          NULL},
+  {STRING_TOKEN(STR_S3_SAVE),               &gEfiS3SaveStateProtocolGuid,                     NULL},
+  {STRING_TOKEN(STR_S3_S_SMM),              &gEfiS3SmmSaveStateProtocolGuid,                  NULL},
+  {STRING_TOKEN(STR_RSC),                   &gEfiRscHandlerProtocolGuid,                      NULL},
+  {STRING_TOKEN(STR_S_RSC),                 &gEfiSmmRscHandlerProtocolGuid,                   NULL},
+  {STRING_TOKEN(STR_ACPI_SDT),              &gEfiAcpiSdtProtocolGuid,                         NULL},
+  {STRING_TOKEN(STR_SIO),                   &gEfiSioProtocolGuid,                             NULL},
+  {STRING_TOKEN(STR_S_CPU2),                &gEfiSmmCpuIo2ProtocolGuid,                       NULL},
+  {STRING_TOKEN(STR_S_BASE2),               &gEfiSmmBase2ProtocolGuid,                        NULL},
+  {STRING_TOKEN(STR_S_ACC_2),               &gEfiSmmAccess2ProtocolGuid,                      NULL},
+  {STRING_TOKEN(STR_S_CON_2),               &gEfiSmmControl2ProtocolGuid,                     NULL},
+  {STRING_TOKEN(STR_S_CONFIG),              &gEfiSmmConfigurationProtocolGuid,                NULL},
+  {STRING_TOKEN(STR_S_RTL),                 &gEfiSmmReadyToLockProtocolGuid,                  NULL},
+  {STRING_TOKEN(STR_DS_RTL),                &gEfiDxeSmmReadyToLockProtocolGuid,               NULL},
+  {STRING_TOKEN(STR_S_COMM),                &gEfiSmmCommunicationProtocolGuid,                NULL},
+  {STRING_TOKEN(STR_S_STAT),                &gEfiSmmStatusCodeProtocolGuid,                   NULL},
+  {STRING_TOKEN(STR_S_CPU),                 &gEfiSmmCpuProtocolGuid,                          NULL},
+  {STRING_TOKEN(STR_S_PCIRBIO),             &gEfiPciRootBridgeIoProtocolGuid,                 NULL},
+  {STRING_TOKEN(STR_S_SWD),                 &gEfiSmmSwDispatch2ProtocolGuid,                  NULL},
+  {STRING_TOKEN(STR_S_SXD),                 &gEfiSmmSxDispatch2ProtocolGuid,                  NULL},
+  {STRING_TOKEN(STR_S_PTD2),                &gEfiSmmPeriodicTimerDispatch2ProtocolGuid,       NULL},
+  {STRING_TOKEN(STR_S_UD2),                 &gEfiSmmUsbDispatch2ProtocolGuid,                 NULL},
+  {STRING_TOKEN(STR_S_GD2),                 &gEfiSmmGpiDispatch2ProtocolGuid,                 NULL},
+  {STRING_TOKEN(STR_S_SBD2),                &gEfiSmmStandbyButtonDispatch2ProtocolGuid,       NULL},
+  {STRING_TOKEN(STR_S_PBD2),                &gEfiSmmPowerButtonDispatch2ProtocolGuid,         NULL},
+  {STRING_TOKEN(STR_S_ITD2),                &gEfiSmmIoTrapDispatch2ProtocolGuid,              NULL},
+  {STRING_TOKEN(STR_PCD),                   &gEfiPcdProtocolGuid,                             NULL},
+  {STRING_TOKEN(STR_FVB2),                  &gEfiFirmwareVolumeBlock2ProtocolGuid,            NULL},
+  {STRING_TOKEN(STR_CPUIO2),                &gEfiCpuIo2ProtocolGuid,                          NULL},
+  {STRING_TOKEN(STR_LEGACY_R2),             &gEfiLegacyRegion2ProtocolGuid,                   NULL},
+  {STRING_TOKEN(STR_SAL_MIP),               &gEfiSalMcaInitPmiProtocolGuid,                   NULL},
+  {STRING_TOKEN(STR_ES_BS),                 &gEfiExtendedSalBootServiceProtocolGuid,          NULL},
+  {STRING_TOKEN(STR_ES_BIO),                &gEfiExtendedSalBaseIoServicesProtocolGuid,       NULL},
+  {STRING_TOKEN(STR_ES_STALL),              &gEfiExtendedSalStallServicesProtocolGuid,        NULL},
+  {STRING_TOKEN(STR_ES_RTC),                &gEfiExtendedSalRtcServicesProtocolGuid,          NULL},
+  {STRING_TOKEN(STR_ES_VS),                 &gEfiExtendedSalVariableServicesProtocolGuid,     NULL},
+  {STRING_TOKEN(STR_ES_MTC),                &gEfiExtendedSalMtcServicesProtocolGuid,          NULL},
+  {STRING_TOKEN(STR_ES_RESET),              &gEfiExtendedSalResetServicesProtocolGuid,        NULL},
+  {STRING_TOKEN(STR_ES_SC),                 &gEfiExtendedSalStatusCodeServicesProtocolGuid,   NULL},
+  {STRING_TOKEN(STR_ES_FBS),                &gEfiExtendedSalFvBlockServicesProtocolGuid,      NULL},
+  {STRING_TOKEN(STR_ES_MP),                 &gEfiExtendedSalMpServicesProtocolGuid,           NULL},
+  {STRING_TOKEN(STR_ES_PAL),                &gEfiExtendedSalPalServicesProtocolGuid,          NULL},
+  {STRING_TOKEN(STR_ES_BASE),               &gEfiExtendedSalBaseServicesProtocolGuid,         NULL},
+  {STRING_TOKEN(STR_ES_MCA),                &gEfiExtendedSalMcaServicesProtocolGuid,          NULL},
+  {STRING_TOKEN(STR_ES_PCI),                &gEfiExtendedSalPciServicesProtocolGuid,          NULL},
+  {STRING_TOKEN(STR_ES_CACHE),              &gEfiExtendedSalCacheServicesProtocolGuid,        NULL},
+  {STRING_TOKEN(STR_ES_MCA_LOG),            &gEfiExtendedSalMcaLogServicesProtocolGuid,       NULL},
+  {STRING_TOKEN(STR_S2ARCH),                &gEfiSecurity2ArchProtocolGuid,                   NULL},
+  {STRING_TOKEN(STR_EODXE),                 &gEfiSmmEndOfDxeProtocolGuid,                     NULL},
+  {STRING_TOKEN(STR_ISAHC),                 &gEfiIsaHcProtocolGuid,                           NULL},
+  {STRING_TOKEN(STR_ISAHC_B),               &gEfiIsaHcServiceBindingProtocolGuid,             NULL},
+  {STRING_TOKEN(STR_SIO_C),                 &gEfiSioControlProtocolGuid,                      NULL},
+  {STRING_TOKEN(STR_GET_PCD),               &gEfiGetPcdInfoProtocolGuid,                      NULL},
+  {STRING_TOKEN(STR_I2C_M),                 &gEfiI2cMasterProtocolGuid,                       NULL},
+  {STRING_TOKEN(STR_I2CIO),                 &gEfiI2cIoProtocolGuid,                           NULL},
+  {STRING_TOKEN(STR_I2CEN),                 &gEfiI2cEnumerateProtocolGuid,                    NULL},
+  {STRING_TOKEN(STR_I2C_H),                 &gEfiI2cHostProtocolGuid,                         NULL},
+  {STRING_TOKEN(STR_I2C_BCM),               &gEfiI2cBusConfigurationManagementProtocolGuid,   NULL},
+  {STRING_TOKEN(STR_TREE),                  &gEfiTrEEProtocolGuid,                            NULL},
+  {STRING_TOKEN(STR_TCG2),                  &gEfiTcg2ProtocolGuid,                            NULL},
+  {STRING_TOKEN(STR_TIMESTAMP),             &gEfiTimestampProtocolGuid,                       NULL},
+  {STRING_TOKEN(STR_RNG),                   &gEfiRngProtocolGuid,                             NULL},
+  {STRING_TOKEN(STR_NVMEPT),                &gEfiNvmExpressPassThruProtocolGuid,              NULL},
+  {STRING_TOKEN(STR_H2_SB),                 &gEfiHash2ServiceBindingProtocolGuid,             NULL},
+  {STRING_TOKEN(STR_HASH2),                 &gEfiHash2ProtocolGuid,                           NULL},
+  {STRING_TOKEN(STR_BIO_C),                 &gEfiBlockIoCryptoProtocolGuid,                   NULL},
+  {STRING_TOKEN(STR_SCR),                   &gEfiSmartCardReaderProtocolGuid,                 NULL},
+  {STRING_TOKEN(STR_SCE),                   &gEfiSmartCardEdgeProtocolGuid,                   NULL},
+  {STRING_TOKEN(STR_USB_FIO),               &gEfiUsbFunctionIoProtocolGuid,                   NULL},
+  {STRING_TOKEN(STR_BC_HC),                 &gEfiBluetoothHcProtocolGuid,                     NULL},
+  {STRING_TOKEN(STR_BC_IO_SB),              &gEfiBluetoothIoServiceBindingProtocolGuid,       NULL},
+  {STRING_TOKEN(STR_BC_IO),                 &gEfiBluetoothIoProtocolGuid,                     NULL},
+  {STRING_TOKEN(STR_BC_C),                  &gEfiBluetoothConfigProtocolGuid,                 NULL},
+  {STRING_TOKEN(STR_REG_EXP),               &gEfiRegularExpressionProtocolGuid,               NULL},
+  {STRING_TOKEN(STR_B_MGR_P),               &gEfiBootManagerPolicyProtocolGuid,               NULL},
+  {STRING_TOKEN(STR_CKH),                   &gEfiConfigKeywordHandlerProtocolGuid,            NULL},
+  {STRING_TOKEN(STR_WIFI),                  &gEfiWiFiProtocolGuid,                            NULL},
+  {STRING_TOKEN(STR_EAP_M),                 &gEfiEapManagement2ProtocolGuid,                  NULL},
+  {STRING_TOKEN(STR_EAP_C),                 &gEfiEapConfigurationProtocolGuid,                NULL},
+  {STRING_TOKEN(STR_PKCS7),                 &gEfiPkcs7VerifyProtocolGuid,                     NULL},
+  {STRING_TOKEN(STR_NET_DNS4_SB),           &gEfiDns4ServiceBindingProtocolGuid,              NULL},
+  {STRING_TOKEN(STR_NET_DNS4),              &gEfiDns4ProtocolGuid,                            NULL},
+  {STRING_TOKEN(STR_NET_DNS6_SB),           &gEfiDns6ServiceBindingProtocolGuid,              NULL},
+  {STRING_TOKEN(STR_NET_DNS6),              &gEfiDns6ProtocolGuid,                            NULL},
+  {STRING_TOKEN(STR_NET_HTTP_SB),           &gEfiHttpServiceBindingProtocolGuid,              NULL},
+  {STRING_TOKEN(STR_NET_HTTP),              &gEfiHttpProtocolGuid,                            NULL},
+  {STRING_TOKEN(STR_NET_HTTP_U),            &gEfiHttpUtilitiesProtocolGuid,                   NULL},
+  {STRING_TOKEN(STR_REST),                  &gEfiRestProtocolGuid,                            NULL},
+
+//
 // UEFI Shell Spec 2.0
 //
   {STRING_TOKEN(STR_SHELL_PARAMETERS),      &gEfiShellParametersProtocolGuid,                 NULL},
@@ -1022,6 +1170,11 @@ STATIC CONST GUID_INFO_BLOCK mGuidStringList[] = {
 // UEFI Shell Spec 2.1
 //
   {STRING_TOKEN(STR_SHELL_DYNAMIC),         &gEfiShellDynamicCommandProtocolGuid,             NULL},
+
+//
+// Misc
+//
+  {STRING_TOKEN(STR_PCDINFOPROT),           &gGetPcdInfoProtocolGuid,                         NULL},
 
 //
 // terminator
@@ -1289,9 +1442,9 @@ GetGuidFromStringName(
 
 /**
   Get best support language for this driver.
-  
-  First base on the user input language  to search, second base on the current 
-  platform used language to search, third get the first language from the 
+
+  First base on the user input language  to search, second base on the current
+  platform used language to search, third get the first language from the
   support language list. The caller need to free the buffer of the best language.
 
   @param[in] SupportedLanguages      The support languages for this driver.
@@ -1311,7 +1464,7 @@ GetBestLanguageForDriver (
   CHAR8                         *LanguageVariable;
   CHAR8                         *BestLanguage;
 
-  LanguageVariable = GetVariable (Iso639Language ? L"Lang" : L"PlatformLang", &gEfiGlobalVariableGuid);
+  GetVariable2 (Iso639Language ? L"Lang" : L"PlatformLang", &gEfiGlobalVariableGuid, (VOID**)&LanguageVariable, NULL);
 
   BestLanguage = GetBestLanguage(
                    SupportedLanguages,
@@ -1689,7 +1842,7 @@ ParseHandleDatabaseByRelationshipWithType (
 
       if (ControllerHandle == NULL) {
         //
-        // ControllerHandle == NULL and DriverBindingHandle != NULL.  
+        // ControllerHandle == NULL and DriverBindingHandle != NULL.
         // Return information on all the controller handles that the driver specified by DriverBindingHandle is managing
         //
         for (OpenInfoIndex = 0; OpenInfoIndex < OpenInfoCount; OpenInfoIndex++) {

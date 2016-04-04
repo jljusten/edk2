@@ -1,7 +1,7 @@
 ## @file
 # This is Emulator FDF file with UEFI HII features enabled
 #
-# Copyright (c) 2008 - 2013, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2008 - 2015, Intel Corporation. All rights reserved.<BR>
 # Portions copyright (c) 2009 - 2011, Apple Inc. All rights reserved.<BR>
 #
 # This program and the accompanying materials
@@ -161,7 +161,7 @@ INF  MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
 INF  MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
 INF  MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
 
-INF  EmbeddedPkg/SerialDxe/SerialDxe.inf
+INF  MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
 INF  MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
 INF  MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
 INF  MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
@@ -196,7 +196,6 @@ INF  EmulatorPkg/EmuSnpDxe/EmuSnpDxe.inf
 INF  MdeModulePkg/Universal/Network/DpcDxe/DpcDxe.inf
 INF  MdeModulePkg/Universal/Network/ArpDxe/ArpDxe.inf
 INF  MdeModulePkg/Universal/Network/Dhcp4Dxe/Dhcp4Dxe.inf
-INF  MdeModulePkg/Universal/Network/Ip4ConfigDxe/Ip4ConfigDxe.inf
 INF  MdeModulePkg/Universal/Network/Ip4Dxe/Ip4Dxe.inf
 INF  MdeModulePkg/Universal/Network/MnpDxe/MnpDxe.inf
 INF  MdeModulePkg/Universal/Network/VlanConfigDxe/VlanConfigDxe.inf
@@ -228,7 +227,7 @@ FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
 
 [Rule.Common.SEC]
   FILE SEC = $(NAMED_GUID)  {
-    PE32     PE32    Align=32       $(INF_OUTPUT)/$(MODULE_NAME).efi
+    PE32     PE32    Align=Auto     $(INF_OUTPUT)/$(MODULE_NAME).efi
     UI       STRING ="$(MODULE_NAME)" Optional
     VERSION  STRING ="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
   }
@@ -236,7 +235,7 @@ FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
 
 [Rule.Common.PEI_CORE]
   FILE PEI_CORE = $(NAMED_GUID) {
-    PE32     PE32    Align=32       $(INF_OUTPUT)/$(MODULE_NAME).efi
+    PE32     PE32    Align=Auto     $(INF_OUTPUT)/$(MODULE_NAME).efi
     UI       STRING ="$(MODULE_NAME)" Optional
     VERSION  STRING ="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
   }
@@ -244,7 +243,7 @@ FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
 [Rule.Common.PEIM]
   FILE PEIM = $(NAMED_GUID) {
      PEI_DEPEX PEI_DEPEX Optional        $(INF_OUTPUT)/$(MODULE_NAME).depex
-     PE32      PE32   Align=32       $(INF_OUTPUT)/$(MODULE_NAME).efi
+     PE32      PE32   Align=Auto     $(INF_OUTPUT)/$(MODULE_NAME).efi
      UI       STRING="$(MODULE_NAME)" Optional
      VERSION  STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
   }

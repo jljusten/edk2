@@ -1,5 +1,6 @@
 #
 #  Copyright (c) 2011 - 2015, ARM Limited. All rights reserved.
+#  Copyright (c) 2015, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -123,6 +124,7 @@ READ_ENABLED_CAP   = TRUE
 READ_STATUS        = TRUE
 READ_LOCK_CAP      = TRUE
 READ_LOCK_STATUS   = TRUE
+FvNameGuid         = 87940482-fc81-41c3-87e6-399cf85ac8a0
 
   APRIORI DXE {
     INF MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
@@ -138,6 +140,9 @@ READ_LOCK_STATUS   = TRUE
   INF MdeModulePkg/Core/RuntimeDxe/RuntimeDxe.inf
   INF MdeModulePkg/Universal/SecurityStubDxe/SecurityStubDxe.inf
   INF MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
+!if $(SECURE_BOOT_ENABLE) == TRUE
+  INF SecurityPkg/VariableAuthenticated/SecureBootConfigDxe/SecureBootConfigDxe.inf
+!endif
   INF MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
   INF MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
   INF MdeModulePkg/Universal/MonotonicCounterRuntimeDxe/MonotonicCounterRuntimeDxe.inf
@@ -154,14 +159,16 @@ READ_LOCK_STATUS   = TRUE
   INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
   INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
   INF MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
-  INF EmbeddedPkg/SerialDxe/SerialDxe.inf
+  INF MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
 
   INF ArmPkg/Drivers/ArmGic/ArmGicDxe.inf
   INF ArmPkg/Drivers/TimerDxe/TimerDxe.inf
+!if $(SECURE_BOOT_ENABLE) == TRUE
+  INF ArmPlatformPkg/Drivers/NorFlashDxe/NorFlashAuthenticatedDxe.inf
+!else
   INF ArmPlatformPkg/Drivers/NorFlashDxe/NorFlashDxe.inf
-!ifndef ARM_FOUNDATION_FVP
-  INF ArmPlatformPkg/Drivers/LcdGraphicsOutputDxe/PL111LcdGraphicsOutputDxe.inf
 !endif
+  INF ArmPlatformPkg/Drivers/LcdGraphicsOutputDxe/PL111LcdGraphicsOutputDxe.inf
   INF ArmPlatformPkg/Drivers/SP805WatchdogDxe/SP805WatchdogDxe.inf
 
   #
@@ -177,13 +184,11 @@ READ_LOCK_STATUS   = TRUE
   INF FatBinPkg/EnhancedFatDxe/Fat.inf
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
 
-!ifndef ARM_FOUNDATION_FVP
   #
   # Multimedia Card Interface
   #
   INF EmbeddedPkg/Universal/MmcDxe/MmcDxe.inf
   INF ArmPlatformPkg/Drivers/PL180MciDxe/PL180MciDxe.inf
-!endif
 
   #
   # Platform Driver
@@ -200,7 +205,23 @@ READ_LOCK_STATUS   = TRUE
   # Bds
   #
   INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
+!if $(USE_ARM_BDS) == TRUE
   INF ArmPlatformPkg/Bds/Bds.inf
+!else
+  INF MdeModulePkg/Universal/DisplayEngineDxe/DisplayEngineDxe.inf
+  INF MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
+  INF IntelFrameworkModulePkg/Universal/BdsDxe/BdsDxe.inf
+
+  #
+  # TianoCore logo (splash screen)
+  #
+  FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
+   SECTION RAW = MdeModulePkg/Logo/Logo.bmp
+  }
+!endif
+
+  # Legacy Linux Loader
+  INF ArmPkg/Application/LinuxLoader/LinuxLoader.inf
 
   # FV Filesystem
   INF MdeModulePkg/Universal/FvSimpleFileSystemDxe/FvSimpleFileSystemDxe.inf
@@ -305,20 +326,20 @@ READ_LOCK_STATUS   = TRUE
 ############################################################################
 
 [Rule.Common.SEC]
-  FILE SEC = $(NAMED_GUID) RELOCS_STRIPPED {
-    TE  TE Align = 4K                  $(INF_OUTPUT)/$(MODULE_NAME).efi
+  FILE SEC = $(NAMED_GUID) RELOCS_STRIPPED FIXED {
+    TE  TE Align = Auto                 $(INF_OUTPUT)/$(MODULE_NAME).efi
   }
 
 [Rule.Common.PEI_CORE]
-  FILE PEI_CORE = $(NAMED_GUID) {
-    TE     TE Align = 8                 $(INF_OUTPUT)/$(MODULE_NAME).efi
+  FILE PEI_CORE = $(NAMED_GUID) FIXED {
+    TE     TE Align = Auto              $(INF_OUTPUT)/$(MODULE_NAME).efi
     UI     STRING ="$(MODULE_NAME)" Optional
   }
 
 [Rule.Common.PEIM]
-  FILE PEIM = $(NAMED_GUID) {
+  FILE PEIM = $(NAMED_GUID) FIXED {
      PEI_DEPEX PEI_DEPEX Optional       $(INF_OUTPUT)/$(MODULE_NAME).depex
-     TE       TE Align = 8              $(INF_OUTPUT)/$(MODULE_NAME).efi
+     TE       TE Align = Auto           $(INF_OUTPUT)/$(MODULE_NAME).efi
      UI       STRING="$(MODULE_NAME)" Optional
   }
 

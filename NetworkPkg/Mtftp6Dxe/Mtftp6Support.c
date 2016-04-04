@@ -1,7 +1,7 @@
 /** @file
   Mtftp6 support functions implementation.
 
-  Copyright (c) 2009 - 2012, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2015, Intel Corporation. All rights reserved.<BR>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -452,13 +452,16 @@ Mtftp6SendRequest (
   EFI_MTFTP6_PACKET         *Packet;
   EFI_MTFTP6_OPTION         *Options;
   EFI_MTFTP6_TOKEN          *Token;
+  RETURN_STATUS             Status;
   NET_BUF                   *Nbuf;
   UINT8                     *Mode;
   UINT8                     *Cur;
-  UINT32                    Len1;
-  UINT32                    Len2;
-  UINT32                    Len;
   UINTN                     Index;
+  UINT32                    BufferLength;
+  UINTN                     FileNameLength;
+  UINTN                     ModeLength;
+  UINTN                     OptionStrLength;
+  UINTN                     ValueStrLength;
 
   Token   = Instance->Token;
   Options = Token->OptionList;
@@ -487,44 +490,59 @@ Mtftp6SendRequest (
   //
   // Compute the size of new Mtftp6 packet.
   //
-  Len1 = (UINT32) AsciiStrLen ((CHAR8 *) Token->Filename);
-  Len2 = (UINT32) AsciiStrLen ((CHAR8 *) Mode);
-  Len  = Len1 + Len2 + 4;
+  FileNameLength = AsciiStrLen ((CHAR8 *) Token->Filename);
+  ModeLength     = AsciiStrLen ((CHAR8 *) Mode);
+  BufferLength   = (UINT32) FileNameLength + (UINT32) ModeLength + 4;
 
   for (Index = 0; Index < Token->OptionCount; Index++) {
-    Len1  = (UINT32) AsciiStrLen ((CHAR8 *) Options[Index].OptionStr);
-    Len2  = (UINT32) AsciiStrLen ((CHAR8 *) Options[Index].ValueStr);
-    Len  += Len1 + Len2 + 2;
+    OptionStrLength = AsciiStrLen ((CHAR8 *) Options[Index].OptionStr);
+    ValueStrLength  = AsciiStrLen ((CHAR8 *) Options[Index].ValueStr);
+    BufferLength   += (UINT32) OptionStrLength + (UINT32) ValueStrLength + 2;
   }
 
   //
   // Allocate a packet then copy the data.
   //
-  if ((Nbuf = NetbufAlloc (Len)) == NULL) {
+  if ((Nbuf = NetbufAlloc (BufferLength)) == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
   //
   // Copy the opcode, filename and mode into packet.
   //
-  Packet         = (EFI_MTFTP6_PACKET *) NetbufAllocSpace (Nbuf, Len, FALSE);
+  Packet         = (EFI_MTFTP6_PACKET *) NetbufAllocSpace (Nbuf, BufferLength, FALSE);
   ASSERT (Packet != NULL);
 
   Packet->OpCode = HTONS (Operation);
+  BufferLength  -= sizeof (Packet->OpCode);
+  
   Cur            = Packet->Rrq.Filename;
-  Cur            = (UINT8 *) AsciiStrCpy ((CHAR8 *) Cur, (CHAR8 *) Token->Filename);
-  Cur           += AsciiStrLen ((CHAR8 *) Token->Filename) + 1;
-  Cur            = (UINT8 *) AsciiStrCpy ((CHAR8 *) Cur, (CHAR8 *) Mode);
-  Cur           += AsciiStrLen ((CHAR8 *) Mode) + 1;
+  Status         = AsciiStrCpyS ((CHAR8 *) Cur, BufferLength, (CHAR8 *) Token->Filename);
+  ASSERT_EFI_ERROR (Status);
+  BufferLength  -= (UINT32) (FileNameLength + 1);
+  Cur           += FileNameLength + 1;
+  Status         = AsciiStrCpyS ((CHAR8 *) Cur, BufferLength, (CHAR8 *) Mode);
+  ASSERT_EFI_ERROR (Status);
+  BufferLength  -= (UINT32) (ModeLength + 1);
+  Cur           += ModeLength + 1;
 
   //
   // Copy all the extension options into the packet.
   //
   for (Index = 0; Index < Token->OptionCount; ++Index) {
-    Cur  = (UINT8 *) AsciiStrCpy ((CHAR8 *) Cur, (CHAR8 *) Options[Index].OptionStr);
-    Cur += AsciiStrLen ((CHAR8 *) Options[Index].OptionStr) + 1;
-    Cur  = (UINT8 *) AsciiStrCpy ((CHAR8 *) Cur, (CHAR8 *) Options[Index].ValueStr);
-    Cur += AsciiStrLen ((CHAR8 *) (CHAR8 *) Options[Index].ValueStr) + 1;
+    OptionStrLength = AsciiStrLen ((CHAR8 *) Options[Index].OptionStr);
+    ValueStrLength  = AsciiStrLen ((CHAR8 *) Options[Index].ValueStr);
+    
+    Status          = AsciiStrCpyS ((CHAR8 *) Cur, BufferLength, (CHAR8 *) Options[Index].OptionStr);
+    ASSERT_EFI_ERROR (Status);
+    BufferLength   -= (UINT32) (OptionStrLength + 1);
+    Cur            += OptionStrLength + 1;
+    
+    Status          = AsciiStrCpyS ((CHAR8 *) Cur, BufferLength, (CHAR8 *) Options[Index].ValueStr);
+    ASSERT_EFI_ERROR (Status);
+    BufferLength   -= (UINT32) (ValueStrLength + 1);
+    Cur            += ValueStrLength + 1;
+    
   }
 
   //
@@ -584,7 +602,7 @@ Mtftp6SendError (
   TftpError->OpCode          = HTONS (EFI_MTFTP6_OPCODE_ERROR);
   TftpError->Error.ErrorCode = HTONS (ErrCode);
 
-  AsciiStrCpy ((CHAR8 *) TftpError->Error.ErrorMessage, (CHAR8 *) ErrInfo);
+  AsciiStrCpyS ((CHAR8 *) TftpError->Error.ErrorMessage, AsciiStrLen ((CHAR8 *) ErrInfo) + 1 , (CHAR8 *) ErrInfo);
 
   //
   // Save the packet buf for retransmit

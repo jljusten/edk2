@@ -47,6 +47,7 @@
   gEfiXenInfoGuid
 
 [LibraryClasses]
+  BaseLib
   DebugLib
   HobLib
   IoLib
@@ -58,7 +59,6 @@
   QemuFwCfgLib
   MtrrLib
   PcdLib
-  BaseMemoryLib
 
 [Pcd]
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfPeiMemFvBase
@@ -75,6 +75,8 @@
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfLockBoxStorageSize
   gUefiOvmfPkgTokenSpaceGuid.PcdGuidedExtractHandlerTableSize
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfHostBridgePciDevId
+  gUefiOvmfPkgTokenSpaceGuid.PcdOvmfDecompressionScratchEnd
+  gUefiOvmfPkgTokenSpaceGuid.PcdQ35TsegMbytes
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdS3AcpiReservedMemorySize
   gEfiMdePkgTokenSpaceGuid.PcdGuidedExtractHandlerTableAddress
   gEfiMdeModulePkgTokenSpaceGuid.PcdVariableStoreSize
@@ -82,10 +84,14 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize
   gEfiMdeModulePkgTokenSpaceGuid.PcdEmuVariableNvStoreReserved
   gEfiMdeModulePkgTokenSpaceGuid.PcdPciDisableBusEnumeration
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode
   gEfiMdeModulePkgTokenSpaceGuid.PcdUse1GPageTable
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetNxForStack
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPropertiesTableEnable
   gUefiCpuPkgTokenSpaceGuid.PcdCpuLocalApicBaseAddress
+
+[FeaturePcd]
+  gUefiOvmfPkgTokenSpaceGuid.PcdSmmSmramRequire
 
 [Ppis]
   gEfiPeiMasterBootModePpiGuid

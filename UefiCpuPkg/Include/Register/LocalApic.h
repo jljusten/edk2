@@ -1,7 +1,7 @@
 /** @file
   IA32 Local APIC Definitions.
 
-  Copyright (c) 2010 - 2013, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2010 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -19,15 +19,6 @@
 // Definitions for IA32 architectural MSRs
 //
 #define MSR_IA32_APIC_BASE_ADDRESS              0x1B
-
-//
-// Definitions for CPUID instruction
-//
-#define CPUID_SIGNATURE                         0x0
-#define CPUID_VERSION_INFO                      0x1
-#define CPUID_EXTENDED_TOPOLOGY                 0xB
-#define CPUID_EXTENDED_FUNCTION                 0x80000000
-#define CPUID_VIR_PHY_ADDRESS_SIZE              0x80000008
 
 //
 // Definition for Local APIC registers and related values

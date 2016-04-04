@@ -31,6 +31,24 @@ PlatformIntelBdsConstructor (
   return EFI_SUCCESS;
 }
 
+/**
+  An empty function to pass error checking of CreateEventEx ().
+
+  @param  Event                 Event whose notification function is being invoked.
+  @param  Context               Pointer to the notification function's context,
+                                which is implementation-dependent.
+
+**/
+STATIC
+VOID
+EFIAPI
+EmptyCallbackFunction (
+  IN EFI_EVENT                Event,
+  IN VOID                     *Context
+  )
+{
+}
+
 //
 // BDS Platform Functions
 //
@@ -45,6 +63,24 @@ PlatformBdsInit (
   VOID
   )
 {
+  EFI_EVENT           EndOfDxeEvent;
+  EFI_STATUS          Status;
+
+  //
+  // Signal EndOfDxe PI Event
+  //
+  Status = gBS->CreateEventEx (
+                  EVT_NOTIFY_SIGNAL,
+                  TPL_CALLBACK,
+                  EmptyCallbackFunction,
+                  NULL,
+                  &gEfiEndOfDxeEventGroupGuid,
+                  &EndOfDxeEvent
+                  );
+  if (!EFI_ERROR (Status)) {
+    gBS->SignalEvent (EndOfDxeEvent);
+    gBS->CloseEvent (EndOfDxeEvent);
+  }
 }
 
 STATIC
@@ -63,8 +99,11 @@ GetConsoleDevicePathFromVariable (
   CHAR16*                   NextDevicePathStr;
   EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL  *EfiDevicePathFromTextProtocol;
 
-  Status = GetGlobalEnvironmentVariable (ConsoleVarName, NULL, NULL, (VOID**)&DevicePathInstances);
-  if (EFI_ERROR(Status)) {
+  Status = EFI_SUCCESS;
+  Size = 0;
+
+  DevicePathInstances = BdsLibGetVariableAndSize (ConsoleVarName, &gEfiGlobalVariableGuid, &Size);
+  if (DevicePathInstances == NULL) {
     // In case no default console device path has been defined we assume a driver handles the console (eg: SimpleTextInOutSerial)
     if ((DefaultConsolePaths == NULL) || (DefaultConsolePaths[0] == L'\0')) {
       *DevicePaths = NULL;
@@ -73,8 +112,6 @@ GetConsoleDevicePathFromVariable (
 
     Status = gBS->LocateProtocol (&gEfiDevicePathFromTextProtocolGuid, NULL, (VOID **)&EfiDevicePathFromTextProtocol);
     ASSERT_EFI_ERROR(Status);
-
-    DevicePathInstances = NULL;
 
     // Extract the Device Path instances from the multi-device path string
     while ((DefaultConsolePaths != NULL) && (DefaultConsolePaths[0] != L'\0')) {
@@ -141,16 +178,24 @@ InitializeConsolePipe (
   while (ConsoleDevicePaths != NULL) {
     DevicePath = GetNextDevicePathInstance (&ConsoleDevicePaths, &Size);
 
-    Status = BdsConnectDevicePath (DevicePath, Handle, NULL);
+    Status = BdsLibConnectDevicePath (DevicePath);
+    if (!EFI_ERROR (Status)) {
+      //
+      // If BdsLibConnectDevicePath () succeeded, *Handle must have a non-NULL
+      // value. So ASSERT that this is the case.
+      //
+      gBS->LocateDevicePath (&gEfiDevicePathProtocolGuid, &DevicePath, Handle);
+      ASSERT (*Handle != NULL);
+    }
     DEBUG_CODE_BEGIN();
       if (EFI_ERROR(Status)) {
         // We convert back to the text representation of the device Path
-        EFI_DEVICE_PATH_TO_TEXT_PROTOCOL* DevicePathToTextProtocol;
-        CHAR16* DevicePathTxt;
-        EFI_STATUS Status;
+        EFI_DEVICE_PATH_TO_TEXT_PROTOCOL  *DevicePathToTextProtocol;
+        CHAR16                            *DevicePathTxt;
 
-        Status = gBS->LocateProtocol(&gEfiDevicePathToTextProtocolGuid, NULL, (VOID **)&DevicePathToTextProtocol);
-        if (!EFI_ERROR(Status)) {
+        DevicePathToTextProtocol = NULL;
+        gBS->LocateProtocol(&gEfiDevicePathToTextProtocolGuid, NULL, (VOID **) &DevicePathToTextProtocol);
+        if (DevicePathToTextProtocol != NULL) {
           DevicePathTxt = DevicePathToTextProtocol->ConvertDevicePathToText (DevicePath, TRUE, TRUE);
 
           DEBUG((EFI_D_ERROR,"Fail to start the console with the Device Path '%s'. (Error '%r')\n", DevicePathTxt, Status));
@@ -171,7 +216,7 @@ InitializeConsolePipe (
   if (*Interface == NULL) {
     Status = gBS->LocateHandleBuffer (ByProtocol, Protocol, NULL, &NoHandles, &Buffer);
     if (EFI_ERROR (Status)) {
-      BdsConnectAllDrivers ();
+      BdsLibConnectAll ();
       Status = gBS->LocateHandleBuffer (ByProtocol, Protocol, NULL, &NoHandles, &Buffer);
     }
 
@@ -302,6 +347,11 @@ PlatformBdsPolicyBehavior (
 
   Status = PlatformBdsConnectConsole ();
   ASSERT_EFI_ERROR (Status);
+
+  //
+  // Show the splash screen.
+  //
+  EnableQuietBoot (PcdGetPtr (PcdLogoFile));
 }
 
 /**

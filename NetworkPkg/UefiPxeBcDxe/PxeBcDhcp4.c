@@ -1,7 +1,7 @@
 /** @file
   Functions implementation related with DHCPv4 for UefiPxeBc Driver.
 
-  Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2015, Intel Corporation. All rights reserved.<BR>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -1506,6 +1506,52 @@ PxeBcDhcp4Discover (
   return Status;
 }
 
+/**
+  Switch the Ip4 policy to static.
+
+  @param[in]  Private             The pointer to PXEBC_PRIVATE_DATA.
+
+  @retval     EFI_SUCCESS         The policy is already configured to static.
+  @retval     Others              Other error as indicated..
+
+**/
+EFI_STATUS
+PxeBcSetIp4Policy (   
+  IN PXEBC_PRIVATE_DATA            *Private
+  )
+{
+  EFI_STATUS                   Status;
+  EFI_IP4_CONFIG2_PROTOCOL     *Ip4Config2;
+  EFI_IP4_CONFIG2_POLICY       Policy;
+  UINTN                        DataSize;
+
+  Ip4Config2 = Private->Ip4Config2;
+  DataSize = sizeof (EFI_IP4_CONFIG2_POLICY);
+  Status = Ip4Config2->GetData (
+                       Ip4Config2,
+                       Ip4Config2DataTypePolicy,
+                       &DataSize,
+                       &Policy
+                       );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+  
+  if (Policy != Ip4Config2PolicyStatic) {
+    Policy = Ip4Config2PolicyStatic;
+    Status= Ip4Config2->SetData (
+                          Ip4Config2,
+                          Ip4Config2DataTypePolicy,
+                          sizeof (EFI_IP4_CONFIG2_POLICY),
+                          &Policy
+                          );
+    if (EFI_ERROR (Status)) {
+      return Status;
+    } 
+  }
+
+  return  EFI_SUCCESS;
+}
 
 /**
   Start the D.O.R.A DHCPv4 process to acquire the IPv4 address and other PXE boot information.
@@ -1569,10 +1615,12 @@ PxeBcDhcp4Dora (
   ZeroMem (Private->OfferIndex, sizeof (Private->OfferIndex));
 
   //
-  // Start DHCPv4 D.O.R.A. process to acquire IPv4 address.
+  // Start DHCPv4 D.O.R.A. process to acquire IPv4 address. This may 
+  // have already been done, thus do not leave in error if the return
+  // code is EFI_ALREADY_STARTED.
   //
   Status = Dhcp4->Start (Dhcp4, NULL);
-  if (EFI_ERROR (Status)) {
+  if (EFI_ERROR (Status) && Status != EFI_ALREADY_STARTED) {
     if (Status == EFI_ICMP_ERROR) {
       PxeMode->IcmpErrorReceived = TRUE;
     }

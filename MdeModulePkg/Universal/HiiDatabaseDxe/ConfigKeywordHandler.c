@@ -1340,8 +1340,7 @@ GetStringIdFromRecord (
     if (AsciiStrnCmp(Name, StringPackage->StringPkgHdr->Language, AsciiStrLen (Name)) == 0) {
       Status = GetStringIdFromString (StringPackage, KeywordValue, StringId); 
       if (EFI_ERROR (Status)) {
-        RetVal = KEYWORD_HANDLER_KEYWORD_NOT_FOUND;
-        continue;
+        return KEYWORD_HANDLER_KEYWORD_NOT_FOUND;
       } else {
         if (*NameSpace == NULL) {
           *NameSpace = AllocateCopyPool (AsciiStrSize (StringPackage->StringPkgHdr->Language), StringPackage->StringPkgHdr->Language);
@@ -1584,6 +1583,8 @@ GetWidth (
     return (UINT16) sizeof (BOOLEAN);
     
   case EFI_IFR_PASSWORD_OP:
+    return (UINT16)((UINTN) ((EFI_IFR_PASSWORD *) OpCodeData)->MaxSize * sizeof (CHAR16));
+
   case EFI_IFR_STRING_OP:
     return (UINT16)((UINTN) ((EFI_IFR_STRING *) OpCodeData)->MaxSize * sizeof (CHAR16));
 
@@ -1759,7 +1760,7 @@ ConstructConfigHdr (
   //
   // Append L"&NAME="
   //
-  StrCpyS (String, MaxLen, L"&NAME=");
+  StrCatS (ReturnString, MaxLen, L"&NAME=");
   String += StrLen (String);
 
   if (Name != NULL) {
@@ -1774,7 +1775,7 @@ ConstructConfigHdr (
   //
   // Append L"&PATH="
   //
-  StrCpyS (String, MaxLen, L"&PATH=");
+  StrCatS (ReturnString, MaxLen, L"&PATH=");
   String += StrLen (String);
 
   //
@@ -2045,14 +2046,10 @@ ExtractConfigRequest (
       StringPtr = *ConfigRequest;
 
       StrCpyS (StringPtr, MaxLen, ConfigHdr);
-      StringPtr += StrLen (StringPtr);
 
-      *StringPtr = L'&';
-      StringPtr++;
+      StrCatS (StringPtr, MaxLen, L"&");
 
-      StrCpyS (StringPtr, MaxLen, RequestElement);
-      StringPtr += StrLen (StringPtr);
-      *StringPtr = L'\0';
+      StrCatS (StringPtr, MaxLen, RequestElement);
 
       FreePool (ConfigHdr);
       FreePool (RequestElement);
@@ -2153,23 +2150,17 @@ ExtractConfigResp (
       StringPtr = *ConfigResp;
 
       StrCpyS (StringPtr, MaxLen, ConfigHdr);
-      StringPtr += StrLen (StringPtr);
 
-      *StringPtr = L'&';
-      StringPtr++;
+      StrCatS (StringPtr, MaxLen, L"&");
 
-      StrCpyS (StringPtr, MaxLen, RequestElement);
-      StringPtr += StrLen (StringPtr);
-      
-      *StringPtr = L'&';
-      StringPtr++;
 
-      StrCpyS (StringPtr, MaxLen, L"VALUE=");
-      StringPtr += StrLen (StringPtr);
+      StrCatS (StringPtr, MaxLen, RequestElement);
 
-      StrCpyS (StringPtr, MaxLen, ValueElement);
-      StringPtr += StrLen (StringPtr);
-      *StringPtr = L'\0';
+      StrCatS (StringPtr, MaxLen, L"&");
+
+      StrCatS (StringPtr, MaxLen, L"VALUE=");
+
+      StrCatS (StringPtr, MaxLen, ValueElement);
 
       FreePool (ConfigHdr);
       FreePool (RequestElement);
@@ -2453,42 +2444,32 @@ GenerateKeywordResp (
   // 2.1 Copy NameSpaceId section.
   //
   StrCpyS (RespStr, RespStrLen, L"NAMESPACE=");
-  RespStr += StrLen (RespStr);
-  StrCpyS (RespStr, RespStrLen, UnicodeNameSpace);
-  RespStr += StrLen (RespStr);
+
+  StrCatS (RespStr, RespStrLen, UnicodeNameSpace);
 
   //
   // 2.2 Copy PathHdr section.
   //
-  StrCpyS (RespStr, RespStrLen, PathHdr);
-  RespStr += StrLen (RespStr);
+  StrCatS (RespStr, RespStrLen, PathHdr);
 
   //
   // 2.3 Copy Keyword section.
   //
-  StrCpyS (RespStr, RespStrLen, L"KEYWORD=");
-  RespStr += StrLen (RespStr);
-  StrCpyS (RespStr, RespStrLen, KeywordData);
-  RespStr += StrLen (RespStr);
+  StrCatS (RespStr, RespStrLen, L"KEYWORD=");
+
+  StrCatS (RespStr, RespStrLen, KeywordData);
 
   //
   // 2.4 Copy the Value section.
   //
-  StrCpyS (RespStr, RespStrLen, ValueStr);
-  RespStr += StrLen (RespStr);
+  StrCatS (RespStr, RespStrLen, ValueStr);
 
   //
   // 2.5 Copy ReadOnly section if exist.
   //
   if (ReadOnly) {
-    StrCpyS (RespStr, RespStrLen, L"&READONLY");
-    RespStr += StrLen (RespStr);
+    StrCatS (RespStr, RespStrLen, L"&READONLY");
   }
-
-  //
-  // 2.6 Add the end.
-  //
-  *RespStr = L'\0';
 
   if (UnicodeNameSpace != NULL) {
     FreePool (UnicodeNameSpace);
@@ -2537,12 +2518,9 @@ MergeToMultiKeywordResp (
   FreePool (*MultiKeywordResp);
   *MultiKeywordResp = StringPtr;
 
-  StringPtr += StrLen (StringPtr);
+  StrCatS (StringPtr, MultiKeywordRespLen / sizeof (CHAR16), L"&");
 
-  *StringPtr = L'&';
-  StringPtr++;
-
-  StrCpyS (StringPtr, MultiKeywordRespLen / sizeof (CHAR16), *KeywordResp);
+  StrCatS (StringPtr, MultiKeywordRespLen / sizeof (CHAR16), *KeywordResp);
 
   return EFI_SUCCESS;
 }
@@ -2556,6 +2534,7 @@ MergeToMultiKeywordResp (
 
   @param  NameSpace                      The namespace used to search the string.
   @param  MultiResp                      Return the MultiKeywordResp string for the system.
+  @param  ProgressErr                    Return the error status.
 
   @retval EFI_OUT_OF_RESOURCES           The memory can't be allocated.
   @retval EFI_SUCCESS                    Generate the MultiKeywordResp string.
@@ -2565,7 +2544,8 @@ MergeToMultiKeywordResp (
 EFI_STATUS
 EnumerateAllKeywords (
   IN  CHAR8             *NameSpace,
-  OUT EFI_STRING        *MultiResp
+  OUT EFI_STRING        *MultiResp,
+  OUT UINT32            *ProgressErr
   )
 {
   LIST_ENTRY                          *Link;
@@ -2585,6 +2565,7 @@ EnumerateAllKeywords (
   CHAR16                              *MultiKeywordResp;
   CHAR16                              *KeywordData;
   BOOLEAN                             ReadOnly;
+  BOOLEAN                             FindKeywordPackages;
 
   DataBaseRecord   = NULL;
   Status           = EFI_SUCCESS;
@@ -2594,6 +2575,7 @@ EnumerateAllKeywords (
   ConfigRequest    = NULL;
   ValueElement     = NULL;
   KeywordResp      = NULL;
+  FindKeywordPackages = FALSE;
 
   if (NameSpace == NULL) {
     NameSpace = UEFI_CONFIG_LANG;
@@ -2616,6 +2598,7 @@ EnumerateAllKeywords (
       // Check whether has keyword string package.
       //
       if (AsciiStrnCmp(NameSpace, StringPackage->StringPkgHdr->Language, AsciiStrLen (NameSpace)) == 0) {
+        FindKeywordPackages = TRUE;
         //
         // Keep the NameSpace string.
         //
@@ -2718,6 +2701,11 @@ Error:
   //
   if (MultiKeywordResp == NULL) {
     Status = EFI_NOT_FOUND;
+    if (!FindKeywordPackages) {
+      *ProgressErr = KEYWORD_HANDLER_NAMESPACE_ID_NOT_FOUND;
+    } else {
+      *ProgressErr = KEYWORD_HANDLER_KEYWORD_NOT_FOUND;
+    }
   } else {
     Status = EFI_SUCCESS;
   }
@@ -2808,7 +2796,7 @@ EfiConfigKeywordHandlerSetData (
   EFI_STATUS                          Status;
   CHAR16                              *StringPtr;
   EFI_DEVICE_PATH_PROTOCOL            *DevicePath;
-  CHAR16                              *NextStringPtr;  
+  CHAR16                              *NextStringPtr;
   CHAR16                              *KeywordData;
   EFI_STRING_ID                       KeywordStringId;
   UINT32                              RetVal;
@@ -2819,6 +2807,8 @@ EfiConfigKeywordHandlerSetData (
   CHAR16                              *ValueElement;
   BOOLEAN                             ReadOnly;
   EFI_STRING                          InternalProgress;
+  CHAR16                              *TempString;
+  CHAR16                              *KeywordStartPos;
 
   if (This == NULL || Progress == NULL || ProgressErr == NULL || KeywordString == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -2827,14 +2817,21 @@ EfiConfigKeywordHandlerSetData (
   *Progress    = KeywordString;
   *ProgressErr = KEYWORD_HANDLER_UNDEFINED_PROCESSING_ERROR;
   Status       = EFI_SUCCESS;
-  StringPtr    = KeywordString;
   MultiConfigResp = NULL;
   NameSpace       = NULL;
   DevicePath      = NULL;
   KeywordData     = NULL;
   ValueElement    = NULL;
   ConfigResp      = NULL;
+  KeywordStartPos = NULL;
   KeywordStringId = 0;
+
+  //
+  // Use temp string to avoid changing input string buffer.
+  //
+  TempString = AllocateCopyPool (StrSize (KeywordString), KeywordString);
+  ASSERT (TempString != NULL);
+  StringPtr = TempString;
 
   while ((StringPtr != NULL) && (*StringPtr != L'\0')) {
     //
@@ -2843,8 +2840,18 @@ EfiConfigKeywordHandlerSetData (
     Status = ExtractNameSpace (StringPtr, &NameSpace, &NextStringPtr);
     if (EFI_ERROR (Status)) {
       *ProgressErr = KEYWORD_HANDLER_MALFORMED_STRING;
-      return Status;
+      goto Done;
     }
+    ASSERT (NameSpace != NULL);
+    //
+    // 1.1 Check whether the input namespace is valid.
+    //
+    if (AsciiStrnCmp(NameSpace, UEFI_CONFIG_LANG, AsciiStrLen (UEFI_CONFIG_LANG)) != 0) {
+      *ProgressErr = KEYWORD_HANDLER_MALFORMED_STRING;
+      Status = EFI_INVALID_PARAMETER;
+      goto Done;
+    }
+
     StringPtr = NextStringPtr;
 
     //
@@ -2860,6 +2867,7 @@ EfiConfigKeywordHandlerSetData (
     //
     // 3. Extract keyword from the KeywordRequest string.
     //
+    KeywordStartPos = StringPtr;
     Status = ExtractKeyword(StringPtr, &KeywordData, &NextStringPtr);
     if (EFI_ERROR (Status)) {
       //
@@ -2916,8 +2924,8 @@ EfiConfigKeywordHandlerSetData (
     // 8. Check the readonly flag.
     //
     if (ExtractReadOnlyFromOpCode (OpCode) != ReadOnly) {
-      *ProgressErr = KEYWORD_HANDLER_INCOMPATIBLE_VALUE_DETECTED;
-      Status = EFI_INVALID_PARAMETER;
+      *ProgressErr = KEYWORD_HANDLER_ACCESS_NOT_PERMITTED;
+      Status = EFI_ACCESS_DENIED;
       goto Done;      
     }
     
@@ -2944,6 +2952,7 @@ EfiConfigKeywordHandlerSetData (
       FreePool (ConfigResp);
       ConfigResp = NULL;
     }
+    KeywordStartPos = NULL;
   }
 
   //
@@ -2962,6 +2971,14 @@ EfiConfigKeywordHandlerSetData (
   *ProgressErr = KEYWORD_HANDLER_NO_ERROR;
 
 Done:
+  if (KeywordStartPos != NULL) {
+    *Progress = KeywordString + (KeywordStartPos - TempString);
+  } else {
+    *Progress = KeywordString + (StringPtr - TempString);
+  }
+
+  ASSERT (TempString != NULL);
+  FreePool (TempString);
   if (NameSpace != NULL) {
     FreePool (NameSpace);
   }
@@ -2979,8 +2996,8 @@ Done:
   }
   if (MultiConfigResp != NULL && MultiConfigResp != ConfigResp) {
     FreePool (MultiConfigResp);
-  }  
-  *Progress = StringPtr;
+  }
+
   return Status;
 }
 
@@ -3078,6 +3095,7 @@ EfiConfigKeywordHandlerGetData (
   BOOLEAN                             ReadOnly;
   CHAR16                              *KeywordResp;
   CHAR16                              *MultiKeywordResp;
+  CHAR16                              *TempString;
 
   if (This == NULL || Progress == NULL || ProgressErr == NULL || Results == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -3093,18 +3111,44 @@ EfiConfigKeywordHandlerGetData (
   ReadOnly     = FALSE;
   MultiKeywordResp = NULL;
   KeywordStringId  = 0;
+  TempString   = NULL;
 
+  //
+  // Use temp string to avoid changing input string buffer.
+  //
+  if (NameSpaceId != NULL) {
+    TempString = AllocateCopyPool (StrSize (NameSpaceId), NameSpaceId);
+    ASSERT (TempString != NULL);
+  }
   //
   // 1. Get NameSpace from NameSpaceId keyword.
   //
-  Status = ExtractNameSpace (NameSpaceId, &NameSpace, NULL);
+  Status = ExtractNameSpace (TempString, &NameSpace, NULL);
+  if (TempString != NULL) {
+    FreePool (TempString);
+    TempString = NULL;
+  }
   if (EFI_ERROR (Status)) {
-    *ProgressErr = KEYWORD_HANDLER_NAMESPACE_ID_NOT_FOUND;
+    *ProgressErr = KEYWORD_HANDLER_MALFORMED_STRING;
     return Status;
   }
-
+  //
+  // 1.1 Check whether the input namespace is valid.
+  //
+  if (NameSpace != NULL){
+    if (AsciiStrnCmp(NameSpace, UEFI_CONFIG_LANG, AsciiStrLen (UEFI_CONFIG_LANG)) != 0) {
+      *ProgressErr = KEYWORD_HANDLER_MALFORMED_STRING;
+      return EFI_INVALID_PARAMETER;
+    }
+  }
+  
   if (KeywordString != NULL) {
-    StringPtr = KeywordString;
+    //
+    // Use temp string to avoid changing input string buffer.
+    //
+    TempString = AllocateCopyPool (StrSize (KeywordString), KeywordString);
+    ASSERT (TempString != NULL);
+    StringPtr = TempString;
 
     while (*StringPtr != L'\0') {
       //
@@ -3215,7 +3259,7 @@ EfiConfigKeywordHandlerGetData (
     //
     // Enumerate all keyword in the system.
     //
-    Status = EnumerateAllKeywords(NameSpace, &MultiKeywordResp);
+    Status = EnumerateAllKeywords(NameSpace, &MultiKeywordResp, ProgressErr);
     if (EFI_ERROR (Status)) {
       goto Done;
     }
@@ -3225,6 +3269,11 @@ EfiConfigKeywordHandlerGetData (
   *ProgressErr = KEYWORD_HANDLER_NO_ERROR;
 
 Done:
+  *Progress = KeywordString + (StringPtr - TempString);
+
+  if (TempString != NULL) {
+    FreePool (TempString);
+  }
   if (NameSpace != NULL) {
     FreePool (NameSpace);
   }
@@ -3234,6 +3283,6 @@ Done:
   if (KeywordData != NULL) {
     FreePool (KeywordData);
   }
-  *Progress = StringPtr;
+
   return Status;
 }

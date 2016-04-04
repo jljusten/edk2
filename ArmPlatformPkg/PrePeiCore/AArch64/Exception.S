@@ -11,21 +11,16 @@
 #
 #
 
+#include <Chipset/AArch64.h>
 #include <AsmMacroIoLibV8.h>
 #include <Base.h>
 #include <AutoGen.h>
 
 .text
-.align 11
-
-GCC_ASM_EXPORT(PeiVectorTable)
 
 //============================================================
 //Default Exception Handlers
 //============================================================
-
-ASM_PFX(PeiVectorTable):
-
 
 #define TO_HANDLER                                              \
    EL1_OR_EL2(x1)                                               \
@@ -40,42 +35,86 @@ ASM_PFX(PeiVectorTable):
 // No context saving at all.
 //
 
-.align 7
+VECTOR_BASE(PeiVectorTable)
+
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_CUR_SP0_SYNC)
 _DefaultSyncExceptHandler_t:
   mov  x0, #EXCEPT_AARCH64_SYNCHRONOUS_EXCEPTIONS
   TO_HANDLER
 
-.align 7
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_CUR_SP0_IRQ)
 _DefaultIrq_t:
   mov  x0, #EXCEPT_AARCH64_IRQ
   TO_HANDLER
 
-.align 7
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_CUR_SP0_FIQ)
 _DefaultFiq_t:
   mov  x0, #EXCEPT_AARCH64_FIQ
   TO_HANDLER
 
-.align 7
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_CUR_SP0_SERR)
 _DefaultSError_t:
   mov  x0, #EXCEPT_AARCH64_SERROR
   TO_HANDLER
 
-.align 7
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_CUR_SPx_SYNC)
 _DefaultSyncExceptHandler_h:
   mov  x0, #EXCEPT_AARCH64_SYNCHRONOUS_EXCEPTIONS
   TO_HANDLER
 
-.align 7
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_CUR_SPx_IRQ)
 _DefaultIrq_h:
   mov  x0, #EXCEPT_AARCH64_IRQ
   TO_HANDLER
 
-.align 7
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_CUR_SPx_FIQ)
 _DefaultFiq_h:
   mov  x0, #EXCEPT_AARCH64_FIQ
   TO_HANDLER
 
-.align 7
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_CUR_SPx_SERR)
 _DefaultSError_h:
   mov  x0, #EXCEPT_AARCH64_SERROR
   TO_HANDLER
+
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_LOW_A64_SYNC)
+_DefaultSyncExceptHandler_LowerA64:
+  mov  x0, #EXCEPT_AARCH64_SYNCHRONOUS_EXCEPTIONS
+  TO_HANDLER
+
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_LOW_A64_IRQ)
+_DefaultIrq_LowerA64:
+  mov  x0, #EXCEPT_AARCH64_IRQ
+  TO_HANDLER
+
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_LOW_A64_FIQ)
+_DefaultFiq_LowerA64:
+  mov  x0, #EXCEPT_AARCH64_FIQ
+  TO_HANDLER
+
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_LOW_A64_SERR)
+_DefaultSError_LowerA64:
+  mov  x0, #EXCEPT_AARCH64_SERROR
+  TO_HANDLER
+
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_LOW_A32_SYNC)
+_DefaultSyncExceptHandler_LowerA32:
+  mov  x0, #EXCEPT_AARCH64_SYNCHRONOUS_EXCEPTIONS
+  TO_HANDLER
+
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_LOW_A32_IRQ)
+_DefaultIrq_LowerA32:
+  mov  x0, #EXCEPT_AARCH64_IRQ
+  TO_HANDLER
+
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_LOW_A32_FIQ)
+_DefaultFiq_LowerA32:
+  mov  x0, #EXCEPT_AARCH64_FIQ
+  TO_HANDLER
+
+VECTOR_ENTRY(PeiVectorTable, ARM_VECTOR_LOW_A32_SERR)
+_DefaultSError_LowerA32:
+  mov  x0, #EXCEPT_AARCH64_SERROR
+  TO_HANDLER
+
+VECTOR_END(PeiVectorTable)

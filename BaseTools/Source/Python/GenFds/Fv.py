@@ -181,31 +181,58 @@ class FV (FvClassObject):
         #
         # Write the Fv contents to Buffer
         #
-        FvFileObj = open ( FvOutputFile,'r+b')
+        if os.path.isfile(FvOutputFile):
+            FvFileObj = open ( FvOutputFile,'r+b')
 
-        GenFdsGlobalVariable.VerboseLogger( "\nGenerate %s FV Successfully" %self.UiFvName)
-        GenFdsGlobalVariable.SharpCounter = 0
+            GenFdsGlobalVariable.VerboseLogger( "\nGenerate %s FV Successfully" %self.UiFvName)
+            GenFdsGlobalVariable.SharpCounter = 0
 
-        Buffer.write(FvFileObj.read())
-        FvFileObj.seek(0)
-        # PI FvHeader is 0x48 byte
-        FvHeaderBuffer = FvFileObj.read(0x48)
-        # FV alignment position.
-        FvAlignmentValue = 1 << (ord (FvHeaderBuffer[0x2E]) & 0x1F)
-        # FvAlignmentValue is larger than or equal to 1K
-        if FvAlignmentValue >= 0x400:
-            if FvAlignmentValue >= 0x10000:
-                #The max alignment supported by FFS is 64K.
-                self.FvAlignment = "64K"
+            Buffer.write(FvFileObj.read())
+            FvFileObj.seek(0)
+            # PI FvHeader is 0x48 byte
+            FvHeaderBuffer = FvFileObj.read(0x48)
+            # FV alignment position.
+            FvAlignmentValue = 1 << (ord (FvHeaderBuffer[0x2E]) & 0x1F)
+            # FvAlignmentValue is larger than or equal to 1K
+            if FvAlignmentValue >= 0x400:
+                if FvAlignmentValue >= 0x10000:
+                    #The max alignment supported by FFS is 64K.
+                    self.FvAlignment = "64K"
+                else:
+                    self.FvAlignment = str (FvAlignmentValue / 0x400) + "K"
             else:
-                self.FvAlignment = str (FvAlignmentValue / 0x400) + "K"
+                # FvAlignmentValue is less than 1K
+                self.FvAlignment = str (FvAlignmentValue)
+            FvFileObj.close()
+            GenFds.ImageBinDict[self.UiFvName.upper() + 'fv'] = FvOutputFile
+            GenFdsGlobalVariable.LargeFileInFvFlags.pop()
         else:
-            # FvAlignmentValue is less than 1K
-            self.FvAlignment = str (FvAlignmentValue)
-        FvFileObj.close()
-        GenFds.ImageBinDict[self.UiFvName.upper() + 'fv'] = FvOutputFile
-        GenFdsGlobalVariable.LargeFileInFvFlags.pop()
+            GenFdsGlobalVariable.ErrorLogger("Failed to generate %s FV file." %self.UiFvName)
         return FvOutputFile
+
+    ## _GetBlockSize()
+    #
+    #   Calculate FV's block size
+    #   Inherit block size from FD if no block size specified in FV
+    #
+    def _GetBlockSize(self):
+        if self.BlockSizeList:
+            return True
+
+        for FdName in GenFdsGlobalVariable.FdfParser.Profile.FdDict.keys():
+            FdObj = GenFdsGlobalVariable.FdfParser.Profile.FdDict[FdName]
+            for RegionObj in FdObj.RegionList:
+                if RegionObj.RegionType != 'FV':
+                    continue
+                for RegionData in RegionObj.RegionDataList:
+                    #
+                    # Found the FD and region that contain this FV
+                    #
+                    if self.UiFvName.upper() == RegionData.upper():
+                        RegionObj.BlockInfoOfRegion(FdObj.BlockSizeList, self)
+                        if self.BlockSizeList:
+                            return True
+        return False
 
     ## __InitializeInf__()
     #
@@ -245,8 +272,9 @@ class FV (FvClassObject):
                                       T_CHAR_LF)
         else:
             if self.BlockSizeList == []:
-                #set default block size is 1
-                self.FvInfFile.writelines("EFI_BLOCK_SIZE  = 0x1" + T_CHAR_LF)
+                if not self._GetBlockSize():
+                    #set default block size is 1
+                    self.FvInfFile.writelines("EFI_BLOCK_SIZE  = 0x1" + T_CHAR_LF)
             
             for BlockSize in self.BlockSizeList :
                 if BlockSize[0] != None:
@@ -296,25 +324,26 @@ class FV (FvClassObject):
         if self.FvNameGuid <> None and self.FvNameGuid <> '':
             TotalSize = 16 + 4
             Buffer = ''
-            #
-            # Create EXT entry for FV UI name
-            # This GUID is used: A67DF1FA-8DE8-4E98-AF09-4BDF2EFFBC7C
-            #
-            FvUiLen = len(self.UiFvName)
-            TotalSize += (FvUiLen + 16 + 4)
-            Guid = FV_UI_EXT_ENTY_GUID.split('-')
-            #
-            # Layout:
-            #   EFI_FIRMWARE_VOLUME_EXT_ENTRY : size 4
-            #   GUID                          : size 16
-            #   FV UI name
-            #
-            Buffer += (pack('HH', (FvUiLen + 16 + 4), 0x0002)
-                       + pack('=LHHBBBBBBBB', int(Guid[0], 16), int(Guid[1], 16), int(Guid[2], 16),
-                              int(Guid[3][-4:-2], 16), int(Guid[3][-2:], 16), int(Guid[4][-12:-10], 16),
-                              int(Guid[4][-10:-8], 16), int(Guid[4][-8:-6], 16), int(Guid[4][-6:-4], 16),
-                              int(Guid[4][-4:-2], 16), int(Guid[4][-2:], 16))
-                       + self.UiFvName)
+            if self.FvNameString == 'TRUE':
+                #
+                # Create EXT entry for FV UI name
+                # This GUID is used: A67DF1FA-8DE8-4E98-AF09-4BDF2EFFBC7C
+                #
+                FvUiLen = len(self.UiFvName)
+                TotalSize += (FvUiLen + 16 + 4)
+                Guid = FV_UI_EXT_ENTY_GUID.split('-')
+                #
+                # Layout:
+                #   EFI_FIRMWARE_VOLUME_EXT_ENTRY : size 4
+                #   GUID                          : size 16
+                #   FV UI name
+                #
+                Buffer += (pack('HH', (FvUiLen + 16 + 4), 0x0002)
+                           + pack('=LHHBBBBBBBB', int(Guid[0], 16), int(Guid[1], 16), int(Guid[2], 16),
+                                  int(Guid[3][-4:-2], 16), int(Guid[3][-2:], 16), int(Guid[4][-12:-10], 16),
+                                  int(Guid[4][-10:-8], 16), int(Guid[4][-8:-6], 16), int(Guid[4][-6:-4], 16),
+                                  int(Guid[4][-4:-2], 16), int(Guid[4][-2:], 16))
+                           + self.UiFvName)
 
             for Index in range (0, len(self.FvExtEntryType)):
                 if self.FvExtEntryType[Index] == 'FILE':

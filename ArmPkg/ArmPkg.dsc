@@ -66,6 +66,7 @@
 
   CpuLib|MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
   ArmGicLib|ArmPkg/Drivers/ArmGic/ArmGicLib.inf
+  ArmGicArchLib|ArmPkg/Library/ArmGicArchLib/ArmGicArchLib.inf
   ArmGenericTimerCounterLib|ArmPkg/Library/ArmGenericTimerPhyCounterLib/ArmGenericTimerPhyCounterLib.inf
   ArmSmcLib|ArmPkg/Library/ArmSmcLib/ArmSmcLib.inf
   ArmDisassemblerLib|ArmPkg/Library/ArmDisassemblerLib/ArmDisassemblerLib.inf
@@ -77,6 +78,10 @@
 
   BdsLib|ArmPkg/Library/BdsLib/BdsLib.inf
   FdtLib|EmbeddedPkg/Library/FdtLib/FdtLib.inf
+
+  ShellLib|ShellPkg/Library/UefiShellLib/UefiShellLib.inf
+  FileHandleLib|MdePkg/Library/UefiFileHandleLib/UefiFileHandleLib.inf
+  SortLib|MdeModulePkg/Library/UefiSortLib/UefiSortLib.inf
 
   IoLib|MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
 
@@ -92,9 +97,6 @@
   MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
   PeiServicesLib|MdePkg/Library/PeiServicesLib/PeiServicesLib.inf
   PeiServicesTablePointerLib|MdePkg/Library/PeiServicesTablePointerLib/PeiServicesTablePointerLib.inf
-
-[LibraryClasses.common.DXE_DRIVER]
-  ArmPlatformGlobalVariableLib|ArmPlatformPkg/Library/ArmPlatformGlobalVariableLib/Dxe/DxeArmPlatformGlobalVariableLib.inf
 
 [LibraryClasses.ARM, LibraryClasses.AARCH64]
   NULL|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
@@ -138,7 +140,7 @@
 
   ArmPkg/Filesystem/SemihostFs/SemihostFs.inf
 
-  ArmPkg/Application/LinuxLoader/LinuxFdtLoader.inf
+  ArmPkg/Application/LinuxLoader/LinuxLoader.inf
 
 [Components.ARM]
   ArmPkg/Library/BaseMemoryLibVstm/BaseMemoryLibVstm.inf
@@ -147,14 +149,8 @@
   ArmPkg/Drivers/ArmCpuLib/ArmCortexA9Lib/ArmCortexA9Lib.inf
   ArmPkg/Drivers/ArmCpuLib/ArmCortexA15Lib/ArmCortexA15Lib.inf
 
-#  ArmPkg/Library/ArmLib/Arm11/Arm11ArmLib.inf
-#  ArmPkg/Library/ArmLib/Arm11/Arm11ArmLibPrePi.inf
-#  ArmPkg/Library/ArmLib/Arm9/Arm9ArmLib.inf
-#  ArmPkg/Library/ArmLib/Arm9/Arm9ArmLibPrePi.inf
   ArmPkg/Library/ArmLib/ArmV7/ArmV7LibSec.inf
   ArmPkg/Library/ArmLib/ArmV7/ArmV7LibPrePi.inf
-
-  ArmPkg/Application/LinuxLoader/LinuxAtagLoader.inf
 
 [Components.AARCH64]
   ArmPkg/Drivers/ArmCpuLib/ArmCortexAEMv8Lib/ArmCortexAEMv8Lib.inf

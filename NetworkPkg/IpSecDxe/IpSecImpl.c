@@ -1617,7 +1617,7 @@ IpSecEspInboundPacket (
   //
   // Update the total length field in ip header since processed by esp.
   //
-  if (!SadData->Mode == EfiIPsecTunnel) {
+  if (SadData->Mode != EfiIPsecTunnel) {
     if (IpVersion == IP_VERSION_4) {
       ((IP4_HEAD *) IpHead)->TotalLen = HTONS ((UINT16) ((((IP4_HEAD *) IpHead)->HeadLen << 2) + PlainPayloadSize));
     } else {
@@ -1771,7 +1771,7 @@ IpSecEspOutboundPacket (
   }
 
   //
-  // Calculate the plain payload size accroding to the fragment table.
+  // Calculate the plain payload size according to the fragment table.
   //
   PlainPayloadSize = 0;
   for (Index = 0; Index < *FragmentCount; Index++) {

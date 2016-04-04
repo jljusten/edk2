@@ -2,7 +2,8 @@
   Module for clarifying the content of the smbios structure element information.
 
   Copyright (c) 2005 - 2015, Intel Corporation. All rights reserved.<BR>
-  (C) Copyright 2014 Hewlett-Packard Development Company, L.P.<BR>
+  (C) Copyright 2014 Hewlett-Packard Development Company, L.P.<BR>  
+  (C) Copyright 2015 Hewlett Packard Enterprise Development LP<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -720,6 +721,11 @@ SmbiosPrintStructure (
     if (AE_SMBIOS_VERSION (0x2, 0x7) && (Struct->Hdr->Length > 0x1C)) {
       PRINT_STRUCT_VALUE (Struct, Type17, ExtendedSize);
       PRINT_STRUCT_VALUE (Struct, Type17, ConfiguredMemoryClockSpeed);
+    }
+    if (AE_SMBIOS_VERSION (0x2, 0x8) && (Struct->Hdr->Length > 0x22)) {
+      PRINT_STRUCT_VALUE (Struct, Type17, MinimumVoltage);
+      PRINT_STRUCT_VALUE (Struct, Type17, MaximumVoltage);
+      PRINT_STRUCT_VALUE (Struct, Type17, ConfiguredVoltage);
     }
     break;
 
@@ -3094,7 +3100,7 @@ DisplaySPSCharacteristics (
   // Bits 13:10 - DMTF Power Supply Type
   //
   ShellPrintHiiEx(-1,-1,NULL,STRING_TOKEN (STR_SMBIOSVIEW_PRINTINFO_TYPE), gShellDebug1HiiHandle);
-  Temp = (Characteristics & 0x1C00) << 10;
+  Temp = (Characteristics & 0x1C00) >> 10;
   switch (Temp) {
   case 1:
     ShellPrintHiiEx(-1,-1,NULL,STRING_TOKEN (STR_SMBIOSVIEW_PRINTINFO_OTHER_SPACE), gShellDebug1HiiHandle);
@@ -3135,7 +3141,7 @@ DisplaySPSCharacteristics (
   // Bits 9:7 - Status
   //
   ShellPrintHiiEx(-1,-1,NULL,STRING_TOKEN (STR_SMBIOSVIEW_PRINTINFO_STATUS_DASH), gShellDebug1HiiHandle);
-  Temp = (Characteristics & 0x380) << 7;
+  Temp = (Characteristics & 0x380) >> 7;
   switch (Temp) {
   case 1:
     ShellPrintHiiEx(-1,-1,NULL,STRING_TOKEN (STR_SMBIOSVIEW_PRINTINFO_OTHER_SPACE), gShellDebug1HiiHandle);
@@ -3164,7 +3170,7 @@ DisplaySPSCharacteristics (
   // Bits 6:3 - DMTF Input Voltage Range Switching
   //
   ShellPrintHiiEx(-1,-1,NULL,STRING_TOKEN (STR_SMBIOSVIEW_PRINTINFO_INPUT_VOLTAGE_RANGE), gShellDebug1HiiHandle);
-  Temp = (Characteristics & 0x78) << 3;
+  Temp = (Characteristics & 0x78) >> 3;
   switch (Temp) {
   case 1:
     ShellPrintHiiEx(-1,-1,NULL,STRING_TOKEN (STR_SMBIOSVIEW_PRINTINFO_OTHER_SPACE), gShellDebug1HiiHandle);

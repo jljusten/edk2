@@ -17,6 +17,8 @@
 
 #include "Shell.h"
 
+BOOLEAN AsciiRedirection = FALSE;
+
 /**
   Return the next parameter's end from a command line string.
 
@@ -72,10 +74,12 @@ FindEndOfParameter(
 
   This will also remove all remaining ^ characters after processing.
 
-  @param[in, out] Walker        pointer to string of command line.  Adjusted to
-                                reminaing command line on return
-  @param[in, out] TempParameter pointer to string of command line item extracted.
-  @param[in]      Length        buffer size of TempParameter.
+  @param[in, out] Walker          pointer to string of command line.  Adjusted to
+                                  reminaing command line on return
+  @param[in, out] TempParameter   pointer to string of command line item extracted.
+  @param[in]      Length          buffer size of TempParameter.
+  @param[in]      StripQuotation  if TRUE then strip the quotation marks surrounding
+                                  the parameters.
 
   @return   EFI_INALID_PARAMETER  A required parameter was NULL or pointed to a NULL or empty string.
   @return   EFI_NOT_FOUND         A closing " could not be found on the specified string
@@ -85,7 +89,8 @@ EFIAPI
 GetNextParameter(
   IN OUT CHAR16   **Walker,
   IN OUT CHAR16   **TempParameter,
-  IN CONST UINTN  Length
+  IN CONST UINTN  Length,
+  IN BOOLEAN      StripQuotation
   )
 {
   CONST CHAR16 *NextDelim;
@@ -125,7 +130,7 @@ DEBUG_CODE_END();
     return (EFI_NOT_FOUND);
   }
 
-  StrnCpyS(*TempParameter, Length, (*Walker), NextDelim - *Walker);
+  StrnCpyS(*TempParameter, Length / sizeof(CHAR16), (*Walker), NextDelim - *Walker);
 
   //
   // Add a CHAR_NULL if we didnt get one via the copy
@@ -159,7 +164,11 @@ DEBUG_CODE_END();
       //
       // eliminate the unescaped quote
       //
-      CopyMem ((CHAR16*)NextDelim, NextDelim + 1, StrSize (NextDelim + 1));
+      if (StripQuotation) {
+        CopyMem ((CHAR16*)NextDelim, NextDelim + 1, StrSize (NextDelim + 1));
+	  } else{
+        NextDelim++;
+	  }
     }
   }
 
@@ -176,9 +185,11 @@ DEBUG_CODE_END();
   All special character processing (alias, environment variable, redirection, 
   etc... must be complete before calling this API.
 
-  @param[in] CommandLine         String of command line to parse
-  @param[in, out] Argv           pointer to array of strings; one for each parameter
-  @param[in, out] Argc           pointer to number of strings in Argv array
+  @param[in] CommandLine          String of command line to parse
+  @param[in] StripQuotation       if TRUE then strip the quotation marks surrounding
+                                  the parameters.
+  @param[in, out] Argv            pointer to array of strings; one for each parameter
+  @param[in, out] Argc            pointer to number of strings in Argv array
 
   @return EFI_SUCCESS           the operation was sucessful
   @return EFI_OUT_OF_RESOURCES  a memory allocation failed.
@@ -187,15 +198,18 @@ EFI_STATUS
 EFIAPI
 ParseCommandLineToArgs(
   IN CONST CHAR16 *CommandLine,
-  IN OUT CHAR16 ***Argv,
-  IN OUT UINTN *Argc
+  IN BOOLEAN      StripQuotation,
+  IN OUT CHAR16   ***Argv,
+  IN OUT UINTN    *Argc
   )
 {
   UINTN       Count;
   CHAR16      *TempParameter;
   CHAR16      *Walker;
   CHAR16      *NewParam;
+  CHAR16      *NewCommandLine;
   UINTN       Size;
+  EFI_STATUS  Status;
 
   ASSERT(Argc != NULL);
   ASSERT(Argv != NULL);
@@ -206,18 +220,25 @@ ParseCommandLineToArgs(
     return (EFI_SUCCESS);
   }
 
-  Size = StrSize(CommandLine);
+  NewCommandLine = AllocateCopyPool(StrSize(CommandLine), CommandLine);
+  if (NewCommandLine == NULL){
+    return (EFI_OUT_OF_RESOURCES);
+  }
+
+  TrimSpaces(&NewCommandLine);
+  Size = StrSize(NewCommandLine);
   TempParameter = AllocateZeroPool(Size);
   if (TempParameter == NULL) {
+    SHELL_FREE_NON_NULL(NewCommandLine);
     return (EFI_OUT_OF_RESOURCES);
   }
 
   for ( Count = 0
-      , Walker = (CHAR16*)CommandLine
+      , Walker = (CHAR16*)NewCommandLine
       ; Walker != NULL && *Walker != CHAR_NULL
       ; Count++
       ) {
-    if (EFI_ERROR(GetNextParameter(&Walker, &TempParameter, Size))) {
+    if (EFI_ERROR(GetNextParameter(&Walker, &TempParameter, Size, TRUE))) {
       break;
     }
   }
@@ -227,30 +248,34 @@ ParseCommandLineToArgs(
   //
   (*Argv) = AllocateZeroPool((Count)*sizeof(CHAR16*));
   if (*Argv == NULL) {
-    SHELL_FREE_NON_NULL(TempParameter);
-    return (EFI_OUT_OF_RESOURCES);
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Done;
   }
 
   *Argc = 0;
-  Walker = (CHAR16*)CommandLine;
+  Walker = (CHAR16*)NewCommandLine;
   while(Walker != NULL && *Walker != CHAR_NULL) {
     SetMem16(TempParameter, Size, CHAR_NULL);
-    if (EFI_ERROR(GetNextParameter(&Walker, &TempParameter, Size))) {
-      SHELL_FREE_NON_NULL(TempParameter);
-      return (EFI_INVALID_PARAMETER);
+    if (EFI_ERROR(GetNextParameter(&Walker, &TempParameter, Size, StripQuotation))) {
+      Status = EFI_INVALID_PARAMETER;
+      goto Done;
     }
 
     NewParam = AllocateCopyPool(StrSize(TempParameter), TempParameter);
     if (NewParam == NULL){
-      SHELL_FREE_NON_NULL(TempParameter);
-      return (EFI_OUT_OF_RESOURCES);
+      Status = EFI_OUT_OF_RESOURCES;
+      goto Done;
     }
     ((CHAR16**)(*Argv))[(*Argc)] = NewParam;
     (*Argc)++;
   }
   ASSERT(Count >= (*Argc));
+  Status = EFI_SUCCESS;
+  
+Done:
   SHELL_FREE_NON_NULL(TempParameter);
-  return (EFI_SUCCESS);
+  SHELL_FREE_NON_NULL(NewCommandLine);
+  return (Status);
 }
 
 /**
@@ -360,6 +385,7 @@ CreatePopulateInstallShellParametersProtocol (
     // Populate Argc and Argv
     //
     Status = ParseCommandLineToArgs(FullCommandLine,
+                                    TRUE,
                                     &(*NewShellParameters)->Argv,
                                     &(*NewShellParameters)->Argc);
 
@@ -713,6 +739,7 @@ UpdateStdInStdOutStdErr(
 
   OutUnicode      = TRUE;
   InUnicode       = TRUE;
+  AsciiRedirection = FALSE;
   ErrUnicode      = TRUE;
   StdInVarName    = NULL;
   StdOutVarName   = NULL;
@@ -991,6 +1018,7 @@ UpdateStdInStdOutStdErr(
     } else {
       StdInFileName   = CommandLineWalker += 4;
       InUnicode       = FALSE;
+      AsciiRedirection = TRUE;
     }
     if (StrStr(CommandLineWalker, L" <a ") != NULL) {
       Status = EFI_NOT_FOUND;
@@ -1352,6 +1380,7 @@ RestoreStdInStdOutStdErr (
 
   @param[in, out] ShellParameters        Pointer to parameter structure to modify.
   @param[in] NewCommandLine              The new command line to parse and use.
+  @param[in] Type                        The type of operation.
   @param[out] OldArgv                    Pointer to old list of parameters.
   @param[out] OldArgc                    Pointer to old number of items in Argv list.
 
@@ -1363,11 +1392,15 @@ EFIAPI
 UpdateArgcArgv(
   IN OUT EFI_SHELL_PARAMETERS_PROTOCOL  *ShellParameters,
   IN CONST CHAR16                       *NewCommandLine,
+  IN SHELL_OPERATION_TYPES              Type,
   OUT CHAR16                            ***OldArgv OPTIONAL,
   OUT UINTN                             *OldArgc OPTIONAL
   )
 {
+  BOOLEAN                 StripParamQuotation;
+  
   ASSERT(ShellParameters != NULL);
+  StripParamQuotation = TRUE;
 
   if (OldArgc != NULL) {
     *OldArgc = ShellParameters->Argc;
@@ -1376,7 +1409,15 @@ UpdateArgcArgv(
     *OldArgv = ShellParameters->Argv;
   }
 
-  return (ParseCommandLineToArgs(NewCommandLine, &(ShellParameters->Argv), &(ShellParameters->Argc)));
+  if (Type == Script_File_Name) {
+    StripParamQuotation = FALSE;
+  }
+  
+  return ParseCommandLineToArgs( NewCommandLine, 
+                                 StripParamQuotation, 
+                                 &(ShellParameters->Argv), 
+                                 &(ShellParameters->Argc)
+                                );
 }
 
 /**

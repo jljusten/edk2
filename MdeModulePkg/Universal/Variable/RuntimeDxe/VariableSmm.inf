@@ -18,7 +18,7 @@
 #  may not be modified without authorization. If platform fails to protect these resources,
 #  the authentication service provided in this driver will be broken, and the behavior is undefined.
 #
-# Copyright (c) 2010 - 2015, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2010 - 2016, Intel Corporation. All rights reserved.<BR>
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution. The full text of the license may be found at
@@ -52,6 +52,7 @@
   VarCheck.c
   Variable.h
   VariableExLib.c
+  TcgMorLockSmm.c
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -69,9 +70,9 @@
   DxeServicesTableLib
   HobLib
   PcdLib
-  DevicePathLib
   SmmMemLib
   AuthVariableLib
+  VarCheckLib
 
 [Protocols]
   gEfiSmmFirmwareVolumeBlockProtocolGuid        ## CONSUMES
@@ -101,25 +102,16 @@
   ## SOMETIMES_PRODUCES   ## Variable:L"PlatformLang"
   ## SOMETIMES_CONSUMES   ## Variable:L"Lang"
   ## SOMETIMES_PRODUCES   ## Variable:L"Lang"
-  ## SOMETIMES_CONSUMES   ## Variable:L"HwErrRecSupport"
-  ## SOMETIMES_CONSUMES   ## Variable:L"SetupMode"
-  ## SOMETIMES_CONSUMES   ## Variable:L"PK"
-  ## SOMETIMES_CONSUMES   ## Variable:L"KEK"
-  ## SOMETIMES_CONSUMES   ## Variable:L"SecureBoot"
-  ## SOMETIMES_CONSUMES   ## Variable:L"SignatureSupport"
-  ## SOMETIMES_CONSUMES   ## Variable:L"VendorKeys"
   gEfiGlobalVariableGuid
 
-  ## SOMETIMES_CONSUMES   ## Variable:L"DB"
-  ## SOMETIMES_CONSUMES   ## Variable:L"DBX"
-  ## SOMETIMES_CONSUMES   ## Variable:L"DBT"
-  gEfiImageSecurityDatabaseGuid
+  gEfiMemoryOverwriteControlDataGuid            ## CONSUMES   ## Variable:L"MemoryOverwriteRequestControl"
+  gEfiMemoryOverwriteRequestControlLockGuid     ## PRODUCES   ## Variable:L"MemoryOverwriteRequestControlLock"
 
   gSmmVariableWriteGuid                         ## PRODUCES             ## GUID # Install protocol
   gEfiSystemNvDataFvGuid                        ## CONSUMES             ## GUID
-  gEfiHardwareErrorVariableGuid                 ## SOMETIMES_CONSUMES   ## Variable:L"HwErrRec####"
   gEdkiiFaultTolerantWriteGuid                  ## SOMETIMES_CONSUMES   ## HOB
   gEdkiiVarErrorFlagGuid                        ## CONSUMES             ## GUID
+  gZeroGuid                                     ## SOMETIMES_CONSUMES   ## GUID
 
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize       ## CONSUMES

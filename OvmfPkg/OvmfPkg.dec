@@ -89,6 +89,13 @@
   gUefiOvmfPkgTokenSpaceGuid.PcdVirtioScsiMaxTargetLimit|31|UINT16|6
   gUefiOvmfPkgTokenSpaceGuid.PcdVirtioScsiMaxLunLimit|7|UINT32|7
 
+  ## The following setting controls how many megabytes we configure as TSEG on
+  #  Q35, for SMRAM purposes. Permitted values are: 1, 2, 8. Other values cause
+  #  undefined behavior.
+  #
+  #  This PCD is only consulted if PcdSmmSmramRequire is TRUE (see below).
+  gUefiOvmfPkgTokenSpaceGuid.PcdQ35TsegMbytes|8|UINT8|0x20
+
 [PcdsFixedAtBuild]
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFlashNvStorageEventLogBase|0x0|UINT32|0x8
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFlashNvStorageEventLogSize|0x0|UINT32|0x9
@@ -106,13 +113,25 @@
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfLockBoxStorageBase|0x0|UINT32|0x18
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfLockBoxStorageSize|0x0|UINT32|0x19
   gUefiOvmfPkgTokenSpaceGuid.PcdGuidedExtractHandlerTableSize|0x0|UINT32|0x1a
+  gUefiOvmfPkgTokenSpaceGuid.PcdOvmfDecompressionScratchEnd|0x0|UINT32|0x1f
 
 [PcdsDynamic, PcdsDynamicEx]
   gUefiOvmfPkgTokenSpaceGuid.PcdEmuVariableEvent|0|UINT64|2
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFlashVariablesEnable|FALSE|BOOLEAN|0x10
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfHostBridgePciDevId|0|UINT16|0x1b
+  gUefiOvmfPkgTokenSpaceGuid.PcdQemuSmbiosValidated|FALSE|BOOLEAN|0x21
 
 [PcdsFeatureFlag]
   gUefiOvmfPkgTokenSpaceGuid.PcdSecureBootEnable|FALSE|BOOLEAN|3
   gUefiOvmfPkgTokenSpaceGuid.PcdQemuBootOrderPciTranslation|TRUE|BOOLEAN|0x1c
   gUefiOvmfPkgTokenSpaceGuid.PcdQemuBootOrderMmioTranslation|FALSE|BOOLEAN|0x1d
+
+  ## This feature flag enables SMM/SMRAM support. Note that it also requires
+  #  such support from the underlying QEMU instance; if that support is not
+  #  present, the firmware will reject continuing after a certain point.
+  #
+  #  The flag also acts as a general "security switch"; when TRUE, many
+  #  components will change behavior, with the goal of preventing a malicious
+  #  runtime OS from tampering with firmware structures (special memory ranges
+  #  used by OVMF, the varstore pflash chip, LockBox etc).
+  gUefiOvmfPkgTokenSpaceGuid.PcdSmmSmramRequire|FALSE|BOOLEAN|0x1e

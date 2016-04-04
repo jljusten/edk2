@@ -188,7 +188,7 @@ CascadeDelete(
 }
 
 /**
-  Determins if a Node is a valid delete target.  Will prevent deleting the root directory.
+  Determines if a Node is a valid delete target.  Will prevent deleting the root directory.
 
   @param[in] List       RESERVED.  Not used.
   @param[in] Node       The node to analyze.
@@ -231,7 +231,9 @@ IsValidDeleteTarget(
   Pattern       = NULL;
   SearchString  = NULL;
   Size          = 0;
-  Pattern       = StrnCatGrow(&Pattern     , NULL, TempLocation  , 0);
+  Pattern       = StrnCatGrow(&Pattern, &Size, TempLocation  , 0);
+  Pattern       = StrnCatGrow(&Pattern, &Size, L"\\"  , 0);
+  Size = 0;
   SearchString  = StrnCatGrow(&SearchString, &Size, Node->FullName, 0);
   if (!EFI_ERROR(ShellIsDirectory(SearchString))) {
     SearchString  = StrnCatGrow(&SearchString, &Size, L"\\", 0);

@@ -1,7 +1,7 @@
 /** @file
   The implementation of IPSEC_CONFIG_PROTOCOL.
 
-  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2016, Intel Corporation. All rights reserved.<BR>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -211,7 +211,7 @@ CompareSpdSelector (
   }
   
   //
-  // Compare the all LocalAddress fields in the two Spdselectors.
+  // Compare the all LocalAddress and RemoteAddress fields in the two Spdselectors.
   // First, SpdSel1->LocalAddress to SpdSel2->LocalAddress && Compare 
   // SpdSel1->RemoteAddress to SpdSel2->RemoteAddress. If all match, return
   // TRUE.
@@ -372,7 +372,7 @@ IsSubSpdSelector (
   }
   
   //
-  // Compare the all LocalAddress fields in the two Spdselectors.
+  // Compare the all LocalAddress and RemoteAddress fields in the two Spdselectors.
   // First, SpdSel1->LocalAddress to SpdSel2->LocalAddress && Compare 
   // SpdSel1->RemoteAddress to SpdSel2->RemoteAddress. If all match, return
   // TRUE.
@@ -429,9 +429,9 @@ IsSubSpdSelector (
   }
   
   //
-  // Compare the all LocalAddress fields in the two Spdselectors.
-  // First, SpdSel1->LocalAddress to SpdSel2->LocalAddress && Compare 
-  // SpdSel1->RemoteAddress to SpdSel2->RemoteAddress. If all match, return
+  // Compare the all LocalAddress and RemoteAddress fields in the two Spdselectors.
+  // First, SpdSel1->LocalAddress to SpdSel2->RemoteAddress && Compare 
+  // SpdSel1->RemoteAddress to SpdSel2->LocalAddress. If all match, return
   // TRUE.
   //
   for (Index = 0; Index < SpdSel1->LocalAddressCount; Index++) {
@@ -1018,6 +1018,8 @@ UnfixPadEntry (
                                      mode is Tunnel, and its tunnel option is NULL.
                                    - The Action of Data is protected and its policy 
                                      mode is not Tunnel and it tunnel option is not NULL.
+                                   - SadEntry requied to be set into new SpdEntry's Sas has 
+                                     been found but it is invalid.
   @retval EFI_OUT_OF_RESOURCED  The required system resource could not be allocated.
   @retval EFI_SUCCESS           The specified configuration data was obtained successfully.
 
@@ -1039,6 +1041,7 @@ SetSpdEntry (
   LIST_ENTRY              *Entry;
   LIST_ENTRY              *Entry2;
   LIST_ENTRY              *NextEntry;
+  LIST_ENTRY              *NextEntry2;
   IPSEC_SPD_ENTRY         *SpdEntry;
   IPSEC_SAD_ENTRY         *SadEntry;
   UINTN                   SpdEntrySize;
@@ -1097,11 +1100,22 @@ SetSpdEntry (
       SpdSas = &SpdEntry->Data->Sas;
       
       //
-      // TODO: Deleted the related SAs.
+      // Remove the related SAs from Sas(SadEntry->BySpd). If the SA entry is established by 
+      // IKE, remove from mConfigData list(SadEntry->List) and then free it directly since its 
+      // SpdEntry will be freed later.
       //
-      NET_LIST_FOR_EACH (Entry2, SpdSas) {
-        SadEntry                  = IPSEC_SAD_ENTRY_FROM_SPD (Entry2);
-        SadEntry->Data->SpdEntry  = NULL;
+      NET_LIST_FOR_EACH_SAFE (Entry2, NextEntry2, SpdSas) {
+        SadEntry = IPSEC_SAD_ENTRY_FROM_SPD (Entry2);
+        
+        if (SadEntry->Data->SpdEntry != NULL) {
+          RemoveEntryList (&SadEntry->BySpd);
+          SadEntry->Data->SpdEntry = NULL;
+        }
+        
+        if (!(SadEntry->Data->ManualSet)) {
+          RemoveEntryList (&SadEntry->List);
+          FreePool (SadEntry);
+        }
       }
       
       //
@@ -1167,9 +1181,10 @@ SetSpdEntry (
     SpdData->Name,
     sizeof (SpdData->Name)
     );
-  SpdEntry->Data->PackageFlag = SpdData->PackageFlag;
-  SpdEntry->Data->Action      = SpdData->Action;
-
+  SpdEntry->Data->PackageFlag      = SpdData->PackageFlag;
+  SpdEntry->Data->TrafficDirection = SpdData->TrafficDirection;
+  SpdEntry->Data->Action           = SpdData->Action;
+  
   //
   // Fix the address of ProcessingPolicy and copy it if need, which is continous
   // memory and close to the base structure of SAD data.
@@ -1193,22 +1208,30 @@ SetSpdEntry (
   NET_LIST_FOR_EACH (Entry, SadList) {
     SadEntry = IPSEC_SAD_ENTRY_FROM_LIST (Entry);
 
-    for (Index = 0; Index < SpdData->SaIdCount; Index++) {
-
-      if (CompareSaId (
-            (EFI_IPSEC_CONFIG_SELECTOR *) &SpdData->SaId[Index],
-            (EFI_IPSEC_CONFIG_SELECTOR *) SadEntry->Id
-            )) {
-        InsertTailList (&SpdEntry->Data->Sas, &SadEntry->BySpd);
-        SadEntry->Data->SpdEntry = SpdEntry;
-        DuplicateSpdSelector (
-          (EFI_IPSEC_CONFIG_SELECTOR *)SadEntry->Data->SpdSelector,
-          (EFI_IPSEC_CONFIG_SELECTOR *)SpdEntry->Selector,
-          NULL
-          );             
-      }
-    }
+      for (Index = 0; Index < SpdData->SaIdCount; Index++) {
+        if (CompareSaId (
+              (EFI_IPSEC_CONFIG_SELECTOR *) &SpdData->SaId[Index],
+              (EFI_IPSEC_CONFIG_SELECTOR *) SadEntry->Id
+              )) {
+          //
+          // Check whether the found SadEntry is vaild.
+          //
+          if (IsSubSpdSelector (
+                (EFI_IPSEC_CONFIG_SELECTOR *) SadEntry->Data->SpdSelector,
+                (EFI_IPSEC_CONFIG_SELECTOR *) SpdEntry->Selector
+                )) {
+            if (SadEntry->Data->SpdEntry != NULL) {
+              RemoveEntryList (&SadEntry->BySpd);
+            }
+            InsertTailList (&SpdEntry->Data->Sas, &SadEntry->BySpd);
+            SadEntry->Data->SpdEntry = SpdEntry;
+          } else {
+            return EFI_INVALID_PARAMETER;
+          }
+        }
+      }      
   }
+  
   //
   // Insert the new SPD entry.
   //
@@ -1687,9 +1710,10 @@ GetSpdEntry (
       //
       CopyMem (SpdData->Name, SpdEntry->Data->Name, sizeof (SpdData->Name));
 
-      SpdData->PackageFlag  = SpdEntry->Data->PackageFlag;
-      SpdData->Action       = SpdEntry->Data->Action;
-
+      SpdData->PackageFlag      = SpdEntry->Data->PackageFlag;
+      SpdData->TrafficDirection = SpdEntry->Data->TrafficDirection;
+      SpdData->Action           = SpdEntry->Data->Action;
+      
       if (SpdData->Action != EfiIPsecActionProtect) {
         SpdData->ProcessingPolicy = NULL;
       } else {

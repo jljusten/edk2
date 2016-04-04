@@ -267,6 +267,7 @@
   TpmMeasurementLib|MdeModulePkg/Library/TpmMeasurementLibNull/TpmMeasurementLibNull.inf
   AuthVariableLib|MdeModulePkg/Library/AuthVariableLibNull/AuthVariableLibNull.inf
 !endif
+  VarCheckLib|MdeModulePkg/Library/VarCheckLib/VarCheckLib.inf
 !if $(RC_BINARY_RELEASE) == TRUE
   I2cLib|Vlv2TbltDevicePkg/Library/I2CLib/I2CLibNull.inf
 !endif
@@ -603,9 +604,9 @@
 [PcdsFixedAtBuild.common]
 !if $(MINNOW2_FSP_BUILD) == TRUE
 # $(FLASH_REGION_VLVMICROCODE_BASE)
-  gFspWrapperTokenSpaceGuid.PcdCpuMicrocodePatchAddress|0xFFD00000
+  gFspWrapperTokenSpaceGuid.PcdCpuMicrocodePatchAddress|0xFFC00000
 # $(FLASH_REGION_VLVMICROCODE_SIZE)
-  gFspWrapperTokenSpaceGuid.PcdCpuMicrocodePatchRegionSize|0x00030000
+  gFspWrapperTokenSpaceGuid.PcdCpuMicrocodePatchRegionSize|0x00040000
   gFspWrapperTokenSpaceGuid.PcdFlashMicroCodeOffset|0x60
 # $(FLASH_AREA_BASE_ADDRESS)
   gFspWrapperTokenSpaceGuid.PcdFlashCodeCacheAddress|0xFF800000
@@ -1100,15 +1101,6 @@ $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/IA32/fTPMInitPeim.inf
 !endif
   }
 
-!if $(CAPSULE_ENABLE) == TRUE
-  MdeModulePkg/Universal/CapsulePei/CapsuleX64.inf {
-    <LibraryClasses>
-    PcdLib|MdePkg/Library/PeiPcdLib/PeiPcdLib.inf
-    MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
-    HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
-  }
-!endif
-
   MdeModulePkg/Universal/ReportStatusCodeRouter/Smm/ReportStatusCodeRouterSmm.inf
   MdeModulePkg/Universal/SecurityStubDxe/SecurityStubDxe.inf{
     <LibraryClasses>
@@ -1152,6 +1144,7 @@ $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/IA32/fTPMInitPeim.inf
   MdeModulePkg/Universal/Variable/RuntimeDxe/VariableSmmRuntimeDxe.inf
   MdeModulePkg/Universal/Variable/RuntimeDxe/VariableSmm.inf {
     <LibraryClasses>
+      NULL|MdeModulePkg/Library/VarCheckUefiLib/VarCheckUefiLib.inf
       SerialPortLib|$(PLATFORM_PACKAGE)/Library/SerialPortLib/SerialPortLib.inf
   }
   $(PLATFORM_PACKAGE)/FvbRuntimeDxe/FvbSmm.inf
@@ -1477,7 +1470,6 @@ $(PLATFORM_BINARY_PACKAGE)/$(DXE_ARCHITECTURE)$(TARGET)/IA32/fTPMInitPeim.inf
     MdeModulePkg/Universal/Network/MnpDxe/MnpDxe.inf
     MdeModulePkg/Universal/Network/ArpDxe/ArpDxe.inf
     MdeModulePkg/Universal/Network/Dhcp4Dxe/Dhcp4Dxe.inf
-    MdeModulePkg/Universal/Network/Ip4ConfigDxe/Ip4ConfigDxe.inf
     MdeModulePkg/Universal/Network/Ip4Dxe/Ip4Dxe.inf
     MdeModulePkg/Universal/Network/Mtftp4Dxe/Mtftp4Dxe.inf
     MdeModulePkg/Universal/Network/Tcp4Dxe/Tcp4Dxe.inf {

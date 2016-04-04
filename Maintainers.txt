@@ -48,17 +48,18 @@ EDK II Packages:
 ----------------
 AppPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/AppPkg
-M: Daryl Mcdaniel <daryl.mcdaniel@intel.com>
+M: Daryl McDaniel <edk2-lists@mc2research.org>
+M: Jaben Carsey <jaben.carsey@intel.com>
 
 ArmPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/ArmPkg
-M: Olivier Martin <olivier.martin@arm.com>
 M: Leif Lindholm <leif.lindholm@linaro.org>
+M: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 
 ArmPlatformPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/ArmPlatformPkg
-M: Olivier Martin <olivier.martin@arm.com>
 M: Leif Lindholm <leif.lindholm@linaro.org>
+M: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 
 ArmVirtPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/ArmVirtPkg
@@ -67,12 +68,13 @@ M: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 
 BaseTools
 W: https://github.com/tianocore/tianocore.github.io/wiki/BaseTools
-M: Yingke D Liu <yingke.d.liu@intel.com>
+M: Yonghong Zhu <yonghong.zhu@intel.com>
+M: Liming Gao <liming.gao@intel.com>
 
 BeagleBoardPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/BeagleBoardPkg
-M: Olivier Martin <olivier.martin@arm.com>
 M: Leif Lindholm <leif.lindholm@linaro.org>
+M: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 
 CorebootModulePkg, CorebootPayloadPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/Coreboot_UEFI_payload
@@ -83,6 +85,7 @@ S: Maintained
 CryptoPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/CryptoPkg
 M: Qin Long <qin.long@intel.com>
+M: Ting Ye <ting.ye@intel.com>
 
 DuetPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/DuetPkg
@@ -100,8 +103,8 @@ S: Obsolete (Use ShellPkg & ShellBinPkg instead)
 
 EmbeddedPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/EmbeddedPkg
-M: Olivier Martin <olivier.martin@arm.com>
 M: Leif Lindholm <leif.lindholm@linaro.org>
+M: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 
 EmulatorPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/EmulatorPkg
@@ -144,6 +147,9 @@ M: Liming Gao <liming.gao@intel.com>
 NetworkPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/NetworkPkg
 M: Siyuan Fu <siyuan.fu@intel.com>
+M: Jiaxin Wu <jiaxin.wu@intel.com>
+M: Lubo Zhang <lubo.zhang@intel.com>
+M: Fan Wang <fan.wang@intel.com>
 
 Nt32Pkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/Nt32Pkg
@@ -151,8 +157,8 @@ M: Ruiyu Ni <ruiyu.ni@intel.com>
 
 Omap35xxPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/Omap35xxPkg
-M: Olivier Martin <olivier.martin@arm.com>
 M: Leif Lindholm <leif.lindholm@linaro.org>
+M: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 
 OptionRomPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/OptionRomPkg
@@ -170,7 +176,12 @@ M: Ruiyu Ni <ruiyu.ni@intel.com>
 
 PerformancePkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/PerformancePkg
-M: Daryl Mcdaniel <daryl.mcdaniel@intel.com>
+M: Daryl McDaniel <edk2-lists@mc2research.org>
+M: Jaben Carsey <jaben.carsey@intel.com>
+
+QuarkPlatformPkg, QuarkSocPkg
+M: Michael D Kinney <michael.d.kinney@intel.com>
+M: Kelly Steele <kelly.steele@intel.com>
 
 SecurityPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/SecurityPkg
@@ -184,10 +195,12 @@ M: Shumin Qiu <shumin.qiu@intel.com>
 SourceLevelDebugPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/SourceLevelDebugPkg
 M: Jeff Fan <jeff.fan@intel.com>
+M: Hao Wu <hao.a.wu@intel.com>
 
 StdLib, StdLibPrivateInternalFiles
 W: https://github.com/tianocore/tianocore.github.io/wiki/StdLib
-M: Daryl Mcdaniel <daryl.mcdaniel@intel.com>
+M: Daryl McDaniel <edk2-lists@mc2research.org>
+M: Jaben Carsey <jaben.carsey@intel.com>
 
 UefiCpuPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/UefiCpuPkg

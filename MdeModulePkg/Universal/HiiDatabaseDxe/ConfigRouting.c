@@ -1599,6 +1599,7 @@ ParseIfrData (
   UINT16                   VarWidth;
   UINT16                   VarDefaultId;
   BOOLEAN                  FirstOneOfOption;
+  BOOLEAN                  FirstOrderedList;
   LIST_ENTRY               *LinkData;
   LIST_ENTRY               *LinkDefault;
   EFI_IFR_VARSTORE_NAME_VALUE *IfrNameValueVarStore;
@@ -1610,6 +1611,7 @@ ParseIfrData (
   DefaultDataPtr   = NULL;
   FirstOneOfOption = FALSE;
   VarStoreId       = 0;
+  FirstOrderedList = FALSE;
   ZeroMem (&DefaultData, sizeof (IFR_DEFAULT_DATA));
 
   //
@@ -1856,9 +1858,9 @@ ParseIfrData (
       //
       // offset by question header
       // width by EFI_IFR_ORDERED_LIST MaxContainers * OneofOption Type
-      // no default value and default id, how to define its default value?
       //
 
+      FirstOrderedList = TRUE;
       //
       // OrderedList question is not in IFR Form. This IFR form is not valid. 
       //
@@ -2056,11 +2058,6 @@ ParseIfrData (
       if (EFI_ERROR (Status)) {
         goto Done;
       }
-
-      //
-      // No default value for string.
-      //
-      BlockData = NULL;
       break;
 
     case EFI_IFR_PASSWORD_OP:
@@ -2107,6 +2104,10 @@ ParseIfrData (
 
       IfrOneOfOption = (EFI_IFR_ONE_OF_OPTION *) IfrOpHdr;
       if (BlockData->OpCode == EFI_IFR_ORDERED_LIST_OP) {
+
+        if (!FirstOrderedList){
+          break;
+        }
         //
         // Get ordered list option data type.
         //
@@ -2163,10 +2164,9 @@ ParseIfrData (
         // Add Block Data into VarStorageData BlockEntry
         //
         InsertBlockData (&VarStorageData->BlockEntry, &BlockData);
-        //
-        // No default data for OrderedList.
-        //
-        BlockData = NULL;
+
+        FirstOrderedList = FALSE;
+
         break;
       }
 
@@ -2227,12 +2227,6 @@ ParseIfrData (
         break;
       }
 
-      if (BlockData->OpCode == EFI_IFR_ORDERED_LIST_OP) {
-        //
-        // OrderedList Opcode is no default value.
-        //
-        break;
-      }
       //
       // Get the DefaultId
       //
@@ -2850,6 +2844,7 @@ GetStorageWidth (
 /**
   Generate ConfigAltResp string base on the varstore info.
 
+  @param      HiiHandle             Hii Handle for this hii package.
   @param      ConfigHdr             The config header for this varstore.
   @param      VarStorageData        The varstore info.
   @param      DefaultIdArray        The Default id array.
@@ -2860,6 +2855,7 @@ GetStorageWidth (
 **/
 EFI_STATUS
 GenerateAltConfigResp (
+  IN  EFI_HII_HANDLE               HiiHandle,
   IN  CHAR16                       *ConfigHdr,
   IN  IFR_VARSTORAGE_DATA          *VarStorageData,
   IN  IFR_DEFAULT_DATA             *DefaultIdArray,
@@ -2878,10 +2874,11 @@ GenerateAltConfigResp (
   IFR_DEFAULT_DATA      *DefaultValueData;
   UINTN                 Width;
   UINT8                 *TmpBuffer;
+  CHAR16                *DefaultString;
 
   BlockData     = NULL;
   DataExist     = FALSE;
-
+  DefaultString = NULL;
   //
   // Add length for <ConfigHdr> + '\0'
   //
@@ -2993,9 +2990,18 @@ GenerateAltConfigResp (
         // Convert Value to a hex string in "%x" format
         // NOTE: This is in the opposite byte that GUID and PATH use
         //
-        TmpBuffer = (UINT8 *) &(DefaultValueData->Value);
-        for (; Width > 0; Width--) {
+        if (BlockData->OpCode == EFI_IFR_STRING_OP){
+          DefaultString   = InternalGetString(HiiHandle, DefaultValueData->Value.string);
+          TmpBuffer = (UINT8 *) DefaultString;
+        } else {
+          TmpBuffer = (UINT8 *) &(DefaultValueData->Value);
+        }
+        for (; Width > 0 && (TmpBuffer != NULL); Width--) {
           StringPtr += UnicodeValueToString (StringPtr, PREFIX_ZERO | RADIX_HEX, TmpBuffer[Width - 1], 2);
+        }
+        if (DefaultString != NULL){
+          FreePool(DefaultString);
+          DefaultString = NULL;
         }
       }
     }
@@ -3218,7 +3224,7 @@ GetFullStringFromHiiFormPackages (
   // Go through all VarStorageData Entry and get the DefaultId array for each one
   // Then construct them all to : ConfigHdr AltConfigHdr ConfigBody AltConfigHdr ConfigBody
   //
-  Status = GenerateAltConfigResp (ConfigHdr, VarStorageData, DefaultIdArray, &DefaultAltCfgResp);
+  Status = GenerateAltConfigResp (DataBaseRecord->Handle,ConfigHdr, VarStorageData, DefaultIdArray, &DefaultAltCfgResp);
   if (EFI_ERROR (Status)) {
     goto Done;
   }
@@ -3867,7 +3873,9 @@ HiiConfigRoutingExtractConfig (
                       &gEfiHiiConfigAccessProtocolGuid,
                       (VOID **) &ConfigAccess
                       );
-      ASSERT_EFI_ERROR (Status);
+      if (EFI_ERROR (Status)) {
+        goto Done;
+      }
 
       Status = ConfigAccess->ExtractConfig (
                                ConfigAccess,
@@ -4338,7 +4346,11 @@ HiiConfigRoutingRouteConfig (
                       &gEfiHiiConfigAccessProtocolGuid,
                       (VOID **)  &ConfigAccess
                       );
-      ASSERT_EFI_ERROR (Status);
+      if (EFI_ERROR (Status)) {
+        *Progress = StringPtr;
+        FreePool (ConfigResp);
+        return EFI_NOT_FOUND;
+      }
 
       Status = ConfigAccess->RouteConfig (
                                ConfigAccess,

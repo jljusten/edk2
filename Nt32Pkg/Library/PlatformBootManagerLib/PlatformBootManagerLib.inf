@@ -31,22 +31,44 @@
   PlatformData.c
   PlatformBootManager.c
   PlatformBootManager.h
+  MemoryTest.c
+  Strings.uni
 
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
+  IntelFrameworkModulePkg/IntelFrameworkModulePkg.dec
   Nt32Pkg/Nt32Pkg.dec
 
 [LibraryClasses]
   BaseLib
+  UefiBootServicesTableLib
   UefiRuntimeServicesTableLib
   UefiLib
   UefiBootManagerLib
   PcdLib
+  DxeServicesLib
+  MemoryAllocationLib
+  DevicePathLib
+  HiiLib
+  PrintLib
+  BootLogoLib
 
 [Guids]
   gEfiWinNtSystemConfigGuid
 
+[Protocols]
+  gEfiGenericMemTestProtocolGuid  ## CONSUMES
+  gEfiGraphicsOutputProtocolGuid  ## CONSUMES
+  gEfiUgaDrawProtocolGuid         ## CONSUMES
+  gEfiBootLogoProtocolGuid        ## CONSUMES
+
 [Pcd]
+  gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut
+  gEfiMdePkgTokenSpaceGuid.PcdUgaConsumeSupport
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutColumn
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConInConnectOnDemand
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdBootlogoOnlyEnable
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdShellFile

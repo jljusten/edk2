@@ -1,6 +1,7 @@
 /** @file
   DevicePathToText protocol as defined in the UEFI 2.0 specification.
 
+  (C) Copyright 2015 Hewlett-Packard Development Company, L.P.<BR>
 Copyright (c) 2013 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
@@ -303,6 +304,38 @@ DevPathToTextController (
     Str,
     L"Ctrl(0x%x)",
     Controller->ControllerNumber
+    );
+}
+
+/**
+  Converts a BMC device path structure to its string representative.
+
+  @param Str             The string representative of input device.
+  @param DevPath         The input device path structure.
+  @param DisplayOnly     If DisplayOnly is TRUE, then the shorter text representation
+                         of the display node is used, where applicable. If DisplayOnly
+                         is FALSE, then the longer text representation of the display node
+                         is used.
+  @param AllowShortcuts  If AllowShortcuts is TRUE, then the shortcut forms of text
+                         representation for a device node can be used, where applicable.
+
+**/
+VOID
+DevPathToTextBmc (
+  IN OUT POOL_PRINT  *Str,
+  IN VOID            *DevPath,
+  IN BOOLEAN         DisplayOnly,
+  IN BOOLEAN         AllowShortcuts
+  )
+{
+  BMC_DEVICE_PATH    *Bmc;
+
+  Bmc = DevPath;
+  UefiDevicePathLibCatPrint (
+    Str,
+    L"BMC(0x%x,0x%lx)",
+    Bmc->InterfaceType,
+    ReadUnaligned64 ((UINT64 *) (&Bmc->BaseAddress))
     );
 }
 
@@ -1551,7 +1584,7 @@ DevPathToTextBluetooth (
   Bluetooth = DevPath;
   UefiDevicePathLibCatPrint (
     Str,
-    L"Bluetooth(%02x:%02x:%02x:%02x:%02x:%02x)",
+    L"Bluetooth(%02x%02x%02x%02x%02x%02x)",
     Bluetooth->BD_ADDR.Address[5],
     Bluetooth->BD_ADDR.Address[4],
     Bluetooth->BD_ADDR.Address[3],
@@ -1583,9 +1616,14 @@ DevPathToTextWiFi (
   )
 {
   WIFI_DEVICE_PATH      *WiFi;
+  UINT8                 SSId[33];
 
   WiFi = DevPath;
-  UefiDevicePathLibCatPrint (Str, L"WiFi(%a)", WiFi->SSId);
+
+  SSId[32] = '\0';
+  CopyMem (SSId, WiFi->SSId, 32);
+
+  UefiDevicePathLibCatPrint (Str, L"Wi-Fi(%a)", SSId);
 }
 
 /**
@@ -1858,6 +1896,75 @@ DevPathRelativeOffsetRange (
 }
 
 /**
+  Converts a Ram Disk device path structure to its string representative.
+
+  @param Str             The string representative of input device.
+  @param DevPath         The input device path structure.
+  @param DisplayOnly     If DisplayOnly is TRUE, then the shorter text representation
+                         of the display node is used, where applicable. If DisplayOnly
+                         is FALSE, then the longer text representation of the display node
+                         is used.
+  @param AllowShortcuts  If AllowShortcuts is TRUE, then the shortcut forms of text
+                         representation for a device node can be used, where applicable.
+
+**/
+VOID
+DevPathToTextRamDisk (
+  IN OUT POOL_PRINT       *Str,
+  IN VOID                 *DevPath,
+  IN BOOLEAN              DisplayOnly,
+  IN BOOLEAN              AllowShortcuts
+  )
+{
+  MEDIA_RAM_DISK_DEVICE_PATH *RamDisk;
+
+  RamDisk = DevPath;
+
+  if (CompareGuid (&RamDisk->TypeGuid, &gEfiVirtualDiskGuid)) {
+    UefiDevicePathLibCatPrint (
+      Str,
+      L"VirtualDisk(0x%lx,0x%lx,%d)",
+      LShiftU64 ((UINT64)RamDisk->StartingAddr[1], 32) | RamDisk->StartingAddr[0],
+      LShiftU64 ((UINT64)RamDisk->EndingAddr[1], 32) | RamDisk->EndingAddr[0],
+      RamDisk->Instance
+      );
+  } else if (CompareGuid (&RamDisk->TypeGuid, &gEfiVirtualCdGuid)) {
+    UefiDevicePathLibCatPrint (
+      Str,
+      L"VirtualCD(0x%lx,0x%lx,%d)",
+      LShiftU64 ((UINT64)RamDisk->StartingAddr[1], 32) | RamDisk->StartingAddr[0],
+      LShiftU64 ((UINT64)RamDisk->EndingAddr[1], 32) | RamDisk->EndingAddr[0],
+      RamDisk->Instance
+      );
+  } else if (CompareGuid (&RamDisk->TypeGuid, &gEfiPersistentVirtualDiskGuid)) {
+    UefiDevicePathLibCatPrint (
+      Str,
+      L"PersistentVirtualDisk(0x%lx,0x%lx,%d)",
+      LShiftU64 ((UINT64)RamDisk->StartingAddr[1], 32) | RamDisk->StartingAddr[0],
+      LShiftU64 ((UINT64)RamDisk->EndingAddr[1], 32) | RamDisk->EndingAddr[0],
+      RamDisk->Instance
+      );
+  } else if (CompareGuid (&RamDisk->TypeGuid, &gEfiPersistentVirtualCdGuid)) {
+    UefiDevicePathLibCatPrint (
+      Str,
+      L"PersistentVirtualCD(0x%lx,0x%lx,%d)",
+      LShiftU64 ((UINT64)RamDisk->StartingAddr[1], 32) | RamDisk->StartingAddr[0],
+      LShiftU64 ((UINT64)RamDisk->EndingAddr[1], 32) | RamDisk->EndingAddr[0],
+      RamDisk->Instance
+      );
+  } else {
+    UefiDevicePathLibCatPrint (
+      Str,
+      L"RamDisk(0x%lx,0x%lx,%d,%g)",
+      LShiftU64 ((UINT64)RamDisk->StartingAddr[1], 32) | RamDisk->StartingAddr[0],
+      LShiftU64 ((UINT64)RamDisk->EndingAddr[1], 32) | RamDisk->EndingAddr[0],
+      RamDisk->Instance,
+      &RamDisk->TypeGuid
+      );
+  }
+}
+
+/**
   Converts a BIOS Boot Specification device path structure to its string representative.
 
   @param Str             The string representative of input device.
@@ -2020,6 +2127,7 @@ GLOBAL_REMOVE_IF_UNREFERENCED const DEVICE_PATH_TO_TEXT_TABLE mUefiDevicePathLib
   {HARDWARE_DEVICE_PATH,  HW_MEMMAP_DP,                     DevPathToTextMemMap         },
   {HARDWARE_DEVICE_PATH,  HW_VENDOR_DP,                     DevPathToTextVendor         },
   {HARDWARE_DEVICE_PATH,  HW_CONTROLLER_DP,                 DevPathToTextController     },
+  {HARDWARE_DEVICE_PATH,  HW_BMC_DP,                        DevPathToTextBmc            },
   {ACPI_DEVICE_PATH,      ACPI_DP,                          DevPathToTextAcpi           },
   {ACPI_DEVICE_PATH,      ACPI_EXTENDED_DP,                 DevPathToTextAcpiEx         },
   {ACPI_DEVICE_PATH,      ACPI_ADR_DP,                      DevPathToTextAcpiAdr        },
@@ -2057,6 +2165,7 @@ GLOBAL_REMOVE_IF_UNREFERENCED const DEVICE_PATH_TO_TEXT_TABLE mUefiDevicePathLib
   {MEDIA_DEVICE_PATH,     MEDIA_PIWG_FW_VOL_DP,             DevPathToTextFv             },
   {MEDIA_DEVICE_PATH,     MEDIA_PIWG_FW_FILE_DP,            DevPathToTextFvFile         },
   {MEDIA_DEVICE_PATH,     MEDIA_RELATIVE_OFFSET_RANGE_DP,   DevPathRelativeOffsetRange  },
+  {MEDIA_DEVICE_PATH,     MEDIA_RAM_DISK_DP,                DevPathToTextRamDisk        },
   {BBS_DEVICE_PATH,       BBS_BBS_DP,                       DevPathToTextBBS            },
   {END_DEVICE_PATH_TYPE,  END_INSTANCE_DEVICE_PATH_SUBTYPE, DevPathToTextEndInstance    },
   {0, 0, NULL}

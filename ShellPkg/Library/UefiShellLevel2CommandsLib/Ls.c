@@ -2,7 +2,7 @@
   Main file for ls shell level 2 function.
 
   (C) Copyright 2013-2015 Hewlett-Packard Development Company, L.P.<BR>
-  Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -669,6 +669,8 @@ ShellCommandRunLs (
           ASSERT(FullPath == NULL);
           StrnCatGrow(&SearchString, NULL, L"*", 0);
           StrnCatGrow(&FullPath, NULL, CurDir, 0);
+          Size = FullPath != NULL? StrSize(FullPath) : 0;
+          StrnCatGrow(&FullPath, &Size, L"\\", 0);
         } else {
           if (StrStr(PathName, L":") == NULL && gEfiShellProtocol->GetCurDir(NULL) == NULL) {
             //
@@ -687,6 +689,8 @@ ShellCommandRunLs (
                 ShellCommandLineFreeVarList (Package);
                 return SHELL_OUT_OF_RESOURCES;
               }
+              Size = FullPath != NULL? StrSize(FullPath) : 0;
+              StrnCatGrow(&FullPath, &Size, L"\\", 0);
             }
             StrnCatGrow(&FullPath, &Size, PathName, 0);
             if (FullPath == NULL) {
@@ -725,7 +729,7 @@ ShellCommandRunLs (
             SearchString,
             NULL,
             Count,
-            (INT16)(TheTime.TimeZone==EFI_UNSPECIFIED_TIMEZONE?0:TheTime.TimeZone)
+            TheTime.TimeZone
            );
           if (ShellStatus == SHELL_NOT_FOUND) {
             ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_LS_FILE_NOT_FOUND), gShellLevel2HiiHandle, L"ls", FullPath);  

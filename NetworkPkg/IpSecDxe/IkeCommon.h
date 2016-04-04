@@ -1,7 +1,7 @@
 /** @file
   Common operation of the IKE.
 
-  Copyright (c) 2010 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2010 - 2015, Intel Corporation. All rights reserved.<BR>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -18,7 +18,7 @@
 
 #include <Protocol/Udp4.h>
 #include <Protocol/Udp6.h>
-#include <Protocol/Ip4Config.h>
+#include <Protocol/Ip4Config2.h>
  
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -181,7 +181,6 @@ IkeSearchSpdEntry (
   IN EFI_IPSEC_SPD_SELECTOR             *SpdSel
   );
 
-extern EFI_GUID               mZeroGuid;
 extern MODP_GROUP             OakleyModpGroup[];
 extern IKE_ALG_GUID_INFO      mIPsecEncrAlgInfo[];
 extern IKE_ALG_GUID_INFO      mIPsecAuthAlgInfo[];

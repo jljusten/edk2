@@ -1,5 +1,6 @@
 #
 #  Copyright (c) 2011-2015, ARM Limited. All rights reserved.
+#  Copyright (c) 2015, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -109,6 +110,7 @@ READ_ENABLED_CAP   = TRUE
 READ_STATUS        = TRUE
 READ_LOCK_CAP      = TRUE
 READ_LOCK_STATUS   = TRUE
+FvNameGuid         = 12c68be9-0996-49d3-8c5b-4957379027ee
 
   APRIORI DXE {
     INF MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
@@ -139,7 +141,6 @@ READ_LOCK_STATUS   = TRUE
   INF MdeModulePkg/Universal/Network/DpcDxe/DpcDxe.inf
   INF MdeModulePkg/Universal/Network/ArpDxe/ArpDxe.inf
   INF MdeModulePkg/Universal/Network/Dhcp4Dxe/Dhcp4Dxe.inf
-  INF MdeModulePkg/Universal/Network/Ip4ConfigDxe/Ip4ConfigDxe.inf
   INF MdeModulePkg/Universal/Network/Ip4Dxe/Ip4Dxe.inf
   INF MdeModulePkg/Universal/Network/MnpDxe/MnpDxe.inf
   INF MdeModulePkg/Universal/Network/VlanConfigDxe/VlanConfigDxe.inf
@@ -156,7 +157,7 @@ READ_LOCK_STATUS   = TRUE
   INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
   INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
   INF MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
-  INF EmbeddedPkg/SerialDxe/SerialDxe.inf
+  INF MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
 
   INF ArmPkg/Drivers/ArmGic/ArmGicDxe.inf
   INF ArmPkg/Drivers/TimerDxe/TimerDxe.inf
@@ -217,6 +218,9 @@ READ_LOCK_STATUS   = TRUE
   #FILE FREEFORM = PCD(gArmVExpressTokenSpaceGuid.PcdFdtVExpressFvpA15x4) {
   #  SECTION RAW = ArmPlatformPkg/ArmVExpressPkg/Fdts/rtsm_ve-ca15x4.dtb
   #}
+
+  # Legacy Linux Loader
+  INF ArmPkg/Application/LinuxLoader/LinuxLoader.inf
 
 [FV.FVMAIN_COMPACT]
 FvAlignment        = 8

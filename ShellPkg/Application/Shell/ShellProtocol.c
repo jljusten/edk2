@@ -185,6 +185,9 @@ EfiShellSetMap(
        ){
           if (StringNoCaseCompare(&MapListNode->MapName, &Mapping) == 0) {
             RemoveEntryList(&MapListNode->Link);
+            SHELL_FREE_NON_NULL(MapListNode->DevicePath);
+            SHELL_FREE_NON_NULL(MapListNode->MapName);
+            SHELL_FREE_NON_NULL(MapListNode->CurrentDirectoryPath);
             FreePool(MapListNode);
             return (EFI_SUCCESS);
           }
@@ -449,38 +452,37 @@ EfiShellGetFilePathFromDevicePath(
           ; FilePath = (FILEPATH_DEVICE_PATH*)NextDevicePathNode (&FilePath->Header)
          ){
         //
-        // all the rest should be file path nodes
+        // If any node is not a file path node, then the conversion can not be completed
         //
         if ((DevicePathType(&FilePath->Header) != MEDIA_DEVICE_PATH) ||
             (DevicePathSubType(&FilePath->Header) != MEDIA_FILEPATH_DP)) {
           FreePool(PathForReturn);
-          PathForReturn = NULL;
-          ASSERT(FALSE);
-        } else {
-          //
-          // append the path part onto the filepath.
-          //
-          ASSERT((PathForReturn == NULL && PathSize == 0) || (PathForReturn != NULL));
-
-          AlignedNode = AllocateCopyPool (DevicePathNodeLength(FilePath), FilePath);
-          ASSERT (AlignedNode != NULL);
-
-          // File Path Device Path Nodes 'can optionally add a "\" separator to
-          //  the beginning and/or the end of the Path Name string.'
-          // (UEFI Spec 2.4 section 9.3.6.4).
-          // If necessary, add a "\", but otherwise don't
-          // (This is specified in the above section, and also implied by the
-          //  UEFI Shell spec section 3.7)
-          if ((PathSize != 0)                        &&
-              (PathForReturn != NULL)                &&
-              (PathForReturn[PathSize - 1] != L'\\') &&
-              (AlignedNode->PathName[0]    != L'\\')) {
-            PathForReturn = StrnCatGrow (&PathForReturn, &PathSize, L"\\", 1);
-          }
-
-          PathForReturn = StrnCatGrow(&PathForReturn, &PathSize, AlignedNode->PathName, 0);
-          FreePool(AlignedNode);
+          return NULL;
         }
+
+        //
+        // append the path part onto the filepath.
+        //
+        ASSERT((PathForReturn == NULL && PathSize == 0) || (PathForReturn != NULL));
+
+        AlignedNode = AllocateCopyPool (DevicePathNodeLength(FilePath), FilePath);
+        ASSERT (AlignedNode != NULL);
+
+        // File Path Device Path Nodes 'can optionally add a "\" separator to
+        //  the beginning and/or the end of the Path Name string.'
+        // (UEFI Spec 2.4 section 9.3.6.4).
+        // If necessary, add a "\", but otherwise don't
+        // (This is specified in the above section, and also implied by the
+        //  UEFI Shell spec section 3.7)
+        if ((PathSize != 0)                        &&
+            (PathForReturn != NULL)                &&
+            (PathForReturn[PathSize - 1] != L'\\') &&
+            (AlignedNode->PathName[0]    != L'\\')) {
+          PathForReturn = StrnCatGrow (&PathForReturn, &PathSize, L"\\", 1);
+        }
+
+        PathForReturn = StrnCatGrow(&PathForReturn, &PathSize, AlignedNode->PathName, 0);
+        FreePool(AlignedNode);
       } // for loop of remaining nodes
     }
     if (PathForReturn != NULL) {
@@ -532,12 +534,13 @@ EfiShellGetDevicePathFromFilePath(
     if (Cwd == NULL) {
       return (NULL);
     }
-    Size = StrSize(Cwd) + StrSize(Path) - sizeof(CHAR16);
+    Size = StrSize(Cwd) + StrSize(Path);
     NewPath = AllocateZeroPool(Size);
     if (NewPath == NULL) {
       return (NULL);
     }
     StrCpyS(NewPath, Size/sizeof(CHAR16), Cwd);
+    StrCatS(NewPath, Size/sizeof(CHAR16), L"\\");
     if (*Path == L'\\') {
       Path++;
       while (PathRemoveLastItem(NewPath)) ;
@@ -1361,6 +1364,7 @@ EfiShellDeleteFileByName(
   //
   // now delete the file
   //
+  ShellFileHandleRemove(FileHandle);
   return (ShellInfoObject.NewEfiShellProtocol->DeleteFile(FileHandle));
 }
 
@@ -1467,6 +1471,7 @@ InternalShellExecuteDevicePath(
     if (NewHandle != NULL) {
       gBS->UnloadImage(NewHandle);
     }
+    FreePool (NewCmdLine);
     return (Status);
   }
   Status = gBS->OpenProtocol(
@@ -1500,7 +1505,7 @@ InternalShellExecuteDevicePath(
     ShellParamsProtocol.StdIn   = ShellInfoObject.NewShellParametersProtocol->StdIn;
     ShellParamsProtocol.StdOut  = ShellInfoObject.NewShellParametersProtocol->StdOut;
     ShellParamsProtocol.StdErr  = ShellInfoObject.NewShellParametersProtocol->StdErr;
-    Status = UpdateArgcArgv(&ShellParamsProtocol, NewCmdLine, NULL, NULL);
+    Status = UpdateArgcArgv(&ShellParamsProtocol, NewCmdLine, Efi_Application, NULL, NULL);
     ASSERT_EFI_ERROR(Status);
     //
     // Replace Argv[0] with the full path of the binary we're executing:
@@ -1630,40 +1635,62 @@ EfiShellExecute(
   CHAR16                    *Temp;
   EFI_DEVICE_PATH_PROTOCOL  *DevPath;
   UINTN                     Size;
+  EFI_STATUS                CalleeStatusCode;
 
+  CalleeStatusCode = EFI_SUCCESS;
+  
   if ((PcdGet8(PcdShellSupportLevel) < 1)) {
     return (EFI_UNSUPPORTED);
   }
 
-  DevPath = AppendDevicePath (ShellInfoObject.ImageDevPath, ShellInfoObject.FileDevPath);
+  if (Environment != NULL) {
+    // If Environment isn't null, load a new image of the shell with its own
+    // environment
+    DevPath = AppendDevicePath (ShellInfoObject.ImageDevPath, ShellInfoObject.FileDevPath);
+ 
+    DEBUG_CODE_BEGIN();
+    Temp = ConvertDevicePathToText(ShellInfoObject.FileDevPath, TRUE, TRUE);
+    FreePool(Temp);
+    Temp = ConvertDevicePathToText(ShellInfoObject.ImageDevPath, TRUE, TRUE);
+    FreePool(Temp);
+    Temp = ConvertDevicePathToText(DevPath, TRUE, TRUE);
+    FreePool(Temp);
+    DEBUG_CODE_END();
 
-  DEBUG_CODE_BEGIN();
-  Temp = ConvertDevicePathToText(ShellInfoObject.FileDevPath, TRUE, TRUE);
-  FreePool(Temp);
-  Temp = ConvertDevicePathToText(ShellInfoObject.ImageDevPath, TRUE, TRUE);
-  FreePool(Temp);
-  Temp = ConvertDevicePathToText(DevPath, TRUE, TRUE);
-  FreePool(Temp);
-  DEBUG_CODE_END();
+    Temp = NULL;
+    Size = 0;
+    ASSERT((Temp == NULL && Size == 0) || (Temp != NULL));
+    StrnCatGrow(&Temp, &Size, L"Shell.efi -_exit ", 0);
+    StrnCatGrow(&Temp, &Size, CommandLine, 0);
 
-  Temp = NULL;
-  Size = 0;
-  ASSERT((Temp == NULL && Size == 0) || (Temp != NULL));
-  StrnCatGrow(&Temp, &Size, L"Shell.efi -_exit ", 0);
-  StrnCatGrow(&Temp, &Size, CommandLine, 0);
+    Status = InternalShellExecuteDevicePath(
+      ParentImageHandle,
+      DevPath,
+      Temp,
+      (CONST CHAR16**)Environment,
+      StatusCode);
 
-  Status = InternalShellExecuteDevicePath(
-    ParentImageHandle,
-    DevPath,
-    Temp,
-    (CONST CHAR16**)Environment,
-    StatusCode);
+    //
+    // de-allocate and return
+    //
+    FreePool(DevPath);
+    FreePool(Temp);
+  } else {
+    // If Environment is NULL, we are free to use and mutate the current shell
+    // environment. This is much faster as uses much less memory.
 
-  //
-  // de-allocate and return
-  //
-  FreePool(DevPath);
-  FreePool(Temp);
+    if (CommandLine == NULL) {
+      CommandLine = L"";
+    }
+
+    Status = RunShellCommand (CommandLine, &CalleeStatusCode);
+
+    // Pass up the command's exit code if the caller wants it
+    if (StatusCode != NULL) {
+      *StatusCode = (EFI_STATUS) CalleeStatusCode;
+    }
+  }
+
   return(Status);
 }
 
@@ -2316,6 +2343,8 @@ ShellSearchHandle(
               // recurse with the next part of the pattern
               //
               Status = ShellSearchHandle(NextFilePatternStart, UnicodeCollation, ShellInfoNode->Handle, FileList, ShellInfoNode, MapName);
+              EfiShellClose(ShellInfoNode->Handle);
+              ShellInfoNode->Handle = NULL;
             }
           } else if (!EFI_ERROR(Status)) {
             //
@@ -2434,6 +2463,7 @@ EfiShellFindFiles(
             ; PatternCurrentLocation++);
         PatternCurrentLocation++;
         Status = ShellSearchHandle(PatternCurrentLocation, gUnicodeCollation, RootFileHandle, FileList, NULL, MapName);
+        EfiShellClose(RootFileHandle);
       }
       FreePool(RootDevicePath);
     }
@@ -2495,6 +2525,7 @@ EfiShellOpenFileList(
     CurDir = EfiShellGetCurDir(NULL);
     ASSERT((Path2 == NULL && Path2Size == 0) || (Path2 != NULL));
     StrnCatGrow(&Path2, &Path2Size, CurDir, 0);
+    StrnCatGrow(&Path2, &Path2Size, L"\\", 0);
     if (*Path == L'\\') {
       Path++;
       while (PathRemoveLastItem(Path2)) ;
@@ -2796,6 +2827,8 @@ EfiShellSetEnv(
   FileSystemMapping is not NULL, it returns the current directory associated with the
   FileSystemMapping. In both cases, the returned name includes the file system
   mapping (i.e. fs0:\current-dir).
+  
+  Note that the current directory string should exclude the tailing backslash character.
 
   @param FileSystemMapping      A pointer to the file system mapping. If NULL,
                                 then the current working directory is returned.
@@ -2851,6 +2884,8 @@ EfiShellGetCurDir(
 
   If the current working directory or the current working file system is changed then the
   %cwd% environment variable will be updated
+
+  Note that the current directory string should exclude the tailing backslash character.
 
   @param FileSystem             A pointer to the file system's mapped name. If NULL, then the current working
                                 directory is changed.
@@ -2919,6 +2954,8 @@ EfiShellSetCurDir(
     }
 
     if (MapListItem == NULL) {
+      FreePool (DirectoryName);
+      SHELL_FREE_NON_NULL(MapName);
       return (EFI_NOT_FOUND);
     }
 
@@ -2935,19 +2972,23 @@ EfiShellSetCurDir(
         ASSERT((MapListItem->CurrentDirectoryPath == NULL && Size == 0) || (MapListItem->CurrentDirectoryPath != NULL));
         MapListItem->CurrentDirectoryPath = StrnCatGrow(&MapListItem->CurrentDirectoryPath, &Size, DirectoryName+StrLen(MapName), 0);
       }
+      FreePool (MapName);
     } else {
       ASSERT((MapListItem->CurrentDirectoryPath == NULL && Size == 0) || (MapListItem->CurrentDirectoryPath != NULL));
       MapListItem->CurrentDirectoryPath = StrnCatGrow(&MapListItem->CurrentDirectoryPath, &Size, DirectoryName, 0);
     }
-    if ((MapListItem->CurrentDirectoryPath != NULL && MapListItem->CurrentDirectoryPath[StrLen(MapListItem->CurrentDirectoryPath)-1] != L'\\') || (MapListItem->CurrentDirectoryPath == NULL)) {
+    if ((MapListItem->CurrentDirectoryPath != NULL && MapListItem->CurrentDirectoryPath[StrLen(MapListItem->CurrentDirectoryPath)-1] == L'\\') || (MapListItem->CurrentDirectoryPath == NULL)) {
       ASSERT((MapListItem->CurrentDirectoryPath == NULL && Size == 0) || (MapListItem->CurrentDirectoryPath != NULL));
-      MapListItem->CurrentDirectoryPath = StrnCatGrow(&MapListItem->CurrentDirectoryPath, &Size, L"\\", 0);
+      if (MapListItem->CurrentDirectoryPath != NULL) {
+        MapListItem->CurrentDirectoryPath[StrLen(MapListItem->CurrentDirectoryPath)-1] = CHAR_NULL;
+      }
     }
   } else {
     //
     // cant have a mapping in the directory...
     //
     if (StrStr(DirectoryName, L":") != NULL) {
+      FreePool (DirectoryName);
       return (EFI_INVALID_PARAMETER);
     }
     //
@@ -2955,6 +2996,7 @@ EfiShellSetCurDir(
     //
     MapListItem = ShellCommandFindMapItem(FileSystem);
     if (MapListItem == NULL) {
+      FreePool (DirectoryName);
       return (EFI_INVALID_PARAMETER);
     }
 //    gShellCurDir = MapListItem;
@@ -2973,12 +3015,13 @@ EfiShellSetCurDir(
       MapListItem->CurrentDirectoryPath = StrnCatGrow(&MapListItem->CurrentDirectoryPath, &Size, L"\\", 0);
       ASSERT((MapListItem->CurrentDirectoryPath == NULL && Size == 0) || (MapListItem->CurrentDirectoryPath != NULL));
       MapListItem->CurrentDirectoryPath = StrnCatGrow(&MapListItem->CurrentDirectoryPath, &Size, DirectoryName, 0);
-      if (MapListItem->CurrentDirectoryPath != NULL && MapListItem->CurrentDirectoryPath[StrLen(MapListItem->CurrentDirectoryPath)-1] != L'\\') {
+      if (MapListItem->CurrentDirectoryPath != NULL && MapListItem->CurrentDirectoryPath[StrLen(MapListItem->CurrentDirectoryPath)-1] == L'\\') {
         ASSERT((MapListItem->CurrentDirectoryPath == NULL && Size == 0) || (MapListItem->CurrentDirectoryPath != NULL));
-        MapListItem->CurrentDirectoryPath = StrnCatGrow(&MapListItem->CurrentDirectoryPath, &Size, L"\\", 0);
+        MapListItem->CurrentDirectoryPath[StrLen(MapListItem->CurrentDirectoryPath)-1] = CHAR_NULL;
       }
     }
   }
+  FreePool (DirectoryName);
   //
   // if updated the current directory then update the environment variable
   //
@@ -3221,6 +3264,7 @@ EfiShellGetAlias(
   UINT32      Attribs;
   EFI_STATUS  Status;
   CHAR16      *AliasLower;
+  CHAR16      *AliasVal;
 
   // Convert to lowercase to make aliases case-insensitive
   if (Alias != NULL) {
@@ -3229,7 +3273,9 @@ EfiShellGetAlias(
     ToLower (AliasLower);
 
     if (Volatile == NULL) {
-      return (AddBufferToFreeList(GetVariable(AliasLower, &gShellAliasGuid)));
+      GetVariable2 (AliasLower, &gShellAliasGuid, (VOID **)&AliasVal, NULL);
+      FreePool(AliasLower);
+      return (AddBufferToFreeList(AliasVal));
     }
     RetSize = 0;
     RetVal = NULL;
@@ -3242,6 +3288,7 @@ EfiShellGetAlias(
       if (RetVal != NULL) {
         FreePool(RetVal);
       }
+      FreePool(AliasLower);
       return (NULL);
     }
     if ((EFI_VARIABLE_NON_VOLATILE & Attribs) == EFI_VARIABLE_NON_VOLATILE) {

@@ -24,9 +24,10 @@
 
   ENTRY_POINT                    = BdsInitialize
 
-[Sources.common]
+[Sources]
   Bds.c
   BdsHelper.c
+  BootLinux.c
   BootMenu.c
   BootOption.c
   BootOptionSupport.c
@@ -36,23 +37,28 @@
   MdeModulePkg/MdeModulePkg.dec
   ArmPkg/ArmPkg.dec
   ArmPlatformPkg/ArmPlatformPkg.dec
+  EmbeddedPkg/EmbeddedPkg.dec
+  IntelFrameworkModulePkg/IntelFrameworkModulePkg.dec
+
+[Guids]
+  gFdtTableGuid
 
 [LibraryClasses]
   BdsLib
-  TimerLib
-  PerformanceLib
   UefiBootServicesTableLib
   DxeServicesTableLib
   UefiDriverEntryPoint
   DebugLib
+  PerformanceLib
   PrintLib
   BaseLib
+  FdtLib
   NetLib
 
 [Guids]
   gEfiEndOfDxeEventGroupGuid
   gEfiFileSystemInfoGuid
-  gArmGlobalVariableGuid
+  gFdtVariableGuid
 
 [Protocols]
   gEfiBdsArchProtocolGuid
@@ -66,16 +72,19 @@
   gEfiDhcp4ServiceBindingProtocolGuid
   gEfiMtftp4ServiceBindingProtocolGuid
 
+[FeaturePcd]
+  gArmPlatformTokenSpaceGuid.PcdBdsLinuxSupport
+
 [Pcd]
   gArmPlatformTokenSpaceGuid.PcdFirmwareVendor
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDescription
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDevicePath
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootInitrdPath
   gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootType
   gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut
   gArmPlatformTokenSpaceGuid.PcdDefaultConInPaths
   gArmPlatformTokenSpaceGuid.PcdDefaultConOutPaths
+
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdShellFile
 
 [Depex]
   TRUE

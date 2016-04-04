@@ -20,6 +20,7 @@ import Common.LongFilePathOs as os
 
 import CommonDataClass.FdfClass
 from Common.LongFilePathSupport import OpenLongFilePath as open
+from Common.MultipleWorkspace import MultipleWorkspace as mws
 
 ##define T_CHAR_SPACE                ' '
 ##define T_CHAR_NULL                 '\0'
@@ -68,8 +69,8 @@ class Warning (Exception):
     #   @param  File        The FDF name
     #   @param  Line        The Line number that error occurs
     #
-    def __init__(self, Str, File = None, Line = None):
-        
+    def __init__(self, Str, File=None, Line=None):
+
         FileLineTuple = GetRealFileLine(File, Line)
         self.FileName = FileLineTuple[0]
         self.LineNumber = FileLineTuple[1]
@@ -358,8 +359,8 @@ class FdfParser(object):
             else:
                 raise Warning("Macro not complete At Line ", self.FileName, self.CurrentLineNumber)
         return Str
-    
-    def __ReplaceFragment(self, StartPos, EndPos, Value = ' '):
+
+    def __ReplaceFragment(self, StartPos, EndPos, Value=' '):
         if StartPos[0] == EndPos[0]:
             Offset = StartPos[1]
             while Offset <= EndPos[1]:
@@ -485,7 +486,8 @@ class FdfParser(object):
                 IncFileName = self.__Token
                 if not os.path.isabs(IncFileName):
                     if IncFileName.startswith('$(WORKSPACE)'):
-                        Str = IncFileName.replace('$(WORKSPACE)', os.environ.get('WORKSPACE'))
+                        Str = mws.handleWsMacro(IncFileName)
+                        Str = Str.replace('$(WORKSPACE)', os.environ.get('WORKSPACE'))
                         if os.path.exists(Str):
                             if not os.path.isabs(Str):
                                 Str = os.path.abspath(Str)
@@ -494,7 +496,7 @@ class FdfParser(object):
                         # file is in the same dir with FDF file
                         FullFdf = self.FileName
                         if not os.path.isabs(self.FileName):
-                            FullFdf = os.path.join(os.environ.get('WORKSPACE'), self.FileName)
+                            FullFdf = mws.join(os.environ.get('WORKSPACE'), self.FileName)
                 
                         IncFileName = os.path.join(os.path.dirname(FullFdf), IncFileName)
                     

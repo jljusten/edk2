@@ -17,23 +17,15 @@
 #include <Library/DebugAgentLib.h>
 #include <Library/ArmLib.h>
 
-#include <Ppi/ArmGlobalVariable.h>
-
 #include "PrePeiCore.h"
 
-EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI   mTemporaryRamSupportPpi = { PrePeiCoreTemporaryRamSupport };
-ARM_GLOBAL_VARIABLE_PPI             mGlobalVariablePpi = { PrePeiCoreGetGlobalVariableMemory };
+CONST EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI   mTemporaryRamSupportPpi = { PrePeiCoreTemporaryRamSupport };
 
-EFI_PEI_PPI_DESCRIPTOR      gCommonPpiTable[] = {
+CONST EFI_PEI_PPI_DESCRIPTOR      gCommonPpiTable[] = {
   {
     EFI_PEI_PPI_DESCRIPTOR_PPI,
     &gEfiTemporaryRamSupportPpiGuid,
-    &mTemporaryRamSupportPpi
-  },
-  {
-    EFI_PEI_PPI_DESCRIPTOR_PPI,
-    &gArmGlobalVariablePpiGuid,
-    &mGlobalVariablePpi
+    (VOID *) &mTemporaryRamSupportPpi
   }
 };
 
@@ -125,39 +117,27 @@ PrePeiCoreTemporaryRamSupport (
   VOID                             *NewHeap;
   VOID                             *OldStack;
   VOID                             *NewStack;
+  UINTN                            HeapSize;
+
+  HeapSize = ALIGN_VALUE (CopySize / 2, CPU_STACK_ALIGNMENT);
 
   OldHeap = (VOID*)(UINTN)TemporaryMemoryBase;
-  NewHeap = (VOID*)((UINTN)PermanentMemoryBase + (CopySize >> 1));
+  NewHeap = (VOID*)((UINTN)PermanentMemoryBase + (CopySize - HeapSize));
 
-  OldStack = (VOID*)((UINTN)TemporaryMemoryBase + (CopySize >> 1));
+  OldStack = (VOID*)((UINTN)TemporaryMemoryBase + HeapSize);
   NewStack = (VOID*)(UINTN)PermanentMemoryBase;
 
   //
   // Migrate the temporary memory stack to permanent memory stack.
   //
-  CopyMem (NewStack, OldStack, CopySize >> 1);
+  CopyMem (NewStack, OldStack, CopySize - HeapSize);
 
   //
   // Migrate the temporary memory heap to permanent memory heap.
   //
-  CopyMem (NewHeap, OldHeap, CopySize >> 1);
+  CopyMem (NewHeap, OldHeap, HeapSize);
 
   SecSwitchStack ((UINTN)NewStack - (UINTN)OldStack);
 
   return EFI_SUCCESS;
 }
-
-EFI_STATUS
-PrePeiCoreGetGlobalVariableMemory (
-  OUT EFI_PHYSICAL_ADDRESS    *GlobalVariableBase
-  )
-{
-  ASSERT (GlobalVariableBase != NULL);
-
-  *GlobalVariableBase = (UINTN)PcdGet64 (PcdCPUCoresStackBase) +
-                        (UINTN)PcdGet32 (PcdCPUCorePrimaryStackSize) -
-                        (UINTN)PcdGet32 (PcdPeiGlobalVariableSize);
-
-  return EFI_SUCCESS;
-}
-

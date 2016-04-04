@@ -596,7 +596,7 @@ Uhci2ClearRootHubPortFeature (
 
 
 /**
-  Submits control transfer to a target USB device accroding to UEFI 2.0 spec.
+  Submits control transfer to a target USB device according to UEFI 2.0 spec.
 
   @param  This                   A pointer to the EFI_USB2_HC_PROTOCOL instance.
   @param  DeviceAddress          Target device address.
@@ -1482,7 +1482,7 @@ UhciAllocateDev (
 
   Status = gBS->CreateEvent (
                   EVT_TIMER | EVT_NOTIFY_SIGNAL,
-                  TPL_CALLBACK,
+                  TPL_NOTIFY,
                   UhciMonitorAsyncReqList,
                   Uhc,
                   &Uhc->AsyncIntMonitor

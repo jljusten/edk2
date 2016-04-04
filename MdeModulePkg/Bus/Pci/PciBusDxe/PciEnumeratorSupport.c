@@ -1,7 +1,8 @@
 /** @file
   PCI emumeration support functions implementation for PCI Bus module.
 
-Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
+(C) Copyright 2015 Hewlett Packard Enterprise Development LP<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -119,6 +120,14 @@ PciPciDeviceInfoCollector (
                  (UINT8) Device,
                  (UINT8) Func
                  );
+
+      if (EFI_ERROR (Status) && Func == 0) {
+        //
+        // go to next device if there is no Function 0
+        //
+        break;
+      }
+
       if (!EFI_ERROR (Status)) {
 
         //
@@ -313,6 +322,81 @@ PciSearchDevice (
   }
 
   return EFI_SUCCESS;
+}
+
+/**
+  Dump the PPB padding resource information.
+
+  @param PciIoDevice     PCI IO instance.
+  @param ResourceType    The desired resource type to dump.
+                         PciBarTypeUnknown means to dump all types of resources.
+**/
+VOID
+DumpPpbPaddingResource (
+  IN PCI_IO_DEVICE                    *PciIoDevice,
+  IN PCI_BAR_TYPE                     ResourceType
+  )
+{
+  EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *Descriptor;
+  PCI_BAR_TYPE                      Type;
+
+  if (PciIoDevice->ResourcePaddingDescriptors == NULL) {
+    return;
+  }
+
+  if (ResourceType == PciBarTypeIo16 || ResourceType == PciBarTypeIo32) {
+    ResourceType = PciBarTypeIo;
+  }
+
+  for (Descriptor = PciIoDevice->ResourcePaddingDescriptors; Descriptor->Desc != ACPI_END_TAG_DESCRIPTOR; Descriptor++) {
+
+    Type = PciBarTypeUnknown;
+    if (Descriptor->Desc == ACPI_ADDRESS_SPACE_DESCRIPTOR && Descriptor->ResType == ACPI_ADDRESS_SPACE_TYPE_IO) {
+      Type = PciBarTypeIo;
+    } else if (Descriptor->Desc == ACPI_ADDRESS_SPACE_DESCRIPTOR && Descriptor->ResType == ACPI_ADDRESS_SPACE_TYPE_MEM) {
+
+      if (Descriptor->AddrSpaceGranularity == 32) {
+        //
+        // prefechable
+        //
+        if (Descriptor->SpecificFlag == EFI_ACPI_MEMORY_RESOURCE_SPECIFIC_FLAG_CACHEABLE_PREFETCHABLE) {
+          Type = PciBarTypePMem32;
+        }
+
+        //
+        // Non-prefechable
+        //
+        if (Descriptor->SpecificFlag == 0) {
+          Type = PciBarTypeMem32;
+        }
+      }
+
+      if (Descriptor->AddrSpaceGranularity == 64) {
+        //
+        // prefechable
+        //
+        if (Descriptor->SpecificFlag == EFI_ACPI_MEMORY_RESOURCE_SPECIFIC_FLAG_CACHEABLE_PREFETCHABLE) {
+          Type = PciBarTypePMem64;
+        }
+
+        //
+        // Non-prefechable
+        //
+        if (Descriptor->SpecificFlag == 0) {
+          Type = PciBarTypeMem64;
+        }
+      }
+    }
+
+    if ((Type != PciBarTypeUnknown) && ((ResourceType == PciBarTypeUnknown) || (ResourceType == Type))) {
+      DEBUG ((
+        EFI_D_INFO,
+        "   Padding: Type = %s; Alignment = 0x%lx;\tLength = 0x%lx\n",
+        mBarTypeStr[Type], Descriptor->AddrRangeMax, Descriptor->AddrLen
+        ));
+    }
+  }
+
 }
 
 /**
@@ -577,7 +661,10 @@ GatherPpbInfo (
 
   GetResourcePaddingPpb (PciIoDevice);
 
-  DEBUG_CODE (DumpPciBars (PciIoDevice););
+  DEBUG_CODE (
+    DumpPpbPaddingResource (PciIoDevice, PciBarTypeUnknown);
+    DumpPciBars (PciIoDevice);
+  );
 
   return PciIoDevice;
 }
@@ -1770,14 +1857,19 @@ PciParseBar (
           // some device implement MMIO bar with 0 length, need to treat it as no-bar
           //
           PciIoDevice->PciBar[BarIndex].BarType = PciBarTypeUnknown;
+          return Offset + 4;
         }
-        return Offset + 4;
       }
 
       //
       // Fix the length to support some spefic 64 bit BAR
       //
-      Value |= ((UINT32)(-1) << HighBitSet32 (Value));
+      if (Value == 0) {
+        DEBUG ((EFI_D_INFO, "[PciBus]BAR probing for upper 32bit of MEM64 BAR returns 0, change to 0xFFFFFFFF.\n"));
+        Value = (UINT32) -1;
+      } else {
+        Value |= ((UINT32)(-1) << HighBitSet32 (Value));
+      }
 
       //
       // Calculate the size of 64bit bar
@@ -2591,6 +2683,13 @@ ResetAllPpbBusNumber (
                  Device,
                  Func
                  );
+
+      if (EFI_ERROR (Status) && Func == 0) {
+        //
+        // go to next device if there is no Function 0
+        //
+        break;
+      }
 
       if (!EFI_ERROR (Status) && (IS_PCI_BRIDGE (&Pci))) {
 

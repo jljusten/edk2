@@ -21,7 +21,7 @@
   PACKAGE_NAME                   = IntelFrameworkModulePkg
   PACKAGE_UNI_FILE               = IntelFrameworkModulePkg.uni
   PACKAGE_GUID                   = 88894582-7553-4822-B484-624E24B6DECF
-  PACKAGE_VERSION                = 0.94
+  PACKAGE_VERSION                = 0.96
 
 [Includes]
   Include                        # Root include for the package
@@ -231,11 +231,15 @@
   # The value should be a multiple of 4KB.
   # The range should be below the EBDA reserved range from 
   # (CONVENTIONAL_MEMORY_TOP - Reserved EBDA Memory Size) to CONVENTIONAL_MEMORY_TOP.
+  # @Prompt Reserved Memory Base Address for OPROM
+  # @Expression 0x80000001 | (gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdOpromReservedMemoryBase >= 0x20000) AND ((gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdOpromReservedMemoryBase & 0x1000) == 0)
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdOpromReservedMemoryBase|0x60000|UINT32|0x3000000c
   
   ## Specify memory size with bytes for OPROM to find free memory.
   #  The value should be a multiple of 4KB. And the range should be below the EBDA reserved range from 
   # (CONVENTIONAL_MEMORY_TOP - Reserved EBDA Memory Size) to CONVENTIONAL_MEMORY_TOP.
+  # @Prompt Reserved Memory Size for OPROM
+  # @Expression 0x80000001 | (gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdOpromReservedMemorySize < 0x80000) AND ((gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdOpromReservedMemorySize & 0x1000) == 0)
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdOpromReservedMemorySize|0x28000|UINT32|0x3000000d
 
   ## Specify memory size with page number for a pre-allocated reserved memory to be used

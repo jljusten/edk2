@@ -1,7 +1,7 @@
 ## @file
 # EFI/PI MdePkg Package
 #
-# Copyright (c) 2007 - 2015, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2007 - 2016, Intel Corporation. All rights reserved.<BR>
 # Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
 #
 #    This program and the accompanying materials
@@ -17,11 +17,11 @@
 [Defines]
   PLATFORM_NAME                  = Mde
   PLATFORM_GUID                  = 082F8BFC-0455-4859-AE3C-ECD64FB81642
-  PLATFORM_VERSION               = 1.05
+  PLATFORM_VERSION               = 1.06
   DSC_SPECIFICATION              = 0x00010005
   OUTPUT_DIRECTORY               = Build/Mde
   SUPPORTED_ARCHITECTURES        = IA32|IPF|X64|EBC|ARM|AARCH64
-  BUILD_TARGETS                  = DEBUG|RELEASE
+  BUILD_TARGETS                  = DEBUG|RELEASE|NOOPT
   SKUID_IDENTIFIER               = DEFAULT
 
 [PcdsFeatureFlag]
@@ -68,6 +68,7 @@
   MdePkg/Library/BasePciExpressLib/BasePciExpressLib.inf
   MdePkg/Library/BasePciLibCf8/BasePciLibCf8.inf
   MdePkg/Library/BasePciLibPciExpress/BasePciLibPciExpress.inf
+  MdePkg/Library/BasePciSegmentLibPci/BasePciSegmentLibPci.inf
   MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
   MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
   MdePkg/Library/BasePeCoffExtraActionLibNull/BasePeCoffExtraActionLibNull.inf
@@ -114,6 +115,7 @@
   MdePkg/Library/UefiApplicationEntryPoint/UefiApplicationEntryPoint.inf
   MdePkg/Library/UefiBootServicesTableLib/UefiBootServicesTableLib.inf
   MdePkg/Library/UefiDebugLibConOut/UefiDebugLibConOut.inf
+  MdePkg/Library/UefiDebugLibDebugPortProtocol/UefiDebugLibDebugPortProtocol.inf
   MdePkg/Library/UefiDebugLibStdErr/UefiDebugLibStdErr.inf
   MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
   MdePkg/Library/UefiDevicePathLib/UefiDevicePathLibOptionalDevicePathProtocol.inf
@@ -151,6 +153,7 @@
   MdePkg/Library/BaseS3SmbusLib/BaseS3SmbusLib.inf
   MdePkg/Library/BaseS3StallLib/BaseS3StallLib.inf
   MdePkg/Library/SmmMemLib/SmmMemLib.inf
+  MdePkg/Library/BaseRngLib/BaseRngLib.inf
 
 [Components.IPF]
   MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
@@ -170,6 +173,7 @@
   MdePkg/Library/DxeTimerLibEsal/DxeTimerLibEsal.inf  
   
 [Components.EBC]
+  MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
   MdePkg/Library/UefiRuntimeLib/UefiRuntimeLib.inf
 
 [Components.ARM, Components.AARCH64]
