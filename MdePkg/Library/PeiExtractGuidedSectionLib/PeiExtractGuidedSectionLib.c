@@ -1,7 +1,7 @@
 /** @file
   Provide generic extract guided section functions for PEI phase.
 
-  Copyright (c) 2007 - 2008, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -67,7 +67,7 @@ PeiGetExtractGuidedSectionHandlerInfo (
           HandlerInfo->ExtractGetInfoHandlerTable = (EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER *) (
                                                       (UINT8 *)HandlerInfo->ExtractDecodeHandlerTable + 
                                                       PcdGet32 (PcdMaximumGuidedExtractHandler) * 
-                                                      sizeof (EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER)
+                                                      sizeof (EXTRACT_GUIDED_SECTION_DECODE_HANDLER)
                                                      );
         }
         //
@@ -94,6 +94,7 @@ PeiGetExtractGuidedSectionHandlerInfo (
     //
     // No enough resource to build guid hob.
     //
+    *InfoPointer = NULL;
     return EFI_OUT_OF_RESOURCES;
   }
   //
@@ -109,7 +110,7 @@ PeiGetExtractGuidedSectionHandlerInfo (
   HandlerInfo->ExtractGetInfoHandlerTable = (EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER *) (
                                               (UINT8 *)HandlerInfo->ExtractDecodeHandlerTable + 
                                               PcdGet32 (PcdMaximumGuidedExtractHandler) * 
-                                              sizeof (EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER)
+                                              sizeof (EXTRACT_GUIDED_SECTION_DECODE_HANDLER)
                                              );
   //
   // return the created HandlerInfo.
@@ -148,7 +149,8 @@ ExtractGuidedSectionGetGuidList (
   //
   Status = PeiGetExtractGuidedSectionHandlerInfo (&HandlerInfo);
   if (EFI_ERROR (Status)) {
-    return Status;
+    *ExtractHandlerGuidTable = NULL;
+    return 0;
   }
 
   //
@@ -238,7 +240,7 @@ ExtractGuidedSectionRegisterHandlers (
   CopyGuid (HandlerInfo->ExtractHandlerGuidTable + HandlerInfo->NumberOfExtractHandler, SectionGuid);
   HandlerInfo->ExtractDecodeHandlerTable [HandlerInfo->NumberOfExtractHandler] = DecodeHandler;
   HandlerInfo->ExtractGetInfoHandlerTable [HandlerInfo->NumberOfExtractHandler++] = GetInfoHandler;
-  
+
   return RETURN_SUCCESS;
 }
 

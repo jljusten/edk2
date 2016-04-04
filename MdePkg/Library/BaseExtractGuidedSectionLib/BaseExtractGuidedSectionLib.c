@@ -1,8 +1,8 @@
 /** @file
-  Provide generic extract guided section functions for SEC phase.
+  Provide generic extract guided section functions.
 
-  Copyright (c) 2007 - 2009, Intel Corporation<BR>
-  All rights reserved. This program and the accompanying materials
+  Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+  This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
   http://opensource.org/licenses/bsd-license.php
@@ -29,107 +29,67 @@ typedef struct {
   EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER *ExtractGetInfoHandlerTable;
 } EXTRACT_GUIDED_SECTION_HANDLER_INFO;
 
-STATIC EXTRACT_GUIDED_SECTION_HANDLER_INFO mHandlerInfo = {
-  0,                                  // Signature;
-};
-
 /**
-  Check if the info structure can be used.  If it can be used, but it
-  is not currently initialized, then it will be initialized.
+  HandlerInfo table address is set by PcdGuidedExtractHandlerTableAddress, which is used to store 
+  the registered guid and Handler list. When it is initialized, it will be directly returned. 
+  Or, HandlerInfo table will be initialized in this function.
 
-  @param[in]  Info   Pointer to handler info structure.
+  @param[in, out]  InfoPointer   Pointer to the handler info structure.
 
-  @retval  RETURN_SUCCESS        The info structure is initialized
-  @retval  EFI_WRITE_PROTECTED   The info structure could not be written to.
-**/
-STATIC
-RETURN_STATUS
-CheckOrInitializeHandlerInfo (
-  IN volatile EXTRACT_GUIDED_SECTION_HANDLER_INFO *Info
-  )
-{
-  //
-  // First try access the handler info structure as a global variable
-  //
-  if (Info->Signature == EXTRACT_HANDLER_INFO_SIGNATURE) {
-    //
-    // The global variable version of the handler info has been initialized
-    //
-    return EFI_SUCCESS;
-  }
-
-  //
-  // Try to initialize the handler info structure
-  //
-  Info->Signature = EXTRACT_HANDLER_INFO_SIGNATURE;
-  if (Info->Signature != EXTRACT_HANDLER_INFO_SIGNATURE) {
-    //
-    // The structure was not writeable
-    //
-    return EFI_WRITE_PROTECTED;
-  }
-
-  Info->NumberOfExtractHandler = 0;
-  Info->ExtractHandlerGuidTable = (GUID*) (Info + 1);
-  Info->ExtractDecodeHandlerTable =
-    (EXTRACT_GUIDED_SECTION_DECODE_HANDLER*)
-      &(Info->ExtractHandlerGuidTable [PcdGet32 (PcdMaximumGuidedExtractHandler)]);
-  Info->ExtractGetInfoHandlerTable =
-    (EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER*)
-      &(Info->ExtractDecodeHandlerTable [PcdGet32 (PcdMaximumGuidedExtractHandler)]);
-  
-  return EFI_SUCCESS;
-}
-
-
-/**
-  Build guid hob for the global memory to store the registered guid and Handler list.
-  If GuidHob exists, HandlerInfo will be directly got from Guid hob data.
-
-  @param[in, out]  InfoPointer   Pointer to pei handler info structure.
-
-  @retval  RETURN_SUCCESS            Build Guid hob for the global memory space to store guid and function tables.
-  @retval  RETURN_OUT_OF_RESOURCES   No enough memory to allocated.
+  @retval  RETURN_SUCCESS            HandlerInfo table can be used to store guid and function tables.
+  @retval  RETURN_OUT_OF_RESOURCES   HandlerInfo table address is not writable.
 **/
 RETURN_STATUS
 GetExtractGuidedSectionHandlerInfo (
   IN OUT EXTRACT_GUIDED_SECTION_HANDLER_INFO **InfoPointer
   )
 {
-  STATIC EXTRACT_GUIDED_SECTION_HANDLER_INFO* PotentialInfoLocations[] = {
-    //
-    // This entry will work if the global variables in the module are
-    // writeable.
-    //
-    &mHandlerInfo,
+  EXTRACT_GUIDED_SECTION_HANDLER_INFO *HandlerInfo;
+  
+  //
+  // Set the available memory address to handler info.
+  //
+  HandlerInfo = (EXTRACT_GUIDED_SECTION_HANDLER_INFO*)(VOID*)(UINTN) PcdGet64 (PcdGuidedExtractHandlerTableAddress);
 
+  //
+  // First check whether the handler info structure is initialized.
+  //
+  if (HandlerInfo->Signature == EXTRACT_HANDLER_INFO_SIGNATURE) {
     //
-    // This entry will work if the system memory is already initialized
-    // and ready for use.  (For example, in a virtual machine, the memory
-    // will not require initialization.)
+    // The handler info has been initialized and is returned.
     //
-    (EXTRACT_GUIDED_SECTION_HANDLER_INFO*)(VOID*)(UINTN) 0x1000,
-  };
-  UINTN Loop;
-
-  for (Loop = 0;
-       Loop < sizeof (PotentialInfoLocations) / sizeof (PotentialInfoLocations[0]);
-       Loop ++
-      ) {
-    //
-    // First try access the handler info structure as a global variable
-    //
-    if (!EFI_ERROR (CheckOrInitializeHandlerInfo (PotentialInfoLocations[Loop]))) {
-      //
-      // The global variable version of the handler info has been initialized
-      //
-      *InfoPointer = PotentialInfoLocations[Loop];
-      return EFI_SUCCESS;
-    }
+    *InfoPointer = HandlerInfo;
+    return RETURN_SUCCESS;
   }
 
-  *InfoPointer = (EXTRACT_GUIDED_SECTION_HANDLER_INFO*) NULL;
-  return RETURN_OUT_OF_RESOURCES;
+  //
+  // Try to initialize the handler info structure
+  //
+  HandlerInfo->Signature = EXTRACT_HANDLER_INFO_SIGNATURE;
+  if (HandlerInfo->Signature != EXTRACT_HANDLER_INFO_SIGNATURE) {
+    //
+    // The handler info structure was not writeable because the memory is not ready.
+    //
+    *InfoPointer = NULL;
+    return RETURN_OUT_OF_RESOURCES;
+  }
+
+  //
+  // Init HandlerInfo structure
+  //
+  HandlerInfo->NumberOfExtractHandler     = 0;
+  HandlerInfo->ExtractHandlerGuidTable    = (GUID *) (HandlerInfo + 1);
+  HandlerInfo->ExtractDecodeHandlerTable  = (EXTRACT_GUIDED_SECTION_DECODE_HANDLER *) (
+                                              (UINT8 *)HandlerInfo->ExtractHandlerGuidTable + 
+                                              PcdGet32 (PcdMaximumGuidedExtractHandler) * sizeof (GUID)
+                                             );
+  HandlerInfo->ExtractGetInfoHandlerTable = (EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER *) (
+                                              (UINT8 *)HandlerInfo->ExtractDecodeHandlerTable + 
+                                              PcdGet32 (PcdMaximumGuidedExtractHandler) * 
+                                              sizeof (EXTRACT_GUIDED_SECTION_DECODE_HANDLER)
+                                             );
+  *InfoPointer = HandlerInfo;
+  return RETURN_SUCCESS;
 }
 
 /**
@@ -152,7 +112,7 @@ ExtractGuidedSectionGetGuidList (
   OUT  GUID  **ExtractHandlerGuidTable
   )
 {
-  EFI_STATUS Status;
+  RETURN_STATUS                       Status;
   EXTRACT_GUIDED_SECTION_HANDLER_INFO *HandlerInfo;
 
   ASSERT (ExtractHandlerGuidTable != NULL);
@@ -161,8 +121,9 @@ ExtractGuidedSectionGetGuidList (
   // Get all registered handler information
   //
   Status = GetExtractGuidedSectionHandlerInfo (&HandlerInfo);
-  if (EFI_ERROR (Status)) {
-    return Status;
+  if (RETURN_ERROR (Status)) {
+    *ExtractHandlerGuidTable = NULL;
+    return 0;
   }
 
   //
@@ -204,8 +165,8 @@ ExtractGuidedSectionRegisterHandlers (
   IN        EXTRACT_GUIDED_SECTION_DECODE_HANDLER    DecodeHandler
   )
 {
-  EFI_STATUS Status;
-  UINT32     Index;
+  UINT32                              Index;
+  RETURN_STATUS                       Status;
   EXTRACT_GUIDED_SECTION_HANDLER_INFO *HandlerInfo;
 
   //
@@ -219,7 +180,7 @@ ExtractGuidedSectionRegisterHandlers (
   // Get the registered handler information
   //
   Status = GetExtractGuidedSectionHandlerInfo (&HandlerInfo);
-  if (EFI_ERROR (Status)) {
+  if (RETURN_ERROR (Status)) {
     return Status;
   }
 
@@ -297,8 +258,8 @@ ExtractGuidedSectionGetInfo (
   OUT       UINT16  *SectionAttribute   
   )
 {
-  UINT32 Index;
-  EFI_STATUS Status;
+  UINT32                              Index;
+  RETURN_STATUS                       Status;
   EXTRACT_GUIDED_SECTION_HANDLER_INFO *HandlerInfo;
   
   //
@@ -313,7 +274,7 @@ ExtractGuidedSectionGetInfo (
   // Get all registered handler information.
   //
   Status = GetExtractGuidedSectionHandlerInfo (&HandlerInfo);
-  if (EFI_ERROR (Status)) {
+  if (RETURN_ERROR (Status)) {
     return Status;
   }
 
@@ -384,8 +345,8 @@ ExtractGuidedSectionDecode (
   OUT       UINT32  *AuthenticationStatus  
   )
 {
-  UINT32     Index;
-  EFI_STATUS Status;
+  UINT32                              Index;
+  RETURN_STATUS                       Status;
   EXTRACT_GUIDED_SECTION_HANDLER_INFO *HandlerInfo;
   
   //
@@ -399,7 +360,7 @@ ExtractGuidedSectionDecode (
   // Get all registered handler information.
   //  
   Status = GetExtractGuidedSectionHandlerInfo (&HandlerInfo);
-  if (EFI_ERROR (Status)) {
+  if (RETURN_ERROR (Status)) {
     return Status;
   }
 

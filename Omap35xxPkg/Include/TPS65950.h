@@ -1,8 +1,8 @@
 /** @file
 
-  Copyright (c) 2008-2009 Apple Inc. All rights reserved.<BR>
+  Copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
 
-  All rights reserved. This program and the accompanying materials
+  This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
   http://opensource.org/licenses/bsd-license.php
@@ -35,6 +35,13 @@
 #define VSEL_2_85V            0x1
 #define VSEL_3_00V            0x2
 #define VSEL_3_15V            0x3
+
+#define TPS65950_GPIO_CTRL    0xaa  //I2C_ADDR_GRP_ID2
+#define CARD_DETECT_ENABLE    (BIT2 | BIT0) // GPIO ON + GPIO CD1 enabled
+
+
+#define GPIODATAIN1           0x98  //I2C_ADDR_GRP_ID2
+#define CARD_DETECT_BIT       BIT0
 
 //LEDEN register
 #define LEDEN                 0xEE

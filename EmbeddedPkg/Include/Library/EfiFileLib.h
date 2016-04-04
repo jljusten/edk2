@@ -2,10 +2,10 @@
   Library functions that perform file IO. Memory buffer, file system, and 
   fimrware volume operations are supproted. 
 
-  Copyright (c) 2007, Intel Corporation<BR>
-  Portions copyright (c) 2008-2009 Apple Inc. All rights reserved.<BR>
+  Copyright (c) 2007, Intel Corporation. All rights reserved.<BR>
+  Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
 
-  All rights reserved. This program and the accompanying materials
+  This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
   http://opensource.org/licenses/bsd-license.php
@@ -93,7 +93,7 @@ typedef struct {
   EFI_FILE                      *FsFileHandle;    // Information valid for Fs#:
   EFI_FILE_SYSTEM_INFO          *FsInfo;
   EFI_FILE_INFO                 *FsFileInfo;
-  EFI_BLOCK_IO_MEDIA            FsBlockIoMedia;   // Information valid for Fs#: or B#:
+  EFI_BLOCK_IO_MEDIA            *FsBlockIoMedia;  // Information valid for Fs#: or B#:
 
   UINTN                         DiskOffset;       // Information valid for B#:
 

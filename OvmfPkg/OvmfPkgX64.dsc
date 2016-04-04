@@ -1,9 +1,9 @@
 ## @file
 #  EFI/Framework Open Virtual Machine Firmware (OVMF) platform
 #
-#  Copyright (c) 2006 - 2010, Intel Corporation
+#  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
 #
-#  All rights reserved. This program and the accompanying materials
+#  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution. The full text of the license may be found at
 #  http://opensource.org/licenses/bsd-license.php
@@ -88,7 +88,7 @@
   BaseMemoryLib|MdePkg/Library/BaseMemoryLibSse2/BaseMemoryLibSse2.inf
   DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
   ReportStatusCodeLib|MdeModulePkg/Library/PeiReportStatusCodeLib/PeiReportStatusCodeLib.inf
-  ExtractGuidedSectionLib|OvmfPkg/Library/SecExtractGuidedSectionLib/SecExtractGuidedSectionLib.inf
+  ExtractGuidedSectionLib|MdePkg/Library/BaseExtractGuidedSectionLib/BaseExtractGuidedSectionLib.inf
 
 [LibraryClasses.common.PEI_CORE]
   BaseMemoryLib|MdePkg/Library/BaseMemoryLibOptPei/BaseMemoryLibOptPei.inf

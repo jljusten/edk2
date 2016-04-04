@@ -1,10 +1,10 @@
 /** @file
 File IO routines inspired by Streams with an EFI flavor
 
-Copyright (c) 2007, Intel Corporation<BR>
-Portions copyright (c) 2008-2009, Apple Inc. All rights reserved.
+Copyright (c) 2007, Intel Corporation. All rights reserved.<BR>
+Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
 
-All rights reserved. This program and the accompanying materials
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -100,8 +100,8 @@ Internal worker function to validate a File handle.
 **/
 BOOLEAN
 FileHandleValid (
-                 IN EFI_OPEN_FILE  *File
-                 )
+  IN EFI_OPEN_FILE  *File
+  )
 {
   EFI_OPEN_FILE_GUARD  *GuardFile;
 
@@ -123,8 +123,8 @@ Internal worker function. If Buffer is not NULL free it.
 **/
 VOID
 EblFreePool (
-             IN  VOID  *Buffer
-             )
+  IN  VOID  *Buffer
+  )
 {
   if (Buffer != NULL) {
     FreePool (Buffer);
@@ -137,8 +137,8 @@ Update Device List Global Variables
 **/
 VOID
 EblUpdateDeviceLists (
-                      VOID
-                      )
+  VOID
+  )
 {
   EFI_STATUS                        Status;
   UINTN                             Size;
@@ -150,6 +150,8 @@ EblUpdateDeviceLists (
     FreePool (mBlkIo);
   }
   gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &mBlkIoCount, &mBlkIo);
+
+
 
   if (mFv != NULL) {
     FreePool (mFv);
@@ -221,10 +223,10 @@ and it can be used with mFs[] to find the handle that needs to be opened
 **/
 BOOLEAN
 EblMatchVolumeName (
-                    IN  CHAR8   *PathName,
-                    IN  UINTN   FileStart,
-                    OUT UINTN   *MatchIndex
-                    )
+  IN  CHAR8   *PathName,
+  IN  UINTN   FileStart,
+  OUT UINTN   *MatchIndex
+  )
 {
   UINTN   Index;
   UINTN   Compare;
@@ -270,8 +272,8 @@ Return the number of devices of the current type active in the system
 **/
 UINTN
 EfiGetDeviceCounts (
-                    IN  EFI_OPEN_FILE_TYPE     DeviceType
-                    )
+  IN  EFI_OPEN_FILE_TYPE     DeviceType
+  )
 {
   switch (DeviceType) {
   case EfiOpenLoadFile:
@@ -289,9 +291,9 @@ EfiGetDeviceCounts (
 
 EFI_STATUS
 ConvertIpStringToEfiIp (
-                        IN  CHAR8           *PathName, 
-                        OUT EFI_IP_ADDRESS  *ServerIp
-                        )
+  IN  CHAR8           *PathName, 
+  OUT EFI_IP_ADDRESS  *ServerIp
+  )
 {
   CHAR8     *Str;
 
@@ -335,8 +337,8 @@ text. Easy way to extract numbers from strings like blk7:.
 **/
 UINTN
 EblConvertDevStringToNumber (
-                             IN  CHAR8   *Str
-                             )
+  IN  CHAR8   *Str
+  )
 {
   UINTN   Max;
   UINTN   Index;
@@ -365,10 +367,10 @@ Internal work function to fill in EFI_OPEN_FILE information for the Fs and BlkIo
 **/
 EFI_STATUS
 EblFileDevicePath (
-                   IN OUT EFI_OPEN_FILE  *File,
-                   IN  CHAR8             *FileName,
-                   IN  CONST UINT64      OpenMode
-                   )
+  IN OUT EFI_OPEN_FILE  *File,
+  IN  CHAR8             *FileName,
+  IN  CONST UINT64      OpenMode
+  )
 {
   EFI_STATUS                        Status;
   UINTN                             Size;
@@ -406,7 +408,7 @@ EblFileDevicePath (
 
   Status = gBS->HandleProtocol (File->EfiHandle, &gEfiBlockIoProtocolGuid, (VOID **)&BlkIo);
   if (!EFI_ERROR (Status)) {
-    CopyMem (&File->FsBlockIoMedia, BlkIo->Media, sizeof (EFI_BLOCK_IO_MEDIA));
+    File->FsBlockIoMedia = BlkIo->Media;
 
     // If we are not opening the device this will get over written with file info
     File->MaxPosition = MultU64x32 (BlkIo->Media->LastBlock + 1, BlkIo->Media->BlockSize);
@@ -454,9 +456,9 @@ EblFileDevicePath (
 
 EFI_STATUS
 CompareGuidToString (
-                     IN  EFI_GUID    *Guid,
-                     IN  CHAR8       *String
-                     )
+  IN  EFI_GUID    *Guid,
+  IN  CHAR8       *String
+  )
 {
   CHAR8       AsciiGuid[64];
   CHAR8       *StringPtr;
@@ -501,10 +503,10 @@ Internal work function to fill in EFI_OPEN_FILE information for the FV
 **/
 EFI_STATUS
 EblFvFileDevicePath (
-                     IN OUT EFI_OPEN_FILE  *File,
-                     IN  CHAR8             *FileName,
-                     IN  CONST UINT64      OpenMode
-                     )
+  IN OUT EFI_OPEN_FILE  *File,
+  IN  CHAR8             *FileName,
+  IN  CONST UINT64      OpenMode
+  )
 {
   EFI_STATUS                          Status;
   EFI_STATUS                          GetNextFileStatus;
@@ -651,10 +653,10 @@ For any file that is opened with EfiOpen() must be closed with EfiClose().
 **/
 EFI_OPEN_FILE *
 EfiOpen (
-         IN        CHAR8               *PathName,
-         IN  CONST UINT64              OpenMode,
-         IN  CONST EFI_SECTION_TYPE    SectionType
-         )
+  IN        CHAR8               *PathName,
+  IN  CONST UINT64              OpenMode,
+  IN  CONST EFI_SECTION_TYPE    SectionType
+  )
 {
   EFI_STATUS                Status;
   EFI_OPEN_FILE             *File;
@@ -910,9 +912,9 @@ ErrorExit:
 
 EFI_STATUS
 EfiCopyFile (
-             IN        CHAR8               *DestinationFile,
-             IN        CHAR8               *SourceFile
-             )
+  IN        CHAR8               *DestinationFile,
+  IN        CHAR8               *SourceFile
+  )
 {
   EFI_OPEN_FILE *Source      = NULL;
   EFI_OPEN_FILE *Destination = NULL;
@@ -949,13 +951,13 @@ EfiCopyFile (
 
     Status = EfiRead(Source, Buffer, &Chunk);
     if (EFI_ERROR(Status)) {
-      AsciiPrint("Read file error\n");
+      AsciiPrint("Read file error %r\n", Status);
       goto Exit;
     }
 
     Status = EfiWrite(Destination, Buffer, &Chunk);
     if (EFI_ERROR(Status)) {
-      AsciiPrint("Write file error\n");
+      AsciiPrint("Write file error %r\n", Status);
       goto Exit;
     }    
   }
@@ -1011,9 +1013,9 @@ Use DeviceType and Index to form a valid PathName and try and open it.
 **/
 EFI_OPEN_FILE  *
 EfiDeviceOpenByType (
-                     IN  EFI_OPEN_FILE_TYPE    DeviceType,
-                     IN  UINTN                 Index
-                     )
+  IN  EFI_OPEN_FILE_TYPE    DeviceType,
+  IN  UINTN                 Index
+  )
 {
   CHAR8   *DevStr;
   CHAR8   Path[MAX_CMD_LINE];
@@ -1056,8 +1058,8 @@ EfiOpen().
 **/
 EFI_STATUS
 EfiClose (
-          IN  EFI_OPEN_FILE     *File
-          )
+  IN  EFI_OPEN_FILE     *File
+  )
 {
   EFI_STATUS          Status;
   UINT64              TftpBufferSize;
@@ -1090,21 +1092,21 @@ EfiClose (
   if ((File->Type == EfiOpenLoadFile) || 
     ((File->Type == EfiOpenTftp) && (File->IsBufferValid == TRUE)) ||
     ((File->Type == EfiOpenFirmwareVolume) && (File->IsBufferValid == TRUE))) {
-      EblFreePool(File->Buffer);
-    }
+    EblFreePool(File->Buffer);
+  }
 
-    EblFreePool (File->DevicePath);
-    EblFreePool (File->DeviceName);
-    EblFreePool (File->FsFileInfo);
-    EblFreePool (File->FsInfo);
+  EblFreePool (File->DevicePath);
+  EblFreePool (File->DeviceName);
+  EblFreePool (File->FsFileInfo);
+  EblFreePool (File->FsInfo);
 
-    if (File->FsFileHandle != NULL) {
-      File->FsFileHandle->Close (File->FsFileHandle);
-    }
+  if (File->FsFileHandle != NULL) {
+    File->FsFileHandle->Close (File->FsFileHandle);
+  }
 
-    // Need to free File and it's Guard structures
-    EblFreePool (BASE_CR (File, EFI_OPEN_FILE_GUARD, File));
-    return EFI_SUCCESS;
+  // Need to free File and it's Guard structures
+  EblFreePool (BASE_CR (File, EFI_OPEN_FILE_GUARD, File));
+  return EFI_SUCCESS;
 }
 
 
@@ -1120,9 +1122,9 @@ LoadFile is an exception as a load file size is set to zero.
 **/
 UINTN
 EfiTell (
-         IN  EFI_OPEN_FILE     *File,
-         OUT EFI_LBA           *CurrentPosition    OPTIONAL
-         )
+  IN  EFI_OPEN_FILE     *File,
+  OUT EFI_LBA           *CurrentPosition    OPTIONAL
+  )
 {
   EFI_STATUS Status;
   UINT64     BufferSize = 0;
@@ -1194,10 +1196,10 @@ EfiSeekEnd    : Only supported if Offset is zero to seek to end of file.
 **/
 EFI_STATUS
 EfiSeek (
-         IN  EFI_OPEN_FILE     *File,
-         IN  EFI_LBA           Offset,
-         IN  EFI_SEEK_TYPE     SeekType
-         )
+  IN  EFI_OPEN_FILE     *File,
+  IN  EFI_LBA           Offset,
+  IN  EFI_SEEK_TYPE     SeekType
+  )
 {
   EFI_STATUS    Status;
   UINT64        CurrentPosition;
@@ -1253,8 +1255,8 @@ EfiSeek (
 
 EFI_STATUS
 CacheTftpFile (
-               IN OUT  EFI_OPEN_FILE *File
-               )
+  IN OUT  EFI_OPEN_FILE *File
+  )
 {
   EFI_STATUS          Status;
   UINT64              TftpBufferSize;
@@ -1314,10 +1316,10 @@ FV, and TFTP case you must read the entire file.
 **/
 EFI_STATUS
 EfiRead (
-         IN  EFI_OPEN_FILE       *File,
-         OUT VOID                *Buffer,
-         OUT UINTN               *BufferSize
-         )
+  IN  EFI_OPEN_FILE       *File,
+  OUT VOID                *Buffer,
+  OUT UINTN               *BufferSize
+  )
 {
   EFI_STATUS            Status;
   UINT32                AuthenticationStatus;
@@ -1395,7 +1397,7 @@ EfiRead (
   case EfiOpenBlockIo:
     Status = gBS->HandleProtocol(File->EfiHandle, &gEfiDiskIoProtocolGuid, (VOID **)&DiskIo);
     if (!EFI_ERROR(Status)) {
-      Status = DiskIo->ReadDisk(DiskIo, File->FsBlockIoMedia.MediaId, File->DiskOffset + File->CurrentPosition, *BufferSize, Buffer);
+      Status = DiskIo->ReadDisk(DiskIo, File->FsBlockIoMedia->MediaId, File->DiskOffset + File->CurrentPosition, *BufferSize, Buffer);
     }
     File->CurrentPosition += *BufferSize;
     break;
@@ -1445,10 +1447,10 @@ must be.
 **/
 EFI_STATUS
 EfiReadAllocatePool (
-                     IN  EFI_OPEN_FILE     *File,
-                     OUT VOID              **Buffer,
-                     OUT UINTN             *BufferSize
-                     )
+  IN  EFI_OPEN_FILE     *File,
+  OUT VOID              **Buffer,
+  OUT UINTN             *BufferSize
+  )
 {
   if (!FileHandleValid (File)) {
     return EFI_INVALID_PARAMETER;
@@ -1484,10 +1486,10 @@ Write data back to the file. For TFTP case you must write the entire file.
 **/
 EFI_STATUS
 EfiWrite (
-          IN  EFI_OPEN_FILE   *File,
-          OUT VOID            *Buffer,
-          OUT UINTN           *BufferSize
-          )
+  IN  EFI_OPEN_FILE   *File,
+  OUT VOID            *Buffer,
+  OUT UINTN           *BufferSize
+  )
 {
   EFI_STATUS              Status;
   EFI_FV_WRITE_FILE_DATA  FileData;
@@ -1537,7 +1539,7 @@ EfiWrite (
 
     Status = gBS->HandleProtocol (File->EfiHandle, &gEfiDiskIoProtocolGuid, (VOID **)&DiskIo);
     if (!EFI_ERROR(Status)) {
-      Status = DiskIo->WriteDisk (DiskIo, File->FsBlockIoMedia.MediaId, File->DiskOffset + File->CurrentPosition, *BufferSize, Buffer);
+      Status = DiskIo->WriteDisk (DiskIo, File->FsBlockIoMedia->MediaId, File->DiskOffset + File->CurrentPosition, *BufferSize, Buffer);
     }
     File->CurrentPosition += *BufferSize;
     break;
@@ -1601,14 +1603,14 @@ directory names.
 **/
 CHAR8 *
 ExpandPath (
-            IN CHAR8    *Cwd,
-            IN CHAR8    *Path
-            )
+  IN CHAR8    *Cwd,
+  IN CHAR8    *Path
+  )
 {
   CHAR8   *NewPath;
   CHAR8   *Work, *Start, *End;
   UINTN   StrLen;
-  UINTN   i;
+  INTN    i;
 
   if (Cwd == NULL || Path == NULL) {
     return NULL;
@@ -1678,8 +1680,8 @@ the path does not contain a device name, The CWD is prepended to the path.
 **/
 EFI_STATUS
 EfiSetCwd (
-           IN  CHAR8   *Cwd
-           ) 
+  IN  CHAR8   *Cwd
+  ) 
 {
   EFI_OPEN_FILE *File;
   UINTN         Len;
@@ -1754,8 +1756,8 @@ this funciton.
 **/
 CHAR8 *
 EfiGetCwd (
-           VOID
-           )
+  VOID
+  )
 {
   if (gCwd == NULL) {
     return "";

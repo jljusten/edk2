@@ -1,8 +1,8 @@
 /** @file
 
-  Copyright (c) 2008-2009 Apple Inc. All rights reserved.<BR>
+  Copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
 
-  All rights reserved. This program and the accompanying materials
+  This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
   http://opensource.org/licenses/bsd-license.php
@@ -25,6 +25,8 @@
 #include "Omap3530I2c.h"
 #include "Omap3530PadConfiguration.h"
 #include "Omap3530Gpmc.h"
+#include "Omap3530Dma.h"
+
 
 //CONTROL_PBIAS_LITE
 #define CONTROL_PBIAS_LITE    0x48002520

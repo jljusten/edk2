@@ -1,10 +1,10 @@
 /** @file
   EBL commands for EFI and PI Devices
 
-  Copyright (c) 2007, Intel Corporation<BR>
-  Portions copyright (c) 2008-2009, Apple Inc. All rights reserved.
+  Copyright (c) 2007, Intel Corporation. All rights reserved.<BR>
+  Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
 
-  All rights reserved. This program and the accompanying materials
+  This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
   http://opensource.org/licenses/bsd-license.php
@@ -111,24 +111,24 @@ EblPrintBlkIoInfo (
           EfiClose (FsFile);
           break;
         }
+        EfiClose (FsFile);
       }
-      EfiClose (FsFile);
     }
   }
 
   // Print out useful Block IO media properties
-  if (File->FsBlockIoMedia.RemovableMedia) {
+  if (File->FsBlockIoMedia->RemovableMedia) {
     AsciiPrint ("Removable ");
   }
-  if (!File->FsBlockIoMedia.MediaPresent) {
-    AsciiPrint ("No Media ");
+  if (!File->FsBlockIoMedia->MediaPresent) {
+    AsciiPrint ("No Media\n");
+  } else {
+    if (File->FsBlockIoMedia->LogicalPartition) {
+      AsciiPrint ("Partition ");
+    }
+    DeviceSize = MultU64x32 (File->FsBlockIoMedia->LastBlock + 1, File->FsBlockIoMedia->BlockSize);
+    AsciiPrint ("Size = 0x%lX\n", DeviceSize);
   }
-  if (File->FsBlockIoMedia.LogicalPartition) {
-    AsciiPrint ("Partition ");
-  }
-  DeviceSize = MultU64x32 (File->FsBlockIoMedia.LastBlock + 1, File->FsBlockIoMedia.BlockSize);
-  AsciiPrint ("Size = 0x%lX\n", DeviceSize);
-
   EfiClose (File);
 }
 
@@ -210,11 +210,33 @@ EblDeviceCmd (
   UINTN         Index;
   UINTN         CurrentRow;
   UINTN         Max;
+  EFI_OPEN_FILE *File;
 
   CurrentRow = 0;
   
   // Need to call here to make sure Device Counts are valid
   EblUpdateDeviceLists ();
+
+  //
+  // Probe for media insertion/removal in removable media devices
+  //
+  Max = EfiGetDeviceCounts (EfiOpenBlockIo);
+  if (Max != 0) {
+    for (Index = 0; Index < Max; Index++) {
+      File = EfiDeviceOpenByType (EfiOpenBlockIo, Index);
+      if (File != NULL) {
+        if (File->FsBlockIoMedia->RemovableMedia) {
+          if (File->FsBlockIoMedia->MediaPresent) {
+            gBS->DisconnectController (File->EfiHandle, NULL, NULL);
+          }
+          gBS->ConnectController (File->EfiHandle, NULL, NULL, TRUE);
+        }
+        EfiClose (File);
+      }
+    }
+  }
+
+  // Now we can print out the info...
 
   Max = EfiGetDeviceCounts (EfiOpenFirmwareVolume);
   if (Max != 0) {
@@ -730,7 +752,7 @@ EblFileCopyCmd (
   UINTN         Size;
   UINTN         Offset;
   UINTN         Chunk = FILE_COPY_CHUNK;
-  
+
   if (Argc < 3) {
     return EFI_INVALID_PARAMETER;
   }
@@ -759,13 +781,13 @@ EblFileCopyCmd (
     
     Status = EfiRead(Source, Buffer, &Chunk);
     if (EFI_ERROR(Status)) {
-      AsciiPrint("Read file error\n");
+      AsciiPrint("Read file error %r\n", Status);
       goto Exit;
     }
 
     Status = EfiWrite(Destination, Buffer, &Chunk);
     if (EFI_ERROR(Status)) {
-      AsciiPrint("Write file error\n");
+      AsciiPrint("Write file error %r\n", Status);
       goto Exit;
     }    
   }
@@ -776,16 +798,17 @@ EblFileCopyCmd (
     
     Status = EfiRead(Source, Buffer, &Chunk);
     if (EFI_ERROR(Status)) {
-      AsciiPrint("Read file error\n");
+      AsciiPrint("Read file error %r\n", Status);
       goto Exit;
     }
 
     Status = EfiWrite(Destination, Buffer, &Chunk);
     if (EFI_ERROR(Status)) {
-      AsciiPrint("Write file error\n");
+      AsciiPrint("Write file error %r\n", Status);
       goto Exit;
     }    
   }
+
 
 Exit:
   if (Source != NULL) {
@@ -794,7 +817,6 @@ Exit:
       AsciiPrint("Source close error %r\n", Status);
     }
   }
-  
   if (Destination != NULL) {
     Status = EfiClose(Destination);
     if (EFI_ERROR(Status)) {

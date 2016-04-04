@@ -1,8 +1,8 @@
 /** @file
 
-  Copyright (c) 2008-2009 Apple Inc. All rights reserved.<BR>
+  Copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
 
-  All rights reserved. This program and the accompanying materials
+  This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
   http://opensource.org/licenses/bsd-license.php
@@ -204,5 +204,8 @@
 
 #define ACMD41            (INDX(41) | RSP_TYPE_48BITS)
 #define ACMD41_INT_EN     (CERR_EN | CIE_EN | CCRC_EN | CC_EN | CEB_EN | CTO_EN)
+
+#define ACMD6             (INDX(6) | RSP_TYPE_48BITS)
+#define ACMD6_INT_EN      (CERR_EN | CIE_EN | CCRC_EN | CC_EN | CEB_EN | CTO_EN)
 
 #endif //__OMAP3530SDIO_H__
