@@ -37,10 +37,5 @@
   ArmRealViewEbHelper.asm   | RVCT
   ArmRealViewEbHelper.S     | GCC
 
-[Protocols]
-
 [FeaturePcd]
   gEmbeddedTokenSpaceGuid.PcdCacheEnable
-
-[FixedPcd]
-  gArmPlatformTokenSpaceGuid.PcdStandalone

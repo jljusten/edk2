@@ -37,7 +37,10 @@
 #------------------------------------------------------------------------------
 ASM_GLOBAL ASM_PFX(InternalSwitchStack)
 ASM_PFX(InternalSwitchStack):
-    mov     %rcx, %rax
+	  pushq   %rbp            
+  	movq    %rsp, %rbp
+    
+    mov     %rcx, %rax  // Shift registers for new call
     mov     %rdx, %rcx
     mov     %r8, %rdx
     #
@@ -45,4 +48,5 @@ ASM_PFX(InternalSwitchStack):
     # in case the callee wishes to spill them.
     #
     lea     -0x20(%r9), %rsp
-    call    *%rax
+    pushq   $0        // stop gdb stack unwind
+    jmp     *%rax     // call EntryPoint ()

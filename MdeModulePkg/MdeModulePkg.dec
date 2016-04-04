@@ -173,6 +173,21 @@
   #  Include/Guid/EventIdle.h
   gIdleLoopEventGuid  = { 0x3c8d294c, 0x5fc3, 0x4451, { 0xbb, 0x31, 0xc4, 0xc0, 0x32, 0x29, 0x5e, 0x6c } }
 
+  ## Include/Guid/RecoveryDevice.h
+  gRecoveryOnFatUsbDiskGuid          = { 0x0FFBCE19, 0x324C, 0x4690, { 0xA0, 0x09, 0x98, 0xC6, 0xAE, 0x2E, 0xB1, 0x86 }}
+
+  ## Include/Guid/RecoveryDevice.h
+  gRecoveryOnFatIdeDiskGuid          = { 0xB38573B6, 0x6200, 0x4AC5, { 0xB5, 0x1D, 0x82, 0xE6, 0x59, 0x38, 0xD7, 0x83 }}
+
+  ## Include/Guid/RecoveryDevice.h
+  gRecoveryOnFatFloppyDiskGuid       = { 0x2E3D2E75, 0x9B2E, 0x412D, { 0xB4, 0xB1, 0x70, 0x41, 0x6B, 0x87, 0x00, 0xFF }}
+
+  ## Include/Guid/RecoveryDevice.h
+  gRecoveryOnDataCdGuid              = { 0x5CAC0099, 0x0DC9, 0x48E5, { 0x80, 0x68, 0xBB, 0x95, 0xF5, 0x40, 0x0A, 0x9F }}
+
+  ## Include/Guid/SmmLockBox.h
+  gEfiSmmLockBoxCommunicationGuid       = { 0x2a3cfebd, 0x27e8, 0x4d0a, { 0x8b, 0x79, 0xd6, 0x88, 0xc2, 0xa3, 0xe1, 0xc0 }}
+
 [Ppis]
   ## Include/Ppi/AtaController.h
   gPeiAtaControllerPpiGuid       = { 0xa45e60d1, 0xc719, 0x44aa, { 0xb0, 0x7a, 0xaa, 0x77, 0x7f, 0x85, 0x90, 0x6d }}
@@ -188,6 +203,18 @@
 
   ## Include/Ppi/UsbIo.h
   gPeiUsbIoPpiGuid               = { 0x7C29785C, 0x66B9, 0x49FC, { 0xB7, 0x97, 0x1C, 0xA5, 0x55, 0x0E, 0xF2, 0x83 }}
+
+  ## Include/Ppi/Capsule.h
+  gPeiCapsulePpiGuid             = { 0x3acf33ee, 0xd892, 0x40f4, { 0xa2, 0xfc, 0x38, 0x54, 0xd2, 0xe1, 0x32, 0x3d }}
+
+  ## Include/Ppi/SmmCommunication.h
+  gEfiPeiSmmCommunicationPpiGuid   =  { 0xae933e1c, 0xcc47, 0x4e38, { 0x8f, 0xe, 0xe2, 0xf6, 0x1d, 0x26, 0x5, 0xdf }}
+
+  ## Include/Ppi/SmmAccess.h
+  gPeiSmmAccessPpiGuid          =  { 0x268f33a9, 0xcccd, 0x48be, { 0x88, 0x17, 0x86, 0x5, 0x3a, 0xc3, 0x2e, 0xd6 }}
+
+  ## Include/Ppi/SmmControl.h
+  gPeiSmmControlPpiGuid         =  { 0x61c68702, 0x4d7e, 0x4f43, { 0x8d, 0xef, 0xa7, 0x43, 0x5, 0xce, 0x74, 0xc5 }}
 
 [Protocols]
   ## Load File protocol provides capability to load and unload EFI image into memory and execute it.
@@ -234,6 +261,10 @@
   ## This protocol allows the error level mask for DEBUG() macros to be adjusted for DXE Phase modules
   # Include/Guid/DebugMask.h  
   gEfiDebugMaskProtocolGuid = { 0x4c8a2451, 0xc207, 0x405b, {0x96, 0x94, 0x99, 0xea, 0x13, 0x25, 0x13, 0x41} }
+
+  ## Include/Protocol/LockBox.h
+  gEfiLockBoxProtocolGuid        = { 0xbd445d79, 0xb7ad, 0x4f04, { 0x9a, 0xd8, 0x29, 0xbd, 0x20, 0x40, 0xeb, 0x3c }}
+
 [PcdsFeatureFlag]
   ## Indicate whether platform can support update capsule across a system reset
   gEfiMdeModulePkgTokenSpaceGuid.PcdSupportUpdateCapsuleReset|FALSE|BOOLEAN|0x0001001d
@@ -339,6 +370,18 @@
   #  If FALSE, TEXT statement will be set to GrayOut only when GrayOut condition is TRUE.
   gEfiMdeModulePkgTokenSpaceGuid.PcdBrowserGrayOutTextStatement|FALSE|BOOLEAN|0x0001004f
   
+  ## If TRUE, recovery from IDE disk will be supported.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdRecoveryOnIdeDisk|TRUE|BOOLEAN|0x00010060
+
+  ## If TRUE, recovery from FAT floppy disk will be supported.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdRecoveryOnFatFloppyDisk|TRUE|BOOLEAN|0x00010061
+
+  ## If TRUE, recovery from data CD will be supported.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdRecoveryOnDataCD|TRUE|BOOLEAN|0x00010062
+
+  ## If TRUE, recovery from FAT USB disk will be supported.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdRecoveryOnFatUsbDisk|TRUE|BOOLEAN|0x00010063
+
 [PcdsFeatureFlag.IA32, PcdsFeatureFlag.X64]
   ##
   # This feature flag specifies whether DxeIpl switches to long mode to enter DXE phase.
@@ -348,6 +391,12 @@
   # is built in firmware.
   #
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|TRUE|BOOLEAN|0x0001003b
+
+  ##
+  # This feature flag specifies whether DxeIpl should rebuild page tables. This flag only
+  # makes sense in the case where the DxeIpl and the DxeCore are both X64.
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplBuildPageTables|TRUE|BOOLEAN|0x0001003c
 
 [PcdsFixedAtBuild]
   ## Dynamic type PCD can be registered callback function for Pcd setting action.

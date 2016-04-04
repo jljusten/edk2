@@ -57,9 +57,9 @@
 [FeaturePcd]  
   gEmbeddedTokenSpaceGuid.PcdCacheEnable
   gEmbeddedTokenSpaceGuid.PcdPrePiProduceMemoryTypeInformationHob
+  gArmPlatformTokenSpaceGuid.PcdSendSgiToBringUpSecondaryCores
 
 [FixedPcd]
-  gArmPlatformTokenSpaceGuid.PcdStandalone
   gArmTokenSpaceGuid.PcdVFPEnabled
 
   gArmTokenSpaceGuid.PcdNormalFdBaseAddress
@@ -76,9 +76,9 @@
 
   gArmTokenSpaceGuid.PcdSystemMemoryBase
   gArmTokenSpaceGuid.PcdSystemMemorySize
-  gArmPlatformTokenSpaceGuid.PcdSystemMemoryFixRegionSize
   gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize
   
+  gArmPlatformTokenSpaceGuid.PcdMPCoreMaxCores
   gEmbeddedTokenSpaceGuid.PcdPrePiCpuMemorySize
   gEmbeddedTokenSpaceGuid.PcdPrePiCpuIoSize
 
