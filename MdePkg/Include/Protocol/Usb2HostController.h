@@ -1,7 +1,10 @@
 /** @file
   EFI_USB2_HC_PROTOCOL as defined in UEFI 2.0.
+  The USB Host Controller Protocol is used by code, typically USB bus drivers, 
+  running in the EFI boot services environment, to perform data transactions over 
+  a USB bus. In addition, it provides an abstraction for the root hub of the USB bus.
 
-  Copyright (c) 2006, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -23,9 +26,9 @@
     0x3e745226, 0x9818, 0x45b6, {0xa2, 0xac, 0xd7, 0xcd, 0xe, 0x8b, 0xa2, 0xbc } \
   }
 
-//
-// Forward reference for pure ANSI compatability
-//
+///
+/// Forward reference for pure ANSI compatability
+///
 typedef struct _EFI_USB2_HC_PROTOCOL EFI_USB2_HC_PROTOCOL;
 
 
@@ -101,13 +104,12 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_GET_CAPABILITY) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_GET_CAPABILITY)(
   IN  EFI_USB2_HC_PROTOCOL  *This,
   OUT UINT8                 *MaxSpeed,
   OUT UINT8                 *PortNumber,
   OUT UINT8                 *Is64BitCapable
-  )
-;
+  );
 
 #define EFI_USB_HC_RESET_GLOBAL             0x0001
 #define EFI_USB_HC_RESET_HOST_CONTROLLER    0x0002
@@ -133,50 +135,44 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_RESET) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_RESET)(
   IN EFI_USB2_HC_PROTOCOL   *This,
   IN UINT16                 Attributes
-  )
-;
+  );
 
 /**
-
-  @param EfiUsbHcStateHalt  The host controller is in halt
-                            state. No USB transactions can occur
-                            while in this state. The host
-                            controller can enter this state for
-                            three reasons: 1) After host
-                            controller hardware reset. 2)
-                            Explicitly set by software. 3)
-                            Triggered by a fatal error such as
-                            consistency check failure.
-
-
-  @param EfiUsbHcStateOperational   The host controller is in an
-                                    operational state. When in
-                                    this state, the host
-                                    controller can execute bus
-                                    traffic. This state must be
-                                    explicitly set to enable the
-                                    USB bus traffic.
-
-
-  @param EfiUsbHcStateSuspend   The host controller is in the
-                                suspend state. No USB
-                                transactions can occur while in
-                                this state. The host controller
-                                enters this state for the
-                                following reasons: 1) Explicitly
-                                set by software. 2) Triggered
-                                when there is no bus traffic for
-                                3 microseconds.
-
+  Enumration value for status of USB HC.
 **/
 typedef enum {
-  EfiUsbHcStateHalt,
-  EfiUsbHcStateOperational,
-  EfiUsbHcStateSuspend,
-  EfiUsbHcStateMaximum
+  EfiUsbHcStateHalt,                ///< The host controller is in halt
+                                    ///< state. No USB transactions can occur
+                                    ///< while in this state. The host
+                                    ///< controller can enter this state for
+                                    ///< three reasons: 1) After host
+                                    ///< controller hardware reset. 2)
+                                    ///< Explicitly set by software. 3)
+                                    ///< Triggered by a fatal error such as
+                                    ///< consistency check failure.
+                                    
+  EfiUsbHcStateOperational,         ///< The host controller is in an
+                                    ///< operational state. When in
+                                    ///< this state, the host
+                                    ///< controller can execute bus
+                                    ///< traffic. This state must be
+                                    ///< explicitly set to enable the
+                                    ///< USB bus traffic.
+                                    
+  EfiUsbHcStateSuspend,             ///< The host controller is in the
+                                    ///< suspend state. No USB
+                                    ///< transactions can occur while in
+                                    ///< this state. The host controller
+                                    ///< enters this state for the
+                                    ///< following reasons: 1) Explicitly
+                                    ///< set by software. 2) Triggered
+                                    ///< when there is no bus traffic for
+                                    ///< 3 microseconds.
+                                    
+  EfiUsbHcStateMaximum              ///< Maximum value for enumration value of HC status.
 } EFI_USB_HC_STATE;
 
 /**
@@ -194,11 +190,10 @@ typedef enum {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_GET_STATE) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_GET_STATE)(
   IN CONST  EFI_USB2_HC_PROTOCOL    *This,
   OUT       EFI_USB_HC_STATE        *State
-)
-;
+);
 
 /**
   Sets the USB host controller to a specific state.
@@ -214,11 +209,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_SET_STATE) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_SET_STATE)(
   IN EFI_USB2_HC_PROTOCOL    *This,
   IN EFI_USB_HC_STATE        State
-  )
-;
+  );
 
 /**
   Submits control transfer to a target USB device.
@@ -235,9 +229,9 @@ EFI_STATUS
                               received from USB device.
   @param  DataLength          On input, indicates the size, in bytes, of the data buffer specified by Data.
                               On output, indicates the amount of data actually transferred.
-  @param  Translator          A pointer to the transaction translator data.
   @param  TimeOut             Indicates the maximum time, in milliseconds, which the transfer is
                               allowed to complete.
+  @param  Translator          A pointer to the transaction translator data.
   @param  TransferResult      A pointer to the detailed result information generated by this control
                               transfer.
 
@@ -251,7 +245,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_CONTROL_TRANSFER) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_CONTROL_TRANSFER)(
   IN     EFI_USB2_HC_PROTOCOL               *This,
   IN     UINT8                              DeviceAddress,
   IN     UINT8                              DeviceSpeed,
@@ -263,8 +257,7 @@ EFI_STATUS
   IN     UINTN                              TimeOut,
   IN     EFI_USB2_HC_TRANSACTION_TRANSLATOR *Translator,
   OUT    UINT32                             *TransferResult
-  )
-;
+  );
 
 #define EFI_USB_MAX_BULK_BUFFER_NUM 10
 
@@ -284,9 +277,9 @@ EFI_STATUS
   @param  DataLength          When input, indicates the size, in bytes, of the data buffers specified by
                               Data. When output, indicates the actually transferred data size.
   @param  DataToggle          A pointer to the data toggle value.
-  @param  Translator          A pointer to the transaction translator data.
   @param  TimeOut             Indicates the maximum time, in milliseconds, which the transfer is
                               allowed to complete.
+  @param  Translator          A pointer to the transaction translator data.
   @param  TransferResult      A pointer to the detailed result information of the bulk transfer.
 
   @retval EFI_SUCCESS           The bulk transfer was completed successfully.
@@ -299,7 +292,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_BULK_TRANSFER) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_BULK_TRANSFER)(
   IN     EFI_USB2_HC_PROTOCOL               *This,
   IN     UINT8                              DeviceAddress,
   IN     UINT8                              EndPointAddress,
@@ -312,8 +305,7 @@ EFI_STATUS
   IN     UINTN                              TimeOut,
   IN     EFI_USB2_HC_TRANSACTION_TRANSLATOR *Translator,
   OUT    UINT32                             *TransferResult
-  )
-;
+  );
 
 /**
   Submits an asynchronous interrupt transfer to an interrupt endpoint of a USB device.
@@ -349,7 +341,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_ASYNC_INTERRUPT_TRANSFER) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_ASYNC_INTERRUPT_TRANSFER)(
   IN     EFI_USB2_HC_PROTOCOL                                *This,
   IN     UINT8                                               DeviceAddress,
   IN     UINT8                                               EndPointAddress,
@@ -362,8 +354,7 @@ EFI_STATUS
   IN     EFI_USB2_HC_TRANSACTION_TRANSLATOR                  *Translator      OPTIONAL,
   IN     EFI_ASYNC_USB_TRANSFER_CALLBACK                     CallBackFunction OPTIONAL,
   IN     VOID                                                *Context         OPTIONAL
-  )
-;
+  );
 
 /**
   Submits synchronous interrupt transfer to an interrupt endpoint of a USB device.
@@ -397,7 +388,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_SYNC_INTERRUPT_TRANSFER) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_SYNC_INTERRUPT_TRANSFER)(
   IN     EFI_USB2_HC_PROTOCOL                        *This,
   IN     UINT8                                       DeviceAddress,
   IN     UINT8                                       EndPointAddress,
@@ -409,8 +400,7 @@ EFI_STATUS
   IN     UINTN                                       TimeOut,
   IN     EFI_USB2_HC_TRANSACTION_TRANSLATOR          *Translator,
   OUT    UINT32                                      *TransferResult
-  )
-;
+  );
 
 #define EFI_USB_MAX_ISO_BUFFER_NUM  7
 #define EFI_USB_MAX_ISO_BUFFER_NUM1 2
@@ -443,7 +433,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_ISOCHRONOUS_TRANSFER) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_ISOCHRONOUS_TRANSFER)(
   IN     EFI_USB2_HC_PROTOCOL               *This,
   IN     UINT8                              DeviceAddress,
   IN     UINT8                              EndPointAddress,
@@ -454,8 +444,7 @@ EFI_STATUS
   IN     UINTN                              DataLength,
   IN     EFI_USB2_HC_TRANSACTION_TRANSLATOR *Translator,
   OUT    UINT32                             *TransferResult
-  )
-;
+  );
 
 /**
   Submits nonblocking isochronous transfer to an isochronous endpoint of a USB device.
@@ -487,7 +476,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_ASYNC_ISOCHRONOUS_TRANSFER) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_ASYNC_ISOCHRONOUS_TRANSFER)(
   IN     EFI_USB2_HC_PROTOCOL               *This,
   IN     UINT8                              DeviceAddress,
   IN     UINT8                              EndPointAddress,
@@ -499,8 +488,7 @@ EFI_STATUS
   IN     EFI_USB2_HC_TRANSACTION_TRANSLATOR *Translator,
   IN     EFI_ASYNC_USB_TRANSFER_CALLBACK    IsochronousCallBack,
   IN     VOID                               *Context OPTIONAL
-  )
-;
+  );
 
 /**
   Retrieves the current status of a USB root hub port.
@@ -517,12 +505,11 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_GET_ROOTHUB_PORT_STATUS) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_GET_ROOTHUB_PORT_STATUS)(
   IN CONST  EFI_USB2_HC_PROTOCOL    *This,
   IN CONST  UINT8                   PortNumber,
   OUT       EFI_USB_PORT_STATUS     *PortStatus
-  )
-;
+  );
 
 /**
   Sets a feature for the specified root hub port.
@@ -539,12 +526,11 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_SET_ROOTHUB_PORT_FEATURE) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_SET_ROOTHUB_PORT_FEATURE)(
   IN EFI_USB2_HC_PROTOCOL    *This,
   IN UINT8                   PortNumber,
   IN EFI_USB_PORT_FEATURE    PortFeature
-  )
-;
+  );
 
 /**
   Clears a feature for the specified root hub port.
@@ -561,13 +547,22 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_USB2_HC_PROTOCOL_CLEAR_ROOTHUB_PORT_FEATURE) (
+(EFIAPI *EFI_USB2_HC_PROTOCOL_CLEAR_ROOTHUB_PORT_FEATURE)(
   IN EFI_USB2_HC_PROTOCOL    *This,
   IN UINT8                   PortNumber,
   IN EFI_USB_PORT_FEATURE    PortFeature
-  )
-;
+  );
 
+/**  
+  @par Protocol Description:
+  The EFI_USB2_HC_PROTOCOL provides USB host controller management, basic 
+  data transactions over a USB bus, and USB root hub access. A device driver 
+  that wishes to manage a USB bus in a system retrieves the EFI_USB2_HC_PROTOCOL 
+  instance that is associated with the USB bus to be managed. A device handle 
+  for a USB host controller will minimally contain an EFI_DEVICE_PATH_PROTOCOL 
+  instance, and an EFI_USB2_HC_PROTOCOL instance.
+
+**/
 struct _EFI_USB2_HC_PROTOCOL {
   EFI_USB2_HC_PROTOCOL_GET_CAPABILITY              GetCapability;
   EFI_USB2_HC_PROTOCOL_RESET                       Reset;
@@ -582,7 +577,19 @@ struct _EFI_USB2_HC_PROTOCOL {
   EFI_USB2_HC_PROTOCOL_GET_ROOTHUB_PORT_STATUS     GetRootHubPortStatus;
   EFI_USB2_HC_PROTOCOL_SET_ROOTHUB_PORT_FEATURE    SetRootHubPortFeature;
   EFI_USB2_HC_PROTOCOL_CLEAR_ROOTHUB_PORT_FEATURE  ClearRootHubPortFeature;
+  
+  ///
+  /// The major revision number of the USB host controller. The revision information 
+  /// indicates the release of the Universal Serial Bus Specification with which the 
+  /// host controller is compliant.
+  ///
   UINT16                                           MajorRevision;
+
+  ///
+  /// The minor revision number of the USB host controller. The revision information 
+  /// indicates the release of the Universal Serial Bus Specification with which the 
+  /// host controller is compliant.  
+  ///
   UINT16                                           MinorRevision;
 };
 

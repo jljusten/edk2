@@ -12,9 +12,7 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
+
 
 
 #include "BaseLibInternals.h"
@@ -38,7 +36,7 @@ GetPowerOfTwo32 (
   IN      UINT32                    Operand
   )
 {
-  if (Operand == 0) {
+  if (0 == Operand) {
     return 0;
   }
 

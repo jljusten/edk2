@@ -1,7 +1,9 @@
 #/** @file
-# Component description file for PeiMain module
+# PeiMain module is core module in PEI phase. It take reponsiblities of:
+# 1) Initialize memory, ppi, image services etc, to establish PEIM runtime environment.
+# 2) Dispatch PEIM from discoveried FV.
+# 3) Handoff control to DxeIpl to load dxe core and enter DXE phase.
 #
-# This module provide an DXE CIS compliant implementation.
 # Copyright (c) 2006 - 2007, Intel Corporation
 #
 #  All rights reserved. This program and the accompanying materials
@@ -16,7 +18,7 @@
 
 [Defines]
   INF_VERSION                    = 0x00010005
-  BASE_NAME                      = PeiMain
+  BASE_NAME                      = PeiCore
   FILE_GUID                      = 52C05B14-0B98-496c-BC3B-04B50211D680
   MODULE_TYPE                    = PEI_CORE
   VERSION_STRING                 = 1.0
@@ -42,8 +44,8 @@
   Hob/Hob.c
   FwVol/FwVol.c
   Dispatcher/Dispatcher.c
-  Dependency/dependency.c
-  Dependency/dependency.h
+  Dependency/Dependency.c
+  Dependency/Dependency.h
   BootMode/BootMode.c
   PeiMain.h
 
@@ -75,12 +77,12 @@
   gEfiPeiStatusCodePpiGuid                      # PPI SOMETIMES_CONSUMED
   gEfiPeiResetPpiGuid                           # PPI SOMETIMES_CONSUMED
   gEfiDxeIplPpiGuid                             # PPI ALWAYS_CONSUMED
-  gEfiPeiMemoryDiscoveredPpiGuid                # PPI ALWAYS_PRODUCED
-  gEfiPeiDecompressPpiGuid
-  gEfiPeiFirmwareVolumeInfoPpiGuid
-  gEfiPeiLoadFilePpiGuid
-  gEfiPeiSecurity2PpiGuid
-  gEfiTemporaryRamSupportPpiGuid
+  gEfiPeiMemoryDiscoveredPpiGuid                # PPI ALWAYS_CONSUMED
+  gEfiPeiDecompressPpiGuid                      # PPI ALWAYS_CONSUMED
+  gEfiPeiFirmwareVolumeInfoPpiGuid              # PPI ALWAYS_CONSUMED
+  gEfiPeiLoadFilePpiGuid                        # PPI ALWAYS_CONSUMED
+  gEfiPeiSecurity2PpiGuid                       # PPI ALWAYS_CONSUMED
+  gEfiTemporaryRamSupportPpiGuid                # PPI ALWAYS_CONSUMED
 
 [FixedPcd.common]
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxFvSupported
@@ -90,9 +92,7 @@
   gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValuePeiCoreEntry
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxPeiStackSize
 
-
 [FeaturePcd.common]
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreImageLoaderSearchTeSectionFirst
-
-[BuildOptions.common]
-  MSFT:*_*_*_CC_FLAGS = /Fa$* /FAsc /FR$(@R).SBR
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFrameworkFvHobCompatibilitySupport
+  

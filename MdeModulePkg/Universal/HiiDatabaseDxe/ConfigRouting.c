@@ -25,194 +25,11 @@ Revision History
 
 #include "HiiDatabase.h"
 
-#ifndef DISABLE_UNUSED_HII_PROTOCOLS
-
-STATIC
-CHAR16
-NibbleToHexCharPrivate (
-  IN UINT8                         Nibble
-  )
-/*++
-
-  Routine Description:
-    Converts the low nibble of a byte to hex unicode character.
-
-  Arguments:
-    Nibble - lower nibble of a byte.
-
-  Returns:
-    Hex unicode character between L'0' to L'f'.
-
---*/
-{
-  Nibble &= 0x0F;
-
-  if (Nibble <= 0x9) {
-    return (CHAR16)(Nibble + L'0');
-  }
-
-  return (CHAR16)(Nibble - 0xA + L'a');
-}
-
-
-/**
-  Converts Unicode string to binary buffer.
-  The conversion may be partial.
-  The first character in the string that is not hex digit stops the conversion.
-  At a minimum, any blob of data could be represented as a hex string.
-
-  @param  Buf                    Pointer to buffer that receives the data.
-  @param  Len                    Length in bytes of the buffer to hold converted
-                                 data. If routine return with EFI_SUCCESS,
-                                 containing length of converted data. If routine
-                                 return with EFI_BUFFER_TOO_SMALL, containg length
-                                 of buffer desired.
-  @param  Str                    String to be converted from.
-  @param  ConvertedStrLen        Length of the Hex String consumed.
-
-  @retval EFI_SUCCESS            Routine Success.
-  @retval EFI_BUFFER_TOO_SMALL   The buffer is too small to hold converted data.
-
-**/
-STATIC
-EFI_STATUS
-HexStringToBufPrivate (
-  IN OUT UINT8                     *Buf,
-  IN OUT UINTN                     *Len,
-  IN     CHAR16                    *Str,
-  OUT    UINTN                     *ConvertedStrLen  OPTIONAL
-  )
-{
-  UINTN       HexCnt;
-  UINTN       Idx;
-  UINTN       BufferLength;
-  UINT8       Digit;
-  UINT8       Byte;
-
-  //
-  // Find out how many hex characters the string has.
-  //
-  for (Idx = 0, HexCnt = 0; IsHexDigit (&Digit, Str[Idx]); Idx++, HexCnt++);
-
-  if (HexCnt == 0) {
-    *Len = 0;
-    return EFI_SUCCESS;
-  }
-  //
-  // Two Unicode characters make up 1 buffer byte. Round up.
-  //
-  BufferLength = (HexCnt + 1) / 2;
-
-  //
-  // Test if  buffer is passed enough.
-  //
-  if (BufferLength > (*Len)) {
-    *Len = BufferLength;
-    return EFI_BUFFER_TOO_SMALL;
-  }
-
-  *Len = BufferLength;
-
-  for (Idx = 0; Idx < HexCnt; Idx++) {
-
-    IsHexDigit (&Digit, Str[Idx]);
-
-    //
-    // For odd charaters, write the lower nibble for each buffer byte,
-    // and for even characters, the upper nibble.
-    //
-    if ((Idx & 1) == 0) {
-      Byte = (UINT8) (Digit << 4);
-    } else {
-      Byte = Buf[Idx / 2];
-      Byte &= 0xF0;
-      Byte = (UINT8) (Byte | Digit);
-    }
-
-    Buf[Idx / 2] = Byte;
-  }
-
-  if (ConvertedStrLen != NULL) {
-    *ConvertedStrLen = HexCnt;
-  }
-
-  return EFI_SUCCESS;
-}
-
-
-/**
-  Converts binary buffer to Unicode string.
-  At a minimum, any blob of data could be represented as a hex string.
-
-  @param  Str                    Pointer to the string.
-  @param  HexStringBufferLength  Length in bytes of buffer to hold the hex string.
-                                 Includes tailing '\0' character. If routine return
-                                 with EFI_SUCCESS, containing length of hex string
-                                 buffer. If routine return with
-                                 EFI_BUFFER_TOO_SMALL, containg length of hex
-                                 string buffer desired.
-  @param  Buf                    Buffer to be converted from.
-  @param  Len                    Length in bytes of the buffer to be converted.
-  @param  Flag                   If TRUE, encode the data in the same order as the
-                                 it  resides in the Buf. Else encode it in the
-                                 reverse direction.
-
-  @retval EFI_SUCCESS            Routine  success.
-  @retval EFI_BUFFER_TOO_SMALL   The hex string buffer is too small.
-
-**/
-STATIC
-EFI_STATUS
-BufToHexStringPrivate (
-  IN OUT CHAR16                    *Str,
-  IN OUT UINTN                     *HexStringBufferLength,
-  IN     UINT8                     *Buf,
-  IN     UINTN                     Len,
-  IN     BOOLEAN                   Flag
-  )
-{
-  UINTN       Idx;
-  UINT8       Byte;
-  UINTN       StrLen;
-
-  //
-  // Make sure string is either passed or allocate enough.
-  // It takes 2 Unicode characters (4 bytes) to represent 1 byte of the binary buffer.
-  // Plus the Unicode termination character.
-  //
-  StrLen = Len * 2;
-  if ((*HexStringBufferLength) < (StrLen + 1) * sizeof (CHAR16)) {
-    *HexStringBufferLength = (StrLen + 1) * sizeof (CHAR16);
-    return EFI_BUFFER_TOO_SMALL;
-  }
-
-  *HexStringBufferLength = (StrLen + 1) * sizeof (CHAR16);
-
-  //
-  // Ends the string.
-  //
-  Str[StrLen] = 0;
-
-  for (Idx = 0; Idx < Len; Idx++) {
-
-    Byte = Buf[Idx];
-    if (Flag) {
-      Str[Idx * 2]     = NibbleToHexCharPrivate ((UINT8)(Byte >> 4));
-      Str[Idx * 2 + 1] = NibbleToHexCharPrivate (Byte);
-    } else {
-      Str[StrLen - 1 - Idx * 2] = NibbleToHexCharPrivate (Byte);
-      Str[StrLen - 2 - Idx * 2] = NibbleToHexCharPrivate ((UINT8)(Byte >> 4));
-    }
-  }
-
-  return EFI_SUCCESS;
-}
-
-
-
 /**
   Calculate the number of Unicode characters of the incoming Configuration string,
   not including NULL terminator.
+
+  This is a internal function.
 
   @param  String                 String in <MultiConfigRequest> or
                                  <MultiConfigResp> format.
@@ -220,7 +37,6 @@ BufToHexStringPrivate (
   @return The number of Unicode characters.
 
 **/
-STATIC
 UINTN
 CalculateConfigStringLen (
   IN EFI_STRING                    String
@@ -254,6 +70,8 @@ CalculateConfigStringLen (
   Convert the hex UNICODE %02x encoding of a UEFI device path to binary
   from <PathHdr> of <ConfigHdr>.
 
+  This is a internal function.
+
   @param  String                 UEFI configuration string
   @param  DevicePath             binary of a UEFI device path.
 
@@ -263,7 +81,6 @@ CalculateConfigStringLen (
                                  binary format.
 
 **/
-STATIC
 EFI_STATUS
 GetDevicePath (
   IN  EFI_STRING                   String,
@@ -306,7 +123,6 @@ GetDevicePath (
   // The data in <PathHdr> is encoded as hex UNICODE %02x bytes in the same order
   // as the device path resides in RAM memory.
   // Translate the data into binary.
-  // Two Unicode characters make up 1 buffer byte.
   //
   Length /= 2;
   *DevicePath = (UINT8 *) AllocateZeroPool (Length);
@@ -315,7 +131,7 @@ GetDevicePath (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  HexStringToBufPrivate (*DevicePath, &Length, DevicePathString, NULL);
+  HexStringToBufInReverseOrder (*DevicePath, &Length, DevicePathString);
 
   SafeFreePool (DevicePathString);
 
@@ -327,6 +143,8 @@ GetDevicePath (
 /**
   Extract Storage from all Form Packages in current hii database.
 
+  This is a internal function.
+
   @param  HiiDatabase            EFI_HII_DATABASE_PROTOCOL instance.
   @param  StorageListHead        Storage link List head.
 
@@ -335,7 +153,6 @@ GetDevicePath (
   @retval EFI_SUCCESS            All existing storage is exported.
 
 **/
-STATIC
 EFI_STATUS
 ExportAllStorage (
   IN EFI_HII_DATABASE_PROTOCOL     *HiiDatabase,
@@ -500,33 +317,34 @@ ExportAllStorage (
 /**
   Generate a sub string then output it.
 
+  This is a internal function.
+
   @param  String                 A constant string which is the prefix of the to be
                                  generated string, e.g. GUID=
   @param  BufferLen              The length of the Buffer in bytes.
-  @param  Buffer                 Points to a buffer which will be converted to hex
-                                 string and to be the content of the generated
-                                 string.
-  @param  Flag                   If TRUE, convert the buffer data in the same order
-                                 as the it  resides in the Buffer. Else convert it
-                                 in the reverse direction.
+  @param  Buffer                 Points to a buffer which will be converted to be the 
+                                          content of the generated string.
+  @param  Flag           If 1, the buffer contains data for the value of GUID or PATH stored in 
+                                UINT8 *; if 2, the buffer contains unicode string for the value of NAME;
+                                if 3, the buffer contains other data.
   @param  SubStr                 Points to the output string. It's caller's
                                  responsibility to free this buffer.
 
 
 **/
-STATIC
 VOID
 GenerateSubStr (
   IN CONST EFI_STRING              String,
   IN  UINTN                        BufferLen,
-  IN  UINT8                        *Buffer,
-  IN  BOOLEAN                      Flag,
+  IN  VOID                         *Buffer,
+  IN  UINT8                        Flag,
   OUT EFI_STRING                   *SubStr
   )
 {
   UINTN       Length;
   EFI_STRING  Str;
   EFI_STATUS  Status;
+  EFI_STRING  StringHeader;
 
   ASSERT (String != NULL && SubStr != NULL);
 
@@ -536,20 +354,33 @@ GenerateSubStr (
     return ;
   }
 
-  Length = BufferLen * 2 + 1 + StrLen (String) + 1;
+  Length = StrLen (String) + BufferLen * 2 + 1 + 1;
   Str = AllocateZeroPool (Length * sizeof (CHAR16));
   ASSERT (Str != NULL);
 
   StrCpy (Str, String);
   Length = (BufferLen * 2 + 1) * sizeof (CHAR16);
 
-  Status = BufToHexStringPrivate (
-             Str + StrLen (String),
-             &Length,
-             Buffer,
-             BufferLen,
-             Flag
-             );
+  Status       = EFI_SUCCESS;
+  StringHeader = Str + StrLen (String);
+
+  switch (Flag) {
+  case 1:
+    Status = BufInReverseOrderToHexString (StringHeader, (UINT8 *) Buffer, BufferLen);
+    break;
+  case 2:
+    Status = UnicodeToConfigString (StringHeader, &Length, (CHAR16 *) Buffer);
+    break;
+  case 3:
+    Status = BufToHexString (StringHeader, &Length, (UINT8 *) Buffer, BufferLen);
+    //
+    // Convert the uppercase to lowercase since <HexAf> is defined in lowercase format.
+    //
+    ToLower (StringHeader);
+    break;
+  default:
+    break;
+  }
 
   ASSERT_EFI_ERROR (Status);
   StrCat (Str, L"&");
@@ -561,6 +392,8 @@ GenerateSubStr (
 /**
   Retrieve the <ConfigBody> from String then output it.
 
+  This is a internal function.
+
   @param  String                 A sub string of a configuration string in
                                  <MultiConfigAltResp> format.
   @param  ConfigBody             Points to the output string. It's caller's
@@ -571,7 +404,6 @@ GenerateSubStr (
   @retval EFI_SUCCESS            All existing storage is exported.
 
 **/
-STATIC
 EFI_STATUS
 OutputConfigBody (
   IN  EFI_STRING                   String,
@@ -613,38 +445,33 @@ OutputConfigBody (
 }
 
 
-#endif
+/**
+  Adjusts the size of a previously allocated buffer.
 
+
+  @param OldPool         A pointer to the buffer whose size is being adjusted.
+  @param OldSize         The size of the current buffer.
+  @param NewSize         The size of the new buffer.
+
+  @return The new buffer allocated.
+
+**/
 VOID *
 ReallocatePool (
   IN VOID                          *OldPool,
   IN UINTN                         OldSize,
   IN UINTN                         NewSize
   )
-/*++
-
-Routine Description:
-  Adjusts the size of a previously allocated buffer.
-
-Arguments:
-  OldPool               - A pointer to the buffer whose size is being adjusted.
-  OldSize               - The size of the current buffer.
-  NewSize               - The size of the new buffer.
-
-Returns:
-  Points to the new buffer
-
---*/
 {
   VOID  *NewPool;
 
   NewPool = NULL;
-  if (NewSize) {
+  if (NewSize != 0) {
     NewPool = AllocateZeroPool (NewSize);
   }
 
-  if (OldPool) {
-    if (NewPool) {
+  if (OldPool != NULL) {
+    if (NewPool != NULL) {
       CopyMem (NewPool, OldPool, OldSize < NewSize ? OldSize : NewSize);
     }
 
@@ -658,6 +485,8 @@ Returns:
 /**
   Append a string to a multi-string format.
 
+  This is a internal function.
+
   @param  MultiString            String in <MultiConfigRequest>,
                                  <MultiConfigAltResp>, or <MultiConfigResp>. On
                                  input, the buffer length of  this string is
@@ -669,7 +498,6 @@ Returns:
   @retval EFI_SUCCESS            AppendString is append to the end of MultiString
 
 **/
-STATIC
 EFI_STATUS
 AppendToMultiString (
   IN OUT EFI_STRING                *MultiString,
@@ -712,6 +540,8 @@ AppendToMultiString (
   or WIDTH or VALUE.
   <BlockConfig> ::= 'OFFSET='<Number>&'WIDTH='<Number>&'VALUE'=<Number>
 
+  This is a internal function.
+
   @param  StringPtr              String in <BlockConfig> format and points to the
                                  first character of <Number>.
   @param  Number                 The output value. Caller takes the responsibility
@@ -724,7 +554,6 @@ AppendToMultiString (
                                  successfully.
 
 **/
-STATIC
 EFI_STATUS
 GetValueOfNumber (
   IN EFI_STRING                    StringPtr,
@@ -827,8 +656,6 @@ HiiConfigRoutingExtractConfig (
   OUT EFI_STRING                             *Results
   )
 {
-#ifndef DISABLE_UNUSED_HII_PROTOCOLS
-
   HII_DATABASE_PRIVATE_DATA           *Private;
   EFI_STRING                          StringPtr;
   EFI_STRING                          ConfigRequest;
@@ -837,6 +664,7 @@ HiiConfigRoutingExtractConfig (
   EFI_STATUS                          Status;
   LIST_ENTRY                          *Link;
   HII_DATABASE_RECORD                 *Database;
+  UINT8                               *DevicePathPkg;
   UINT8                               *CurrentDevicePath;
   EFI_HANDLE                          DriverHandle;
   EFI_HII_CONFIG_ACCESS_PROTOCOL      *ConfigAccess;
@@ -844,6 +672,15 @@ HiiConfigRoutingExtractConfig (
   EFI_STRING                          AccessResults;
   UINTN                               RemainSize;
   EFI_STRING                          TmpPtr;
+
+  //
+  // For size reduction, please define PcdSupportFullConfigRoutingProtocol 
+  // as FALSE. But this renders the system to not 100% compliant with
+  // UEFI 2.1. Use this with caution.
+  //
+  if (!FeaturePcdGet (PcdSupportFullConfigRoutingProtocol)) {
+    return EFI_UNSUPPORTED;
+  }
 
   if (This == NULL || Progress == NULL || Results == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -914,8 +751,9 @@ HiiConfigRoutingExtractConfig (
          Link = Link->ForwardLink
         ) {
       Database = CR (Link, HII_DATABASE_RECORD, DatabaseEntry, HII_DATABASE_RECORD_SIGNATURE);
-      CurrentDevicePath = Database->PackageList->DevicePathPkg + sizeof (EFI_HII_PACKAGE_HEADER);
-      if (CurrentDevicePath != NULL) {
+   
+      if ((DevicePathPkg = Database->PackageList->DevicePathPkg) != NULL) {
+        CurrentDevicePath = DevicePathPkg + sizeof (EFI_HII_PACKAGE_HEADER);
         if (CompareMem (
               DevicePath,
               CurrentDevicePath,
@@ -993,9 +831,6 @@ HiiConfigRoutingExtractConfig (
   }
 
   return EFI_SUCCESS;
-#else
-  return EFI_UNSUPPORTED;
-#endif
 
 }
 
@@ -1029,8 +864,6 @@ HiiConfigRoutingExportConfig (
   OUT EFI_STRING                             *Results
   )
 {
-#ifndef DISABLE_UNUSED_HII_PROTOCOLS
-
   EFI_STATUS                          Status;
   HII_DATABASE_PRIVATE_DATA           *Private;
   LIST_ENTRY                          StorageListHdr;
@@ -1046,7 +879,15 @@ HiiConfigRoutingExportConfig (
   EFI_HII_CONFIG_ACCESS_PROTOCOL      *ConfigAccess;
   EFI_STRING                          AccessProgress;
   EFI_STRING                          AccessResults;
-  UINTN                               TmpSize;
+
+  //
+  // For size reduction, please define PcdSupportFullConfigRoutingProtocol 
+  // as FALSE. But this renders the system to not 100% compliant with
+  // UEFI 2.1. Use this with caution.
+  //
+  if (!FeaturePcdGet (PcdSupportFullConfigRoutingProtocol)) {
+    return EFI_UNSUPPORTED;
+  }
 
   if (This == NULL || Results == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -1096,16 +937,18 @@ HiiConfigRoutingExportConfig (
     if (PathHdr == NULL) {
       return EFI_OUT_OF_RESOURCES;
     }
-    Status = BufToHexStringPrivate (PathHdr, &PathHdrSize, (UINT8 *) DevicePath, Length, TRUE);
+    Status = BufInReverseOrderToHexString (PathHdr, (UINT8 *) DevicePath, Length);
     ASSERT_EFI_ERROR (Status);
 
     //
     // Generate a <ConfigRequest> with one <ConfigHdr> and zero <RequestElement>.
     // It means extract all possible configurations from this specific driver.
     //
-    TmpSize = StrLen (L"GUID=&NAME=&PATH=");
-    RequestSize   = (TmpSize + sizeof (EFI_GUID) * 2 +  StrLen (Storage->Name))
-                     * sizeof (CHAR16) + PathHdrSize;
+    RequestSize = (StrLen (L"GUID=&NAME=&PATH=") + 32) * sizeof (CHAR16) + PathHdrSize;
+    if (Storage->Name != NULL) {
+      RequestSize += StrLen (Storage->Name) * 4 * sizeof (CHAR16);
+    }
+    
     ConfigRequest = (EFI_STRING) AllocateZeroPool (RequestSize);
     if (ConfigRequest == NULL) {
       SafeFreePool (PathHdr);
@@ -1115,20 +958,16 @@ HiiConfigRoutingExportConfig (
     //
     // Add <GuidHdr>
     // <GuidHdr> ::= 'GUID='<Guid>
+    // Convert <Guid> in the same order as it resides in RAM memory.
     //
     StringPtr = ConfigRequest;
     StrnCpy (StringPtr, L"GUID=", StrLen (L"GUID="));
     StringPtr += StrLen (L"GUID=");
 
-    Status = BufToHexStringPrivate (
-               StringPtr,
-               &RequestSize,
-               (UINT8 *) (&Storage->Guid),
-               sizeof (EFI_GUID),
-               FALSE
-               );
+    Status = BufInReverseOrderToHexString (StringPtr, (UINT8 *) (&Storage->Guid), sizeof (EFI_GUID));
     ASSERT_EFI_ERROR (Status);
-    StringPtr += RequestSize / 2 - 1;
+    
+    StringPtr += 32;
     ASSERT (*StringPtr == 0);
     *StringPtr = L'&';
     StringPtr++;
@@ -1139,8 +978,14 @@ HiiConfigRoutingExportConfig (
     //
     StrnCpy (StringPtr, L"NAME=", StrLen (L"NAME="));
     StringPtr += StrLen (L"NAME=");
-    StrnCpy (StringPtr, Storage->Name, StrLen (Storage->Name));
-    StringPtr += StrLen (Storage->Name);
+
+    if (Storage->Name != NULL) {
+      Length = (StrLen (Storage->Name) * 4 + 1) * sizeof (CHAR16);
+      Status = UnicodeToConfigString (StringPtr, &Length, Storage->Name);
+      ASSERT_EFI_ERROR (Status);
+      StringPtr += StrLen (Storage->Name) * 4;
+    }
+    
     *StringPtr = L'&';
     StringPtr++;
 
@@ -1217,9 +1062,6 @@ HiiConfigRoutingExportConfig (
   }
 
   return EFI_SUCCESS;
-#else
-  return EFI_UNSUPPORTED;
-#endif
 }
 
 
@@ -1250,14 +1092,12 @@ HiiConfigRoutingExportConfig (
 **/
 EFI_STATUS
 EFIAPI
-HiiConfigRoutingRoutConfig (
+HiiConfigRoutingRouteConfig (
   IN  CONST EFI_HII_CONFIG_ROUTING_PROTOCOL  *This,
   IN  CONST EFI_STRING                       Configuration,
   OUT EFI_STRING                             *Progress
   )
 {
-#ifndef DISABLE_UNUSED_HII_PROTOCOLS
-
   HII_DATABASE_PRIVATE_DATA           *Private;
   EFI_STRING                          StringPtr;
   EFI_STRING                          ConfigResp;
@@ -1266,12 +1106,22 @@ HiiConfigRoutingRoutConfig (
   EFI_DEVICE_PATH_PROTOCOL            *DevicePath;
   LIST_ENTRY                          *Link;
   HII_DATABASE_RECORD                 *Database;
+  UINT8                               *DevicePathPkg;
   UINT8                               *CurrentDevicePath;
   EFI_HANDLE                          DriverHandle;
   EFI_HII_CONFIG_ACCESS_PROTOCOL      *ConfigAccess;
   EFI_STRING                          AccessProgress;
   UINTN                               RemainSize;
   EFI_STRING                          TmpPtr;
+
+  //
+  // For size reduction, please define PcdSupportFullConfigRoutingProtocol 
+  // as FALSE. But this renders the system to not 100% compliant with
+  // UEFI 2.1. Use this with caution.
+  //
+  if (!FeaturePcdGet (PcdSupportFullConfigRoutingProtocol)) {
+    return EFI_UNSUPPORTED;
+  }
 
   if (This == NULL || Progress == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -1336,8 +1186,9 @@ HiiConfigRoutingRoutConfig (
          Link = Link->ForwardLink
         ) {
       Database = CR (Link, HII_DATABASE_RECORD, DatabaseEntry, HII_DATABASE_RECORD_SIGNATURE);
-      CurrentDevicePath = Database->PackageList->DevicePathPkg + sizeof (EFI_HII_PACKAGE_HEADER);
-      if (CurrentDevicePath != NULL) {
+
+      if ((DevicePathPkg = Database->PackageList->DevicePathPkg) != NULL) {
+        CurrentDevicePath = DevicePathPkg + sizeof (EFI_HII_PACKAGE_HEADER);
         if (CompareMem (
               DevicePath,
               CurrentDevicePath,
@@ -1407,9 +1258,6 @@ HiiConfigRoutingRoutConfig (
   }
 
   return EFI_SUCCESS;
-#else
-  return EFI_UNSUPPORTED;
-#endif
 }
 
 
@@ -1514,7 +1362,19 @@ HiiBlockToConfig (
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
-  while (*StringPtr++ != L'&');
+
+  while (*StringPtr != L'&' && *StringPtr != 0) {
+    StringPtr++;
+  }
+  if (*StringPtr == 0) {
+    *Progress = StringPtr;
+    Status = EFI_INVALID_PARAMETER;
+    goto Exit;
+  }
+  //
+  // Skip '&'
+  //
+  StringPtr++;
 
   //
   // Copy <ConfigHdr> and an additional '&' to <ConfigResp>
@@ -1609,6 +1469,8 @@ HiiBlockToConfig (
 
     Status = BufToHexString (ValueStr, &Length, Value, Width);
     ASSERT_EFI_ERROR (Status);
+    ToLower (ValueStr);
+
     SafeFreePool (Value);
     Value = NULL;
 
@@ -1761,7 +1623,19 @@ HiiConfigToBlock (
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
-  while (*StringPtr++ != L'&');
+
+  while (*StringPtr != L'&' && *StringPtr != 0) {
+    StringPtr++;
+  }
+  if (*StringPtr == 0) {
+    *Progress = StringPtr;
+    Status = EFI_INVALID_PARAMETER;
+    goto Exit;
+  }
+  //
+  // Skip '&'
+  //
+  StringPtr++;
 
   //
   // Parse each <ConfigElement> if exists
@@ -1926,22 +1800,40 @@ HiiGetAltCfg (
   OUT EFI_STRING                               *AltCfgResp
   )
 {
-#ifndef DISABLE_UNUSED_HII_PROTOCOLS
-
   EFI_STATUS                          Status;
   EFI_STRING                          StringPtr;
-  EFI_STRING                          HdrStart = NULL;
-  EFI_STRING                          HdrEnd   = NULL;
+  EFI_STRING                          HdrStart;
+  EFI_STRING                          HdrEnd;
   EFI_STRING                          TmpPtr;
   UINTN                               Length;
-  EFI_STRING                          GuidStr  = NULL;
-  EFI_STRING                          NameStr  = NULL;
-  EFI_STRING                          PathStr  = NULL;
-  EFI_STRING                          AltIdStr = NULL;
-  EFI_STRING                          Result   = NULL;
-  BOOLEAN                             GuidFlag = FALSE;
-  BOOLEAN                             NameFlag = FALSE;
-  BOOLEAN                             PathFlag = FALSE;
+  EFI_STRING                          GuidStr;
+  EFI_STRING                          NameStr;
+  EFI_STRING                          PathStr;
+  EFI_STRING                          AltIdStr;
+  EFI_STRING                          Result;
+  BOOLEAN                             GuidFlag;
+  BOOLEAN                             NameFlag;
+  BOOLEAN                             PathFlag;
+
+  //
+  // For size reduction, please define PcdSupportFullConfigRoutingProtocol 
+  // as FALSE. But this renders the system to not 100% compliant with
+  // UEFI 2.1. Use this with caution.
+  //
+  if (!FeaturePcdGet (PcdSupportFullConfigRoutingProtocol)) {
+    return EFI_UNSUPPORTED;
+  }
+
+  HdrStart = NULL;
+  HdrEnd   = NULL;
+  GuidStr  = NULL;
+  NameStr  = NULL;
+  PathStr  = NULL;
+  AltIdStr = NULL;
+  Result   = NULL;
+  GuidFlag = FALSE;
+  NameFlag = FALSE;
+  PathFlag = FALSE;
 
   if (This == NULL || Configuration == NULL || AltCfgResp == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -1955,30 +1847,21 @@ HiiGetAltCfg (
   //
   // Generate the sub string for later matching.
   //
-  GenerateSubStr (L"GUID=", sizeof (EFI_GUID), (UINT8 *) Guid, FALSE, &GuidStr);
+  GenerateSubStr (L"GUID=", sizeof (EFI_GUID), (VOID *) Guid, 1, &GuidStr);
   GenerateSubStr (
     L"PATH=",
     GetDevicePathSize ((EFI_DEVICE_PATH_PROTOCOL *) DevicePath),
-    (UINT8 *) DevicePath,
-    TRUE,
+    (VOID *) DevicePath,
+    1,
     &PathStr
     );
   if (AltCfgId != NULL) {
-    GenerateSubStr (L"ALTCFG=", sizeof (UINT16), (UINT8 *) AltCfgId, FALSE, &AltIdStr);
+    GenerateSubStr (L"ALTCFG=", sizeof (UINT16), (VOID *) AltCfgId, 3, &AltIdStr);  
   }
   if (Name != NULL) {
-    Length  = StrLen (Name);
-    Length  += StrLen (L"NAME=&") + 1;
-    NameStr = AllocateZeroPool (Length * sizeof (CHAR16));
-    if (NameStr == NULL) {
-      Status = EFI_OUT_OF_RESOURCES;
-      goto Exit;
-    }
-    StrCpy (NameStr, L"NAME=");
-    StrCat (NameStr, Name);
-    StrCat (NameStr, L"&");
+    GenerateSubStr (L"NAME=", StrLen (Name) * sizeof (CHAR16), (VOID *) Name, 2, &NameStr);    
   } else {
-    GenerateSubStr (L"NAME=", 0, NULL, FALSE, &NameStr);
+    GenerateSubStr (L"NAME=", 0, NULL, 2, &NameStr);
   }
 
   while (*StringPtr != 0) {
@@ -2107,10 +1990,6 @@ Exit:
   SafeFreePool (Result);
 
   return Status;
-
-#else
-  return EFI_UNSUPPORTED;
-#endif
 
 }
 

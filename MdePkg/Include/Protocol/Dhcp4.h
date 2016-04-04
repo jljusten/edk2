@@ -4,7 +4,7 @@
   These protocols are used to collect configuration information for the EFI IPv4 Protocol
   drivers and to provide DHCPv4 server and PXE boot server discovery services.
 
-  Copyright (c) 2006, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -49,11 +49,11 @@ typedef struct {
     UINT32            Xid;
     UINT16            Seconds;
     UINT16            Reserved;
-    EFI_IPv4_ADDRESS  ClientAddr;       //Client IP address from client
-    EFI_IPv4_ADDRESS  YourAddr;         //Client IP address from server
-    EFI_IPv4_ADDRESS  ServerAddr;       //IP address of next server in bootstrap
-    EFI_IPv4_ADDRESS  GatewayAddr;      //Relay agent IP address
-    UINT8             ClientHwAddr[16]; //Client hardware address
+    EFI_IPv4_ADDRESS  ClientAddr;       ///< Client IP address from client
+    EFI_IPv4_ADDRESS  YourAddr;         ///< Client IP address from server
+    EFI_IPv4_ADDRESS  ServerAddr;       ///< IP address of next server in bootstrap
+    EFI_IPv4_ADDRESS  GatewayAddr;      ///< Relay agent IP address
+    UINT8             ClientHwAddr[16]; ///< Client hardware address
     CHAR8             ServerName[64];
     CHAR8             BootFileName[128];
 }EFI_DHCP4_HEADER;
@@ -126,7 +126,7 @@ typedef enum{
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DHCP4_CALLBACK) (
+(EFIAPI *EFI_DHCP4_CALLBACK)(
   IN  EFI_DHCP4_PROTOCOL         *This,
   IN  VOID                       *Context,
   IN  EFI_DHCP4_STATE            CurrentState,
@@ -196,11 +196,10 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DHCP4_GET_MODE_DATA) (
+(EFIAPI *EFI_DHCP4_GET_MODE_DATA)(
   IN  EFI_DHCP4_PROTOCOL      *This,
   OUT EFI_DHCP4_MODE_DATA     *Dhcp4ModeData
-  )
-;
+  );
 
 /**
   Initializes, changes, or resets the operational settings for the EFI DHCPv4 Protocol driver.
@@ -223,11 +222,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DHCP4_CONFIGURE) (
+(EFIAPI *EFI_DHCP4_CONFIGURE)(
   IN EFI_DHCP4_PROTOCOL       *This,
   IN EFI_DHCP4_CONFIG_DATA    *Dhcp4CfgData  OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -258,11 +256,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DHCP4_START) (
+(EFIAPI *EFI_DHCP4_START)(
   IN EFI_DHCP4_PROTOCOL       *This,
   IN EFI_EVENT                CompletionEvent   OPTIONAL
-  )
-;
+  );
 
 /**
   Extends the lease time by sending a request packet.
@@ -292,12 +289,11 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DHCP4_RENEW_REBIND) (
+(EFIAPI *EFI_DHCP4_RENEW_REBIND)(
   IN EFI_DHCP4_PROTOCOL       *This,
   IN BOOLEAN                  RebindRequest,
   IN EFI_EVENT                CompletionEvent  OPTIONAL
-  )
-;
+  );
 
 /**
   Releases the current address configuration.
@@ -312,10 +308,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DHCP4_RELEASE) (
+(EFIAPI *EFI_DHCP4_RELEASE)(
   IN EFI_DHCP4_PROTOCOL       *This
-  )
-;
+  );
 
 /**
   Stops the current address configuration.
@@ -328,10 +323,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DHCP4_STOP) (
+(EFIAPI *EFI_DHCP4_STOP)(
   IN EFI_DHCP4_PROTOCOL       *This
-  )
-;
+  );
 
 /**
   Builds a DHCP packet, given the options to be appended or deleted or replaced.
@@ -357,7 +351,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DHCP4_BUILD) (
+(EFIAPI *EFI_DHCP4_BUILD)(
   IN  EFI_DHCP4_PROTOCOL      *This,
   IN  EFI_DHCP4_PACKET        *SeedPacket,
   IN  UINT32                  DeleteCount,
@@ -365,8 +359,7 @@ EFI_STATUS
   IN  UINT32                  AppendCount,
   IN  EFI_DHCP4_PACKET_OPTION *AppendList[]       OPTIONAL,
   OUT EFI_DHCP4_PACKET        **NewPacket
-  )
-;
+  );
 /**
   Transmits a DHCP formatted packet and optionally waits for responses.
 
@@ -384,11 +377,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DHCP4_TRANSMIT_RECEIVE) (
+(EFIAPI *EFI_DHCP4_TRANSMIT_RECEIVE)(
   IN EFI_DHCP4_PROTOCOL                *This,
   IN EFI_DHCP4_TRANSMIT_RECEIVE_TOKEN  *Token
-  )
-;
+  );
 
 
 /**
@@ -412,15 +404,18 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DHCP4_PARSE) (
+(EFIAPI *EFI_DHCP4_PARSE)(
   IN EFI_DHCP4_PROTOCOL        *This,
   IN EFI_DHCP4_PACKET          *Packet,
   IN OUT UINT32                *OptionCount,
   OUT EFI_DHCP4_PACKET_OPTION  *PacketOptionList[]  OPTIONAL
-  )
-;
+  );
 
-
+/**
+  @par Protocol Description:
+  This protocol is used to collect configuration information for the EFI IPv4 Protocol drivers
+  and to provide DHCPv4 server and PXE boot server discovery services.
+**/
 struct _EFI_DHCP4_PROTOCOL {
   EFI_DHCP4_GET_MODE_DATA      GetModeData;
   EFI_DHCP4_CONFIGURE          Configure;

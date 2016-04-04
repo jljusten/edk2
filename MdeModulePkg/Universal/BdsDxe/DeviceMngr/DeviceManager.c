@@ -39,6 +39,24 @@ DEVICE_MANAGER_MENU_ITEM  mDeviceManagerMenuItemTable[] = {
 #define MENU_ITEM_NUM  \
   (sizeof (mDeviceManagerMenuItemTable) / sizeof (DEVICE_MANAGER_MENU_ITEM))
 
+/**
+  This function is invoked if user selected a iteractive opcode from Device Manager's
+  Formset. The decision by user is saved to gCallbackKey for later processing. If
+  user set VBIOS, the new value is saved to EFI variable.
+
+
+  @param This            Points to the EFI_HII_CONFIG_ACCESS_PROTOCOL.
+  @param Action          Specifies the type of action taken by the browser.
+  @param QuestionId      A unique value which is sent to the original exporting driver
+                         so that it can identify the type of data to expect.
+  @param Type            The type of value for the question.
+  @param Value           A pointer to the data being sent to the original exporting driver.
+  @param ActionRequest   On return, points to the action requested by the callback function.
+
+  @retval  EFI_SUCCESS           The callback successfully handled the action.
+  @retval  EFI_INVALID_PARAMETER The setup browser call this function with invalid parameters.
+
+**/
 EFI_STATUS
 EFIAPI
 DeviceManagerCallback (
@@ -49,27 +67,6 @@ DeviceManagerCallback (
   IN  EFI_IFR_TYPE_VALUE                     *Value,
   OUT EFI_BROWSER_ACTION_REQUEST             *ActionRequest
   )
-/*++
-
-  Routine Description:
-    This function processes the results of changes in configuration.
-
-  Arguments:
-    This          - Points to the EFI_HII_CONFIG_ACCESS_PROTOCOL.
-    Action        - Specifies the type of action taken by the browser.
-    QuestionId    - A unique value which is sent to the original exporting driver
-                    so that it can identify the type of data to expect.
-    Type          - The type of value for the question.
-    Value         - A pointer to the data being sent to the original exporting driver.
-    ActionRequest - On return, points to the action requested by the callback function.
-
-  Returns:
-    EFI_SUCCESS          - The callback successfully handled the action.
-    EFI_OUT_OF_RESOURCES - Not enough storage is available to hold the variable and its data.
-    EFI_DEVICE_ERROR     - The variable could not be saved.
-    EFI_UNSUPPORTED      - The specified Action is not supported by the callback.
-
---*/
 {
   DEVICE_MANAGER_CALLBACK_DATA *PrivateData;
 
@@ -113,22 +110,18 @@ DeviceManagerCallback (
   return EFI_SUCCESS;
 }
 
+/**
+
+  This function registers HII packages to HII database.
+
+  @retval EFI_SUCCESS This function complete successfully.
+  @return Other value if failed to register HII packages.
+
+**/
 EFI_STATUS
 InitializeDeviceManager (
   VOID
   )
-/*++
-
-Routine Description:
-
-  Initialize HII information for the FrontPage
-
-Arguments:
-  None
-
-Returns:
-
---*/
 {
   EFI_STATUS                  Status;
   EFI_HII_PACKAGE_LIST_HEADER *PackageList;
@@ -169,25 +162,23 @@ Returns:
   return Status;
 }
 
+/**
+
+  Call the browser and display the device manager to allow user
+  to configure the platform.
+
+  This function create the dynamic content for device manager. It includes
+  section header for all class of devices, one-of opcode to set VBIOS.
+  
+  @retval  EFI_SUCCESS             Operation is successful.
+  @retval  Other values if failed to clean up the dynamic content from HII
+           database.
+
+**/
 EFI_STATUS
 CallDeviceManager (
   VOID
   )
-/*++
-
-Routine Description:
-
-  Call the browser and display the device manager
-
-Arguments:
-
-  None
-
-Returns:
-  EFI_SUCCESS            - Operation is successful.
-  EFI_INVALID_PARAMETER  - If the inputs to SendForm function is not valid.
-
---*/
 {
   EFI_STATUS                  Status;
   UINTN                       Count;
@@ -357,11 +348,6 @@ Returns:
     &UpdateData[0]
     );
 
-  //
-  // Drop the TPL level from TPL_APPLICATION to TPL_APPLICATION
-  //
-  gBS->RestoreTPL (TPL_APPLICATION);
-
   ActionRequest = EFI_BROWSER_ACTION_REQUEST_NONE;
   Status = gFormBrowser2->SendForm (
                            gFormBrowser2,
@@ -420,8 +406,6 @@ Returns:
     FreePool (UpdateData[Index].Data);
   }
   FreePool (HiiHandles);
-
-  gBS->RaiseTPL (TPL_APPLICATION);
 
   return Status;
 }

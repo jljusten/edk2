@@ -1,10 +1,10 @@
 /** @file
 
-  The file defines the generic Service Binding Protocol
-  functions.
+  The file defines the generic Service Binding Protocol functions.
+  It provides services that are required to create and destroy child 
+  handles that support a given set of protocols.
 
-
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -18,9 +18,9 @@
 #ifndef __EFI_SERVICE_BINDING_H__
 #define __EFI_SERVICE_BINDING_H__
 
-//
-// Forward reference for pure ANSI compatability
-//
+///
+/// Forward reference for pure ANSI compatability
+///
 typedef struct _EFI_SERVICE_BINDING_PROTOCOL EFI_SERVICE_BINDING_PROTOCOL;
 
 /**
@@ -40,11 +40,10 @@ typedef struct _EFI_SERVICE_BINDING_PROTOCOL EFI_SERVICE_BINDING_PROTOCOL;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SERVICE_BINDING_CREATE_CHILD) (
+(EFIAPI *EFI_SERVICE_BINDING_CREATE_CHILD)(
   IN     EFI_SERVICE_BINDING_PROTOCOL  *This,
   IN OUT EFI_HANDLE                    *ChildHandle
-  )
-;
+  );
 
 /**
   Destroys a child handle with a set of I/O services.
@@ -63,12 +62,23 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SERVICE_BINDING_DESTROY_CHILD) (
+(EFIAPI *EFI_SERVICE_BINDING_DESTROY_CHILD)(
   IN EFI_SERVICE_BINDING_PROTOCOL          *This,
   IN EFI_HANDLE                            ChildHandle
-  )
-;
+  );
 
+/**  
+  @par Protocol Description:
+  The EFI_SERVICE_BINDING_PROTOCOL provides member functions to create and destroy 
+  child handles. A driver is responsible for adding protocols to the child handle 
+  in CreateChild() and removing protocols in DestroyChild(). It is also required 
+  that the CreateChild() function opens the parent protocol BY_CHILD_CONTROLLER 
+  to establish the parent-child relationship, and closes the protocol in DestroyChild().
+  The pseudo code for CreateChild() and DestroyChild() is provided to specify the 
+  required behavior, not to specify the required implementation. Each consumer of 
+  a software protocol is responsible for calling CreateChild() when it requires the 
+  protocol and calling DestroyChild() when it is finished with that protocol.
+**/
 struct _EFI_SERVICE_BINDING_PROTOCOL {
   EFI_SERVICE_BINDING_CREATE_CHILD         CreateChild;
   EFI_SERVICE_BINDING_DESTROY_CHILD        DestroyChild;

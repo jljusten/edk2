@@ -43,12 +43,11 @@ typedef struct _EFI_DISK_INFO_PROTOCOL  EFI_DISK_INFO_PROTOCOL;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DISK_INFO_INQUIRY) (
+(EFIAPI *EFI_DISK_INFO_INQUIRY)(
   IN EFI_DISK_INFO_PROTOCOL           * This,
   IN OUT VOID                         *InquiryData,
   IN OUT UINT32                       *IntquiryDataSize
-  )
-;
+  );
 
 
 /**
@@ -67,12 +66,11 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DISK_INFO_IDENTIFY) (
+(EFIAPI *EFI_DISK_INFO_IDENTIFY)(
   IN EFI_DISK_INFO_PROTOCOL           * This,
   IN OUT VOID                         *IdentifyData,
   IN OUT UINT32                       *IdentifyDataSize
-  )
-;
+  );
 
 
 /**
@@ -92,13 +90,12 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DISK_INFO_SENSE_DATA) (
+(EFIAPI *EFI_DISK_INFO_SENSE_DATA)(
   IN EFI_DISK_INFO_PROTOCOL           * This,
   IN OUT VOID                         *SenseData,
   IN OUT UINT32                       *SenseDataSize,
   OUT UINT8                           *SenseDataNumber
-  )
-;
+  );
 
 /**
   Return the results of the Request Sense command to a drive in SenseData.
@@ -114,16 +111,15 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DISK_INFO_WHICH_IDE) (
+(EFIAPI *EFI_DISK_INFO_WHICH_IDE)(
   IN EFI_DISK_INFO_PROTOCOL           * This,
   OUT UINT32                          *IdeChannel,
   OUT UINT32                          *IdeDevice
-  )
-;
+  );
 
 //
 // GUIDs for EFI_DISK_INFO_PROTOCOL.Interface. Defines the format of the
-// buffers returned by member functions
+// buffers returned by member functions.
 //
 #define EFI_DISK_INFO_IDE_INTERFACE_GUID \
   { \
@@ -142,6 +138,12 @@ extern EFI_GUID gEfiDiskInfoScsiInterfaceGuid;
     0xcb871572, 0xc11a, 0x47b5, {0xb4, 0x92, 0x67, 0x5e, 0xaf, 0xa7, 0x77, 0x27 } \
   }
 extern EFI_GUID gEfiDiskInfoUsbInterfaceGuid;
+
+#define EFI_DISK_INFO_AHCI_INTERFACE_GUID \
+  { \
+    0x9e498932, 0x4abc, 0x45af, {0xa3, 0x4d, 0x2, 0x47, 0x78, 0x7b, 0xe7, 0xc6} \
+  }
+extern EFI_GUID gEfiDiskInfoAhciInterfaceGuid;
 
 struct _EFI_DISK_INFO_PROTOCOL {
   EFI_GUID                  Interface;

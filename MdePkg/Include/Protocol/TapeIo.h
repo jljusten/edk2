@@ -2,7 +2,7 @@
   EFI_TAPE_IO_PROTOCOL as defined in the UEFI 2.0.
   Provide services to control and access a tape device.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -72,12 +72,11 @@ typedef struct {
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_TAPE_READ) (
+(EFIAPI *EFI_TAPE_READ)(
   IN EFI_TAPE_IO_PROTOCOL *This,
   IN OUT UINTN            *BufferSize,
   OUT VOID                *Buffer
-  )
-;    
+  );    
 
 /**
   Writes to the tape.
@@ -109,12 +108,11 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_TAPE_WRITE) (
+(EFIAPI *EFI_TAPE_WRITE)(
   IN EFI_TAPE_IO_PROTOCOL *This,
   IN UINTN                *BufferSize,
   IN VOID                 *Buffer
-  )
-; 
+  ); 
   
 
 /**
@@ -133,10 +131,9 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_TAPE_REWIND) (
+(EFIAPI *EFI_TAPE_REWIND)(
   IN EFI_TAPE_IO_PROTOCOL *This
-  )
-;   
+  );   
 
 
 /**
@@ -145,6 +142,9 @@ EFI_STATUS
   @param  This      A pointer to the EFI_TAPE_IO_PROTOCOL instance.
   @param  Direction Direction and number of data blocks or filemarks to space over on media.
   @param  Type      Type of mark to space over on media.
+                    The following Type marks are mandatory:
+                    BLOCK type    : 0 
+                    FILEMARK type : 1
 
   @retval EFI_SUCCESS       The media was successfully repositioned.
   @retval EFI_END_OF_MEDIA  Beginning or end of media was reached before the
@@ -162,12 +162,11 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TAPE_SPACE) (
+(EFIAPI *EFI_TAPE_SPACE)(
   IN EFI_TAPE_IO_PROTOCOL *This,
   INTN                    Direction,
   UINTN                   Type
-  )
-;   
+  );   
 
 
 /**
@@ -190,11 +189,10 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_TAPE_WRITEFM) (
+(EFIAPI *EFI_TAPE_WRITEFM)(
   IN EFI_TAPE_IO_PROTOCOL *This,
   IN UINTN                Count
-  )
-;   
+  );   
 
 
 /**
@@ -214,12 +212,19 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_TAPE_RESET) (
+(EFIAPI *EFI_TAPE_RESET)(
   IN EFI_TAPE_IO_PROTOCOL *This,
   IN BOOLEAN              ExtendedVerification
-  )
-;    
+  );    
 
+/**  
+  @par Protocol Description:
+  The EFI_TAPE_IO_PROTOCOL provides basic sequential operations for tape devices. 
+  These include read, write, rewind, space, write filemarks and reset functions. 
+  Per this specification, a boot application uses the services of this protocol 
+  to load the bootloader image from tape.
+
+**/
 struct _EFI_TAPE_IO_PROTOCOL {
   EFI_TAPE_READ           TapeRead;
   EFI_TAPE_WRITE          TapeWrite;

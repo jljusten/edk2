@@ -2,7 +2,7 @@
   The file provides Database manager for HII-related data
   structures.
   
-  Copyright (c) 2006 - 2007, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -23,10 +23,11 @@
 typedef struct _EFI_HII_DATABASE_PROTOCOL EFI_HII_DATABASE_PROTOCOL;
 
 
-//
-// EFI_HII_DATABASE_NOTIFY_TYPE
-// 
+///
+/// EFI_HII_DATABASE_NOTIFY_TYPE
+/// 
 typedef UINTN   EFI_HII_DATABASE_NOTIFY_TYPE;
+
 #define EFI_HII_DATABASE_NOTIFY_NEW_PACK    0x00000001
 #define EFI_HII_DATABASE_NOTIFY_REMOVE_PACK 0x00000002
 #define EFI_HII_DATABASE_NOTIFY_EXPORT_PACK 0x00000004
@@ -47,9 +48,10 @@ typedef UINTN   EFI_HII_DATABASE_NOTIFY_TYPE;
                       field of EFI_HII_PACKAGE_GUID_HEADER.
                       Otherwise, it must be NULL.
 
-  @param Package  Points to the package referred to by the
-                  notification Handle The handle of the package
-                  list which contains the specified package.
+  @param Package      Points to the package referred to by the notification. 
+  
+  @param Handle       The handle of the package
+                      list which contains the specified package.
 
   @param NotifyType   The type of change concerning the
                       database. See
@@ -58,7 +60,7 @@ typedef UINTN   EFI_HII_DATABASE_NOTIFY_TYPE;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_DATABASE_NOTIFY) (
+(EFIAPI *EFI_HII_DATABASE_NOTIFY)(
   IN        UINT8                         PackageType,
   IN CONST  EFI_GUID                      *PackageGuid,
   IN CONST  EFI_HII_PACKAGE_HEADER        *Package,
@@ -79,30 +81,27 @@ EFI_STATUS
   corresponding call to
   EFI_HII_DATABASE_PROTOCOL.RemovePackageList().
 
-  @param This   A pointer to the EFI_HII_DATABASE_PROTOCOL
-                instance.
+  @param This           A pointer to the EFI_HII_DATABASE_PROTOCOL instance.
 
-  @param PackageList  A pointer to an
-                      EFI_HII_PACKAGE_LIST_HEADER structure.
+  @param PackageList    A pointer to an EFI_HII_PACKAGE_LIST_HEADER structure.
 
-  @param DriverHandle   Associate the package list with this EFI
-                        handle Handle A pointer to the
-                        EFI_HII_HANDLE  instance.
+  @param DriverHandle   Associate the package list with this EFI handle.
+  
+  @param Handle         A pointer to the EFI_HII_HANDLE instance.
 
-  @retval EFI_SUCCESS   The package list associated with the
-                        Handle was added to the HII database.
+  @retval EFI_SUCCESS           The package list associated with the
+                                Handle was added to the HII database.
 
   @retval EFI_OUT_OF_RESOURCES  Unable to allocate necessary
                                 resources for the new database
                                 contents.
 
-  @retval EFI_INVALID_PARAMETER   PackageList is NULL or Handle
-                                  is NULL.
+  @retval EFI_INVALID_PARAMETER PackageList is NULL or Handle is NULL.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_DATABASE_NEW_PACK) (
+(EFIAPI *EFI_HII_DATABASE_NEW_PACK)(
   IN CONST  EFI_HII_DATABASE_PROTOCOL   *This,
   IN CONST  EFI_HII_PACKAGE_LIST_HEADER *PackageList,
   IN        EFI_HANDLE                  DriverHandle,
@@ -119,21 +118,19 @@ EFI_STATUS
   call to EFI_HII_DATABASE_PROTOCOL.NewPackageList(), there should
   be a corresponding call to RemovePackageList.
 
-  @param This   A pointer to the EFI_HII_DATABASE_PROTOCOL
-                instance.
+  @param This             A pointer to the EFI_HII_DATABASE_PROTOCOL instance.
   
-  @param Handle   The handle that was registered to the data
-                  that is requested for removal.
+  @param Handle           The handle that was registered to the data
+                          that is requested for removal.
   
-  @retval EFI_SUCCESS   The data associated with the Handle was
-                        removed from the HII database.
-  
-  @retval EFI_INVALID_PARAMETER   The Handle was not valid.
+  @retval EFI_SUCCESS     The data associated with the Handle was
+                          removed from the HII database.
+  @retval EFI_NOT_FOUND   The specified Handle is not in database.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_DATABASE_REMOVE_PACK) (
+(EFIAPI *EFI_HII_DATABASE_REMOVE_PACK)(
   IN CONST  EFI_HII_DATABASE_PROTOCOL *This,
   IN        EFI_HII_HANDLE             Handle
 );
@@ -162,27 +159,26 @@ EFI_STATUS
   - Call any functions registered with the notification type
   ADD_PACK.
 
-  @param This   A pointer to the EFI_HII_DATABASE_PROTOCOL
-                instance.
+  @param This         A pointer to the EFI_HII_DATABASE_PROTOCOL instance.
   
-  @param Handle   The handle that was registered to the data
-                  that is requested for removal.
+  @param Handle       The handle that was registered to the data
+                      that is requested for removal.
   
   @param PackageList  A pointer to an EFI_HII_PACKAGE_LIST
                       package.
   
-  @retval EFI_SUCCESS   The HII database was successfully
-                        updated.
+  @retval EFI_SUCCESS            The HII database was successfully updated.
   
-  @retval EFI_OUT_OF_RESOURCES  Unable to allocate enough memory
-                                for the updated database.
+  @retval EFI_OUT_OF_RESOURCES   Unable to allocate enough memory
+                                 for the updated database.
   
-  @retval EFI_INVALID_PARAMETER   The Handle was not valid.
+  @retval EFI_INVALID_PARAMETER  PackageList was NULL.
+  @retval EFI_NOT_FOUND          The specified Handle is not in database.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_DATABASE_UPDATE_PACK) (
+(EFIAPI *EFI_HII_DATABASE_UPDATE_PACK)(
   IN CONST  EFI_HII_DATABASE_PROTOCOL   *This,
   IN        EFI_HII_HANDLE               Handle,
   IN CONST  EFI_HII_PACKAGE_LIST_HEADER *PackageList
@@ -196,54 +192,49 @@ EFI_STATUS
   pseudo-type EFI_HII_PACKAGE_TYPE_ALL will cause all package   
   handles to be listed.
   
-  @param This   A pointer to the EFI_HII_DATABASE_PROTOCOL
-                instance.
+  @param This                 A pointer to the EFI_HII_DATABASE_PROTOCOL instance.
   
-  @param PackageType  Specifies the package type of the packages
-                      to list or EFI_HII_PACKAGE_TYPE_ALL for
-                      all packages to be listed.
+  @param PackageType          Specifies the package type of the packages
+                              to list or EFI_HII_PACKAGE_TYPE_ALL for
+                              all packages to be listed.
   
-  @param PackageGuid  If PackageType is
-                      EFI_HII_PACKAGE_TYPE_GUID, then this is
-                      the pointer to the GUID which must match
-                      the Guid field of
-                      EFI_HII_PACKAGE_GUID_HEADER. Otherwise, it
-                      must be NULL.
+  @param PackageGuid          If PackageType is
+                              EFI_HII_PACKAGE_TYPE_GUID, then this is
+                              the pointer to the GUID which must match
+                              the Guid field of
+                              EFI_HII_PACKAGE_GUID_HEADER. Otherwise, it
+                              must be NULL.
   
   @param HandleBufferLength   On input, a pointer to the length
                               of the handle buffer. On output,
                               the length of the handle buffer
-                              that is required for the handles
-                              found.
+                              that is required for the handles found.
 
-  @param Handle   An array of EFI_HII_HANDLE  instances returned.
+  @param Handle               An array of EFI_HII_HANDLE  instances returned.
 
-
-  @retval EFI_SUCCESS   Handle was updated successfully.
-
+  @retval EFI_SUCCESS           The matching handles are outputed successfully.
+                                HandleBufferLength is updated with the actual length.
   @retval EFI_BUFFER_TOO_SMALL  The HandleBufferLength parameter
                                 indicates that Handle is too
                                 small to support the number of
                                 handles. HandleBufferLength is
                                 updated with a value that will
                                 enable the data to fit.
-
-
+  @retval EFI_NOT_FOUND         No matching handle could not be found in database.
+  @retval EFI_INVALID_PARAMETER Handle or HandleBufferLength was NULL.
+  @retval EFI_INVALID_PARAMETER PackageType is not a EFI_HII_PACKAGE_TYPE_GUID but
+                                PackageGuid is not NULL, PackageType is a EFI_HII_
+                                PACKAGE_TYPE_GUID but PackageGuid is NULL.
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_DATABASE_LIST_PACKS) (
+(EFIAPI *EFI_HII_DATABASE_LIST_PACKS)(
   IN CONST  EFI_HII_DATABASE_PROTOCOL *This,
   IN        UINT8                     PackageType,
   IN CONST  EFI_GUID                  *PackageGuid,
   IN OUT    UINTN                     *HandleBufferLength,
-  OUT       EFI_HII_HANDLE             *Handle
+  OUT       EFI_HII_HANDLE            *Handle
 );
-
-
-
-
-
 
 /**
 
@@ -257,32 +248,31 @@ EFI_STATUS
   EFI_OUT_OF_RESOURCES will be returned and the actual package
   size will be returned in BufferSize.
 
-  @param This   A pointer to the EFI_HII_DATABASE_PROTOCOL
-                instance.
+  @param This         A pointer to the EFI_HII_DATABASE_PROTOCOL instance.
 
-  @param Handle   An EFI_HII_HANDLE  that corresponds to the
-                  desired package list in the HII database to
-                  export or NULL to indicate all package lists
-                  should be exported. 
+
+  @param Handle       An EFI_HII_HANDLE  that corresponds to the
+                      desired package list in the HII database to
+                      export or NULL to indicate all package lists
+                      should be exported. 
 
   @param BufferSize   On input, a pointer to the length of the
                       buffer. On output, the length of the
                       buffer that is required for the exported
                       data.
 
-  @param Buffer   A pointer to a buffer that will contain the
-                  results of the export function.
+  @param Buffer       A pointer to a buffer that will contain the
+                      results of the export function.
   
   
-  @retval EFI_SUCCESS   Package exported.
+  @retval EFI_SUCCESS           Package exported.
   
-  @retval EFI_OUT_OF_RESOURCES  BufferSize is too small to hold
-                                the package.
+  @retval EFI_OUT_OF_RESOURCES  BufferSize is too small to hold the package.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_DATABASE_EXPORT_PACKS) (
+(EFIAPI *EFI_HII_DATABASE_EXPORT_PACKS)(
   IN CONST  EFI_HII_DATABASE_PROTOCOL      *This,
   IN        EFI_HII_HANDLE                 Handle,
   IN OUT    UINTN                          *BufferSize,
@@ -303,49 +293,47 @@ EFI_STATUS
   exiting.
   
   
-  @param This   A pointer to the EFI_HII_DATABASE_PROTOCOL
-                instance.
+  @param This             A pointer to the EFI_HII_DATABASE_PROTOCOL instance.
 
-  @param PackageType  The package type. See
-                      EFI_HII_PACKAGE_TYPE_x in EFI_HII_PACKAGE_HEADER. 
+  @param PackageType      The package type. See
+                          EFI_HII_PACKAGE_TYPE_x in EFI_HII_PACKAGE_HEADER. 
 
-  @param PackageGuid  If PackageType is
-                      EFI_HII_PACKAGE_TYPE_GUID, then this is
-                      the pointer to the GUID which must match
-                      the Guid field of
-                      EFI_HII_PACKAGE_GUID_HEADER. Otherwise, it
-                      must be NULL.
+  @param PackageGuid      If PackageType is
+                          EFI_HII_PACKAGE_TYPE_GUID, then this is
+                          the pointer to the GUID which must match
+                          the Guid field of
+                          EFI_HII_PACKAGE_GUID_HEADER. Otherwise, it
+                          must be NULL.
 
   @param PackageNotifyFn  Points to the function to be called
                           when the event specified by
                           NotificationType occurs. See
                           EFI_HII_DATABASE_NOTIFY.
 
-  @param NotifyType   Describes the types of notification which
-                      this function will be receiving. See
-                      EFI_HII_DATABASE_NOTIFY_TYPE for more a
-                      list of types.
+  @param NotifyType       Describes the types of notification which
+                          this function will be receiving. See
+                          EFI_HII_DATABASE_NOTIFY_TYPE for more a
+                          list of types.
 
-  @param NotifyHandle   Points to the unique handle assigned to
-                        the registered notification. Can be used
-                        in
-                        EFI_HII_DATABASE_PROTOCOL.UnregisterPack
-                        to stop notifications.
+  @param NotifyHandle     Points to the unique handle assigned to
+                          the registered notification. Can be used
+                          in EFI_HII_DATABASE_PROTOCOL.UnregisterPack
+                          to stop notifications.
 
 
-  @retval EFI_SUCCESS   Notification registered successfully.
+  @retval EFI_SUCCESS           Notification registered successfully.
 
   @retval EFI_OUT_OF_RESOURCES  Unable to allocate necessary
                                 data structures.
 
-  @retval EFI_INVALID_PARAMETER   PackageGuid is not NULL when
-                                  PackageType is not
-                                  EFI_HII_PACKAGE_TYPE_GUID.
+  @retval EFI_INVALID_PARAMETER PackageGuid is not NULL when
+                                PackageType is not
+                                EFI_HII_PACKAGE_TYPE_GUID.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_DATABASE_REGISTER_NOTIFY) (
+(EFIAPI *EFI_HII_DATABASE_REGISTER_NOTIFY)(
   IN CONST  EFI_HII_DATABASE_PROTOCOL     *This,
   IN        UINT8                         PackageType,
   IN CONST  EFI_GUID                      *PackageGuid,
@@ -359,21 +347,20 @@ EFI_STATUS
    
   Removes the specified HII database package-related notification.
   
-  @param This   A pointer to the EFI_HII_DATABASE_PROTOCOL
-                instance.
-  
+  @param This                 A pointer to the EFI_HII_DATABASE_PROTOCOL instance.
+
   @param NotificationHandle   The handle of the notification
                               function being unregistered.
   
-  @retval EFI_SUCCESS   Unregister the notification
-                        Successsfully
+  @retval EFI_SUCCESS   Unregister the notification Successsfully
   
-  @retval EFI_INVALID_PARAMETER   The Handle is invalid.
-
+  @retval EFI_NOT_FOUND The incoming notification handle does not exist 
+                        in current hii database.
+  
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_DATABASE_UNREGISTER_NOTIFY) (
+(EFIAPI *EFI_HII_DATABASE_UNREGISTER_NOTIFY)(
   IN CONST  EFI_HII_DATABASE_PROTOCOL *This,
   IN        EFI_HANDLE                NotificationHandle
 );
@@ -384,17 +371,18 @@ EFI_STATUS
   This routine retrieves an array of GUID values for each keyboard
   layout that was previously registered in the system.
 
-  @param This   A pointer to the EFI_HII_PROTOCOL instance.
+  @param This                 A pointer to the EFI_HII_PROTOCOL instance.
 
   @param KeyGuidBufferLength  On input, a pointer to the length
                               of the keyboard GUID buffer. On
                               output, the length of the handle
                               buffer that is required for the
-                              handles found. KeyGuidBuffer An
-                              array of keyboard layout GUID
+                              handles found. 
+  
+  @param KeyGuidBuffer        An array of keyboard layout GUID
                               instances returned.
 
-  @retval EFI_SUCCESS   KeyGuidBuffer was updated successfully.
+  @retval EFI_SUCCESS           KeyGuidBuffer was updated successfully.
   
   @retval EFI_BUFFER_TOO_SMALL  The KeyGuidBufferLength
                                 parameter indicates that
@@ -407,7 +395,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_FIND_KEYBOARD_LAYOUTS) (
+(EFIAPI *EFI_HII_FIND_KEYBOARD_LAYOUTS)(
   IN CONST  EFI_HII_DATABASE_PROTOCOL *This,
   IN OUT    UINT16                    *KeyGuidBufferLength,
   OUT       EFI_GUID                  *KeyGuidBuffer
@@ -421,25 +409,28 @@ EFI_STATUS
   character(s) that are associated with a particular set of key
   strokes.
 
-  @param This   A pointer to the EFI_HII_PROTOCOL instance.
+  @param This                   A pointer to the EFI_HII_PROTOCOL instance.
   
-  @param KeyGuid  A pointer to the unique ID associated with a
-                  given keyboard layout. If KeyGuid is NULL then
-                  the current layout will be retrieved.
+  @param KeyGuid                A pointer to the unique ID associated with a
+                                given keyboard layout. If KeyGuid is NULL then
+                                the current layout will be retrieved.
+
+  @param KeyboardLayoutLength   On input, a pointer to the length of the
+                                KeyboardLayout buffer.  On output, the length of
+                                the data placed into KeyboardLayout.
   
-  @param KeyboardLayout A pointer to a buffer containing the
-                        retrieved keyboard layout. below.
+  @param KeyboardLayout         A pointer to a buffer containing the
+                                retrieved keyboard layout.
   
   @retval EFI_SUCCESS   The keyboard layout was retrieved
                         successfully.
   
-  @retval EFI_NOT_FOUND   The requested keyboard layout was not
-                          found.
+  @retval EFI_NOT_FOUND The requested keyboard layout was not found.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_GET_KEYBOARD_LAYOUT) (
+(EFIAPI *EFI_HII_GET_KEYBOARD_LAYOUT)(
   IN CONST  EFI_HII_DATABASE_PROTOCOL *This,
   IN CONST  EFI_GUID                  *KeyGuid,
   IN OUT UINT16                        *KeyboardLayoutLength,
@@ -455,23 +446,20 @@ EFI_STATUS
   current keyboard layout being changed can be notified of this
   change.
 
-  @param This   A pointer to the EFI_HII_DATABASE_PROTOCOL
-                instance.
+  @param This      A pointer to the EFI_HII_PROTOCOL instance.
 
-  @param KeyGuid  A pointer to the unique ID associated with a
-                  given keyboard layout.
+  @param KeyGuid   A pointer to the unique ID associated with a
+                   given keyboard layout.
 
+  @retval EFI_SUCCESS    The current keyboard layout was successfully set.
 
-  @retval EFI_SUCCESS   The current keyboard layout was
-                        successfully set.
-  
-  @retval EFI_NOT_FOUND   The referenced keyboard layout was not
-                          found, so action was taken.
+  @retval EFI_NOT_FOUND  The referenced keyboard layout was not
+                         found, so action was taken.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_SET_KEYBOARD_LAYOUT) (
+(EFIAPI *EFI_HII_SET_KEYBOARD_LAYOUT)(
   IN CONST  EFI_HII_DATABASE_PROTOCOL *This,
   IN CONST  EFI_GUID                  *KeyGuid
 );
@@ -480,72 +468,36 @@ EFI_STATUS
    
   Return the EFI handle associated with a package list.
   
-  @param This   A pointer to the EFI_HII_DATABASE_PROTOCOL
-                instance.
+  @param This               A pointer to the EFI_HII_PROTOCOL instance.
   
   @param PackageListHandle  An EFI_HII_HANDLE  that corresponds
                             to the desired package list in the
                             HIIdatabase.
   
-  @param DriverHandle   On return, contains the EFI_HANDLE which
-                        was registered with the package list in
-                        NewPackageList().
+  @param DriverHandle       On return, contains the EFI_HANDLE which
+                            was registered with the package list in
+                            NewPackageList().
   
-  @retval EFI_SUCCESS   The DriverHandle was returned
-                        successfully.
+  @retval EFI_SUCCESS            The DriverHandle was returned successfully.
   
-  @retval EFI_INVALID_PARAMETER   The PackageListHandle was not
-                                  valid.
+  @retval EFI_INVALID_PARAMETER  The PackageListHandle was not valid.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_DATABASE_GET_PACK_HANDLE) (
+(EFIAPI *EFI_HII_DATABASE_GET_PACK_HANDLE)(
   IN CONST  EFI_HII_DATABASE_PROTOCOL *This,
   IN        EFI_HII_HANDLE             PackageListHandle,
   OUT       EFI_HANDLE                *DriverHandle
 );
 
 /**
-   
-  @param NewPackageList Add a new package list to the HII
-                        database.
-
-  @param RemovePackageList  Remove a package list from the HII
-                            database.
-
-  @param UpdatePackageList  Update a package list in the HII
-                            database.
-
-  @param ListPackageLists   List the handles of the package
-                            lists within the HII database. 
-
-  @param ExportPackageLists Export package lists from the HII
-                            database.
-
-  @param RegisterPackageNotify  Register notification when
-                                packages of a certain type are
-                                installed.
-
-  @param UnregisterPackageNotify  Unregister notification of
-                                  packages.
-
-  @param FindKeyboardLayouts  Retrieves a list of the keyboard
-                              layouts in the system.
-
-  @param GetKeyboardLayout  Allows a program to extract the
-                            current keyboard layout. See the
-                            GetKeyboardLayout() function
-                            description.
-
-  @param SetKeyboardLayout  Changes the current keyboard layout.
-                            See the SetKeyboardLayout() function
-
-
+  @par Protocol Description:
+  Database manager for HII-related data structures.
 **/
 struct _EFI_HII_DATABASE_PROTOCOL {
-  EFI_HII_DATABASE_NEW_PACK                    NewPackageList;
-  EFI_HII_DATABASE_REMOVE_PACK                 RemovePackageList;
+  EFI_HII_DATABASE_NEW_PACK           NewPackageList;
+  EFI_HII_DATABASE_REMOVE_PACK        RemovePackageList;
   EFI_HII_DATABASE_UPDATE_PACK        UpdatePackageList;
   EFI_HII_DATABASE_LIST_PACKS         ListPackageLists;
   EFI_HII_DATABASE_EXPORT_PACKS       ExportPackageLists;

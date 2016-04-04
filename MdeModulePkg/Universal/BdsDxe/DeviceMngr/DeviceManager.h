@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#ifndef _DEVICE_MANAGER_H
-#define _DEVICE_MANAGER_H
+#ifndef _DEVICE_MANAGER_H_
+#define _DEVICE_MANAGER_H_
 
 #include "Bds.h"
 #include "FrontPage.h"
@@ -43,20 +43,20 @@ extern UINT8  DeviceManagerVfrBin[];
 typedef struct {
   UINTN                           Signature;
 
-  //
-  // HII relative handles
-  //
+  ///
+  /// HII relative handles
+  ///
   EFI_HII_HANDLE                  HiiHandle;
   EFI_HANDLE                      DriverHandle;
 
-  //
-  // Produced protocols
-  //
+  ///
+  /// Produced protocols
+  ///
   EFI_HII_CONFIG_ACCESS_PROTOCOL  ConfigAccess;
 
-  //
-  // Configuration data
-  //
+  ///
+  /// Configuration data
+  ///
   UINT8                           VideoBios;
 } DEVICE_MANAGER_CALLBACK_DATA;
 
@@ -66,12 +66,29 @@ typedef struct {
       ConfigAccess, \
       DEVICE_MANAGER_CALLBACK_DATA_SIGNATURE \
       )
-
 typedef struct {
   EFI_STRING_ID  StringId;
   UINT16         Class;
 } DEVICE_MANAGER_MENU_ITEM;
 
+/**
+  This function is invoked if user selected a iteractive opcode from Device Manager's
+  Formset. The decision by user is saved to gCallbackKey for later processing. If
+  user set VBIOS, the new value is saved to EFI variable.
+
+
+  @param This            Points to the EFI_HII_CONFIG_ACCESS_PROTOCOL.
+  @param Action          Specifies the type of action taken by the browser.
+  @param QuestionId      A unique value which is sent to the original exporting driver
+                         so that it can identify the type of data to expect.
+  @param Type            The type of value for the question.
+  @param Value           A pointer to the data being sent to the original exporting driver.
+  @param ActionRequest   On return, points to the action requested by the callback function.
+
+  @retval  EFI_SUCCESS           The callback successfully handled the action.
+  @retval  EFI_INVALID_PARAMETER The setup browser call this function with invalid parameters.
+
+**/
 EFI_STATUS
 EFIAPI
 DeviceManagerCallback (
@@ -81,19 +98,37 @@ DeviceManagerCallback (
   IN  UINT8                                  Type,
   IN  EFI_IFR_TYPE_VALUE                     *Value,
   OUT EFI_BROWSER_ACTION_REQUEST             *ActionRequest
-  )
-;
+  );
 
+/**
+
+  This function registers HII packages to HII database.
+
+  @retval EFI_SUCCESS This function complete successfully.
+  @return Other value if failed to register HII packages.
+
+**/
 EFI_STATUS
 InitializeDeviceManager (
   VOID
-  )
-;
+  );
 
+/**
+
+  Call the browser and display the device manager to allow user
+  to configure the platform.
+
+  This function create the dynamic content for device manager. It includes
+  section header for all class of devices, one-of opcode to set VBIOS.
+  
+  @retval  EFI_SUCCESS             Operation is successful.
+  @retval  Other values if failed to clean up the dynamic content from HII
+           database.
+
+**/
 EFI_STATUS
 CallDeviceManager (
   VOID
-  )
-;
+  );
 
 #endif

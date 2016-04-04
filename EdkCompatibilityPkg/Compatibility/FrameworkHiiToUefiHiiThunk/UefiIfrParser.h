@@ -19,10 +19,6 @@
 #include <PiDxe.h>
 
 #include <Protocol/Print.h>
-//#include <Protocol/SimpleTextOut.h>
-//#include <Protocol/SimpleTextIn.h>
-//#include <Protocol/FormBrowser2.h>
-//#include <Protocol/DevicePath.h>
 #include <Protocol/HiiConfigAccess.h>
 #include <Protocol/HiiConfigRouting.h>
 #include <Protocol/HiiDatabase.h>
@@ -45,6 +41,8 @@
 
 #define FORM_INCONSISTENT_VALIDATION         0
 #define FORM_NO_SUBMIT_VALIDATION            1
+
+extern EFI_GUID  gTianoHiiIfrGuid;
 
 
 typedef struct {
@@ -297,20 +295,17 @@ EvaluateExpression (
   IN FORM_BROWSER_FORMSET  *FormSet,
   IN FORM_BROWSER_FORM     *Form,
   IN OUT FORM_EXPRESSION   *Expression
-  )
-;
+  );
 
 EFI_STATUS
 ParseOpCodes (
   IN FORM_BROWSER_FORMSET              *FormSet
-  )
-;
+  );
 
 VOID
 DestroyFormSet (
   IN OUT FORM_BROWSER_FORMSET  *FormSet
-  )
-;
+  );
 
 #endif
 

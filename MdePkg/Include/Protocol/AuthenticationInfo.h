@@ -3,7 +3,7 @@
   This protocol is used on any device handle to obtain authentication information 
   associated with the physical or logical device.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -41,9 +41,9 @@ typedef struct {
 
 typedef struct {
   AUTH_NODE_HEADER Header;
-  EFI_IPv6_ADDRESS RadiusIpAddr;             // IPv4 or IPv6 address
+  EFI_IPv6_ADDRESS RadiusIpAddr;             ///< IPv4 or IPv6 address
   UINT16           Reserved;
-  EFI_IPv6_ADDRESS NasIpAddr;                // IPv4 or IPv6 address
+  EFI_IPv6_ADDRESS NasIpAddr;                ///< IPv4 or IPv6 address
   UINT16           NasSecretLength; 
   UINT8            *NasSecret;      
   UINT16           ChapSecretLength;
@@ -68,9 +68,9 @@ typedef struct {
 /**
   Retrieves the Authentication information associated with a particular controller handle.
 
-  @param  This                   Pointer to the EFI_AUTHENTICATION_INFO_PROTOCOL
-  @param  ControllerHandle       Handle to the Controller
-  @param  Buffer                 Pointer to the authentication information.
+  @param  This                  Pointer to the EFI_AUTHENTICATION_INFO_PROTOCOL
+  @param  ControllerHandle      Handle to the Controller
+  @param  Buffer                Pointer to the authentication information.
 
   @retval EFI_SUCCESS           Successfully retrieved Authentication information for the given ControllerHandle
   @retval EFI_INVALID_PARAMETER No matching Authentication information found for the given ControllerHandle
@@ -80,19 +80,18 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_AUTHENTICATION_PROTOCOL_INFO_GET) (
+(EFIAPI *EFI_AUTHENTICATION_PROTOCOL_INFO_GET)(
   IN  EFI_AUTHENTICATION_INFO_PROTOCOL *This,
   IN  EFI_HANDLE                       *ControllerHandle,
   OUT VOID                             *Buffer
-  )
-;  
+  );  
 
 /**
   Set the Authentication information for a given controller handle.
 
-  @param  This                  Pointer to the EFI_AUTHENTICATION_INFO_PROTOCOL
-  @param  ControllerHandle      Handle to the Controller
-  @param  Buffer                Pointer to the authentication information.
+  @param  This                 Pointer to the EFI_AUTHENTICATION_INFO_PROTOCOL
+  @param  ControllerHandle     Handle to the Controller
+  @param  Buffer               Pointer to the authentication information.
                                 
   @retval EFI_SUCCESS          Successfully set Authentication information for the given ControllerHandle
   @retval EFI_UNSUPPORTED      If the platform policies do not allow setting of the Authentication
@@ -104,13 +103,17 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_AUTHENTICATION_PROTOCOL_INFO_SET) (
+(EFIAPI *EFI_AUTHENTICATION_PROTOCOL_INFO_SET)(
   IN EFI_AUTHENTICATION_INFO_PROTOCOL  *This,
   IN EFI_HANDLE                        *ControllerHandle,
   IN VOID                              *Buffer
-  )
-;  
+  );  
 
+/**
+  @par Protocol Description:
+  This protocol is used on any device handle to obtain authentication 
+  information associated with the physical or logical device.
+**/  
 struct _EFI_AUTHENTICATION_INFO_PROTOCOL {
   EFI_AUTHENTICATION_PROTOCOL_INFO_GET Get;
   EFI_AUTHENTICATION_PROTOCOL_INFO_SET Set;

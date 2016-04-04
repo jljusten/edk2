@@ -12,11 +12,18 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
 
 
+
+/**
+  Reads the current value of ES Data Segment Register (ES).
+
+  Reads and returns the current value of ES. This function is only available on
+  IA-32 and X64.
+
+  @return The current value of ES.
+
+**/
 UINT16
 EFIAPI
 AsmReadEs (

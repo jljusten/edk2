@@ -26,7 +26,6 @@ Revision History:
 #include "EfiLdrHandoff.h"
 
 #include <Protocol/LoadedImage.h>
-#include <Protocol/EdkDecompress.h>
 #include <IndustryStandard/PeImage.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -88,7 +87,6 @@ typedef
 VOID
 (* EFI_MAIN_ENTRYPOINT) (
     IN EFILDRHANDOFF  *Handoff
-    )
-;
+    );
 
 #endif //_DUET_EFI_LOADER_H_

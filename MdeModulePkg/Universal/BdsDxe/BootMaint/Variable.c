@@ -14,25 +14,20 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "BootMaint.h"
 
-EFI_STATUS
-Var_DelBootOption (
-  VOID
-  )
-/*++
-
-Routine Description:
+/**
   Delete Boot Option that represent a Deleted state in BootOptionMenu.
   After deleting this boot option, call Var_ChangeBootOrder to
   make sure BootOrder is in valid state.
 
-Arguments:
-  LoadOption -- Pointer to the boot option that to be deleted
+  @retval EFI_SUCCESS   If all boot load option EFI Variables corresponding to  
+                        BM_LOAD_CONTEXT marked for deletion is deleted
+  @return Others        If failed to update the "BootOrder" variable after deletion. 
 
-Returns:
-  EFI_SUCCESS
-  Others
-
---*/
+**/
+EFI_STATUS
+Var_DelBootOption (
+  VOID
+  )
 {
   BM_MENU_ENTRY   *NewMenuEntry;
   BM_LOAD_CONTEXT *NewLoadContext;
@@ -83,25 +78,24 @@ Returns:
   return Status;
 }
 
-EFI_STATUS
-Var_ChangeBootOrder (
-  VOID
-  )
-/*++
-
-Routine Description:
+/**
   After any operation on Boot####, there will be a discrepancy in BootOrder.
   Since some are missing but in BootOrder, while some are present but are
   not reflected by BootOrder. Then a function rebuild BootOrder from
   scratch by content from BootOptionMenu is needed.
 
-Arguments:
 
-Returns:
-  EFI_SUCCESS
-  Others
+  
 
---*/
+  @retval  EFI_SUCCESS  The boot order is updated successfully.
+  @return               EFI_STATUS other than EFI_SUCCESS if failed to
+                        Set the "BootOrder" EFI Variable.
+
+**/
+EFI_STATUS
+Var_ChangeBootOrder (
+  VOID
+  )
 {
 
   EFI_STATUS    Status;
@@ -126,7 +120,7 @@ Returns:
   //
   // If exists, delete it to hold new BootOrder
   //
-  if (BootOrderList) {
+  if (BootOrderList != NULL) {
     EfiLibDeleteVariable (L"BootOrder", &gEfiGlobalVariableGuid);
     SafeFreePool (BootOrderList);
     BootOrderList = NULL;
@@ -143,7 +137,7 @@ Returns:
   BootOrderListSize = BootOptionMenu.MenuNumber;
 
   if (BootOrderListSize > 0) {
-    BootOrderList = EfiAllocateZeroPool (BootOrderListSize * sizeof (UINT16));
+    BootOrderList = AllocateZeroPool (BootOrderListSize * sizeof (UINT16));
     ASSERT (BootOrderList != NULL);
     BootOrderListPtr = BootOrderList;
 
@@ -177,25 +171,20 @@ Returns:
   return EFI_SUCCESS;
 }
 
-EFI_STATUS
-Var_DelDriverOption (
-  VOID
-  )
-/*++
-
-Routine Description:
+/**
   Delete Load Option that represent a Deleted state in BootOptionMenu.
   After deleting this Driver option, call Var_ChangeDriverOrder to
   make sure DriverOrder is in valid state.
 
-Arguments:
-  LoadOption -- Pointer to the Driver option that to be deleted
+  @retval EFI_SUCCESS Load Option is successfully updated.
+  @return Other value than EFI_SUCCESS if failed to update "Driver Order" EFI
+          Variable.
 
-Returns:
-  EFI_SUCCESS
-  Others
-
---*/
+**/
+EFI_STATUS
+Var_DelDriverOption (
+  VOID
+  )
 {
   BM_MENU_ENTRY   *NewMenuEntry;
   BM_LOAD_CONTEXT *NewLoadContext;
@@ -238,26 +227,22 @@ Returns:
   return Status;
 }
 
-EFI_STATUS
-Var_ChangeDriverOrder (
-  VOID
-  )
-/*++
-
-Routine Description:
+/**
   After any operation on Driver####, there will be a discrepancy in
   DriverOrder. Since some are missing but in DriverOrder, while some
   are present but are not reflected by DriverOrder. Then a function
   rebuild DriverOrder from scratch by content from DriverOptionMenu is
   needed.
 
-Arguments:
+  @retval  EFI_SUCCESS  The driver order is updated successfully.
+  @return               EFI_STATUS other than EFI_SUCCESS if failed to
+                                 Set the "DriverOrder" EFI Variable.
 
-Returns:
-  EFI_SUCCESS
-  Others
-
---*/
+**/
+EFI_STATUS
+Var_ChangeDriverOrder (
+  VOID
+  )
 {
   EFI_STATUS    Status;
   BM_MENU_ENTRY *NewMenuEntry;
@@ -281,7 +266,7 @@ Returns:
   //
   // If exists, delete it to hold new DriverOrder
   //
-  if (DriverOrderList) {
+  if (DriverOrderList != NULL) {
     EfiLibDeleteVariable (L"DriverOrder", &gEfiGlobalVariableGuid);
     SafeFreePool (DriverOrderList);
     DriverOrderList = NULL;
@@ -290,7 +275,7 @@ Returns:
   DriverOrderListSize = DriverOptionMenu.MenuNumber;
 
   if (DriverOrderListSize > 0) {
-    DriverOrderList = EfiAllocateZeroPool (DriverOrderListSize * sizeof (UINT16));
+    DriverOrderList = AllocateZeroPool (DriverOrderListSize * sizeof (UINT16));
     ASSERT (DriverOrderList != NULL);
     DriverOrderListPtr = DriverOrderList;
 
@@ -324,6 +309,12 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Update the device path of "ConOut", "ConIn" and "ErrOut" 
+  based on the new BaudRate, Data Bits, parity and Stop Bits
+  set.
+
+**/
 VOID
 Var_UpdateAllConsoleOption (
   VOID
@@ -337,7 +328,7 @@ Var_UpdateAllConsoleOption (
   OutDevicePath = EfiLibGetVariable (L"ConOut", &gEfiGlobalVariableGuid);
   InpDevicePath = EfiLibGetVariable (L"ConIn", &gEfiGlobalVariableGuid);
   ErrDevicePath = EfiLibGetVariable (L"ErrOut", &gEfiGlobalVariableGuid);
-  if (OutDevicePath) {
+  if (OutDevicePath != NULL) {
     ChangeVariableDevicePath (OutDevicePath);
     Status = gRT->SetVariable (
                     L"ConOut",
@@ -349,7 +340,7 @@ Var_UpdateAllConsoleOption (
     ASSERT (!EFI_ERROR (Status));
   }
 
-  if (InpDevicePath) {
+  if (InpDevicePath != NULL) {
     ChangeVariableDevicePath (InpDevicePath);
     Status = gRT->SetVariable (
                     L"ConIn",
@@ -361,7 +352,7 @@ Var_UpdateAllConsoleOption (
     ASSERT (!EFI_ERROR (Status));
   }
 
-  if (ErrDevicePath) {
+  if (ErrDevicePath != NULL) {
     ChangeVariableDevicePath (ErrDevicePath);
     Status = gRT->SetVariable (
                     L"ErrOut",
@@ -374,6 +365,29 @@ Var_UpdateAllConsoleOption (
   }
 }
 
+/**
+  This function delete and build multi-instance device path for
+  specified type of console device.
+
+  This function clear the EFI variable defined by ConsoleName and
+  gEfiGlobalVariableGuid. It then build the multi-instance device
+  path by appending the device path of the Console (In/Out/Err) instance 
+  in ConsoleMenu. Then it scan all corresponding console device by
+  scanning Terminal (built from device supporting Serial I/O instances)
+  devices in TerminalMenu. At last, it save a EFI variable specifed
+  by ConsoleName and gEfiGlobalVariableGuid.
+
+  @param ConsoleName     The name for the console device type. They are
+                         usually "ConIn", "ConOut" and "ErrOut".
+  @param ConsoleMenu     The console memu which is a list of console devices.
+  @param UpdatePageId    The flag specifying which type of console device
+                         to be processed.
+
+  @retval EFI_SUCCESS    The function complete successfully.
+  @return                The EFI variable can be saved. See gRT->SetVariable 
+                         for detail return information.
+
+**/
 EFI_STATUS
 Var_UpdateConsoleOption (
   IN UINT16                     *ConsoleName,
@@ -398,13 +412,10 @@ Var_UpdateConsoleOption (
   };
 
   //
-  // First add all console input device to it from console input menu
+  // First add all console input device from console input menu
   //
   for (Index = 0; Index < ConsoleMenu->MenuNumber; Index++) {
     NewMenuEntry = BOpt_GetMenuEntry (ConsoleMenu, Index);
-    if (NULL == NewMenuEntry) {
-      return EFI_NOT_FOUND;
-    }
 
     NewConsoleContext = (BM_CONSOLE_CONTEXT *) NewMenuEntry->VariableContext;
     if (NewConsoleContext->IsActive) {
@@ -417,20 +428,17 @@ Var_UpdateConsoleOption (
 
   for (Index = 0; Index < TerminalMenu.MenuNumber; Index++) {
     NewMenuEntry = BOpt_GetMenuEntry (&TerminalMenu, Index);
-    if (NULL == NewMenuEntry) {
-      return EFI_NOT_FOUND;
-    }
 
     NewTerminalContext = (BM_TERMINAL_CONTEXT *) NewMenuEntry->VariableContext;
-    if ((NewTerminalContext->IsConIn && (UpdatePageId == FORM_CON_IN_ID)) ||
-        (NewTerminalContext->IsConOut && (UpdatePageId == FORM_CON_OUT_ID)) ||
-        (NewTerminalContext->IsStdErr && (UpdatePageId == FORM_CON_ERR_ID))
+    if (((NewTerminalContext->IsConIn != 0) && (UpdatePageId == FORM_CON_IN_ID)) ||
+        ((NewTerminalContext->IsConOut != 0)  && (UpdatePageId == FORM_CON_OUT_ID)) ||
+        ((NewTerminalContext->IsStdErr  != 0) && (UpdatePageId == FORM_CON_ERR_ID))
         ) {
       Vendor.Header.Type    = MESSAGING_DEVICE_PATH;
       Vendor.Header.SubType = MSG_VENDOR_DP;
       CopyMem (
         &Vendor.Guid,
-        &Guid[NewTerminalContext->TerminalType],
+        &TerminalTypeGuid[NewTerminalContext->TerminalType],
         sizeof (EFI_GUID)
         );
       SetDevicePathNodeLength (&Vendor.Header, sizeof (VENDOR_DEVICE_PATH));
@@ -447,7 +455,7 @@ Var_UpdateConsoleOption (
     }
   }
 
-  if (ConDevicePath) {
+  if (ConDevicePath != NULL) {
     Status = gRT->SetVariable (
                     ConsoleName,
                     &gEfiGlobalVariableGuid,
@@ -464,6 +472,14 @@ Var_UpdateConsoleOption (
 
 }
 
+/**
+  This function delete and build multi-instance device path ConIn
+  console device.
+
+  @retval EFI_SUCCESS    The function complete successfully.
+  @return                The EFI variable can be saved. See gRT->SetVariable 
+                         for detail return information.
+**/
 EFI_STATUS
 Var_UpdateConsoleInpOption (
   VOID
@@ -472,6 +488,14 @@ Var_UpdateConsoleInpOption (
   return Var_UpdateConsoleOption (L"ConIn", &ConsoleInpMenu, FORM_CON_IN_ID);
 }
 
+/**
+  This function delete and build multi-instance device path ConOut
+  console device.
+
+  @retval EFI_SUCCESS    The function complete successfully.
+  @return                The EFI variable can be saved. See gRT->SetVariable 
+                         for detail return information.
+**/
 EFI_STATUS
 Var_UpdateConsoleOutOption (
   VOID
@@ -480,6 +504,14 @@ Var_UpdateConsoleOutOption (
   return Var_UpdateConsoleOption (L"ConOut", &ConsoleOutMenu, FORM_CON_OUT_ID);
 }
 
+/**
+  This function delete and build multi-instance device path ErrOut
+  console device.
+
+  @retval EFI_SUCCESS    The function complete successfully.
+  @return                The EFI variable can be saved. See gRT->SetVariable 
+                         for detail return information.
+**/
 EFI_STATUS
 Var_UpdateErrorOutOption (
   VOID
@@ -488,6 +520,22 @@ Var_UpdateErrorOutOption (
   return Var_UpdateConsoleOption (L"ErrOut", &ConsoleErrMenu, FORM_CON_ERR_ID);
 }
 
+/**
+  This function create a currently loaded Drive Option from 
+  the BMM. It then appends this Driver Option to the end of 
+  the "DriverOrder" list. It append this Driver Opotion to the end
+  of DriverOptionMenu.
+
+  @param CallbackData    The BMM context data.
+  @param HiiHandle       The HII handle associated with the BMM formset.
+  @param DescriptionData The description of this driver option.
+  @param OptionalData    The optional load option.
+  @param ForceReconnect  If to force reconnect.
+
+  @retval EFI_OUT_OF_RESOURCES If not enought memory to complete the operation.
+  @retval EFI_SUCCESS          If function completes successfully.
+
+**/
 EFI_STATUS
 Var_UpdateDriverOption (
   IN  BMM_CALLBACK_DATA         *CallbackData,
@@ -532,7 +580,7 @@ Var_UpdateDriverOption (
     BufferSize += StrSize (OptionalData);
   }
 
-  Buffer = EfiAllocateZeroPool (BufferSize);
+  Buffer = AllocateZeroPool (BufferSize);
   if (NULL == Buffer) {
     return EFI_OUT_OF_RESOURCES;
   }
@@ -563,7 +611,7 @@ Var_UpdateDriverOption (
     StrSize (DescriptionData)
     );
 
-  NewLoadContext->Description = EfiAllocateZeroPool (StrSize (DescriptionData));
+  NewLoadContext->Description = AllocateZeroPool (StrSize (DescriptionData));
   ASSERT (NewLoadContext->Description != NULL);
   NewMenuEntry->DisplayString = NewLoadContext->Description;
   CopyMem (
@@ -579,7 +627,7 @@ Var_UpdateDriverOption (
     GetDevicePathSize (CallbackData->LoadContext->FilePathList)
     );
 
-  NewLoadContext->FilePathList = EfiAllocateZeroPool (GetDevicePathSize (CallbackData->LoadContext->FilePathList));
+  NewLoadContext->FilePathList = AllocateZeroPool (GetDevicePathSize (CallbackData->LoadContext->FilePathList));
   ASSERT (NewLoadContext->FilePathList != NULL);
 
   CopyMem (
@@ -625,7 +673,7 @@ Var_UpdateDriverOption (
                       &gEfiGlobalVariableGuid,
                       &DriverOrderListSize
                       );
-  NewDriverOrderList = EfiAllocateZeroPool (DriverOrderListSize + sizeof (UINT16));
+  NewDriverOrderList = AllocateZeroPool (DriverOrderListSize + sizeof (UINT16));
   ASSERT (NewDriverOrderList != NULL);
   CopyMem (NewDriverOrderList, DriverOrderList, DriverOrderListSize);
   NewDriverOrderList[DriverOrderListSize / sizeof (UINT16)] = Index;
@@ -653,6 +701,19 @@ Var_UpdateDriverOption (
   return EFI_SUCCESS;
 }
 
+/**
+  This function create a currently loaded Boot Option from 
+  the BMM. It then appends this Boot Option to the end of 
+  the "BootOrder" list. It also append this Boot Opotion to the end
+  of BootOptionMenu.
+
+  @param CallbackData    The BMM context data.
+  @param NvRamMap        The file explorer formset internal state.
+
+  @retval EFI_OUT_OF_RESOURCES If not enought memory to complete the operation.
+  @retval EFI_SUCCESS          If function completes successfully.
+
+**/
 EFI_STATUS
 Var_UpdateBootOption (
   IN  BMM_CALLBACK_DATA                   *CallbackData,
@@ -689,7 +750,7 @@ Var_UpdateBootOption (
     BufferSize += StrSize (NvRamMap->OptionalData);
   }
 
-  Buffer = EfiAllocateZeroPool (BufferSize);
+  Buffer = AllocateZeroPool (BufferSize);
   if (NULL == Buffer) {
     return EFI_OUT_OF_RESOURCES;
   }
@@ -720,7 +781,7 @@ Var_UpdateBootOption (
     StrSize (NvRamMap->DescriptionData)
     );
 
-  NewLoadContext->Description = EfiAllocateZeroPool (StrSize (NvRamMap->DescriptionData));
+  NewLoadContext->Description = AllocateZeroPool (StrSize (NvRamMap->DescriptionData));
   ASSERT (NewLoadContext->Description != NULL);
 
   NewMenuEntry->DisplayString = NewLoadContext->Description;
@@ -737,7 +798,7 @@ Var_UpdateBootOption (
     GetDevicePathSize (CallbackData->LoadContext->FilePathList)
     );
 
-  NewLoadContext->FilePathList = EfiAllocateZeroPool (GetDevicePathSize (CallbackData->LoadContext->FilePathList));
+  NewLoadContext->FilePathList = AllocateZeroPool (GetDevicePathSize (CallbackData->LoadContext->FilePathList));
   ASSERT (NewLoadContext->FilePathList != NULL);
 
   CopyMem (
@@ -781,7 +842,7 @@ Var_UpdateBootOption (
                     &BootOrderListSize
                     );
 
-  NewBootOrderList = EfiAllocateZeroPool (BootOrderListSize + sizeof (UINT16));
+  NewBootOrderList = AllocateZeroPool (BootOrderListSize + sizeof (UINT16));
   ASSERT (NewBootOrderList != NULL);
   CopyMem (NewBootOrderList, BootOrderList, BootOrderListSize);
   NewBootOrderList[BootOrderListSize / sizeof (UINT16)] = Index;
@@ -811,6 +872,19 @@ Var_UpdateBootOption (
   return EFI_SUCCESS;
 }
 
+/**
+  This function update the "BootNext" EFI Variable. If there is 
+  no "BootNex" specified in BMM, this EFI Variable is deleted.
+  It also update the BMM context data specified the "BootNext"
+  vaule.
+
+  @param CallbackData    The BMM context data.
+
+  @retval EFI_SUCCESS    The function complete successfully.
+  @return                The EFI variable can be saved. See gRT->SetVariable 
+                         for detail return information.
+
+**/
 EFI_STATUS
 Var_UpdateBootNext (
   IN BMM_CALLBACK_DATA            *CallbackData
@@ -826,9 +900,7 @@ Var_UpdateBootNext (
   CurrentFakeNVMap  = &CallbackData->BmmFakeNvData;
   for (Index = 0; Index < BootOptionMenu.MenuNumber; Index++) {
     NewMenuEntry = BOpt_GetMenuEntry (&BootOptionMenu, Index);
-    if (NULL == NewMenuEntry) {
-      return EFI_NOT_FOUND;
-    }
+    ASSERT (NULL != NewMenuEntry);
 
     NewLoadContext              = (BM_LOAD_CONTEXT *) NewMenuEntry->VariableContext;
     NewLoadContext->IsBootNext  = FALSE;
@@ -843,9 +915,7 @@ Var_UpdateBootNext (
                   &BootOptionMenu,
                   CurrentFakeNVMap->BootNext
                   );
-  if (NULL == NewMenuEntry) {
-    return EFI_NOT_FOUND;
-  }
+  ASSERT (NewMenuEntry != NULL);
 
   NewLoadContext = (BM_LOAD_CONTEXT *) NewMenuEntry->VariableContext;
   Status = gRT->SetVariable (
@@ -860,6 +930,19 @@ Var_UpdateBootNext (
   return Status;
 }
 
+/**
+  This function update the "BootOrder" EFI Variable based on
+  BMM Formset's NV map. It then refresh BootOptionMenu
+  with the new "BootOrder" list.
+
+  @param CallbackData    The BMM context data.
+
+  @retval EFI_SUCCESS    The function complete successfully.
+  @retval EFI_SUCCESS    Not enough memory to complete the function.
+  @return                The EFI variable can be saved. See gRT->SetVariable 
+                         for detail return information.
+
+**/
 EFI_STATUS
 Var_UpdateBootOrder (
   IN BMM_CALLBACK_DATA            *CallbackData
@@ -870,7 +953,6 @@ Var_UpdateBootOrder (
   UINT16      *BootOrderList;
   UINT16      *NewBootOrderList;
   UINTN       BootOrderListSize;
-  UINT8       *Map;
 
   BootOrderList     = NULL;
   BootOrderListSize = 0;
@@ -884,19 +966,15 @@ Var_UpdateBootOrder (
                     &BootOrderListSize
                     );
 
-  NewBootOrderList = EfiAllocateZeroPool (BootOrderListSize);
-  if (!NewBootOrderList) {
+  NewBootOrderList = AllocateZeroPool (BootOrderListSize);
+  if (NewBootOrderList == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
-  Map = EfiAllocateZeroPool (BootOrderListSize / sizeof (UINT16));
-  if (!Map) {
-    return EFI_OUT_OF_RESOURCES;
-  }
   //
   // If exists, delete it to hold new BootOrder
   //
-  if (BootOrderList) {
+  if (BootOrderList != NULL) {
     EfiLibDeleteVariable (L"BootOrder", &gEfiGlobalVariableGuid);
   }
 
@@ -913,7 +991,6 @@ Var_UpdateBootOrder (
                   );
   SafeFreePool (BootOrderList);
   SafeFreePool (NewBootOrderList);
-  SafeFreePool (Map);
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -925,6 +1002,19 @@ Var_UpdateBootOrder (
 
 }
 
+/**
+  This function update the "DriverOrder" EFI Variable based on
+  BMM Formset's NV map. It then refresh DriverOptionMenu
+  with the new "DriverOrder" list.
+
+  @param CallbackData    The BMM context data.
+
+  @retval EFI_SUCCESS    The function complete successfully.
+  @retval EFI_SUCCESS    Not enough memory to complete the function.
+  @return                The EFI variable can be saved. See gRT->SetVariable 
+                         for detail return information.
+
+**/
 EFI_STATUS
 Var_UpdateDriverOrder (
   IN BMM_CALLBACK_DATA            *CallbackData
@@ -948,15 +1038,15 @@ Var_UpdateDriverOrder (
                       &DriverOrderListSize
                       );
 
-  NewDriverOrderList = EfiAllocateZeroPool (DriverOrderListSize);
+  NewDriverOrderList = AllocateZeroPool (DriverOrderListSize);
 
-  if (!NewDriverOrderList) {
+  if (NewDriverOrderList == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
   //
   // If exists, delete it to hold new DriverOrder
   //
-  if (DriverOrderList) {
+  if (DriverOrderList != NULL) {
     EfiLibDeleteVariable (L"DriverOrder", &gEfiGlobalVariableGuid);
   }
 
@@ -982,6 +1072,17 @@ Var_UpdateDriverOrder (
   return EFI_SUCCESS;
 }
 
+/**
+  Update the legacy BBS boot option. L"LegacyDevOrder" and EfiLegacyDevOrderGuid EFI Variable
+  is udpated with the new Legacy Boot order. The EFI Variable of "Boot####" and gEfiGlobalVariableGuid
+  is also updated.
+
+  @param CallbackData    The context data for BMM.
+
+  @return EFI_SUCCESS    The function completed successfully.
+  @retval EFI_NOT_FOUND  If L"LegacyDevOrder" and EfiLegacyDevOrderGuid EFI Variable can be found.
+
+**/
 EFI_STATUS
 Var_UpdateBBSOption (
   IN BMM_CALLBACK_DATA            *CallbackData
@@ -1066,7 +1167,7 @@ Var_UpdateBBSOption (
   // Update the Variable "LegacyDevOrder"
   //
   VarData = (UINT8 *) BdsLibGetVariableAndSize (
-                        VarLegacyDevOrder,
+                        VAR_LEGACY_DEV_ORDER,
                         &EfiLegacyDevOrderGuid,
                         &VarSize
                         );
@@ -1093,7 +1194,7 @@ Var_UpdateBBSOption (
     return EFI_NOT_FOUND;
   }
 
-  NewOrder = (UINT16 *) EfiAllocateZeroPool (DevOrder->Length - sizeof (UINT16));
+  NewOrder = (UINT16 *) AllocateZeroPool (DevOrder->Length - sizeof (UINT16));
   if (NULL == NewOrder) {
     SafeFreePool (VarData);
     return EFI_OUT_OF_RESOURCES;
@@ -1117,7 +1218,7 @@ Var_UpdateBBSOption (
     Tmp &= 0xFF;
     Pos = Tmp / 8;
     Bit = 7 - (Tmp % 8);
-    if (DisMap[Pos] & (1 << Bit)) {
+    if ((DisMap[Pos] & (1 << Bit)) != 0) {
       NewOrder[Index] = (UINT16) (0xFF00 | Tmp);
       Index++;
     }
@@ -1131,7 +1232,7 @@ Var_UpdateBBSOption (
   SafeFreePool (NewOrder);
 
   Status = gRT->SetVariable (
-                  VarLegacyDevOrder,
+                  VAR_LEGACY_DEV_ORDER,
                   &EfiLegacyDevOrderGuid,
                   VAR_FLAG,
                   VarSize,
@@ -1152,7 +1253,7 @@ Var_UpdateBBSOption (
       StrSize (LegacyDeviceContext->Description)
       );
 
-    UnicodeToAscii (DescString, StrSize (DescString), DescAsciiString);
+	UnicodeStrToAsciiStr((CONST CHAR16*)&DescString, (CHAR8 *)&DescAsciiString);
 
     NewOptionSize = sizeof (UINT32) + sizeof (UINT16) + StrSize (DescString) +
                     sizeof (BBS_BBS_DEVICE_PATH);
@@ -1177,7 +1278,7 @@ Var_UpdateBBSOption (
     Ptr += sizeof (UINT16);
     Ptr += StrSize ((CHAR16 *) Ptr);
 
-    NewOptionPtr = EfiAllocateZeroPool (NewOptionSize);
+    NewOptionPtr = AllocateZeroPool (NewOptionSize);
     if (NULL == NewOptionPtr) {
       return EFI_OUT_OF_RESOURCES;
     }
@@ -1278,6 +1379,15 @@ Var_UpdateBBSOption (
   return Status;
 }
 
+/**
+  Update the Text Mode of Console.
+
+  @param CallbackData  The context data for BMM.
+
+  @retval EFI_SUCCSS If the Text Mode of Console is updated.
+  @return Other value if the Text Mode of Console is not updated.
+
+**/
 EFI_STATUS
 Var_UpdateConMode (
   IN BMM_CALLBACK_DATA            *CallbackData
@@ -1296,7 +1406,7 @@ Var_UpdateConMode (
   }
 
   Status = gRT->SetVariable (
-                  VarConOutMode,
+                  VAR_CON_OUT_MODE,
                   &gEfiGenericPlatformVariableGuid,
                   EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_NON_VOLATILE,
                   sizeof (CONSOLE_OUT_MODE),

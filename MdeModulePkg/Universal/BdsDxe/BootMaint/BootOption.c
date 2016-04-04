@@ -19,31 +19,26 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "BootMaint.h"
 #include "BBSsupport.h"
 
+/**
+  Create a menu entry give a Menu type.
+
+  @param MenuType        The Menu type to be created.
+
+  @retval NULL           If failed to create the menu.
+  @return                The menu.
+
+**/
 BM_MENU_ENTRY *
 BOpt_CreateMenuEntry (
   UINTN           MenuType
   )
-/*++
-
-Routine Description
-  Create Menu Entry for future use, make all types together
-  in order to reduce code size
-
-Arguments:
-  MenuType            Use this parameter to identify current
-                      Menu type
-
-Returns:
-  NULL                Cannot allocate memory for current menu
-                      entry
-  Others              A valid pointer pointing to the allocated
-                      memory pool for current menu entry
-
---*/
 {
   BM_MENU_ENTRY *MenuEntry;
   UINTN         ContextSize;
 
+  //
+  // Get context size according to menu type
+  //
   switch (MenuType) {
   case BM_LOAD_CONTEXT_SELECT:
     ContextSize = sizeof (BM_LOAD_CONTEXT);
@@ -72,23 +67,24 @@ Returns:
   default:
     ContextSize = 0;
     break;
-
   }
 
-  if (0 == ContextSize) {
+  if (ContextSize == 0) {
     return NULL;
   }
 
-  MenuEntry = EfiAllocateZeroPool (sizeof (BM_MENU_ENTRY));
+  //
+  // Create new menu entry
+  //
+  MenuEntry = AllocateZeroPool (sizeof (BM_MENU_ENTRY));
   if (NULL == MenuEntry) {
     return MenuEntry;
   }
 
-  MenuEntry->VariableContext = EfiAllocateZeroPool (ContextSize);
+  MenuEntry->VariableContext = AllocateZeroPool (ContextSize);
   if (NULL == MenuEntry->VariableContext) {
     SafeFreePool (MenuEntry);
-    MenuEntry = NULL;
-    return MenuEntry;
+    return NULL;
   }
 
   MenuEntry->Signature        = BM_MENU_ENTRY_SIGNATURE;
@@ -96,21 +92,16 @@ Returns:
   return MenuEntry;
 }
 
+/**
+  Free up all resource allocated for a BM_MENU_ENTRY.
+
+  @param MenuEntry   A pointer to BM_MENU_ENTRY.
+
+**/
 VOID
 BOpt_DestroyMenuEntry (
   BM_MENU_ENTRY         *MenuEntry
   )
-/*++
-  Routine Description :
-    Destroy the menu entry passed in
-
-  Arguments :
-    The menu entry need to be destroyed
-
-  Returns :
-    None
-
---*/
 {
   BM_LOAD_CONTEXT           *LoadContext;
   BM_FILE_CONTEXT           *FileContext;
@@ -180,33 +171,29 @@ BOpt_DestroyMenuEntry (
   SafeFreePool (MenuEntry);
 }
 
+/**
+  Get the Menu Entry from the list in Menu Entry List.
+
+  If MenuNumber is great or equal to the number of Menu
+  Entry in the list, then ASSERT.
+
+  @param MenuOption      The Menu Entry List to read the menu entry.
+  @param MenuNumber      The index of Menu Entry.
+
+  @return The Menu Entry.
+
+**/
 BM_MENU_ENTRY *
 BOpt_GetMenuEntry (
   BM_MENU_OPTION      *MenuOption,
   UINTN               MenuNumber
   )
-/*++
-  Rountine Description :
-    Use this routine to get one particular menu entry in specified
-    menu
-
-  Arguments :
-    MenuOption        The menu that we will search
-
-    MenuNumber        The menunubmer that we want
-
-  Returns :
-    The desired menu entry
-
---*/
 {
   BM_MENU_ENTRY   *NewMenuEntry;
   UINTN           Index;
   LIST_ENTRY      *List;
 
-  if (MenuNumber >= MenuOption->MenuNumber) {
-    return NULL;
-  }
+  ASSERT (MenuNumber < MenuOption->MenuNumber);
 
   List = MenuOption->Head.ForwardLink;
   for (Index = 0; Index < MenuNumber; Index++) {
@@ -218,29 +205,22 @@ BOpt_GetMenuEntry (
   return NewMenuEntry;
 }
 
+/**
+  This function build the FsOptionMenu list which records all
+  available file system in the system. They includes all instances
+  of EFI_SIMPLE_FILE_SYSTEM_PROTOCOL, all instances of EFI_LOAD_FILE_SYSTEM
+  and all type of legacy boot device.
+
+  @param CallbackData    BMM context data
+
+  @retval  EFI_SUCCESS             Success find the file system
+  @retval  EFI_OUT_OF_RESOURCES    Can not create menu entry
+
+**/
 EFI_STATUS
 BOpt_FindFileSystem (
   IN BMM_CALLBACK_DATA          *CallbackData
   )
-/*++
-
-Routine Description
-  Find file systems for current Extensible Firmware
-  Including Handles that support Simple File System
-  protocol, Load File protocol.
-
-  Building up the FileSystem Menu for user selection
-  All file system will be stored in FsOptionMenu
-  for future use.
-
-Arguments:
-  CallbackData           -   BMM context data
-
-Returns:
-  EFI_SUCCESS            -   Success find the file system
-  EFI_OUT_OF_RESOURCES   -   Can not create menu entry
-
---*/
 {
   UINTN                     NoBlkIoHandles;
   UINTN                     NoSimpleFsHandles;
@@ -296,7 +276,7 @@ Returns:
       // Issue a dummy read to trigger reinstall of BlockIo protocol for removable media
       //
       if (BlkIo->Media->RemovableMedia) {
-        Buffer = EfiAllocateZeroPool (BlkIo->Media->BlockSize);
+        Buffer = AllocateZeroPool (BlkIo->Media->BlockSize);
         if (NULL == Buffer) {
           SafeFreePool (BlkIoHandle);
           return EFI_OUT_OF_RESOURCES;
@@ -361,7 +341,7 @@ Returns:
       FileContext->Handle     = SimpleFsHandle[Index];
       MenuEntry->OptionNumber = Index;
       FileContext->FHandle    = EfiLibOpenRoot (FileContext->Handle);
-      if (!FileContext->FHandle) {
+      if (FileContext->FHandle == NULL) {
         BOpt_DestroyMenuEntry (MenuEntry);
         continue;
       }
@@ -395,7 +375,7 @@ Returns:
       }
 
       TempStr                   = MenuEntry->HelpString;
-      MenuEntry->DisplayString  = EfiAllocateZeroPool (MAX_CHAR);
+      MenuEntry->DisplayString  = AllocateZeroPool (MAX_CHAR);
       ASSERT (MenuEntry->DisplayString != NULL);
       UnicodeSPrint (
         MenuEntry->DisplayString,
@@ -442,7 +422,7 @@ Returns:
       MenuEntry->HelpString     = DevicePathToStr (FileContext->DevicePath);
 
       TempStr                   = MenuEntry->HelpString;
-      MenuEntry->DisplayString  = EfiAllocateZeroPool (MAX_CHAR);
+      MenuEntry->DisplayString  = AllocateZeroPool (MAX_CHAR);
       ASSERT (MenuEntry->DisplayString != NULL);
       UnicodeSPrint (
         MenuEntry->DisplayString,
@@ -501,7 +481,7 @@ Returns:
       MenuEntry->HelpString     = DevicePathToStr (FileContext->DevicePath);
 
       TempStr                   = MenuEntry->HelpString;
-      MenuEntry->DisplayString  = EfiAllocateZeroPool (MAX_CHAR);
+      MenuEntry->DisplayString  = AllocateZeroPool (MAX_CHAR);
       ASSERT (MenuEntry->DisplayString != NULL);
       UnicodeSPrint (
         MenuEntry->DisplayString,
@@ -521,22 +501,15 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Free resources allocated in Allocate Rountine.
+
+  @param FreeMenu        Menu to be freed
+**/
 VOID
 BOpt_FreeMenu (
   BM_MENU_OPTION        *FreeMenu
   )
-/*++
-
-Routine Description
-  Free resources allocated in Allocate Rountine
-
-Arguments:
-  FreeMenu        Menu to be freed
-
-Returns:
-  VOID
-
---*/
 {
   BM_MENU_ENTRY *MenuEntry;
   while (!IsListEmpty (&FreeMenu->Head)) {
@@ -551,26 +524,23 @@ Returns:
   }
 }
 
+/**
+  Find files under current directory
+  All files and sub-directories in current directory
+  will be stored in DirectoryMenu for future use.
+
+  @param CallbackData  The BMM context data.
+  @param MenuEntry     The Menu Entry.
+
+  @retval EFI_SUCCESS         Get files from current dir successfully.
+  @return Other value if can't get files from current dir.
+
+**/
 EFI_STATUS
 BOpt_FindFiles (
   IN BMM_CALLBACK_DATA          *CallbackData,
   IN BM_MENU_ENTRY              *MenuEntry
   )
-/*++
-
-Routine Description
-  Find files under current directory
-  All files and sub-directories in current directory
-  will be stored in DirectoryMenu for future use.
-
-Arguments:
-  FileOption   -- Pointer for Dir to explore
-
-Returns:
-  TRUE         -- Get files from current dir successfully
-  FALSE        -- Can't get files from current dir
-
---*/
 {
   EFI_FILE_HANDLE NewDir;
   EFI_FILE_HANDLE Dir;
@@ -606,7 +576,7 @@ Returns:
   }
 
   DirInfo = EfiLibFileInfo (NewDir);
-  if (!DirInfo) {
+  if (DirInfo == NULL) {
     return EFI_NOT_FOUND;
   }
 
@@ -620,8 +590,8 @@ Returns:
                               );
 
   DirBufferSize = sizeof (EFI_FILE_INFO) + 1024;
-  DirInfo       = EfiAllocateZeroPool (DirBufferSize);
-  if (!DirInfo) {
+  DirInfo       = AllocateZeroPool (DirBufferSize);
+  if (DirInfo == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
   //
@@ -682,7 +652,7 @@ Returns:
 
       if (NewFileContext->IsDir) {
         BufferSize                  = StrLen (DirInfo->FileName) * 2 + 6;
-        NewMenuEntry->DisplayString = EfiAllocateZeroPool (BufferSize);
+        NewMenuEntry->DisplayString = AllocateZeroPool (BufferSize);
 
         UnicodeSPrint (
           NewMenuEntry->DisplayString,
@@ -710,22 +680,17 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Build the LegacyFDMenu LegacyHDMenu LegacyCDMenu according to LegacyBios.GetBbsInfo().
+
+  @retval EFI_SUCCESS The function complete successfully.
+  @retval EFI_OUT_OF_RESOURCES No enough memory to complete this function.
+
+**/
 EFI_STATUS
 BOpt_GetLegacyOptions (
   VOID
   )
-/*++
-Routine Description:
-
-  Build the LegacyFDMenu LegacyHDMenu LegacyCDMenu according to LegacyBios.GetBbsInfo().
-
-Arguments:
-  None
-
-Returns:
-  The device info of legacy device.
-
---*/
 {
   BM_MENU_ENTRY             *NewMenuEntry;
   BM_LEGACY_DEVICE_CONTEXT  *NewLegacyDevContext;
@@ -803,7 +768,7 @@ Returns:
       sizeof (DescString),
       DescString
       );
-    NewLegacyDevContext->Description = EfiAllocateZeroPool (StrSize (DescString));
+    NewLegacyDevContext->Description = AllocateZeroPool (StrSize (DescString));
     if (NULL == NewLegacyDevContext->Description) {
       break;
     }
@@ -853,6 +818,10 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Free out resouce allocated from Legacy Boot Options.
+
+**/
 VOID
 BOpt_FreeLegacyOptions (
   VOID
@@ -865,24 +834,20 @@ BOpt_FreeLegacyOptions (
   BOpt_FreeMenu (&LegacyBEVMenu);
 }
 
+/**
+
+  Build the BootOptionMenu according to BootOrder Variable.
+  This Routine will access the Boot#### to get EFI_LOAD_OPTION.
+
+  @param CallbackData The BMM context data.
+
+  @return The number of the Var Boot####.
+
+**/
 EFI_STATUS
 BOpt_GetBootOptions (
   IN  BMM_CALLBACK_DATA         *CallbackData
   )
-/*++
-
-Routine Description:
-
-  Build the BootOptionMenu according to BootOrder Variable.
-  This Routine will access the Boot#### to get EFI_LOAD_OPTION
-
-Arguments:
-  None
-
-Returns:
-  The number of the Var Boot####
-
---*/
 {
   UINTN                     Index;
   UINT16                    BootString[10];
@@ -931,7 +896,7 @@ Returns:
               &BootNextSize
               );
 
-  if (BootNext) {
+  if (BootNext != NULL) {
     if (BootNextSize != sizeof (UINT16)) {
       SafeFreePool (BootNext);
       BootNext = NULL;
@@ -948,19 +913,19 @@ Returns:
                           &gEfiGlobalVariableGuid,
                           &BootOptionSize
                           );
-    if (!LoadOptionFromVar) {
+    if (LoadOptionFromVar == NULL) {
       continue;
     }
 
-    LoadOption = EfiAllocateZeroPool (BootOptionSize);
-    if (!LoadOption) {
+    LoadOption = AllocateZeroPool (BootOptionSize);
+    if (LoadOption == NULL) {
       continue;
     }
 
     CopyMem (LoadOption, LoadOptionFromVar, BootOptionSize);
     SafeFreePool (LoadOptionFromVar);
 
-    if (BootNext) {
+    if (BootNext != NULL) {
       BootNextFlag = (BOOLEAN) (*BootNext == BootOrderList[Index]);
     } else {
       BootNextFlag = FALSE;
@@ -1037,7 +1002,7 @@ Returns:
     LoadOptionPtr += sizeof (UINT16);
 
     StringSize                  = StrSize ((UINT16 *) LoadOptionPtr);
-    NewLoadContext->Description = EfiAllocateZeroPool (StringSize);
+    NewLoadContext->Description = AllocateZeroPool (StringSize);
     ASSERT (NewLoadContext->Description != NULL);
     CopyMem (
       NewLoadContext->Description,
@@ -1048,7 +1013,7 @@ Returns:
 
     LoadOptionPtr += StringSize;
 
-    NewLoadContext->FilePathList = EfiAllocateZeroPool (NewLoadContext->FilePathListLength);
+    NewLoadContext->FilePathList = AllocateZeroPool (NewLoadContext->FilePathListLength);
     ASSERT (NewLoadContext->FilePathList != NULL);
     CopyMem (
       NewLoadContext->FilePathList,
@@ -1074,7 +1039,7 @@ Returns:
         StringSize -
         NewLoadContext->FilePathListLength;
 
-      NewLoadContext->OptionalData = EfiAllocateZeroPool (OptionalDataSize);
+      NewLoadContext->OptionalData = AllocateZeroPool (OptionalDataSize);
       ASSERT (NewLoadContext->OptionalData != NULL);
       CopyMem (
         NewLoadContext->OptionalData,
@@ -1095,57 +1060,37 @@ Returns:
   return MenuCount;
 }
 
-CHAR16 *
-BdsStrCpy (
-  OUT     CHAR16                    *Destination,
-  IN      CONST CHAR16              *Source
-  )
-{
-  CHAR16                            *ReturnValue;
+/**
 
-  //
-  // Destination cannot be NULL
-  //
-  ASSERT (Destination != NULL);
+  Append file name to existing file name.
 
-  ReturnValue = Destination;
-  while (*Source) {
-    *(Destination++) = *(Source++);
-  }
-  *Destination = 0;
-  return ReturnValue;
-}
+  @param Str1  The existing file name
+  @param Str2  The file name to be appended
 
+  @return Allocate a new string to hold the appended result.
+          Caller is responsible to free the returned string.
+
+**/
 CHAR16 *
 BOpt_AppendFileName (
   IN  CHAR16  *Str1,
   IN  CHAR16  *Str2
   )
-/*++
-
-Routine Description
-  Append file name to existing file name.
-
-Arguments:
-  Str1  -   existing file name
-  Str2  -   file name to be appended
-
-Returns:
-  Allocate a new string to hold the appended result.
-  Caller is responsible to free the returned string.
-
---*/
 {
   UINTN   Size1;
   UINTN   Size2;
   CHAR16  *Str;
+  CHAR16  *TmpStr;
   CHAR16  *Ptr;
   CHAR16  *LastSlash;
 
   Size1 = StrSize (Str1);
   Size2 = StrSize (Str2);
-  Str   = EfiAllocateZeroPool (Size1 + Size2 + sizeof (CHAR16));
+  Str   = AllocateZeroPool (Size1 + Size2 + sizeof (CHAR16));
   ASSERT (Str != NULL);
+
+  TmpStr = AllocateZeroPool (Size1 + Size2 + sizeof (CHAR16)); 
+  ASSERT (TmpStr != NULL);
 
   StrCat (Str, Str1);
   if (!((*Str == '\\') && (*(Str + 1) == 0))) {
@@ -1163,13 +1108,25 @@ Returns:
       // DO NOT convert the .. if it is at the end of the string. This will
       // break the .. behavior in changing directories.
       //
-      BdsStrCpy (LastSlash, Ptr + 3);
+
+      //
+      // Use TmpStr as a backup, as StrCpy in BaseLib does not handle copy of two strings 
+      // that overlap.
+      //
+      StrCpy (TmpStr, Ptr + 3);
+      StrCpy (LastSlash, TmpStr);
       Ptr = LastSlash;
     } else if (*Ptr == '\\' && *(Ptr + 1) == '.' && *(Ptr + 2) == '\\') {
       //
       // Convert a "\.\" to a "\"
       //
-      BdsStrCpy (Ptr, Ptr + 2);
+
+      //
+      // Use TmpStr as a backup, as StrCpy in BaseLib does not handle copy of two strings 
+      // that overlap.
+      //
+      StrCpy (TmpStr, Ptr + 2);
+      StrCpy (Ptr, TmpStr);
       Ptr = LastSlash;
     } else if (*Ptr == '\\') {
       LastSlash = Ptr;
@@ -1178,32 +1135,31 @@ Returns:
     Ptr++;
   }
 
+  FreePool (TmpStr);
+  
   return Str;
 }
 
+/**
+
+  Check whether current FileName point to a valid
+  Efi Image File.
+
+  @param FileName  File need to be checked.
+
+  @retval TRUE  Is Efi Image
+  @retval FALSE Not a valid Efi Image
+
+**/
 BOOLEAN
 BOpt_IsEfiImageName (
   IN UINT16  *FileName
   )
-/*++
-
-Routine Description
-  Check whether current FileName point to a valid
-  Efi Image File.
-
-Arguments:
-  FileName  -   File need to be checked.
-
-Returns:
-  TRUE  -   Is Efi Image
-  FALSE -   Not a valid Efi Image
-
---*/
 {
   //
   // Search for ".efi" extension
   //
-  while (*FileName) {
+  while (*FileName != L'\0') {
     if (FileName[0] == '.') {
       if (FileName[1] == 'e' || FileName[1] == 'E') {
         if (FileName[2] == 'f' || FileName[2] == 'F') {
@@ -1226,25 +1182,22 @@ Returns:
   return FALSE;
 }
 
+/**
+
+  Check whether current FileName point to a valid Efi Application
+
+  @param Dir       Pointer to current Directory
+  @param FileName  Pointer to current File name.
+
+  @retval TRUE      Is a valid Efi Application
+  @retval FALSE     not a valid Efi Application
+
+**/
 BOOLEAN
 BOpt_IsEfiApp (
   IN EFI_FILE_HANDLE Dir,
   IN UINT16          *FileName
   )
-/*++
-
-Routine Description:
-  Check whether current FileName point to a valid Efi Application
-
-Arguments:
-  Dir       -   Pointer to current Directory
-  FileName  -   Pointer to current File name.
-
-Returns:
-  TRUE      -   Is a valid Efi Application
-  FALSE     -   not a valid Efi Application
-
---*/
 {
   UINTN                       BufferSize;
   EFI_IMAGE_DOS_HEADER        DosHdr;
@@ -1293,26 +1246,21 @@ Returns:
   }
 }
 
-EFI_STATUS
-BOpt_FindDrivers (
-  VOID
-  )
-/*++
+/**
 
-Routine Description
   Find drivers that will be added as Driver#### variables from handles
   in current system environment
   All valid handles in the system except those consume SimpleFs, LoadFile
   are stored in DriverMenu for future use.
 
-Arguments:
-  None
+  @retval EFI_SUCCESS The function complets successfully.
+  @return Other value if failed to build the DriverMenu.
 
-Returns:
-  EFI_SUCCESS
-  Others
-
---*/
+**/
+EFI_STATUS
+BOpt_FindDrivers (
+  VOID
+  )
 {
   UINTN                           NoDevicePathHandles;
   EFI_HANDLE                      *DevicePathHandle;
@@ -1350,10 +1298,6 @@ Returns:
   for (Index = 0; Index < NoDevicePathHandles; Index++) {
     CurHandle = DevicePathHandle[Index];
 
-    //
-    //  Check whether this handle support
-    //  driver binding
-    //
     Status = gBS->HandleProtocol (
                     CurHandle,
                     &gEfiSimpleFileSystemProtocolGuid,
@@ -1394,21 +1338,17 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+
+  Get the Option Number that has not been allocated for use.
+
+  @return The available Option Number.
+
+**/
 UINT16
 BOpt_GetBootOptionNumber (
   VOID
   )
-/*++
-
-Routine Description:
-  Get the Option Number that does not used
-
-Arguments:
-
-Returns:
-  The Option Number
-
---*/
 {
   BM_MENU_ENTRY *NewMenuEntry;
   UINT16        *BootOrderList;
@@ -1429,7 +1369,7 @@ Returns:
                     &gEfiGlobalVariableGuid,
                     &BootOrderListSize
                     );
-  if (BootOrderList) {
+  if (BootOrderList != NULL) {
     //
     // already have Boot####
     //
@@ -1446,15 +1386,16 @@ Returns:
       }
 
       if (Found) {
-     UnicodeSPrint (StrTemp, 100, L"Boot%04x", Index);
-     DEBUG((DEBUG_ERROR,"INdex= %s\n", StrTemp));
-          OptionBuffer = BdsLibGetVariableAndSize (
-                    StrTemp,
-                    &gEfiGlobalVariableGuid,
-                    &OptionSize
-                    );
-         if (NULL == OptionBuffer)
-            break;
+        UnicodeSPrint (StrTemp, 100, L"Boot%04x", Index);
+        DEBUG((DEBUG_ERROR,"INdex= %s\n", StrTemp));
+        OptionBuffer = BdsLibGetVariableAndSize (
+                          StrTemp,
+                          &gEfiGlobalVariableGuid,
+                          &OptionSize
+                          );
+        if (NULL == OptionBuffer) {
+          break;
+        }
       }
     }
     //
@@ -1471,21 +1412,17 @@ Returns:
   return Number;
 }
 
+/**
+
+  Get the Option Number that is not in use.
+
+  @return The unused Option Number.
+
+**/
 UINT16
 BOpt_GetDriverOptionNumber (
   VOID
   )
-/*++
-
-Routine Description:
-  Get the Option Number that does not used
-
-Arguments:
-
-Returns:
-  The Option Number
-
---*/
 {
   BM_MENU_ENTRY *NewMenuEntry;
   UINT16        *DriverOrderList;
@@ -1503,7 +1440,7 @@ Returns:
                       &gEfiGlobalVariableGuid,
                       &DriverOrderListSize
                       );
-  if (DriverOrderList) {
+  if (DriverOrderList != NULL) {
     //
     // already have Driver####
     //
@@ -1537,21 +1474,21 @@ Returns:
   return Number;
 }
 
+/**
+
+  Build up all DriverOptionMenu
+
+  @param CallbackData The BMM context data.
+
+  @return EFI_SUCESS The functin completes successfully.
+  @retval EFI_OUT_OF_RESOURCES Not enough memory to compete the operation.
+  
+
+**/
 EFI_STATUS
 BOpt_GetDriverOptions (
   IN  BMM_CALLBACK_DATA         *CallbackData
   )
-/*++
-
-Routine Description:
-  Build up all DriverOptionMenu
-
-Arguments:
-
-Returns:
-  The Option Number
-
---*/
 {
   UINTN           Index;
   UINT16          DriverString[12];
@@ -1598,12 +1535,12 @@ Returns:
                           &gEfiGlobalVariableGuid,
                           &DriverOptionSize
                           );
-    if (!LoadOptionFromVar) {
+    if (LoadOptionFromVar == NULL) {
       continue;
     }
 
-    LoadOption = EfiAllocateZeroPool (DriverOptionSize);
-    if (!LoadOption) {
+    LoadOption = AllocateZeroPool (DriverOptionSize);
+    if (LoadOption == NULL) {
       continue;
     }
 
@@ -1642,7 +1579,7 @@ Returns:
     LoadOptionPtr += sizeof (UINT16);
 
     StringSize                  = StrSize ((UINT16 *) LoadOptionPtr);
-    NewLoadContext->Description = EfiAllocateZeroPool (StringSize);
+    NewLoadContext->Description = AllocateZeroPool (StringSize);
     ASSERT (NewLoadContext->Description != NULL);
     CopyMem (
       NewLoadContext->Description,
@@ -1653,7 +1590,7 @@ Returns:
 
     LoadOptionPtr += StringSize;
 
-    NewLoadContext->FilePathList = EfiAllocateZeroPool (NewLoadContext->FilePathListLength);
+    NewLoadContext->FilePathList = AllocateZeroPool (NewLoadContext->FilePathListLength);
     ASSERT (NewLoadContext->FilePathList != NULL);
     CopyMem (
       NewLoadContext->FilePathList,
@@ -1679,7 +1616,7 @@ Returns:
         StringSize -
         NewLoadContext->FilePathListLength;
 
-      NewLoadContext->OptionalData = EfiAllocateZeroPool (OptionalDataSize);
+      NewLoadContext->OptionalData = AllocateZeroPool (OptionalDataSize);
       ASSERT (NewLoadContext->OptionalData != NULL);
       CopyMem (
         NewLoadContext->OptionalData,

@@ -19,15 +19,17 @@
 #
 # Notes:
 #
-#   The following BaseMemoryLib instances share the same version of this file:
+#   The following BaseMemoryLib instances contain the same copy of this file:
 #
 #       BaseMemoryLibRepStr
 #       BaseMemoryLibMmx
 #       BaseMemoryLibSse2
+#       BaseMemoryLibOptDxe
+#       BaseMemoryLibOptPei
 #
 #------------------------------------------------------------------------------
 
-.globl _InternalMemScanMem32
+.globl ASM_PFX(InternalMemScanMem32)
 
 #------------------------------------------------------------------------------
 # CONST VOID *
@@ -38,7 +40,7 @@
 #   IN      UINT32                    Value
 #   );
 #------------------------------------------------------------------------------
-_InternalMemScanMem32:
+ASM_PFX(InternalMemScanMem32):
     push    %edi
     movl    12(%esp), %ecx
     movl    8(%esp), %edi

@@ -10,20 +10,20 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-  The following BaseMemoryLib instances share the same version of this file:
+  The following BaseMemoryLib instances contain the same copy of this file:
 
     BaseMemoryLib
     BaseMemoryLibMmx
     BaseMemoryLibSse2
     BaseMemoryLibRepStr
+    BaseMemoryLibOptDxe
+    BaseMemoryLibOptPei
     PeiMemoryLib
     DxeMemoryLib
 
 **/
 
-//
-// Include common header file for this module.
-//
+
 
 
 #include "MemLibInternals.h"
@@ -33,7 +33,7 @@
 
   This function fills Length bytes of Buffer with zeros, and returns Buffer.
   If Length > 0 and Buffer is NULL, then ASSERT().
-  If Length is greater than (MAX_ADDRESS ? Buffer + 1), then ASSERT().
+  If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
   @param  Buffer      Pointer to the target buffer to fill with zeros.
   @param  Length      Number of bytes in Buffer to fill with zeros.

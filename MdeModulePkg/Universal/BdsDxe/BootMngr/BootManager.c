@@ -30,6 +30,24 @@ BOOT_MANAGER_CALLBACK_DATA  gBootManagerPrivate = {
   }
 };
 
+/**
+  This call back funtion is registered with Boot Manager formset.
+  When user selects a boot option, this call back function will
+  be triggered. The boot option is saved for later processing.
+
+
+  @param This            Points to the EFI_HII_CONFIG_ACCESS_PROTOCOL.
+  @param Action          Specifies the type of action taken by the browser.
+  @param QuestionId      A unique value which is sent to the original exporting driver
+                         so that it can identify the type of data to expect.
+  @param Type            The type of value for the question.
+  @param Value           A pointer to the data being sent to the original exporting driver.
+  @param ActionRequest   On return, points to the action requested by the callback function.
+
+  @retval  EFI_SUCCESS           The callback successfully handled the action.
+  @retval  EFI_INVALID_PARAMETER The setup browser call this function with invalid parameters.
+
+**/
 EFI_STATUS
 EFIAPI
 BootManagerCallback (
@@ -40,27 +58,6 @@ BootManagerCallback (
   IN  EFI_IFR_TYPE_VALUE                     *Value,
   OUT EFI_BROWSER_ACTION_REQUEST             *ActionRequest
   )
-/*++
-
-  Routine Description:
-    This function processes the results of changes in configuration.
-
-  Arguments:
-    This          - Points to the EFI_HII_CONFIG_ACCESS_PROTOCOL.
-    Action        - Specifies the type of action taken by the browser.
-    QuestionId    - A unique value which is sent to the original exporting driver
-                    so that it can identify the type of data to expect.
-    Type          - The type of value for the question.
-    Value         - A pointer to the data being sent to the original exporting driver.
-    ActionRequest - On return, points to the action requested by the callback function.
-
-  Returns:
-    EFI_SUCCESS          - The callback successfully handled the action.
-    EFI_OUT_OF_RESOURCES - Not enough storage is available to hold the variable and its data.
-    EFI_DEVICE_ERROR     - The variable could not be saved.
-    EFI_UNSUPPORTED      - The specified Action is not supported by the callback.
-
---*/
 {
   BDS_COMMON_OPTION       *Option;
   LIST_ENTRY              *Link;
@@ -102,22 +99,18 @@ BootManagerCallback (
   return EFI_SUCCESS;
 }
 
+/**
+
+  Registers HII packages for the Boot Manger to HII Database.
+  It also registers the browser call back function.
+
+  @return Status of HiiLibCreateHiiDriverHandle() and gHiiDatabase->NewPackageList()
+
+**/
 EFI_STATUS
 InitializeBootManager (
   VOID
   )
-/*++
-
-Routine Description:
-
-  Initialize HII information for the FrontPage
-
-Arguments:
-  None
-
-Returns:
-
---*/
 {
   EFI_STATUS                  Status;
   EFI_HII_PACKAGE_LIST_HEADER *PackageList;
@@ -158,24 +151,17 @@ Returns:
   return Status;
 }
 
+/**
+  This funtion invokees Boot Manager. If all devices have not a chance to be connected,
+  the connect all will be triggered. It then enumerate all boot options. If 
+  a boot option from the Boot Manager page is selected, Boot Manager will boot
+  from this boot option.
+  
+**/
 VOID
 CallBootManager (
   VOID
   )
-/*++
-
-Routine Description:
-  Hook to enable UI timeout override behavior.
-
-Arguments:
-  BdsDeviceList - Device List that BDS needs to connect.
-
-  Entry - Pointer to current Boot Entry.
-
-Returns:
-  NONE
-
---*/
 {
   EFI_STATUS                  Status;
   BDS_COMMON_OPTION           *Option;
@@ -269,11 +255,6 @@ Returns:
     );
   FreePool (UpdateData.Data);
 
-  //
-  // Drop the TPL level from TPL_APPLICATION to TPL_APPLICATION
-  //
-  gBS->RestoreTPL (TPL_APPLICATION);
-
   ActionRequest = EFI_BROWSER_ACTION_REQUEST_NONE;
   Status = gFormBrowser2->SendForm (
                            gFormBrowser2,
@@ -289,7 +270,6 @@ Returns:
   }
 
   if (gOption == NULL) {
-    gBS->RaiseTPL (TPL_APPLICATION);
     return ;
   }
 
@@ -297,11 +277,6 @@ Returns:
   //Will leave browser, check any reset required change is applied? if yes, reset system
   //
   SetupResetReminder ();
-
-  //
-  // Raise the TPL level back to TPL_APPLICATION
-  //
-  gBS->RaiseTPL (TPL_APPLICATION);
 
   //
   // parse the selected option
@@ -318,11 +293,6 @@ Returns:
                   gST->ConOut,
                   GetStringById (STRING_TOKEN (STR_ANY_KEY_CONTINUE))
                   );
-    gBS->RestoreTPL (TPL_APPLICATION);
-    //
-    // BdsLibUiWaitForSingleEvent (gST->ConIn->WaitForKey, 0);
-    //
-    gBS->RaiseTPL (TPL_APPLICATION);
     gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
   }
 }

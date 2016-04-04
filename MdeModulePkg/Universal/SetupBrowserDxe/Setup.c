@@ -1,5 +1,7 @@
 /** @file
-Copyright (c) 2007, Intel Corporation
+Entry and initialization module for the browser.
+
+Copyright (c) 2007 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -7,15 +9,6 @@ http://opensource.org/licenses/bsd-license.php
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  Setup.c
-
-Abstract:
-
-  Entry and initialization module for the browser.
-
 
 **/
 
@@ -31,7 +24,12 @@ SETUP_DRIVER_PRIVATE_DATA  mPrivateData = {
     BrowserCallback
   },
   {
-    UnicodeVSPrint
+    UnicodeVSPrint,
+    UnicodeVSPrintAsciiFormat,
+    UnicodeValueToString,                         
+    AsciiVSPrint,          
+    AsciiVSPrintUnicodeFormat,
+    AsciiValueToString
   }
 };
 
@@ -46,7 +44,6 @@ UINTN                 gFunctionKeySetting;
 BOOLEAN               gResetRequired;
 BOOLEAN               gNvUpdateRequired;
 EFI_HII_HANDLE        gHiiHandle;
-BOOLEAN               gFirstIn;
 UINT16                gDirection;
 EFI_SCREEN_DESCRIPTOR gScreenDimensions;
 BOOLEAN               gUpArrow;
@@ -83,6 +80,7 @@ CHAR16            *gMiniString;
 CHAR16            *gPlusString;
 CHAR16            *gMinusString;
 CHAR16            *gAdjustNumber;
+CHAR16            *gSaveChanges;
 
 CHAR16            gPromptBlockWidth;
 CHAR16            gOptionBlockWidth;
@@ -180,6 +178,31 @@ FUNCTIION_KEY_SETTING gFunctionKeySettingTable[] = {
   },
 };
 
+/**
+  This is the routine which an external caller uses to direct the browser
+  where to obtain it's information.
+
+
+  @param This            The Form Browser protocol instanse.
+  @param Handles         A pointer to an array of Handles.  If HandleCount > 1 we
+                         display a list of the formsets for the handles specified.
+  @param HandleCount     The number of Handles specified in Handle.
+  @param FormSetGuid     This field points to the EFI_GUID which must match the Guid
+                         field in the EFI_IFR_FORM_SET op-code for the specified
+                         forms-based package. If FormSetGuid is NULL, then this
+                         function will display the first found forms package.
+  @param FormId          This field specifies which EFI_IFR_FORM to render as the first
+                         displayable page. If this field has a value of 0x0000, then
+                         the forms browser will render the specified forms in their encoded order.
+  @param ScreenDimensions Points to recommended form dimensions, including any non-content area, in 
+                          characters.
+  @param ActionRequest   Points to the action recommended by the form.
+
+  @retval  EFI_SUCCESS            The function completed successfully.
+  @retval  EFI_INVALID_PARAMETER  One of the parameters has an invalid value.
+  @retval  EFI_NOT_FOUND          No valid forms could be found to display.
+
+**/
 EFI_STATUS
 EFIAPI
 SendForm (
@@ -191,34 +214,6 @@ SendForm (
   IN  CONST EFI_SCREEN_DESCRIPTOR      *ScreenDimensions, OPTIONAL
   OUT EFI_BROWSER_ACTION_REQUEST       *ActionRequest  OPTIONAL
   )
-/*++
-
-Routine Description:
-  This is the routine which an external caller uses to direct the browser
-  where to obtain it's information.
-
-Arguments:
-  This            - The Form Browser protocol instanse.
-  Handles         - A pointer to an array of Handles.  If HandleCount > 1 we
-                    display a list of the formsets for the handles specified.
-  HandleCount     - The number of Handles specified in Handle.
-  FormSetGuid     - This field points to the EFI_GUID which must match the Guid
-                    field in the EFI_IFR_FORM_SET op-code for the specified
-                    forms-based package. If FormSetGuid is NULL, then this
-                    function will display the first found forms package.
-  FormId          - This field specifies which EFI_IFR_FORM to render as the first
-                    displayable page. If this field has a value of 0x0000, then
-                    the forms browser will render the specified forms in their encoded order.
-  ScreenDimenions - This allows the browser to be called so that it occupies a
-                    portion of the physical screen instead of dynamically determining the screen dimensions.
-  ActionRequest   - Points to the action recommended by the form.
-
-Returns:
-  EFI_SUCCESS           -  The function completed successfully.
-  EFI_INVALID_PARAMETER -  One of the parameters has an invalid value.
-  EFI_NOT_FOUND         -  No valid forms could be found to display.
-
---*/
 {
   EFI_STATUS            Status;
   UI_MENU_SELECTION     *Selection;
@@ -284,11 +279,8 @@ Returns:
   //
   // Ensure we are in Text mode
   //
-  if (gFirstIn) {
-    gFirstIn = FALSE;
-    gST->ConOut->SetAttribute (gST->ConOut, EFI_TEXT_ATTR (EFI_LIGHTGRAY, EFI_BLACK));
-    DisableQuietBoot ();
-  }
+  gST->ConOut->SetAttribute (gST->ConOut, EFI_TEXT_ATTR (EFI_LIGHTGRAY, EFI_BLACK));
+  DisableQuietBoot ();
 
   for (Index = 0; Index < HandleCount; Index++) {
     Selection = AllocateZeroPool (sizeof (UI_MENU_SELECTION));
@@ -308,7 +300,7 @@ Returns:
       // Initialize internal data structures of FormSet
       //
       Status = InitializeFormSet (Selection->Handle, &Selection->FormSetGuid, FormSet);
-      if (EFI_ERROR (Status)) {
+      if (EFI_ERROR (Status) || IsListEmpty (&FormSet->FormListHead)) {
         DestroyFormSet (FormSet);
         break;
       }
@@ -523,12 +515,13 @@ BrowserCallback (
 
 
 /**
-  Initialize Setup
+  Initialize Setup Browser driver.
 
-  @param  entry                  EFI_IMAGE_ENTRY_POINT)
+  @param ImageHandle     The image handle.
+  @param SystemTable     The system table.
 
-  @retval EFI_SUCCESS            Setup loaded.
-  @retval other                  Setup Error
+  @retval EFI_SUCCESS    The Setup Browser module is initialized correctly..
+  @return Other value if failed to initialize the Setup Browser module.
 
 **/
 EFI_STATUS
@@ -585,7 +578,6 @@ InitializeSetup (
   //
   // Initialize Driver private data
   //
-  gFirstIn = TRUE;
   BannerData = AllocateZeroPool (sizeof (BANNER_DATA));
   ASSERT (BannerData != NULL);
 
@@ -604,6 +596,19 @@ InitializeSetup (
   //
   // Install Print protocol
   //
+  Status = gBS->InstallProtocolInterface (
+                  &mPrivateData.Handle,
+                  &gEfiPrint2ProtocolGuid,
+                  EFI_NATIVE_INTERFACE,
+                  &mPrivateData.Print
+                  );
+
+  //
+  // Install Ecp Print protocol, which is defined in
+  // Edk\Foundation\Protocol\Print\Print.h with protocol
+  // GUID of { 0xdf2d868e, 0x32fc, 0x4cf0, {0x8e, 0x6b, 0xff, 0xd9, 0x5d, 0x13, 0x43, 0xd0 }}
+  // This is support previous module that written to consume this protocol.
+  // 
   Status = gBS->InstallProtocolInterface (
                   &mPrivateData.Handle,
                   &gEfiPrintProtocolGuid,
@@ -712,8 +717,6 @@ GetToken (
   @param  Dest                   Location to copy string
   @param  Src                    String to copy
 
-  @return NONE
-
 **/
 VOID
 NewStringCpy (
@@ -732,8 +735,6 @@ NewStringCpy (
 
   @param  Dest                   String to added to the end of.
   @param  Src                    String to concatinate.
-
-  @return NONE
 
 **/
 VOID
@@ -766,8 +767,6 @@ NewStringCat (
   Synchronize Storage's Edit copy to Shadow copy.
 
   @param  Storage                The Storage to be synchronized.
-
-  @return NONE
 
 **/
 VOID
@@ -1173,7 +1172,11 @@ GetQuestionValue (
       }
 
       if (IsString) {
-        StrCpy ((CHAR16 *) Dst, Value);
+        //
+        // Convert Config String to Unicode String, e.g "0041004200430044" => "ABCD"
+        //
+        Length = StorageWidth + sizeof (CHAR16);
+        Status = ConfigStringToUnicode ((CHAR16 *) Dst, &Length, Value);
       } else {
         Status = HexStringToBuf (Dst, &StorageWidth, Value, NULL);
       }
@@ -1239,7 +1242,11 @@ GetQuestionValue (
     //
     Value = Value + 1;
     if (!IsBufferStorage && IsString) {
-      StrCpy ((CHAR16 *) Dst, Value);
+      //
+      // Convert Config String to Unicode String, e.g "0041004200430044" => "ABCD"
+      //
+      Length = StorageWidth + sizeof (CHAR16);
+      Status = ConfigStringToUnicode ((CHAR16 *) Dst, &Length, Value);
     } else {
       Status = HexStringToBuf (Dst, &StorageWidth, Value, NULL);
       if (EFI_ERROR (Status)) {
@@ -1408,13 +1415,21 @@ SetQuestionValue (
     CopyMem (Storage->EditBuffer + Question->VarStoreInfo.VarOffset, Src, StorageWidth);
   } else {
     if (IsString) {
+      //
+      // Convert Unicode String to Config String, e.g. "ABCD" => "0041004200430044"
+      //
       Value = NULL;
-      NewStringCpy (&Value, (CHAR16 *) Src);
-    } else {
-      BufferLen = (StorageWidth * 2 + 1) * sizeof (CHAR16);
+      BufferLen = ((StrLen ((CHAR16 *) Src) * 4) + 1) * sizeof (CHAR16);
       Value = AllocateZeroPool (BufferLen);
       ASSERT (Value != NULL);
+      Status = UnicodeToConfigString (Value, &BufferLen, (CHAR16 *) Src);
+      ASSERT_EFI_ERROR (Status);
+    } else {
+      BufferLen = StorageWidth * 2 + 1;
+      Value = AllocateZeroPool (BufferLen * sizeof (CHAR16));
+      ASSERT (Value != NULL);
       BufToHexString (Value, &BufferLen, Src, StorageWidth);
+      ToLower (Value);
     }
 
     Status = SetValueByName (Storage, Question->VariableName, Value);
@@ -1424,7 +1439,7 @@ SetQuestionValue (
   if (!Cached) {
     //
     // <ConfigResp> ::= <ConfigHdr> + <BlockName> + "&VALUE=" + "<HexCh>StorageWidth * 2" ||
-    //                <ConfigHdr> + "&" + <VariableName> + "=" + "<HexCh>StorageWidth * 2"
+    //                <ConfigHdr> + "&" + <VariableName> + "=" + "<string>"
     //
     if (IsBufferStorage) {
       Length = StrLen (Question->BlockName) + 7;
@@ -1432,7 +1447,7 @@ SetQuestionValue (
       Length = StrLen (Question->VariableName) + 2;
     }
     if (!IsBufferStorage && IsString) {
-      Length += StrLen ((CHAR16 *) Src);
+      Length += (StrLen ((CHAR16 *) Src) * 4);
     } else {
       Length += (StorageWidth * 2);
     }
@@ -1451,10 +1466,16 @@ SetQuestionValue (
 
     Value = ConfigResp + StrLen (ConfigResp);
     if (!IsBufferStorage && IsString) {
-      StrCpy (Value, (CHAR16 *) Src);
+      //
+      // Convert Unicode String to Config String, e.g. "ABCD" => "0041004200430044"
+      //
+      BufferLen = ((StrLen ((CHAR16 *) Src) * 4) + 1) * sizeof (CHAR16);
+      Status = UnicodeToConfigString (Value, &BufferLen, (CHAR16 *) Src);
+      ASSERT_EFI_ERROR (Status);
     } else {
-      BufferLen = (StorageWidth * 2 + 1) * sizeof (CHAR16);
+      BufferLen = StorageWidth * 2 + 1;
       BufToHexString (Value, &BufferLen, Src, StorageWidth);
+      ToLower (Value);
     }
 
     //
@@ -1675,7 +1696,9 @@ SubmitForm (
 /**
   Reset Question to its default value.
 
-  @param  FormSet                FormSet data structure.
+  @param  FormSet                The form set.
+  @param  Form                   The form.
+  @param  Question               The question.
   @param  DefaultId              The Class of the default.
 
   @retval EFI_SUCCESS            Question is reset to default value.
@@ -1758,8 +1781,8 @@ GetQuestionDefault (
       while (!IsNull (&Question->OptionListHead, Link)) {
         Option = QUESTION_OPTION_FROM_LINK (Link);
 
-        if (((DefaultId == EFI_HII_DEFAULT_CLASS_STANDARD) && (Option->Flags & EFI_IFR_OPTION_DEFAULT)) ||
-            ((DefaultId == EFI_HII_DEFAULT_CLASS_MANUFACTURING) && (Option->Flags & EFI_IFR_OPTION_DEFAULT_MFG))
+        if (((DefaultId == EFI_HII_DEFAULT_CLASS_STANDARD) && ((Option->Flags & EFI_IFR_OPTION_DEFAULT) != 0)) ||
+            ((DefaultId == EFI_HII_DEFAULT_CLASS_MANUFACTURING) && ((Option->Flags & EFI_IFR_OPTION_DEFAULT_MFG) != 0))
            ) {
           CopyMem (HiiValue, &Option->Value, sizeof (EFI_HII_VALUE));
 
@@ -1779,8 +1802,8 @@ GetQuestionDefault (
       //
       // Checkbox could only provide Standard and Manufacturing default
       //
-      if (((DefaultId == EFI_HII_DEFAULT_CLASS_STANDARD) && (Question->Flags & EFI_IFR_CHECKBOX_DEFAULT)) ||
-          ((DefaultId == EFI_HII_DEFAULT_CLASS_MANUFACTURING) && (Question->Flags & EFI_IFR_CHECKBOX_DEFAULT_MFG))
+      if (((DefaultId == EFI_HII_DEFAULT_CLASS_STANDARD) && ((Question->Flags & EFI_IFR_CHECKBOX_DEFAULT) != 0)) ||
+          ((DefaultId == EFI_HII_DEFAULT_CLASS_MANUFACTURING) && ((Question->Flags & EFI_IFR_CHECKBOX_DEFAULT_MFG) != 0))
          ) {
         HiiValue->Value.b = TRUE;
       } else {

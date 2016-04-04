@@ -12,11 +12,18 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
+
 #include <BaseLibInternals.h>
 
+/**
+  Writes the current Interrupt Descriptor Table Register(GDTR) descriptor.
+
+  Writes the current IDTR descriptor and returns it in Idtr. This function is
+  only available on IA-32 and X64.
+
+  @param  Idtr  Pointer to a IDTR descriptor.
+
+**/
 VOID
 EFIAPI
 InternalX86WriteIdtr (

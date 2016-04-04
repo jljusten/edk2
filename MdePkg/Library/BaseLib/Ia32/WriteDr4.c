@@ -12,11 +12,20 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
 
 
+
+/**
+  Writes a value to Debug Register 4 (DR4).
+
+  Writes and returns a new value to DR4. This function is only available on
+  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+
+  @param  Dr4 The value to write to Dr4.
+
+  @return The value written to Debug Register 4 (DR4).
+
+**/
 UINTN
 EFIAPI
 AsmWriteDr4 (

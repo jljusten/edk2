@@ -1,5 +1,5 @@
 /** @file
-  I/O Library.
+  I/O Library. The implementations are based on EFI_PEI_SERVICE->CpuIo interface.
 
   Copyright (c) 2006, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
@@ -31,7 +31,7 @@
 
   @param  Port  The I/O port to read.
 
-  @return The value read.
+  @return The value read from Port.
 
 **/
 UINT8
@@ -40,10 +40,10 @@ IoRead8 (
   IN      UINTN                     Port
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
 
@@ -72,10 +72,10 @@ IoWrite8 (
   IN      UINT8                     Value
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
 
@@ -94,7 +94,7 @@ IoWrite8 (
 
   @param  Port  The I/O port to read.
 
-  @return The value read.
+  @return The value read from Port.
 
 **/
 UINT16
@@ -103,10 +103,10 @@ IoRead16 (
   IN      UINTN                     Port
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
   //
@@ -138,10 +138,10 @@ IoWrite16 (
   IN      UINT16                    Value
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
   //
@@ -163,7 +163,7 @@ IoWrite16 (
 
   @param  Port  The I/O port to read.
 
-  @return The value read.
+  @return The value read from Port.
 
 **/
 UINT32
@@ -172,10 +172,10 @@ IoRead32 (
   IN      UINTN                     Port
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
   //
@@ -207,10 +207,10 @@ IoWrite32 (
   IN      UINT32                    Value
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
   //
@@ -232,7 +232,7 @@ IoWrite32 (
 
   @param  Port  The I/O port to read.
 
-  @return The value read.
+  @return The value read from Port.
 
 **/
 UINT64
@@ -241,10 +241,10 @@ IoRead64 (
   IN      UINTN                     Port
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
   //
@@ -276,10 +276,10 @@ IoWrite64 (
   IN      UINT64                    Value
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
   //
@@ -301,7 +301,7 @@ IoWrite64 (
 
   @param  Address The MMIO register to read.
 
-  @return The value read.
+  @return The value read from Port.
 
 **/
 UINT8
@@ -310,10 +310,10 @@ MmioRead8 (
   IN      UINTN                     Address
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
 
@@ -331,7 +331,8 @@ MmioRead8 (
 
   @param  Address The MMIO register to write.
   @param  Value   The value to write to the MMIO register.
-
+  
+  @return The Value written back to Mmio register.
 **/
 UINT8
 EFIAPI
@@ -340,10 +341,10 @@ MmioWrite8 (
   IN      UINT8                     Value
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
 
@@ -362,7 +363,7 @@ MmioWrite8 (
 
   @param  Address The MMIO register to read.
 
-  @return The value read.
+  @return The value read from Address.
 
 **/
 UINT16
@@ -371,10 +372,10 @@ MmioRead16 (
   IN      UINTN                     Address
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
   //
@@ -396,6 +397,8 @@ MmioRead16 (
 
   @param  Address The MMIO register to write.
   @param  Value   The value to write to the MMIO register.
+  
+  @return The Value written back to Mmio register
 
 **/
 UINT16
@@ -405,10 +408,10 @@ MmioWrite16 (
   IN      UINT16                    Value
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
   //
@@ -430,7 +433,7 @@ MmioWrite16 (
 
   @param  Address The MMIO register to read.
 
-  @return The value read.
+  @return The value read from Address.
 
 **/
 UINT32
@@ -439,10 +442,10 @@ MmioRead32 (
   IN      UINTN                     Address
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
   //
@@ -464,6 +467,8 @@ MmioRead32 (
 
   @param  Address The MMIO register to write.
   @param  Value   The value to write to the MMIO register.
+  
+  @return The Value written back to Mmio register
 
 **/
 UINT32
@@ -473,10 +478,10 @@ MmioWrite32 (
   IN      UINT32                    Value
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
   //
@@ -498,7 +503,7 @@ MmioWrite32 (
 
   @param  Address The MMIO register to read.
 
-  @return The value read.
+  @return The value read from Address.
 
 **/
 UINT64
@@ -507,16 +512,16 @@ MmioRead64 (
   IN      UINTN                     Address
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
   //
   // Make sure Address is aligned on a 64-bit boundary.
   //
-  ASSERT ((Address & 7) == 0);
+  ASSERT ((Address & (sizeof (UINT64) - 1)) == 0);
   return CpuIo->MemRead64 (PeiServices, CpuIo, (UINT64) Address);
 
 }
@@ -533,6 +538,7 @@ MmioRead64 (
   @param  Address The MMIO register to write.
   @param  Value   The value to write to the MMIO register.
 
+  @return The Value written back to Mmio register
 **/
 UINT64
 EFIAPI
@@ -541,10 +547,10 @@ MmioWrite64 (
   IN      UINT64                    Value
   )
 {
-  EFI_PEI_SERVICES                  **PeiServices;
+  CONST EFI_PEI_SERVICES            **PeiServices;
   EFI_PEI_CPU_IO_PPI                *CpuIo;
 
-  PeiServices = GetPeiServicesTablePointer ();
+  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
   CpuIo       = (*PeiServices)->CpuIo;
   ASSERT (CpuIo != NULL);
   //

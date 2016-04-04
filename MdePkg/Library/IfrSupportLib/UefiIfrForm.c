@@ -1,6 +1,8 @@
 /** @file
+Utility functions which helps in opcode creation, HII configuration string manipulations, 
+pop up window creations, setup browser persistence data set and get.
 
-Copyright (c) 2007, Intel Corporation
+Copyright (c) 2007- 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,23 +11,48 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-  UefiIfrForm.c
-
-Abstract:
-
-  Common Library Routines to assist handle HII elements.
-
-
 **/
 
 #include "UefiIfrLibraryInternal.h"
 
+STATIC CONST EFI_FORM_BROWSER2_PROTOCOL      *mFormBrowser2     = NULL;
+STATIC CONST EFI_HII_CONFIG_ROUTING_PROTOCOL *mHiiConfigRouting = NULL;
+
+/**
+  This function locate FormBrowser2 protocols for later usage.
+
+  @return Status the status to locate protocol.
+**/
+EFI_STATUS
+LocateFormBrowser2Protocols (
+  VOID
+  )
+{
+  EFI_STATUS Status;
+  //
+  // Locate protocols for later usage
+  //
+  if (mFormBrowser2 == NULL) {
+    Status = gBS->LocateProtocol (&gEfiFormBrowser2ProtocolGuid, NULL, (VOID **) &mFormBrowser2);
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+  }
+  
+  if (mHiiConfigRouting == NULL) {
+    Status = gBS->LocateProtocol (&gEfiHiiConfigRoutingProtocolGuid, NULL, (VOID **) &mHiiConfigRouting);
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+  }
+
+  return EFI_SUCCESS;
+}
+
 //
 // Fake <ConfigHdr>
 //
-UINT16 mFakeConfigHdr[] = L"GUID=00000000000000000000000000000000&NAME=0000&PATH=0";
+GLOBAL_REMOVE_IF_UNREFERENCED CONST UINT16 mFakeConfigHdr[] = L"GUID=00000000000000000000000000000000&NAME=0000&PATH=0";
 
 /**
   Draw a dialog and return the selected key.
@@ -33,21 +60,21 @@ UINT16 mFakeConfigHdr[] = L"GUID=00000000000000000000000000000000&NAME=0000&PATH
   @param  NumberOfLines          The number of lines for the dialog box
   @param  KeyValue               The EFI_KEY value returned if HotKey is TRUE..
   @param  String                 Pointer to the first string in the list
-  @param  ...                    A series of (quantity == NumberOfLines) text
+  @param  ...                    A series of (quantity == NumberOfLines - 1) text
                                  strings which will be used to construct the dialog
                                  box
 
   @retval EFI_SUCCESS            Displayed dialog and received user interaction
   @retval EFI_INVALID_PARAMETER  One of the parameters was invalid.
+  @retval EFI_OUT_OF_RESOURCES   There is no enough available memory space.
 
 **/
 EFI_STATUS
 EFIAPI
-IfrLibCreatePopUp (
+IfrLibCreatePopUp2 (
   IN  UINTN                       NumberOfLines,
   OUT EFI_INPUT_KEY               *KeyValue,
-  IN  CHAR16                      *String,
-  ...
+  IN  VA_LIST                     Marker
   )
 {
   UINTN                         Index;
@@ -61,7 +88,6 @@ IfrLibCreatePopUp (
   UINTN                         BottomRow;
   UINTN                         DimensionsWidth;
   UINTN                         DimensionsHeight;
-  VA_LIST                       Marker;
   EFI_INPUT_KEY                 Key;
   UINTN                         LargestString;
   CHAR16                        *StackString;
@@ -73,7 +99,10 @@ IfrLibCreatePopUp (
   EFI_EVENT                     WaitList[2];
   UINTN                         CurrentAttribute;
   EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  *ConOut;
+  CHAR16                        *String;
 
+  String = VA_ARG (Marker, CHAR16 *);
+  
   if ((KeyValue == NULL) || (String == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
@@ -92,21 +121,28 @@ IfrLibCreatePopUp (
   CurrentAttribute = ConOut->Mode->Attribute;
 
   LineBuffer = AllocateZeroPool (DimensionsWidth * sizeof (CHAR16));
-  ASSERT (LineBuffer != NULL);
+  if (LineBuffer == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
 
   //
   // Determine the largest string in the dialog box
   // Notice we are starting with 1 since String is the first string
   //
   StringArray = AllocateZeroPool (NumberOfLines * sizeof (CHAR16 *));
+  if (StringArray == NULL) {
+    FreePool (LineBuffer);
+    return EFI_OUT_OF_RESOURCES;
+  }
   LargestString = StrLen (String);
   StringArray[0] = String;
 
-  VA_START (Marker, String);
   for (Index = 1; Index < NumberOfLines; Index++) {
     StackString = VA_ARG (Marker, CHAR16 *);
 
     if (StackString == NULL) {
+      FreePool (LineBuffer);
+      FreePool (StringArray);
       return EFI_INVALID_PARAMETER;
     }
 
@@ -218,12 +254,50 @@ IfrLibCreatePopUp (
   ConOut->SetAttribute (ConOut, CurrentAttribute);
   ConOut->EnableCursor (ConOut, TRUE);
 
+  FreePool (LineBuffer);
+  FreePool (StringArray);
+
   return Status;
 }
 
 
 /**
-  Swap bytes in the buffer.
+  Draw a dialog and return the selected key.
+
+  @param  NumberOfLines          The number of lines for the dialog box
+  @param  KeyValue               The EFI_KEY value returned if HotKey is TRUE..
+  @param  String                 Pointer to the first string in the list
+  @param  ...                    A series of (quantity == NumberOfLines - 1) text
+                                 strings which will be used to construct the dialog
+                                 box
+
+  @retval EFI_SUCCESS            Displayed dialog and received user interaction
+  @retval EFI_INVALID_PARAMETER  One of the parameters was invalid.
+
+**/
+EFI_STATUS
+EFIAPI
+IfrLibCreatePopUp (
+  IN  UINTN                       NumberOfLines,
+  OUT EFI_INPUT_KEY               *KeyValue,
+  IN  CHAR16                      *String,
+  ...
+  )
+{
+  EFI_STATUS                      Status;
+  VA_LIST                         Marker;
+
+  VA_START (Marker, KeyValue);
+
+  Status = IfrLibCreatePopUp2 (NumberOfLines, KeyValue, Marker);
+
+  VA_END (Marker);
+
+  return Status;
+}
+
+/**
+  Swap bytes in the buffer. This is a internal function.
 
   @param  Buffer                 Binary buffer.
   @param  BufferSize             Size of the buffer in bytes.
@@ -231,7 +305,6 @@ IfrLibCreatePopUp (
   @return None.
 
 **/
-STATIC
 VOID
 SwapBuffer (
   IN OUT UINT8     *Buffer,
@@ -242,11 +315,33 @@ SwapBuffer (
   UINT8  Temp;
   UINTN  SwapCount;
 
-  SwapCount = (BufferSize - 1) / 2;
+  SwapCount = BufferSize / 2;
   for (Index = 0; Index < SwapCount; Index++) {
     Temp = Buffer[Index];
     Buffer[Index] = Buffer[BufferSize - 1 - Index];
     Buffer[BufferSize - 1 - Index] = Temp;
+  }
+}
+
+/**
+  Converts the unicode character of the string from uppercase to lowercase.
+  This is a internal function.
+
+  @param Str     String to be converted
+
+**/
+VOID
+EFIAPI
+ToLower (
+  IN OUT CHAR16    *Str
+  )
+{
+  CHAR16      *Ptr;
+  
+  for (Ptr = Str; *Ptr != L'\0'; Ptr++) {
+    if (*Ptr >= L'A' && *Ptr <= L'Z') {
+      *Ptr = (CHAR16) (*Ptr - L'A' + L'a');
+    }
   }
 }
 
@@ -259,11 +354,12 @@ SwapBuffer (
   @param  BufferSize             Size of the buffer in bytes.
 
   @retval EFI_SUCCESS            The function completed successfully.
+  @retval EFI_OUT_OF_RESOURCES   There is no enough available memory space.
 
 **/
 EFI_STATUS
 EFIAPI
-BufferToHexString (
+BufInReverseOrderToHexString (
   IN OUT CHAR16    *Str,
   IN UINT8         *Buffer,
   IN UINTN         BufferSize
@@ -274,12 +370,19 @@ BufferToHexString (
   UINTN       StrBufferLen;
 
   NewBuffer = AllocateCopyPool (BufferSize, Buffer);
+  if (NewBuffer == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
   SwapBuffer (NewBuffer, BufferSize);
 
-  StrBufferLen = (BufferSize + 1) * sizeof (CHAR16);
+  StrBufferLen = BufferSize * sizeof (CHAR16) + 1;
   Status = BufToHexString (Str, &StrBufferLen, NewBuffer, BufferSize);
 
-  gBS->FreePool (NewBuffer);
+  FreePool (NewBuffer);
+  //
+  // Convert the uppercase to lowercase since <HexAf> is defined in lowercase format.
+  //
+  ToLower (Str);
 
   return Status;
 }
@@ -297,11 +400,13 @@ BufferToHexString (
   @param  Str                    String to be converted from.
 
   @retval EFI_SUCCESS            The function completed successfully.
+  @retval RETURN_BUFFER_TOO_SMALL   The input BufferSize is too small to hold the output. BufferSize
+                                 will be updated to the size required for the converstion.
 
 **/
 EFI_STATUS
 EFIAPI
-HexStringToBuffer (
+HexStringToBufInReverseOrder (
   IN OUT UINT8         *Buffer,
   IN OUT UINTN         *BufferSize,
   IN CHAR16            *Str
@@ -319,6 +424,125 @@ HexStringToBuffer (
   return Status;
 }
 
+/**
+  Convert binary representation Config string (e.g. "0041004200430044") to the
+  original string (e.g. "ABCD"). Config string appears in <ConfigHdr> (i.e.
+  "&NAME=<string>"), or Name/Value pair in <ConfigBody> (i.e. "label=<string>").
+
+  @param UnicodeString  Original Unicode string.
+  @param StrBufferLen   On input: Length in bytes of buffer to hold the Unicode string.
+                                    Includes tailing '\0' character.
+                                    On output:
+                                      If return EFI_SUCCESS, containing length of Unicode string buffer.
+                                      If return EFI_BUFFER_TOO_SMALL, containg length of string buffer desired.
+  @param ConfigString   Binary representation of Unicode String, <string> := (<HexCh>4)+
+
+  @retval EFI_SUCCESS          Operation completes successfully.
+  @retval EFI_BUFFER_TOO_SMALL The string buffer is too small.
+
+**/
+EFI_STATUS
+EFIAPI
+ConfigStringToUnicode (
+  IN OUT CHAR16                *UnicodeString,
+  IN OUT UINTN                 *StrBufferLen,
+  IN CHAR16                    *ConfigString
+  )
+{
+  UINTN       Index;
+  UINTN       Len;
+  UINTN       BufferSize;
+  CHAR16      BackupChar;
+
+  Len = StrLen (ConfigString) / 4;
+  BufferSize = (Len + 1) * sizeof (CHAR16);
+
+  if (*StrBufferLen < BufferSize) {
+    *StrBufferLen = BufferSize;
+    return EFI_BUFFER_TOO_SMALL;
+  }
+
+  *StrBufferLen = BufferSize;
+
+  for (Index = 0; Index < Len; Index++) {
+    BackupChar = ConfigString[4];
+    ConfigString[4] = L'\0';
+
+    HexStringToBuf ((UINT8 *) UnicodeString, &BufferSize, ConfigString, NULL);
+
+    ConfigString[4] = BackupChar;
+
+    ConfigString += 4;
+    UnicodeString += 1;
+  }
+
+  //
+  // Add tailing '\0' character
+  //
+  *UnicodeString = L'\0';
+
+  return EFI_SUCCESS;
+}
+
+/**
+  Convert Unicode string to binary representation Config string, e.g.
+  "ABCD" => "0041004200430044". Config string appears in <ConfigHdr> (i.e.
+  "&NAME=<string>"), or Name/Value pair in <ConfigBody> (i.e. "label=<string>").
+
+  @param ConfigString   Binary representation of Unicode String, <string> := (<HexCh>4)+
+  @param  StrBufferLen  On input: Length in bytes of buffer to hold the Unicode string.
+                                    Includes tailing '\0' character.
+                                    On output:
+                                      If return EFI_SUCCESS, containing length of Unicode string buffer.
+                                      If return EFI_BUFFER_TOO_SMALL, containg length of string buffer desired.
+  @param  UnicodeString  Original Unicode string.
+
+  @retval EFI_SUCCESS           Operation completes successfully.
+  @retval EFI_BUFFER_TOO_SMALL  The string buffer is too small.
+
+**/
+EFI_STATUS
+EFIAPI
+UnicodeToConfigString (
+  IN OUT CHAR16                *ConfigString,
+  IN OUT UINTN                 *StrBufferLen,
+  IN CHAR16                    *UnicodeString
+  )
+{
+  UINTN       Index;
+  UINTN       Len;
+  UINTN       BufferSize;
+  CHAR16      *String;
+
+  Len = StrLen (UnicodeString);
+  BufferSize = (Len * 4 + 1) * sizeof (CHAR16);
+
+  if (*StrBufferLen < BufferSize) {
+    *StrBufferLen = BufferSize;
+    return EFI_BUFFER_TOO_SMALL;
+  }
+
+  *StrBufferLen = BufferSize;
+  String        = ConfigString;
+
+  for (Index = 0; Index < Len; Index++) {
+    BufToHexString (ConfigString, &BufferSize, (UINT8 *) UnicodeString, 2);
+
+    ConfigString += 4;
+    UnicodeString += 1;
+  }
+
+  //
+  // Add tailing '\0' character
+  //
+  *ConfigString = L'\0';
+
+  //
+  // Convert the uppercase to lowercase since <HexAf> is defined in lowercase format.
+  //
+  ToLower (String);  
+  return EFI_SUCCESS;
+}
 
 /**
   Construct <ConfigHdr> using routing information GUID/NAME/PATH.
@@ -335,7 +559,7 @@ HexStringToBuffer (
   @param  DriverHandle           Driver handle which contains the routing
                                  information: PATH.
 
-  @retval EFI_SUCCESS            Routine success.
+  @retval EFI_SUCCESS            Operation completes successfully.
   @retval EFI_BUFFER_TOO_SMALL   The ConfigHdr string buffer is too small.
 
 **/
@@ -344,7 +568,7 @@ EFIAPI
 ConstructConfigHdr (
   IN OUT CHAR16                *ConfigHdr,
   IN OUT UINTN                 *StrBufferLen,
-  IN EFI_GUID                  *Guid,
+  IN CONST EFI_GUID            *Guid,
   IN CHAR16                    *Name, OPTIONAL
   IN EFI_HANDLE                *DriverHandle
   )
@@ -383,10 +607,10 @@ ConstructConfigHdr (
   DevicePathSize = GetDevicePathSize (DevicePath);
 
   //
-  // GUID=<HexCh>32&NAME=<Alpha>NameStrLen&PATH=<HexChar>DevicePathStrLen <NULL>
-  // | 5  |   32   |  6  |   NameStrLen   |  6  |    DevicePathStrLen   |
+  // GUID=<HexCh>32&NAME=<Char>NameStrLen&PATH=<HexChar>DevicePathStrLen <NULL>
+  // | 5  |   32   |  6  |  NameStrLen*4 |  6  |    DevicePathStrLen    | 1 |
   //
-  BufferSize = (5 + 32 + 6 + NameStrLen + 6 + DevicePathSize * 2 + 1) * sizeof (CHAR16);
+  BufferSize = (5 + 32 + 6 + NameStrLen * 4 + 6 + DevicePathSize * 2 + 1) * sizeof (CHAR16);
   if (*StrBufferLen < BufferSize) {
     *StrBufferLen = BufferSize;
     return EFI_BUFFER_TOO_SMALL;
@@ -398,19 +622,23 @@ ConstructConfigHdr (
 
   StrCpy (StrPtr, L"GUID=");
   StrPtr += 5;
-  BufferToHexString (StrPtr, (UINT8 *) Guid, sizeof (EFI_GUID));
+  BufInReverseOrderToHexString (StrPtr, (UINT8 *) Guid, sizeof (EFI_GUID));
   StrPtr += 32;
 
+  //
+  // Convert name string, e.g. name "ABCD" => "&NAME=0041004200430044"
+  //
   StrCpy (StrPtr, L"&NAME=");
   StrPtr += 6;
   if (Name != NULL) {
-    StrCpy (StrPtr, Name);
-    StrPtr += NameStrLen;
+    BufferSize = (NameStrLen * 4 + 1) * sizeof (CHAR16);
+    UnicodeToConfigString (StrPtr, &BufferSize, Name);
+    StrPtr += (NameStrLen * 4);
   }
 
   StrCpy (StrPtr, L"&PATH=");
   StrPtr += 6;
-  BufferToHexString (StrPtr, (UINT8 *) DevicePath, DevicePathSize);
+  BufInReverseOrderToHexString (StrPtr, (UINT8 *) DevicePath, DevicePathSize);
 
   return EFI_SUCCESS;
 }
@@ -428,10 +656,11 @@ ConstructConfigHdr (
 
 **/
 BOOLEAN
+EFIAPI
 FindBlockName (
   IN OUT CHAR16                *String,
-  UINTN                        Offset,
-  UINTN                        Width
+  IN UINTN                     Offset,
+  IN UINTN                     Width
   )
 {
   EFI_STATUS  Status;
@@ -492,38 +721,32 @@ FindBlockName (
                                  desired.
   @param  Buffer                 Buffer to hold retrived data.
 
-  @retval EFI_SUCCESS            Routine success.
+  @retval EFI_SUCCESS            Operation completes successfully.
   @retval EFI_BUFFER_TOO_SMALL   The intput buffer is too small.
+  @retval EFI_OUT_OF_RESOURCES   There is no enough available memory space.
 
 **/
 EFI_STATUS
 EFIAPI
 GetBrowserData (
-  EFI_GUID                   *VariableGuid, OPTIONAL
-  CHAR16                     *VariableName, OPTIONAL
-  UINTN                      *BufferSize,
-  UINT8                      *Buffer
+  IN CONST EFI_GUID              *VariableGuid, OPTIONAL
+  IN CONST CHAR16                *VariableName, OPTIONAL
+  IN OUT UINTN                   *BufferSize,
+  IN OUT UINT8                   *Buffer
   )
 {
   EFI_STATUS                      Status;
-  CHAR16                          *ConfigHdr;
+  CONST CHAR16                    *ConfigHdr;
   CHAR16                          *ConfigResp;
   CHAR16                          *StringPtr;
   UINTN                           HeaderLen;
   UINTN                           BufferLen;
   CHAR16                          *Progress;
-  EFI_FORM_BROWSER2_PROTOCOL      *FormBrowser2;
-  EFI_HII_CONFIG_ROUTING_PROTOCOL *HiiConfigRouting;
 
   //
   // Locate protocols for use
   //
-  Status = gBS->LocateProtocol (&gEfiFormBrowser2ProtocolGuid, NULL, (VOID **) &FormBrowser2);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  Status = gBS->LocateProtocol (&gEfiHiiConfigRoutingProtocolGuid, NULL, (VOID **) &HiiConfigRouting);
+  Status = LocateFormBrowser2Protocols ();
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -533,16 +756,22 @@ GetBrowserData (
   //
   ConfigHdr = mFakeConfigHdr;
   HeaderLen = StrLen (ConfigHdr);
-
+  
+  //
+  // First try allocate 0x4000 buffer for the formet storage data.
+  //
   BufferLen = 0x4000;
   ConfigResp = AllocateZeroPool (BufferLen + HeaderLen);
+  if (ConfigResp == NULL) {
+    BufferLen = 0;
+  }
 
   StringPtr = ConfigResp + HeaderLen;
   *StringPtr = L'&';
   StringPtr++;
 
-  Status = FormBrowser2->BrowserCallback (
-                           FormBrowser2,
+  Status = mFormBrowser2->BrowserCallback (
+                           mFormBrowser2,
                            &BufferLen,
                            StringPtr,
                            TRUE,
@@ -550,15 +779,21 @@ GetBrowserData (
                            VariableName
                            );
   if (Status == EFI_BUFFER_TOO_SMALL) {
-    gBS->FreePool (ConfigResp);
+    if (ConfigResp != NULL) {
+      FreePool (ConfigResp);
+    }
+
     ConfigResp = AllocateZeroPool (BufferLen + HeaderLen);
+    if (ConfigResp == NULL) {
+      return EFI_OUT_OF_RESOURCES;
+    }
 
     StringPtr = ConfigResp + HeaderLen;
     *StringPtr = L'&';
     StringPtr++;
 
-    Status = FormBrowser2->BrowserCallback (
-                             FormBrowser2,
+    Status = mFormBrowser2->BrowserCallback (
+                             mFormBrowser2,
                              &BufferLen,
                              StringPtr,
                              TRUE,
@@ -567,7 +802,7 @@ GetBrowserData (
                              );
   }
   if (EFI_ERROR (Status)) {
-    gBS->FreePool (ConfigResp);
+    FreePool (ConfigResp);
     return Status;
   }
   CopyMem (ConfigResp, ConfigHdr, HeaderLen * sizeof (UINT16));
@@ -575,14 +810,14 @@ GetBrowserData (
   //
   // Convert <ConfigResp> to buffer data
   //
-  Status = HiiConfigRouting->ConfigToBlock (
-                               HiiConfigRouting,
+  Status = mHiiConfigRouting->ConfigToBlock (
+                               mHiiConfigRouting,
                                ConfigResp,
                                Buffer,
                                BufferSize,
                                &Progress
                                );
-  gBS->FreePool (ConfigResp);
+  FreePool (ConfigResp);
 
   return Status;
 }
@@ -603,42 +838,36 @@ GetBrowserData (
                                  Browser. <RequestElement> ::=
                                  &OFFSET=<Number>&WIDTH=<Number>*
 
-  @retval EFI_SUCCESS            Routine success.
+  @retval EFI_SUCCESS            Operation completes successfully.
+  @retval EFI_OUT_OF_RESOURCES   There is no enough available memory space.
   @retval Other                  Updating Browser uncommitted data failed.
 
 **/
 EFI_STATUS
 EFIAPI
 SetBrowserData (
-  EFI_GUID                   *VariableGuid, OPTIONAL
-  CHAR16                     *VariableName, OPTIONAL
-  UINTN                      BufferSize,
-  UINT8                      *Buffer,
-  CHAR16                     *RequestElement  OPTIONAL
+  IN CONST EFI_GUID          *VariableGuid, OPTIONAL
+  IN CONST CHAR16            *VariableName, OPTIONAL
+  IN UINTN                   BufferSize,
+  IN CONST UINT8             *Buffer,
+  IN CONST CHAR16            *RequestElement  OPTIONAL
   )
 {
   EFI_STATUS                      Status;
-  CHAR16                          *ConfigHdr;
+  CONST CHAR16                    *ConfigHdr;
   CHAR16                          *ConfigResp;
   CHAR16                          *StringPtr;
   UINTN                           HeaderLen;
   UINTN                           BufferLen;
   CHAR16                          *Progress;
-  EFI_FORM_BROWSER2_PROTOCOL      *FormBrowser2;
-  EFI_HII_CONFIG_ROUTING_PROTOCOL *HiiConfigRouting;
   CHAR16                          BlockName[33];
   CHAR16                          *ConfigRequest;
-  CHAR16                          *Request;
+  CONST CHAR16                    *Request;
 
   //
   // Locate protocols for use
   //
-  Status = gBS->LocateProtocol (&gEfiFormBrowser2ProtocolGuid, NULL, (VOID **) &FormBrowser2);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  Status = gBS->LocateProtocol (&gEfiHiiConfigRoutingProtocolGuid, NULL, (VOID **) &HiiConfigRouting);
+  Status = LocateFormBrowser2Protocols ();
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -670,6 +899,9 @@ SetBrowserData (
 
   BufferLen = HeaderLen * sizeof (CHAR16) + StrSize (Request);
   ConfigRequest = AllocateZeroPool (BufferLen);
+  if (ConfigRequest == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
 
   CopyMem (ConfigRequest, ConfigHdr, HeaderLen * sizeof (CHAR16));
   StringPtr = ConfigRequest + HeaderLen;
@@ -678,8 +910,8 @@ SetBrowserData (
   //
   // Convert buffer to <ConfigResp>
   //
-  Status = HiiConfigRouting->BlockToConfig (
-                                HiiConfigRouting,
+  Status = mHiiConfigRouting->BlockToConfig (
+                                mHiiConfigRouting,
                                 ConfigRequest,
                                 Buffer,
                                 BufferSize,
@@ -687,7 +919,7 @@ SetBrowserData (
                                 &Progress
                                 );
   if (EFI_ERROR (Status)) {
-    gBS->FreePool (ConfigResp);
+    FreePool (ConfigRequest);
     return Status;
   }
 
@@ -699,14 +931,14 @@ SetBrowserData (
   //
   // Change uncommitted data in Browser
   //
-  Status = FormBrowser2->BrowserCallback (
-                           FormBrowser2,
+  Status = mFormBrowser2->BrowserCallback (
+                           mFormBrowser2,
                            &BufferSize,
                            StringPtr,
                            FALSE,
                            NULL,
                            NULL
                            );
-  gBS->FreePool (ConfigResp);
+  FreePool (ConfigRequest);
   return Status;
 }

@@ -1,6 +1,6 @@
 /** @file
 
-Copyright (c) 2007, Intel Corporation
+Copyright (c) 2007 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -48,15 +48,13 @@ STATIC HII_DATABASE_PRIVATE_DATA mPrivate = {
     HiiGetGlyph,
     HiiGetFontInfo
   },
-#ifndef DISABLE_UNUSED_HII_PROTOCOLS
   {
-    HiiNewImage,
-    HiiGetImage,
-    HiiSetImage,
-    HiiDrawImage,
-    HiiDrawImageId
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL
   },
-#endif
   {
     HiiNewString,
     HiiGetString,
@@ -80,7 +78,7 @@ STATIC HII_DATABASE_PRIVATE_DATA mPrivate = {
   {
     HiiConfigRoutingExtractConfig,
     HiiConfigRoutingExportConfig,
-    HiiConfigRoutingRoutConfig,
+    HiiConfigRoutingRouteConfig,
     HiiBlockToConfig,
     HiiConfigToBlock,
     HiiGetAltCfg
@@ -104,54 +102,69 @@ STATIC HII_DATABASE_PRIVATE_DATA mPrivate = {
   NULL
 };
 
+GLOBAL_REMOVE_IF_UNREFERENCED CONST EFI_HII_IMAGE_PROTOCOL mImageProtocol = {
+  HiiNewImage,
+  HiiGetImage,
+  HiiSetImage,
+  HiiDrawImage,
+  HiiDrawImageId
+};
+
+/**
+  The default event handler for gHiiKeyboardLayoutChanged
+  event group.
+
+  This is internal function.
+
+  @param Event           The event that triggered this notification function.
+  @param Context         Pointer to the notification functions context.
+
+**/
+VOID
+EFIAPI
+KeyboardLayoutChangeNullEvent (
+  IN EFI_EVENT                Event,
+  IN VOID                     *Context
+  )
+{
+  return;
+}
+
+/**
+  Initialize HII Database.
+
+
+  @param ImageHandle     The image handle.
+  @param SystemTable     The system table.
+
+  @retval EFI_SUCCESS    The Hii database is setup correctly.
+  @return Other value if failed to create the default event for
+          gHiiKeyboardLayoutChanged. Check gBS->CreateEventEx for
+          details. Or failed to insatll the protocols.
+          Check gBS->InstallMultipleProtocolInterfaces for details.
+
+**/
 EFI_STATUS
 EFIAPI
 InitializeHiiDatabase (
   IN EFI_HANDLE           ImageHandle,
   IN EFI_SYSTEM_TABLE     *SystemTable
   )
-/*++
-
-Routine Description:
-  Initialize HII Database
-
-Arguments:
-  (Standard EFI Image entry - EFI_IMAGE_ENTRY_POINT)
-
-Returns:
-  EFI_SUCCESS -
-  other       -
-
---*/
 {
   EFI_STATUS                             Status;
   EFI_HANDLE                             Handle;
-  EFI_HANDLE                             *HandleBuffer;
-  UINTN                                  HandleCount;
 
   //
   // There will be only one HII Database in the system
   // If there is another out there, someone is trying to install us
   // again.  Fail that scenario.
   //
-  Status = gBS->LocateHandleBuffer (
-                  ByProtocol,
-                  &gEfiHiiDatabaseProtocolGuid,
-                  NULL,
-                  &HandleCount,
-                  &HandleBuffer
-                  );
-
-  //
-  // If there was no error, assume there is an installation and fail to load
-  //
-  if (!EFI_ERROR (Status)) {
-    if (HandleBuffer != NULL) {
-      gBS->FreePool (HandleBuffer);
-    }
-    return EFI_DEVICE_ERROR;
-  }
-
+  ASSERT_PROTOCOL_ALREADY_INSTALLED (NULL, &gEfiHiiDatabaseProtocolGuid);
+  ASSERT_PROTOCOL_ALREADY_INSTALLED (NULL, &gEfiHiiFontProtocolGuid);
+  ASSERT_PROTOCOL_ALREADY_INSTALLED (NULL, &gEfiHiiImageProtocolGuid);
+  ASSERT_PROTOCOL_ALREADY_INSTALLED (NULL, &gEfiHiiStringProtocolGuid);
+  ASSERT_PROTOCOL_ALREADY_INSTALLED (NULL, &gEfiHiiConfigRoutingProtocolGuid);
+  
   InitializeListHead (&mPrivate.DatabaseList);
   InitializeListHead (&mPrivate.DatabaseNotifyList);
   InitializeListHead (&mPrivate.HiiHandleList);
@@ -161,9 +174,9 @@ Returns:
   // Create a event with EFI_HII_SET_KEYBOARD_LAYOUT_EVENT_GUID group type.
   //
   Status = gBS->CreateEventEx (
-                  0,
-                  0,
-                  NULL,
+                  EVT_NOTIFY_SIGNAL,
+                  TPL_NOTIFY,
+                  KeyboardLayoutChangeNullEvent,
                   NULL,
                   &gHiiSetKbdLayoutEventGuid,
                   &gHiiKeyboardLayoutChanged
@@ -173,21 +186,35 @@ Returns:
   }
 
   Handle = NULL;
-  return gBS->InstallMultipleProtocolInterfaces (
-                &Handle,
-                &gEfiHiiFontProtocolGuid,
-                &mPrivate.HiiFont,
-#ifndef DISABLE_UNUSED_HII_PROTOCOLS
-                &gEfiHiiImageProtocolGuid,
-                &mPrivate.HiiImage,
-#endif
-                &gEfiHiiStringProtocolGuid,
-                &mPrivate.HiiString,
-                &gEfiHiiDatabaseProtocolGuid,
-                &mPrivate.HiiDatabase,
-                &gEfiHiiConfigRoutingProtocolGuid,
-                &mPrivate.ConfigRouting,
-                NULL
-                );
+  Status = gBS->InstallMultipleProtocolInterfaces (
+                  &Handle,
+                  &gEfiHiiFontProtocolGuid,
+                  &mPrivate.HiiFont,
+                  &gEfiHiiStringProtocolGuid,
+                  &mPrivate.HiiString,
+                  &gEfiHiiDatabaseProtocolGuid,
+                  &mPrivate.HiiDatabase,
+                  &gEfiHiiConfigRoutingProtocolGuid,
+                  &mPrivate.ConfigRouting,
+                  NULL
+                  );
+
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  if (FeaturePcdGet (PcdSupportHiiImageProtocol)) {
+    CopyMem (&mPrivate.HiiImage, &mImageProtocol, sizeof (mImageProtocol));
+
+    Status = gBS->InstallMultipleProtocolInterfaces (
+                    &Handle,
+                    &gEfiHiiImageProtocolGuid,
+                    &mPrivate.HiiImage,
+                    NULL
+                    );
+
+  }
+
+  return Status;
 }
 

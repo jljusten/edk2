@@ -1,5 +1,5 @@
 /** @file
-  Dynamically Update the pages
+Dynamically update the pages.
 
 Copyright (c) 2004 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
@@ -14,26 +14,25 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "BootMaint.h"
 
+/**
+  Refresh the global UpdateData structure.
+
+**/
 VOID
 RefreshUpdateData (
   VOID
   )
-/*++
-
-Routine Description:
-  Refresh the global UpdateData structure.
-
-Arguments:
-  None.
-
-Returns:
-  None.
-
---*/
 {
   gUpdateData.Offset = 0;
 }
 
+/**
+  Add a "Go back to main page" tag in front of the form when there are no
+  "Apply changes" and "Discard changes" tags in the end of the form.
+ 
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdatePageStart (
   IN BMM_CALLBACK_DATA                *CallbackData
@@ -58,6 +57,13 @@ UpdatePageStart (
 
 }
 
+/**
+  Create the "Apply changes" and "Discard changes" tags. And
+  ensure user can return to the main page.
+
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdatePageEnd (
   IN BMM_CALLBACK_DATA                *CallbackData
@@ -107,6 +113,15 @@ UpdatePageEnd (
     );
 }
 
+/**
+  Clean up the dynamic opcode at label and form specified by
+  both LabelId. 
+
+  @param LabelId         It is both the Form ID and Label ID for
+                         opcode deletion.
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 CleanUpPage (
   IN UINT16                           LabelId,
@@ -128,6 +143,16 @@ CleanUpPage (
     );
 }
 
+/**
+  Boot a file selected by user at File Expoloer of BMM.
+
+  @param FileContext     The file context data, which contains the device path
+                         of the file to be boot from.
+
+  @retval EFI_SUCCESS    The function completed successfull.
+  @return                 Other value if the boot from the file fails.
+
+**/
 EFI_STATUS
 BootThisFile (
   IN BM_FILE_CONTEXT                   *FileContext
@@ -149,18 +174,20 @@ BootThisFile (
   //
   gST->ConOut->ClearScreen (gST->ConOut);
 
-  gBS->RaiseTPL (TPL_APPLICATION);
-
   ExitDataSize  = 0;
 
   Status        = BdsLibBootViaBootOption (Option, Option->DevicePath, &ExitDataSize, &ExitData);
-
-  gBS->RestoreTPL (TPL_APPLICATION);
 
   return Status;
 
 }
 
+/**
+  Create a list of Goto Opcode for all terminal devices logged
+  by TerminaMenu. This list will be inserted to form FORM_CON_COM_SETUP_ID.
+
+  @param CallbackData    The BMM context data.
+**/
 VOID
 UpdateConCOMPage (
   IN BMM_CALLBACK_DATA                *CallbackData
@@ -190,6 +217,13 @@ UpdateConCOMPage (
   UpdatePageEnd (CallbackData);
 }
 
+/**
+  Create a lit of boot option from global BootOptionMenu. It
+  allow user to delete the boot option.
+
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdateBootDelPage (
   IN BMM_CALLBACK_DATA                *CallbackData
@@ -229,6 +263,12 @@ UpdateBootDelPage (
   UpdatePageEnd (CallbackData);
 }
 
+/**
+  Create a lit of driver option from global DriverMenu.
+
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdateDrvAddHandlePage (
   IN BMM_CALLBACK_DATA                *CallbackData
@@ -257,6 +297,13 @@ UpdateDrvAddHandlePage (
   UpdatePageEnd (CallbackData);
 }
 
+/**
+  Create a lit of driver option from global DriverOptionMenu. It
+  allow user to delete the driver option.
+
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdateDrvDelPage (
   IN BMM_CALLBACK_DATA                *CallbackData
@@ -294,6 +341,13 @@ UpdateDrvDelPage (
   UpdatePageEnd (CallbackData);
 }
 
+/**
+  Prepare the page to allow user to add description for 
+  a Driver Option.
+
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdateDriverAddHandleDescPage (
   IN BMM_CALLBACK_DATA                *CallbackData
@@ -356,6 +410,14 @@ UpdateDriverAddHandleDescPage (
   UpdatePageEnd (CallbackData);
 }
 
+/**
+  Update console page.
+
+  @param UpdatePageId    The form ID to be updated.
+  @param ConsoleMenu     The console menu list.
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdateConsolePage (
   IN UINT16                           UpdatePageId,
@@ -402,9 +464,9 @@ UpdateConsolePage (
     NewMenuEntry        = BOpt_GetMenuEntry (&TerminalMenu, Index2);
     NewTerminalContext  = (BM_TERMINAL_CONTEXT *) NewMenuEntry->VariableContext;
 
-    if ((NewTerminalContext->IsConIn && (UpdatePageId == FORM_CON_IN_ID)) ||
-        (NewTerminalContext->IsConOut && (UpdatePageId == FORM_CON_OUT_ID)) ||
-        (NewTerminalContext->IsStdErr && (UpdatePageId == FORM_CON_ERR_ID))
+    if (((NewTerminalContext->IsConIn != 0) && (UpdatePageId == FORM_CON_IN_ID)) ||
+        ((NewTerminalContext->IsConOut != 0) && (UpdatePageId == FORM_CON_OUT_ID)) ||
+        ((NewTerminalContext->IsStdErr != 0) && (UpdatePageId == FORM_CON_ERR_ID))
         ) {
       CheckFlags |= EFI_IFR_CHECKBOX_DEFAULT;
       CallbackData->BmmFakeNvData.ConsoleCheck[Index] = TRUE;
@@ -429,6 +491,15 @@ UpdateConsolePage (
   UpdatePageEnd (CallbackData);
 }
 
+/**
+  Update the page's NV Map if user has changed the order
+  a list. This list can be Boot Order or Driver Order.
+
+  @param UpdatePageId    The form ID to be updated.
+  @param OptionMenu      The new list.
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdateOrderPage (
   IN UINT16                           UpdatePageId,
@@ -448,7 +519,7 @@ UpdateOrderPage (
 
   ZeroMem (CallbackData->BmmFakeNvData.OptionOrder, 100);
 
-  IfrOptionList = EfiAllocateZeroPool (sizeof (IFR_OPTION) * OptionMenu->MenuNumber);
+  IfrOptionList = AllocateZeroPool (sizeof (IFR_OPTION) * OptionMenu->MenuNumber);
   if (NULL == IfrOptionList) {
     return ;
   }
@@ -489,6 +560,13 @@ UpdateOrderPage (
     );
 }
 
+/**
+  Create the dynamic page to allow user to set
+  the "BootNext" vaule.
+
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdateBootNextPage (
   IN BMM_CALLBACK_DATA                *CallbackData
@@ -508,7 +586,7 @@ UpdateBootNextPage (
   CreateMenuStringToken (CallbackData, CallbackData->BmmHiiHandle, &BootOptionMenu);
 
   if (NumberOfOptions > 0) {
-    IfrOptionList = EfiAllocateZeroPool ((NumberOfOptions + 1) * sizeof (IFR_OPTION));
+    IfrOptionList = AllocateZeroPool ((NumberOfOptions + 1) * sizeof (IFR_OPTION));
 
     ASSERT (IfrOptionList);
 
@@ -554,6 +632,13 @@ UpdateBootNextPage (
   UpdatePageEnd (CallbackData);
 }
 
+/**
+  Create the dynamic page to allow user to set
+  the "TimeOut" vaule.
+
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdateTimeOutPage (
   IN BMM_CALLBACK_DATA                *CallbackData
@@ -587,22 +672,16 @@ UpdateTimeOutPage (
   UpdatePageEnd (CallbackData);
 }
 
+/**
+  Refresh the text mode page
+
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdateConModePage (
   IN BMM_CALLBACK_DATA                *CallbackData
   )
-/*++
-
-Routine Description:
-  Refresh the text mode page
-
-Arguments:
-  CallbackData      - BMM_CALLBACK_DATA
-
-Returns:
-  None.
-
---*/
 {
   UINTN                         Mode;
   UINTN                         Index;
@@ -641,10 +720,10 @@ Returns:
     return;
   }
 
-  IfrOptionList       = EfiAllocateZeroPool (sizeof (IFR_OPTION) * ValidMode);
+  IfrOptionList       = AllocateZeroPool (sizeof (IFR_OPTION) * ValidMode);
   ASSERT(IfrOptionList != NULL);
 
-  ModeToken           = EfiAllocateZeroPool (sizeof (EFI_STRING_ID) * ValidMode);
+  ModeToken           = AllocateZeroPool (sizeof (EFI_STRING_ID) * ValidMode);
   ASSERT(ModeToken != NULL);
 
   //
@@ -698,6 +777,14 @@ Returns:
   UpdatePageEnd (CallbackData);
 }
 
+/**
+  Create the dynamic page which allows user to 
+  set the property such as Baud Rate, Data Bits,
+  Parity, Stop Bits, Terminal Type.
+
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdateTerminalPage (
   IN BMM_CALLBACK_DATA                *CallbackData
@@ -724,12 +811,12 @@ UpdateTerminalPage (
 
   NewTerminalContext  = (BM_TERMINAL_CONTEXT *) NewMenuEntry->VariableContext;
 
-  IfrOptionList       = EfiAllocateZeroPool (sizeof (IFR_OPTION) * 19);
+  IfrOptionList       = AllocateZeroPool (sizeof (IFR_OPTION) * 19);
   if (IfrOptionList == NULL) {
     return ;
   }
 
-  for (Index = 0; Index < 19; Index++) {
+  for (Index = 0; Index < sizeof (BaudRateList) / sizeof (BaudRateList [0]); Index++) {
     CheckFlags = 0;
     if (NewTerminalContext->BaudRate == (UINT64) (BaudRateList[Index].Value)) {
       CheckFlags |= EFI_IFR_OPTION_DEFAULT;
@@ -755,7 +842,7 @@ UpdateTerminalPage (
     &gUpdateData
     );
 
-  for (Index = 0; Index < 4; Index++) {
+  for (Index = 0; Index < sizeof (DataBitsList) / sizeof (DataBitsList[0]); Index++) {
     CheckFlags = 0;
 
     if (NewTerminalContext->DataBits == DataBitsList[Index].Value) {
@@ -782,7 +869,7 @@ UpdateTerminalPage (
     &gUpdateData
     );
 
-  for (Index = 0; Index < 5; Index++) {
+  for (Index = 0; Index < sizeof (ParityList) / sizeof (ParityList[0]); Index++) {
     CheckFlags = 0;
     if (NewTerminalContext->Parity == ParityList[Index].Value) {
       CheckFlags |= EFI_IFR_OPTION_DEFAULT;
@@ -808,7 +895,7 @@ UpdateTerminalPage (
     &gUpdateData
     );
 
-  for (Index = 0; Index < 3; Index++) {
+  for (Index = 0; Index < sizeof (StopBitsList) / sizeof (StopBitsList[0]); Index++) {
     CheckFlags = 0;
     if (NewTerminalContext->StopBits == StopBitsList[Index].Value) {
       CheckFlags |= EFI_IFR_OPTION_DEFAULT;
@@ -864,6 +951,14 @@ UpdateTerminalPage (
   UpdatePageEnd (CallbackData);
 }
 
+/**
+  Dispatch the correct update page function to call based on
+  the UpdatePageId.
+
+  @param UpdatePageId    The form ID.
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 UpdatePageBody (
   IN UINT16                           UpdatePageId,
@@ -897,6 +992,16 @@ UpdatePageBody (
   }
 }
 
+/**
+  Get the index number (#### in Boot####) for the boot option pointed to a BBS legacy device type
+  specified by DeviceType.
+
+  @param DeviceType      The legacy device type. It can be floppy, network, harddisk, cdrom,
+                         etc.
+  @param OptionIndex     Returns the index number (#### in Boot####).
+  @param OptionSize      Return the size of the Boot### variable.
+
+**/
 VOID *
 GetLegacyBootOptionVar (
   IN  UINTN                            DeviceType,
@@ -969,6 +1074,15 @@ GetLegacyBootOptionVar (
   return NULL;
 }
 
+/**
+  Create a dynamic page so that Legacy Device boot order
+  can be set for specified device type.
+
+  @param UpdatePageId    The form ID. It also spefies the legacy device type.
+  @param CallbackData    The BMM context data.
+
+
+**/
 VOID
 UpdateSetLegacyDeviceOrderPage (
   IN UINT16                           UpdatePageId,
@@ -1020,8 +1134,8 @@ UpdateSetLegacyDeviceOrderPage (
   case FORM_SET_FD_ORDER_ID:
     OptionMenu  = (BM_MENU_OPTION *) &LegacyFDMenu;
     Key         = (UINT16) LEGACY_FD_QUESTION_ID;
-    TypeStr     = StrFloppy;
-    TypeStrHelp = StrFloppyHelp;
+    TypeStr     = STR_FLOPPY;
+    TypeStrHelp = STR_FLOPPY_HELP;
     BbsType     = BBS_FLOPPY;
     LegacyOrder = CallbackData->BmmFakeNvData.LegacyFD;
     OldData     = CallbackData->BmmOldFakeNVData.LegacyFD;
@@ -1030,8 +1144,8 @@ UpdateSetLegacyDeviceOrderPage (
   case FORM_SET_HD_ORDER_ID:
     OptionMenu  = (BM_MENU_OPTION *) &LegacyHDMenu;
     Key         = (UINT16) LEGACY_HD_QUESTION_ID;
-    TypeStr     = StrHardDisk;
-    TypeStrHelp = StrHardDiskHelp;
+    TypeStr     = STR_HARDDISK;
+    TypeStrHelp = STR_HARDDISK_HELP;
     BbsType     = BBS_HARDDISK;
     LegacyOrder = CallbackData->BmmFakeNvData.LegacyHD;
     OldData     = CallbackData->BmmOldFakeNVData.LegacyHD;
@@ -1040,8 +1154,8 @@ UpdateSetLegacyDeviceOrderPage (
   case FORM_SET_CD_ORDER_ID:
     OptionMenu  = (BM_MENU_OPTION *) &LegacyCDMenu;
     Key         = (UINT16) LEGACY_CD_QUESTION_ID;
-    TypeStr     = StrCDROM;
-    TypeStrHelp = StrCDROMHelp;
+    TypeStr     = STR_CDROM;
+    TypeStrHelp = STR_CDROM_HELP;
     BbsType     = BBS_CDROM;
     LegacyOrder = CallbackData->BmmFakeNvData.LegacyCD;
     OldData     = CallbackData->BmmOldFakeNVData.LegacyCD;
@@ -1050,8 +1164,8 @@ UpdateSetLegacyDeviceOrderPage (
   case FORM_SET_NET_ORDER_ID:
     OptionMenu  = (BM_MENU_OPTION *) &LegacyNETMenu;
     Key         = (UINT16) LEGACY_NET_QUESTION_ID;
-    TypeStr     = StrNET;
-    TypeStrHelp = StrNETHelp;
+    TypeStr     = STR_NET;
+    TypeStrHelp = STR_NET_HELP;
     BbsType     = BBS_EMBED_NETWORK;
     LegacyOrder = CallbackData->BmmFakeNvData.LegacyNET;
     OldData     = CallbackData->BmmOldFakeNVData.LegacyNET;
@@ -1060,8 +1174,8 @@ UpdateSetLegacyDeviceOrderPage (
   case FORM_SET_BEV_ORDER_ID:
     OptionMenu  = (BM_MENU_OPTION *) &LegacyBEVMenu;
     Key         = (UINT16) LEGACY_BEV_QUESTION_ID;
-    TypeStr     = StrBEV;
-    TypeStrHelp = StrBEVHelp;
+    TypeStr     = STR_BEV;
+    TypeStrHelp = STR_BEV_HELP;
     BbsType     = BBS_BEV_DEVICE;
     LegacyOrder = CallbackData->BmmFakeNvData.LegacyBEV;
     OldData     = CallbackData->BmmOldFakeNVData.LegacyBEV;
@@ -1071,7 +1185,7 @@ UpdateSetLegacyDeviceOrderPage (
 
   CreateMenuStringToken (CallbackData, CallbackData->BmmHiiHandle, OptionMenu);
 
-  IfrOptionList = EfiAllocateZeroPool (sizeof (IFR_OPTION) * (OptionMenu->MenuNumber + 1));
+  IfrOptionList = AllocateZeroPool (sizeof (IFR_OPTION) * (OptionMenu->MenuNumber + 1));
   if (NULL == IfrOptionList) {
     return ;
   }
@@ -1097,7 +1211,7 @@ UpdateSetLegacyDeviceOrderPage (
   // Get Device Order from variable
   //
   VarData = BdsLibGetVariableAndSize (
-              VarLegacyDevOrder,
+              VAR_LEGACY_DEV_ORDER,
               &EfiLegacyDevOrderGuid,
               &VarSize
               );
@@ -1164,6 +1278,13 @@ UpdateSetLegacyDeviceOrderPage (
   UpdatePageEnd (CallbackData);
 }
 
+/**
+  Dispatch the display to the next page based on NewPageId.
+
+  @param Private         The BMM context data.
+  @param NewPageId       The original page ID.
+
+**/
 VOID
 UpdatePageId (
   BMM_CALLBACK_DATA              *Private,

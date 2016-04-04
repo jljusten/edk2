@@ -5,7 +5,7 @@
   and PCI Configuration cycles on a PCI Root Bridge. It also provides services to perform 
   defferent types of bus mastering DMA
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -18,8 +18,6 @@
 
 #ifndef __PCI_ROOT_BRIDGE_IO_H__
 #define __PCI_ROOT_BRIDGE_IO_H__
-
-#include <PiDxe.h>
 
 #define EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_GUID \
   { \
@@ -101,7 +99,7 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_POLL_IO_MEM) (
+(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_POLL_IO_MEM)(
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL           *This,
   IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH    Width,
   IN  UINT64                                   Address,
@@ -128,7 +126,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_IO_MEM) (
+(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_IO_MEM)(
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL              *This,
   IN     EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH    Width,
   IN     UINT64                                   Address,
@@ -158,7 +156,7 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_COPY_MEM) (
+(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_COPY_MEM)(
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL              *This,
   IN     EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH    Width,
   IN     UINT64                                   DestAddress,
@@ -188,7 +186,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_MAP) (
+(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_MAP)(
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL                *This,
   IN     EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_OPERATION  Operation,
   IN     VOID                                       *HostAddress,
@@ -210,7 +208,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_UNMAP) (
+(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_UNMAP)(
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL           *This,
   IN  VOID                                     *Mapping
   );
@@ -237,7 +235,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_ALLOCATE_BUFFER) (
+(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_ALLOCATE_BUFFER)(
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL              *This,
   IN     EFI_ALLOCATE_TYPE                        Type,
   IN     EFI_MEMORY_TYPE                          MemoryType,
@@ -260,7 +258,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_FREE_BUFFER) (
+(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_FREE_BUFFER)(
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL           *This,
   IN  UINTN                                    Pages,
   IN  VOID                                     *HostAddress
@@ -279,7 +277,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_FLUSH) (
+(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_FLUSH)(
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL  *This
   );
 
@@ -303,7 +301,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_GET_ATTRIBUTES) (
+(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_GET_ATTRIBUTES)(
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL           *This,
   OUT UINT64                                   *Supports,
   OUT UINT64                                   *Attributes
@@ -332,7 +330,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_SET_ATTRIBUTES) (
+(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_SET_ATTRIBUTES)(
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL              *This,
   IN     UINT64                                   Attributes,
   IN OUT UINT64                                   *ResourceBase,
@@ -355,12 +353,20 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_CONFIGURATION) (
+(EFIAPI *EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_CONFIGURATION)(
   IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL          *This,
   OUT VOID                                     **Resources
   );
 
+/**  
+  @par Protocol Description:
+  Provides the basic Memory, I/O, PCI configuration, and DMA interfaces that are 
+  used to abstract accesses to PCI controllers behind a PCI Root Bridge Controller. 
+**/
 struct _EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL {
+  ///
+  /// The EFI_HANDLE of the PCI Host Bridge of which this PCI Root Bridge is a member.
+  ///
   EFI_HANDLE                                      ParentHandle;
   EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_POLL_IO_MEM     PollMem;
   EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_POLL_IO_MEM     PollIo;
@@ -376,6 +382,10 @@ struct _EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL {
   EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_GET_ATTRIBUTES  GetAttributes;
   EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_SET_ATTRIBUTES  SetAttributes;
   EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_CONFIGURATION   Configuration;
+  
+  ///
+  /// The segment number that this PCI root bridge resides.
+  ///
   UINT32                                          SegmentNumber;
 };
 

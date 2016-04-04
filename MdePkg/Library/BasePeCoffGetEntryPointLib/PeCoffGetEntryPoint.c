@@ -1,7 +1,8 @@
 /** @file
-  Tiano PE/COFF loader.
+  Provides the services to get the entry point to a PE/COFF image that has either been 
+  loaded into memory or is executing at it's linked address.
 
-  Copyright (c) 2006 - 2007, Intel Corporation<BR>
+  Copyright (c) 2006 - 2008, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -14,7 +15,6 @@
 
 
 #include <Base.h>
-
 
 #include <Library/PeCoffGetEntryPointLib.h>
 #include <Library/DebugLib.h>
@@ -243,6 +243,9 @@ PeCoffLoaderGetPdbPointer (
     return NULL;
   }
 
+  //
+  // Scan the directory to find the debug entry.
+  // 
   for (DirCount = 0; DirCount < DirectoryEntry->Size; DirCount += sizeof (EFI_IMAGE_DEBUG_DIRECTORY_ENTRY), DebugEntry++) {
     if (DebugEntry->Type == EFI_IMAGE_DEBUG_TYPE_CODEVIEW) {
       if (DebugEntry->SizeOfData > 0) {

@@ -1,7 +1,5 @@
 /** @file
 
-  Defines data structure that is the headers found at the runtime
-  updatable firmware volumes.
   The header structure of FTW working block region.
 
 Copyright (c) 2006 - 2008, Intel Corporation
@@ -31,7 +29,7 @@ typedef struct {
 #define WORKING_BLOCK_INVALID 0x2
   UINT8     Reserved : 6;
   UINT8     Reserved3[3];
-  UINT32    WriteQueueSize;
+  UINT64    WriteQueueSize;
   //
   // UINT8                WriteQueue[WriteQueueSize];
   //

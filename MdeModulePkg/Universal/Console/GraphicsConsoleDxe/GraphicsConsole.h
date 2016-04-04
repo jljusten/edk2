@@ -1,7 +1,7 @@
 /** @file
   Header file for GraphicsConsole driver.
 
-Copyright (c) 2006, Intel Corporation. <BR>
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#ifndef _GRAPHICS_CONSOLE_H
-#define _GRAPHICS_CONSOLE_H
+#ifndef _GRAPHICS_CONSOLE_H_
+#define _GRAPHICS_CONSOLE_H_
 
-#include <PiDxe.h>
+#include <Uefi.h>
 #include <Protocol/SimpleTextOut.h>
 #include <Protocol/GraphicsOutput.h>
 #include <Protocol/UgaDraw.h>
@@ -181,8 +181,7 @@ typedef union {
   EFI_WIDE_GLYPH    WideGlyph;
 } GLYPH_UNION;
 
-extern EFI_NARROW_GLYPH  UsStdNarrowGlyphData[];
-extern EFI_WIDE_GLYPH    UsStdWideGlyphData[];
+extern EFI_NARROW_GLYPH  gUsStdNarrowGlyphData[];
 
 //
 // Device Structure
@@ -220,19 +219,35 @@ typedef struct {
 //
 extern EFI_DRIVER_BINDING_PROTOCOL   gGraphicsConsoleDriverBinding;
 
-//
-// Prototypes
-//
+
+/**
+  Returns available Unicode glyphs narrow fonts(8*19 pixels) size.
+
+  @return Narrow foun size.
+
+**/
 UINTN
 ReturnNarrowFontSize (
   VOID
   );
 
-UINTN
-ReturnWideFontSize (
-  VOID
-  );
+/**
+  Implements SIMPLE_TEXT_OUTPUT.Reset().
+  If ExtendeVerification is TRUE, then perform dependent Graphics Console
+  device reset, and set display mode to mode 0.
+  If ExtendedVerification is FALSE, only set display mode to mode 0.
 
+  @param  This                  Indicates the calling context.
+  @param  ExtendedVerification  Indicates that the driver may perform a more
+                                exhaustive verification operation of the device
+                                during reset.
+
+  @return EFI_SUCCESS
+  @return The reset operation succeeds.
+  @return EFI_DEVICE_ERROR
+  @return The Graphics Console is not functioning correctly
+
+**/
 EFI_STATUS
 EFIAPI
 GraphicsConsoleConOutReset (
@@ -240,6 +255,28 @@ GraphicsConsoleConOutReset (
   IN  BOOLEAN                            ExtendedVerification
   );
 
+/**
+  Write a Unicode string to the output device.
+
+  Implements SIMPLE_TEXT_OUTPUT.OutputString(). 
+  The Unicode string will be converted to Glyphs and will be
+  sent to the Graphics Console.
+
+  @param  This                    Protocol instance pointer.
+  @param  WString                 The NULL-terminated Unicode string to be displayed
+                                  on the output device(s). All output devices must
+                                  also support the Unicode drawing defined in this file.
+
+  @retval EFI_SUCCESS             The string was output to the device.
+  @retval EFI_DEVICE_ERROR        The device reported an error while attempting to output
+                                  the text.
+  @retval EFI_UNSUPPORTED         The output device's mode is not currently in a
+                                  defined text mode.
+  @retval EFI_WARN_UNKNOWN_GLYPH  This warning code indicates that some of the
+                                  characters in the Unicode string could not be
+                                  rendered and were skipped.
+
+**/
 EFI_STATUS
 EFIAPI
 GraphicsConsoleConOutOutputString (
@@ -247,6 +284,22 @@ GraphicsConsoleConOutOutputString (
   IN  CHAR16                           *WString
   );
 
+/**
+  Implements SIMPLE_TEXT_OUTPUT.TestString().
+  If one of the characters in the *Wstring is
+  neither valid valid Unicode drawing characters,
+  not ASCII code, then this function will return
+  EFI_UNSUPPORTED.
+
+  @param  This                  Indicates the calling context.
+  @param  WString               The Null-terminated Unicode string to be tested.
+
+  @return EFI_SUCCESS
+  @return The Graphics Console is capable of rendering the output string.
+  @return EFI_UNSUPPORTED
+  @return Some of the characters in the Unicode string cannot be rendered.
+
+**/
 EFI_STATUS
 EFIAPI
 GraphicsConsoleConOutTestString (
@@ -254,6 +307,23 @@ GraphicsConsoleConOutTestString (
   IN  CHAR16                           *WString
   );
 
+/**
+  Returns information for an available text mode that the output device(s)
+  supports
+
+  Implements SIMPLE_TEXT_OUTPUT.QueryMode().
+  It returnes information for an available text mode that the Graphics Console supports.
+  In this driver,we only support text mode 80x25, which is defined as mode 0.
+
+  @param  This                  Protocol instance pointer.
+  @param  ModeNumber            The mode number to return information on.
+  @param  Columns               The returned columns of the requested mode.
+  @param  Rows                  The returned rows of the requested mode.
+
+  @retval EFI_SUCCESS           The requested mode information is returned.
+  @retval EFI_UNSUPPORTED       The mode number is not valid.
+
+**/
 EFI_STATUS
 EFIAPI
 GraphicsConsoleConOutQueryMode (
@@ -263,6 +333,22 @@ GraphicsConsoleConOutQueryMode (
   OUT UINTN                            *Rows
   );
 
+
+/**
+  Sets the output device(s) to a specified mode.
+  
+  Implements SIMPLE_TEXT_OUTPUT.SetMode().
+  Set the Graphics Console to a specified mode. In this driver, we only support mode 0.
+
+  @param  This                  Protocol instance pointer.
+  @param  ModeNumber            The text mode to set.
+
+  @retval EFI_SUCCESS           The requested text mode is set.
+  @retval EFI_DEVICE_ERROR      The requested text mode cannot be set because of 
+                                Graphics Console device error.
+  @retval EFI_UNSUPPORTED       The text mode number is not valid.
+
+**/
 EFI_STATUS
 EFIAPI
 GraphicsConsoleConOutSetMode (
@@ -270,6 +356,18 @@ GraphicsConsoleConOutSetMode (
   IN  UINTN                            ModeNumber
   );
 
+/**
+  Implements SIMPLE_TEXT_OUTPUT.SetAttribute().
+
+  @param  This                  Indicates the calling context.
+  @param  Attribute             The attribute to set. Only bit0..6 are valid, all
+                                other bits are undefined and must be zero.
+
+  @return EFI_SUCCESS           The requested attribute is set.
+  @return EFI_DEVICE_ERROR      The requested attribute cannot be set due to Graphics Console port error.
+  @return EFI_UNSUPPORTED       The attribute requested is not defined by EFI spec.
+
+**/
 EFI_STATUS
 EFIAPI
 GraphicsConsoleConOutSetAttribute (
@@ -277,12 +375,41 @@ GraphicsConsoleConOutSetAttribute (
   IN  UINTN                            Attribute
   );
 
+/**
+  Clears the output device(s) display to the currently selected background 
+  color.
+
+  Implements SIMPLE_TEXT_OUTPUT.ClearScreen().
+
+  @param  This                  Protocol instance pointer.
+
+  @retval  EFI_SUCCESS      The operation completed successfully.
+  @retval  EFI_DEVICE_ERROR The device had an error and could not complete the request.
+  @retval  EFI_UNSUPPORTED  The output device is not in a valid text mode.
+
+**/
 EFI_STATUS
 EFIAPI
 GraphicsConsoleConOutClearScreen (
   IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  *This
   );
 
+/**
+  Implements SIMPLE_TEXT_OUTPUT.SetCursorPosition().
+
+  @param  This                  Indicates the calling context.
+  @param  Column                The row to set cursor to.
+  @param  Row                   The column to set cursor to.
+
+  @return EFI_SUCCESS
+  @return The operation completed successfully.
+  @return EFI_DEVICE_ERROR
+  @return The request fails due to Graphics Console device error.
+  @return EFI_UNSUPPORTED
+  @return The Graphics Console is not in a valid text mode, or the cursor position
+  @return is invalid for current mode.
+
+**/
 EFI_STATUS
 EFIAPI
 GraphicsConsoleConOutSetCursorPosition (
@@ -291,6 +418,19 @@ GraphicsConsoleConOutSetCursorPosition (
   IN  UINTN                            Row
   );
 
+
+/**
+  Makes the cursor visible or invisible.
+
+  Implements SIMPLE_TEXT_OUTPUT.EnableCursor().
+
+  @param  This                  Protocol instance pointer.
+  @param  Visible               If TRUE, the cursor is set to be visible, If FALSE,
+                                the cursor is set to be invisible.
+
+  @retval EFI_SUCCESS           The operation completed successfully.
+
+**/
 EFI_STATUS
 EFIAPI
 GraphicsConsoleConOutEnableCursor (
@@ -298,6 +438,22 @@ GraphicsConsoleConOutEnableCursor (
   IN  BOOLEAN                          Visible
   );
 
+/**
+  Test to see if Graphics Console could be supported on the Controller.
+
+  Graphics Console could be supported if Graphics Output Protocol or UGA Draw
+  Protocol exists on the Controller. (UGA Draw Protocol could be skipped
+  if PcdUgaConsumeSupport is set to FALSE.)
+
+  @param  This                Protocol instance pointer.
+  @param  Controller          Handle of device to test.
+  @param  RemainingDevicePath Optional parameter use to pick a specific child
+                              device to start.
+
+  @retval EFI_SUCCESS         This driver supports this device.
+  @retval other               This driver does not support this device.
+
+**/
 EFI_STATUS
 EFIAPI
 GraphicsConsoleControllerDriverSupported (
@@ -306,6 +462,21 @@ GraphicsConsoleControllerDriverSupported (
   IN EFI_DEVICE_PATH_PROTOCOL       *RemainingDevicePath
   );
 
+
+/**
+  Start this driver on Controller by opening Graphics Output protocol or 
+  UGA Draw protocol, and installing Simple Text Out protocol on Controller.
+  (UGA Draw protocol could be shkipped if PcdUgaConsumeSupport is set to FALSE.)
+  
+  @param  This                 Protocol instance pointer.
+  @param  Controller           Handle of device to bind driver to
+  @param  RemainingDevicePath  Optional parameter use to pick a specific child
+                               device to start.
+
+  @retval EFI_SUCCESS          This driver is added to Controller.
+  @retval other                This driver does not support this device.
+
+**/
 EFI_STATUS
 EFIAPI
 GraphicsConsoleControllerDriverStart (
@@ -314,6 +485,24 @@ GraphicsConsoleControllerDriverStart (
   IN EFI_DEVICE_PATH_PROTOCOL       *RemainingDevicePath
   );
 
+/**
+  Stop this driver on Controller by removing Simple Text Out protocol 
+  and closing the Graphics Output Protocol or UGA Draw protocol on Controller.
+  (UGA Draw protocol could be shkipped if PcdUgaConsumeSupport is set to FALSE.)
+  
+
+  @param  This              Protocol instance pointer.
+  @param  Controller        Handle of device to stop driver on
+  @param  NumberOfChildren  Number of Handles in ChildHandleBuffer. If number of
+                            children is zero stop the entire bus driver.
+  @param  ChildHandleBuffer List of Child Handles to Stop.
+
+  @retval EFI_SUCCESS       This driver is removed Controller.
+  @retval EFI_NOT_STARTED   Simple Text Out protocol could not be found the 
+                            Controller.
+  @retval other             This driver was not removed from this device.
+
+**/
 EFI_STATUS
 EFIAPI
 GraphicsConsoleControllerDriverStop (
@@ -323,11 +512,20 @@ GraphicsConsoleControllerDriverStop (
   IN  EFI_HANDLE                     *ChildHandleBuffer
   );
 
+
+/**
+  Locate HII Database protocol and HII Font protocol.
+
+  @retval  EFI_SUCCESS     HII Database protocol and HII Font protocol 
+                           are located successfully.
+  @return  other           Failed to locate HII Database protocol or 
+                           HII Font protocol.
+
+**/
 EFI_STATUS
 EfiLocateHiiProtocol (
   VOID
-  )
-;
+  );
 
 
 #endif

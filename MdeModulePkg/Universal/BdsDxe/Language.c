@@ -23,9 +23,9 @@ EFI_GUID  mFontPackageGuid = {
 };
 
 typedef struct {
-  //
-  // This 4-bytes total array length is required by HiiLibPreparePackageList()
-  //
+  ///
+  /// This 4-bytes total array length is required by HiiLibPreparePackageList()
+  ///
   UINT32                 Length;
 
   //
@@ -250,21 +250,14 @@ FONT_PACK_BIN mFontBin = {
   }
 };
 
+/**
+  Routine to export glyphs to the HII database.  This is in addition to whatever is defined in the Graphics Console driver.
+
+**/
 VOID
 ExportFonts (
   VOID
   )
-/*++
-
-Routine Description:
-  Routine to export glyphs to the HII database.  This is in addition to whatever is defined in the Graphics Console driver.
-
-Arguments:
-  None
-
-Returns:
-
---*/
 {
   EFI_STATUS                   Status;
   EFI_HANDLE                   DriverHandle;
@@ -286,22 +279,17 @@ Returns:
   FreePool (PackageList);
 }
 
+/**
+  Determine the current language that will be used
+  based on language related EFI Variables.
+
+  @param LangCodesSettingRequired - If required to set LangCode variable
+
+**/
 VOID
 InitializeLanguage (
   BOOLEAN LangCodesSettingRequired
   )
-/*++
-
-Routine Description:
-  Determine the current language that will be used
-  based on language related EFI Variables
-
-Arguments:
-  LangCodesSettingRequired - If required to set LangCode variable
-
-Returns:
-
---*/
 {
   EFI_STATUS  Status;
   UINTN       Size;
@@ -317,7 +305,7 @@ Returns:
 
   LangCodes = (CHAR8 *)PcdGetPtr (PcdUefiVariableDefaultLangCodes);
   if (LangCodesSettingRequired) {
-    if (!FeaturePcdGet (PcdUefiVariableDefaultLangDepricate)) {
+    if (!FeaturePcdGet (PcdUefiVariableDefaultLangDeprecate)) {
       //
       // UEFI 2.1 depricated this variable so we support turning it off
       //
@@ -341,7 +329,7 @@ Returns:
                     );
   }
 
-  if (!FeaturePcdGet (PcdUefiVariableDefaultLangDepricate)) {
+  if (!FeaturePcdGet (PcdUefiVariableDefaultLangDeprecate)) {
     //
     // UEFI 2.1 depricated this variable so we support turning it off
     //

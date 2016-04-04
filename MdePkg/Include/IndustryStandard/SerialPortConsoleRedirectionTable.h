@@ -1,4 +1,4 @@
-/**@file
+/** @file
   ACPI Serial Port Console Redirection Table as defined by Microsoft in
   http://www.microsoft.com/whdc/system/platform/server/spcr.mspx
     
@@ -21,18 +21,16 @@
 //
 // Ensure proper structure formats
 //
-#ifdef _MSC_EXTENSIONS
 #pragma pack(1)
-#endif
 
-//
-// SPCR Revision (defined in spec)
-//
+///
+/// SPCR Revision (defined in spec)
+///
 #define EFI_ACPI_SERIAL_PORT_CONSOLE_REDIRECTION_TABLE_REVISION 0x01
 
-//
-// SPCR Structure Definition
-//
+///
+/// SPCR Structure Definition
+///
 typedef struct {
   EFI_ACPI_DESCRIPTION_HEADER             Header;
   UINT8                                   InterfaceType;
@@ -57,9 +55,7 @@ typedef struct {
   UINT32                                  Reserved2;
 } EFI_ACPI_SERIAL_PORT_CONSOLE_REDIRECTION_TABLE;
 
-#ifdef _MSC_EXTENSIONS
 #pragma pack()
-#endif
 
 //
 // SPCR Definitions

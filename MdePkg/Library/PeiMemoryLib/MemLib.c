@@ -1,7 +1,7 @@
 /** @file
-  Base Memory Library.
+  Base Memory Library functions implementation bases on PeiServcie.
 
-  Copyright (c) 2006, Intel Corporation<BR>
+  Copyright (c) 2006 - 2008, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -14,6 +14,18 @@
 
 #include "MemLibInternals.h"
 
+/**
+  Copies a source buffer to a destination buffer, and returns the destination buffer.
+
+  This function wraps the gPS->CopyMem ().
+  
+  @param  DestinationBuffer   Pointer to the destination buffer of the memory copy.
+  @param  SourceBuffer        Pointer to the source buffer of the memory copy.
+  @param  Length              Number of bytes to copy from SourceBuffer to DestinationBuffer.
+
+  @return DestinationBuffer.
+
+**/
 VOID *
 EFIAPI
 InternalMemCopyMem (
@@ -30,6 +42,18 @@ InternalMemCopyMem (
   return Destination;
 }
 
+/**
+  Fills a target buffer with a byte value, and returns the target buffer.
+
+  This function wraps the gPS->SetMem ().
+  
+  @param  Buffer    Memory to set.
+  @param  Size    Number of bytes to set.
+  @param  Value     Value of the set operation.
+
+  @return Buffer.
+
+**/
 VOID *
 EFIAPI
 InternalMemSetMem (

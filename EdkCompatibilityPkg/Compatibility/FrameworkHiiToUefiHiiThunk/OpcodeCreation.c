@@ -44,6 +44,56 @@ AppendToUpdateBuffer (
   return EFI_SUCCESS;
 }
 
+EFI_QUESTION_ID
+AssignQuestionId (
+  IN  UINT16    FwQuestionId
+  )
+{
+  if (FwQuestionId == 0) {
+    //
+    // In UEFI IFR, the Question ID can't be zero. Zero means no storage.
+    // So use 0xABBA as a Question ID.
+    //
+    return 0xABBA;
+  } else {
+    return FwQuestionId;
+  }
+}
+
+
+EFI_STATUS
+FwQuestionIdToUefiQuestionId (
+  IN HII_THUNK_CONTEXT            *ThunkContext,
+  IN UINT16                       VarStoreId,
+  IN UINT16                       FwId,
+  OUT EFI_QUESTION_ID             *UefiQId
+  )
+{
+  LIST_ENTRY                *MapEntryListHead;
+  LIST_ENTRY                *Link;
+  QUESTION_ID_MAP_ENTRY     *MapEntry;
+
+  MapEntryListHead = GetMapEntryListHead (ThunkContext, VarStoreId);
+  ASSERT (MapEntryListHead != NULL);
+
+  Link = GetFirstNode (MapEntryListHead);
+
+  while (!IsNull (MapEntryListHead, Link)) {
+    MapEntry = QUESTION_ID_MAP_ENTRY_FROM_LINK (Link);
+
+    if (MapEntry->FwQId == FwId) {
+      *UefiQId = MapEntry->UefiQid;
+      return EFI_SUCCESS;
+    }
+
+    Link = GetNextNode (MapEntryListHead, Link);
+  }
+
+  return EFI_NOT_FOUND;
+}
+
+
+
 EFI_STATUS
 UCreateEndOfOpcode (
   OUT      EFI_HII_UPDATE_DATA         *UefiData
@@ -83,19 +133,39 @@ F2UCreateTextOpCode (
   OUT      EFI_HII_UPDATE_DATA         *UefiData
   )
 {
-  EFI_IFR_TEXT UOpcode;
+  EFI_IFR_TEXT      UTextOpCode;
+  EFI_IFR_ACTION    UActionOpCode;
 
-  ZeroMem (&UOpcode, sizeof(UOpcode));
-  
-  UOpcode.Header.OpCode = EFI_IFR_TEXT_OP;
-  UOpcode.Header.Length = sizeof (EFI_IFR_TEXT);
+  if ((FwText->Flags & FRAMEWORK_EFI_IFR_FLAG_INTERACTIVE) == 0) {
+    ZeroMem (&UTextOpCode, sizeof(UTextOpCode));
+    
+    UTextOpCode.Header.OpCode = EFI_IFR_TEXT_OP;
+    UTextOpCode.Header.Length = sizeof (EFI_IFR_TEXT);
 
-  UOpcode.Statement.Help   = FwText->Help;
+    UTextOpCode.Statement.Help   = FwText->Help;
 
-  UOpcode.Statement.Prompt = FwText->Text;
-  UOpcode.TextTwo          = FwText->TextTwo;
-  
-  return AppendToUpdateBuffer ((UINT8 *) &UOpcode, sizeof(UOpcode), UefiData);
+    UTextOpCode.Statement.Prompt = FwText->Text;
+    UTextOpCode.TextTwo          = FwText->TextTwo;
+    
+    return AppendToUpdateBuffer ((UINT8 *) &UTextOpCode, sizeof(UTextOpCode), UefiData);
+  } else {
+    //
+    // Iteractive Text Opcode is EFI_IFR_ACTION
+    //
+
+    ZeroMem (&UActionOpCode, sizeof (UActionOpCode));
+
+    UActionOpCode.Header.OpCode = EFI_IFR_ACTION_OP;
+    UActionOpCode.Header.Length = sizeof (EFI_IFR_ACTION);
+
+    UActionOpCode.Question.Header.Prompt = FwText->Text;
+    UActionOpCode.Question.Header.Help  = FwText->Help;
+    UActionOpCode.Question.Flags      = EFI_IFR_FLAG_CALLBACK;
+    UActionOpCode.Question.QuestionId = FwText->Key;
+
+    return AppendToUpdateBuffer ((UINT8 *) &UActionOpCode, sizeof(UActionOpCode), UefiData);
+    
+  }
 }
 
 /*
@@ -267,20 +337,25 @@ typedef struct {
 
 EFI_STATUS
 F2UCreateOneOfOpCode (
+  IN       HII_THUNK_CONTEXT           *ThunkContext,
+  IN       UINT16                      VarStoreId,
   IN CONST FRAMEWORK_EFI_IFR_ONE_OF    *FwOpcode,
   OUT      EFI_HII_UPDATE_DATA         *UefiData,
   OUT      FRAMEWORK_EFI_IFR_OP_HEADER **NextFwOpcode,
   OUT      UINTN                       *DataCount
   )
 {
-  EFI_STATUS     Status;
-  EFI_IFR_ONE_OF UOpcode;
-  FRAMEWORK_EFI_IFR_OP_HEADER *FwOpHeader;
-  FRAMEWORK_EFI_IFR_ONE_OF_OPTION *FwOneOfOp;
-  BOOLEAN        HasQuestionId;
+  EFI_STATUS                          Status;
+  EFI_IFR_ONE_OF                      UOpcode;
+  FRAMEWORK_EFI_IFR_OP_HEADER         *FwOpHeader;
+  FRAMEWORK_EFI_IFR_ONE_OF_OPTION     *FwOneOfOp;
+  ONE_OF_OPTION_MAP                   *OneOfOptionMap;
+  ONE_OF_OPTION_MAP_ENTRY             *OneOfOptionMapEntry;
 
   ASSERT (NextFwOpcode != NULL);
   ASSERT (DataCount != NULL);
+
+  OneOfOptionMap = NULL;
 
   ZeroMem (&UOpcode, sizeof(UOpcode));
   *DataCount = 0;
@@ -291,29 +366,81 @@ F2UCreateOneOfOpCode (
 
   UOpcode.Question.Header.Prompt = FwOpcode->Prompt;
   UOpcode.Question.Header.Help = FwOpcode->Help;
- 
-  Status = AppendToUpdateBuffer ((UINT8 *) &UOpcode, sizeof(UOpcode), UefiData);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-  *DataCount += 1;
-
+  UOpcode.Question.VarStoreId  = VarStoreId;
+  UOpcode.Question.VarStoreInfo.VarOffset = FwOpcode->QuestionId;
+  
   //
   // Go over the Framework IFR binary to get the QuestionId for generated UEFI One Of Option opcode
   //
-  HasQuestionId = FALSE;
   FwOpHeader = (FRAMEWORK_EFI_IFR_OP_HEADER *) ((UINT8 *) FwOpcode + FwOpcode->Header.Length);
   while (FwOpHeader->OpCode != FRAMEWORK_EFI_IFR_END_ONE_OF_OP) {
     ASSERT (FwOpHeader->OpCode == FRAMEWORK_EFI_IFR_ONE_OF_OPTION_OP);
     
     FwOneOfOp = (FRAMEWORK_EFI_IFR_ONE_OF_OPTION *) FwOpHeader;
-    if (((FwOneOfOp->Key & FRAMEWORK_EFI_IFR_FLAG_INTERACTIVE) == 0) & !HasQuestionId) {
-      HasQuestionId = TRUE;
-      UOpcode.Question.QuestionId = FwOneOfOp->Key;
+    if ((FwOneOfOp->Flags & FRAMEWORK_EFI_IFR_FLAG_INTERACTIVE) != 0) {
+      UOpcode.Question.Flags |= EFI_IFR_FLAG_CALLBACK;
+      
+      if (UOpcode.Question.QuestionId == 0) {
+        Status = FwQuestionIdToUefiQuestionId (ThunkContext, VarStoreId, FwOpcode->QuestionId, &UOpcode.Question.QuestionId);
+        if (EFI_ERROR (Status)) {
+          UOpcode.Question.QuestionId = AssignQuestionId (FwOneOfOp->Key);
+        }
+
+        OneOfOptionMap = AllocateZeroPool (sizeof (ONE_OF_OPTION_MAP));
+        ASSERT (OneOfOptionMap != NULL);
+        OneOfOptionMap->Signature = ONE_OF_OPTION_MAP_SIGNATURE;
+        OneOfOptionMap->QuestionId = UOpcode.Question.QuestionId;
+        InitializeListHead (&OneOfOptionMap->OneOfOptionMapEntryListHead);
+        switch (FwOpcode->Width) {
+        case 1:
+          OneOfOptionMap->ValueType = EFI_IFR_TYPE_NUM_SIZE_8;
+          break;
+        case 2:
+          OneOfOptionMap->ValueType = EFI_IFR_TYPE_NUM_SIZE_16;
+          break;
+        default:
+          ASSERT (FALSE);
+          break;
+        }
+
+        InsertTailList (&ThunkContext->OneOfOptionMapListHead, &OneOfOptionMap->Link);
+      }
+      
+      OneOfOptionMapEntry = AllocateZeroPool (sizeof (ONE_OF_OPTION_MAP_ENTRY));
+      ASSERT (OneOfOptionMapEntry != NULL);
+
+      OneOfOptionMapEntry->FwKey = FwOneOfOp->Key;
+      OneOfOptionMapEntry->Signature = ONE_OF_OPTION_MAP_ENTRY_SIGNATURE;
+      
+      CopyMem (&OneOfOptionMapEntry->Value, &FwOneOfOp->Value, FwOpcode->Width);
+
+      ASSERT (OneOfOptionMap != NULL);
+      InsertTailList (&OneOfOptionMap->OneOfOptionMapEntryListHead, &OneOfOptionMapEntry->Link);
+    }
+
+    if (FwOneOfOp->Flags & FRAMEWORK_EFI_IFR_FLAG_RESET_REQUIRED) {
+      UOpcode.Question.Flags |= EFI_IFR_FLAG_RESET_REQUIRED;
     }
 
     FwOpHeader = (FRAMEWORK_EFI_IFR_OP_HEADER *) ((UINT8 *) FwOpHeader + FwOpHeader->Length);
   }
+
+
+  if (UOpcode.Question.QuestionId == 0) {
+    //
+    // Assign QuestionId if still not assigned.
+    //
+    Status = FwQuestionIdToUefiQuestionId (ThunkContext, VarStoreId, FwOpcode->QuestionId, &UOpcode.Question.QuestionId);
+    if (EFI_ERROR (Status)) {
+      UOpcode.Question.QuestionId = AssignQuestionId (FwOpcode->QuestionId);
+    }
+  }
+  
+  Status = AppendToUpdateBuffer ((UINT8 *) &UOpcode, sizeof (UOpcode), UefiData);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+  *DataCount += 1;
 
   //
   // Go over again the Framework IFR binary to build the UEFI One Of Option opcodes.
@@ -367,6 +494,8 @@ typedef struct {
 */
 EFI_STATUS
 F2UCreateOrderedListOpCode (
+  IN       HII_THUNK_CONTEXT               *ThunkContext,
+  IN       UINT16                      VarStoreId,
   IN CONST FRAMEWORK_EFI_IFR_ORDERED_LIST *FwOpcode,
   OUT      EFI_HII_UPDATE_DATA         *UefiData,
   OUT      FRAMEWORK_EFI_IFR_OP_HEADER **NextFwOpcode,
@@ -376,6 +505,7 @@ F2UCreateOrderedListOpCode (
   EFI_IFR_ORDERED_LIST              UOpcode;
   EFI_STATUS                        Status;
   FRAMEWORK_EFI_IFR_OP_HEADER       *FwOpHeader;
+  FRAMEWORK_EFI_IFR_ONE_OF_OPTION     *FwOneOfOp;
 
   ZeroMem (&UOpcode, sizeof(UOpcode));
   *DataCount = 0;
@@ -386,8 +516,44 @@ F2UCreateOrderedListOpCode (
 
   UOpcode.Question.Header.Prompt = FwOpcode->Prompt;
   UOpcode.Question.Header.Help = FwOpcode->Help;
+  UOpcode.Question.VarStoreId  = VarStoreId;
+  UOpcode.Question.VarStoreInfo.VarOffset = FwOpcode->QuestionId;
 
   UOpcode.MaxContainers = FwOpcode->MaxEntries;
+
+  //
+  // Go over the Framework IFR binary to get the QuestionId for generated UEFI One Of Option opcode
+  //
+  FwOpHeader = (FRAMEWORK_EFI_IFR_OP_HEADER *) ((UINT8 *) FwOpcode + FwOpcode->Header.Length);
+  while (FwOpHeader->OpCode != FRAMEWORK_EFI_IFR_END_ONE_OF_OP) {
+    ASSERT (FwOpHeader->OpCode == FRAMEWORK_EFI_IFR_ONE_OF_OPTION_OP);
+    
+    FwOneOfOp = (FRAMEWORK_EFI_IFR_ONE_OF_OPTION *) FwOpHeader;
+    if ((FwOneOfOp->Flags & FRAMEWORK_EFI_IFR_FLAG_INTERACTIVE) != 0) {
+      UOpcode.Question.Flags |= EFI_IFR_FLAG_CALLBACK;
+      
+      if (UOpcode.Question.QuestionId == 0) {
+        Status = FwQuestionIdToUefiQuestionId (ThunkContext, VarStoreId, FwOpcode->QuestionId, &UOpcode.Question.QuestionId);
+        if (EFI_ERROR (Status)) {
+          UOpcode.Question.QuestionId = AssignQuestionId (FwOneOfOp->Key);
+        }
+
+      }
+    }
+
+    if (FwOneOfOp->Flags & FRAMEWORK_EFI_IFR_FLAG_RESET_REQUIRED) {
+      UOpcode.Question.Flags |= EFI_IFR_FLAG_RESET_REQUIRED;
+    }
+
+    FwOpHeader = (FRAMEWORK_EFI_IFR_OP_HEADER *) ((UINT8 *) FwOpHeader + FwOpHeader->Length);
+  }
+
+  if (UOpcode.Question.QuestionId == 0) {
+    Status = FwQuestionIdToUefiQuestionId (ThunkContext, VarStoreId, FwOpcode->QuestionId, &UOpcode.Question.QuestionId);
+    if (EFI_ERROR (Status)) {
+      UOpcode.Question.QuestionId = AssignQuestionId (FwOpcode->QuestionId);
+    }
+  }
  
   Status = AppendToUpdateBuffer ((UINT8 *) &UOpcode, sizeof(UOpcode), UefiData);
   if (EFI_ERROR (Status)) {
@@ -397,7 +563,10 @@ F2UCreateOrderedListOpCode (
 
   FwOpHeader = (FRAMEWORK_EFI_IFR_OP_HEADER *) ((UINT8 *) FwOpcode + FwOpcode->Header.Length);
   while (FwOpHeader->OpCode != FRAMEWORK_EFI_IFR_END_ONE_OF_OP) {
-    Status = F2UCreateOneOfOptionOpCode ((CONST FRAMEWORK_EFI_IFR_ONE_OF_OPTION *) FwOpHeader, FwOpcode->MaxEntries, UefiData);
+    //
+    // Each entry of Order List in Framework HII is always 1 byte in size
+    //
+    Status = F2UCreateOneOfOptionOpCode ((CONST FRAMEWORK_EFI_IFR_ONE_OF_OPTION *) FwOpHeader, 1, UefiData);
     if (EFI_ERROR (Status)) {
       return Status;
     }
@@ -450,10 +619,13 @@ typedef struct {
 
 EFI_STATUS
 F2UCreateCheckBoxOpCode (
+  IN       HII_THUNK_CONTEXT           *ThunkContext,
+  IN       UINT16                      VarStoreId,
   IN CONST FRAMEWORK_EFI_IFR_CHECKBOX  *FwOpcode,
   OUT      EFI_HII_UPDATE_DATA         *UefiData
   )
 {
+  EFI_STATUS       Status;
   EFI_IFR_CHECKBOX UOpcode;
 
   ZeroMem (&UOpcode, sizeof(UOpcode));
@@ -464,7 +636,18 @@ F2UCreateCheckBoxOpCode (
   UOpcode.Question.Header.Prompt = FwOpcode->Prompt;
   UOpcode.Question.Header.Help = FwOpcode->Help;
 
-  UOpcode.Question.QuestionId    = FwOpcode->Key;
+  if (FwOpcode->Key == 0) {
+    Status = FwQuestionIdToUefiQuestionId (ThunkContext, VarStoreId, FwOpcode->QuestionId, &UOpcode.Question.QuestionId);
+    if (EFI_ERROR (Status)) {
+      //
+      // Add a new opcode and it will not trigger call back. So we just reuse the FW QuestionId.
+      //
+      UOpcode.Question.QuestionId = AssignQuestionId (FwOpcode->QuestionId);
+    }
+  } else {
+    UOpcode.Question.QuestionId    = FwOpcode->Key;
+  }
+
   UOpcode.Question.VarStoreId    = RESERVED_VARSTORE_ID;
   UOpcode.Question.VarStoreInfo.VarOffset = FwOpcode->QuestionId;
 
@@ -478,8 +661,8 @@ F2UCreateCheckBoxOpCode (
 
   //
   // We also map 2 flags:
-  //      FRAMEWORK_EFI_IFR_FLAG_INTERACTIVE, 
-  //      FRAMEWORK_EFI_IFR_FLAG_RESET_REQUIRED,
+  //      FRAMEWORK_EFI_IFR_FLAG_DEFAULT, 
+  //      FRAMEWORK_EFI_IFR_FLAG_MANUFACTURING,
   // to UEFI IFR CheckBox Opcode default flags.
   //
   UOpcode.Flags           = (FwOpcode->Flags & (FRAMEWORK_EFI_IFR_FLAG_DEFAULT | FRAMEWORK_EFI_IFR_FLAG_MANUFACTURING));
@@ -550,6 +733,8 @@ typedef struct {
 
 EFI_STATUS
 F2UCreateNumericOpCode (
+  IN       HII_THUNK_CONTEXT           *ThunkContext,
+  IN       UINT16                      VarStoreId,
   IN CONST FRAMEWORK_EFI_IFR_NUMERIC   *FwOpcode,
   OUT      EFI_HII_UPDATE_DATA         *UefiData
   )
@@ -560,21 +745,30 @@ F2UCreateNumericOpCode (
 
   ZeroMem (&UOpcode, sizeof(UOpcode));
 
+  if (FwOpcode->Key == 0) {
+    Status = FwQuestionIdToUefiQuestionId (ThunkContext, VarStoreId, FwOpcode->QuestionId, &UOpcode.Question.QuestionId);
+    if (EFI_ERROR (Status)) {
+      //
+      // Add a new opcode and it will not trigger call back. So we just reuse the FW QuestionId.
+      //
+      UOpcode.Question.QuestionId = AssignQuestionId (FwOpcode->QuestionId);
+    }
+  } else {
+    UOpcode.Question.QuestionId    = FwOpcode->Key;
+  }
+
   UOpcode.Header.Length = sizeof(UOpcode);
   UOpcode.Header.OpCode = EFI_IFR_NUMERIC_OP;
   //
   // We need to create a nested default value for the UEFI Numeric Opcode.
   // So turn on the scope.
   //
-  if (FwOpcode->Default != 0) {
-    UOpcode.Header.Scope = 1;
-  }
+  UOpcode.Header.Scope = 1;
 
   UOpcode.Question.Header.Prompt = FwOpcode->Prompt;
   UOpcode.Question.Header.Help = FwOpcode->Help;
 
-  UOpcode.Question.QuestionId    = FwOpcode->Key;
-  UOpcode.Question.VarStoreId    = RESERVED_VARSTORE_ID;
+  UOpcode.Question.VarStoreId    = VarStoreId;
   UOpcode.Question.VarStoreInfo.VarOffset = FwOpcode->QuestionId;
 
   UOpcode.Question.Flags  = (FwOpcode->Flags & (FRAMEWORK_EFI_IFR_FLAG_INTERACTIVE | FRAMEWORK_EFI_IFR_FLAG_RESET_REQUIRED));
@@ -589,12 +783,12 @@ F2UCreateNumericOpCode (
   switch (FwOpcode->Width) {
     case 1: 
     {
-      UOpcode.Flags           =  EFI_IFR_NUMERIC_SIZE_2 | EFI_IFR_DISPLAY_UINT_DEC; 
+      UOpcode.Flags           =  EFI_IFR_NUMERIC_SIZE_1 | EFI_IFR_DISPLAY_UINT_DEC; 
       break;
     } 
     case 2: 
     {
-      UOpcode.Flags           =  EFI_IFR_NUMERIC_SIZE_1 | EFI_IFR_DISPLAY_UINT_DEC; 
+      UOpcode.Flags           =  EFI_IFR_NUMERIC_SIZE_2 | EFI_IFR_DISPLAY_UINT_DEC; 
       break;
     }
     default: 
@@ -612,34 +806,32 @@ F2UCreateNumericOpCode (
   //
   // We need to create a default value.
   //
-  if (FwOpcode->Default != 0) {
-    ZeroMem (&UOpcodeDefault, sizeof (UOpcodeDefault));
-    UOpcodeDefault.Header.Length = sizeof (UOpcodeDefault);
-    UOpcodeDefault.Header.OpCode = EFI_IFR_DEFAULT_OP;
+  ZeroMem (&UOpcodeDefault, sizeof (UOpcodeDefault));
+  UOpcodeDefault.Header.Length = sizeof (UOpcodeDefault);
+  UOpcodeDefault.Header.OpCode = EFI_IFR_DEFAULT_OP;
 
-    UOpcodeDefault.DefaultId = 0;
+  UOpcodeDefault.DefaultId = 0;
 
-    switch (FwOpcode->Width) {
-      case 1: 
-      {
-        UOpcodeDefault.Type = EFI_IFR_TYPE_NUM_SIZE_8;
-        break;
-      } 
-      case 2: 
-      {
-        UOpcodeDefault.Type = EFI_IFR_TYPE_NUM_SIZE_16;
-        break;
-      }
+  switch (FwOpcode->Width) {
+    case 1: 
+    {
+      UOpcodeDefault.Type = EFI_IFR_TYPE_NUM_SIZE_8;
+      break;
+    } 
+    case 2: 
+    {
+      UOpcodeDefault.Type = EFI_IFR_TYPE_NUM_SIZE_16;
+      break;
     }
-
-    CopyMem (&UOpcodeDefault.Value.u8, &FwOpcode->Default, FwOpcode->Width);
-
-    Status = AppendToUpdateBuffer ((UINT8 *) &UOpcodeDefault, sizeof(UOpcodeDefault), UefiData);
-    if (EFI_ERROR (Status)) {
-      return Status;
-    }
-    Status = UCreateEndOfOpcode (UefiData);
   }
+
+  CopyMem (&UOpcodeDefault.Value.u8, &FwOpcode->Default, FwOpcode->Width);
+
+  Status = AppendToUpdateBuffer ((UINT8 *) &UOpcodeDefault, sizeof(UOpcodeDefault), UefiData);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+  Status = UCreateEndOfOpcode (UefiData);
 
   return Status;
 }
@@ -684,6 +876,8 @@ typedef struct {
 
 EFI_STATUS
 F2UCreateStringOpCode (
+  IN       HII_THUNK_CONTEXT               *ThunkContext,
+  IN       UINT16                      VarStoreId,
   IN CONST FRAMEWORK_EFI_IFR_STRING    *FwOpcode,
   OUT      EFI_HII_UPDATE_DATA         *UefiData
   )
@@ -691,6 +885,12 @@ F2UCreateStringOpCode (
   EFI_IFR_STRING UOpcode;
 
   ZeroMem (&UOpcode, sizeof(UOpcode));
+
+  if (FwOpcode->Key == 0) {
+    FwQuestionIdToUefiQuestionId (ThunkContext, VarStoreId, FwOpcode->QuestionId, &UOpcode.Question.QuestionId);
+  } else {
+    UOpcode.Question.QuestionId    = FwOpcode->Key;
+  }
 
   UOpcode.Header.Length = sizeof(UOpcode);
   UOpcode.Header.OpCode = EFI_IFR_STRING_OP;
@@ -753,113 +953,121 @@ F2UCreateBannerOpCode (
 }
 
 
-
 EFI_STATUS
-ThunkFrameworkUpdateDataToUefiUpdateData (
+FwUpdateDataToUefiUpdateData (
+  IN       HII_THUNK_CONTEXT                 *ThunkContext,
   IN CONST FRAMEWORK_EFI_HII_UPDATE_DATA    *Data,
   IN       BOOLEAN                          AddData,
   OUT      EFI_HII_UPDATE_DATA              **UefiData
   )
 {
-  FRAMEWORK_EFI_IFR_OP_HEADER          *FrameworkOpcodeBuffer;
-  FRAMEWORK_EFI_IFR_OP_HEADER          *NextFrameworkOpcodeBuffer;
-  EFI_HII_UPDATE_DATA                  *UefiUpdateDataBuffer;
+  FRAMEWORK_EFI_IFR_OP_HEADER          *FwOpCode;
+  FRAMEWORK_EFI_IFR_OP_HEADER          *NextFwOpCode;
+  EFI_HII_UPDATE_DATA                  *UefiOpCode;
   UINTN                                Index;
   EFI_STATUS                           Status;
   UINTN                                DataCount;
-  static UINTN                         mOneOfOptionWidth;
+  UINT16                               VarStoreId;
 
-  mOneOfOptionWidth = 0;
-  
+  //
+  // Assume all dynamic opcode created is using active variable with VarStoreId of 1.
+  //
+  VarStoreId = 1;
 
-  UefiUpdateDataBuffer = AllocateZeroPool (sizeof (EFI_HII_UPDATE_DATA));
-  if (UefiUpdateDataBuffer == NULL) {
+  UefiOpCode = AllocateZeroPool (sizeof (EFI_HII_UPDATE_DATA));
+  if (UefiOpCode == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
   
-  UefiUpdateDataBuffer->Data = AllocateZeroPool (LOCAL_UPDATE_DATA_BUFFER_INCREMENTAL);
-  if (UefiUpdateDataBuffer->Data == NULL) {
+  UefiOpCode->Data = AllocateZeroPool (LOCAL_UPDATE_DATA_BUFFER_INCREMENTAL);
+  if (UefiOpCode->Data == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
-  UefiUpdateDataBuffer->BufferSize = LOCAL_UPDATE_DATA_BUFFER_INCREMENTAL;
-  UefiUpdateDataBuffer->Offset = 0;
+  UefiOpCode->BufferSize = LOCAL_UPDATE_DATA_BUFFER_INCREMENTAL;
+  UefiOpCode->Offset = 0;
 
-  FrameworkOpcodeBuffer = (FRAMEWORK_EFI_IFR_OP_HEADER *) &Data->Data;
+  FwOpCode = (FRAMEWORK_EFI_IFR_OP_HEADER *) &Data->Data;
 
   for (Index = 0; Index < Data->DataCount; Index += DataCount) {
-    //
-    // By default Datacount is 1. For FRAMEWORK_EFI_IFR_ONE_OF_OP and FRAMEWORK_EFI_IFR_ORDERED_LIST_OP,
-    // DataCount maybe more than 1.
-    //
-    DataCount = 1;
-    switch (FrameworkOpcodeBuffer->OpCode) {
+    switch (FwOpCode->OpCode) {
       case FRAMEWORK_EFI_IFR_SUBTITLE_OP:
-        Status = F2UCreateSubtitleOpCode ((FRAMEWORK_EFI_IFR_SUBTITLE  *) FrameworkOpcodeBuffer, UefiUpdateDataBuffer);
+        Status = F2UCreateSubtitleOpCode ((FRAMEWORK_EFI_IFR_SUBTITLE  *) FwOpCode, UefiOpCode);
+        DataCount = 1;
         break;
         
       case FRAMEWORK_EFI_IFR_TEXT_OP:
-        Status = F2UCreateTextOpCode ((FRAMEWORK_EFI_IFR_TEXT  *) FrameworkOpcodeBuffer, UefiUpdateDataBuffer);  
+        Status = F2UCreateTextOpCode ((FRAMEWORK_EFI_IFR_TEXT  *) FwOpCode, UefiOpCode);  
+        DataCount = 1;
         break;
 
       case FRAMEWORK_EFI_IFR_REF_OP:
-        Status = F2UCreateGotoOpCode ((FRAMEWORK_EFI_IFR_REF *) FrameworkOpcodeBuffer, UefiUpdateDataBuffer);  
+        Status = F2UCreateGotoOpCode ((FRAMEWORK_EFI_IFR_REF *) FwOpCode, UefiOpCode);  
+        DataCount = 1;
         break;
         
       case FRAMEWORK_EFI_IFR_ONE_OF_OP:
-        Status = F2UCreateOneOfOpCode ((FRAMEWORK_EFI_IFR_ONE_OF *) FrameworkOpcodeBuffer, UefiUpdateDataBuffer, &NextFrameworkOpcodeBuffer, &DataCount);
+        Status = F2UCreateOneOfOpCode (ThunkContext, VarStoreId, (FRAMEWORK_EFI_IFR_ONE_OF *) FwOpCode, UefiOpCode, &NextFwOpCode, &DataCount);
         if (!EFI_ERROR (Status)) {
-          FrameworkOpcodeBuffer = NextFrameworkOpcodeBuffer;
+          FwOpCode = NextFwOpCode;
           //
-          // F2UCreateOneOfOpCode has updated FrameworkOpcodeBuffer to point to the next opcode.
+          // FwOpCode is already updated to point to the next opcode.
           //
           continue;
         }
         break;
 
       case FRAMEWORK_EFI_IFR_ORDERED_LIST_OP:
-        Status = F2UCreateOrderedListOpCode ((FRAMEWORK_EFI_IFR_ORDERED_LIST *) FrameworkOpcodeBuffer, UefiUpdateDataBuffer, &NextFrameworkOpcodeBuffer, &DataCount);
+        Status = F2UCreateOrderedListOpCode (ThunkContext, VarStoreId, (FRAMEWORK_EFI_IFR_ORDERED_LIST *) FwOpCode, UefiOpCode, &NextFwOpCode, &DataCount);
         if (!EFI_ERROR (Status)) {
-          FrameworkOpcodeBuffer = NextFrameworkOpcodeBuffer;
+          FwOpCode = NextFwOpCode;
           //
-          // F2UCreateOrderedListOpCode has updated FrameworkOpcodeBuffer to point to the next opcode.
+          // FwOpCode is already updated to point to the next opcode.
           //
           continue;
         }
         break;
         
       case FRAMEWORK_EFI_IFR_CHECKBOX_OP:
-        Status = F2UCreateCheckBoxOpCode ((FRAMEWORK_EFI_IFR_CHECKBOX *) FrameworkOpcodeBuffer, UefiUpdateDataBuffer);  
+        Status = F2UCreateCheckBoxOpCode (ThunkContext, VarStoreId, (FRAMEWORK_EFI_IFR_CHECKBOX *) FwOpCode, UefiOpCode);  
+        DataCount = 1;
         break;
 
       case FRAMEWORK_EFI_IFR_STRING_OP:
-        Status = F2UCreateStringOpCode ((FRAMEWORK_EFI_IFR_STRING *) FrameworkOpcodeBuffer, UefiUpdateDataBuffer);  
+        Status = F2UCreateStringOpCode (ThunkContext, VarStoreId, (FRAMEWORK_EFI_IFR_STRING *) FwOpCode, UefiOpCode);  
+        DataCount = 1;
         break;
 
       case FRAMEWORK_EFI_IFR_BANNER_OP:
-        Status = F2UCreateBannerOpCode ((FRAMEWORK_EFI_IFR_BANNER *) FrameworkOpcodeBuffer, UefiUpdateDataBuffer);  
+        Status = F2UCreateBannerOpCode ((FRAMEWORK_EFI_IFR_BANNER *) FwOpCode, UefiOpCode);  
+        DataCount = 1;
         break;
 
       case FRAMEWORK_EFI_IFR_END_ONE_OF_OP:
-        Status = UCreateEndOfOpcode (UefiUpdateDataBuffer);
-        mOneOfOptionWidth = 0;
+        Status = UCreateEndOfOpcode (UefiOpCode);
+        DataCount = 1;
         break;
-        
+
+      case FRAMEWORK_EFI_IFR_NUMERIC_OP:
+        Status = F2UCreateNumericOpCode (ThunkContext, VarStoreId, (FRAMEWORK_EFI_IFR_NUMERIC *) FwOpCode, UefiOpCode);
+        DataCount = 1;
+        break;
+
       default:
         ASSERT (FALSE);
         return EFI_UNSUPPORTED;
     }
 
     if (EFI_ERROR (Status)) {
-      FreePool (UefiUpdateDataBuffer->Data);
-      FreePool (UefiUpdateDataBuffer);
+      FreePool (UefiOpCode->Data);
+      FreePool (UefiOpCode);
       return Status;
     }
 
-    FrameworkOpcodeBuffer = (FRAMEWORK_EFI_IFR_OP_HEADER *)((UINT8 *) FrameworkOpcodeBuffer + FrameworkOpcodeBuffer->Length);
+    FwOpCode = (FRAMEWORK_EFI_IFR_OP_HEADER *)((UINT8 *) FwOpCode + FwOpCode->Length);
   }
 
-  *UefiData = UefiUpdateDataBuffer;
+  *UefiData = UefiOpCode;
   
   return EFI_SUCCESS;
 }

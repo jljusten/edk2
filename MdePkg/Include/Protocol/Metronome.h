@@ -1,9 +1,9 @@
 /** @file
-  Metronome Architectural Protocol as defined in DXE CIS
+  Metronome Architectural Protocol as defined in PI SPEC VOLUME 2 DXE
 
   This code abstracts the DXE core to provide delay services.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -12,23 +12,20 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
-  @par Revision Reference:
-  Version 0.91B.
-
 **/
 
 #ifndef __ARCH_PROTOCOL_METRONOME_H__
 #define __ARCH_PROTOCOL_METRONOME_H__
 
-//
-// Global ID for the Metronome Architectural Protocol
-//
+///
+/// Global ID for the Metronome Architectural Protocol
+///
 #define EFI_METRONOME_ARCH_PROTOCOL_GUID \
   { 0x26baccb2, 0x6f42, 0x11d4, {0xbc, 0xe7, 0x0, 0x80, 0xc7, 0x3c, 0x88, 0x81 } }
 
-//
-// Declare forward reference for the Metronome Architectural Protocol
-//
+///
+/// Declare forward reference for the Metronome Architectural Protocol
+///
 typedef struct _EFI_METRONOME_ARCH_PROTOCOL   EFI_METRONOME_ARCH_PROTOCOL;
 
 /**
@@ -55,13 +52,10 @@ typedef struct _EFI_METRONOME_ARCH_PROTOCOL   EFI_METRONOME_ARCH_PROTOCOL;
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_METRONOME_WAIT_FOR_TICK) (
+(EFIAPI *EFI_METRONOME_WAIT_FOR_TICK)(
    IN EFI_METRONOME_ARCH_PROTOCOL   *This,
    IN UINT32                        TickNumber
   );
-
-//
-//
 
 /**
   Interface stucture for the Metronome Architectural Protocol.
@@ -77,17 +71,17 @@ EFI_STATUS
   function and the first tick is between 0 and TickPeriod 100 nS 
   units.  If you want to guarantee that at least TickPeriod time 
   has elapsed, wait for two ticks.
-
-  @param TickPeriod
-  The period of platform's known time source in 100 nS units.  
-  This value on any platform must be at least 10 uS, and must not 
-  exceed 200 uS.  The value in this field is a constant that must 
-  not be modified after the Metronome architectural protocol is 
-  installed.  All consumers must treat this as a read-only field.
-
 **/
 struct _EFI_METRONOME_ARCH_PROTOCOL {
   EFI_METRONOME_WAIT_FOR_TICK  WaitForTick;
+  
+  ///
+  /// The period of platform's known time source in 100 nS units.  
+  /// This value on any platform must be at least 10 uS, and must not 
+  /// exceed 200 uS.  The value in this field is a constant that must 
+  /// not be modified after the Metronome architectural protocol is 
+  /// installed.  All consumers must treat this as a read-only field.  
+  ///
   UINT32                       TickPeriod;
 };
 

@@ -7,7 +7,7 @@
   environment. There are a set of base libraries in the Mde Package that can
   be used to implement base modules.
 
-Copyright (c) 2006 - 2007, Intel Corporation
+Copyright (c) 2006 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -36,9 +36,9 @@ typedef struct {
 
 typedef UINT64 PHYSICAL_ADDRESS;
 
-//
-// LIST_ENTRY definition
-//
+///
+/// LIST_ENTRY definition
+///
 typedef struct _LIST_ENTRY LIST_ENTRY;
 
 struct _LIST_ENTRY {
@@ -217,19 +217,20 @@ typedef CHAR8 *VA_LIST;
 #define _CR(Record, TYPE, Field)  ((TYPE *) ((CHAR8 *) (Record) - (CHAR8 *) &(((TYPE *) 0)->Field)))
 
 ///
+///  ALIGN_VALUE - aligns a value up to the next boundary of the given alignment.
+///
+#define ALIGN_VALUE(Value, Alignment) ((Value) + (((Alignment) - (Value)) & ((Alignment) - 1)))
+
+///
 ///  ALIGN_POINTER - aligns a pointer to the lowest boundry
 ///
-#define ALIGN_POINTER(p, s) ((VOID *) ((UINTN)(p) + (((s) - ((UINTN) (p))) & ((s) - 1))))
+#define ALIGN_POINTER(Pointer, Alignment) ((VOID *) (ALIGN_VALUE ((UINTN)(Pointer), (Alignment))))
 
 ///
 ///  ALIGN_VARIABLE - aligns a variable up to the next natural boundry for int size of a processor
 ///
-#define ALIGN_VARIABLE(Value, Adjustment) \
-  Adjustment = 0U; \
-  if ((UINTN) (Value) % sizeof (UINTN)) { \
-    (Adjustment) = (UINTN)(sizeof (UINTN) - ((UINTN) (Value) % sizeof (UINTN))); \
-  } \
-  (Value) = (UINTN)((UINTN) (Value) + (UINTN) (Adjustment))
+#define ALIGN_VARIABLE(Value)  ALIGN_VALUE ((Value), sizeof (UINTN))
+  
 
 //
 // Return the maximum of two operands. 
@@ -293,6 +294,8 @@ typedef INTN RETURN_STATUS;
 #define RETURN_CRC_ERROR             ENCODE_ERROR (27)
 #define RETURN_END_OF_MEDIA          ENCODE_ERROR (28)
 #define RETURN_END_OF_FILE           ENCODE_ERROR (31)
+#define RETURN_INVALID_LANGUAGE      ENCODE_ERROR (32)
+
 
 #define RETURN_WARN_UNKNOWN_GLYPH    ENCODE_WARNING (1)
 #define RETURN_WARN_DELETE_FAILURE   ENCODE_WARNING (2)

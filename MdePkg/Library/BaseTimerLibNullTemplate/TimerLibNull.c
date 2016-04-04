@@ -1,7 +1,7 @@
 /** @file
   A non-functional instance of the Timer Library.
 
-  Copyright (c) 2007, Intel Corporation<BR>
+  Copyright (c) 2007 - 2008, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -12,21 +12,16 @@
 
 **/
 
-
 #include <Base.h>
-
-
 #include <Library/TimerLib.h>
 #include <Library/DebugLib.h>
 
 /**
-  Stalls the CPU for at least the given number of microseconds.
-
   Stalls the CPU for the number of microseconds specified by MicroSeconds.
 
   @param  MicroSeconds  The minimum number of microseconds to delay.
 
-  @return MicroSeconds
+  @return The value of MicroSeconds inputted.
 
 **/
 UINTN
@@ -40,13 +35,11 @@ MicroSecondDelay (
 }
 
 /**
-  Stalls the CPU for at least the given number of nanoseconds.
-
   Stalls the CPU for the number of nanoseconds specified by NanoSeconds.
 
   @param  NanoSeconds The minimum number of nanoseconds to delay.
 
-  @return NanoSeconds
+  @return The value of NanoSeconds inputted.
 
 **/
 UINTN
@@ -60,8 +53,6 @@ NanoSecondDelay (
 }
 
 /**
-  Retrieves the current value of a 64-bit free running performance counter.
-
   Retrieves the current value of a 64-bit free running performance counter. The
   counter can either count up by 1 or count down by 1. If the physical
   performance counter counts by a larger increment, then the counter values

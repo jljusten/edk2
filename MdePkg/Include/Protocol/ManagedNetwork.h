@@ -2,7 +2,7 @@
   EFI_MANAGED_NETWORK_SERVICE_BINDING_PROTOCOL as defined in UEFI 2.0.
   EFI_MANAGED_NETWORK_PROTOCOL as defined in UEFI 2.0.
 
-  Copyright (c) 2006, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -13,8 +13,8 @@
 
 **/
 
-#ifndef _EFI_MANAGED_NETWORK_PROTOCOL_H
-#define _EFI_MANAGED_NETWORK_PROTOCOL_H
+#ifndef __EFI_MANAGED_NETWORK_PROTOCOL_H__
+#define __EFI_MANAGED_NETWORK_PROTOCOL_H__
 
 #include <Protocol/SimpleNetwork.h>
 
@@ -102,12 +102,11 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_MANAGED_NETWORK_GET_MODE_DATA) (
+(EFIAPI *EFI_MANAGED_NETWORK_GET_MODE_DATA)(
   IN  EFI_MANAGED_NETWORK_PROTOCOL     *This,
   OUT EFI_MANAGED_NETWORK_CONFIG_DATA  *MnpConfigData  OPTIONAL,
   OUT EFI_SIMPLE_NETWORK_MODE          *SnpModeData    OPTIONAL
-  )
-;
+  );
 
 /**
   Sets or clears the operational parameters for the MNP child driver.
@@ -130,11 +129,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_MANAGED_NETWORK_CONFIGURE) (
+(EFIAPI *EFI_MANAGED_NETWORK_CONFIGURE)(
   IN EFI_MANAGED_NETWORK_PROTOCOL     *This,
   IN EFI_MANAGED_NETWORK_CONFIG_DATA  *MnpConfigData  OPTIONAL
-  )
-;
+  );
 
 /**
   Translates an IP multicast address to a hardware (MAC) multicast address.
@@ -159,13 +157,12 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_MANAGED_NETWORK_MCAST_IP_TO_MAC) (
+(EFIAPI *EFI_MANAGED_NETWORK_MCAST_IP_TO_MAC)(
   IN  EFI_MANAGED_NETWORK_PROTOCOL  *This,
   IN  BOOLEAN                       Ipv6Flag,
   IN  EFI_IP_ADDRESS                *IpAddress,
   OUT EFI_MAC_ADDRESS               *MacAddress
-  )
-;
+  );
 
 /**
   Enables and disables receive filters for multicast address.
@@ -190,12 +187,11 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_MANAGED_NETWORK_GROUPS) (
+(EFIAPI *EFI_MANAGED_NETWORK_GROUPS)(
   IN EFI_MANAGED_NETWORK_PROTOCOL  *This,
   IN BOOLEAN                       JoinFlag,
   IN EFI_MAC_ADDRESS               *MacAddress  OPTIONAL
-  )
-;
+  );
 
 /**
   Places asynchronous outgoing data packets into the transmit queue.
@@ -215,11 +211,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_MANAGED_NETWORK_TRANSMIT) (
+(EFIAPI *EFI_MANAGED_NETWORK_TRANSMIT)(
   IN EFI_MANAGED_NETWORK_PROTOCOL          *This,
   IN EFI_MANAGED_NETWORK_COMPLETION_TOKEN  *Token
-  )
-;
+  );
 
 /**
   Places an asynchronous receiving request into the receiving queue.
@@ -242,11 +237,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_MANAGED_NETWORK_RECEIVE) (
+(EFIAPI *EFI_MANAGED_NETWORK_RECEIVE)(
   IN EFI_MANAGED_NETWORK_PROTOCOL          *This,
   IN EFI_MANAGED_NETWORK_COMPLETION_TOKEN  *Token
-  )
-;
+  );
 
 
 /**
@@ -270,11 +264,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_MANAGED_NETWORK_CANCEL) (
+(EFIAPI *EFI_MANAGED_NETWORK_CANCEL)(
   IN EFI_MANAGED_NETWORK_PROTOCOL          *This,
   IN EFI_MANAGED_NETWORK_COMPLETION_TOKEN  *Token  OPTIONAL
-  )
-;
+  );
 
 /**
   Polls for incoming data packets and processes outgoing data packets.
@@ -292,11 +285,15 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_MANAGED_NETWORK_POLL) (
+(EFIAPI *EFI_MANAGED_NETWORK_POLL)(
   IN EFI_MANAGED_NETWORK_PROTOCOL    *This
-  )
-;
+  );
 
+/**  
+  @par Protocol Description:
+  The MNP is used by network applications (and drivers) to 
+  perform raw (unformatted) asynchronous network packet I/O.
+**/
 struct _EFI_MANAGED_NETWORK_PROTOCOL {
   EFI_MANAGED_NETWORK_GET_MODE_DATA       GetModeData;
   EFI_MANAGED_NETWORK_CONFIGURE           Configure;

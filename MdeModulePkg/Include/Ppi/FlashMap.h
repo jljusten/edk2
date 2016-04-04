@@ -41,9 +41,9 @@ typedef struct _PEI_FLASH_MAP_PPI PEI_FLASH_MAP_PPI;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *PEI_GET_FLASH_AREA_INFO) (
+(EFIAPI *PEI_GET_FLASH_AREA_INFO)(
   IN  EFI_PEI_SERVICES            **PeiServices,
-  IN  PEI_FLASH_MAP_PPI            *This,
+  IN  PEI_FLASH_MAP_PPI           *This,
   IN  EFI_FLASH_AREA_TYPE         AreaType,
   IN  EFI_GUID                    *AreaTypeGuid,
   OUT UINT32                      *NumEntries,

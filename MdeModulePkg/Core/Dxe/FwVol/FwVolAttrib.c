@@ -12,15 +12,16 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <DxeMain.h>
+#include "DxeMain.h"
+#include "FwVolDriver.h"
 
 
 /**
   Retrieves attributes, insures positive polarity of attribute bits, returns
   resulting attributes in output parameter.
 
-  @param  This             Calling context 
-  @param  Attributes       output buffer which contains attributes 
+  @param  This             Calling context
+  @param  Attributes       output buffer which contains attributes
 
   @retval EFI_SUCCESS      Successfully got volume attributes
 
@@ -35,7 +36,7 @@ FvGetVolumeAttributes (
   EFI_STATUS                                Status;
   FV_DEVICE                                 *FvDevice;
   EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL        *Fvb;
-  EFI_FVB_ATTRIBUTES                        FvbAttributes;
+  EFI_FVB_ATTRIBUTES_2                      FvbAttributes;
 
   FvDevice = FV_DEVICE_FROM_THIS (This);
   Fvb = FvDevice->Fvb;
@@ -53,12 +54,12 @@ FvGetVolumeAttributes (
   Status = Fvb->GetAttributes (Fvb, &FvbAttributes);
 
   //
-  // Mask out Fvb bits that are not defined in FV 
+  // Mask out Fvb bits that are not defined in FV
   //
   FvbAttributes &= 0xfffff0ff;
-  
-  *Attributes = (EFI_FV_ATTRIBUTES)FvbAttributes; 
-  
+
+  *Attributes = (EFI_FV_ATTRIBUTES)FvbAttributes;
+
   return Status;
 }
 
@@ -67,9 +68,9 @@ FvGetVolumeAttributes (
 /**
   Sets current attributes for volume
 
-  @param  This             Calling context 
-  @param  Attributes       At input, contains attributes to be set.  At output 
-                           contains new value of FV 
+  @param  This             Calling context
+  @param  Attributes       At input, contains attributes to be set.  At output
+                           contains new value of FV
 
   @retval EFI_UNSUPPORTED  Could not be set.
 
@@ -89,11 +90,11 @@ FvSetVolumeAttributes (
   Return information of type InformationType for the requested firmware
   volume.
 
-  @param  This             Pointer to EFI_FIRMWARE_VOLUME2_PROTOCOL. 
-  @param  InformationType  InformationType for requested. 
-  @param  BufferSize       On input, size of Buffer.On output, the amount of data 
-                           returned in Buffer. 
-  @param  Buffer           A poniter to the data buffer to return. 
+  @param  This             Pointer to EFI_FIRMWARE_VOLUME2_PROTOCOL.
+  @param  InformationType  InformationType for requested.
+  @param  BufferSize       On input, size of Buffer.On output, the amount of data
+                           returned in Buffer.
+  @param  Buffer           A poniter to the data buffer to return.
 
   @retval EFI_SUCCESS      Successfully got volume Information.
 
@@ -116,11 +117,11 @@ FvGetVolumeInfo (
   Set information of type InformationType for the requested firmware
   volume.
 
-  @param  This             Pointer to EFI_FIRMWARE_VOLUME2_PROTOCOL. 
-  @param  InformationType  InformationType for requested. 
-  @param  BufferSize       On input, size of Buffer.On output, the amount of data 
-                           returned in Buffer. 
-  @param  Buffer           A poniter to the data buffer to return. 
+  @param  This             Pointer to EFI_FIRMWARE_VOLUME2_PROTOCOL.
+  @param  InformationType  InformationType for requested.
+  @param  BufferSize       On input, size of Buffer.On output, the amount of data
+                           returned in Buffer.
+  @param  Buffer           A poniter to the data buffer to return.
 
   @retval EFI_SUCCESS      Successfully set volume Information.
 

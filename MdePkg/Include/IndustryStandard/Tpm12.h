@@ -1,5 +1,4 @@
-/** 
-	@file   
+/** @file   
   TPM Specification data structures (TCG TPM Specification Version 1.2 Revision 94)
   See http://trustedcomputinggroup.org for latest specification updates
 
@@ -17,16 +16,16 @@
 #ifndef _TPM12_H_
 #define _TPM12_H_
 
-//
-// The start of TPM return codes
-//
+///
+/// The start of TPM return codes
+///
 #define TPM_BASE                    (EFI_MAX_BIT + (EFI_MAX_BIT >> 1))
 
 //
 // Structures are all packed on 1-byte alignment
 //
 
-#pragma pack (push, 1)
+#pragma pack (1)
 
 //
 // Part 2, section 2.2: Basic types & Helper redefinitions
@@ -406,13 +405,13 @@ typedef struct tdTPM_KEY_HANDLE_LIST {
 //
 // Part 2, section 5.10: TPM_KEY_FLAGS
 //
-enum tdTPM_KEY_FLAGS {
+typedef enum tdTPM_KEY_FLAGS {
   redirection                       = 0x00000001,
   migratable                        = 0x00000002,
   isVolatile                        = 0x00000004,
   pcrIgnoredOnRead                  = 0x00000008,
   migrateAuthority                  = 0x00000010
-};
+} TPM_KEY_FLAGS_BITS;
 
 //
 // Part 2, section 5.11: TPM_CHANGEAUTH_VALIDATE
@@ -1836,6 +1835,6 @@ typedef struct tdTPM_RSP_COMMAND_HDR {
   TPM_RESULT                        returnCode;
 } TPM_RSP_COMMAND_HDR;
 
-#pragma pack (pop)
+#pragma pack ()
 
 #endif  // _TPM12_H_

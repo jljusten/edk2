@@ -12,9 +12,7 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
+
 
 
 #include "BaseLibInternals.h"
@@ -44,7 +42,6 @@ GetSpinLockProperties (
   VOID
   )
 {
-  // @bug May use a PCD entry to determine this alignment.
   return 32;
 }
 
@@ -61,7 +58,7 @@ GetSpinLockProperties (
   @param  SpinLock  A pointer to the spin lock to initialize to the released
                     state.
 
-  @return SpinLock
+  @return SpinLock initialized in release state.
 
 **/
 SPIN_LOCK *
@@ -92,7 +89,7 @@ InitializeSpinLock (
 
   @param  SpinLock  A pointer to the spin lock to place in the acquired state.
 
-  @return SpinLock
+  @return SpinLock aquired lock.
 
 **/
 SPIN_LOCK *
@@ -190,7 +187,7 @@ AcquireSpinLockOrFail (
   ASSERT (SpinLock != NULL);
 
   LockValue = *SpinLock;
-  ASSERT (LockValue == SPIN_LOCK_ACQUIRED || LockValue == SPIN_LOCK_RELEASED);
+  ASSERT (SPIN_LOCK_ACQUIRED == LockValue || SPIN_LOCK_RELEASED == LockValue);
 
   return (BOOLEAN)(
            InterlockedCompareExchangePointer (
@@ -226,7 +223,7 @@ ReleaseSpinLock (
   ASSERT (SpinLock != NULL);
 
   LockValue = *SpinLock;
-  ASSERT (LockValue == SPIN_LOCK_ACQUIRED || LockValue == SPIN_LOCK_RELEASED);
+  ASSERT (SPIN_LOCK_ACQUIRED == LockValue || SPIN_LOCK_RELEASED == LockValue);
 
   *SpinLock = SPIN_LOCK_RELEASED;
   return SpinLock;
@@ -358,6 +355,8 @@ InterlockedCompareExchange64 (
                         operation.
   @param  CompareValue  Pointer value used in compare operation.
   @param  ExchangeValue Pointer value used in exchange operation.
+  
+  @return The original *Value before exchange.
 
 **/
 VOID *

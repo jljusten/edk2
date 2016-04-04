@@ -11,9 +11,7 @@
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
-//
-// Include common header file for this module.
-//
+
 #include <BaseLibInternals.h>
 
 /**
@@ -28,6 +26,7 @@
 
 **/
 VOID
+EFIAPI
 InternalAssertJumpBuffer (
   IN      BASE_LIBRARY_JUMP_BUFFER  *JumpBuffer
   );

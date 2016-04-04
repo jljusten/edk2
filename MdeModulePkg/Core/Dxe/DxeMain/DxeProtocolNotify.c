@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <DxeMain.h>
+#include "DxeMain.h"
 
 
 //
@@ -36,11 +36,10 @@ ARCHITECTURAL_PROTOCOL_ENTRY  mArchProtocols[] = {
   { &gEfiRuntimeArchProtocolGuid,          (VOID **)&gRuntime,       NULL, NULL, FALSE },
   { &gEfiVariableArchProtocolGuid,         (VOID **)NULL,            NULL, NULL, FALSE },
   { &gEfiVariableWriteArchProtocolGuid,    (VOID **)NULL,            NULL, NULL, FALSE },
-  { &gEfiCapsuleArchProtocolGuid,          (VOID **)NULL,            NULL, NULL, FALSE},
+  { &gEfiCapsuleArchProtocolGuid,          (VOID **)NULL,            NULL, NULL, FALSE },
   { &gEfiMonotonicCounterArchProtocolGuid, (VOID **)NULL,            NULL, NULL, FALSE },
   { &gEfiResetArchProtocolGuid,            (VOID **)NULL,            NULL, NULL, FALSE },
-  { &gEfiRealTimeClockArchProtocolGuid,    (VOID **)NULL,            NULL, NULL, FALSE },
-  { NULL,                                  (VOID **)NULL,            NULL, NULL, FALSE }
+  { &gEfiRealTimeClockArchProtocolGuid,    (VOID **)NULL,            NULL, NULL, FALSE }
 };
 
 
@@ -48,8 +47,7 @@ ARCHITECTURAL_PROTOCOL_ENTRY  mArchProtocols[] = {
 /**
   Return TRUE if all AP services are availible.
 
-
-  @retval EFI_SUCCESS    All AP services are available 
+  @retval EFI_SUCCESS    All AP services are available
   @retval EFI_NOT_FOUND  At least one AP service is not available
 
 **/
@@ -58,10 +56,10 @@ CoreAllEfiServicesAvailable (
   VOID
   )
 {
-  ARCHITECTURAL_PROTOCOL_ENTRY  *Entry;
+  UINTN        Index;
 
-  for (Entry = mArchProtocols; Entry->ProtocolGuid != NULL; Entry++) {
-    if (!Entry->Present) {
+  for (Index = 0; Index < sizeof (mArchProtocols) / sizeof (mArchProtocols[0]); Index++) {
+    if (!mArchProtocols[Index].Present) {
       return EFI_NOT_FOUND;
     }
   }
@@ -77,7 +75,7 @@ CoreAllEfiServicesAvailable (
   present flag to TRUE. If any constructor is required it is executed. The EFI
   System Table headers are updated.
 
-  @param  Event          The Event that is being processed, not used. 
+  @param  Event          The Event that is being processed, not used.
   @param  Context        Event Context, not used.
 
 **/
@@ -94,9 +92,11 @@ GenericArchProtocolNotify (
   BOOLEAN                         Found;
   LIST_ENTRY                      *Link;
   LIST_ENTRY                      TempLinkNode;
+  UINTN                           Index;
 
   Found = FALSE;
-  for (Entry = mArchProtocols; Entry->ProtocolGuid != NULL; Entry++) {
+  for (Index = 0; Index < sizeof (mArchProtocols) / sizeof (mArchProtocols[0]); Index++) {
+    Entry = &mArchProtocols[Index];
 
     Status = CoreLocateProtocol (Entry->ProtocolGuid, Entry->Registration, &Protocol);
     if (EFI_ERROR (Status)) {
@@ -162,12 +162,11 @@ GenericArchProtocolNotify (
   //
   if (Found) {
     CalculateEfiHdrCrc (&gDxeCoreRT->Hdr);
-    CalculateEfiHdrCrc (&gDxeCoreBS->Hdr);
+    CalculateEfiHdrCrc (&gBS->Hdr);
     CalculateEfiHdrCrc (&gDxeCoreST->Hdr);
     CalculateEfiHdrCrc (&gDxeCoreDS->Hdr);
   }
 }
-
 
 
 
@@ -182,8 +181,10 @@ CoreNotifyOnArchProtocolInstallation (
 {
   EFI_STATUS                      Status;
   ARCHITECTURAL_PROTOCOL_ENTRY    *Entry;
+  UINTN                           Index;
 
-  for (Entry = mArchProtocols; Entry->ProtocolGuid != NULL; Entry++) {
+  for (Index = 0; Index < sizeof (mArchProtocols) / sizeof (mArchProtocols[0]); Index++) {
+    Entry = &mArchProtocols[Index];
 
     //
     // Create the event
@@ -214,25 +215,24 @@ CoreNotifyOnArchProtocolInstallation (
 // Following is needed to display missing architectural protocols in debug builds
 //
 typedef struct {
-  EFI_GUID                    *ProtocolGuid;
-  CHAR16                       *GuidString;
+  EFI_GUID                     *ProtocolGuid;
+  CHAR8                        *GuidString;
 } GUID_TO_STRING_PROTOCOL_ENTRY;
 
-STATIC CONST GUID_TO_STRING_PROTOCOL_ENTRY MissingProtocols[] = {
-  { &gEfiSecurityArchProtocolGuid,         (CHAR16 *)L"Security"           },
-  { &gEfiCpuArchProtocolGuid,              (CHAR16 *)L"CPU"                },
-  { &gEfiMetronomeArchProtocolGuid,        (CHAR16 *)L"Metronome"          },
-  { &gEfiTimerArchProtocolGuid,            (CHAR16 *)L"Timer"              },
-  { &gEfiBdsArchProtocolGuid,              (CHAR16 *)L"Bds"                },
-  { &gEfiWatchdogTimerArchProtocolGuid,    (CHAR16 *)L"Watchdog Timer"     },
-  { &gEfiRuntimeArchProtocolGuid,          (CHAR16 *)L"Runtime"            },
-  { &gEfiVariableArchProtocolGuid,         (CHAR16 *)L"Variable"           },
-  { &gEfiVariableWriteArchProtocolGuid,    (CHAR16 *)L"Variable Write"     },
-  { &gEfiCapsuleArchProtocolGuid,          (CHAR16 *)L"Capsule"            },
-  { &gEfiMonotonicCounterArchProtocolGuid, (CHAR16 *)L"Monotonic Counter"  },
-  { &gEfiResetArchProtocolGuid,            (CHAR16 *)L"Reset"              },
-//  { &gEfiStatusCodeRuntimeProtocolGuid,       (CHAR16 *)L"Status Code"        },
-  { &gEfiRealTimeClockArchProtocolGuid,    (CHAR16 *)L"Real Time Clock"    }
+GLOBAL_REMOVE_IF_UNREFERENCED CONST GUID_TO_STRING_PROTOCOL_ENTRY MissingProtocols[] = {
+  { &gEfiSecurityArchProtocolGuid,         "Security"           },
+  { &gEfiCpuArchProtocolGuid,              "CPU"                },
+  { &gEfiMetronomeArchProtocolGuid,        "Metronome"          },
+  { &gEfiTimerArchProtocolGuid,            "Timer"              },
+  { &gEfiBdsArchProtocolGuid,              "Bds"                },
+  { &gEfiWatchdogTimerArchProtocolGuid,    "Watchdog Timer"     },
+  { &gEfiRuntimeArchProtocolGuid,          "Runtime"            },
+  { &gEfiVariableArchProtocolGuid,         "Variable"           },
+  { &gEfiVariableWriteArchProtocolGuid,    "Variable Write"     },
+  { &gEfiCapsuleArchProtocolGuid,          "Capsule"            },
+  { &gEfiMonotonicCounterArchProtocolGuid, "Monotonic Counter"  },
+  { &gEfiResetArchProtocolGuid,            "Reset"              },
+  { &gEfiRealTimeClockArchProtocolGuid,    "Real Time Clock"    }
 };
 
 
@@ -246,15 +246,16 @@ CoreDisplayMissingArchProtocols (
   VOID
   )
 {
-  const GUID_TO_STRING_PROTOCOL_ENTRY  *MissingEntry;
+  CONST GUID_TO_STRING_PROTOCOL_ENTRY  *MissingEntry;
   ARCHITECTURAL_PROTOCOL_ENTRY         *Entry;
+  UINTN                                Index;
 
-  for (Entry = mArchProtocols; Entry->ProtocolGuid != NULL; Entry++) {
+  for (Index = 0; Index < sizeof (mArchProtocols) / sizeof (mArchProtocols[0]); Index++) {
+    Entry = &mArchProtocols[Index];
     if (!Entry->Present) {
-      MissingEntry = MissingProtocols;
       for (MissingEntry = MissingProtocols; TRUE ; MissingEntry++) {
         if (CompareGuid (Entry->ProtocolGuid, MissingEntry->ProtocolGuid)) {
-          DEBUG ((DEBUG_ERROR, "\n%s Arch Protocol not present!!\n", MissingEntry->GuidString));
+          DEBUG ((DEBUG_ERROR, "\n%a Arch Protocol not present!!\n", MissingEntry->GuidString));
           break;
         }
       }

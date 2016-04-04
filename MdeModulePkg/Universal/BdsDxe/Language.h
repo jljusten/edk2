@@ -12,27 +12,21 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#ifndef _LANGUAGE_H
-#define _LANGUAGE_H
+#ifndef _LANGUAGE_H_
+#define _LANGUAGE_H_
 
 #include "String.h"
 
+/**
+  Determine the current language that will be used
+  based on language related EFI Variables.
+
+  @param LangCodesSettingRequired If required to set LangCode variable
+
+**/
 VOID
 InitializeLanguage (
   BOOLEAN LangCodesSettingRequired
-  )
-/*++
-
-Routine Description:
-  Determine the current language that will be used
-  based on language related EFI Variables
-
-Arguments:
-  LangCodesSettingRequired - If required to set LangCode variable
-
-Returns:
-
---*/
-;
+  );
 
 #endif // _LANGUAGE_H_

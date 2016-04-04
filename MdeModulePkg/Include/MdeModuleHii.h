@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#ifndef _MDEMODULE_HII_H
-#define _MDEMODULE_HII_H
+#ifndef __MDEMODULE_HII_H__
+#define __MDEMODULE_HII_H__
 
 #define NARROW_CHAR         0xFFF0
 #define WIDE_CHAR           0xFFF1
@@ -29,10 +29,13 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 //
 // Tiano Implementation specific Device Path definition.
 //
+#pragma pack(1)
 typedef struct {
   VENDOR_DEVICE_PATH             VendorDevicePath;
-  UINT32                         MonotonicCount;
+  UINT32                         Reserved;
+  UINT64                         UniqueId;
 } HII_VENDOR_DEVICE_PATH_NODE;
+#pragma pack()
 
 typedef struct {
   HII_VENDOR_DEVICE_PATH_NODE    Node;
@@ -46,7 +49,6 @@ typedef struct {
 #define EFI_IFR_TIANO_GUID \
   { 0xf0b1735, 0x87a0, 0x4193, {0xb2, 0x66, 0x53, 0x8c, 0x38, 0xaf, 0x48, 0xce} }
 
-
 #pragma pack(1)
 
 #define EFI_IFR_EXTEND_OP_LABEL       0x0
@@ -54,6 +56,7 @@ typedef struct {
 #define EFI_IFR_EXTEND_OP_TIMEOUT     0x2
 #define EFI_IFR_EXTEND_OP_CLASS       0x3
 #define EFI_IFR_EXTEND_OP_SUBCLASS    0x4
+
 
 typedef struct _EFI_IFR_GUID_LABEL {
   EFI_IFR_OP_HEADER   Header;
@@ -108,6 +111,39 @@ typedef struct _EFI_IFR_GUID_SUBCLASS {
   UINT8               ExtendOpCode;
   UINT16              SubClass;
 } EFI_IFR_GUID_SUBCLASS;
+
+//
+// GUIDed opcodes defined for framework vfr.
+//
+#define EFI_IFR_FRAMEWORK_GUID \
+  { 0x31ca5d1a, 0xd511, 0x4931, { 0xb7, 0x82, 0xae, 0x6b, 0x2b, 0x17, 0x8c, 0xd7 } }
+
+#define EFI_IFR_EXTEND_OP_OPTIONKEY   0x0
+#define EFI_IFR_EXTEND_OP_VAREQNAME   0x1
+
+//
+// Store the framework vfr option key value
+//
+typedef struct _EFI_IFR_GUID_OPTIONKEY {
+  EFI_IFR_OP_HEADER   Header;
+  EFI_GUID            Guid;
+  UINT8               ExtendOpCode;
+  EFI_QUESTION_ID     QuestionId;
+  EFI_IFR_TYPE_VALUE  OptionValue;
+  UINT16              KeyValue;
+} EFI_IFR_GUID_OPTIONKEY;
+
+
+//
+// Store the framework vfr vareqval name number
+//
+typedef struct _EFI_IFR_GUID_VAREQNAME {
+  EFI_IFR_OP_HEADER   Header;
+  EFI_GUID            Guid;
+  UINT8               ExtendOpCode;
+  EFI_QUESTION_ID     QuestionId;
+  EFI_STRING_ID       NameId;
+} EFI_IFR_GUID_VAREQNAME;
 
 #pragma pack()
 

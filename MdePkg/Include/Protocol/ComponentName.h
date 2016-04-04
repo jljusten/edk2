@@ -1,7 +1,9 @@
 /** @file
-  EFI Component Name Protocol
+  EFI Component Name Protocol as defined in the EFI 1.1 specification.
+  This protocol is used to retrieve user readable names of EFI Drivers 
+  and controllers managed by EFI Drivers.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -15,11 +17,9 @@
 #ifndef __EFI_COMPONENT_NAME_H__
 #define __EFI_COMPONENT_NAME_H__
 
-#include <PiDxe.h>
-
-//
-// Global ID for the Component Name Protocol
-//
+///
+/// Global ID for the Component Name Protocol
+///
 #define EFI_COMPONENT_NAME_PROTOCOL_GUID \
   { \
     0x107a772c, 0xd5e1, 0x11d4, {0x9a, 0x46, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d } \
@@ -52,7 +52,7 @@ typedef struct _EFI_COMPONENT_NAME_PROTOCOL  EFI_COMPONENT_NAME_PROTOCOL;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_COMPONENT_NAME_GET_DRIVER_NAME) (
+(EFIAPI *EFI_COMPONENT_NAME_GET_DRIVER_NAME)(
   IN EFI_COMPONENT_NAME_PROTOCOL           *This,
   IN  CHAR8                                *Language,
   OUT CHAR16                               **DriverName
@@ -101,7 +101,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_COMPONENT_NAME_GET_CONTROLLER_NAME) (
+(EFIAPI *EFI_COMPONENT_NAME_GET_CONTROLLER_NAME)(
   IN EFI_COMPONENT_NAME_PROTOCOL                              *This,
   IN  EFI_HANDLE                                              ControllerHandle,
   IN  EFI_HANDLE                                              ChildHandle        OPTIONAL,
@@ -112,9 +112,19 @@ EFI_STATUS
 //
 // Interface structure for the Component Name Protocol
 //
+/**
+  @par Protocol Description:
+  This protocol is used to retrieve user readable names of drivers 
+  and controllers managed by UEFI Drivers.
+**/
 struct _EFI_COMPONENT_NAME_PROTOCOL {
   EFI_COMPONENT_NAME_GET_DRIVER_NAME      GetDriverName;
   EFI_COMPONENT_NAME_GET_CONTROLLER_NAME  GetControllerName;
+  ///
+  /// A Null-terminated ASCII string that contains one or more
+  /// ISO 639-2 language codes. This is the list of language codes
+  /// that this protocol supports.  
+  ///
   CHAR8                                   *SupportedLanguages;
 };
 

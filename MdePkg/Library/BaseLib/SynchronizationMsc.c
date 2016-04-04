@@ -12,16 +12,14 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
+
 
 
 #include "BaseLibInternals.h"
 
-//
-// Microsoft Visual Studio 7.1 Function Prototypes for read write barrier Intrinsics
-//
+/**
+  Microsoft Visual Studio 7.1 Function Prototypes for read write barrier Intrinsics.
+**/
 void    _ReadWriteBarrier (void);
 #pragma intrinsic(_ReadWriteBarrier)
 
@@ -51,7 +49,6 @@ GetSpinLockProperties (
   VOID
   )
 {
-  // @bug May use a PCD entry to determine this alignment.
   return 32;
 }
 
@@ -68,7 +65,7 @@ GetSpinLockProperties (
   @param  SpinLock  A pointer to the spin lock to initialize to the released
                     state.
 
-  @return SpinLock
+  @return SpinLock in released state.
 
 **/
 SPIN_LOCK *
@@ -103,7 +100,7 @@ InitializeSpinLock (
 
   @param  SpinLock  A pointer to the spin lock to place in the acquired state.
 
-  @return SpinLock
+  @return SpinLock aquiring lock.
 
 **/
 SPIN_LOCK *
@@ -226,7 +223,7 @@ AcquireSpinLockOrFail (
 
   @param  SpinLock  A pointer to the spin lock to release.
 
-  @return SpinLock
+  @return SpinLock releasing lock.
 
 **/
 SPIN_LOCK *
@@ -375,6 +372,8 @@ InterlockedCompareExchange64 (
                         operation.
   @param  CompareValue  Pointer value used in compare operation.
   @param  ExchangeValue Pointer value used in exchange operation.
+  
+  @return The original *Value before exchange.
 
 **/
 VOID *

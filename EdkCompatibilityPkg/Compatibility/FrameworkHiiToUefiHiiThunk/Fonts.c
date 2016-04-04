@@ -1,5 +1,4 @@
 /**@file
-
   This file contains the Glyph related function.
 
 Copyright (c) 2006 - 2008, Intel Corporation
@@ -16,9 +15,29 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "HiiDatabase.h"
 
+EFI_NARROW_GLYPH mNarrowGlyphBuffer = {0, 0, {0}};
 
-UINT8 mGlyphBuffer[EFI_GLYPH_WIDTH * 2 * EFI_GLYPH_HEIGHT];
+BOOLEAN                         mSysFontColorCached = FALSE;
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL   mSysFGColor = {0};
 
+
+/**
+  This function is only called by Graphics Console module and GraphicsLib. 
+  EDK II provides a UEFI Graphics Console module. ECP provides a GraphicsLib 
+  complying to UEFI HII.
+  
+  This function will ASSERT and return EFI_UNSUPPORTED.
+
+  @param This            N.A.
+  @param Source          N.A.
+  @param Index           N.A.
+  @param GlyphBuffer     N.A.
+  @param BitWidth        N.A.
+  @param InternalStatus  N.A.
+
+  @return EFI_UNSUPPORTED N.A.
+
+**/
 EFI_STATUS
 EFIAPI
 HiiGetGlyph (
@@ -29,30 +48,98 @@ HiiGetGlyph (
   OUT    UINT16             *BitWidth,
   IN OUT UINT32             *InternalStatus
   )
-/*++
-
-Routine Description:
-  Translates a Unicode character into the corresponding font glyph.
-  If the Source was pointing to a non-spacing character, the next Source[*Index]
-  character will be parsed and OR'd to the GlyphBuffer until a spacing character
-  is found in the Source.  Since non-spacing characters are considered to be the
-  same pixel width as a regular character their BitWidth will be reflected correctly
-  however due to their special attribute, they are considered to be zero advancing width.
-  This basically means that the cursor would not advance, thus the character that follows
-  it would overlay the non-spacing character.  The Index is modified to reflect both the
-  incoming array entry into the Source string but also the outgoing array entry after having
-  parsed the equivalent of a single Glyph's worth of data.
-
-Arguments:
-
-Returns:
-
---*/
 {
-  ASSERT (FALSE);
-  return EFI_UNSUPPORTED;
+  EFI_STATUS                Status;
+  EFI_IMAGE_OUTPUT          *Blt;
+  EFI_FONT_DISPLAY_INFO     *FontInfo;
+  UINTN                     Xpos;
+  UINTN                     Ypos;
+  UINTN                     BaseLine;
+
+  if (!mSysFontColorCached) {
+    //
+    // Cache the system font's foreground color.
+    //
+    Status = mHiiFontProtocol->GetFontInfo (
+                                 mHiiFontProtocol,
+                                 NULL,
+                                 NULL,
+                                 &FontInfo,
+                                 NULL
+                                 );
+
+    if (!EFI_ERROR (Status)) {
+      ASSERT (StrCmp (FontInfo->FontInfo.FontName, L"sysdefault") == 0);
+      mSysFGColor = FontInfo->ForegroundColor;
+      FreePool (FontInfo);
+
+      mSysFontColorCached = TRUE;
+    }
+    
+  }
+
+  Blt = NULL;
+  Status = mHiiFontProtocol->GetGlyph (
+                               mHiiFontProtocol,
+                               Source[*Index],
+                               NULL,
+                               &Blt,
+                               &BaseLine
+                               );
+
+  if (!EFI_ERROR (Status) && (Status != EFI_WARN_UNKNOWN_GLYPH)) {
+    //
+    // For simplicity, we only handle Narrow Glyph.
+    //
+    if (Blt->Height == EFI_GLYPH_HEIGHT && Blt->Width == EFI_GLYPH_WIDTH) {
+
+      ZeroMem (&mNarrowGlyphBuffer, sizeof (mNarrowGlyphBuffer));
+      mNarrowGlyphBuffer.UnicodeWeight = *Source;
+      for (Ypos = 0; Ypos < EFI_GLYPH_HEIGHT; Ypos++) {
+        for (Xpos = 0; Xpos < EFI_GLYPH_WIDTH; Xpos++) {
+          if (CompareMem (&Blt->Image.Bitmap[Ypos * EFI_GLYPH_WIDTH + Xpos], &mSysFGColor, sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL)) == 0) {
+            mNarrowGlyphBuffer.GlyphCol1[Ypos] |= 1 << (EFI_GLYPH_WIDTH - 1 - Xpos);
+          }
+        }
+      }
+
+      *GlyphBuffer = (UINT8 *) &mNarrowGlyphBuffer;
+      *BitWidth    = EFI_GLYPH_WIDTH;
+      *Index += 1;
+    } else {
+      Status = EFI_NOT_FOUND;
+    }
+
+  }
+
+  if (EFI_ERROR (Status) || (Status == EFI_WARN_UNKNOWN_GLYPH)) {
+    if (Status == EFI_WARN_UNKNOWN_GLYPH) {
+      Status = EFI_NOT_FOUND;
+    }
+    *GlyphBuffer = NULL;
+  }
+  return Status;
 }
 
+/**
+  This function is only called by Graphics Console module and GraphicsLib. 
+  EDK II provides a UEFI Graphics Console module. ECP provides a GraphicsLib 
+  complying to UEFI HII.
+  
+  This function will ASSERT and return EFI_UNSUPPORTED.
+
+  @param This            N.A.
+  @param GlyphBuffer     N.A.
+  @param Foreground      N.A.
+  @param Background      N.A.
+  @param Count           N.A.
+  @param Width           N.A.
+  @param Height          N.A.
+  @param BltBuffer       N.A.
+
+  @return EFI_UNSUPPORTED N.A.
+
+**/
 EFI_STATUS
 EFIAPI
 HiiGlyphToBlt (
@@ -66,6 +153,21 @@ HiiGlyphToBlt (
   IN OUT EFI_GRAPHICS_OUTPUT_BLT_PIXEL *BltBuffer
   )
 {
-  ASSERT (FALSE);
-  return EFI_UNSUPPORTED;
+  UINTN X;
+  UINTN Y;
+
+  //
+  // Convert Monochrome bitmap of the Glyph to BltBuffer structure
+  //
+  for (Y = 0; Y < Height; Y++) {
+    for (X = 0; X < Width; X++) {
+      if ((((EFI_NARROW_GLYPH *) GlyphBuffer)->GlyphCol1[Y] & (1 << X)) != 0) {
+        BltBuffer[Y * Width * Count + (Width - X - 1)] = Foreground;
+      } else {
+        BltBuffer[Y * Width * Count + (Width - X - 1)] = Background;
+      }
+    }
+  }
+
+  return EFI_SUCCESS;
 }

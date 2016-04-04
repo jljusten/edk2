@@ -1,6 +1,6 @@
 /** @file
-  
-  GUID for the PE/COFF Loader APIs shared between SEC, PEI and DXE
+  This file defines PeCoffLoader guid for PeCoffLoader entry in the HOB list.
+  It also defines PE/COFF Loader APIs in PeCoffLoader Hob entry shared between SEC, PEI and DXE
 
 Copyright (c) 2006 - 2008, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
@@ -48,7 +48,7 @@ typedef struct _EFI_PEI_PE_COFF_LOADER_PROTOCOL   EFI_PEI_PE_COFF_LOADER_PROTOCO
 **/
 typedef 
 RETURN_STATUS
-(EFIAPI *EFI_PEI_PE_COFF_LOADER_GET_IMAGE_INFO) (
+(EFIAPI *EFI_PEI_PE_COFF_LOADER_GET_IMAGE_INFO)(
   IN EFI_PEI_PE_COFF_LOADER_PROTOCOL          *This,
   IN OUT PE_COFF_LOADER_IMAGE_CONTEXT         *ImageContext
   );
@@ -79,7 +79,7 @@ RETURN_STATUS
 **/
 typedef 
 RETURN_STATUS
-(EFIAPI *EFI_PEI_PE_COFF_LOADER_LOAD_IMAGE) (
+(EFIAPI *EFI_PEI_PE_COFF_LOADER_LOAD_IMAGE)(
   IN EFI_PEI_PE_COFF_LOADER_PROTOCOL          *This,
   IN OUT PE_COFF_LOADER_IMAGE_CONTEXT         *ImageContext
   );
@@ -107,7 +107,7 @@ RETURN_STATUS
 **/
 typedef 
 RETURN_STATUS
-(EFIAPI *EFI_PEI_PE_COFF_LOADER_RELOCATE_IMAGE) (
+(EFIAPI *EFI_PEI_PE_COFF_LOADER_RELOCATE_IMAGE)(
   IN EFI_PEI_PE_COFF_LOADER_PROTOCOL          *This,
   IN OUT PE_COFF_LOADER_IMAGE_CONTEXT         *ImageContext
   );
@@ -127,8 +127,8 @@ RETURN_STATUS
 **/
 typedef 
 RETURN_STATUS
-(EFIAPI *EFI_PEI_PE_COFF_LOADER_UNLOAD_IMAGE) (
-  IN EFI_PEI_PE_COFF_LOADER_PROTOCOL          *This,
+(EFIAPI *EFI_PEI_PE_COFF_LOADER_UNLOAD_IMAGE)(
+  IN EFI_PEI_PE_COFF_LOADER_PROTOCOL      *This,
   IN PE_COFF_LOADER_IMAGE_CONTEXT         *ImageContext
   );
 

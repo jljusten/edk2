@@ -52,10 +52,6 @@ BdsLibConnectAll (
   have. After this we should get all the device work and console avariable
   if the system have console device.
 
-  None
-
-  @return None
-
 **/
 VOID
 BdsLibGenericConnectAll (
@@ -180,7 +176,7 @@ BdsLibConnectDevicePath (
   } while (DevicePath != NULL);
 
   if (CopyOfDevicePath != NULL) {
-    gBS->FreePool (CopyOfDevicePath);
+    SafeFreePool (CopyOfDevicePath);
   }
   //
   // All handle with DevicePath exists in the handle database
@@ -224,7 +220,7 @@ BdsLibConnectAllEfi (
     Status = gBS->ConnectController (HandleBuffer[Index], NULL, NULL, TRUE);
   }
 
-  gBS->FreePool (HandleBuffer);
+  SafeFreePool (HandleBuffer);
 
   return EFI_SUCCESS;
 }
@@ -267,7 +263,7 @@ BdsLibDisconnectAllEfi (
     Status = gBS->DisconnectController (HandleBuffer[Index], NULL, NULL);
   }
 
-  gBS->FreePool (HandleBuffer);
+  SafeFreePool (HandleBuffer);
 
   return EFI_SUCCESS;
 }
@@ -309,7 +305,7 @@ BdsLibConnectAllDriversToAllControllers (
 
 /**
   Connect the specific Usb device which match the short form device path,
-  and whose bus is determined by Host Controller (Uhci or Ehci)
+  and whose bus is determined by Host Controller (Uhci or Ehci).
 
   @param  HostControllerPI      Uhci (0x00) or Ehci (0x20) or Both uhci and ehci
                                 (0xFF)

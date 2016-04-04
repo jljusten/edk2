@@ -12,11 +12,19 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
 
 
+
+/**
+  Reads the current value of Debug Register 4 (DR4).
+
+  Reads and returns the current value of DR4. This function is only available
+  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  X64.
+
+  @return The value of Debug Register 4 (DR4).
+
+**/
 UINTN
 EFIAPI
 AsmReadDr4 (

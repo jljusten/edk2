@@ -1,4 +1,3 @@
-
 /** @file
   Entry point to a PEIM.
 
@@ -24,7 +23,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
   Image entry point of Peim.
 
   @param  FfsHeader   Pointer to FFS header the loaded driver.
-  @param  PeiServices Pointer to the PEI services.
+  @param  PeiServices An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation
 
   @return  Status returned by entry points of Peims.
 
@@ -59,7 +58,7 @@ _ModuleEntryPoint (
   Wrapper of Peim image entry point.
 
   @param  FfsHeader   Pointer to FFS header the loaded driver.
-  @param  PeiServices Pointer to the PEI services.
+  @param  PeiServices An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation
 
   @return  Status returned by entry points of Peims.
 

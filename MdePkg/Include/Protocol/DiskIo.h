@@ -5,7 +5,7 @@
   oriented devices. The Disk IO protocol is intended to layer on top of the
   Block IO protocol.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -24,16 +24,16 @@
     0xce345171, 0xba0b, 0x11d2, {0x8e, 0x4f, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b } \
   }
 
-//
-// Protocol GUID name defined in EFI1.1.
-// 
+///
+/// Protocol GUID name defined in EFI1.1.
+/// 
 #define DISK_IO_PROTOCOL  EFI_DISK_IO_PROTOCOL_GUID
 
 typedef struct _EFI_DISK_IO_PROTOCOL EFI_DISK_IO_PROTOCOL;
 
-//
-// Protocol defined in EFI1.1.
-// 
+///
+/// Protocol defined in EFI1.1.
+/// 
 typedef EFI_DISK_IO_PROTOCOL  EFI_DISK_IO;
 
 /**
@@ -55,14 +55,13 @@ typedef EFI_DISK_IO_PROTOCOL  EFI_DISK_IO;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DISK_READ) (
+(EFIAPI *EFI_DISK_READ)(
   IN EFI_DISK_IO_PROTOCOL         *This,
   IN UINT32                       MediaId,
   IN UINT64                       Offset,
   IN UINTN                        BufferSize,
   OUT VOID                        *Buffer
-  )
-;
+  );
 
 /**
   Read BufferSize bytes from Offset into Buffer.
@@ -84,23 +83,31 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DISK_WRITE) (
+(EFIAPI *EFI_DISK_WRITE)(
   IN EFI_DISK_IO_PROTOCOL         *This,
   IN UINT32                       MediaId,
   IN UINT64                       Offset,
   IN UINTN                        BufferSize,
   IN VOID                         *Buffer
-  )
-;
+  );
 
 #define EFI_DISK_IO_PROTOCOL_REVISION 0x00010000
 
-//
-// Revision defined in EFI1.1
-// 
+///
+/// Revision defined in EFI1.1
+/// 
 #define EFI_DISK_IO_INTERFACE_REVISION  EFI_DISK_IO_PROTOCOL_REVISION
 
+/**
+  @par Protocol Description:
+  This protocol is used to abstract Block I/O interfaces.
+**/
 struct _EFI_DISK_IO_PROTOCOL {
+  ///
+  /// The revision to which the disk I/O interface adheres. All future
+  /// revisions must be backwards compatible. If a future version is not
+  /// backwards compatible, it is not the same GUID.
+  ///
   UINT64          Revision;
   EFI_DISK_READ   ReadDisk;
   EFI_DISK_WRITE  WriteDisk;

@@ -5,7 +5,7 @@
   from a software point of view. It also must persist from boot to boot, so 
   it can not contain things like PCI bus numbers that change from boot to boot.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -21,9 +21,9 @@
 
 #include <Guid/PcAnsi.h>
 
-//
-// Device Path protocol
-//
+///
+/// Device Path protocol
+///
 #define EFI_DEVICE_PATH_PROTOCOL_GUID \
   { \
     0x9576e91, 0x6d3f, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b } \
@@ -33,9 +33,9 @@
 // Protocol GUID defined in EFI1.1.
 // 
 
-//
-// Device Path information
-//
+///
+/// Device Path information
+///
 #define DEVICE_PATH_PROTOCOL  EFI_DEVICE_PATH_PROTOCOL_GUID
 
 #pragma pack(1)
@@ -46,14 +46,14 @@ typedef struct {
   UINT8 Length[2];
 } EFI_DEVICE_PATH_PROTOCOL;
 
-//
-// For backward-compatible with EFI1.1.
-// 
+///
+/// For backward-compatible with EFI1.1.
+/// 
 typedef EFI_DEVICE_PATH_PROTOCOL  EFI_DEVICE_PATH;
 
-//
-// Hardware Device Paths
-//
+///
+/// Hardware Device Paths
+///
 #define HARDWARE_DEVICE_PATH      0x01
 
 #define HW_PCI_DP                 0x01
@@ -89,9 +89,9 @@ typedef struct {
   UINT32                          ControllerNumber;
 } CONTROLLER_DEVICE_PATH;
 
-//
-// ACPI Device Paths
-//
+///
+/// ACPI Device Paths
+///
 #define ACPI_DEVICE_PATH          0x02
 
 #define ACPI_DP                   0x01
@@ -107,10 +107,11 @@ typedef struct {
   UINT32                          HID;
   UINT32                          UID;
   UINT32                          CID;
-  //
-  // Optional variable length _HIDSTR
-  // Optional variable length _UIDSTR
-  //
+  ///
+  /// Optional variable length _HIDSTR
+  /// Optional variable length _UIDSTR
+  /// Optional variable length _CIDSTR
+  ///
 } ACPI_EXTENDED_HID_DEVICE_PATH;
 
 //
@@ -121,7 +122,7 @@ typedef struct {
 //    Compressed ASCII is 5 bits per character 0b00001 = 'A' 0b11010 = 'Z'
 //
 #define PNP_EISA_ID_CONST         0x41d0
-#define EISA_ID(_Name, _Num)      ((UINT32) ((_Name) | (_Num) << 16))
+#define EISA_ID(_Name, _Num)      ((UINT32)((_Name) | (_Num) << 16))
 #define EISA_PNP_ID(_PNPId)       (EISA_ID(PNP_EISA_ID_CONST, (_PNPId)))
 #define EFI_PNP_ID(_PNPId)        (EISA_ID(PNP_EISA_ID_CONST, (_PNPId)))
 
@@ -135,10 +136,25 @@ typedef struct {
   UINT32                          ADR;
 } ACPI_ADR_DEVICE_PATH;
 
+#define ACPI_ADR_DISPLAY_TYPE_OTHER             0
+#define ACPI_ADR_DISPLAY_TYPE_VGA               1
+#define ACPI_ADR_DISPLAY_TYPE_TV                2
+#define ACPI_ADR_DISPLAY_TYPE_EXTERNAL_DIGITAL  3
+#define ACPI_ADR_DISPLAY_TYPE_INTERNAL_DIGITAL  4
 
-//
-// Messaging Device Paths
-//
+#define ACPI_DISPLAY_ADR(_DeviceIdScheme, _HeadId, _NonVgaOutput, _BiosCanDetect, _VendorInfo, _Type, _Port, _Index) \
+          ((UINT32)( (((_DeviceIdScheme) & 0x1) << 31) |  \
+                      (((_HeadId)         & 0x7) << 18) |  \
+                      (((_NonVgaOutput)   & 0x1) << 17) |  \
+                      (((_BiosCanDetect)  & 0x1) << 16) |  \
+                      (((_VendorInfo)     & 0xf) << 12) |  \
+                      (((_Type)           & 0xf) << 8)  |  \
+                      (((_Port)           & 0xf) << 4)  |  \
+                       ((_Index)          & 0xf) ))
+
+///
+/// Messaging Device Paths
+///
 #define MESSAGING_DEVICE_PATH     0x03
 
 #define MSG_ATAPI_DP              0x01
@@ -411,9 +427,9 @@ typedef struct {
 #define BBS_TYPE_UNKNOWN          0xFF
 
 
-//
-// Union of all possible Device Paths and pointers to Device Paths
-//
+///
+/// Union of all possible Device Paths and pointers to Device Paths
+///
 
 typedef union {
   EFI_DEVICE_PATH_PROTOCOL             DevPath;

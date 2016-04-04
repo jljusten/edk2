@@ -12,11 +12,22 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
 
 
+
+/**
+  Performs an atomic increment of an 32-bit unsigned integer.
+
+  Performs an atomic increment of the 32-bit unsigned integer specified by
+  Value and returns the incremented value. The increment operation must be
+  performed using MP safe mechanisms. The state of the return value is not
+  guaranteed to be MP safe.
+
+  @param  Value A pointer to the 32-bit value to increment.
+
+  @return The incremented value.
+
+**/
 UINT32
 EFIAPI
 InternalSyncIncrement (

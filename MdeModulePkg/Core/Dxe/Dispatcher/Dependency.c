@@ -1,5 +1,5 @@
 /** @file
-  DXE Dispatcher Dependency Evaluator
+  DXE Dispatcher Dependency Evaluator.
 
   This routine evaluates a dependency expression (DEPENDENCY_EXPRESSION) to determine
   if a driver can be scheduled for execution.  The criteria for
@@ -16,7 +16,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <DxeMain.h>
+#include "DxeMain.h"
 
 //
 // Global stack used to evaluate dependency expressions
@@ -33,9 +33,8 @@ BOOLEAN *mDepexEvaluationStackPointer = NULL;
 /**
   Grow size of the Depex stack
 
-  @retval EFI_SUCCESS           Stack successfully growed. 
-  @retval EFI_OUT_OF_RESOURCES  There is not enough system memory to grow the 
-                                stack.
+  @retval EFI_SUCCESS           Stack successfully growed.
+  @retval EFI_OUT_OF_RESOURCES  There is not enough system memory to grow the stack.
 
 **/
 EFI_STATUS
@@ -51,7 +50,7 @@ GrowDepexStack (
     Size = Size + (mDepexEvaluationStackEnd - mDepexEvaluationStack);
   }
 
-  NewStack = CoreAllocateBootServicesPool (Size * sizeof (BOOLEAN));
+  NewStack = AllocatePool (Size * sizeof (BOOLEAN));
   if (NewStack == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
@@ -61,15 +60,15 @@ GrowDepexStack (
     // Copy to Old Stack to the New Stack
     //
     CopyMem (
-      NewStack, 
-      mDepexEvaluationStack, 
+      NewStack,
+      mDepexEvaluationStack,
       (mDepexEvaluationStackEnd - mDepexEvaluationStack) * sizeof (BOOLEAN)
       );
 
     //
     // Free The Old Stack
     //
-    CoreFreePool (mDepexEvaluationStack);
+    FreePool (mDepexEvaluationStack);
   }
 
   //
@@ -85,13 +84,12 @@ GrowDepexStack (
 
 
 /**
-  Push an element onto the Boolean Stack
+  Push an element onto the Boolean Stack.
 
-  @param  Value                 BOOLEAN to push. 
+  @param  Value                 BOOLEAN to push.
 
-  @retval EFI_SUCCESS           The value was pushed onto the stack. 
-  @retval EFI_OUT_OF_RESOURCES  There is not enough system memory to grow the 
-                                stack.
+  @retval EFI_SUCCESS           The value was pushed onto the stack.
+  @retval EFI_OUT_OF_RESOURCES  There is not enough system memory to grow the stack.
 
 **/
 EFI_STATUS
@@ -128,13 +126,13 @@ PushBool (
 /**
   Pop an element from the Boolean stack.
 
-  @param  Value                 BOOLEAN to pop. 
+  @param  Value                 BOOLEAN to pop.
 
-  @retval EFI_SUCCESS           The value was popped onto the stack. 
-  @retval EFI_ACCESS_DENIED     The pop operation underflowed the stack
+  @retval EFI_SUCCESS           The value was popped onto the stack.
+  @retval EFI_ACCESS_DENIED     The pop operation underflowed the stack.
 
 **/
-EFI_STATUS 
+EFI_STATUS
 PopBool (
   OUT BOOLEAN  *Value
   )
@@ -151,7 +149,7 @@ PopBool (
   //
   mDepexEvaluationStackPointer--;
   *Value = *mDepexEvaluationStackPointer;
-  return EFI_SUCCESS;  
+  return EFI_SUCCESS;
 }
 
 
@@ -163,30 +161,30 @@ PopBool (
   it will be cleared by CoreSchedule(), and then the driver can be
   dispatched.
 
-  @param  DriverEntry           DriverEntry element to update 
+  @param  DriverEntry           DriverEntry element to update .
 
   @retval EFI_SUCCESS           It always works.
 
 **/
 EFI_STATUS
 CorePreProcessDepex (
-  IN  EFI_CORE_DRIVER_ENTRY   *DriverEntry  
+  IN  EFI_CORE_DRIVER_ENTRY   *DriverEntry
   )
 {
   UINT8  *Iterator;
-    
+
   Iterator = DriverEntry->Depex;
   if (*Iterator == EFI_DEP_SOR) {
     DriverEntry->Unrequested = TRUE;
   } else {
     DriverEntry->Dependent = TRUE;
   }
-    
+
   if (*Iterator == EFI_DEP_BEFORE) {
     DriverEntry->Before = TRUE;
   } else if (*Iterator == EFI_DEP_AFTER) {
     DriverEntry->After = TRUE;
-  } 
+  }
 
   if (DriverEntry->Before || DriverEntry->After) {
     CopyMem (&DriverEntry->BeforeAfterGuid, Iterator + 1, sizeof (EFI_GUID));
@@ -203,16 +201,16 @@ CorePreProcessDepex (
   routine in this case. The SOR is just ignored and is a nop in the grammer.
   POSTFIX means all the math is done on top of the stack.
 
-  @param  DriverEntry           DriverEntry element to update 
+  @param  DriverEntry           DriverEntry element to update.
 
-  @retval TRUE                  If driver is ready to run. 
-  @retval FALSE                 If driver is not ready to run or some fatal error 
+  @retval TRUE                  If driver is ready to run.
+  @retval FALSE                 If driver is not ready to run or some fatal error
                                 was found.
 
 **/
 BOOLEAN
 CoreIsSchedulable (
-  IN  EFI_CORE_DRIVER_ENTRY   *DriverEntry  
+  IN  EFI_CORE_DRIVER_ENTRY   *DriverEntry
   )
 {
   EFI_STATUS  Status;
@@ -243,13 +241,13 @@ CoreIsSchedulable (
 
   //
   // Clean out memory leaks in Depex Boolean stack. Leaks are only caused by
-  //  incorrectly formed DEPEX expressions
+  // incorrectly formed DEPEX expressions
   //
   mDepexEvaluationStackPointer = mDepexEvaluationStack;
 
 
   Iterator = DriverEntry->Depex;
-  
+
   while (TRUE) {
     //
     // Check to see if we are attempting to fetch dependency expression instructions
@@ -274,7 +272,7 @@ CoreIsSchedulable (
       ASSERT (FALSE);
     case EFI_DEP_SOR:
       //
-      // These opcodes can only appear once as the first opcode.  If it is found 
+      // These opcodes can only appear once as the first opcode.  If it is found
       // at any other location, then the dependency expression evaluates to FALSE
       //
       if (Iterator != DriverEntry->Depex) {
@@ -285,7 +283,7 @@ CoreIsSchedulable (
       //
       break;
 
-    case EFI_DEP_PUSH:  
+    case EFI_DEP_PUSH:
       //
       // Push operator is followed by a GUID. Test to see if the GUID protocol
       // is installed and push the boolean result on the stack.
@@ -307,7 +305,7 @@ CoreIsSchedulable (
       Iterator += sizeof (EFI_GUID);
       break;
 
-    case EFI_DEP_AND:    
+    case EFI_DEP_AND:
       Status = PopBool (&Operator);
       if (EFI_ERROR (Status)) {
         return FALSE;
@@ -324,7 +322,7 @@ CoreIsSchedulable (
       }
       break;
 
-    case EFI_DEP_OR:     
+    case EFI_DEP_OR:
       Status = PopBool (&Operator);
       if (EFI_ERROR (Status)) {
         return FALSE;
@@ -341,7 +339,7 @@ CoreIsSchedulable (
       }
       break;
 
-    case EFI_DEP_NOT:    
+    case EFI_DEP_NOT:
       Status = PopBool (&Operator);
       if (EFI_ERROR (Status)) {
         return FALSE;
@@ -353,21 +351,21 @@ CoreIsSchedulable (
       }
       break;
 
-    case EFI_DEP_TRUE:   
+    case EFI_DEP_TRUE:
       Status = PushBool (TRUE);
       if (EFI_ERROR (Status)) {
         return FALSE;
       }
       break;
 
-    case EFI_DEP_FALSE: 
+    case EFI_DEP_FALSE:
       Status = PushBool (FALSE);
       if (EFI_ERROR (Status)) {
         return FALSE;
       }
       break;
 
-    case EFI_DEP_END:    
+    case EFI_DEP_END:
       Status = PopBool (&Operator);
       if (EFI_ERROR (Status)) {
         return FALSE;
@@ -383,10 +381,10 @@ CoreIsSchedulable (
       Iterator += sizeof (EFI_GUID);
       break;
 
-    default:      
+    default:
       goto Done;
     }
-    
+
     //
     // Skip over the Dependency Op Code we just processed in the switch.
     // The math is done out of order, but it should not matter. That is

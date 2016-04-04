@@ -10,20 +10,20 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-  The following BaseMemoryLib instances share the same version of this file:
+  The following BaseMemoryLib instances contain the same copy of this file:
 
     BaseMemoryLib
     BaseMemoryLibMmx
     BaseMemoryLibSse2
     BaseMemoryLibRepStr
+    BaseMemoryLibOptDxe
+    BaseMemoryLibOptPei
     PeiMemoryLib
     DxeMemoryLib
 
 **/
 
-//
-// Include common header file for this module.
-//
+
 #include "MemLibInternals.h"
 
 /**
@@ -80,22 +80,17 @@ CompareGuid (
   IN CONST GUID  *Guid2
   )
 {
-  UINT64 Guid1ValueLo;
-  UINT64 Guid1ValueHi;
-  UINT64 Guid2ValueLo;
-  UINT64 Guid2ValueHi;
+  UINT64  LowPartOfGuid1;
+  UINT64  LowPartOfGuid2;
+  UINT64  HighPartOfGuid1;
+  UINT64  HighPartOfGuid2;
 
-  Guid1ValueLo = ReadUnaligned64 ((CONST UINT64*)Guid1);
-  Guid2ValueLo = ReadUnaligned64 ((CONST UINT64*)Guid2);
+  LowPartOfGuid1  = ReadUnaligned64 ((CONST UINT64*) Guid1);
+  LowPartOfGuid2  = ReadUnaligned64 ((CONST UINT64*) Guid2);
+  HighPartOfGuid1 = ReadUnaligned64 ((CONST UINT64*) Guid1 + 1);
+  HighPartOfGuid2 = ReadUnaligned64 ((CONST UINT64*) Guid2 + 1);
 
-  Guid1ValueHi = ReadUnaligned64 ((CONST UINT64*)Guid1 + 1);
-  Guid2ValueHi = ReadUnaligned64 ((CONST UINT64*)Guid2 + 1);
-
-
-  return (BOOLEAN)
-           ((Guid1ValueLo == Guid2ValueLo) &&
-            (Guid1ValueHi == Guid2ValueHi)
-           );
+  return (BOOLEAN) (LowPartOfGuid1 == LowPartOfGuid2 && HighPartOfGuid1 == HighPartOfGuid2);
 }
 
 /**
@@ -110,7 +105,7 @@ CompareGuid (
   If Length > 0 and Buffer is NULL, then ASSERT().
   If Buffer is not aligned on a 32-bit boundary, then ASSERT().
   If Length is not aligned on a 128-bit boundary, then ASSERT().
-  If Length is greater than (MAX_ADDRESS ? Buffer + 1), then ASSERT(). 
+  If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
 
   @param  Buffer  Pointer to the target buffer to scan.
   @param  Length  Number of bytes in Buffer to scan.

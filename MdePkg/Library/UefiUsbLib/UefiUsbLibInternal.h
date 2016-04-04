@@ -1,4 +1,5 @@
-/**@file
+/** @file
+  
   Common header file shared by all source files.
 
   This file includes package header files, library classes and protocol, PPI & GUID definitions.
@@ -15,7 +16,7 @@
 #ifndef __UEFI_USB_LIB_INTERNAL_H_
 #define __UEFI_USB_LIB_INTERNAL_H_
 
-#include <PiDxe.h>
+#include <Uefi.h>
 #include <Library/UsbLib.h>
 #include <Library/BaseMemoryLib.h>
 

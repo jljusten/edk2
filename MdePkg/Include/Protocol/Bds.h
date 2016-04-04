@@ -1,9 +1,9 @@
 /** @file
-  Boot Device Selection Architectural Protocol as defined in DXE CIS
+  Boot Device Selection Architectural Protocol as defined in PI spec Volume 2 DXE
 
   When the DXE core is done it calls the BDS via this protocol.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -12,23 +12,20 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
-  @par Revision Reference:
-  Version 0.91B.
-
 **/
 
 #ifndef __ARCH_PROTOCOL_BDS_H__
 #define __ARCH_PROTOCOL_BDS_H__
 
-//
-// Global ID for the BDS Architectural Protocol
-//
+///
+/// Global ID for the BDS Architectural Protocol
+///
 #define EFI_BDS_ARCH_PROTOCOL_GUID \
   { 0x665E3FF6, 0x46CC, 0x11d4, {0x9A, 0x38, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D } }
 
-//
-// Declare forward reference for the BDS Architectural Protocol
-//
+///
+/// Declare forward reference for the BDS Architectural Protocol
+///
 typedef struct _EFI_BDS_ARCH_PROTOCOL   EFI_BDS_ARCH_PROTOCOL;
 
 /**
@@ -54,7 +51,7 @@ typedef struct _EFI_BDS_ARCH_PROTOCOL   EFI_BDS_ARCH_PROTOCOL;
 **/
 typedef
 VOID
-(EFIAPI *EFI_BDS_ENTRY) (
+(EFIAPI *EFI_BDS_ENTRY)(
   IN EFI_BDS_ARCH_PROTOCOL  *This
   );
 
@@ -68,12 +65,6 @@ VOID
   this protocol should add drivers to the dispatch queue and return control 
   back to the dispatcher.  Once the required boot devices are available, then 
   the boot device can be used to load and invoke an OS or a system utility.
-
-  @par Protocol Parameters:
-  Entry - The entry point to BDS.  This call does not take any parameters, 
-  and the return value can be ignored.  If it returns, then the 
-  dispatcher must be invoked again, if it never returns, then an 
-  operating system or a system utility have been invoked.
 
 **/
 struct _EFI_BDS_ARCH_PROTOCOL {

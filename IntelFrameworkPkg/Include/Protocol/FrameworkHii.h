@@ -35,6 +35,11 @@
     0xd7ad636e, 0xb997, 0x459b, {0xbf, 0x3f, 0x88, 0x46, 0x89, 0x79, 0x80, 0xe1} \
   }
 
+#define EFI_HII_COMPATIBILITY_PROTOCOL_GUID \
+  { \
+    0x5542cce1, 0xdf5c, 0x4d1b, { 0xab, 0xca, 0x36, 0x4f, 0x77, 0xd3, 0x99, 0xfb } \
+  }
+
 // BugBug:
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // If UGA goes away we need to put this some place. I'm not sure where?
@@ -303,7 +308,7 @@ typedef struct _EFI_HII_VARIABLE_PACK_LIST {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_NEW_PACK) (
+(EFIAPI *FRAMEWORK_EFI_HII_NEW_PACK)(
   IN  EFI_HII_PROTOCOL    *This,
   IN  EFI_HII_PACKAGES    *Packages,
   OUT FRAMEWORK_EFI_HII_HANDLE       *Handle
@@ -323,7 +328,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_REMOVE_PACK) (
+(EFIAPI *FRAMEWORK_EFI_HII_REMOVE_PACK)(
   IN EFI_HII_PROTOCOL    *This,
   IN FRAMEWORK_EFI_HII_HANDLE       Handle
   );
@@ -344,7 +349,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_FIND_HANDLES) (
+(EFIAPI *FRAMEWORK_EFI_HII_FIND_HANDLES)(
   IN     EFI_HII_PROTOCOL *This,
   IN OUT UINT16           *HandleBufferLength,
   OUT    FRAMEWORK_EFI_HII_HANDLE    *Handle
@@ -369,7 +374,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_EXPORT) (
+(EFIAPI *FRAMEWORK_EFI_HII_EXPORT)(
   IN     EFI_HII_PROTOCOL *This,
   IN     FRAMEWORK_EFI_HII_HANDLE    Handle,
   IN OUT UINTN            *BufferSize,
@@ -389,7 +394,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_RESET_STRINGS) (
+(EFIAPI *FRAMEWORK_EFI_HII_RESET_STRINGS)(
   IN     EFI_HII_PROTOCOL   *This,
   IN     FRAMEWORK_EFI_HII_HANDLE      Handle
   );
@@ -445,7 +450,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_GET_GLYPH) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_GLYPH)(
   IN     EFI_HII_PROTOCOL  *This,
   IN     CHAR16            *Source,
   IN OUT UINT16            *Index,
@@ -476,7 +481,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_GLYPH_TO_BLT) (
+(EFIAPI *FRAMEWORK_EFI_HII_GLYPH_TO_BLT)(
   IN     EFI_HII_PROTOCOL             *This,
   IN     UINT8                        *GlyphBuffer,
   IN     EFI_GRAPHICS_OUTPUT_BLT_PIXEL Foreground,
@@ -506,7 +511,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_NEW_STRING) (
+(EFIAPI *FRAMEWORK_EFI_HII_NEW_STRING)(
   IN     EFI_HII_PROTOCOL      *This,
   IN     CHAR16                *Language,
   IN     FRAMEWORK_EFI_HII_HANDLE         Handle,
@@ -529,7 +534,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_GET_PRI_LANGUAGES) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_PRI_LANGUAGES)(
   IN  EFI_HII_PROTOCOL    *This,
   IN  FRAMEWORK_EFI_HII_HANDLE       Handle,
   OUT EFI_STRING          *LanguageString
@@ -552,7 +557,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_GET_SEC_LANGUAGES) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_SEC_LANGUAGES)(
   IN  EFI_HII_PROTOCOL    *This,
   IN  FRAMEWORK_EFI_HII_HANDLE       Handle,
   IN  CHAR16              *PrimaryLanguage,
@@ -584,7 +589,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_GET_STRING) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_STRING)(
   IN     EFI_HII_PROTOCOL  *This,
   IN     FRAMEWORK_EFI_HII_HANDLE     Handle,
   IN     STRING_REF        Token,
@@ -618,7 +623,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_GET_LINE) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_LINE)(
   IN     EFI_HII_PROTOCOL  *This,
   IN     FRAMEWORK_EFI_HII_HANDLE     Handle,
   IN     STRING_REF        Token,
@@ -652,7 +657,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_GET_FORMS) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_FORMS)(
   IN     EFI_HII_PROTOCOL  *This,
   IN     FRAMEWORK_EFI_HII_HANDLE     Handle,
   IN     EFI_FORM_ID       FormId,
@@ -679,7 +684,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_GET_DEFAULT_IMAGE) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_DEFAULT_IMAGE)(
   IN     EFI_HII_PROTOCOL           *This,
   IN     FRAMEWORK_EFI_HII_HANDLE   Handle,
   IN     UINTN                      DefaultMask,
@@ -705,7 +710,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_UPDATE_FORM) (
+(EFIAPI *FRAMEWORK_EFI_HII_UPDATE_FORM)(
   IN EFI_HII_PROTOCOL     *This,
   IN FRAMEWORK_EFI_HII_HANDLE        Handle,
   IN EFI_FORM_LABEL       Label,
@@ -727,7 +732,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *FRAMEWORK_EFI_HII_GET_KEYBOARD_LAYOUT) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_KEYBOARD_LAYOUT)(
   IN     EFI_HII_PROTOCOL    *This,
   OUT    UINT16              *DescriptorCount,
   OUT    FRAMEWORK_EFI_KEY_DESCRIPTOR  *Descriptor
@@ -819,5 +824,7 @@ struct _EFI_HII_PROTOCOL {
 };
 
 extern EFI_GUID gEfiHiiProtocolGuid;
+extern EFI_GUID gEfiHiiCompatibilityProtocolGuid;
+
 
 #endif

@@ -1,7 +1,7 @@
 /** @file
-  Report Status Code Library Post Code functions for DXE Phase.
+  The instance of Post Code Library that layers on top of a Debug Library instance.
 
-  Copyright (c) 2006, Intel Corporation<BR>
+  Copyright (c) 2006 - 2008, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -12,10 +12,7 @@
 
 **/
 
-
-
 #include <Base.h>
-
 
 #include <Library/PostCodeLib.h>
 #include <Library/DebugLib.h>
@@ -31,12 +28,12 @@
   display the 32-bit value on the status reporting device.
   
   PostCode() must actively prevent recursion.  If PostCode() is called while 
-  processing another any other Report Status Code Library function, then 
+  processing another any other Post Code Library function, then 
   PostCode() must return Value immediately.
 
-  @param  Value  The 32-bit value to write to the POST card.
+  @param   Value  The 32-bit value to write to the POST card.
 
-  @return  Value
+  @return  The 32-bit value to write to the POST card.
 
 **/
 UINT32
@@ -62,8 +59,8 @@ PostCode (
   value on the status reporting device.  
 
   PostCodeWithDescription()must actively prevent recursion.  If 
-  PostCodeWithDescription() is called while processing another any other Report 
-  Status Code Library function, then PostCodeWithDescription() must return Value 
+  PostCodeWithDescription() is called while processing another any other Post 
+  Code Library function, then PostCodeWithDescription() must return Value 
   immediately.
 
   @param  Value        The 32-bit value to write to the POST card.
@@ -71,7 +68,7 @@ PostCode (
                        POST code value.  This is an optional parameter that may 
                        be NULL.
 
-  @return  Value
+  @return The 32-bit value to write to the POST card.
 
 **/
 UINT32
@@ -111,12 +108,12 @@ PostCodeEnabled (
 /**
   Returns TRUE if POST code descriptions are enabled.
 
-  This function returns TRUE if the POST_CODE_PROPERTY_POST_CODE_ENABLED
+  This function returns TRUE if the POST_CODE_PROPERTY_POST_CODE_DESCRIPTION_ENABLED
   bit of PcdPostCodePropertyMask is set.  Otherwise FALSE is returned.
 
-  @retval  TRUE   The POST_CODE_PROPERTY_POST_CODE_ENABLED bit of
+  @retval  TRUE   The POST_CODE_PROPERTY_POST_CODE_DESCRIPTION_ENABLED bit of
                   PcdPostCodeProperyMask is set.
-  @retval  FALSE  The POST_CODE_PROPERTY_POST_CODE_ENABLED bit of
+  @retval  FALSE  The POST_CODE_PROPERTY_POST_CODE_DESCRIPTION_ENABLED bit of
                   PcdPostCodeProperyMask is clear.
 
 **/
@@ -126,5 +123,5 @@ PostCodeDescriptionEnabled (
   VOID
   )
 {
-  return (BOOLEAN) ((PcdGet8(PcdPostCodePropertyMask) & POST_CODE_PROPERTY_POST_CODE_ENABLED) != 0);
+  return (BOOLEAN) ((PcdGet8(PcdPostCodePropertyMask) & POST_CODE_PROPERTY_POST_CODE_DESCRIPTION_ENABLED) != 0);
 }

@@ -1,7 +1,9 @@
 /** @file
   This file declares Smbus2 PPI.
+  This PPI provides the basic I/O interfaces that a PEIM uses to access its 
+  SMBus controller and the slave devices attached to it.
 
-  Copyright (c) 2006 - 2007, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -16,9 +18,9 @@
 
 **/
 
-#ifndef _PEI_SMBUS2_PPI_H
-#define _PEI_SMBUS2_PPI_H
-#include <PiPei.h>
+#ifndef __PEI_SMBUS2_PPI_H__
+#define __PEI_SMBUS2_PPI_H__
+
 #include <IndustryStandard/SmBus.h>
 
 #define EFI_PEI_SMBUS2_PPI_GUID \
@@ -34,7 +36,8 @@ typedef UINTN   EFI_SMBUS_DEVICE_COMMAND;
 
 
 /*
-  Executes an SMBus operation to an SMBus controller.
+  Executes an SMBus operation to an SMBus controller. Returns when either 
+  the command has been executed or an error is encountered in doing the operation.
 
   @param  This            A pointer to the EFI_PEI_SMBUS2_PPI instance.
   @param  SlaveAddress    The SMBUS hardware address to which the SMBUS device is preassigned or
@@ -44,19 +47,15 @@ typedef UINTN   EFI_SMBUS_DEVICE_COMMAND;
                           It can mean the offset to a list of functions inside 
                           an SMBus slave device. Not all operations or slave devices support
                           this command's registers.
-
   @param  Operation       Signifies which particular SMBus hardware protocol instance that it 
                           will use to execute the SMBus transactions. 
                           This SMBus hardware protocol is defined by the System Management Bus (SMBus) 
                           Specification and is not related to UEFI.
-
   @param  PecCheck        Defines if Packet Error Code (PEC) checking is required for this operation.
-
   @param  Length          Signifies the number of bytes that this operation will do. 
                           The maximum number of bytes can be revision specific and operation specific.
                           This parameter will contain the actual number of bytes that are executed
                           for this operation. Not all operations require this argument.
-
   @param  Buffer          Contains the value of data to execute to the SMBus slave device. 
                           Not all operations require this argument. 
                           The length of this buffer is identified by Length.
@@ -73,47 +72,28 @@ typedef UINTN   EFI_SMBUS_DEVICE_COMMAND;
                                 a failure reflected in the Host Status Register bit.
   @retval EFI_INVALID_PARAMETER Operation is not defined in EFI_SMBUS_OPERATION.
                                 Or Length/Buffer is NULL for operations except for EfiSmbusQuickRead and
-                                EfiSmbusQuickWrite. Length is outside the range of valid values.
+                                EfiSmbusQuickWrite. Or Length is outside the range of valid values.
   @retval EFI_UNSUPPORTED       The SMBus operation or PEC is not supported.
   @retval EFI_BUFFER_TOO_SMALL  Buffer is not sufficient for this operation.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PEI_SMBUS2_PPI_EXECUTE_OPERATION) (
+(EFIAPI *EFI_PEI_SMBUS2_PPI_EXECUTE_OPERATION)(
   IN CONST  EFI_PEI_SMBUS2_PPI        *This,
-  IN CONST  EFI_SMBUS_DEVICE_ADDRESS  SlaveAddress,
-  IN CONST  EFI_SMBUS_DEVICE_COMMAND  Command,
-  IN CONST  EFI_SMBUS_OPERATION       Operation,
-  IN CONST  BOOLEAN                   PecCheck,
+  IN        EFI_SMBUS_DEVICE_ADDRESS  SlaveAddress,
+  IN        EFI_SMBUS_DEVICE_COMMAND  Command,
+  IN        EFI_SMBUS_OPERATION       Operation,
+  IN        BOOLEAN                   PecCheck,
   IN OUT    UINTN                     *Length,
   IN OUT    VOID                      *Buffer
 );
 
 /**
-  CallBack function can be registered in EFI_PEI_SMBUS_PPI_NOTIFY.
-
-  @param  This           A pointer to the EFI_PEI_SMBUS_PPI instance.
-  @param  SlaveAddress   The SMBUS hardware address to which the SMBUS
-                         device is preassigned or allocated.
-  @param  Data           Data of the SMBus host notify command that
-                         the caller wants to be called.
-
-  @return Status Code
-
-**/
-typedef
-EFI_STATUS
-(EFIAPI *EFI_PEI_SMBUS_NOTIFY2_FUNCTION) (
-  IN CONST  EFI_PEI_SMBUS2_PPI        *SmbusPpi,
-  IN CONST  EFI_SMBUS_DEVICE_ADDRESS  SlaveAddress,
-  IN CONST  UINTN                     Data
-);
-/**
   The ArpDevice() function enumerates the entire bus or enumerates a specific 
   device that is identified by SmbusUdid. 
 
-  @param  This           A pointer to the EFI_PEI_SMBUS_PPI instance.
+  @param  This           A pointer to the EFI_PEI_SMBUS2_PPI instance.
   @param  ArpAll         A Boolean expression that indicates if the host drivers need
                          to enumerate all the devices or enumerate only the device that is identified
                          by SmbusUdid. If ArpAll is TRUE, SmbusUdid and SlaveAddress are optional.
@@ -130,20 +110,29 @@ EFI_STATUS
                                 due to a lack of resources.
   @retval EFI_TIMEOUT           The SMBus slave device did not respond.
   @retval EFI_DEVICE_ERROR      The request was not completed because the transaction failed.
+  @retval EFI_UNSUPPORTED       ArpDevice, GetArpMap, and Notify are not implemented by this PEIM.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PEI_SMBUS2_PPI_ARP_DEVICE) (
+(EFIAPI *EFI_PEI_SMBUS2_PPI_ARP_DEVICE)(
   IN CONST  EFI_PEI_SMBUS2_PPI        *This,
-  IN CONST  BOOLEAN                   ArpAll,
-  IN CONST  EFI_SMBUS_UDID            *SmbusUdid, OPTIONAL
+  IN        BOOLEAN                   ArpAll,
+  IN        EFI_SMBUS_UDID            *SmbusUdid,   OPTIONAL
   IN OUT    EFI_SMBUS_DEVICE_ADDRESS  *SlaveAddress OPTIONAL
 );
 
 
 typedef struct {
+  ///
+  /// The SMBUS hardware address to which the SMBUS device is preassigned or
+  /// allocated. Type EFI_SMBUS_DEVICE_ADDRESS is defined in EFI_PEI_SMBUS2_PPI.Execute().
+  ///
   EFI_SMBUS_DEVICE_ADDRESS  SmbusDeviceAddress;
+  ///
+  /// The SMBUS Unique Device Identifier (UDID) as defined in EFI_SMBUS_UDID.
+  /// Type EFI_SMBUS_UDID is defined in EFI_PEI_SMBUS2_PPI.ArpDevice().
+  ///
   EFI_SMBUS_UDID            SmbusDeviceUdid;
 } EFI_SMBUS_DEVICE_MAP;
 
@@ -151,28 +140,50 @@ typedef struct {
   The GetArpMap() function returns the mapping of all the SMBus devices 
   that are enumerated by the SMBus host driver. 
 
-  @param  This           A pointer to the EFI_PEI_SMBUS_PPI instance.
+  @param  This           A pointer to the EFI_PEI_SMBUS2_PPI instance.
   @param  Length         Size of the buffer that contains the SMBus device map.
   @param  SmbusDeviceMap The pointer to the device map as enumerated
                          by the SMBus controller driver.
 
   @retval EFI_SUCCESS           The device map was returned correctly in the buffer.
+  @retval EFI_UNSUPPORTED       ArpDevice, GetArpMap, and Notify are not implemented by this PEIM.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PEI_SMBUS2_PPI_GET_ARP_MAP) (
+(EFIAPI *EFI_PEI_SMBUS2_PPI_GET_ARP_MAP)(
   IN CONST  EFI_PEI_SMBUS2_PPI    *This,
   IN OUT    UINTN                 *Length,
   IN OUT    EFI_SMBUS_DEVICE_MAP  **SmbusDeviceMap
 );
 
+/**
+  CallBack function can be registered in EFI_PEI_SMBUS2_PPI_NOTIFY.
+
+  @param  This           A pointer to the EFI_PEI_SMBUS2_PPI instance.
+  @param  SlaveAddress   The SMBUS hardware address to which the SMBUS
+                         device is preassigned or allocated.
+  @param  Data           Data of the SMBus host notify command that
+                         the caller wants to be called.
+
+  @retval EFI_SUCCESS           NotifyFunction has been registered.
+  @retval EFI_UNSUPPORTED       ArpDevice, GetArpMap, and Notify are not
+                                implemented by this PEIM.
+
+**/
+typedef
+EFI_STATUS
+(EFIAPI *EFI_PEI_SMBUS_NOTIFY2_FUNCTION)(
+  IN CONST  EFI_PEI_SMBUS2_PPI        *SmbusPpi,
+  IN        EFI_SMBUS_DEVICE_ADDRESS  SlaveAddress,
+  IN        UINTN                     Data
+);
 
 /**
   The Notify() function registers all the callback functions to allow the 
   bus driver to call these functions when the SlaveAddress/Data pair happens.
 
-  @param  This           A pointer to the EFI_PEI_SMBUS_PPI instance.
+  @param  This           A pointer to the EFI_PEI_SMBUS2_PPI instance.
   @param  SlaveAddress   Address that the host controller detects as
                          sending a message and calls all the registered functions.
   @param  Data           Data that the host controller detects as sending a message
@@ -180,46 +191,45 @@ EFI_STATUS
   @param  NotifyFunction The function to call when the bus driver
                          detects the SlaveAddress and Data pair.
 
-  @retval EFI_SUCCESS           NotifyFunction has been registered.
-
+  @retval EFI_SUCCESS     NotifyFunction has been registered.
+  @retval EFI_UNSUPPORTED ArpDevice, GetArpMap, and Notify are not
+                          implemented by this PEIM.
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PEI_SMBUS2_PPI_NOTIFY) (
-  IN CONST  EFI_PEI_SMBUS2_PPI              *This,
-  IN CONST  EFI_SMBUS_DEVICE_ADDRESS        SlaveAddress,
-  IN CONST  UINTN                           Data,
-  IN CONST  EFI_PEI_SMBUS_NOTIFY2_FUNCTION  NotifyFunction
+(EFIAPI *EFI_PEI_SMBUS2_PPI_NOTIFY)(
+  IN CONST EFI_PEI_SMBUS2_PPI              *This,
+  IN       EFI_SMBUS_DEVICE_ADDRESS        SlaveAddress,
+  IN       UINTN                           Data,
+  IN       EFI_PEI_SMBUS_NOTIFY2_FUNCTION  NotifyFunction
 );
 
-/**
-  @par Ppi Description:
-  Provides the basic I/O interfaces that a PEIM uses to access 
-  its SMBus controller and the slave devices attached to it.
-
-  @param Execute
-  Executes the SMBus operation to an SMBus slave device.
-
-  @param ArpDevice
-  Allows an SMBus 2.0 device(s) to be Address Resolution Protocol (ARP)
-
-  @param GetArpMap
-  Allows a PEIM to retrieve the address that was allocated by the SMBus 
-  host controller during enumeration/ARP.
-
-  @param Notify
-  Allows a driver to register for a callback to the SMBus host 
-  controller driver when the bus issues a notification to the bus controller PEIM.
-
-  @param Identifier
-  Identifier which uniquely identifies this SMBus controller in a system.
-
-**/
+///
+///  Provides the basic I/O interfaces that a PEIM uses to access 
+///  its SMBus controller and the slave devices attached to it.
+///
 struct _EFI_PEI_SMBUS2_PPI {
+  ///
+  /// Executes the SMBus operation to an SMBus slave device.
+  ///
   EFI_PEI_SMBUS2_PPI_EXECUTE_OPERATION  Execute;
+  ///
+  /// Allows an SMBus 2.0 device(s) to be Address Resolution Protocol (ARP).
+  ///
   EFI_PEI_SMBUS2_PPI_ARP_DEVICE         ArpDevice;
+  ///
+  /// Allows a PEIM to retrieve the address that was allocated by the SMBus 
+  /// host controller during enumeration/ARP.
+  ///
   EFI_PEI_SMBUS2_PPI_GET_ARP_MAP        GetArpMap;
+  ///
+  /// Allows a driver to register for a callback to the SMBus host 
+  /// controller driver when the bus issues a notification to the bus controller PEIM.
+  ///
   EFI_PEI_SMBUS2_PPI_NOTIFY             Notify;
+  ///
+  /// Identifier which uniquely identifies this SMBus controller in a system.
+  ///
   EFI_GUID                              Identifier;
 };
 

@@ -19,15 +19,17 @@
 #
 # Notes:
 #
-#   The following BaseMemoryLib instances share the same version of this file:
+#   The following BaseMemoryLib instances contain the same copy of this file:
 #
 #       BaseMemoryLibRepStr
 #       BaseMemoryLibMmx
 #       BaseMemoryLibSse2
+#       BaseMemoryLibOptDxe
+#       BaseMemoryLibOptPei
 #
 #------------------------------------------------------------------------------
 
-.globl _InternalMemCompareMem
+.globl ASM_PFX(InternalMemCompareMem)
 
 #------------------------------------------------------------------------------
 # INTN
@@ -38,7 +40,7 @@
 #   IN      UINTN                     Length
 #   );
 #------------------------------------------------------------------------------
-_InternalMemCompareMem:
+ASM_PFX(InternalMemCompareMem):
     push    %esi
     push    %edi
     movl    12(%esp), %esi

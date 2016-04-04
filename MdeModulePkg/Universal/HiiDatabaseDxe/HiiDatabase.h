@@ -1,6 +1,7 @@
 /** @file
+Private structures definitions in HiiDatabase.
 
-Copyright (c) 2007, Intel Corporation
+Copyright (c) 2007 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,23 +10,12 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-    HiiDatabase.h
-
-Abstract:
-
-    Private structures definitions in HiiDatabase.
-
-Revision History
-
-
 **/
 
 #ifndef __HII_DATABASE_PRIVATE_H__
 #define __HII_DATABASE_PRIVATE_H__
 
-#include <PiDxe.h>
+#include <Uefi.h>
 
 #include <Protocol/ConsoleControl.h>
 #include <Protocol/DevicePath.h>
@@ -47,6 +37,9 @@ Revision History
 #include <Library/BaseLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/MemoryAllocationLib.h>
+#include <Library/IfrSupportLib.h>
+#include <Library/UefiLib.h>
+#include <Library/PcdLib.h>
 
 #define HII_DATABASE_NOTIFY_GUID \
   { \
@@ -249,9 +242,7 @@ typedef struct _HII_DATABASE_PRIVATE_DATA {
   LIST_ENTRY                            DatabaseList;
   LIST_ENTRY                            DatabaseNotifyList;
   EFI_HII_FONT_PROTOCOL                 HiiFont;
-#ifndef DISABLE_UNUSED_HII_PROTOCOLS
   EFI_HII_IMAGE_PROTOCOL                HiiImage;
-#endif
   EFI_HII_STRING_PROTOCOL               HiiString;
   EFI_HII_DATABASE_PROTOCOL             HiiDatabase;
   EFI_HII_CONFIG_ROUTING_PROTOCOL       ConfigRouting;
@@ -303,7 +294,7 @@ typedef struct _HII_DATABASE_PRIVATE_DATA {
 //
 
 /**
-  This function checks whether a handle is a valid EFI_HII_HANDLE
+  This function checks whether a handle is a valid EFI_HII_HANDLE.
 
   @param  Handle                  Pointer to a EFI_HII_HANDLE
 
@@ -314,8 +305,7 @@ typedef struct _HII_DATABASE_PRIVATE_DATA {
 BOOLEAN
 IsHiiHandleValid (
   EFI_HII_HANDLE Handle
-  )
-;
+  );
 
 
 /**
@@ -347,8 +337,7 @@ IsFontInfoExisted (
   IN  EFI_FONT_INFO_MASK        *FontInfoMask,   OPTIONAL
   IN  EFI_FONT_HANDLE           FontHandle,      OPTIONAL
   OUT HII_GLOBAL_FONT_INFO      **GlobalFontInfo OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -371,8 +360,7 @@ GetSystemFont (
   IN  HII_DATABASE_PRIVATE_DATA      *Private,
   OUT EFI_FONT_DISPLAY_INFO          **FontInfo,
   OUT UINTN                          *FontInfoSize OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -383,7 +371,7 @@ GetSystemFont (
 
   @param  Private                 Hii database private structure.
   @param  StringPackage           Hii string package instance.
-  @param  StringId                The string¡¯s id, which is unique within
+  @param  StringId                The string's id, which is unique within
                                   PackageList.
   @param  BlockType               Output the block type of found string block.
   @param  StringBlockAddr         Output the block address of found string block.
@@ -408,8 +396,7 @@ FindStringBlock (
   OUT UINT8                           **StringBlockAddr, OPTIONAL
   OUT UINTN                           *StringTextOffset, OPTIONAL
   OUT EFI_STRING_ID                   *LastStringId OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -440,8 +427,7 @@ FindGlyphBlock (
   OUT UINT8                          **GlyphBuffer, OPTIONAL
   OUT EFI_HII_GLYPH_INFO             *Cell, OPTIONAL
   OUT UINTN                          *GlyphBufferLen OPTIONAL
-  )
-;
+  );
 
 //
 // EFI_HII_FONT_PROTOCOL protocol interfaces
@@ -466,9 +452,12 @@ FindGlyphBlock (
                                   EFI_HII_OUT_FLAG_CLIP is implied. If this points
                                   to a NULL on entry, then a              buffer
                                   will be allocated to hold the generated image and
-                                  the pointer updated on exit. It is the caller¡¯s
+                                  the pointer updated on exit. It is the caller's
                                   responsibility to free this buffer.
-  @param  BltX,BLTY               Specifies the offset from the left and top edge
+  @param  BltX                    Together with BltX, Specifies the offset from the left and top edge
+                                  of the image of the first character cell in the
+                                  image.
+  @param  BltY                    Together with BltY, Specifies the offset from the left and top edge
                                   of the image of the first character cell in the
                                   image.
   @param  RowInfoArray            If this is non-NULL on entry, then on exit, this
@@ -477,7 +466,7 @@ FindGlyphBlock (
                                   updated to contain the        number of elements.
                                   This array describes the characters which were at
                                   least partially drawn and the heights of the
-                                  rows. It is the caller¡¯s responsibility to free
+                                  rows. It is the caller's responsibility to free
                                   this buffer.
   @param  RowInfoArraySize        If this is non-NULL on entry, then on exit it
                                   contains the number of elements in RowInfoArray.
@@ -495,7 +484,8 @@ FindGlyphBlock (
   @retval EFI_SUCCESS             The string was successfully rendered.
   @retval EFI_OUT_OF_RESOURCES    Unable to allocate an output buffer for
                                   RowInfoArray or Blt.
-  @retval EFI_INVALID_PARAMETER   The String was NULL.
+  @retval EFI_INVALID_PARAMETER The String or Blt.
+  @retval EFI_INVALID_PARAMETER Flags were invalid combination..
 
 **/
 EFI_STATUS
@@ -511,8 +501,7 @@ HiiStringToImage (
   OUT EFI_HII_ROW_INFO               **RowInfoArray    OPTIONAL,
   OUT UINTN                          *RowInfoArraySize OPTIONAL,
   OUT UINTN                          *ColumnInfoArray  OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -522,7 +511,7 @@ HiiStringToImage (
   @param  Flags                   Describes how the string is to be drawn.
   @param  PackageList             The package list in the HII database to search
                                   for the specified string.
-  @param  StringId                The string¡¯s id, which is unique within
+  @param  StringId                The string's id, which is unique within
                                   PackageList.
   @param  Language                Points to the language for the retrieved string.
                                   If NULL, then the current system language is
@@ -538,9 +527,12 @@ HiiStringToImage (
                                   EFI_HII_OUT_FLAG_CLIP is implied. If this points
                                   to a NULL on entry, then a              buffer
                                   will be allocated to hold the generated image and
-                                  the pointer updated on exit. It is the caller¡¯s
+                                  the pointer updated on exit. It is the caller's
                                   responsibility to free this buffer.
-  @param  BltX,BLTY               Specifies the offset from the left and top edge
+  @param  BltX                    Together with BltX, Specifies the offset from the left and top edge
+                                  of the image of the first character cell in the
+                                  image.
+  @param  BltY                    Together with BltY, Specifies the offset from the left and top edge
                                   of the image of the first character cell in the
                                   image.
   @param  RowInfoArray            If this is non-NULL on entry, then on exit, this
@@ -549,7 +541,7 @@ HiiStringToImage (
                                   updated to contain the        number of elements.
                                   This array describes the characters which were at
                                   least partially drawn and the heights of the
-                                  rows. It is the caller¡¯s responsibility to free
+                                  rows. It is the caller's responsibility to free
                                   this buffer.
   @param  RowInfoArraySize        If this is non-NULL on entry, then on exit it
                                   contains the number of elements in RowInfoArray.
@@ -567,7 +559,10 @@ HiiStringToImage (
   @retval EFI_SUCCESS             The string was successfully rendered.
   @retval EFI_OUT_OF_RESOURCES    Unable to allocate an output buffer for
                                   RowInfoArray or Blt.
-  @retval EFI_INVALID_PARAMETER   The String was NULL.
+  @retval EFI_INVALID_PARAMETER The Blt or PackageList was NULL.
+  @retval EFI_INVALID_PARAMETER Flags were invalid combination.
+  @retval EFI_NOT_FOUND         The specified PackageList is not in the Database or the stringid is not 
+                          in the specified PackageList. 
 
 **/
 EFI_STATUS
@@ -585,8 +580,7 @@ HiiStringIdToImage (
   OUT EFI_HII_ROW_INFO               **RowInfoArray    OPTIONAL,
   OUT UINTN                          *RowInfoArraySize OPTIONAL,
   OUT UINTN                          *ColumnInfoArray  OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -599,7 +593,7 @@ HiiStringIdToImage (
                                   system font and color.
   @param  Blt                     Thus must point to a NULL on entry. A buffer will
                                   be allocated to hold the output and the pointer
-                                  updated on exit. It is the caller¡¯s
+                                  updated on exit. It is the caller's
                                   responsibility to free this buffer.
   @param  Baseline                Number of pixels from the bottom of the bitmap to
                                   the baseline.
@@ -619,8 +613,7 @@ HiiGetGlyph (
   IN  CONST EFI_FONT_DISPLAY_INFO    *StringInfo,
   OUT EFI_IMAGE_OUTPUT               **Blt,
   OUT UINTN                          *Baseline OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -635,8 +628,9 @@ HiiGetGlyph (
                                   returned font handle or points to NULL if there
                                   are no more matching fonts.
   @param  StringInfoIn            Upon entry, points to the font to return
-                                  information about.
-  @param  StringInfoOut           Upon return, contains the matching font¡¯s
+                                  information about. If NULL, then the information about the system default 
+                                  font will be returned.
+  @param  StringInfoOut           Upon return, contains the matching font's
                                   information.  If NULL, then no information is
                                   returned. It's caller's responsibility to free
                                   this buffer.
@@ -647,20 +641,19 @@ HiiGetGlyph (
   @retval EFI_SUCCESS             Matching font returned successfully.
   @retval EFI_NOT_FOUND           No matching font was found.
   @retval EFI_INVALID_PARAMETER   StringInfoIn is NULL.
+  @retval EFI_INVALID_PARAMETER  StringInfoIn->FontInfoMask is an invalid combination.
   @retval EFI_OUT_OF_RESOURCES    There were insufficient resources to complete the
                                   request.
-
 **/
 EFI_STATUS
 EFIAPI
 HiiGetFontInfo (
   IN  CONST EFI_HII_FONT_PROTOCOL    *This,
   IN  OUT   EFI_FONT_HANDLE          *FontHandle,
-  IN  CONST EFI_FONT_DISPLAY_INFO    *StringInfoIn,
+  IN  CONST EFI_FONT_DISPLAY_INFO    *StringInfoIn, OPTIONAL
   OUT       EFI_FONT_DISPLAY_INFO    **StringInfoOut,
   IN  CONST EFI_STRING               String OPTIONAL
-  )
-;
+  );
 
 //
 // EFI_HII_IMAGE_PROTOCOL interfaces
@@ -692,8 +685,7 @@ HiiNewImage (
   IN  EFI_HII_HANDLE                 PackageList,
   OUT EFI_IMAGE_ID                   *ImageId,
   IN  CONST EFI_IMAGE_INPUT          *Image
-  )
-;
+  );
 
 
 /**
@@ -703,18 +695,18 @@ HiiNewImage (
   @param  This                    A pointer to the EFI_HII_IMAGE_PROTOCOL instance.
   @param  PackageList             Handle of the package list where this image will
                                   be searched.
-  @param  ImageId                 The image¡¯s id,, which is unique within
+  @param  ImageId                 The image's id,, which is unique within
                                   PackageList.
   @param  Image                   Points to the image.
-  @param  ImageSize               On entry, points to the size of the buffer
-                                  pointed to by Image, in bytes. On return, points
-                                  to the length of the image, in bytes.
 
   @retval EFI_SUCCESS             The new image was returned successfully.
   @retval EFI_NOT_FOUND           The image specified by ImageId is not available.
+                                                 The specified PackageList is not in the database.
   @retval EFI_BUFFER_TOO_SMALL    The buffer specified by ImageSize is too small to
                                   hold the image.
   @retval EFI_INVALID_PARAMETER   The Image or ImageSize was NULL.
+  @retval EFI_OUT_OF_RESOURCES   The bitmap could not be retrieved because there was not
+                                                       enough memory.
 
 **/
 EFI_STATUS
@@ -723,10 +715,8 @@ HiiGetImage (
   IN  CONST EFI_HII_IMAGE_PROTOCOL   *This,
   IN  EFI_HII_HANDLE                 PackageList,
   IN  EFI_IMAGE_ID                   ImageId,
-  OUT EFI_IMAGE_INPUT                *Image,
-  OUT UINTN                          *ImageSize
-  )
-;
+  OUT EFI_IMAGE_INPUT                *Image
+  );
 
 
 /**
@@ -735,13 +725,13 @@ HiiGetImage (
 
   @param  This                    A pointer to the EFI_HII_IMAGE_PROTOCOL instance.
   @param  PackageList             The package list containing the images.
-  @param  ImageId                 The image¡¯s id,, which is unique within
+  @param  ImageId                 The image's id,, which is unique within
                                   PackageList.
   @param  Image                   Points to the image.
 
   @retval EFI_SUCCESS             The new image was updated successfully.
   @retval EFI_NOT_FOUND           The image specified by ImageId is not in the
-                                  database.
+                                                database. The specified PackageList is not in the database.
   @retval EFI_INVALID_PARAMETER   The Image was NULL.
 
 **/
@@ -752,8 +742,7 @@ HiiSetImage (
   IN EFI_HII_HANDLE                  PackageList,
   IN EFI_IMAGE_ID                    ImageId,
   IN CONST EFI_IMAGE_INPUT           *Image
-  )
-;
+  );
 
 
 /**
@@ -771,7 +760,10 @@ HiiSetImage (
                                   implied. If this points to a  NULL on entry, then
                                   a buffer will be allocated to hold  the generated
                                   image and the pointer updated on exit. It is the
-                                  caller¡¯s responsibility to free this buffer.
+                                  caller's responsibility to free this buffer.
+  @param  BltX                    Specifies the offset from the left and top edge
+                                  of the  output image of the first pixel in the
+                                  image.
   @param  BltY                    Specifies the offset from the left and top edge
                                   of the  output image of the first pixel in the
                                   image.
@@ -791,8 +783,7 @@ HiiDrawImage (
   IN OUT EFI_IMAGE_OUTPUT            **Blt,
   IN UINTN                           BltX,
   IN UINTN                           BltY
-  )
-;
+  );
 
 
 /**
@@ -813,17 +804,20 @@ HiiDrawImage (
                                   EFI_HII_DRAW_FLAG_CLIP is implied. If this points
                                   to a  NULL on entry, then a buffer will be
                                   allocated to hold  the generated image and the
-                                  pointer updated on exit. It is the caller¡¯s
+                                  pointer updated on exit. It is the caller's
                                   responsibility to free this buffer.
+  @param  BltX                    Specifies the offset from the left and top edge
+                                  of the  output image of the first pixel in the
+                                  image.
   @param  BltY                    Specifies the offset from the left and top edge
                                   of the  output image of the first pixel in the
                                   image.
 
   @retval EFI_SUCCESS             The image was successfully drawn.
   @retval EFI_OUT_OF_RESOURCES    Unable to allocate an output buffer for Blt.
-  @retval EFI_INVALID_PARAMETER   The Image was NULL.
-  @retval EFI_NOT_FOUND           The specified packagelist could not be found in
-                                  current database.
+  @retval EFI_INVALID_PARAMETER  The Blt was NULL.
+  @retval EFI_NOT_FOUND          The image specified by ImageId is not in the database. 
+                           The specified PackageList is not in the database.
 
 **/
 EFI_STATUS
@@ -863,7 +857,7 @@ HiiDrawImageId (
                                   Language is not zero, the LanguageName being
                                   passed  in will be ignored.
   @param  String                  Points to the new null-terminated string.
-  @param  StringFontInfo          Points to the new string¡¯s font information or
+  @param  StringFontInfo          Points to the new string's font information or
                                   NULL if the string should have the default system
                                   font, size and style.
 
@@ -886,8 +880,7 @@ HiiNewString (
   IN  CONST CHAR16                    *LanguageName, OPTIONAL
   IN  CONST EFI_STRING                String,
   IN  CONST EFI_FONT_INFO             *StringFontInfo OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -906,7 +899,7 @@ HiiNewString (
   @param  StringSize              On entry, points to the size of the buffer
                                   pointed to by  String, in bytes. On return,
                                   points to the length of the string, in bytes.
-  @param  StringFontInfo          If not NULL, points to the string¡¯s font
+  @param  StringFontInfo          If not NULL, points to the string's font
                                   information.  It's caller's responsibility to
                                   free this buffer.
 
@@ -914,7 +907,9 @@ HiiNewString (
   @retval EFI_NOT_FOUND           The string specified by StringId is not
                                   available.
   @retval EFI_NOT_FOUND           The string specified by StringId is available but
-                                  not in the specified language.
+                                                not in the specified language.
+                                                The specified PackageList is not in the database.
+  @retval EFI_INVALID_LANGUAGE   - The string specified by StringId is available but
   @retval EFI_BUFFER_TOO_SMALL    The buffer specified by StringSize is too small
                                   to  hold the string.
   @retval EFI_INVALID_PARAMETER   The String or Language or StringSize was NULL.
@@ -932,8 +927,7 @@ HiiGetString (
   OUT EFI_STRING                      String,
   IN  OUT UINTN                       *StringSize,
   OUT EFI_FONT_INFO                   **StringFontInfo OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -943,11 +937,11 @@ HiiGetString (
   @param  This                    A pointer to the EFI_HII_STRING_PROTOCOL
                                   instance.
   @param  PackageList             The package list containing the strings.
-  @param  StringId                The string¡¯s id, which is unique within
+  @param  StringId                The string's id, which is unique within
                                   PackageList.
   @param  Language                Points to the language for the updated string.
   @param  String                  Points to the new null-terminated string.
-  @param  StringFontInfo          Points to the string¡¯s font information or NULL
+  @param  StringFontInfo          Points to the string's font information or NULL
                                   if the string font information is not changed.
 
   @retval EFI_SUCCESS             The string was updated successfully.
@@ -967,8 +961,7 @@ HiiSetString (
   IN CONST CHAR8                      *Language,
   IN CONST EFI_STRING                 String,
   IN CONST EFI_FONT_INFO              *StringFontInfo OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -999,8 +992,7 @@ HiiGetLanguages (
   IN EFI_HII_HANDLE                   PackageList,
   IN OUT CHAR8                        *Languages,
   IN OUT UINTN                        *LanguagesSize
-  )
-;
+  );
 
 
 /**
@@ -1017,7 +1009,7 @@ HiiGetLanguages (
                                   FirstLanguage. If there are no secondary
                                   languages, the function  returns successfully,
                                   but this is set to NULL.
-  @param  SecondaryLanguageSize   On entry, points to the size of the buffer
+  @param  SecondaryLanguagesSize  On entry, points to the size of the buffer
                                   pointed to  by SecondLanguages, in bytes. On
                                   return, points to the length of SecondLanguages
                                   in bytes.
@@ -1029,8 +1021,9 @@ HiiGetLanguages (
                                   too small to hold the returned information.
                                   SecondLanguageSize is updated to hold the size of
                                   the buffer required.
-  @retval EFI_NOT_FOUND           The language specified by FirstLanguage is not
+  @retval EFI_INVALID_LANGUAGE           The language specified by FirstLanguage is not
                                   present in the specified package list.
+  @retval EFI_NOT_FOUND          The specified PackageList is not in the Database.                                
 
 **/
 EFI_STATUS
@@ -1039,10 +1032,9 @@ HiiGetSecondaryLanguages (
   IN CONST EFI_HII_STRING_PROTOCOL   *This,
   IN EFI_HII_HANDLE                  PackageList,
   IN CONST CHAR8                     *FirstLanguage,
-  IN OUT CHAR8                       *SecondLanguages,
-  IN OUT UINTN                       *SecondLanguagesSize
-  )
-;
+  IN OUT CHAR8                       *SecondaryLanguages,
+  IN OUT UINTN                       *SecondaryLanguagesSize
+  );
 
 //
 // EFI_HII_DATABASE_PROTOCOL protocol interfaces
@@ -1075,8 +1067,7 @@ HiiNewPackageList (
   IN CONST EFI_HII_PACKAGE_LIST_HEADER  *PackageList,
   IN CONST EFI_HANDLE                   DriverHandle,
   OUT EFI_HII_HANDLE                    *Handle
-  )
-;
+  );
 
 
 /**
@@ -1091,9 +1082,7 @@ HiiNewPackageList (
 
   @retval EFI_SUCCESS             The data associated with the Handle was removed
                                   from  the HII database.
-  @retval EFI_NOT_FOUND           The specified PackageList could not be found in
-                                  database.
-  @retval EFI_INVALID_PARAMETER   The Handle was not valid.
+  @retval EFI_NOT_FOUND           The specified Handle is not in database.
 
 **/
 EFI_STATUS
@@ -1101,8 +1090,7 @@ EFIAPI
 HiiRemovePackageList (
   IN CONST EFI_HII_DATABASE_PROTOCOL    *This,
   IN EFI_HII_HANDLE                     Handle
-  )
-;
+  );
 
 
 /**
@@ -1119,9 +1107,8 @@ HiiRemovePackageList (
   @retval EFI_SUCCESS             The HII database was successfully updated.
   @retval EFI_OUT_OF_RESOURCES    Unable to allocate enough memory for the updated
                                   database.
-  @retval EFI_INVALID_PARAMETER   Handle or PackageList was NULL.
-  @retval EFI_NOT_FOUND           The Handle was not valid or could not be found in
-                                  database.
+  @retval EFI_INVALID_PARAMETER  PackageList was NULL.
+  @retval EFI_NOT_FOUND          The specified Handle is not in database.
 
 **/
 EFI_STATUS
@@ -1130,8 +1117,7 @@ HiiUpdatePackageList (
   IN CONST EFI_HII_DATABASE_PROTOCOL    *This,
   IN EFI_HII_HANDLE                     Handle,
   IN CONST EFI_HII_PACKAGE_LIST_HEADER  *PackageList
-  )
-;
+  );
 
 
 /**
@@ -1154,6 +1140,7 @@ HiiUpdatePackageList (
   @param  Handle                  An array of EFI_HII_HANDLE instances returned.
 
   @retval EFI_SUCCESS             The matching handles are outputed successfully.
+                                                HandleBufferLength is updated with the actual length.
   @retval EFI_BUFFER_TO_SMALL     The HandleBufferLength parameter indicates that
                                   Handle is too small to support the number of
                                   handles. HandleBufferLength is updated with a
@@ -1161,6 +1148,10 @@ HiiUpdatePackageList (
   @retval EFI_NOT_FOUND           No matching handle could not be found in
                                   database.
   @retval EFI_INVALID_PARAMETER   Handle or HandleBufferLength was NULL.
+  @retval EFI_INVALID_PARAMETER  PackageType is not a EFI_HII_PACKAGE_TYPE_GUID but
+                         PackageGuid is not NULL, PackageType is a EFI_HII_
+                         PACKAGE_TYPE_GUID but PackageGuid is NULL.
+  
 
 **/
 EFI_STATUS
@@ -1171,8 +1162,7 @@ HiiListPackageLists (
   IN  CONST EFI_GUID                    *PackageGuid,
   IN  OUT UINTN                         *HandleBufferLength,
   OUT EFI_HII_HANDLE                    *Handle
-  )
-;
+  );
 
 
 /**
@@ -1209,8 +1199,7 @@ HiiExportPackageLists (
   IN  EFI_HII_HANDLE                    Handle,
   IN  OUT UINTN                         *BufferSize,
   OUT EFI_HII_PACKAGE_LIST_HEADER       *Buffer
-  )
-;
+  );
 
 
 /**
@@ -1258,8 +1247,7 @@ HiiRegisterPackageNotify (
   IN  CONST EFI_HII_DATABASE_NOTIFY     PackageNotifyFn,
   IN  EFI_HII_DATABASE_NOTIFY_TYPE      NotifyType,
   OUT EFI_HANDLE                        *NotifyHandle
-  )
-;
+  );
 
 
 /**
@@ -1267,11 +1255,12 @@ HiiRegisterPackageNotify (
 
   @param  This                    A pointer to the EFI_HII_DATABASE_PROTOCOL
                                   instance.
-  @param  NotifyHandle            The handle of the notification function being
+  @param  NotificationHandle      The handle of the notification function being
                                   unregistered.
 
   @retval EFI_SUCCESS             Notification is unregistered successfully.
-  @retval EFI_INVALID_PARAMETER   The Handle is invalid.
+  @retval EFI_NOT_FOUND          The incoming notification handle does not exist 
+                           in current hii database.
 
 **/
 EFI_STATUS
@@ -1279,8 +1268,7 @@ EFIAPI
 HiiUnregisterPackageNotify (
   IN CONST EFI_HII_DATABASE_PROTOCOL    *This,
   IN EFI_HANDLE                         NotificationHandle
-  )
-;
+  );
 
 
 /**
@@ -1312,8 +1300,7 @@ HiiFindKeyboardLayouts (
   IN  CONST EFI_HII_DATABASE_PROTOCOL   *This,
   IN  OUT UINT16                        *KeyGuidBufferLength,
   OUT EFI_GUID                          *KeyGuidBuffer
-  )
-;
+  );
 
 
 /**
@@ -1344,8 +1331,7 @@ HiiGetKeyboardLayout (
   IN  CONST EFI_GUID                          *KeyGuid,
   IN OUT UINT16                         *KeyboardLayoutLength,
   OUT EFI_HII_KEYBOARD_LAYOUT           *KeyboardLayout
-  )
-;
+  );
 
 
 /**
@@ -1370,8 +1356,7 @@ EFIAPI
 HiiSetKeyboardLayout (
   IN CONST EFI_HII_DATABASE_PROTOCOL          *This,
   IN CONST EFI_GUID                           *KeyGuid
-  )
-;
+  );
 
 
 /**
@@ -1396,8 +1381,7 @@ HiiGetPackageListHandle (
   IN  CONST EFI_HII_DATABASE_PROTOCOL         *This,
   IN  EFI_HII_HANDLE                    PackageListHandle,
   OUT EFI_HANDLE                        *DriverHandle
-  )
-;
+  );
 
 //
 // EFI_HII_CONFIG_ROUTING_PROTOCOL interfaces
@@ -1429,9 +1413,9 @@ HiiGetPackageListHandle (
   @retval EFI_OUT_OF_RESOURCES    Not enough memory to store the parts of the
                                   results that must be stored awaiting possible
                                   future        protocols.
-  @retval EFI_NOT_FOUND           Routing data doesn¡¯t match any known driver.
-                                     Progress set to the ¡°G¡± in ¡°GUID¡± of the
-                                  routing  header that doesn¡¯t match. Note: There
+  @retval EFI_NOT_FOUND           Routing data doesn't match any known driver.
+                                     Progress set to the "G" in "GUID" of the
+                                  routing  header that doesn't match. Note: There
                                   is no         requirement that all routing data
                                   be validated before any configuration extraction.
   @retval EFI_INVALID_PARAMETER   For example, passing in a NULL for the Request
@@ -1450,8 +1434,7 @@ HiiConfigRoutingExtractConfig (
   IN  CONST EFI_STRING                       Request,
   OUT EFI_STRING                             *Progress,
   OUT EFI_STRING                             *Results
-  )
-;
+  );
 
 
 /**
@@ -1480,8 +1463,7 @@ EFIAPI
 HiiConfigRoutingExportConfig (
   IN  CONST EFI_HII_CONFIG_ROUTING_PROTOCOL  *This,
   OUT EFI_STRING                             *Results
-  )
-;
+  );
 
 
 /**
@@ -1511,18 +1493,17 @@ HiiConfigRoutingExportConfig (
 **/
 EFI_STATUS
 EFIAPI
-HiiConfigRoutingRoutConfig (
+HiiConfigRoutingRouteConfig (
   IN  CONST EFI_HII_CONFIG_ROUTING_PROTOCOL  *This,
   IN  CONST EFI_STRING                       Configuration,
   OUT EFI_STRING                             *Progress
-  )
-;
+  );
 
 
 
 /**
   This helper function is to be called by drivers to map configuration data stored
-  in byte array (¡°block¡±) formats such as UEFI Variables into current configuration strings.
+  in byte array ("block") formats such as UEFI Variables into current configuration strings.
 
   @param  This                    A pointer to the EFI_HII_CONFIG_ROUTING_PROTOCOL
                                   instance.
@@ -1551,12 +1532,12 @@ HiiConfigRoutingRoutConfig (
                                   error. Progress points to the first character of
                                   ConfigRequest.
   @retval EFI_NOT_FOUND           Target for the specified routing data was not
-                                  found. Progress points to the ¡°G¡± in ¡°GUID¡± of
+                                  found. Progress points to the "G" in "GUID" of
                                   the      errant routing data.
   @retval EFI_DEVICE_ERROR        Block not large enough. Progress undefined.
   @retval EFI_INVALID_PARAMETER   Encountered non <BlockName> formatted string.
                                        Block is left updated and Progress points at
-                                  the ¡®&¡¯ preceding the first non-<BlockName>.
+                                  the '&' preceding the first non-<BlockName>.
 
 **/
 EFI_STATUS
@@ -1568,13 +1549,12 @@ HiiBlockToConfig (
   IN  CONST UINTN                            BlockSize,
   OUT EFI_STRING                             *Config,
   OUT EFI_STRING                             *Progress
-  )
-;
+  );
 
 
 /**
   This helper function is to be called by drivers to map configuration strings
-  to configurations stored in byte array (¡°block¡±) formats such as UEFI Variables.
+  to configurations stored in byte array ("block") formats such as UEFI Variables.
 
   @param  This                    A pointer to the EFI_HII_CONFIG_ROUTING_PROTOCOL
                                   instance.
@@ -1610,11 +1590,11 @@ HiiBlockToConfig (
                                   error. Progress points to the first character of
                                            ConfigResp.
   @retval EFI_NOT_FOUND           Target for the specified routing data was not
-                                  found. Progress points to the ¡°G¡± in ¡°GUID¡± of
+                                  found. Progress points to the "G" in "GUID" of
                                   the      errant routing data.
   @retval EFI_INVALID_PARAMETER   Encountered non <BlockName> formatted name /
                                   value pair. Block is left updated and
-                                  Progress points at the ¡®&¡¯ preceding the first
+                                  Progress points at the '&' preceding the first
                                   non-<BlockName>.
 
 **/
@@ -1626,8 +1606,7 @@ HiiConfigToBlock (
   IN OUT UINT8                                 *Block,
   IN OUT UINTN                                 *BlockSize,
   OUT    EFI_STRING                            *Progress
-  )
-;
+  );
 
 
 /**
@@ -1680,8 +1659,7 @@ HiiGetAltCfg (
   IN  CONST EFI_DEVICE_PATH_PROTOCOL           *DevicePath,
   IN  CONST UINT16                             *AltCfgId,
   OUT EFI_STRING                               *AltCfgResp
-  )
-;
+  );
 
 
 //

@@ -23,7 +23,7 @@
   The function returns the pointer to PeiServices.
   It will ASSERT() if the pointer to PeiServices is NULL.
 
-  @retval  The pointer to PeiServices.
+  @return  The pointer to PeiServices.
 
 **/
 EFI_PEI_SERVICES **
@@ -66,12 +66,12 @@ PeiServicesTablePointerLibConstructor (
   The function set the pointer of PEI services immediately preceding the IDT table
   according to PI specification.
   
-  @param    PeiServices   The address of PeiServices pointer.
+  @param    PeiServicesTablePointer   The address of PeiServices pointer.
 **/
 VOID
 EFIAPI
 SetPeiServicesTablePointer (
-  EFI_PEI_SERVICES ** PeiServicesTablePointer
+  IN EFI_PEI_SERVICES ** PeiServicesTablePointer
   )
 {
   AsmWriteKr7 ((UINT64)(UINTN)PeiServicesTablePointer);

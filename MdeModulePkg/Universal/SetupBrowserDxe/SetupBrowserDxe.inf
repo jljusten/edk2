@@ -69,12 +69,16 @@
 
 [Protocols]
   gEfiPrintProtocolGuid                         # PROTOCOL ALWAYS_PRODUCED
+  gEfiPrint2ProtocolGuid
   gEfiHiiConfigAccessProtocolGuid
   gEfiHiiStringProtocolGuid
   gEfiFormBrowser2ProtocolGuid
   gEfiHiiConfigRoutingProtocolGuid
   gEfiHiiDatabaseProtocolGuid
   gEfiUnicodeCollation2ProtocolGuid
+
+[FeaturePcd.common]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFrameworkHiiCompatibilitySupport
 
 [Depex]
   gEfiHiiDatabaseProtocolGuid AND gEfiHiiConfigRoutingProtocolGuid

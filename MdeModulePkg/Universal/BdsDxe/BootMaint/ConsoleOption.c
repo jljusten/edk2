@@ -14,20 +14,52 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "BootMaint.h"
 
+/**
+  Function creates a device path data structure that identically matches the
+  device path passed in.
+
+
+  @param DevPath         A pointer to a device path data structure.
+
+  @return        The new copy of DevPath is created to identically match the input.
+  @retval  NULL  Otherwise, NULL is returned.
+
+**/
 EFI_DEVICE_PATH_PROTOCOL  *
 DevicePathInstanceDup (
   IN EFI_DEVICE_PATH_PROTOCOL  *DevPath
   );
 
+/**
+  Update Com Ports attributes from DevicePath
+
+
+  @param DevicePath      DevicePath that contains Com ports
+
+  @retval EFI_SUCCESS   The update is successful.
+
+**/
 EFI_STATUS
 UpdateComAttributeFromVariable (
   EFI_DEVICE_PATH_PROTOCOL  *DevicePath
   );
 
+/**
+  Update the multi-instance device path of Terminal Device based on
+  the global TerminalMenu. If ChangeTernimal is TRUE, the terminal 
+  device path in the Terminal Device in TerminalMenu is also updated.
+
+  @param DevicePath      The multi-instance device path.
+  @param ChangeTerminal  TRUE, then device path in the Terminal Device 
+                         in TerminalMenu is also updated; FALSE, no update.
+
+  @return EFI_SUCCESS    The function completes successfully.
+
+**/
 EFI_STATUS
 ChangeTerminalDevicePath (
-  EFI_DEVICE_PATH_PROTOCOL  *DevicePath,
-  BOOLEAN                   ChangeTerminal
+  IN OUT    EFI_DEVICE_PATH_PROTOCOL  *DevicePath,
+  IN        BOOLEAN                   ChangeTerminal
   )
 {
   EFI_DEVICE_PATH_PROTOCOL  *Node;
@@ -53,9 +85,6 @@ ChangeTerminalDevicePath (
     }
 
     NewMenuEntry = BOpt_GetMenuEntry (&TerminalMenu, Com);
-    if (NULL == NewMenuEntry) {
-      return EFI_NOT_FOUND;
-    }
 
     NewTerminalContext = (BM_TERMINAL_CONTEXT *) NewMenuEntry->VariableContext;
     if ((DevicePathType (Node) == MESSAGING_DEVICE_PATH) && (DevicePathSubType (Node) == MSG_UART_DP)) {
@@ -136,9 +165,17 @@ ChangeTerminalDevicePath (
 
 }
 
+/**
+  Update the device path that describing a terminal device
+  based on the new BaudRate, Data Bits, parity and Stop Bits
+  set.
+
+  @param DevicePath terminal device's path
+
+**/
 VOID
 ChangeVariableDevicePath (
-  EFI_DEVICE_PATH_PROTOCOL  *DevicePath
+  IN OUT EFI_DEVICE_PATH_PROTOCOL  *DevicePath
   )
 {
   EFI_DEVICE_PATH_PROTOCOL  *Node;
@@ -196,28 +233,23 @@ ChangeVariableDevicePath (
 
     Node = NextDevicePathNode (Node);
   }
-
-  return ;
 }
 
+/**
+  Retrieve ACPI UID of UART from device path
+
+  @param Handle          The handle for the UART device.
+  @param AcpiUid         The ACPI UID on output.
+
+  @retval  TRUE   Find valid UID from device path
+  @retval  FALSE  Can't find
+
+**/
 BOOLEAN
 RetrieveUartUid (
   IN EFI_HANDLE   Handle,
   IN OUT UINT32   *AcpiUid
   )
-/*++
-
-Routine Description:
-  Retrieve ACPI UID of UART from device path
-
-Arguments:
-  Handles   -   EFI_SERIAL_IO_PROTOCOL handle
-
-Returns:
-  TRUE  - Find valid UID from device path
-  FALSE - Can't find
-
---*/
 {
   UINT32                    Match;
   UINT8                     *Ptr;
@@ -249,24 +281,17 @@ Returns:
   }
 }
 
+/**
+  Sort Uart handles array with Acpi->UID from low to high.
+
+  @param Handles         EFI_SERIAL_IO_PROTOCOL handle buffer
+  @param NoHandles       EFI_SERIAL_IO_PROTOCOL handle count
+**/
 VOID
 SortedUartHandle (
   IN  EFI_HANDLE *Handles,
   IN  UINTN      NoHandles
   )
-/*++
-
-Routine Description:
-  Sort Uart handles array with Acpi->UID from low to high
-
-Arguments:
-  Handles   -   EFI_SERIAL_IO_PROTOCOL handle buffer
-  NoHandles -   EFI_SERIAL_IO_PROTOCOL handle count
-
-Returns:
-  None
-
---*/
 {
   UINTN       Index1;
   UINTN       Index2;
@@ -299,6 +324,18 @@ Returns:
   }
 }
 
+/**
+  Test whether DevicePath is a valid Terminal
+
+
+  @param DevicePath      DevicePath to be checked
+  @param Termi           If DevicePath is valid Terminal, terminal type is returned.
+  @param Com             If DevicePath is valid Terminal, Com Port type is returned.
+
+  @retval  TRUE         If DevicePath point to a Terminal.
+  @retval  FALSE        If DevicePath does not point to a Terminal.
+
+**/
 BOOLEAN
 IsTerminalDevicePath (
   IN  EFI_DEVICE_PATH_PROTOCOL *DevicePath,
@@ -306,20 +343,18 @@ IsTerminalDevicePath (
   OUT UINTN                    *Com
   );
 
+/**
+  Build a list containing all serial devices.
+
+
+  @retval EFI_SUCCESS The function complete successfully.
+  @retval EFI_UNSUPPORTED No serial ports present.
+
+**/
 EFI_STATUS
 LocateSerialIo (
   VOID
   )
-/*++
-
-Routine Description:
-  Build a list containing all serial devices
-
-Arguments:
-
-Returns:
-
---*/
 {
   UINT8                     *Ptr;
   UINTN                     Index;
@@ -383,7 +418,7 @@ Returns:
 
     if (CompareMem (&Acpi->HID, &Match, sizeof (UINT32)) == 0) {
       NewMenuEntry = BOpt_CreateMenuEntry (BM_TERMINAL_CONTEXT_SELECT);
-      if (!NewMenuEntry) {
+      if (NewMenuEntry == NULL) {
         SafeFreePool (Handles);
         return EFI_OUT_OF_RESOURCES;
       }
@@ -445,15 +480,15 @@ Returns:
   OutDevicePath = EfiLibGetVariable (L"ConOut", &gEfiGlobalVariableGuid);
   InpDevicePath = EfiLibGetVariable (L"ConIn", &gEfiGlobalVariableGuid);
   ErrDevicePath = EfiLibGetVariable (L"ErrOut", &gEfiGlobalVariableGuid);
-  if (OutDevicePath) {
+  if (OutDevicePath != NULL) {
     UpdateComAttributeFromVariable (OutDevicePath);
   }
 
-  if (InpDevicePath) {
+  if (InpDevicePath != NULL) {
     UpdateComAttributeFromVariable (InpDevicePath);
   }
 
-  if (ErrDevicePath) {
+  if (ErrDevicePath != NULL) {
     UpdateComAttributeFromVariable (ErrDevicePath);
   }
 
@@ -474,7 +509,7 @@ Returns:
     Vendor.Header.SubType             = MSG_VENDOR_DP;
 
     for (Index2 = 0; Index2 < 4; Index2++) {
-      CopyMem (&Vendor.Guid, &Guid[Index2], sizeof (EFI_GUID));
+      CopyMem (&Vendor.Guid, &TerminalTypeGuid[Index2], sizeof (EFI_GUID));
       SetDevicePathNodeLength (&Vendor.Header, sizeof (VENDOR_DEVICE_PATH));
       NewDevicePath = AppendDevicePathNode (
                         NewTerminalContext->DevicePath,
@@ -507,21 +542,19 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Update Com Ports attributes from DevicePath
+
+
+  @param DevicePath      DevicePath that contains Com ports
+
+  @retval EFI_SUCCESS   The update is successful.
+  @retval EFI_NOT_FOUND Can not find specific menu entry
+**/
 EFI_STATUS
 UpdateComAttributeFromVariable (
   EFI_DEVICE_PATH_PROTOCOL  *DevicePath
   )
-/*++
-
-Routine Description:
-  Update Com Ports attributes from DevicePath
-
-Arguments:
-  DevicePath  -   DevicePath that contains Com ports
-
-Returns:
-
---*/
 {
   EFI_DEVICE_PATH_PROTOCOL  *Node;
   EFI_DEVICE_PATH_PROTOCOL  *SerialNode;
@@ -630,25 +663,21 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Function creates a device path data structure that identically matches the
+  device path passed in.
+
+
+  @param DevPath         A pointer to a device path data structure.
+
+  @return        The new copy of DevPath is created to identically match the input.
+  @retval  NULL  Otherwise, NULL is returned.
+
+**/
 EFI_DEVICE_PATH_PROTOCOL *
 DevicePathInstanceDup (
   IN EFI_DEVICE_PATH_PROTOCOL  *DevPath
   )
-/*++
-
-Routine Description:
-  Function creates a device path data structure that identically matches the
-  device path passed in.
-
-Arguments:
-  DevPath      - A pointer to a device path data structure.
-
-Returns:
-
-  The new copy of DevPath is created to identically match the input.
-  Otherwise, NULL is returned.
-
---*/
 {
   EFI_DEVICE_PATH_PROTOCOL  *NewDevPath;
   EFI_DEVICE_PATH_PROTOCOL  *DevicePathInst;
@@ -666,12 +695,12 @@ Returns:
   // Make a copy and set proper end type
   //
   NewDevPath = NULL;
-  if (Size) {
-    NewDevPath = EfiAllocateZeroPool (Size);
+  if (Size != 0) {
+    NewDevPath = AllocateZeroPool (Size);
     ASSERT (NewDevPath != NULL);
   }
 
-  if (NewDevPath) {
+  if (NewDevPath != NULL) {
     CopyMem (NewDevPath, DevicePathInst, Size);
     Ptr = (UINT8 *) NewDevPath;
     Ptr += Size - sizeof (EFI_DEVICE_PATH_PROTOCOL);
@@ -682,6 +711,21 @@ Returns:
   return NewDevPath;
 }
 
+/**
+  Build up Console Menu based on types passed in. The type can
+  be BM_CONSOLE_IN_CONTEXT_SELECT, BM_CONSOLE_OUT_CONTEXT_SELECT
+  and BM_CONSOLE_ERR_CONTEXT_SELECT.
+
+  @param ConsoleMenuType Can be BM_CONSOLE_IN_CONTEXT_SELECT, BM_CONSOLE_OUT_CONTEXT_SELECT
+                         and BM_CONSOLE_ERR_CONTEXT_SELECT.
+
+  @retval EFI_UNSUPPORTED The type passed in is not in the 3 types defined.
+  @retval EFI_NOT_FOUND   If the EFI Variable defined in UEFI spec with name "ConOutDev", 
+                          "ConInDev" or "ConErrDev" doesn't exists.
+  @retval EFI_OUT_OF_RESOURCES Not enough resource to complete the operations.
+  @retval EFI_SUCCESS          Function completes successfully.
+
+**/
 EFI_STATUS
 GetConsoleMenu (
   IN UINTN              ConsoleMenuType
@@ -757,7 +801,7 @@ GetConsoleMenu (
   AllCount                = EfiDevicePathInstanceCount (AllDevicePath);
   ConsoleMenu->MenuNumber = 0;
   //
-  // Following is menu building up for Console Out Devices
+  // Following is menu building up for Console Devices selected.
   //
   MultiDevicePath = AllDevicePath;
   Index2          = 0;
@@ -801,22 +845,16 @@ GetConsoleMenu (
   return EFI_SUCCESS;
 }
 
+/**
+  Build up ConsoleOutMenu, ConsoleInpMenu and ConsoleErrMenu
+
+  @retval EFI_SUCCESS    The function always complete successfully.
+
+**/
 EFI_STATUS
 GetAllConsoles (
   VOID
   )
-/*++
-
-Routine Description:
-  Build up ConsoleOutMenu, ConsoleInpMenu and ConsoleErrMenu
-
-Arguments:
-
-Returns:
-  EFI_SUCCESS
-  Others
-
---*/
 {
   GetConsoleMenu (BM_CONSOLE_IN_CONTEXT_SELECT);
   GetConsoleMenu (BM_CONSOLE_OUT_CONTEXT_SELECT);
@@ -824,22 +862,15 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Free ConsoleOutMenu, ConsoleInpMenu and ConsoleErrMenu
+
+  @retval EFI_SUCCESS    The function always complete successfully.
+**/
 EFI_STATUS
 FreeAllConsoles (
   VOID
   )
-/*++
-
-Routine Description:
-  Free ConsoleOutMenu, ConsoleInpMenu and ConsoleErrMenu
-
-Arguments:
-
-Returns:
-  EFI_SUCCESS
-  Others
-
---*/
 {
   BOpt_FreeMenu (&ConsoleOutMenu);
   BOpt_FreeMenu (&ConsoleInpMenu);
@@ -848,27 +879,24 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Test whether DevicePath is a valid Terminal
+
+
+  @param DevicePath      DevicePath to be checked
+  @param Termi           If DevicePath is valid Terminal, terminal type is returned.
+  @param Com             If DevicePath is valid Terminal, Com Port type is returned.
+
+  @retval  TRUE         If DevicePath point to a Terminal.
+  @retval  FALSE        If DevicePath does not point to a Terminal.
+
+**/
 BOOLEAN
 IsTerminalDevicePath (
   IN  EFI_DEVICE_PATH_PROTOCOL *DevicePath,
   OUT TYPE_OF_TERMINAL         *Termi,
   OUT UINTN                    *Com
   )
-/*++
-
-Routine Description:
-  Test whether DevicePath is a valid Terminal
-
-Arguments:
-  DevicePath  -   DevicePath to be checked
-  Termi       -   If is terminal, give its type
-  Com         -   If is Com Port, give its type
-
-Returns:
-  TRUE        -   If DevicePath point to a Terminal
-  FALSE
-
---*/
 {
   UINT8                 *Ptr;
   BOOLEAN               IsTerminal;
@@ -897,19 +925,19 @@ Returns:
   //
   CopyMem (&TempGuid, &Vendor->Guid, sizeof (EFI_GUID));
 
-  if (CompareGuid (&TempGuid, &Guid[0])) {
+  if (CompareGuid (&TempGuid, &TerminalTypeGuid[0])) {
     *Termi      = PC_ANSI;
     IsTerminal  = TRUE;
   } else {
-    if (CompareGuid (&TempGuid, &Guid[1])) {
+    if (CompareGuid (&TempGuid, &TerminalTypeGuid[1])) {
       *Termi      = VT_100;
       IsTerminal  = TRUE;
     } else {
-      if (CompareGuid (&TempGuid, &Guid[2])) {
+      if (CompareGuid (&TempGuid, &TerminalTypeGuid[2])) {
         *Termi      = VT_100_PLUS;
         IsTerminal  = TRUE;
       } else {
-        if (CompareGuid (&TempGuid, &Guid[3])) {
+        if (CompareGuid (&TempGuid, &TerminalTypeGuid[3])) {
           *Termi      = VT_UTF8;
           IsTerminal  = TRUE;
         } else {
@@ -935,22 +963,15 @@ Returns:
   return TRUE;
 }
 
+/**
+  Get mode number according to column and row
+
+  @param CallbackData    The BMM context data.
+**/
 VOID
 GetConsoleOutMode (
   IN  BMM_CALLBACK_DATA    *CallbackData
   )
-/*++
-
-Routine Description:
-  Get mode number according to column and row
-
-Arguments:
-  CallbackData  -  BMM_CALLBACK_DATA
-
-Returns:
-  None.
-
---*/
 {
   UINTN                         Col;
   UINTN                         Row;
@@ -964,7 +985,7 @@ Returns:
 
   ConOut   = gST->ConOut;
   MaxMode  = (UINTN) (ConOut->Mode->MaxMode);
-  ModeInfo = EfiLibGetVariable (VarConOutMode, &gEfiGenericPlatformVariableGuid);
+  ModeInfo = EfiLibGetVariable (VAR_CON_OUT_MODE, &gEfiGenericPlatformVariableGuid);
 
   if (ModeInfo != NULL) {
     CurrentCol = ModeInfo->Column;

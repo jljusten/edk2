@@ -1,7 +1,7 @@
 /** @file
   HOB related definitions in PI.
 
-  Copyright (c) 2006 - 2007, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -38,10 +38,10 @@
 #define EFI_HOB_TYPE_UNUSED               0xFFFE
 #define EFI_HOB_TYPE_END_OF_HOB_LIST      0xFFFF
 
-//
-// Describes the format and size of the data inside the HOB. 
-// All HOBs must contain this generic HOB header.
-// 
+///
+/// Describes the format and size of the data inside the HOB. 
+/// All HOBs must contain this generic HOB header.
+/// 
 typedef struct {
   UINT16    HobType;
   UINT16    HobLength;
@@ -49,14 +49,15 @@ typedef struct {
 } EFI_HOB_GENERIC_HEADER;
 
 
-//
-// Value of version ofinEFI_HOB_HANDOFF_INFO_TABLE.
-// 
+///
+/// Value of version ofinEFI_HOB_HANDOFF_INFO_TABLE.
+/// 
 #define EFI_HOB_HANDOFF_TABLE_VERSION 0x0009
-//
-// Contains general state information used by the HOB producer phase. 
-// This HOB must be the first one in the HOB list.
-// 
+
+///
+/// Contains general state information used by the HOB producer phase. 
+/// This HOB must be the first one in the HOB list.
+/// 
 typedef struct {
   EFI_HOB_GENERIC_HEADER  Header;
   UINT32                  Version;
@@ -68,66 +69,96 @@ typedef struct {
   EFI_PHYSICAL_ADDRESS    EfiEndOfHobList;
 } EFI_HOB_HANDOFF_INFO_TABLE;
 
-
+/// 
+/// EFI_HOB_MEMORY_ALLOCATION_HEADER describes the
+/// various attributes of the logical memory allocation. The type field will be used for
+/// subsequent inclusion in the UEFI memory map.
+/// 
 typedef struct {
+  ///
+  /// A GUID that defines the memory allocation region¡¯s type and purpose, as well as
+  /// other fields within the memory allocation HOB. This GUID is used to define the
+  /// additional data within the HOB that may be present for the memory allocation HOB.
+  /// Type EFI_GUID is defined in InstallProtocolInterface() in the UEFI 2.0
+  /// specification. 
+  /// 
   EFI_GUID              Name;
+
+  ///
+  /// The base address of memory allocated by this HOB. Type
+  /// EFI_PHYSICAL_ADDRESS is defined in AllocatePages() in the UEFI 2.0
+  /// specification.
+  ///
   EFI_PHYSICAL_ADDRESS  MemoryBaseAddress;
+
+  /// 
+  /// The length in bytes of memory allocated by this HOB.
+  /// 
   UINT64                MemoryLength;
+
+  ///
+  /// Defines the type of memory allocated by this HOB. The memory type definition
+  /// follows the EFI_MEMORY_TYPE definition. Type EFI_MEMORY_TYPE is defined
+  /// in AllocatePages() in the UEFI 2.0 specification.
+  /// 
   EFI_MEMORY_TYPE       MemoryType;
 
-  //
-  // Padding for Itanium processor family
-  // 
+  ///
+  /// Padding for Itanium processor family
+  ///
   UINT8                 Reserved[4];
 } EFI_HOB_MEMORY_ALLOCATION_HEADER;
 
-//
-// Describes all memory ranges used during the HOB producer 
-// phase that exist outside the HOB list. This HOB type 
-// describes how memory is used, 
-// not the physical attributes of memory.
-// 
+///
+/// Describes all memory ranges used during the HOB producer 
+/// phase that exist outside the HOB list. This HOB type 
+/// describes how memory is used, 
+/// not the physical attributes of memory.
+/// 
 typedef struct {
   EFI_HOB_GENERIC_HEADER            Header;
   EFI_HOB_MEMORY_ALLOCATION_HEADER  AllocDescriptor;
   //
-  // Additional data pertaining to the ¡°Name¡± Guid memory
+  // Additional data pertaining to the "Name" Guid memory
   // may go here.
   //
 } EFI_HOB_MEMORY_ALLOCATION;
 
 
-//
-// Describes the memory stack that is produced by the HOB producer 
-// phase and upon which all postmemory-installed executable
-// content in the HOB producer phase is executing.
-// 
+///
+/// Describes the memory stack that is produced by the HOB producer 
+/// phase and upon which all postmemory-installed executable
+/// content in the HOB producer phase is executing.
+/// 
 typedef struct {
   EFI_HOB_GENERIC_HEADER            Header;
   EFI_HOB_MEMORY_ALLOCATION_HEADER  AllocDescriptor;
 } EFI_HOB_MEMORY_ALLOCATION_STACK;
 
-//
-// Defines the location of the boot-strap 
-// processor (BSP) BSPStore (¡°Backing Store Pointer Store¡±).
-// This HOB is valid for the Itanium processor family only 
-// register overflow store.
-// 
+///
+/// Defines the location of the boot-strap 
+/// processor (BSP) BSPStore ("Backing Store Pointer Store").
+/// This HOB is valid for the Itanium processor family only 
+/// register overflow store.
+/// 
 typedef struct {
   EFI_HOB_GENERIC_HEADER            Header;
   EFI_HOB_MEMORY_ALLOCATION_HEADER  AllocDescriptor;
 } EFI_HOB_MEMORY_ALLOCATION_BSP_STORE;
 
-//
-// Defines the location and entry point of the HOB consumer phase.
-// 
+///
+/// Defines the location and entry point of the HOB consumer phase.
+///
 typedef struct {
   EFI_HOB_GENERIC_HEADER            Header;
   EFI_HOB_MEMORY_ALLOCATION_HEADER  MemoryAllocationHeader;
-  EFI_GUID ModuleName;
-  EFI_PHYSICAL_ADDRESS EntryPoint;
+  EFI_GUID                          ModuleName;
+  EFI_PHYSICAL_ADDRESS              EntryPoint;
 } EFI_HOB_MEMORY_ALLOCATION_MODULE;
 
+///
+/// Resource type 
+/// 
 typedef UINT32 EFI_RESOURCE_TYPE;
 
 //
@@ -142,7 +173,9 @@ typedef UINT32 EFI_RESOURCE_TYPE;
 #define EFI_RESOURCE_IO_RESERVED            0x00000006
 #define EFI_RESOURCE_MAX_MEMORY_TYPE        0x00000007
 
-
+///
+/// type of recount attribute type
+/// 
 typedef UINT32 EFI_RESOURCE_ATTRIBUTE_TYPE;
 
 //
@@ -156,27 +189,27 @@ typedef UINT32 EFI_RESOURCE_ATTRIBUTE_TYPE;
 //
 // The rest of the settings describe capabilities
 //
-#define EFI_RESOURCE_ATTRIBUTE_SINGLE_BIT_ECC       0x00000008
-#define EFI_RESOURCE_ATTRIBUTE_MULTIPLE_BIT_ECC     0x00000010
-#define EFI_RESOURCE_ATTRIBUTE_ECC_RESERVED_1       0x00000020
-#define EFI_RESOURCE_ATTRIBUTE_ECC_RESERVED_2       0x00000040
-#define EFI_RESOURCE_ATTRIBUTE_READ_PROTECTED       0x00000080
-#define EFI_RESOURCE_ATTRIBUTE_WRITE_PROTECTED      0x00000100
-#define EFI_RESOURCE_ATTRIBUTE_EXECUTION_PROTECTED  0x00000200
-#define EFI_RESOURCE_ATTRIBUTE_UNCACHEABLE          0x00000400
-#define EFI_RESOURCE_ATTRIBUTE_WRITE_COMBINEABLE    0x00000800
+#define EFI_RESOURCE_ATTRIBUTE_SINGLE_BIT_ECC           0x00000008
+#define EFI_RESOURCE_ATTRIBUTE_MULTIPLE_BIT_ECC         0x00000010
+#define EFI_RESOURCE_ATTRIBUTE_ECC_RESERVED_1           0x00000020
+#define EFI_RESOURCE_ATTRIBUTE_ECC_RESERVED_2           0x00000040
+#define EFI_RESOURCE_ATTRIBUTE_READ_PROTECTED           0x00000080
+#define EFI_RESOURCE_ATTRIBUTE_WRITE_PROTECTED          0x00000100
+#define EFI_RESOURCE_ATTRIBUTE_EXECUTION_PROTECTED      0x00000200
+#define EFI_RESOURCE_ATTRIBUTE_UNCACHEABLE              0x00000400
+#define EFI_RESOURCE_ATTRIBUTE_WRITE_COMBINEABLE        0x00000800
 #define EFI_RESOURCE_ATTRIBUTE_WRITE_THROUGH_CACHEABLE  0x00001000
-#define EFI_RESOURCE_ATTRIBUTE_WRITE_BACK_CACHEABLE 0x00002000
-#define EFI_RESOURCE_ATTRIBUTE_16_BIT_IO            0x00004000
-#define EFI_RESOURCE_ATTRIBUTE_32_BIT_IO            0x00008000
-#define EFI_RESOURCE_ATTRIBUTE_64_BIT_IO            0x00010000
-#define EFI_RESOURCE_ATTRIBUTE_UNCACHED_EXPORTED    0x00020000
+#define EFI_RESOURCE_ATTRIBUTE_WRITE_BACK_CACHEABLE     0x00002000
+#define EFI_RESOURCE_ATTRIBUTE_16_BIT_IO                0x00004000
+#define EFI_RESOURCE_ATTRIBUTE_32_BIT_IO                0x00008000
+#define EFI_RESOURCE_ATTRIBUTE_64_BIT_IO                0x00010000
+#define EFI_RESOURCE_ATTRIBUTE_UNCACHED_EXPORTED        0x00020000
 
-//
-// Describes the resource properties of all fixed, 
-// nonrelocatable resource ranges found on the processor
-// host bus during the HOB producer phase.
-// 
+///
+/// Describes the resource properties of all fixed, 
+/// nonrelocatable resource ranges found on the processor
+/// host bus during the HOB producer phase.
+/// 
 typedef struct {
   EFI_HOB_GENERIC_HEADER      Header;
   EFI_GUID                    Owner;
@@ -186,32 +219,32 @@ typedef struct {
   UINT64                      ResourceLength;
 } EFI_HOB_RESOURCE_DESCRIPTOR;
 
-//
-// Allows writers of executable content in the HOB producer phase to 
-// maintain and manage HOBs with specific GUID.
-// 
+///
+/// Allows writers of executable content in the HOB producer phase to 
+/// maintain and manage HOBs with specific GUID.
+/// 
 typedef struct {
   EFI_HOB_GENERIC_HEADER      Header;
   EFI_GUID                    Name;
 
-  //
-  // Guid specific data goes here
-  //
+  ///
+  /// Guid specific data goes here
+  ///
 } EFI_HOB_GUID_TYPE;
 
-//
-// Details the location of firmware volumes that contain firmware files.
-// 
+///
+/// Details the location of firmware volumes that contain firmware files.
+/// 
 typedef struct {
   EFI_HOB_GENERIC_HEADER Header;
-  EFI_PHYSICAL_ADDRESS BaseAddress;
-  UINT64 Length;
+  EFI_PHYSICAL_ADDRESS   BaseAddress;
+  UINT64                 Length;
 } EFI_HOB_FIRMWARE_VOLUME;
 
-//
-// Details the location of a firmware volume which was extracted 
-// from a file within another firmware volume.
-// 
+///
+/// Details the location of a firmware volume which was extracted 
+/// from a file within another firmware volume.
+/// 
 typedef struct {
   EFI_HOB_GENERIC_HEADER  Header;
   EFI_PHYSICAL_ADDRESS    BaseAddress;
@@ -221,9 +254,9 @@ typedef struct {
 } EFI_HOB_FIRMWARE_VOLUME2;
 
 
-//
-// Describes processor information, such as address space and I/O space capabilities.
-// 
+///
+/// Describes processor information, such as address space and I/O space capabilities.
+///
 typedef struct {
   EFI_HOB_GENERIC_HEADER  Header;
   UINT8                   SizeOfMemorySpace;
@@ -232,16 +265,16 @@ typedef struct {
 } EFI_HOB_CPU;
 
 
-//
-// Describes pool memory allocations.
-// 
+///
+/// Describes pool memory allocations.
+/// 
 typedef struct {
   EFI_HOB_GENERIC_HEADER  Header;
 } EFI_HOB_MEMORY_POOL;
 
-//
-// Union of all the possible HOB Types
-//
+///
+/// Union of all the possible HOB Types
+///
 typedef union {
   EFI_HOB_GENERIC_HEADER              *Header;
   EFI_HOB_HANDOFF_INFO_TABLE          *HandoffInformationTable;

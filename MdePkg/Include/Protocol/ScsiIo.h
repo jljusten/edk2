@@ -1,7 +1,10 @@
 /** @file
   EFI_SCSI_IO_PROTOCOL as defined in UEFI 2.0.
+  This protocol is used by code, typically drivers, running in the EFI boot 
+  services environment to access SCSI devices. In particular, functions for 
+  managing devices on SCSI buses are defined here.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -20,9 +23,9 @@
     0x932f4736, 0x2362, 0x4002, {0x80, 0x3e, 0x3c, 0xd5, 0x4b, 0x13, 0x8f, 0x85 } \
   }
 
-//
-// Forward reference for pure ANSI compatability
-//
+///
+/// Forward reference for pure ANSI compatability
+///
 typedef struct _EFI_SCSI_IO_PROTOCOL EFI_SCSI_IO_PROTOCOL;
 
 //
@@ -90,11 +93,10 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SCSI_IO_PROTOCOL_GET_DEVICE_TYPE) (
+(EFIAPI *EFI_SCSI_IO_PROTOCOL_GET_DEVICE_TYPE)(
   IN  EFI_SCSI_IO_PROTOCOL            *This,
   OUT UINT8                           *DeviceType
-  )
-;
+  );
 
 /**
   Retrieves the device location in the SCSI channel.
@@ -111,12 +113,11 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SCSI_IO_PROTOCOL_GET_DEVICE_LOCATION) (
+(EFIAPI *EFI_SCSI_IO_PROTOCOL_GET_DEVICE_LOCATION)(
   IN EFI_SCSI_IO_PROTOCOL           *This,
   IN OUT UINT8                      **Target,
   OUT UINT64                        *Lun
-  )
-;
+  );
 
 /**
   Resets the SCSI Bus that the SCSI Controller is attached to.
@@ -133,10 +134,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SCSI_IO_PROTOCOL_RESET_BUS) (
+(EFIAPI *EFI_SCSI_IO_PROTOCOL_RESET_BUS)(
   IN EFI_SCSI_IO_PROTOCOL     *This
-  )
-;
+  );
 
 /**
   Resets the SCSI Controller that the device handle specifies.
@@ -154,10 +154,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SCSI_IO_PROTOCOL_RESET_DEVICE) (
+(EFIAPI *EFI_SCSI_IO_PROTOCOL_RESET_DEVICE)(
   IN EFI_SCSI_IO_PROTOCOL     *This
-  )
-;
+  );
 
 
 /**
@@ -210,19 +209,29 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SCSI_IO_PROTOCOL_EXEC_SCSI_COMMAND) (
+(EFIAPI *EFI_SCSI_IO_PROTOCOL_EXEC_SCSI_COMMAND)(
   IN EFI_SCSI_IO_PROTOCOL                   *This,
   IN OUT  EFI_SCSI_IO_SCSI_REQUEST_PACKET   *Packet,
   IN EFI_EVENT                              Event  OPTIONAL
-  )
-;
+  );
 
+/**  
+  @par Protocol Description:
+  Provides services to manage and communicate with SCSI devices.
+**/
 struct _EFI_SCSI_IO_PROTOCOL {
   EFI_SCSI_IO_PROTOCOL_GET_DEVICE_TYPE      GetDeviceType;
   EFI_SCSI_IO_PROTOCOL_GET_DEVICE_LOCATION  GetDeviceLocation;
   EFI_SCSI_IO_PROTOCOL_RESET_BUS            ResetBus;
   EFI_SCSI_IO_PROTOCOL_RESET_DEVICE         ResetDevice;
   EFI_SCSI_IO_PROTOCOL_EXEC_SCSI_COMMAND    ExecuteScsiCommand;    
+
+  ///
+  /// Supplies the alignment requirement for any buffer used in a data transfer. 
+  /// IoAlign values of 0 and 1 mean that the buffer can be placed anywhere in memory. 
+  /// Otherwise, IoAlign must be a power of 2, and the requirement is that the 
+  /// start address of a buffer must be evenly divisible by IoAlign with no remainder.
+  ///
   UINT32                                    IoAlign;
 };
 

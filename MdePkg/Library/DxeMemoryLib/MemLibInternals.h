@@ -10,12 +10,14 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-  The following BaseMemoryLib instances share the same version of this file:
+  The following BaseMemoryLib instances contain the same copy of this file:
 
     BaseMemoryLib
     BaseMemoryLibMmx
     BaseMemoryLibSse2
     BaseMemoryLibRepStr
+    BaseMemoryLibOptDxe
+    BaseMemoryLibOptPei
     PeiMemoryLib
     DxeMemoryLib
 
@@ -36,8 +38,8 @@
 /**
   Copy Length bytes from Source to Destination.
 
-  @param  Destination Target of copy
-  @param  Source Place to copy from
+  @param  DestinationBuffer Target of copy
+  @param  SourceBuffer Place to copy from
   @param  Length Number of bytes to copy
 
   @return Destination
@@ -55,7 +57,7 @@ InternalMemCopyMem (
   Set Buffer to Value for Size bytes.
 
   @param  Buffer Memory to set.
-  @param  Size Number of bytes to set
+  @param  Length Number of bytes to set
   @param  Value Value of the set operation.
 
   @return Buffer
@@ -127,7 +129,7 @@ InternalMemSetMem64 (
   Set Buffer to 0 for Size bytes.
 
   @param  Buffer Memory to set.
-  @param  Size Number of bytes to set
+  @param  Length Number of bytes to set
 
   @return Buffer
 

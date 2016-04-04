@@ -1,6 +1,5 @@
 /**@file
-
-  This file contains the keyboard processing code to the HII database.
+  Implement protocol interface related to package registrations.
 
 Copyright (c) 2006 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
@@ -15,44 +14,47 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 
 #include "HiiDatabase.h"
+#include "HiiHandle.h"
 
 
-BOOLEAN mInFrameworkHiiNewPack = FALSE;
-BOOLEAN mInFrameworkHiiRemovePack = FALSE;
+STATIC BOOLEAN mInFrameworkHiiNewPack = FALSE;
+STATIC BOOLEAN mInFrameworkHiiRemovePack = FALSE;
+BOOLEAN mInFrameworkUpdatePakcage = FALSE;
 
 
 EFI_STATUS
-GetIfrAndStringPackNum (
+GetPackageCount (
   IN CONST EFI_HII_PACKAGES               *Packages,
-  UINTN                                   *IfrPackNum,
-  UINTN                                   *StringPackNum
+  UINTN                                   *IfrPackageCount,
+  UINTN                                   *StringPackageCount
   )
 {
   UINTN                         Index;
   TIANO_AUTOGEN_PACKAGES_HEADER **TianoAutogenPackageHdrArray;
 
   ASSERT (Packages != NULL);
-  ASSERT (IfrPackNum != NULL);
-  ASSERT (StringPackNum != NULL);
+  ASSERT (IfrPackageCount != NULL);
+  ASSERT (StringPackageCount != NULL);
 
-  *IfrPackNum = 0;
-  *StringPackNum = 0;
+  *IfrPackageCount = 0;
+  *StringPackageCount = 0;
 
   TianoAutogenPackageHdrArray = (TIANO_AUTOGEN_PACKAGES_HEADER **) (((UINT8 *) &Packages->GuidId) + sizeof (Packages->GuidId));
+  
   for (Index = 0; Index < Packages->NumberOfPackages; Index++) {
     //
-    // BugBug: The current UEFI HII build tool generate a binary in the format defined in: 
+    // The current UEFI HII build tool generate a binary in the format defined by 
     // TIANO_AUTOGEN_PACKAGES_HEADER. We assume that all packages generated in
-    // this binary is with same package type. So the returned IfrPackNum and StringPackNum
+    // this binary is with same package type. So the returned IfrPackageCount and StringPackageCount
     // may not be the exact number of valid package number in the binary generated 
     // by HII Build tool.
     //
     switch (TianoAutogenPackageHdrArray[Index]->PackageHeader.Type) {
       case EFI_HII_PACKAGE_FORM:
-        *IfrPackNum += 1;
+        *IfrPackageCount += 1;
         break;
       case EFI_HII_PACKAGE_STRINGS:
-        *StringPackNum += 1;
+        *StringPackageCount += 1;
         break;
 
       case EFI_HII_PACKAGE_SIMPLE_FONTS:
@@ -74,114 +76,49 @@ GetIfrAndStringPackNum (
   return EFI_SUCCESS;
 }
 
-EFI_STATUS 
-LibExportPackageLists (
-  IN EFI_HII_HANDLE                    UefiHiiHandle,
-  OUT EFI_HII_PACKAGE_LIST_HEADER      **PackageListHeader,
-  OUT UINTN                            *PackageListSize
-  )
-{
-  EFI_STATUS                       Status;
-  UINTN                            Size;
-  EFI_HII_PACKAGE_LIST_HEADER      *PackageListHdr;
-
-  ASSERT (PackageListSize != NULL);
-  ASSERT (PackageListHeader != NULL);
-
-  Size = 0;
-  PackageListHdr = NULL;
-  Status = mHiiDatabase->ExportPackageLists (
-                                      mHiiDatabase,
-                                      UefiHiiHandle,
-                                      &Size,
-                                      PackageListHdr
-                                      );
-  ASSERT_EFI_ERROR (Status == EFI_BUFFER_TOO_SMALL);
-  if (Status == EFI_BUFFER_TOO_SMALL) {
-    PackageListHdr = AllocateZeroPool (Size);
-    ASSERT (PackageListHdr != NULL);
-    
-    if (PackageListHeader == NULL) {
-      return EFI_OUT_OF_RESOURCES;
-    } else {
-      Status = mHiiDatabase->ExportPackageLists (
-                                          mHiiDatabase,
-                                          UefiHiiHandle,
-                                          &Size,
-                                          PackageListHdr
-                                           );
-      ASSERT_EFI_ERROR (Status);
-    }
-  }
-
-  if (!EFI_ERROR (Status)) {
-    *PackageListHeader = PackageListHdr;
-    *PackageListSize   = Size;
-  }
-
-  return Status;
-}
-
-EFI_STATUS
-InsertStringPackagesToIfrPackageList (
-  IN CONST EFI_HII_PACKAGE_LIST_HEADER *StringPackageListHeader,
-  IN EFI_HII_HANDLE                    UefiHiiHandle  
- )
-{
-  EFI_STATUS                  Status;
-  Status = mHiiDatabase->UpdatePackageList (
-                                        mHiiDatabase,
-                                        UefiHiiHandle,
-                                        StringPackageListHeader
-                                        );
-
-  return Status;
-}
-
-
-/**
-  Removes a node from a doubly linked list, and returns the node that follows
-  the removed node.
-
-  Removes the node Entry from a doubly linked list. It is up to the caller of
-  this function to release the memory used by this node if that is required. On
-  exit, the node following Entry in the doubly linked list is returned. If
-  Entry is the only node in the linked list, then the head node of the linked
-  list is returned.
-
-  If Entry is NULL, then ASSERT().
-  If Entry is the head node of an empty list, then ASSERT().
-  If PcdMaximumLinkedListLength is not zero, and the number of nodes in the
-  linked list containing Entry, including the Entry node, is greater than
-  or equal to PcdMaximumLinkedListLength, then ASSERT().
-
-  @param  Entry A pointer to a node in a linked list
-
-  @return Entry
-
-**/
-EFI_STATUS
-AddStringPackagesToMatchingIfrPackageList (
-  IN       EFI_HII_THUNK_PRIVATE_DATA  *Private,
+VOID
+UpdatePackListWithOnlyIfrPack (
+  IN       HII_THUNK_PRIVATE_DATA      *Private,
+  IN       HII_THUNK_CONTEXT            *StringPackageThunkContext,
   IN CONST EFI_HII_PACKAGE_LIST_HEADER *StringPackageListHeader
   )
 {
   EFI_STATUS                 Status;
-  LIST_ENTRY                 *ListEntry;
-  HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *HandleMapEntry;
+  LIST_ENTRY                 *Link;
+  HII_THUNK_CONTEXT *ThunkContext;
 
-  for (ListEntry = Private->HiiThunkHandleMappingDBListHead.ForwardLink;
-       ListEntry != &Private->HiiThunkHandleMappingDBListHead;
-       ListEntry = ListEntry->ForwardLink
-       ) {
-    HandleMapEntry = HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY_FROM_LISTENTRY (ListEntry);
-    if (CompareGuid (&StringPackageListHeader->PackageListGuid, &HandleMapEntry->TagGuid)) {
-      Status = InsertStringPackagesToIfrPackageList (StringPackageListHeader, HandleMapEntry->UefiHiiHandle);
+  Link = GetFirstNode (&Private->ThunkContextListHead);
+  while (!IsNull (&Private->ThunkContextListHead, Link)) {
+
+    ThunkContext = HII_THUNK_CONTEXT_FROM_LINK (Link);
+
+    if (StringPackageThunkContext != ThunkContext) {
+      //
+      // Skip the String Package Thunk Entry itself.
+      //
+    
+      if (CompareGuid (&StringPackageListHeader->PackageListGuid, &ThunkContext->TagGuid)) {
+
+        ASSERT (ThunkContext->StringPackageCount == 0 && ThunkContext->IfrPackageCount == 1);
+
+        ThunkContext->StringPackageCount = GetPackageCountByType (StringPackageListHeader, EFI_HII_PACKAGE_STRINGS);
+        
+        Status = mHiiDatabase->UpdatePackageList (
+                                              mHiiDatabase,
+                                              ThunkContext->UefiHiiHandle,
+                                              StringPackageListHeader
+                                              );
+        ASSERT_EFI_ERROR (Status);
+        
+      }
     }
+    
+    Link = GetNextNode (&Private->ThunkContextListHead, Link);
   }
   
-  return EFI_NOT_FOUND;
 }
+
+
 EFI_HII_PACKAGE_LIST_HEADER *
 PrepareUefiPackageListFromFrameworkHiiPackages (
   IN CONST EFI_HII_PACKAGES            *Packages,
@@ -243,186 +180,213 @@ PrepareUefiPackageListFromFrameworkHiiPackages (
 }
 
 VOID
-GenerateGuidId (
-  IN      CONST EFI_GUID * InGuid,
-  OUT           EFI_GUID * OutGuid
+GenerateRandomGuid (
+  OUT           EFI_GUID * Guid
   )
 {
-  UINT64                   MonotonicCount;
+  EFI_GUID        GuidBase = { 0x14f95e01, 0xd562, 0x432e, { 0x84, 0x4a, 0x95, 0xa4, 0x39, 0x5, 0x10, 0x7e }};
+  static  UINT64  Count = 0;
 
-  CopyMem (OutGuid, InGuid, sizeof (EFI_GUID));
-  
-  gBS->GetNextMonotonicCount (&MonotonicCount);
-  //
-  // Use Monotonic Count as a psedo random number generator.
-  //
-  *((UINT64 *) OutGuid) = *((UINT64 *) OutGuid) + MonotonicCount;
+  CopyGuid (Guid, &GuidBase);
+
+  Count++;  
+  *((UINT64 *) Guid) = *((UINT64 *) Guid) + Count;
 }
 
 EFI_STATUS
-FindAndAddStringPackageToIfrPackageList(
-  EFI_HII_THUNK_PRIVATE_DATA  *Private,
-  EFI_GUID                    *GuidId,
-  EFI_HII_HANDLE              UefiIfrHiiHandle
+FindStringPackAndUpdatePackListWithOnlyIfrPack (
+  IN HII_THUNK_PRIVATE_DATA          *Private,
+  IN HII_THUNK_CONTEXT                *IfrThunkContext
   )
 {
-  EFI_STATUS                 Status;
-  LIST_ENTRY                 *ListEntry;
-  HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *HandleMapEntry;
-  EFI_HII_PACKAGE_LIST_HEADER *StringPackageListHeader;
-  UINTN                      Size;
+  EFI_STATUS                      Status;
+  LIST_ENTRY                      *Link;
+  EFI_HII_PACKAGE_LIST_HEADER     *StringPackageListHeader;
+  UINTN                           Size;
+  HII_THUNK_CONTEXT                *ThunkContext;
 
-  for (ListEntry = Private->HiiThunkHandleMappingDBListHead.ForwardLink;
-       ListEntry != &Private->HiiThunkHandleMappingDBListHead;
-       ListEntry = ListEntry->ForwardLink
-       ) {
-    HandleMapEntry = HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY_FROM_LISTENTRY (ListEntry);
-    if (CompareGuid (GuidId, &HandleMapEntry->TagGuid) && (!HandleMapEntry->DoesPackageListImportStringPackages)) {
-      Status = LibExportPackageLists (HandleMapEntry->UefiHiiHandle, &StringPackageListHeader, &Size);
-      ASSERT_EFI_ERROR (Status);
+  
+  Link = GetFirstNode (&Private->ThunkContextListHead);
 
-      //
-      // Add Function to only get only String Packages from the Package List
-      //
+  while (!IsNull (&Private->ThunkContextListHead, Link)) {
 
-      Status = InsertStringPackagesToIfrPackageList (StringPackageListHeader, UefiIfrHiiHandle);
-      ASSERT_EFI_ERROR (Status);
-      
-      FreePool (StringPackageListHeader);
-      return EFI_SUCCESS;
+    ThunkContext = HII_THUNK_CONTEXT_FROM_LINK (Link);
+
+    if (ThunkContext != IfrThunkContext) {
+      if (CompareGuid (&IfrThunkContext->TagGuid, &ThunkContext->TagGuid) && (ThunkContext->IfrPackageCount == 0)) {
+        Status = HiiLibExportPackageLists (ThunkContext->UefiHiiHandle, &StringPackageListHeader, &Size);
+        ASSERT_EFI_ERROR (Status);
+
+        IfrThunkContext->StringPackageCount = GetPackageCountByType (StringPackageListHeader, EFI_HII_PACKAGE_STRINGS);
+        //
+        // Add Function to only get only String Packages from the Package List
+        //
+        Status = mHiiDatabase->UpdatePackageList (
+                                  mHiiDatabase,
+                                  IfrThunkContext->UefiHiiHandle,
+                                  StringPackageListHeader
+                                  );
+        ASSERT_EFI_ERROR (Status);
+        
+        FreePool (StringPackageListHeader);
+        return EFI_SUCCESS;
+
+      }
     }
+
+    Link = GetNextNode (&Private->ThunkContextListHead, Link);
   }
 
+  ASSERT (FALSE);
   return EFI_NOT_FOUND;
-
+  
 }
 
-CONST EFI_GUID mAGuid = 
-  { 0x14f95e01, 0xd562, 0x432e, { 0x84, 0x4a, 0x95, 0xa4, 0x39, 0x5, 0x10, 0x7e } };
 
+//
+// 
+//
 EFI_STATUS
 UefiRegisterPackageList(
-  EFI_HII_THUNK_PRIVATE_DATA  *Private,
-  EFI_HII_PACKAGES            *Packages,
-  FRAMEWORK_EFI_HII_HANDLE    *Handle
+  IN  EFI_HII_PROTOCOL               *This,
+  IN  HII_THUNK_PRIVATE_DATA      *Private,
+  IN  EFI_HII_PACKAGES            *Packages,
+  OUT FRAMEWORK_EFI_HII_HANDLE    *Handle
   )
 {
   EFI_STATUS                  Status;
-  UINTN                       StringPackNum;
-  UINTN                       IfrPackNum;
-  EFI_HII_PACKAGE_LIST_HEADER *UefiPackageListHeader;
-  HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *HandleMappingEntry;
+  UINTN                       StringPackageCount;
+  UINTN                       IfrPackageCount;
+  EFI_HII_PACKAGE_LIST_HEADER *PackageListHeader;
+  HII_THUNK_CONTEXT           *ThunkContext;
+  HII_THUNK_CONTEXT           *ThunkContextToRemove;
   EFI_GUID                    GuidId;
+  EFI_HII_PACKAGE_HEADER      *IfrPackage;
 
-  UefiPackageListHeader = NULL;
+  PackageListHeader = NULL;
 
-  Status = GetIfrAndStringPackNum (Packages, &IfrPackNum, &StringPackNum);
+  Status = GetPackageCount (Packages, &IfrPackageCount, &StringPackageCount);
   ASSERT_EFI_ERROR (Status);
-  //
-  // Thunk Layer only handle the following combinations of IfrPack, StringPkg and FontPack.
-  // Thunk Layer only allow zero or one IfrPack in the Package List.
-  //
-  if (IfrPackNum > 1) {
+  
+  if (IfrPackageCount > 1) {
+    //
+    // HII Thunk only handle package with 0 or 1 IFR package. 
+    //
+    ASSERT (FALSE);
     return EFI_UNSUPPORTED;
   }
 
-  HandleMappingEntry = AllocateZeroPool (sizeof (*HandleMappingEntry));
-  ASSERT (HandleMappingEntry != NULL);
-  
-  HandleMappingEntry->Signature = HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY_SIGNATURE;
-  Status = AssignHiiHandle (Private, &HandleMappingEntry->FrameworkHiiHandle);
-  if (EFI_ERROR (Status)) {
-    goto Done;
+  ThunkContext = CreateThunkContext (Private, StringPackageCount, IfrPackageCount);
+  if (ThunkContext == NULL) {
+    return EFI_OUT_OF_RESOURCES;
   }
-
-  //
-  // Packages->GuidId may be NULL. In such case, caller of FramworkHii->NewPack is registering
-  // package with StringPack and IfrPack.
-  //
+  ThunkContext->ByFrameworkHiiNewPack = TRUE;
+  
   if (Packages->GuidId == NULL) {
-    Packages->GuidId = &GuidId;
-    GenerateGuidId (&mAGuid, Packages->GuidId);
+    //
+    // UEFI HII Database require Package List GUID must be unique.
+    //
+    // If Packages->GuidId is NULL, the caller of FramworkHii->NewPack is registering
+    // packages with at least 1 StringPack and 1 IfrPack. Therefore, Packages->GuidId is
+    // not used as the name of the package list.  A GUID is generated as a Package List
+    // GUID.
+    //
+    ASSERT (StringPackageCount >=1 && IfrPackageCount == 1);
+    IfrPackage = GetIfrPackage (Packages);
+    GetFormSetGuid (IfrPackage, &ThunkContext->TagGuid);
   } else {
-    CopyGuid (&GuidId, Packages->GuidId);
-  }
-  
-  CopyGuid (&HandleMappingEntry->TagGuid, Packages->GuidId);
-
-  if ((StringPackNum == 0) && (IfrPackNum != 0)) {
-    //
-    // UEFI HII database does not allow two package list with the same GUID.
-    // In Framework HII implementation, Packages->GuidId is used as an identifier to associate 
-    // a PackageList with only IFR to a Package list the with String package.
-    //
-    GenerateGuidId (Packages->GuidId, &GuidId);
+    ThunkContextToRemove = TagGuidToIfrPackThunkContext (Private, Packages->GuidId);
+    
+    if (IfrPackageCount > 0 && 
+        StringPackageCount > 0 && 
+        (ThunkContextToRemove!= NULL)) {
+        DEBUG((EFI_D_WARN, "Framework code registers HII package list with the same GUID more than once.\n"));
+        DEBUG((EFI_D_WARN, "This package list should be already registered. Just return successfully.\n"));
+        HiiRemovePack (This, ThunkContextToRemove->FwHiiHandle);
+    }
+    CopyGuid (&ThunkContext->TagGuid, Packages->GuidId);
   }
 
   //
   // UEFI HII require EFI_HII_CONFIG_ACCESS_PROTOCOL to be installed on a EFI_HANDLE, so
   // that Setup Utility can load the Buffer Storage using this protocol.
   //
-  if (IfrPackNum != 0) {
-    InstallDefaultUefiConfigAccessProtocol (Packages, HandleMappingEntry);
+  if (IfrPackageCount != 0) {
+    InstallDefaultConfigAccessProtocol (Packages, ThunkContext);
   }
-  UefiPackageListHeader = PrepareUefiPackageListFromFrameworkHiiPackages (Packages, &GuidId);
+  PackageListHeader = PrepareUefiPackageListFromFrameworkHiiPackages (Packages, &ThunkContext->TagGuid);
   Status = mHiiDatabase->NewPackageList (
               mHiiDatabase,
-              UefiPackageListHeader,  
-              HandleMappingEntry->UefiHiiDriverHandle,
-              &HandleMappingEntry->UefiHiiHandle
+              PackageListHeader,  
+              ThunkContext->UefiHiiDriverHandle,
+              &ThunkContext->UefiHiiHandle
               );
+  if (Status == EFI_INVALID_PARAMETER) {
+    SafeFreePool (PackageListHeader);
+    
+    //
+    // UEFI HII database does not allow two package list with the same GUID.
+    // In Framework HII implementation, Packages->GuidId is used as an identifier to associate 
+    // a PackageList with only IFR to a Package list the with String package.
+    //
+    GenerateRandomGuid (&GuidId);
+
+    PackageListHeader = PrepareUefiPackageListFromFrameworkHiiPackages (Packages, &GuidId);
+    Status = mHiiDatabase->NewPackageList (
+                mHiiDatabase,
+                PackageListHeader,  
+                ThunkContext->UefiHiiDriverHandle,
+                &ThunkContext->UefiHiiHandle
+                );
+  }
+
+  //
+  // BUGBUG: Remove when development is done
+  //
   ASSERT_EFI_ERROR (Status);
   if (EFI_ERROR (Status)) {
     goto Done;
   }
   
-  if (IfrPackNum == 0) {
-    if (StringPackNum != 0) {
+  if (IfrPackageCount == 0) {
+    if (StringPackageCount != 0) {
       //
-      // Look for a package list with IFR Pack which has already registed with HII Database
+      // Look for a Package List with only IFR Package with the same GUID name.
+      // If found one, add the String Packages to it.
       //
-      HandleMappingEntry->IsPackageListWithOnlyStringPackages = TRUE;
-      Status = AddStringPackagesToMatchingIfrPackageList (
-                  Private,
-                  UefiPackageListHeader
-                );
-
-      if (!EFI_ERROR (Status) || Status == EFI_NOT_FOUND) {
-
-        if (Status == EFI_NOT_FOUND) {
-          Status = EFI_SUCCESS;
-        }
-      }
+      UpdatePackListWithOnlyIfrPack (
+          Private,
+          ThunkContext,
+          PackageListHeader
+      );
     }
   } else {
-    if (StringPackNum == 0) {
+    CreateQuestionIdMap (ThunkContext);
+    
+    if (StringPackageCount == 0) {
       //
       // Register the Package List to UEFI HII first.
       //
-      Status = FindAndAddStringPackageToIfrPackageList (
+      Status = FindStringPackAndUpdatePackListWithOnlyIfrPack (
                   Private,
-                  Packages->GuidId,
-                  HandleMappingEntry->UefiHiiHandle
+                  ThunkContext
                   );
-      ASSERT_EFI_ERROR (Status);
-      if (!EFI_ERROR (Status)) {
-        HandleMappingEntry->DoesPackageListImportStringPackages = TRUE;
+
+      if (EFI_ERROR (Status)) {
+        goto Done;
       }
     }
-  }
-
-  if (!EFI_ERROR (Status)) {
-    InsertTailList (&Private->HiiThunkHandleMappingDBListHead, &HandleMappingEntry->List);
   }
 
 Done:
   if (EFI_ERROR (Status)) {
-    FreePool (HandleMappingEntry);
+    DestroyThunkContext (ThunkContext);
   } else {
-    *Handle = HandleMappingEntry->FrameworkHiiHandle;
+    InsertTailList (&Private->ThunkContextListHead, &ThunkContext->Link);
+    *Handle = ThunkContext->FwHiiHandle;
   }
 
-  SafeFreePool (UefiPackageListHeader);
+  SafeFreePool (PackageListHeader);
   
   return Status;
 }
@@ -455,7 +419,7 @@ Returns:
 --*/
 {
   EFI_STATUS                 Status;
-  EFI_HII_THUNK_PRIVATE_DATA *Private;
+  HII_THUNK_PRIVATE_DATA *Private;
   EFI_TPL                    OldTpl;
 
   if (Handle == NULL) {
@@ -476,9 +440,10 @@ Returns:
   //
   mInFrameworkHiiNewPack = TRUE;
 
-  Private = EFI_HII_THUNK_PRIVATE_DATA_FROM_THIS(This);
+  Private = HII_THUNK_PRIVATE_DATA_FROM_THIS(This);
 
   Status = UefiRegisterPackageList (
+              This,
               Private,
               Packages,
               Handle
@@ -509,56 +474,142 @@ Returns:
 --*/
 {
   EFI_STATUS                 Status;
-  EFI_HII_THUNK_PRIVATE_DATA *Private;
-  HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *HandleMapEntry;
+  HII_THUNK_PRIVATE_DATA *Private;
+  HII_THUNK_CONTEXT *ThunkContext;
   EFI_TPL                    OldTpl;
-  EFI_HII_CONFIG_ACCESS_PROTOCOL *ConfigAccess;
 
   OldTpl = gBS->RaiseTPL (TPL_NOTIFY);
 
   mInFrameworkHiiRemovePack = TRUE;
 
-  Private = EFI_HII_THUNK_PRIVATE_DATA_FROM_THIS(This);
+  Private = HII_THUNK_PRIVATE_DATA_FROM_THIS(This);
 
-  HandleMapEntry = FrameworkHiiHandleToMapDatabaseEntry (Private, Handle);
+  ThunkContext = FwHiiHandleToThunkContext (Private, Handle);
 
-  if (HandleMapEntry != NULL) {
+  if (ThunkContext != NULL) {
     Status = mHiiDatabase->RemovePackageList (
                                           mHiiDatabase,
-                                          HandleMapEntry->UefiHiiHandle
+                                          ThunkContext->UefiHiiHandle
                                           );
     ASSERT_EFI_ERROR (Status);
 
-    HiiLibDestroyHiiDriverHandle (HandleMapEntry->UefiHiiHandle);
-
-    Status = gBS->HandleProtocol (
-                    HandleMapEntry->UefiHiiDriverHandle,
-                    &gEfiHiiConfigAccessProtocolGuid,
-                    (VOID **) &ConfigAccess
-                    );
-
-    if (!EFI_ERROR (Status)) {
-      Status = gBS->UninstallProtocolInterface (
-                      HandleMapEntry->UefiHiiDriverHandle,
-                      &gEfiHiiConfigAccessProtocolGuid,
-                      ConfigAccess
-                      );
-      ASSERT_EFI_ERROR (Status);
-    } else {
-      Status = EFI_SUCCESS;
+    if (ThunkContext->IfrPackageCount != 0) {
+      UninstallDefaultConfigAccessProtocol (ThunkContext);
     }
 
-    RemoveEntryList (&HandleMapEntry->List);
-
-    FreePool (HandleMapEntry);
-
+    DestroyThunkContext (ThunkContext);
   }else {
     Status = EFI_NOT_FOUND;
   }
 
   mInFrameworkHiiRemovePack = FALSE;
-  
   gBS->RestoreTPL (OldTpl);
 
   return Status;
 }
+
+EFI_STATUS
+EFIAPI
+NewOrAddPackNotify (
+  IN UINT8                              PackageType,
+  IN CONST EFI_GUID                     *PackageGuid,
+  IN CONST EFI_HII_PACKAGE_HEADER       *Package,
+  IN EFI_HII_HANDLE                     Handle,
+  IN EFI_HII_DATABASE_NOTIFY_TYPE       NotifyType
+  )
+{
+  EFI_STATUS              Status;
+  HII_THUNK_PRIVATE_DATA  *Private;
+  HII_THUNK_CONTEXT       *ThunkContext;
+
+  ASSERT (PackageType == EFI_HII_PACKAGE_STRINGS || PackageType == EFI_HII_PACKAGE_FORM);
+  ASSERT (NotifyType == EFI_HII_DATABASE_NOTIFY_ADD_PACK || NotifyType == EFI_HII_DATABASE_NOTIFY_NEW_PACK);
+
+  Status  = EFI_SUCCESS;
+  Private = mHiiThunkPrivateData;
+
+  if (mInFrameworkHiiNewPack || mInFrameworkUpdatePakcage) {
+    return EFI_SUCCESS;
+  }
+
+  //
+  // We only create a ThunkContext if the Uefi Hii Handle is only already registered
+  // by the HII Thunk Layer.
+  //
+  ThunkContext = UefiHiiHandleToThunkContext (Private, Handle);
+  if (ThunkContext == NULL) {
+    ThunkContext = CreateThunkContextForUefiHiiHandle (Handle);
+    ASSERT (ThunkContext != NULL);
+
+    InsertTailList (&Private->ThunkContextListHead, &ThunkContext->Link);
+  } 
+
+  if (PackageType == EFI_HII_PACKAGE_FORM) {
+    GetAttributesOfFirstFormSet (ThunkContext);
+  }
+
+  return Status;  
+}
+
+//
+// Framework HII module may cache a GUID as the name of the package list.
+// Then search for the Framework HII handle database for the handle matching
+// this GUID
+
+EFI_STATUS
+EFIAPI
+RemovePackNotify (
+  IN UINT8                              PackageType,
+  IN CONST EFI_GUID                     *PackageGuid,
+  IN CONST EFI_HII_PACKAGE_HEADER       *Package,
+  IN EFI_HII_HANDLE                     Handle,
+  IN EFI_HII_DATABASE_NOTIFY_TYPE       NotifyType
+  )
+{
+  EFI_STATUS                  Status;
+  HII_THUNK_PRIVATE_DATA      *Private;
+  HII_THUNK_CONTEXT           *ThunkContext;
+  EFI_HII_PACKAGE_LIST_HEADER *HiiPackageList;
+  UINTN                        BufferSize;
+
+  Status = EFI_SUCCESS;
+
+  ASSERT (PackageType == EFI_HII_PACKAGE_STRINGS);
+  ASSERT (NotifyType == EFI_HII_DATABASE_NOTIFY_REMOVE_PACK);
+
+  if (mInFrameworkHiiRemovePack || mInFrameworkUpdatePakcage) {
+    return EFI_SUCCESS;
+  }
+
+  Private = mHiiThunkPrivateData;
+
+  ThunkContext = UefiHiiHandleToThunkContext (Private, Handle);
+
+  //
+  // BugBug: Change to ASSERT if HII Database fix the bug and to also invoke 
+  // NEW_PACK_NOTIFY for package (String Package) created internally.
+  //
+  if (ThunkContext != NULL) {
+    if (!ThunkContext->ByFrameworkHiiNewPack) {
+      Status = HiiLibExportPackageLists (Handle, &HiiPackageList, &BufferSize);
+      ASSERT_EFI_ERROR (Status);
+
+      if (GetPackageCountByType (HiiPackageList, EFI_HII_PACKAGE_STRINGS) == 1) {
+        //
+        // If the string package will be removed is the last string package
+        // in the package list, we will remove the HII Thunk entry from the
+        // database.
+        //
+        DestroyThunkContextForUefiHiiHandle (Private, Handle);
+      }
+
+      FreePool (HiiPackageList);
+    }
+  }
+
+  
+  return Status;
+}
+
+
+

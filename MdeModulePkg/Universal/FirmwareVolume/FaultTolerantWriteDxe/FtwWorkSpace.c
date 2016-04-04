@@ -16,23 +16,20 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <FtwLite.h>
 
+/**
+  Check to see if it is a valid work space.
+
+
+  @param WorkingHeader   Pointer of working block header
+
+  @retval  EFI_SUCCESS    The function completed successfully
+  @retval  EFI_ABORTED    The function could not complete successfully.
+
+**/
 BOOLEAN
 IsValidWorkSpace (
   IN EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER *WorkingHeader
   )
-/*++
-
-Routine Description:
-    Check to see if it is a valid work space.
-
-Arguments:
-    WorkingHeader - Pointer of working block header 
-
-Returns:
-    EFI_SUCCESS   - The function completed successfully
-    EFI_ABORTED   - The function could not complete successfully.
-
---*/
 {
   EFI_STATUS                              Status;
   EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER WorkingBlockHeader;
@@ -85,23 +82,20 @@ Returns:
   return TRUE;
 }
 
+/**
+  Initialize a work space when there is no work space.
+
+
+  @param WorkingHeader   Pointer of working block header
+
+  @retval  EFI_SUCCESS    The function completed successfully
+  @retval  EFI_ABORTED    The function could not complete successfully.
+
+**/
 EFI_STATUS
 InitWorkSpaceHeader (
   IN EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER *WorkingHeader
   )
-/*++
-
-Routine Description:
-    Initialize a work space when there is no work space.
-
-Arguments:
-    WorkingHeader - Pointer of working block header 
-
-Returns:
-    EFI_SUCCESS   - The function completed successfully
-    EFI_ABORTED   - The function could not complete successfully.
-
---*/
 {
   EFI_STATUS  Status;
 
@@ -143,6 +137,24 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Update a bit of state on a block device. The location of the bit is
+  calculated by the (Lba, Offset, bit). Here bit is determined by the
+  the name of a certain bit.
+
+
+  @param FvBlock         FVB Protocol interface to access SrcBlock and DestBlock
+  @param Lba             Lba of a block
+  @param Offset          Offset on the Lba
+  @param NewBit          New value that will override the old value if it can be change
+
+  @retval  EFI_SUCCESS    A state bit has been updated successfully
+  @retval  Others         Access block device error.
+                          Notes:
+                          Assume all bits of State are inside the same BYTE.
+  @retval  EFI_ABORTED    Read block fail
+
+**/
 EFI_STATUS
 FtwUpdateFvState (
   IN EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL  *FvBlock,
@@ -150,28 +162,6 @@ FtwUpdateFvState (
   IN UINTN                               Offset,
   IN UINT8                               NewBit
   )
-/*++
-
-Routine Description:
-    Update a bit of state on a block device. The location of the bit is 
-    calculated by the (Lba, Offset, bit). Here bit is determined by the 
-    the name of a certain bit.
-
-Arguments:
-    FvBlock    - FVB Protocol interface to access SrcBlock and DestBlock
-    Lba        - Lba of a block
-    Offset     - Offset on the Lba
-    NewBit     - New value that will override the old value if it can be change
-
-Returns:
-    EFI_SUCCESS   - A state bit has been updated successfully
-    Others        - Access block device error.
-
-Notes:
-    Assume all bits of State are inside the same BYTE. 
-
-    EFI_ABORTED   - Read block fail
---*/
 {
   EFI_STATUS  Status;
   UINT8       State;
@@ -199,30 +189,28 @@ Notes:
   return Status;
 }
 
+/**
+  Get the last Write record pointer.
+  The last record is the record whose 'complete' state hasn't been set.
+  After all, this header may be a EMPTY header entry for next Allocate.
+
+
+  @param FtwLiteDevice   Private data of this driver
+  @param FtwLastRecord   Pointer to retrieve the last write record
+
+  @retval  EFI_SUCCESS      Get the last write record successfully
+  @retval  EFI_ABORTED      The FTW work space is damaged
+
+**/
 EFI_STATUS
 FtwGetLastRecord (
   IN  EFI_FTW_LITE_DEVICE  *FtwLiteDevice,
   OUT EFI_FTW_LITE_RECORD  **FtwLastRecord
   )
-/*++
-
-Routine Description:
-    Get the last Write record pointer. 
-    The last record is the record whose 'complete' state hasn't been set.
-    After all, this header may be a EMPTY header entry for next Allocate. 
-
-Arguments:
-    FtwLiteDevice   - Private data of this driver
-    FtwLastRecord   - Pointer to retrieve the last write record
-
-Returns:
-    EFI_SUCCESS     - Get the last write record successfully
-    EFI_ABORTED     - The FTW work space is damaged
-
---*/
 {
   EFI_FTW_LITE_RECORD *Record;
 
+  *FtwLastRecord = NULL;
   Record = (EFI_FTW_LITE_RECORD *) (FtwLiteDevice->FtwWorkSpaceHeader + 1);
   while (Record->WriteCompleted == FTW_VALID_STATE) {
     //
@@ -241,23 +229,20 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Read from working block to refresh the work space in memory.
+
+
+  @param FtwLiteDevice   Point to private data of FTW driver
+
+  @retval  EFI_SUCCESS    The function completed successfully
+  @retval  EFI_ABORTED    The function could not complete successfully.
+
+**/
 EFI_STATUS
 WorkSpaceRefresh (
   IN EFI_FTW_LITE_DEVICE  *FtwLiteDevice
   )
-/*++
-
-Routine Description:
-    Read from working block to refresh the work space in memory.
-
-Arguments:
-    FtwLiteDevice     - Point to private data of FTW driver
-
-Returns:
-    EFI_SUCCESS   - The function completed successfully
-    EFI_ABORTED   - The function could not complete successfully.
-
---*/
 {
   EFI_STATUS          Status;
   UINTN               Length;
@@ -296,14 +281,14 @@ Returns:
   Offset  = (UINTN) (UINT8 *) Record - (UINTN) FtwLiteDevice->FtwWorkSpace;
 
   //
-  // IF work space has error or Record is out of the workspace limit, THEN
+  // If work space has error or Record is out of the workspace limit, THEN
   //   call reclaim.
   //
   if (EFI_ERROR (Status) || (Offset + WRITE_TOTAL_SIZE >= FtwLiteDevice->FtwWorkSpaceSize)) {
     //
     // reclaim work space in working block.
     //
-    Status = FtwReclaimWorkSpace (FtwLiteDevice);
+    Status = FtwReclaimWorkSpace (FtwLiteDevice, TRUE);
     if (EFI_ERROR (Status)) {
       DEBUG ((EFI_D_FTW_LITE, "FtwLite: Reclaim workspace - %r\n", Status));
       return EFI_ABORTED;
@@ -313,87 +298,23 @@ Returns:
   return EFI_SUCCESS;
 }
 
-EFI_STATUS
-CleanupWorkSpace (
-  IN EFI_FTW_LITE_DEVICE  *FtwLiteDevice,
-  IN OUT UINT8            *FtwSpaceBuffer,
-  IN UINTN                BufferSize
-  )
-/*++
+/**
+  Reclaim the work space on the working block.
 
-Routine Description:
-    Reclaim the work space. Get rid of all the completed write records
-    and write records in the Fault Tolerant work space.
 
-Arguments:
-    FtwLiteDevice   - Point to private data of FTW driver
-    FtwSpaceBuffer  - Buffer to contain the reclaimed clean data
-    BufferSize      - Size of the FtwSpaceBuffer
+  @param  FtwLiteDevice          Point to private data of FTW driver
+  @param  PreserveRecord         Whether get the last record or not
 
-Returns:
-    EFI_SUCCESS           - The function completed successfully
-    EFI_BUFFER_TOO_SMALL  - The FtwSpaceBuffer is too small
-    EFI_ABORTED           - The function could not complete successfully.
+  @retval EFI_SUCCESS            The function completed successfully
+  @retval EFI_OUT_OF_RESOURCES   Allocate memory error
+  @retval EFI_ABORTED            The function could not complete successfully
 
---*/
-{
-  UINTN               Length;
-  EFI_FTW_LITE_RECORD *Record;
-
-  //
-  // To check if the buffer is large enough
-  //
-  Length = FtwLiteDevice->FtwWorkSpaceSize;
-  if (BufferSize < Length) {
-    return EFI_BUFFER_TOO_SMALL;
-  }
-  //
-  // Clear the content of buffer that will save the new work space data
-  //
-  SetMem (FtwSpaceBuffer, Length, FTW_ERASED_BYTE);
-
-  //
-  // Copy EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER to buffer
-  //
-  CopyMem (
-    FtwSpaceBuffer,
-    FtwLiteDevice->FtwWorkSpaceHeader,
-    sizeof (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER)
-    );
-
-  //
-  // Get the last record
-  //
-  Record = FtwLiteDevice->FtwLastRecord;
-  if ((Record != NULL) && (Record->WriteAllocated == FTW_VALID_STATE) && (Record->WriteCompleted != FTW_VALID_STATE)) {
-    CopyMem (
-      (UINT8 *) FtwSpaceBuffer + sizeof (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER),
-      Record,
-      WRITE_TOTAL_SIZE
-      );
-  }
-
-  return EFI_SUCCESS;
-}
-
+**/
 EFI_STATUS
 FtwReclaimWorkSpace (
-  IN EFI_FTW_LITE_DEVICE  *FtwLiteDevice
+  IN EFI_FTW_LITE_DEVICE  *FtwLiteDevice,
+  IN BOOLEAN              PreserveRecord
   )
-/*++
-
-Routine Description:
-    Reclaim the work space on the working block.
-
-Arguments:
-    FtwLiteDevice     - Point to private data of FTW driver
-
-Returns:
-    EFI_SUCCESS           - The function completed successfully
-    EFI_OUT_OF_RESOURCES  - Allocate memory error
-    EFI_ABORTED           - The function could not complete successfully
-
---*/
 {
   EFI_STATUS                              Status;
   UINT8                                   *TempBuffer;
@@ -404,6 +325,7 @@ Returns:
   UINTN                                   SpareBufferSize;
   UINT8                                   *SpareBuffer;
   EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER *WorkingBlockHeader;
+  EFI_FTW_LITE_RECORD                     *Record;
 
   DEBUG ((EFI_D_FTW_LITE, "FtwLite: start to reclaim work space\n"));
 
@@ -412,7 +334,7 @@ Returns:
   //
   TempBufferSize = FtwLiteDevice->SpareAreaLength;
   TempBuffer     = AllocateZeroPool (TempBufferSize);
-  if (TempBuffer != NULL) {
+  if (TempBuffer == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -440,11 +362,36 @@ Returns:
     ((UINTN) (FtwLiteDevice->FtwWorkSpaceLba - FtwLiteDevice->FtwWorkBlockLba)) *
     FtwLiteDevice->SizeOfSpareBlock + FtwLiteDevice->FtwWorkSpaceBase;
 
-  Status = CleanupWorkSpace (
-            FtwLiteDevice,
-            Ptr,
-            FtwLiteDevice->FtwWorkSpaceSize
-            );
+  //
+  // Clear the content of buffer that will save the new work space data
+  //
+  SetMem (Ptr, FtwLiteDevice->FtwWorkSpaceSize, FTW_ERASED_BYTE);
+
+  //
+  // Copy EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER to buffer
+  //
+  CopyMem (
+    Ptr,
+    FtwLiteDevice->FtwWorkSpaceHeader,
+    sizeof (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER)
+    );
+  if (PreserveRecord) {
+    //
+    // Get the last record
+    //
+    Status = FtwGetLastRecord (FtwLiteDevice, &FtwLiteDevice->FtwLastRecord);
+    Record = FtwLiteDevice->FtwLastRecord;
+    if (!EFI_ERROR (Status)                       &&
+        Record                 != NULL            &&
+        Record->WriteAllocated == FTW_VALID_STATE &&
+        Record->WriteCompleted != FTW_VALID_STATE) {
+      CopyMem (
+        (UINT8 *) Ptr + sizeof (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER),
+        Record,
+        WRITE_TOTAL_SIZE
+        );
+    }
+  }
 
   CopyMem (
     FtwLiteDevice->FtwWorkSpace,

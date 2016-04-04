@@ -7,7 +7,7 @@
 
   UEFI 2.0 can boot from any valid EFI image contained in a SimpleFileSystem
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -32,14 +32,14 @@ typedef struct _EFI_FILE_PROTOCOL         EFI_FILE_PROTOCOL;
 typedef struct _EFI_FILE_PROTOCOL         *EFI_FILE_HANDLE;
 
 
-//
-// Protocol GUID defined in EFI1.1.
-// 
+///
+/// Protocol GUID defined in EFI1.1.
+/// 
 #define SIMPLE_FILE_SYSTEM_PROTOCOL       EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID
 
-//
-// Protocol defined in EFI1.1.
-// 
+///
+/// Protocol defined in EFI1.1.
+/// 
 typedef EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   EFI_FILE_IO_INTERFACE;
 typedef struct _EFI_FILE_PROTOCOL         EFI_FILE;
 
@@ -60,16 +60,15 @@ typedef struct _EFI_FILE_PROTOCOL         EFI_FILE;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_OPEN_VOLUME) (
+(EFIAPI *EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_OPEN_VOLUME)(
   IN EFI_SIMPLE_FILE_SYSTEM_PROTOCOL    *This,
   OUT EFI_FILE_PROTOCOL                 **Root
-  )
-;
+  );
 
 #define EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_REVISION  0x00010000
-//
-// Revision defined in EFI1.1
-// 
+///
+/// Revision defined in EFI1.1
+/// 
 #define EFI_FILE_IO_INTERFACE_REVISION  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_REVISION
 
 struct _EFI_SIMPLE_FILE_SYSTEM_PROTOCOL {
@@ -99,14 +98,13 @@ struct _EFI_SIMPLE_FILE_SYSTEM_PROTOCOL {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_FILE_OPEN) (
+(EFIAPI *EFI_FILE_OPEN)(
   IN EFI_FILE_PROTOCOL        *This,
   OUT EFI_FILE_PROTOCOL       **NewHandle,
   IN CHAR16                   *FileName,
   IN UINT64                   OpenMode,
   IN UINT64                   Attributes
-  )
-;
+  );
 
 //
 // Open modes
@@ -136,10 +134,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_FILE_CLOSE) (
+(EFIAPI *EFI_FILE_CLOSE)(
   IN EFI_FILE  *This
-  )
-;
+  );
 
 /**
   Close and delete the file handle
@@ -152,10 +149,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_FILE_DELETE) (
+(EFIAPI *EFI_FILE_DELETE)(
   IN EFI_FILE  *This
-  )
-;
+  );
 
 /**
   Read data from the file.
@@ -173,12 +169,11 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_FILE_READ) (
+(EFIAPI *EFI_FILE_READ)(
   IN EFI_FILE_PROTOCOL        *This,
   IN OUT UINTN                *BufferSize,
   OUT VOID                    *Buffer
-  )
-;
+  );
 
 /**
   Write data from to the file.
@@ -199,12 +194,11 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_FILE_WRITE) (
+(EFIAPI *EFI_FILE_WRITE)(
   IN EFI_FILE_PROTOCOL        *This,
   IN OUT UINTN                *BufferSize,
   IN VOID                     *Buffer
-  )
-;
+  );
 
 /**
   Set a files current position
@@ -218,11 +212,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_FILE_SET_POSITION) (
+(EFIAPI *EFI_FILE_SET_POSITION)(
   IN EFI_FILE_PROTOCOL        *This,
   IN UINT64                   Position
-  )
-;
+  );
 
 /**
   Get a files current position
@@ -236,11 +229,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_FILE_GET_POSITION) (
+(EFIAPI *EFI_FILE_GET_POSITION)(
   IN EFI_FILE_PROTOCOL        *This,
   OUT UINT64                  *Position
-  )
-;
+  );
 
 /**
   Get information about a file
@@ -262,13 +254,12 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_FILE_GET_INFO) (
+(EFIAPI *EFI_FILE_GET_INFO)(
   IN EFI_FILE_PROTOCOL        *This,
   IN EFI_GUID                 *InformationType,
   IN OUT UINTN                *BufferSize,
   OUT VOID                    *Buffer
-  )
-;
+  );
 
 /**
   Set information about a file
@@ -289,13 +280,12 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_FILE_SET_INFO) (
+(EFIAPI *EFI_FILE_SET_INFO)(
   IN EFI_FILE_PROTOCOL        *This,
   IN EFI_GUID                 *InformationType,
   IN UINTN                    BufferSize,
   IN VOID                     *Buffer
-  )
-;
+  );
 
 /**
   Flush data back for the file handle
@@ -314,10 +304,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_FILE_FLUSH) (
+(EFIAPI *EFI_FILE_FLUSH)(
   IN EFI_FILE  *This
-  )
-;
+  );
 
 #define EFI_FILE_PROTOCOL_REVISION   0x00010000
 //
@@ -325,7 +314,20 @@ EFI_STATUS
 // 
 #define EFI_FILE_REVISION   EFI_FILE_PROTOCOL_REVISION
 
+/**  
+  @par Protocol Description:
+  The EFI_FILE_PROTOCOL provides file IO access to supported file systems.
+  An EFI_FILE_PROTOCOL provides access to a file's or directory's contents, 
+  and is also a reference to a location in the directory tree of the file system 
+  in which the file resides. With any given file handle, other files may be opened 
+  relative to this file's location, yielding new file handles.
+**/
 struct _EFI_FILE_PROTOCOL {
+  ///
+  /// The version of the EFI_FILE_PROTOCOL interface. The version specified 
+  /// by this specification is 0x00010000. Future versions are required 
+  /// to be backward compatible to version 1.0.
+  ///
   UINT64                Revision;
   EFI_FILE_OPEN         Open;
   EFI_FILE_CLOSE        Close;

@@ -1,7 +1,7 @@
 /** @file
   I/O Library MMIO Buffer Functions.
 
-  Copyright (c) 2007, Intel Corporation<BR>
+  Copyright (c) 2007 - 2008, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -12,9 +12,6 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
 #include "BaseIoLibIntrinsicInternal.h"
 
 /**
@@ -32,7 +29,7 @@
   @param  Length          Size in bytes of the copy.
   @param  Buffer          Pointer to a system memory buffer receiving the data read.
 
-  @return Buffer
+  @return Buffer contains the data read from Mmio.
 
 **/
 UINT8 *
@@ -50,7 +47,7 @@ MmioReadBuffer8 (
  
   ReturnBuffer = Buffer;
   
-  while (Length--) {
+  while (Length-- != 0) {
     *(Buffer++) = MmioRead8 (StartAddress++);
   }
 
@@ -76,7 +73,7 @@ MmioReadBuffer8 (
   @param  Length          Size in bytes of the copy.
   @param  Buffer          Pointer to a system memory buffer receiving the data read.
 
-  @return Buffer
+  @return Buffer contains the data read from Mmio.
 
 **/
 UINT16 *
@@ -99,7 +96,7 @@ MmioReadBuffer16 (
  
   ReturnBuffer = Buffer;
   
-  while (Length) {
+  while (Length != 0) {
     *(Buffer++) = MmioRead16 (StartAddress);
     StartAddress += sizeof (UINT16);
     Length -= sizeof (UINT16);
@@ -127,7 +124,7 @@ MmioReadBuffer16 (
   @param  Length          Size in bytes of the copy.
   @param  Buffer          Pointer to a system memory buffer receiving the data read.
 
-  @return Buffer
+  @return Buffer contains the data read from Mmio.
 
 **/
 UINT32 *
@@ -150,7 +147,7 @@ MmioReadBuffer32 (
  
   ReturnBuffer = Buffer;
   
-  while (Length) {
+  while (Length != 0) {
     *(Buffer++) = MmioRead32 (StartAddress);
     StartAddress += sizeof (UINT32);
     Length -= sizeof (UINT32);
@@ -178,7 +175,7 @@ MmioReadBuffer32 (
   @param  Length          Size in bytes of the copy.
   @param  Buffer          Pointer to a system memory buffer receiving the data read.
 
-  @return Buffer
+  @return Buffer contains the data read from Mmio.
 
 **/
 UINT64 *
@@ -201,7 +198,7 @@ MmioReadBuffer64 (
  
   ReturnBuffer = Buffer;
   
-  while (Length) {
+  while (Length != 0) {
     *(Buffer++) = MmioRead64 (StartAddress);
     StartAddress += sizeof (UINT64);
     Length -= sizeof (UINT64);
@@ -223,7 +220,7 @@ MmioReadBuffer64 (
 
 
   @param  StartAddress    Starting address for the MMIO region to be copied to.
-  @param  Length     Size in bytes of the copy.
+  @param  Length          Size in bytes of the copy.
   @param  Buffer          Pointer to a system memory buffer containing the data to write.
 
   @return Size in bytes of the copy.
@@ -244,7 +241,7 @@ MmioWriteBuffer8 (
  
   ReturnBuffer = (UINT8 *) Buffer;
   
-  while (Length--) {
+  while (Length-- != 0) {
      MmioWrite8 (StartAddress++, *(Buffer++));
   }
 
@@ -269,7 +266,7 @@ MmioWriteBuffer8 (
   If Buffer is not aligned on a 16-bit boundary, then ASSERT().
 
   @param  StartAddress    Starting address for the MMIO region to be copied to.
-  @param  Length     Size in bytes of the copy.
+  @param  Length          Size in bytes of the copy.
   @param  Buffer          Pointer to a system memory buffer containing the data to write.
 
   @return Size in bytes of the copy.
@@ -295,7 +292,7 @@ MmioWriteBuffer16 (
 
   ReturnBuffer = (UINT16 *) Buffer;
   
-  while (Length) {
+  while (Length != 0) {
     MmioWrite16 (StartAddress, *(Buffer++));
     
     StartAddress += sizeof (UINT16);
@@ -323,7 +320,7 @@ MmioWriteBuffer16 (
   If Buffer is not aligned on a 32-bit boundary, then ASSERT().
 
   @param  StartAddress    Starting address for the MMIO region to be copied to.
-  @param  Length     Size in bytes of the copy.
+  @param  Length          Size in bytes of the copy.
   @param  Buffer          Pointer to a system memory buffer containing the data to write.
 
   @return Size in bytes of the copy.
@@ -349,7 +346,7 @@ MmioWriteBuffer32 (
 
   ReturnBuffer = (UINT32 *) Buffer;
   
-  while (Length) {
+  while (Length != 0) {
     MmioWrite32 (StartAddress, *(Buffer++));
     
     StartAddress += sizeof (UINT32);
@@ -376,7 +373,7 @@ MmioWriteBuffer32 (
   If Buffer is not aligned on a 64-bit boundary, then ASSERT().
 
   @param  StartAddress    Starting address for the MMIO region to be copied to.
-  @param  Length     Size in bytes of the copy.
+  @param  Length          Size in bytes of the copy.
   @param  Buffer          Pointer to a system memory buffer containing the data to write.
 
   @return Size in bytes of the copy.
@@ -402,7 +399,7 @@ MmioWriteBuffer64 (
 
   ReturnBuffer = (UINT64 *) Buffer;
   
-  while (Length) {
+  while (Length != 0) {
     MmioWrite64 (StartAddress, *(Buffer++));
     
     StartAddress += sizeof (UINT64);

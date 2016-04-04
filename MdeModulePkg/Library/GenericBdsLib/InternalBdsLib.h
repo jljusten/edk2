@@ -62,8 +62,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/GenericBdsLib.h>
 #include <Library/TimerLib.h>
 
-#include "BmMachine.h"
-
 #define PERFORMANCE_SIGNATURE   EFI_SIGNATURE_32 ('P', 'e', 'r', 'f')
 #define PERF_TOKEN_SIZE         28
 #define PERF_TOKEN_LENGTH       (PERF_TOKEN_SIZE - 1)
@@ -85,6 +83,12 @@ typedef struct {
   UINT32        Signiture;
 } PERF_HEADER;
 
+/**
+
+  Allocates a block of memory and writes performance data of booting into it.
+  OS can processing these record.
+  
+**/
 VOID
 WriteBootToOsPerformanceData (
   VOID

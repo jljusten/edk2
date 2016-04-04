@@ -1,6 +1,10 @@
 /** @file
 
-Copyright (c) 2007, Intel Corporation
+  Implementation of the USB mass storage Control/Bulk/Interrupt transpor.
+  Notice: it is being obseleted by the standard body in favor of the BOT
+  (Bulk-Only Transport).
+
+Copyright (c) 2007 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,25 +13,24 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-  UsbMassCbi.c
-
-Abstract:
-
-  Implementation of the USB mass storage Control/Bulk/Interrupt transpor.
-  Notice: it is being obseleted by the standard body in favor of the BOT
-  (Bulk-Only Transport).
-
-Revision History
-
-
 **/
 
 #include "UsbMass.h"
 #include "UsbMassCbi.h"
 
-STATIC
+/**
+  Call the Usb mass storage class transport protocol to
+  reset the device. The reset is defined as a Non-Data
+  command. Don't use UsbCbiExecCommand to send the command
+  to device because that may introduce recursive loop.
+
+  @param  Context               The USB CBI device protocol
+  @param  ExtendedVerification  The flag controlling the rule of reset
+
+  @retval EFI_SUCCESS           the device is reset
+  @retval Others                Failed to reset the device
+
+**/
 EFI_STATUS
 UsbCbiResetDevice (
   IN  VOID                    *Context,
@@ -40,19 +43,17 @@ UsbCbiResetDevice (
   If Context isn't NULL, it will save its context in it.
 
   @param  UsbIo                 The USB IO to use
-  @param  Controller            The device controller
   @param  Context               The variable to save context in
 
   @retval EFI_OUT_OF_RESOURCES  Failed to allocate memory
   @retval EFI_UNSUPPORTED       The device isn't supported
   @retval EFI_SUCCESS           The CBI protocol is initialized.
+  @retval Other                 The Usb cbi init failed.
 
 **/
-STATIC
 EFI_STATUS
 UsbCbiInit (
   IN  EFI_USB_IO_PROTOCOL   *UsbIo,
-  IN  EFI_HANDLE            Controller,
   OUT VOID                  **Context       OPTIONAL
   )
 {
@@ -152,7 +153,6 @@ ON_ERROR:
 }
 
 
-
 /**
   Send the command to the device using class specific control transfer.
 
@@ -165,7 +165,6 @@ ON_ERROR:
   @retval Others                The command failed to transfer to device
 
 **/
-STATIC
 EFI_STATUS
 UsbCbiSendCommand (
   IN USB_CBI_PROTOCOL       *UsbCbi,
@@ -240,7 +239,6 @@ UsbCbiSendCommand (
   @retval Others                Failed to transfer all the data
 
 **/
-STATIC
 EFI_STATUS
 UsbCbiDataTransfer (
   IN USB_CBI_PROTOCOL         *UsbCbi,
@@ -357,7 +355,6 @@ ON_EXIT:
   @retval Others                Failed to retrieve the result.
 
 **/
-STATIC
 EFI_STATUS
 UsbCbiGetStatus (
   IN  USB_CBI_PROTOCOL        *UsbCbi,
@@ -405,7 +402,7 @@ UsbCbiGetStatus (
 
 
 /**
-  Execute USB mass storage command through the CBI0/CBI1 transport protocol
+  Execute USB mass storage command through the CBI0/CBI1 transport protocol.
 
   @param  Context               The USB CBI device
   @param  Cmd                   The command to transfer to device
@@ -413,14 +410,14 @@ UsbCbiGetStatus (
   @param  DataDir               The direction of data transfer
   @param  Data                  The buffer to hold the data
   @param  DataLen               The length of the buffer
+  @param  Lun                   Should be 0, this field for bot only
   @param  Timeout               The time to wait
   @param  CmdStatus             The result of the command execution
 
   @retval EFI_SUCCESS           The command is executed OK and result in CmdStatus.
-  @retval EFI_DEVICE_ERROR      Failed to execute the command
+  @retval Other                 Failed to execute the command
 
 **/
-STATIC
 EFI_STATUS
 UsbCbiExecCommand (
   IN  VOID                    *Context,
@@ -429,6 +426,7 @@ UsbCbiExecCommand (
   IN  EFI_USB_DATA_DIRECTION  DataDir,
   IN  VOID                    *Data,
   IN  UINT32                  DataLen,
+  IN  UINT8                   Lun,
   IN  UINT32                  Timeout,
   OUT UINT32                  *CmdStatus
   )
@@ -525,12 +523,12 @@ UsbCbiExecCommand (
   to device because that may introduce recursive loop.
 
   @param  Context               The USB CBI device protocol
+  @param  ExtendedVerification  The flag controlling the rule of reset
 
   @retval EFI_SUCCESS           the device is reset
   @retval Others                Failed to reset the device
 
 **/
-STATIC
 EFI_STATUS
 UsbCbiResetDevice (
   IN  VOID                    *Context,
@@ -580,14 +578,13 @@ UsbCbiResetDevice (
 
 
 /**
-  Clean up the CBI protocol's resource
+  Clean up the CBI protocol's resource.
 
-  @param  Context               The CBI protocol
+  @param  Context               The instance of CBI protocol.
 
   @retval EFI_SUCCESS           The resource is cleaned up.
 
 **/
-STATIC
 EFI_STATUS
 UsbCbiFini (
   IN  VOID                   *Context
@@ -603,6 +600,7 @@ mUsbCbi0Transport = {
   UsbCbiInit,
   UsbCbiExecCommand,
   UsbCbiResetDevice,
+  NULL,
   UsbCbiFini
 };
 
@@ -612,5 +610,6 @@ mUsbCbi1Transport = {
   UsbCbiInit,
   UsbCbiExecCommand,
   UsbCbiResetDevice,
+  NULL,
   UsbCbiFini
 };

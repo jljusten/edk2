@@ -1,6 +1,8 @@
-/*++ 
+/** @file
 
-Copyright (c) 2006 - 2007, Intel Corporation                                                         
+  This protocol provides the interfaces to Get/Set the current video mode for GOP/UGA screen
+
+Copyright (c) 2006 - 2008, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -9,15 +11,7 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
-Module Name:
-
-  ConsoleControl.h
-
-Abstract:
-
-  Abstraction of a Text mode or GOP/UGA screen
-
---*/
+**/
 
 #ifndef __CONSOLE_CONTROL_H__
 #define __CONSOLE_CONTROL_H__
@@ -34,82 +28,61 @@ typedef enum {
   EfiConsoleControlScreenMaxValue
 } EFI_CONSOLE_CONTROL_SCREEN_MODE;
 
+/**
+  Return the current video mode information. Also returns info about existence
+  of Graphics Output devices or UGA Draw devices in system, and if the Std In device is locked. All the
+  arguments are optional and only returned if a non NULL pointer is passed in.
 
+  @param  This                    Protocol instance pointer.
+  @param  Mode                    Are we in text of grahics mode.
+  @param  GopExists               TRUE if GOP Spliter has found a GOP/UGA device
+  @param  StdInLocked             TRUE if StdIn device is keyboard locked
+
+  @retval EFI_SUCCESS             Video mode information is returned.
+  @retval EFI_INVALID_PARAMETER   Invalid parameters if Mode == NULL.
+
+**/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_CONSOLE_CONTROL_PROTOCOL_GET_MODE) (
+(EFIAPI *EFI_CONSOLE_CONTROL_PROTOCOL_GET_MODE)(
   IN  EFI_CONSOLE_CONTROL_PROTOCOL      *This,
   OUT EFI_CONSOLE_CONTROL_SCREEN_MODE   *Mode,
   OUT BOOLEAN                           *GopUgaExists,  OPTIONAL  
   OUT BOOLEAN                           *StdInLocked    OPTIONAL
-  )
-/*++
+  );
 
-  Routine Description:
-    Return the current video mode information. Also returns info about existence
-    of Graphics Output devices or UGA Draw devices in system, and if the Std In
-    device is locked. All the arguments are optional and only returned if a non
-    NULL pointer is passed in.
+/**
+  Set the current video mode to either text or graphics. 
 
-  Arguments:
-    This - Protocol instance pointer.
-    Mode        - Are we in text of grahics mode.
-    GopUgaExists - TRUE if Console Spliter has found a GOP or UGA device
-    StdInLocked - TRUE if StdIn device is keyboard locked
+  @param  This                    Protocol instance pointer.
+  @param  Mode                    Mode is to be set.
 
-  Returns:
-    EFI_SUCCESS     - Mode information returned.
+  @retval EFI_SUCCESS             Mode is set.
+  @retval EFI_INVALID_PARAMETER   Mode is not the valid mode value.
+  @retval EFI_UNSUPPORTED         Mode is unsupported by console device.
 
---*/
-;
-
-
+**/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_CONSOLE_CONTROL_PROTOCOL_SET_MODE) (
+(EFIAPI *EFI_CONSOLE_CONTROL_PROTOCOL_SET_MODE)(
   IN  EFI_CONSOLE_CONTROL_PROTOCOL      *This,
   OUT EFI_CONSOLE_CONTROL_SCREEN_MODE   Mode
-  )
-/*++
+  );
 
-  Routine Description:
-    Set the current mode to either text or graphics. Graphics is
-    for Quiet Boot.
+/**
+  Copy the Password and enable state variable and then arm the periodic timer
 
-  Arguments:
-    This  - Protocol instance pointer.
-    Mode  - Mode to set the 
+  @retval EFI_SUCCESS              Lock the StdIn device
+  @retval EFI_INVALID_PARAMETER    Password is NULL
+  @retval EFI_OUT_OF_RESOURCES     Buffer allocation to store the big password fails
 
-  Returns:
-    EFI_SUCCESS     - Mode information returned.
-
---*/
-;
-
-
+**/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_CONSOLE_CONTROL_PROTOCOL_LOCK_STD_IN) (
+(EFIAPI *EFI_CONSOLE_CONTROL_PROTOCOL_LOCK_STD_IN)(
   IN  EFI_CONSOLE_CONTROL_PROTOCOL      *This,
   IN CHAR16                             *Password
-  )
-/*++
-
-  Routine Description:
-    Lock Std In devices until Password is typed.
-
-  Arguments:
-    This     - Protocol instance pointer.
-    Password - Password needed to unlock screen. NULL means unlock keyboard
-
-  Returns:
-    EFI_SUCCESS      - Mode information returned.
-    EFI_DEVICE_ERROR - Std In not locked
-
---*/
-;
-
-
+  );
 
 struct _EFI_CONSOLE_CONTROL_PROTOCOL {
   EFI_CONSOLE_CONTROL_PROTOCOL_GET_MODE           GetMode;

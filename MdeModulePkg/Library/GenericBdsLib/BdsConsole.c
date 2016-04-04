@@ -14,6 +14,15 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "InternalBdsLib.h"
 
+/**
+  Check if we need to save the EFI variable with "ConVarName" as name
+  as NV type
+
+  @param ConVarName The name of the EFI variable.
+
+  @retval TRUE    Set the EFI variabel as NV type.
+  @retval FALSE   EFI variabel as NV type can be set NonNV.
+**/
 BOOLEAN
 IsNvNeed (
   IN CHAR16 *ConVarName
@@ -27,11 +36,11 @@ IsNvNeed (
   // If the variable includes "Dev" at last, we consider
   // it does not support NV attribute.
   //
-  while (*Ptr) {
+  while (*Ptr != L'\0') {
     Ptr++;
   }
 
-  if ((*(Ptr-3) == 'D') && (*(Ptr-2) == 'e') && (*(Ptr-1) == 'v')) {
+  if ((*(Ptr - 3) == 'D') && (*(Ptr - 2) == 'e') && (*(Ptr - 1) == 'v')) {
     return FALSE;
   } else {
     return TRUE;
@@ -252,9 +261,9 @@ BdsLibConnectConsoleVariable (
     SafeFreePool(Instance);
   } while (CopyOfDevicePath != NULL);
 
-  gBS->FreePool (StartDevicePath);
+  SafeFreePool (StartDevicePath);
 
-  if (DeviceExist == FALSE) {
+  if (!DeviceExist) {
     return EFI_NOT_FOUND;
   }
 
@@ -330,7 +339,6 @@ BdsLibConnectAllConsoles (
   BdsLibConnectAllDefaultConsoles ();
 
 }
-
 
 /**
   This function will connect console device base on the console

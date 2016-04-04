@@ -1,7 +1,9 @@
 /** @file
-  Graphics Library
+  Library supports displaying graphical splash screen,
+  locking of keyboard input and printing character on
+  screen.
 
-  Copyright (c) 2006 - 2007, Intel Corporation.<BR>
+  Copyright (c) 2006 - 2008, Intel Corporation.<BR>
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -28,14 +30,16 @@
                             buffer will be allocated.
   @param[out] ImageSize     Size of the graphics Image in bytes. Zero if no image found.
 
-  @retval   EFI_INVALID_PARAMETER  invalid parameter
-  @retval   EFI_UNSUPPORTED        Range can not be erased
-  @retval   EFI_SUCCESS            Image and ImageSize are valid. 
-  @retval   EFI_BUFFER_TOO_SMALL   Image not big enough. ImageSize has required size
-  @retval   EFI_NOT_FOUND          FileNameGuid not found
+  @retval  EFI_SUCCESS          The image is found and data and size is returned.
+  @retval  EFI_UNSUPPORTED      FvHandle does not support EFI_FIRMWARE_VOLUME2_PROTOCOL.
+  @retval  EFI_NOT_FOUND        The image specified by NameGuid and SectionType can't be found.
+  @retval  EFI_OUT_OF_RESOURCES There were not enough resources to allocate the output data buffer or complete the operations.
+  @retval  EFI_DEVICE_ERROR	    A hardware error occurs during reading from the Firmware Volume.
+  @retval  EFI_ACCESS_DENIED    The firmware volume containing the searched Firmware File is configured to disallow reads.
 
 **/
 EFI_STATUS
+EFIAPI
 GetGraphicsBitMapFromFV (
   IN  EFI_GUID      *FileNameGuid,
   OUT VOID          **Image,
@@ -55,46 +59,21 @@ GetGraphicsBitMapFromFV (
                             buffer will be allocated.
   @param[out] ImageSize     Size of the graphics Image in bytes. Zero if no image found.
 
-  @retval   EFI_INVALID_PARAMETER  invalid parameter
-  @retval   EFI_UNSUPPORTED        Range can not be erased
-  @retval   EFI_SUCCESS            Image and ImageSize are valid. 
-  @retval   EFI_BUFFER_TOO_SMALL   Image not big enough. ImageSize has required size
-  @retval   EFI_NOT_FOUND          FileNameGuid not found
+  @retval  EFI_SUCCESS          The image is found and data and size is returned.
+  @retval  EFI_UNSUPPORTED      FvHandle does not support EFI_FIRMWARE_VOLUME2_PROTOCOL.
+  @retval  EFI_NOT_FOUND        The image specified by NameGuid and SectionType can't be found.
+  @retval  EFI_OUT_OF_RESOURCES There were not enough resources to allocate the output data buffer or complete the operations.
+  @retval  EFI_DEVICE_ERROR	    A hardware error occurs during reading from the Firmware Volume.
+  @retval  EFI_ACCESS_DENIED    The firmware volume containing the searched Firmware File is configured to disallow reads.
 
 **/
 EFI_STATUS
+EFIAPI
 GetGraphicsBitMapFromFVEx (
   IN  EFI_HANDLE    ImageHandle,
   IN  EFI_GUID      *FileNameGuid,
   OUT VOID          **Image,
   OUT UINTN         *ImageSize
-  );
-
-/**
-  Convert a *.BMP graphics image to a UGA blt buffer. If a NULL UgaBlt buffer
-  is passed in a UgaBlt buffer will be allocated by this routine. If a UgaBlt
-  buffer is passed in it will be used if it is big enough.
-
-  @param[in]      BmpImage      Pointer to BMP file
-  @param[in]      BmpImageSize  Number of bytes in BmpImage
-  @param[in,out]  UgaBlt        Buffer containing UGA version of BmpImage.
-  @param[in,out]  UgaBltSize    Size of UgaBlt in bytes.
-  @param[out]     PixelHeight   Height of UgaBlt/BmpImage in pixels
-  @param[out]     PixelWidth    Width of UgaBlt/BmpImage in pixels
-
-  @retval EFI_SUCCESS           UgaBlt and UgaBltSize are returned. 
-  @retval EFI_UNSUPPORTED       BmpImage is not a valid *.BMP image
-  @retval EFI_BUFFER_TOO_SMALL  The passed in UgaBlt buffer is not big enough.
-                                UgaBltSize will contain the required size.
-**/
-EFI_STATUS
-ConvertBmpToUgaBlt (
-  IN  VOID      *BmpImage,
-  IN  UINTN     BmpImageSize,
-  IN OUT VOID   **UgaBlt,
-  IN OUT UINTN  *UgaBltSize,
-  OUT UINTN     *PixelHeight,
-  OUT UINTN     *PixelWidth
   );
 
 
@@ -109,6 +88,7 @@ ConvertBmpToUgaBlt (
 
 **/
 EFI_STATUS
+EFIAPI
 EnableQuietBoot (
   IN  EFI_GUID  *LogoFile
   );
@@ -127,6 +107,7 @@ EnableQuietBoot (
 
 **/
 EFI_STATUS
+EFIAPI
 EnableQuietBootEx (
   IN  EFI_GUID    *LogoFile,
   IN  EFI_HANDLE  ImageHandle
@@ -141,6 +122,7 @@ EnableQuietBootEx (
 
 **/
 EFI_STATUS
+EFIAPI
 DisableQuietBoot (
   VOID
   );
@@ -154,29 +136,29 @@ DisableQuietBoot (
 
   @param[in]  Password   Password used to lock ConIn device.
 
-  @retval EFI_SUCCESS     ConsoleControl has been flipped to graphics and logo
-                          displayed.
+  @retval EFI_SUCCESS     lock the Console In Spliter virtual handle successfully.
   @retval EFI_UNSUPPORTED Password not found
 
 **/
 EFI_STATUS
+EFIAPI
 LockKeyboards (
   IN  CHAR16    *Password
   );
 
 
 /**
-  Print to graphics screen at the given X,Y coordinates of the graphics screen.
+  Print Unicode string to graphics screen at the given X,Y coordinates of the graphics screen.
   see definition of Print to find rules for constructing Fmt.
 
   @param[in]  X            Row to start printing at
   @param[in]  Y            Column to start printing at
-  @param[in]  Foreground   Foreground color
-  @param[in]  Background   background color
+  @param[in]  ForeGround   Foreground color
+  @param[in]  BackGround   background color
   @param[in]  Fmt          Print format sting. See definition of Print
   @param[in]  ...          Argumnet stream defined by Fmt string
 
-  @retval UINTN     Number of Characters printed
+  @return  Number of Characters printed.
 
 **/
 UINTN
@@ -184,8 +166,8 @@ EFIAPI
 PrintXY (
   IN UINTN                            X,
   IN UINTN                            Y,
-  IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *Foreground, OPTIONAL
-  IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *Background, OPTIONAL
+  IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *ForeGround, OPTIONAL
+  IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *BackGround, OPTIONAL
   IN CHAR16                           *Fmt,
   ...
   );

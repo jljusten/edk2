@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <DxeMain.h>
+#include "DxeMain.h"
 
 //
 // DXE Core Global Variables for Protocols from PEI
@@ -29,29 +29,15 @@ EFI_TIMER_ARCH_PROTOCOL           *gTimer         = NULL;
 EFI_BDS_ARCH_PROTOCOL             *gBds           = NULL;
 EFI_WATCHDOG_TIMER_ARCH_PROTOCOL  *gWatchdogTimer = NULL;
 
-
-//
-// BugBug: I'n not runtime, but is the PPI?
-//
-EFI_STATUS_CODE_PROTOCOL     gStatusCodeInstance = {
-  NULL
-};
-
-EFI_STATUS_CODE_PROTOCOL     *gStatusCode    = &gStatusCodeInstance;
-
-
 //
 // DXE Core Global used to update core loaded image protocol handle
 //
 EFI_GUID                           *gDxeCoreFileName;
 EFI_LOADED_IMAGE_PROTOCOL          *gDxeCoreLoadedImage;
 
-
-
 //
 // DXE Core Module Variables
 //
-
 EFI_BOOT_SERVICES mBootServices = {
   {
     EFI_BOOT_SERVICES_SIGNATURE,                                                          // Signature
@@ -203,7 +189,6 @@ EFI_RUNTIME_ARCH_PROTOCOL *gRuntime = &gRuntimeTemplate;
 // DXE Core Global Variables for the EFI System Table, Boot Services Table,
 // DXE Services Table, and Runtime Services Table
 //
-EFI_BOOT_SERVICES     *gDxeCoreBS = &mBootServices;
 EFI_DXE_SERVICES      *gDxeCoreDS = &mDxeServices;
 EFI_SYSTEM_TABLE      *gDxeCoreST = NULL;
 
@@ -215,7 +200,6 @@ EFI_SYSTEM_TABLE      *gDxeCoreST = NULL;
 EFI_RUNTIME_SERVICES  *gDxeCoreRT = &mEfiRuntimeServicesTableTemplate;
 EFI_HANDLE            gDxeCoreImageHandle = NULL;
 
-VOID  *mHobStart;
 
 //
 // EFI Decompress Protocol
@@ -232,10 +216,9 @@ EFI_DECOMPRESS_PROTOCOL  gEfiDecompress = {
 /**
   Main entry point to DXE Core.
 
-  @param  HobStart               Pointer to the beginning of the HOB List from 
-                                 PEI 
+  @param  HobStart               Pointer to the beginning of the HOB List from PEI.
 
-  @return This function should never return
+  @return This function should never return.
 
 **/
 VOID
@@ -248,8 +231,6 @@ DxeMain (
   EFI_PHYSICAL_ADDRESS               MemoryBaseAddress;
   UINT64                             MemoryLength;
 
-  mHobStart = HobStart;
-
   //
   // Initialize Memory Services
   //
@@ -259,10 +240,10 @@ DxeMain (
   // Allocate the EFI System Table and EFI Runtime Service Table from EfiRuntimeServicesData
   // Use the templates to initialize the contents of the EFI System Table and EFI Runtime Services Table
   //
-  gDxeCoreST = CoreAllocateRuntimeCopyPool (sizeof (EFI_SYSTEM_TABLE), &mEfiSystemTableTemplate);
+  gDxeCoreST = AllocateRuntimeCopyPool (sizeof (EFI_SYSTEM_TABLE), &mEfiSystemTableTemplate);
   ASSERT (gDxeCoreST != NULL);
 
-  gDxeCoreRT = CoreAllocateRuntimeCopyPool (sizeof (EFI_RUNTIME_SERVICES), &mEfiRuntimeServicesTableTemplate);
+  gDxeCoreRT = AllocateRuntimeCopyPool (sizeof (EFI_RUNTIME_SERVICES), &mEfiRuntimeServicesTableTemplate);
   ASSERT (gDxeCoreRT != NULL);
 
   gDxeCoreST->RuntimeServices = gDxeCoreRT;
@@ -287,10 +268,6 @@ DxeMain (
   ASSERT_EFI_ERROR (Status);
 
   //
-  // The HobStart is relocated in gcd service init. Sync mHobStart varible.
-  //
-  mHobStart = HobStart;
-  
   // Install the DXE Services Table into the EFI System Tables's Configuration Table
   //
   Status = CoreInstallConfigurationTable (&gEfiDxeServicesTableGuid, gDxeCoreDS);
@@ -309,14 +286,12 @@ DxeMain (
   ASSERT_EFI_ERROR (Status);
 
   //
-  // Initialize the ReportStatusCode with PEI version, if available
-  //
-  CoreGetPeiProtocol (&gEfiStatusCodeRuntimeProtocolGuid, (VOID **)&gStatusCode->ReportStatusCode);
-
-  //
   // Report Status Code here for DXE_ENTRY_POINT once it is available
   //
-  CoreReportProgressCode (FixedPcdGet32(PcdStatusCodeValueDxeCoreEntry));
+  REPORT_STATUS_CODE (
+    EFI_PROGRESS_CODE,
+    FixedPcdGet32(PcdStatusCodeValueDxeCoreEntry)
+    );
 
   //
   // Create the aligned system table pointer structure that is used by external
@@ -330,7 +305,7 @@ DxeMain (
     gDxeCoreImageHandle
     );
 
-  DEBUG ((DEBUG_INFO | DEBUG_LOAD, "HOBLIST address in DXE = 0x%016lx\n", (UINT64) (UINTN) HobStart));
+  DEBUG ((DEBUG_INFO | DEBUG_LOAD, "HOBLIST address in DXE = 0x%p\n", HobStart));
 
   //
   // Initialize the Event Services
@@ -355,10 +330,10 @@ DxeMain (
   // Publish the EFI, Tiano, and Custom Decompress protocols for use by other DXE components
   //
   Status = CoreInstallMultipleProtocolInterfaces (
-              &mDecompressHandle,
-              &gEfiDecompressProtocolGuid,           &gEfiDecompress,
-              NULL
-              );
+             &mDecompressHandle,
+             &gEfiDecompressProtocolGuid,           &gEfiDecompress,
+             NULL
+             );
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -411,7 +386,11 @@ DxeMain (
   //
   // Report Status code before transfer control to BDS
   //
-  CoreReportProgressCode (FixedPcdGet32 (PcdStatusCodeValueDxeCoreHandoffToBds));
+  REPORT_STATUS_CODE (
+    EFI_PROGRESS_CODE,
+    FixedPcdGet32 (PcdStatusCodeValueDxeCoreHandoffToBds)
+    );
+
   //
   // Display any drivers that were not dispatched because dependency expression
   // evaluated to false if this is a debug build
@@ -461,7 +440,7 @@ CoreEfiNotAvailableYetArg0 (
   Place holder function until all the Boot Services and Runtime Services are
   available.
 
-  @param  Arg1                   Undefined 
+  @param  Arg1                   Undefined
 
   @return EFI_NOT_AVAILABLE_YET
 
@@ -485,8 +464,8 @@ CoreEfiNotAvailableYetArg1 (
 /**
   Place holder function until all the Boot Services and Runtime Services are available.
 
-  @param  Arg1                   Undefined 
-  @param  Arg2                   Undefined 
+  @param  Arg1                   Undefined
+  @param  Arg2                   Undefined
 
   @return EFI_NOT_AVAILABLE_YET
 
@@ -511,9 +490,9 @@ CoreEfiNotAvailableYetArg2 (
 /**
   Place holder function until all the Boot Services and Runtime Services are available.
 
-  @param  Arg1                   Undefined 
-  @param  Arg2                   Undefined 
-  @param  Arg3                   Undefined 
+  @param  Arg1                   Undefined
+  @param  Arg2                   Undefined
+  @param  Arg3                   Undefined
 
   @return EFI_NOT_AVAILABLE_YET
 
@@ -539,10 +518,10 @@ CoreEfiNotAvailableYetArg3 (
 /**
   Place holder function until all the Boot Services and Runtime Services are available.
 
-  @param  Arg1                   Undefined 
-  @param  Arg2                   Undefined 
-  @param  Arg3                   Undefined 
-  @param  Arg4                   Undefined 
+  @param  Arg1                   Undefined
+  @param  Arg2                   Undefined
+  @param  Arg3                   Undefined
+  @param  Arg4                   Undefined
 
   @return EFI_NOT_AVAILABLE_YET
 
@@ -569,11 +548,11 @@ CoreEfiNotAvailableYetArg4 (
 /**
   Place holder function until all the Boot Services and Runtime Services are available.
 
-  @param  Arg1                   Undefined 
-  @param  Arg2                   Undefined 
-  @param  Arg3                   Undefined 
-  @param  Arg4                   Undefined 
-  @param  Arg5                   Undefined 
+  @param  Arg1                   Undefined
+  @param  Arg2                   Undefined
+  @param  Arg3                   Undefined
+  @param  Arg4                   Undefined
+  @param  Arg5                   Undefined
 
   @return EFI_NOT_AVAILABLE_YET
 
@@ -598,42 +577,6 @@ CoreEfiNotAvailableYetArg5 (
 }
 
 
-
-/**
-  Searches for a Protocol Interface passed from PEI through a HOB.
-
-  @param  ProtocolGuid           The Protocol GUID to search for in the HOB List 
-  @param  Interface              A pointer to the interface for the Protocol GUID 
-
-  @retval EFI_SUCCESS            The Protocol GUID was found and its interface is 
-                                 returned in Interface 
-  @retval EFI_NOT_FOUND          The Protocol GUID was not found in the HOB List
-
-**/
-EFI_STATUS
-CoreGetPeiProtocol (
-  IN EFI_GUID  *ProtocolGuid,
-  IN VOID      **Interface
-  )
-{
-  EFI_HOB_GUID_TYPE   *GuidHob;
-  VOID                *Buffer;
-
-  GuidHob = GetNextGuidHob (ProtocolGuid, mHobStart);
-  if (GuidHob == NULL) {
-    return EFI_NOT_FOUND;
-  }
-
-  Buffer = GET_GUID_HOB_DATA (GuidHob);
-  ASSERT (Buffer != NULL);
-
-  *Interface = (VOID *)(*(UINTN *)(Buffer));
-
-  return EFI_SUCCESS;
-}
-
-
-
 /**
   Calcualte the 32-bit CRC in a EFI table using the service provided by the
   gRuntime service.
@@ -651,24 +594,22 @@ CalculateEfiHdrCrc (
   Hdr->CRC32 = 0;
 
   //
-  // If gDxeCoreBS->CalculateCrce32 () == CoreEfiNotAvailableYet () then
+  // If gBS->CalculateCrce32 () == CoreEfiNotAvailableYet () then
   //  Crc will come back as zero if we set it to zero here
   //
   Crc = 0;
-  gDxeCoreBS->CalculateCrc32 ((UINT8 *)Hdr, Hdr->HeaderSize, &Crc);
+  gBS->CalculateCrc32 ((UINT8 *)Hdr, Hdr->HeaderSize, &Crc);
   Hdr->CRC32 = Crc;
 }
-
-
 
 
 /**
   Terminates all boot services.
 
-  @param  ImageHandle            Handle that identifies the exiting image. 
+  @param  ImageHandle            Handle that identifies the exiting image.
   @param  MapKey                 Key to the latest memory map.
 
-  @retval EFI_SUCCESS            Boot Services terminated 
+  @retval EFI_SUCCESS            Boot Services terminated
   @retval EFI_INVALID_PARAMETER  MapKey is incorrect.
 
 **/
@@ -679,12 +620,12 @@ CoreExitBootServices (
   IN UINTN        MapKey
   )
 {
-  EFI_STATUS    Status;
-  EFI_STATUS    StatusTemp;
+  EFI_STATUS                Status;
+  EFI_STATUS                StatusTemp;
   EFI_TCG_PLATFORM_PROTOCOL *TcgPlatformProtocol;
 
   //
-  // Measure invocation of ExitBootServices, 
+  // Measure invocation of ExitBootServices,
   // which is defined by TCG_EFI_Platform_1_20_Final Specification
   //
   TcgPlatformProtocol = NULL;
@@ -732,9 +673,10 @@ CoreExitBootServices (
   //
   // Report that ExitBootServices() has been called
   //
-  // We are using gEfiCallerIdGuid as the caller ID for Dxe Core
-  //
-  CoreReportProgressCode (FixedPcdGet32 (PcdStatusCodeValueBootServiceExit));
+  REPORT_STATUS_CODE (
+    EFI_PROGRESS_CODE,
+    FixedPcdGet32 (PcdStatusCodeValueBootServiceExit)
+    );
 
   //
   // Clear the non-runtime values of the EFI System Table
@@ -755,8 +697,8 @@ CoreExitBootServices (
   //
   // Zero out the Boot Service Table
   //
-  SetMem (gDxeCoreBS, sizeof (EFI_BOOT_SERVICES), 0);
-  gDxeCoreBS = NULL;
+  ZeroMem (gBS, sizeof (EFI_BOOT_SERVICES));
+  gBS = NULL;
 
   //
   // Update the AtRuntime field in Runtiem AP.
@@ -770,7 +712,7 @@ CoreExitBootServices (
     StatusTemp = TcgPlatformProtocol->MeasureAction (EFI_EXIT_BOOT_SERVICES_SUCCEEDED);
     ASSERT_EFI_ERROR (StatusTemp);
   }
- 
+
   return Status;
 }
 
@@ -804,7 +746,7 @@ CoreExitBootServices (
                              buffer that is required to decompress the
                              compressed buffer specified by Source and
                              SourceSize.
-   
+
   @retval EFI_SUCCESS        The size of the uncompressed data was returned in
                              DestinationSize and the size of the scratch buffer
                              was returned in ScratchSize.
@@ -824,9 +766,7 @@ DxeMainUefiDecompressGetInfo (
   OUT  UINT32                           *ScratchSize
   )
 {
-  if (Source == NULL 
-        || DestinationSize == NULL 
-        || ScratchSize == NULL) {
+  if (Source == NULL || DestinationSize == NULL || ScratchSize == NULL) {
     return EFI_INVALID_PARAMETER;
   }
   return UefiDecompressGetInfo (Source, SourceSize, DestinationSize, ScratchSize);
@@ -859,7 +799,7 @@ DxeMainUefiDecompressGetInfo (
                               the decompression.
   @param  ScratchSize         The size of scratch buffer. The size of the
                               scratch buffer needed is obtained from GetInfo().
-  
+
   @retval EFI_SUCCESS         Decompression completed successfully, and the
                               uncompressed buffer is returned in Destination.
   @retval EFI_INVALID_PARAMETER  The source buffer specified by Source and
@@ -870,7 +810,7 @@ DxeMainUefiDecompressGetInfo (
 EFI_STATUS
 EFIAPI
 DxeMainUefiDecompress (
-  IN EFI_DECOMPRESS_PROTOCOL              *This,
+  IN     EFI_DECOMPRESS_PROTOCOL          *This,
   IN     VOID                             *Source,
   IN     UINT32                           SourceSize,
   IN OUT VOID                             *Destination,
@@ -882,13 +822,11 @@ DxeMainUefiDecompress (
   EFI_STATUS  Status;
   UINT32      TestDestinationSize;
   UINT32      TestScratchSize;
-  
-  if (Source == NULL 
-        || Destination== NULL 
-        || Scratch == NULL) {
+
+  if (Source == NULL || Destination== NULL || Scratch == NULL) {
     return EFI_INVALID_PARAMETER;
   }
-  
+
   Status = UefiDecompressGetInfo (Source, SourceSize, &TestDestinationSize, &TestScratchSize);
   if (EFI_ERROR (Status)) {
     return Status;

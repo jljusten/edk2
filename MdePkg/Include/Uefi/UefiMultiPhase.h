@@ -17,9 +17,9 @@
 
 #include <ProcessorBind.h>
 
-//
-// Enumeration of memory types introduced in UEFI.
-// 
+///
+/// Enumeration of memory types introduced in UEFI.
+/// 
 typedef enum {
   EfiReservedMemoryType,
   EfiLoaderCode,
@@ -39,9 +39,9 @@ typedef enum {
 } EFI_MEMORY_TYPE;
 
 
-//
-// Data structure that precedes all of the standard EFI table types.
-// 
+///
+/// Data structure that precedes all of the standard EFI table types.
+/// 
 typedef struct {
   UINT64  Signature;
   UINT32  Revision;
@@ -50,21 +50,19 @@ typedef struct {
   UINT32  Reserved;
 } EFI_TABLE_HEADER;
 
-//
-// Attributes of variable.
-// 
+///
+/// Attributes of variable.
+/// 
 #define EFI_VARIABLE_NON_VOLATILE                 0x00000001
 #define EFI_VARIABLE_BOOTSERVICE_ACCESS           0x00000002
 #define EFI_VARIABLE_RUNTIME_ACCESS               0x00000004
 #define EFI_VARIABLE_HARDWARE_ERROR_RECORD        0x00000008
 
-//
-// This attribute is identified by the mnemonic 'HR' 
-// elsewhere in this specification.
-// 
+///
+/// This attribute is identified by the mnemonic 'HR' 
+/// elsewhere in this specification.
+/// 
 #define EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS   0x00000010
-
-
 
 //
 // _WIN_CERTIFICATE.wCertificateType
@@ -106,15 +104,15 @@ typedef struct _WIN_CERTIFICATE {
   //UINT8 bCertificate[ANYSIZE_ARRAY];
 } WIN_CERTIFICATE;
 
-//
-// WIN_CERTIFICATE_UEFI_GUID.CertType
-// 
+///
+/// WIN_CERTIFICATE_UEFI_GUID.CertType
+/// 
 #define EFI_CERT_TYPE_RSA2048_SHA256_GUID \
   {0xa7717414, 0xc616, 0x4977, {0x94, 0x20, 0x84, 0x47, 0x12, 0xa7, 0x35, 0xbf } }
 
-//
-// WIN_CERTIFICATE_UEFI_GUID.CertData
-// 
+///
+/// WIN_CERTIFICATE_UEFI_GUID.CertData
+/// 
 typedef struct _EFI_CERT_BLOCK_RSA_2048_SHA256 {
   UINT32  HashType;
   UINT8   PublicKey[256];
@@ -136,16 +134,6 @@ typedef struct _EFI_CERT_BLOCK_RSA_2048_SHA256 {
                     the data is determined by the CertType. In
                     this case the value is
                     EFI_CERT_BLOCK_RSA_2048_SHA256.
-
-  @param Information  The WIN_CERTIFICATE_UEFI_GUID certificate
-                      type allows new types of certificates to
-                      be developed for driver authentication
-                      without requiring a new certificate type.
-                      The CertType defines the format of the
-                      CertData, which length is defined by the
-                      size of the certificate less the fixed
-                      size of the WIN_CERTIFICATE_UEFI_GUID
-                      structure.
 
 **/
 typedef struct _WIN_CERTIFICATE_UEFI_GUID {

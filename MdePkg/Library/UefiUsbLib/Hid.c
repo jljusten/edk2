@@ -1,6 +1,7 @@
 /** @file
 
-  The library provides USB descriptor, protocol operations.
+  The library provides USB HID Class standard and specific requests defined
+  in USB HID Firmware Specification 7 section : Requests.
   
   Copyright (c) 2004, Intel Corporation
   All rights reserved. This program and the accompanying materials
@@ -15,21 +16,33 @@
 
 #include <UefiUsbLibInternal.h>
 
+//  
+//  Hid RequestType Bits specifying characteristics of request.
+//  Valid values are 10100001b (0xa1) or 00100001b (0x21).
+//  The following description:
+//    7 Data transfer direction
+//        0 = Host to device
+//        1 = Device to host
+//    6..5 Type
+//        1 = Class
+//    4..0 Recipient
+//        1 = Interface
+//
 
 /**
-  Get Hid Descriptor
+  Get Hid Descriptor.
 
-  @param  UsbIo             EFI_USB_IO_PROTOCOL
-  @param  InterfaceNum      Hid interface number
+  @param  UsbIo             EFI_USB_IO_PROTOCOL.
+  @param  InterfaceNum      Hid interface number.
   @param  HidDescriptor     Caller allocated buffer to store Usb hid descriptor if
                             successfully returned.
 
-  @return EFI_SUCCESS
-  @return EFI_DEVICE_ERROR
-  @return EFI_TIMEOUT
+  @return Status of getting HID descriptor through USB I/O
+          protocol's UsbControlTransfer().
 
 **/
 EFI_STATUS
+EFIAPI
 UsbGetHidDescriptor (
   IN  EFI_USB_IO_PROTOCOL        *UsbIo,
   IN  UINT8                      InterfaceNum,
@@ -44,9 +57,9 @@ UsbGetHidDescriptor (
     return EFI_INVALID_PARAMETER;
   }
 
-  Request.RequestType = 0x81;
-  Request.Request     = 0x06;
-  Request.Value       = (UINT16) (0x21 << 8);
+  Request.RequestType = USB_HID_GET_DESCRIPTOR_REQ_TYPE;
+  Request.Request     = USB_REQ_GET_DESCRIPTOR;
+  Request.Value       = (UINT16) (USB_DESC_TYPE_HID << 8);
   Request.Index       = InterfaceNum;
   Request.Length      = sizeof (EFI_USB_HID_DESCRIPTOR);
 
@@ -63,12 +76,9 @@ UsbGetHidDescriptor (
   return Result;
 
 }
-//
-// Function to get Report Class descriptor
-//
 
 /**
-  get Report Class descriptor
+  Get Report Class descriptor.
 
   @param  UsbIo             EFI_USB_IO_PROTOCOL.
   @param  InterfaceNum      Report interface number.
@@ -76,12 +86,12 @@ UsbGetHidDescriptor (
   @param  DescriptorBuffer  Caller allocated buffer to store Usb report descriptor
                             if successfully returned.
 
-  @return EFI_SUCCESS
-  @return EFI_DEVICE_ERROR
-  @return EFI_TIMEOUT
+  @return Status of getting Report Class descriptor through USB
+          I/O protocol's UsbControlTransfer().
 
 **/
 EFI_STATUS
+EFIAPI
 UsbGetReportDescriptor (
   IN  EFI_USB_IO_PROTOCOL     *UsbIo,
   IN  UINT8                   InterfaceNum,
@@ -99,9 +109,9 @@ UsbGetReportDescriptor (
   //
   // Fill Device request packet
   //
-  Request.RequestType = 0x81;
-  Request.Request     = 0x06;
-  Request.Value       = (UINT16) (0x22 << 8);
+  Request.RequestType = USB_HID_GET_DESCRIPTOR_REQ_TYPE;
+  Request.Request     = USB_REQ_GET_DESCRIPTOR;
+  Request.Value       = (UINT16) (USB_DESC_TYPE_REPORT << 8);
   Request.Index       = InterfaceNum;
   Request.Length      = DescriptorSize;
 
@@ -118,23 +128,20 @@ UsbGetReportDescriptor (
   return Result;
 
 }
-//
-// Following are HID class request
-//
 
 /**
   Get Hid Protocol Request
 
-  @param  UsbIo             EFI_USB_IO_PROTOCOL
+  @param  UsbIo             EFI_USB_IO_PROTOCOL.
   @param  Interface         Which interface the caller wants to get protocol
   @param  Protocol          Protocol value returned.
 
-  @return EFI_SUCCESS
-  @return EFI_DEVICE_ERROR
-  @return EFI_TIMEOUT
+  @return Status of getting Protocol Request through USB I/O
+          protocol's UsbControlTransfer().
 
 **/
 EFI_STATUS
+EFIAPI
 UsbGetProtocolRequest (
   IN EFI_USB_IO_PROTOCOL     *UsbIo,
   IN UINT8                   Interface,
@@ -151,10 +158,7 @@ UsbGetProtocolRequest (
   //
   // Fill Device request packet
   //
-  Request.RequestType = 0xa1;
-  //
-  // 10100001b;
-  //
+  Request.RequestType = USB_HID_CLASS_GET_REQ_TYPE;
   Request.Request = EFI_USB_GET_PROTOCOL_REQUEST;
   Request.Value   = 0;
   Request.Index   = Interface;
@@ -176,18 +180,19 @@ UsbGetProtocolRequest (
 
 
 /**
-  Set Hid Protocol Request
+  Set Hid Protocol Request.
 
-  @param  UsbIo             EFI_USB_IO_PROTOCOL
-  @param  Interface         Which interface the caller wants to set protocol
+  @param  UsbIo             EFI_USB_IO_PROTOCOL.
+  @param  Interface         Which interface the caller wants to
+                            set protocol.
   @param  Protocol          Protocol value the caller wants to set.
 
-  @return EFI_SUCCESS
-  @return EFI_DEVICE_ERROR
-  @return EFI_TIMEOUT
+  @return Status of setting Protocol Request through USB I/O
+          protocol's UsbControlTransfer().
 
 **/
 EFI_STATUS
+EFIAPI
 UsbSetProtocolRequest (
   IN EFI_USB_IO_PROTOCOL     *UsbIo,
   IN UINT8                   Interface,
@@ -204,10 +209,7 @@ UsbSetProtocolRequest (
   //
   // Fill Device request packet
   //
-  Request.RequestType = 0x21;
-  //
-  // 00100001b;
-  //
+  Request.RequestType = USB_HID_CLASS_SET_REQ_TYPE;
   Request.Request = EFI_USB_SET_PROTOCOL_REQUEST;
   Request.Value   = Protocol;
   Request.Index   = Interface;
@@ -226,21 +228,20 @@ UsbSetProtocolRequest (
 }
 
 
-
 /**
   Set Idel request.
 
-  @param  UsbIo             EFI_USB_IO_PROTOCOL
+  @param  UsbIo             EFI_USB_IO_PROTOCOL.
   @param  Interface         Which interface the caller wants to set.
   @param  ReportId          Which report the caller wants to set.
   @param  Duration          Idle rate the caller wants to set.
 
-  @return EFI_SUCCESS
-  @return EFI_DEVICE_ERROR
-  @return EFI_TIMEOUT
+  @return Status of setting IDLE Request through USB I/O
+          protocol's UsbControlTransfer().
 
 **/
 EFI_STATUS
+EFIAPI
 UsbSetIdleRequest (
   IN EFI_USB_IO_PROTOCOL     *UsbIo,
   IN UINT8                   Interface,
@@ -258,10 +259,7 @@ UsbSetIdleRequest (
   //
   // Fill Device request packet
   //
-  Request.RequestType = 0x21;
-  //
-  // 00100001b;
-  //
+  Request.RequestType = USB_HID_CLASS_SET_REQ_TYPE;
   Request.Request = EFI_USB_SET_IDLE_REQUEST;
   Request.Value   = (UINT16) ((Duration << 8) | ReportId);
   Request.Index   = Interface;
@@ -283,17 +281,17 @@ UsbSetIdleRequest (
 /**
   Get Idel request.
 
-  @param  UsbIo             EFI_USB_IO_PROTOCOL
+  @param  UsbIo             EFI_USB_IO_PROTOCOL.
   @param  Interface         Which interface the caller wants to get.
   @param  ReportId          Which report the caller wants to get.
   @param  Duration          Idle rate the caller wants to get.
 
-  @return EFI_SUCCESS
-  @return EFI_DEVICE_ERROR
-  @return EFI_TIMEOUT
+  @return Status of getting IDLE Request through USB I/O
+          protocol's UsbControlTransfer().
 
 **/
 EFI_STATUS
+EFIAPI
 UsbGetIdleRequest (
   IN  EFI_USB_IO_PROTOCOL     *UsbIo,
   IN  UINT8                   Interface,
@@ -311,10 +309,7 @@ UsbGetIdleRequest (
   //
   // Fill Device request packet
   //
-  Request.RequestType = 0xa1;
-  //
-  // 10100001b;
-  //
+  Request.RequestType = USB_HID_CLASS_GET_REQ_TYPE;
   Request.Request = EFI_USB_GET_IDLE_REQUEST;
   Request.Value   = ReportId;
   Request.Index   = Interface;
@@ -338,19 +333,19 @@ UsbGetIdleRequest (
 /**
   Hid Set Report request.
 
-  @param  UsbIo             EFI_USB_IO_PROTOCOL
+  @param  UsbIo             EFI_USB_IO_PROTOCOL.
   @param  Interface         Which interface the caller wants to set.
   @param  ReportId          Which report the caller wants to set.
   @param  ReportType        Type of report.
   @param  ReportLen         Length of report descriptor.
   @param  Report            Report Descriptor buffer.
 
-  @return EFI_SUCCESS
-  @return EFI_DEVICE_ERROR
-  @return EFI_TIMEOUT
+  @return Status of setting Report Request through USB I/O
+          protocol's UsbControlTransfer().
 
 **/
 EFI_STATUS
+EFIAPI
 UsbSetReportRequest (
   IN EFI_USB_IO_PROTOCOL     *UsbIo,
   IN UINT8                   Interface,
@@ -370,10 +365,7 @@ UsbSetReportRequest (
   //
   // Fill Device request packet
   //
-  Request.RequestType = 0x21;
-  //
-  // 00100001b;
-  //
+  Request.RequestType = USB_HID_CLASS_SET_REQ_TYPE;
   Request.Request = EFI_USB_SET_REPORT_REQUEST;
   Request.Value   = (UINT16) ((ReportType << 8) | ReportId);
   Request.Index   = Interface;
@@ -396,19 +388,19 @@ UsbSetReportRequest (
 /**
   Hid Set Report request.
 
-  @param  UsbIo             EFI_USB_IO_PROTOCOL
+  @param  UsbIo             EFI_USB_IO_PROTOCOL.
   @param  Interface         Which interface the caller wants to set.
   @param  ReportId          Which report the caller wants to set.
   @param  ReportType        Type of report.
   @param  ReportLen         Length of report descriptor.
   @param  Report            Caller allocated buffer to store Report Descriptor.
 
-  @return EFI_SUCCESS
-  @return EFI_DEVICE_ERROR
-  @return EFI_TIMEOUT
+  @return Status of getting Report Request through USB I/O
+          protocol's UsbControlTransfer().
 
 **/
 EFI_STATUS
+EFIAPI
 UsbGetReportRequest (
   IN EFI_USB_IO_PROTOCOL     *UsbIo,
   IN UINT8                   Interface,
@@ -428,10 +420,7 @@ UsbGetReportRequest (
   //
   // Fill Device request packet
   //
-  Request.RequestType = 0xa1;
-  //
-  // 10100001b;
-  //
+  Request.RequestType = USB_HID_CLASS_GET_REQ_TYPE;
   Request.Request = EFI_USB_GET_REPORT_REQUEST;
   Request.Value   = (UINT16) ((ReportType << 8) | ReportId);
   Request.Index   = Interface;

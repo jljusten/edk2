@@ -1,5 +1,8 @@
 /** @file
   PEI Services Table Pointer Library.
+  
+  This library is used for PEIM which does executed from flash device directly but
+  executed in memory.
 
   Copyright (c) 2006, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
@@ -16,20 +19,17 @@
 #include <Library/PeiServicesTablePointerLib.h>
 #include <Library/DebugLib.h>
 
-#include "PeiServicesTablePointerInternal.h"
-
-static EFI_PEI_SERVICES  **gPeiServices;
+STATIC EFI_PEI_SERVICES  **gPeiServices;
 
 /**
-  The function set the pointer of PEI services immediately preceding the IDT table
-  according to PI specification.
+  The function cache the pointer of PEI services to global variable.
   
   @param    PeiServices   The address of PeiServices pointer.
 **/
 VOID
 EFIAPI
 SetPeiServicesTablePointer (
-  EFI_PEI_SERVICES  **PeiServices
+  IN EFI_PEI_SERVICES  **PeiServices
   )
 {
   gPeiServices = PeiServices;
@@ -60,7 +60,7 @@ GetPeiServicesTablePointer (
   The constructor function caches the pointer to PEI services.
   It will always return EFI_SUCCESS.
 
-  @param  FfsHeader   Pointer to FFS header the loaded driver.
+  @param  FileHandle   Handle of FFS header the loaded driver.
   @param  PeiServices Pointer to the PEI services.
 
   @retval EFI_SUCCESS   The constructor always returns EFI_SUCCESS.

@@ -1,7 +1,7 @@
 /** @file
   Mde PI library functions.
 
-  Copyright (c) 2007, Intel Corporation<BR>
+  Copyright (c) 2007 - 2008, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -65,16 +65,14 @@ InternalImageHandleToFvHandle (
   
     This functions first locate the EFI_FIRMWARE_VOLUME2_PROTOCOL protocol instance on FvHandle in order to 
     carry out the Firmware Volume read operation. The function then reads the Firmware Section found sepcifed 
-    by NameGuid, SectionType and Instance. 
+    by NameGuid, SectionType and SectionInstance. 
     
-    The search order for the section specified by SectionType within a Firmware File is defined by
-    EFI_FIRMWARE_VOLUME2_PROTOCOL.ReadSection (). Please check Section 2.4 of Volume 3: Platform Initialization 
-    Shared Architectural Elements for detailes.
+    The details of this search order is defined in description of EFI_FIRMWARE_VOLUME2_PROTOCOL.ReadSection () 
+    found in PI Specification.
     
-    If SectionType is EFI_SECTION_TE, EFI_SECTION_TE will be used as Firmware Section type to read Firmware Section 
-    data from the Firmware File. If no such section exists, EFI_SECTION_PE32 will be used as Firmware Section type to 
-    read Firmware Section data from the Firmware File. If no such section specified is found to match , 
-    EFI_NOT_FOUND is returned.
+    If SectionType is EFI_SECTION_TE, EFI_SECTION_TE is used as section type to start the search. If EFI_SECTION_TE section 
+    is not found, EFI_SECTION_PE32 will be used to try the search again. If no EFI_SECTION_PE32 section is found, EFI_NOT_FOUND 
+    is returned.
     
     The data and size is returned by Buffer and Size. The caller is responsible to free the Buffer allocated 
     by this function. This function can be only called at TPL_NOTIFY and below.
@@ -84,29 +82,27 @@ InternalImageHandleToFvHandle (
     If Buffer is NULL, then ASSERT();
     If Size is NULL, then ASSERT().
 
-    @param  FvHandle              The device handle that contains a instance of EFI_FIRMWARE_VOLUME2_PROTOCOL instance.
-    @param  NameGuid             The GUID name of a Firmware File.
-    @param  SectionType         The Firmware Section type.
-    @param  Instance              The instance number of Firmware Section to read from starting from 0.
+    @param  FvHandle                The device handle that contains a instance of EFI_FIRMWARE_VOLUME2_PROTOCOL instance.
+    @param  NameGuid                The GUID name of a Firmware File.
+    @param  SectionType             The Firmware Section type.
+    @param  SectionInstance         The instance number of Firmware Section to read from starting from 0.
     @param  Buffer                  On output, Buffer contains the the data read from the section in the Firmware File found.
     @param  Size                    On output, the size of Buffer.
   
-    @retval  EFI_SUCCESS        The image is found and data and size is returned.
-    @retval  EFI_UNSUPPORTED   FvHandle does not support EFI_FIRMWARE_VOLUME2_PROTOCOL.
-    @retval  EFI_NOT_FOUND      The image specified by NameGuid and SectionType can't be found.
-    @retval  EFI_OUT_OF_RESOURCES There were not enough resources to allocate the output data buffer or complete the operations.
-    @retval  EFI_DEVICE_ERROR A hardware error occurs during reading from the Firmware Volume.
-    @retval  EFI_ACCESS_DENIED  The firmware volume containing the searched Firmware File is configured to disallow reads.
+    @retval  EFI_SUCCESS            The image is found and data and size is returned.
+    @retval  EFI_UNSUPPORTED        FvHandle does not support EFI_FIRMWARE_VOLUME2_PROTOCOL.
+    @retval  EFI_NOT_FOUND          The image specified by NameGuid and SectionType can't be found.
+    @retval  EFI_OUT_OF_RESOURCES   There were not enough resources to allocate the output data buffer or complete the operations.
+    @retval  EFI_DEVICE_ERROR       A hardware error occurs during reading from the Firmware Volume.
+    @retval  EFI_ACCESS_DENIED      The firmware volume containing the searched Firmware File is configured to disallow reads.
   
-  **/
-
-
+**/
 EFI_STATUS
 GetSectionFromFv (
   IN  EFI_HANDLE                    FvHandle,
   IN  CONST EFI_GUID                *NameGuid,
   IN  EFI_SECTION_TYPE              SectionType,
-  IN  UINTN                         Instance,
+  IN  UINTN                         SectionInstance,
   OUT VOID                          **Buffer,
   OUT UINTN                         *Size
   )
@@ -115,6 +111,10 @@ GetSectionFromFv (
   EFI_FIRMWARE_VOLUME2_PROTOCOL *Fv;
   UINT32                        AuthenticationStatus;
 
+  ASSERT (NameGuid != NULL);
+  ASSERT (Buffer != NULL);
+  ASSERT (Size != NULL);
+  
   ASSERT (FvHandle != NULL);
 
   Status = gBS->HandleProtocol (
@@ -135,7 +135,7 @@ GetSectionFromFv (
                       Fv,
                       NameGuid,
                       SectionType,
-                      0,
+                      SectionInstance,
                       Buffer,
                       Size,
                       &AuthenticationStatus
@@ -151,7 +151,7 @@ GetSectionFromFv (
                     Fv,
                     NameGuid,
                     EFI_SECTION_PE32,
-                    0,
+                    SectionInstance,
                     Buffer,
                     Size,
                     &AuthenticationStatus
@@ -163,12 +163,56 @@ GetSectionFromFv (
 
 
 
+/**
+  Locates a requested firmware section within a file and returns it to a buffer allocated by this function. 
+
+  PiLibGetSectionFromAnyFv () is used to read a specific section from a file within a firmware volume. The function
+  will search the first file with the specified name in all firmware volumes in the system. The search order for firmware 
+  volumes in the system is determistic but abitrary if no new firmware volume is added into the system between 
+  each calls of this function. 
+
+  After the specific file is located, the function searches the specifc firmware section with type SectionType in this file. 
+  The details of this search order is defined in description of EFI_FIRMWARE_VOLUME2_PROTOCOL.ReadSection () 
+  found in PI Specification.
+
+  If SectionType is EFI_SECTION_TE, EFI_SECTION_TE is used as section type to start the search. If EFI_SECTION_TE section 
+  is not found, EFI_SECTION_PE32 will be used to try the search again. If no EFI_SECTION_PE32 section is found, EFI_NOT_FOUND 
+  is returned.
+
+  The data and size is returned by Buffer and Size. The caller is responsible to free the Buffer allocated 
+  by this function. This function can only be called at TPL_NOTIFY and below.
+
+  If NameGuid is NULL, then ASSERT();
+  If Buffer is NULL, then ASSERT();
+  If Size is NULL, then ASSERT().
+
+  @param  NameGuid             Pointer to an EFI_GUID, which indicates the file name from which the requested 
+                               section will be read. Type EFI_GUID is defined in 
+                               InstallProtocolInterface() in the UEFI 2.0 specification. 
+  @param  SectionType          Indicates the section type to return. SectionType in conjunction with 
+                               SectionInstance indicates which section to return. Type 
+                               EFI_SECTION_TYPE is defined in EFI_COMMON_SECTION_HEADER.
+  @param  SectionInstance      Indicates which instance of sections with a type of SectionType to return. 
+                               SectionType in conjunction with SectionInstance indicates which section to 
+                               return. SectionInstance is zero based.
+  @param  Buffer               Pointer to a pointer to a buffer in which the section contents are returned, not 
+                               including the section header. Caller is responsible to free this memory.
+  @param  Size                 Pointer to a caller-allocated UINTN. It indicates the size of the memory represented by 
+                               *Buffer.
+
+  @retval  EFI_SUCCESS        The image is found and data and size is returned.
+  @retval  EFI_NOT_FOUND      The image specified by NameGuid and SectionType can't be found.
+  @retval  EFI_OUT_OF_RESOURCES There were not enough resources to allocate the output data buffer or complete the operations.
+  @retval  EFI_DEVICE_ERROR A hardware error occurs during reading from the Firmware Volume.
+  @retval  EFI_ACCESS_DENIED  The firmware volume containing the searched Firmware File is configured to disallow reads.
+
+**/
 EFI_STATUS
 EFIAPI
 PiLibGetSectionFromAnyFv (
   IN CONST  EFI_GUID           *NameGuid,
   IN        EFI_SECTION_TYPE   SectionType,
-  IN        UINTN              Instance,
+  IN        UINTN              SectionInstance,
   OUT       VOID               **Buffer,
   OUT       UINTN              *Size
   )
@@ -178,7 +222,6 @@ PiLibGetSectionFromAnyFv (
   UINTN                         HandleCount;
   UINTN                         Index;
   EFI_HANDLE                    FvHandle;
-  EFI_TPL                       OldTpl;
 
   //
   // Search the FV that contain the caller's FFS first.
@@ -191,7 +234,7 @@ PiLibGetSectionFromAnyFv (
              FvHandle,
              NameGuid,
              SectionType,
-             Instance,
+             SectionInstance,
              Buffer,
              Size
              );
@@ -199,8 +242,6 @@ PiLibGetSectionFromAnyFv (
     return EFI_SUCCESS;
   }
 
-  OldTpl = gBS->RaiseTPL (TPL_NOTIFY);
-  
   HandleBuffer = NULL;
   Status = gBS->LocateHandleBuffer (
                   ByProtocol,
@@ -213,26 +254,25 @@ PiLibGetSectionFromAnyFv (
     goto Done;
   }
 
-  for (Index = 0; Index < HandleCount; ++Index) {
+  for (Index = 0; Index < HandleCount; Index++) {
     //
     // Skip the FV that contain the caller's FFS
     //
-    if (HandleBuffer[Index] == FvHandle) {
-      continue;
+    if (HandleBuffer[Index] != FvHandle) {
+      Status = GetSectionFromFv (
+                 HandleBuffer[Index], 
+                 NameGuid, 
+                 SectionType, 
+                 SectionInstance,
+                 Buffer, 
+                 Size
+                 );
+
+      if (!EFI_ERROR (Status)) {
+        goto Done;
+      }
     }
 
-    Status = GetSectionFromFv (
-               HandleBuffer[Index], 
-               NameGuid, 
-               SectionType, 
-               Instance,
-               Buffer, 
-               Size
-               );
-
-    if (!EFI_ERROR (Status)) {
-      goto Done;
-    }
   }
 
   if (Index == HandleCount) {
@@ -241,8 +281,6 @@ PiLibGetSectionFromAnyFv (
 
 Done:
   
-  gBS->RestoreTPL (OldTpl);
-  
   if (HandleBuffer != NULL) {  
     FreePool(HandleBuffer);
   }
@@ -250,13 +288,54 @@ Done:
   
 }
 
+/**
+  Locates a requested firmware section within a file and returns it to a buffer allocated by this function. 
 
+  PiLibGetSectionFromCurrentFv () is used to read a specific section from a file within the same firmware volume from which
+  the running image is loaded. If the specific file is found, the function searches the specifc firmware section with type SectionType. 
+  The details of this search order is defined in description of EFI_FIRMWARE_VOLUME2_PROTOCOL.ReadSection () 
+  found in PI Specification.
+
+  If SectionType is EFI_SECTION_TE, EFI_SECTION_TE is used as section type to start the search. If EFI_SECTION_TE section 
+  is not found, EFI_SECTION_PE32 will be used to try the search again. If no EFI_SECTION_PE32 section is found, EFI_NOT_FOUND 
+  is returned.
+
+  The data and size is returned by Buffer and Size. The caller is responsible to free the Buffer allocated 
+  by this function. This function can be only called at TPL_NOTIFY and below.
+
+  If NameGuid is NULL, then ASSERT();
+  If Buffer is NULL, then ASSERT();
+  If Size is NULL, then ASSERT().
+
+  @param  NameGuid             Pointer to an EFI_GUID, which indicates the file name from which the requested 
+                               section will be read. Type EFI_GUID is defined in 
+                               InstallProtocolInterface() in the UEFI 2.0 specification. 
+  @param  SectionType          Indicates the section type to return. SectionType in conjunction with 
+                               SectionInstance indicates which section to return. Type 
+                               EFI_SECTION_TYPE is defined in EFI_COMMON_SECTION_HEADER.
+  @param  SectionInstance      Indicates which instance of sections with a type of SectionType to return. 
+                               SectionType in conjunction with SectionInstance indicates which section to 
+                               return. SectionInstance is zero based.
+  @param  Buffer               Pointer to a pointer to a buffer in which the section contents are returned, not 
+                               including the section header. Caller is responsible to free this memory.
+  @param  Size                 Pointer to a caller-allocated UINTN. It indicates the size of the memory represented by 
+                               *Buffer.
+
+
+  @retval  EFI_SUCCESS        The image is found and data and size is returned.
+  @retval  EFI_UNSUPPORTED   FvHandle does not support EFI_FIRMWARE_VOLUME2_PROTOCOL.
+  @retval  EFI_NOT_FOUND      The image specified by NameGuid and SectionType can't be found.
+  @retval  EFI_OUT_OF_RESOURCES There were not enough resources to allocate the output data buffer or complete the operations.
+  @retval  EFI_DEVICE_ERROR A hardware error occurs during reading from the Firmware Volume.
+  @retval  EFI_ACCESS_DENIED  The firmware volume containing the searched Firmware File is configured to disallow reads.
+  
+**/
 EFI_STATUS
 EFIAPI
 PiLibGetSectionFromCurrentFv (
   IN  CONST EFI_GUID                *NameGuid,
   IN  EFI_SECTION_TYPE              SectionType,
-  IN  UINTN                         Instance,
+  IN  UINTN                         SectionInstance,
   OUT VOID                          **Buffer,
   OUT UINTN                         *Size
     )
@@ -265,19 +344,54 @@ PiLibGetSectionFromCurrentFv (
           InternalImageHandleToFvHandle(gImageHandle),
           NameGuid,
           SectionType,
-          Instance,
+          SectionInstance,
           Buffer,
           Size
           );
 }
 
 
+/**
+  Locates a requested firmware section within a file and returns it to a buffer allocated by this function. 
 
+  PiLibGetSectionFromCurrentFfs () searches the specifc firmware section with type SectionType in the same firmware file from
+  which the running image is loaded. The details of this search order is defined in description of 
+  EFI_FIRMWARE_VOLUME2_PROTOCOL.ReadSection () found in PI Specification.
+
+  If SectionType is EFI_SECTION_TE, EFI_SECTION_TE is used as section type to start the search. If EFI_SECTION_TE section 
+  is not found, EFI_SECTION_PE32 will be used to try the search again. If no EFI_SECTION_PE32 section is found, EFI_NOT_FOUND 
+  is returned.
+
+
+  The data and size is returned by Buffer and Size. The caller is responsible to free the Buffer allocated 
+  by this function. This function can only be called at TPL_NOTIFY and below.
+
+  If Buffer is NULL, then ASSERT();
+  If Size is NULL, then ASSERT().
+
+  @param  SectionType          Indicates the section type to return. SectionType in conjunction with 
+                               SectionInstance indicates which section to return. Type 
+                               EFI_SECTION_TYPE is defined in EFI_COMMON_SECTION_HEADER.
+  @param  SectionInstance      Indicates which instance of sections with a type of SectionType to return. 
+                               SectionType in conjunction with SectionInstance indicates which section to 
+                               return. SectionInstance is zero based.
+  @param  Buffer               Pointer to a pointer to a buffer in which the section contents are returned, not 
+                               including the section header. Caller is responsible to free this memory.
+  @param  Size                 Pointer to a caller-allocated UINTN. It indicates the size of the memory represented by 
+                               *Buffer.
+
+  @retval  EFI_SUCCESS        The image is found and data and size is returned.
+  @retval  EFI_NOT_FOUND      The image specified by NameGuid and SectionType can't be found.
+  @retval  EFI_OUT_OF_RESOURCES There were not enough resources to allocate the output data buffer or complete the operations.
+  @retval  EFI_DEVICE_ERROR A hardware error occurs during reading from the Firmware Volume.
+  @retval  EFI_ACCESS_DENIED  The firmware volume containing the searched Firmware File is configured to disallow reads.
+  
+**/
 EFI_STATUS
 EFIAPI
 PiLibGetSectionFromCurrentFfs (
   IN  EFI_SECTION_TYPE              SectionType,
-  IN  UINTN                         Instance,
+  IN  UINTN                         SectionInstance,
   OUT VOID                          **Buffer,
   OUT UINTN                         *Size
     )
@@ -286,7 +400,7 @@ PiLibGetSectionFromCurrentFfs (
           InternalImageHandleToFvHandle(gImageHandle),
           &gEfiCallerIdGuid,
           SectionType,
-          Instance,
+          SectionInstance,
           Buffer,
           Size
           );

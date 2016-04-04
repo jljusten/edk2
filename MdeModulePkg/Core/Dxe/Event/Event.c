@@ -13,51 +13,77 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 
-#include <DxeMain.h>
+#include "DxeMain.h"
+#include "Event.h"
 
-//
-// Enumerate the valid types
-//
+///
+/// gEfiCurrentTpl - Current Task priority level
+///
+EFI_TPL  gEfiCurrentTpl = TPL_APPLICATION;
+
+///
+/// gEventQueueLock - Protects the event queus
+///
+EFI_LOCK gEventQueueLock = EFI_INITIALIZE_LOCK_VARIABLE (TPL_HIGH_LEVEL);
+
+///
+/// gEventQueue - A list of event's to notify for each priority level
+///
+LIST_ENTRY      gEventQueue[TPL_HIGH_LEVEL + 1];
+
+///
+/// gEventPending - A bitmask of the EventQueues that are pending
+///
+UINTN           gEventPending = 0;
+
+///
+/// gEventSignalQueue - A list of events to signal based on EventGroup type
+///
+LIST_ENTRY      gEventSignalQueue = INITIALIZE_LIST_HEAD_VARIABLE (gEventSignalQueue);
+
+///
+/// Enumerate the valid types
+///
 UINT32 mEventTable[] = {
-  //
-  // 0x80000200       Timer event with a notification function that is
-  // queue when the event is signaled with SignalEvent()
-  //
+  ///
+  /// 0x80000200       Timer event with a notification function that is
+  /// queue when the event is signaled with SignalEvent()
+  ///
   EVT_TIMER | EVT_NOTIFY_SIGNAL,
-  //
-  // 0x80000000       Timer event without a notification function. It can be
-  // signaled with SignalEvent() and checked with CheckEvent() or WaitForEvent().
-  //
+  ///
+  /// 0x80000000       Timer event without a notification function. It can be
+  /// signaled with SignalEvent() and checked with CheckEvent() or WaitForEvent().
+  ///
   EVT_TIMER,
-  //
-  // 0x00000100       Generic event with a notification function that
-  // can be waited on with CheckEvent() or WaitForEvent()
-  //
+  ///
+  /// 0x00000100       Generic event with a notification function that
+  /// can be waited on with CheckEvent() or WaitForEvent()
+  ///
   EVT_NOTIFY_WAIT,
-  //
-  // 0x00000200       Generic event with a notification function that
-  // is queue when the event is signaled with SignalEvent()
-  //
+  ///
+  /// 0x00000200       Generic event with a notification function that
+  /// is queue when the event is signaled with SignalEvent()
+  ///
   EVT_NOTIFY_SIGNAL,
-  //
-  // 0x00000201       ExitBootServicesEvent.
-  //
+  ///
+  /// 0x00000201       ExitBootServicesEvent.
+  ///
   EVT_SIGNAL_EXIT_BOOT_SERVICES,
-  //
-  // 0x60000202       SetVirtualAddressMapEvent.
-  //
+  ///
+  /// 0x60000202       SetVirtualAddressMapEvent.
+  ///
   EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE,
 
-  //
-  // 0x00000000       Generic event without a notification function.
-  // It can be signaled with SignalEvent() and checked with CheckEvent()
-  // or WaitForEvent().
-  //
+  ///
+  /// 0x00000000       Generic event without a notification function.
+  /// It can be signaled with SignalEvent() and checked with CheckEvent()
+  /// or WaitForEvent().
+  ///
   0x00000000,
-  //
-  // 0x80000100       Timer event with a notification function that can be
-  // waited on with CheckEvent() or WaitForEvent()
-  //
+  ///
+  /// 0x80000100       Timer event with a notification function that can be
+  /// waited on with CheckEvent() or WaitForEvent()
+  ///
   EVT_TIMER | EVT_NOTIFY_WAIT,
 };
 
@@ -90,8 +116,7 @@ CoreReleaseEventLock (
 
 
 /**
-  Initializes "event" support and populates parts of the System and Runtime Table.
-
+  Initializes "event" support.
 
   @retval EFI_SUCCESS            Always return success
 
@@ -117,7 +142,7 @@ CoreInitializeEventServices (
 /**
   Dispatches all pending events.
 
-  @param  Priority               The task priority level of event notifications 
+  @param  Priority               The task priority level of event notifications
                                  to dispatch
 
 **/
@@ -240,18 +265,18 @@ CoreNotifySignalList (
 /**
   Creates a general-purpose event structure.
 
-  @param  Type                   The type of event to create and its mode and 
-                                 attributes 
-  @param  NotifyTpl              The task priority level of event notifications 
-  @param  NotifyFunction         Pointer to the events notification function 
-  @param  NotifyContext          Pointer to the notification functions context; 
-                                 corresponds to parameter "Context" in the 
-                                 notification function 
-  @param  Event                  Pointer to the newly created event if the call 
-                                 succeeds; undefined otherwise 
+  @param  Type                   The type of event to create and its mode and
+                                 attributes
+  @param  NotifyTpl              The task priority level of event notifications
+  @param  NotifyFunction         Pointer to the events notification function
+  @param  NotifyContext          Pointer to the notification functions context;
+                                 corresponds to parameter "Context" in the
+                                 notification function
+  @param  Event                  Pointer to the newly created event if the call
+                                 succeeds; undefined otherwise
 
-  @retval EFI_SUCCESS            The event structure was created 
-  @retval EFI_INVALID_PARAMETER  One of the parameters has an invalid value 
+  @retval EFI_SUCCESS            The event structure was created
+  @retval EFI_INVALID_PARAMETER  One of the parameters has an invalid value
   @retval EFI_OUT_OF_RESOURCES   The event could not be allocated
 
 **/
@@ -273,20 +298,20 @@ CoreCreateEvent (
 /**
   Creates a general-purpose event structure
 
-  @param  Type                   The type of event to create and its mode and 
-                                 attributes 
-  @param  NotifyTpl              The task priority level of event notifications 
-  @param  NotifyFunction         Pointer to the events notification function 
-  @param  NotifyContext          Pointer to the notification functions context; 
-                                 corresponds to parameter "Context" in the 
-                                 notification function 
-  @param  EventGroup             GUID for EventGroup if NULL act the same as 
-                                 gBS->CreateEvent(). 
-  @param  Event                  Pointer to the newly created event if the call 
-                                 succeeds; undefined otherwise 
+  @param  Type                   The type of event to create and its mode and
+                                 attributes
+  @param  NotifyTpl              The task priority level of event notifications
+  @param  NotifyFunction         Pointer to the events notification function
+  @param  NotifyContext          Pointer to the notification functions context;
+                                 corresponds to parameter "Context" in the
+                                 notification function
+  @param  EventGroup             GUID for EventGroup if NULL act the same as
+                                 gBS->CreateEvent().
+  @param  Event                  Pointer to the newly created event if the call
+                                 succeeds; undefined otherwise
 
-  @retval EFI_SUCCESS            The event structure was created 
-  @retval EFI_INVALID_PARAMETER  One of the parameters has an invalid value 
+  @retval EFI_SUCCESS            The event structure was created
+  @retval EFI_INVALID_PARAMETER  One of the parameters has an invalid value
   @retval EFI_OUT_OF_RESOURCES   The event could not be allocated
 
 **/
@@ -306,7 +331,7 @@ CoreCreateEventEx (
   INTN            Index;
 
 
-  if ((Event == NULL) || (NotifyTpl == TPL_APPLICATION)) {
+  if (Event == NULL) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -359,7 +384,7 @@ CoreCreateEventEx (
     // Check for an invalid NotifyFunction or NotifyTpl
     //
     if ((NotifyFunction == NULL) ||
-        (NotifyTpl < TPL_APPLICATION) ||
+        (NotifyTpl <= TPL_APPLICATION) ||
        (NotifyTpl >= TPL_HIGH_LEVEL)) {
       return EFI_INVALID_PARAMETER;
     }
@@ -385,7 +410,7 @@ CoreCreateEventEx (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  SetMem (IEvent, sizeof (IEVENT), 0);
+  ZeroMem (IEvent, sizeof (IEVENT));
 
   IEvent->Signature = EVENT_SIGNATURE;
   IEvent->Type = Type;
@@ -433,11 +458,11 @@ CoreCreateEventEx (
 
 
 /**
-  Signals the event.  Queues the event to be notified if needed
+  Signals the event.  Queues the event to be notified if needed.
 
-  @param  UserEvent              The event to signal 
+  @param  UserEvent              The event to signal .
 
-  @retval EFI_INVALID_PARAMETER  Parameters are not valid. 
+  @retval EFI_INVALID_PARAMETER  Parameters are not valid.
   @retval EFI_SUCCESS            The event was signaled.
 
 **/
@@ -495,10 +520,10 @@ CoreSignalEvent (
 /**
   Check the status of an event.
 
-  @param  UserEvent              The event to check 
+  @param  UserEvent              The event to check
 
-  @retval EFI_SUCCESS            The event is in the signaled state 
-  @retval EFI_NOT_READY          The event is not in the signaled state 
+  @retval EFI_SUCCESS            The event is in the signaled state
+  @retval EFI_NOT_READY          The event is not in the signaled state
   @retval EFI_INVALID_PARAMETER  Event is of type EVT_NOTIFY_SIGNAL
 
 **/
@@ -521,7 +546,7 @@ CoreCheckEvent (
     return EFI_INVALID_PARAMETER;
   }
 
-  if (Event->Type & EVT_NOTIFY_SIGNAL) {
+  if ((Event->Type & EVT_NOTIFY_SIGNAL) != 0) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -532,7 +557,6 @@ CoreCheckEvent (
     //
     // Queue the wait notify function
     //
-
     CoreAcquireEventLock ();
     if (!Event->SignalCount) {
       CoreNotifyEvent (Event);
@@ -560,18 +584,17 @@ CoreCheckEvent (
 
 
 
-
 /**
   Stops execution until an event is signaled.
 
-  @param  NumberOfEvents         The number of events in the UserEvents array 
-  @param  UserEvents             An array of EFI_EVENT 
-  @param  UserIndex              Pointer to the index of the event which 
-                                 satisfied the wait condition 
+  @param  NumberOfEvents         The number of events in the UserEvents array
+  @param  UserEvents             An array of EFI_EVENT
+  @param  UserIndex              Pointer to the index of the event which
+                                 satisfied the wait condition
 
-  @retval EFI_SUCCESS            The event indicated by Index was signaled. 
-  @retval EFI_INVALID_PARAMETER  The event indicated by Index has a notification 
-                                 function or Event was not a valid type 
+  @retval EFI_SUCCESS            The event indicated by Index was signaled.
+  @retval EFI_INVALID_PARAMETER  The event indicated by Index has a notification
+                                 function or Event was not a valid type
   @retval EFI_UNSUPPORTED        The current TPL is not TPL_APPLICATION
 
 **/
@@ -616,13 +639,12 @@ CoreWaitForEvent (
 }
 
 
-
 /**
   Closes an event and frees the event structure.
 
-  @param  UserEvent              Event to close 
+  @param  UserEvent              Event to close
 
-  @retval EFI_INVALID_PARAMETER  Parameters are not valid. 
+  @retval EFI_INVALID_PARAMETER  Parameters are not valid.
   @retval EFI_SUCCESS            The event has been closed
 
 **/
@@ -648,7 +670,7 @@ CoreCloseEvent (
   //
   // If it's a timer event, make sure it's not pending
   //
-  if (Event->Type & EVT_TIMER) {
+  if ((Event->Type & EVT_TIMER) != 0) {
     CoreSetTimer (Event, TimerCancel, 0);
   }
 

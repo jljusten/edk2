@@ -82,6 +82,21 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
       EFI_BDS_ARCH_PROTOCOL_INSTANCE_SIGNATURE \
       )
 
+/**
+
+  Show progress bar with title above it. It only works in Graphics mode.
+
+
+  @param TitleForeground Foreground color for Title.
+  @param TitleBackground Background color for Title.
+  @param Title           Title above progress bar.
+  @param ProgressColor   Progress bar color.
+  @param Progress        Progress (0-100)
+  @param PreviousValue   The previous value of the progress.
+
+  @retval  EFI_STATUS       Success update the progress bar
+
+**/
 EFI_STATUS
 PlatformBdsShowProgress (
   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL TitleForeground,
@@ -95,6 +110,22 @@ PlatformBdsShowProgress (
 //
 // Prototypes
 //
+
+/**
+
+  Install Boot Device Selection Protocol
+
+
+  @param ImageHandle     The image handle.
+  @param SystemTable     The system table.
+
+  @retval  EFI_SUCEESS  BDS has finished initializing.
+                        Rerun the
+                        dispatcher and recall BDS.Entry
+  @retval  Other        Return value from AllocatePool()
+                        or gBS->InstallProtocolInterface
+
+**/
 EFI_STATUS
 EFIAPI
 BdsInitialize (
@@ -102,6 +133,14 @@ BdsInitialize (
   IN EFI_SYSTEM_TABLE               *SystemTable
   );
 
+/**
+
+  Service routine for BdsInstance->Entry(). Devices are connected, the
+  consoles are initialized, and the boot options are tried.
+
+  @param This            - Protocol Instance structure.
+
+**/
 VOID
 EFIAPI
 BdsEntry (

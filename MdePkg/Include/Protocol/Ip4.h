@@ -11,7 +11,7 @@
     may include support for the Internet Group Management
     Protocol (IGMP).
   
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -163,7 +163,7 @@ typedef struct {
   @param  This          Pointer to the EFI_IP4_PROTOCOL instance.
   @param  Ip4ModeData   Pointer to the EFI IPv4 Protocol mode data structure.
   @param  MnpConfigData Pointer to the managed network configuration data structure.
-  @param  SnpData       Pointer to the simple network mode data structure.
+  @param  SnpModeData   Pointer to the simple network mode data structure.
 
   @retval EFI_SUCCESS           The operation completed successfully.
   @retval EFI_INVALID_PARAMETER This is NULL.
@@ -172,13 +172,12 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_IP4_GET_MODE_DATA) (
+(EFIAPI *EFI_IP4_GET_MODE_DATA)(
   IN CONST  EFI_IP4_PROTOCOL                *This,
   OUT       EFI_IP4_MODE_DATA               *Ip4ModeData     OPTIONAL,
   OUT       EFI_MANAGED_NETWORK_CONFIG_DATA *MnpConfigData   OPTIONAL,
   OUT       EFI_SIMPLE_NETWORK_MODE         *SnpModeData     OPTIONAL
-  )
-;  
+  );  
 
 /**
   Assigns an IPv4 address and subnet mask to this EFI IPv4 Protocol driver instance.
@@ -200,16 +199,15 @@ EFI_STATUS
                                 IPv4 address or subnet mask can be changed. The interface must
                                 also be stopped when switching to/from raw packet mode.
   @retval EFI_DEVICE_ERROR      An unexpected system or network error occurred. The EFI IPv4
-                                 Protocol driver instance is not opened.
+                                Protocol driver instance is not opened.
 
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_IP4_CONFIGURE) (
+(EFIAPI *EFI_IP4_CONFIGURE)(
   IN EFI_IP4_PROTOCOL    *This,
   IN EFI_IP4_CONFIG_DATA *IpConfigData     OPTIONAL
-  )
-;  
+  );  
 
 /**
   Joins and leaves multicast groups.
@@ -237,12 +235,11 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_IP4_GROUPS) (
+(EFIAPI *EFI_IP4_GROUPS)(
   IN EFI_IP4_PROTOCOL    *This,
   IN BOOLEAN             JoinFlag,
   IN EFI_IPv4_ADDRESS    *GroupAddress  OPTIONAL
-  )
-;    
+  );    
 
 /**
   Adds and deletes routing table entries.
@@ -275,14 +272,13 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_IP4_ROUTES) (
+(EFIAPI *EFI_IP4_ROUTES)(
   IN EFI_IP4_PROTOCOL    *This,
   IN BOOLEAN             DeleteRoute,
   IN EFI_IPv4_ADDRESS    *SubnetAddress,
   IN EFI_IPv4_ADDRESS    *SubnetMask,
   IN EFI_IPv4_ADDRESS    *GatewayAddress  
-  )
-;  
+  );  
 
 /**
   Places outgoing data packets into the transmit queue.
@@ -311,11 +307,10 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_IP4_TRANSMIT) (
+(EFIAPI *EFI_IP4_TRANSMIT)(
   IN EFI_IP4_PROTOCOL          *This,
   IN EFI_IP4_COMPLETION_TOKEN  *Token
-  )
-;    
+  );    
 
 /**
   Places a receiving request into the receiving queue.
@@ -343,11 +338,10 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_IP4_RECEIVE) (
+(EFIAPI *EFI_IP4_RECEIVE)(
   IN EFI_IP4_PROTOCOL          *This,
   IN EFI_IP4_COMPLETION_TOKEN  *Token
-  )
-;      
+  );      
 
 /**
   Abort an asynchronous transmit or receive request.
@@ -373,11 +367,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_IP4_CANCEL) (
+(EFIAPI *EFI_IP4_CANCEL)(
   IN EFI_IP4_PROTOCOL          *This,
   IN EFI_IP4_COMPLETION_TOKEN  *Token OPTIONAL
-  )
-;      
+  );      
   
 /**
   Polls for incoming data packets and processes outgoing data packets.
@@ -397,11 +390,15 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_IP4_POLL) (
+(EFIAPI *EFI_IP4_POLL)(
   IN EFI_IP4_PROTOCOL          *This
-  )
-;  
+  );  
 
+/**  
+  @par Protocol Description:
+  The EFI IPv4 Protocol implements a simple packet-oriented interface that can be 
+  used by drivers, daemons, and applications to transmit and receive network packets.
+**/
 struct _EFI_IP4_PROTOCOL {
   EFI_IP4_GET_MODE_DATA        GetModeData;
   EFI_IP4_CONFIGURE            Configure;

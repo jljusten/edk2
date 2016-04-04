@@ -5,7 +5,7 @@
   The DebugSupport protocol is used by source level debuggers to abstract the
   processor and handle context save and restore operations.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -24,17 +24,17 @@
 
 typedef struct _EFI_DEBUG_SUPPORT_PROTOCOL EFI_DEBUG_SUPPORT_PROTOCOL;
 
-//
-// Debug Support protocol {2755590C-6F3C-42FA-9EA4-A3BA543CDA25}
-//
+///
+/// Debug Support protocol {2755590C-6F3C-42FA-9EA4-A3BA543CDA25}
+///
 #define EFI_DEBUG_SUPPORT_PROTOCOL_GUID \
   { \
     0x2755590C, 0x6F3C, 0x42FA, {0x9E, 0xA4, 0xA3, 0xBA, 0x54, 0x3C, 0xDA, 0x25 } \
   }
 
-//
-// Debug Support definitions
-//
+///
+/// Debug Support definitions
+///
 typedef INTN  EFI_EXCEPTION_TYPE;
 
 //
@@ -58,13 +58,13 @@ typedef INTN  EFI_EXCEPTION_TYPE;
 #define EXCEPT_IA32_MACHINE_CHECK   18
 #define EXCEPT_IA32_SIMD            19
 
-//
-//  IA-32 processor context definition
-//
-//
-// FXSAVE_STATE
-// FP / MMX / XMM registers (see fxrstor instruction definition)
-//
+///
+///  IA-32 processor context definition
+///
+///
+/// FXSAVE_STATE
+/// FP / MMX / XMM registers (see fxrstor instruction definition)
+///
 typedef struct {
   UINT16  Fcw;
   UINT16  Fsw;
@@ -76,7 +76,6 @@ typedef struct {
   UINT32  DataOffset;
   UINT16  Ds;
   UINT8   Reserved2[10];
-#if (EFI_SPECIFICATION_VERSION >= 0x00020000)
   UINT8   St0Mm0[10], Reserved3[6];
   UINT8   St1Mm1[10], Reserved4[6];
   UINT8   St2Mm2[10], Reserved5[6];
@@ -95,26 +94,10 @@ typedef struct {
   UINT8   Xmm7[16];
   UINT8   Reserved11[14 * 16];
 } EFI_FX_SAVE_STATE_IA32;
-#else
-  UINT8   St0Mm0[10], Reserved3[6];
-  UINT8   St0Mm1[10], Reserved4[6];
-  UINT8   St0Mm2[10], Reserved5[6];
-  UINT8   St0Mm3[10], Reserved6[6];
-  UINT8   St0Mm4[10], Reserved7[6];
-  UINT8   St0Mm5[10], Reserved8[6];
-  UINT8   St0Mm6[10], Reserved9[6];
-  UINT8   St0Mm7[10], Reserved10[6];
-  UINT8   Reserved11[22 * 16];
-} EFI_FX_SAVE_STATE;
-#endif
 
 typedef struct {
   UINT32                 ExceptionData;
-#if (EFI_SPECIFICATION_VERSION >= 0x00020000)
   EFI_FX_SAVE_STATE_IA32 FxSaveState;
-#else
-  EFI_FX_SAVE_STATE      FxSaveState;
-#endif
   UINT32                 Dr0;
   UINT32                 Dr1;
   UINT32                 Dr2;
@@ -169,12 +152,12 @@ typedef struct {
 #define EXCEPT_X64_MACHINE_CHECK   18
 #define EXCEPT_X64_SIMD            19
 
-//
-//  X64 processor context definition
-//
-// FXSAVE_STATE
-// FP / MMX / XMM registers (see fxrstor instruction definition)
-//
+///
+///  X64 processor context definition
+///
+/// FXSAVE_STATE
+/// FP / MMX / XMM registers (see fxrstor instruction definition)
+///
 typedef struct {
   UINT16  Fcw;
   UINT16  Fsw;
@@ -199,23 +182,10 @@ typedef struct {
   UINT8   Xmm5[16];
   UINT8   Xmm6[16];
   UINT8   Xmm7[16];
-#if (EFI_SPECIFICATION_VERSION >= 0x00020000)
   //
-  // NOTE: UEFI 2.0 spec definition as follows. It should be updated 
-  // after spec update.
+  // NOTE: UEFI 2.0 spec definition as follows. 
   //
   UINT8   Reserved11[14 * 16];
-#else
-  UINT8   Xmm8[16];
-  UINT8   Xmm9[16];
-  UINT8   Xmm10[16];
-  UINT8   Xmm11[16];
-  UINT8   Xmm12[16];
-  UINT8   Xmm13[16];
-  UINT8   Xmm14[16];
-  UINT8   Xmm15[16];
-  UINT8   Reserved10[6 * 16];
-#endif
 } EFI_FX_SAVE_STATE_X64;
 
 typedef struct {
@@ -308,9 +278,9 @@ typedef struct {
 #define EXCEPT_IPF_IA32_INTERCEPT 46
 #define EXCEPT_IPF_IA32_INTERRUPT 47
 
-//
-//  IPF processor context definition
-//
+///
+///  IPF processor context definition
+///
 typedef struct {
   //
   // The first reserved field is necessary to preserve alignment for the correct
@@ -478,14 +448,14 @@ typedef struct {
 #define EXCEPT_EBC_INSTRUCTION_ENCODING 8   // malformed instruction
 #define EXCEPT_EBC_BAD_BREAK            9   // BREAK 0 or undefined BREAK
 #define EXCEPT_EBC_STEP                 10  // to support debug stepping
-//
-// For coding convenience, define the maximum valid EBC exception.
-//
+///
+/// For coding convenience, define the maximum valid EBC exception.
+///
 #define MAX_EBC_EXCEPTION EXCEPT_EBC_STEP
 
-//
-//  EBC processor context definition
-//
+///
+///  EBC processor context definition
+///
 typedef struct {
   UINT64  R0;
   UINT64  R1;
@@ -500,9 +470,9 @@ typedef struct {
   UINT64  Ip;
 } EFI_SYSTEM_CONTEXT_EBC;
 
-//
-// Universal EFI_SYSTEM_CONTEXT definition
-//
+///
+/// Universal EFI_SYSTEM_CONTEXT definition
+///
 typedef union {
   EFI_SYSTEM_CONTEXT_EBC  *SystemContextEbc;
   EFI_SYSTEM_CONTEXT_IA32 *SystemContextIa32;
@@ -523,7 +493,7 @@ typedef union {
 **/
 typedef
 VOID
-(*EFI_EXCEPTION_CALLBACK) (
+(*EFI_EXCEPTION_CALLBACK)(
   IN     EFI_EXCEPTION_TYPE               ExceptionType,
   IN OUT EFI_SYSTEM_CONTEXT               SystemContext
   );
@@ -536,18 +506,18 @@ VOID
 **/
 typedef
 VOID
-(*EFI_PERIODIC_CALLBACK) (
+(*EFI_PERIODIC_CALLBACK)(
   IN OUT EFI_SYSTEM_CONTEXT               SystemContext
   );
 
-//
-// Machine type definition
-//
+///
+/// Machine type definition
+///
 typedef enum {
-  IsaIa32 = IMAGE_FILE_MACHINE_I386, // 0x014C
-  IsaX64  = IMAGE_FILE_MACHINE_X64,   // 0x8664
-  IsaIpf  = IMAGE_FILE_MACHINE_IA64,  // 0x0200
-  IsaEbc  = IMAGE_FILE_MACHINE_EBC    // 0x0EBC
+  IsaIa32 = IMAGE_FILE_MACHINE_I386,  ///< 0x014C
+  IsaX64  = IMAGE_FILE_MACHINE_X64,   ///< 0x8664
+  IsaIpf  = IMAGE_FILE_MACHINE_IA64,  ///< 0x0200
+  IsaEbc  = IMAGE_FILE_MACHINE_EBC    ///< 0x0EBC
 } EFI_INSTRUCTION_SET_ARCHITECTURE;
 
 
@@ -568,7 +538,7 @@ typedef enum {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_GET_MAXIMUM_PROCESSOR_INDEX) (
+(EFIAPI *EFI_GET_MAXIMUM_PROCESSOR_INDEX)(
   IN EFI_DEBUG_SUPPORT_PROTOCOL          *This,
   OUT UINTN                              *MaxProcessorIndex
   );
@@ -590,7 +560,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_REGISTER_PERIODIC_CALLBACK) (
+(EFIAPI *EFI_REGISTER_PERIODIC_CALLBACK)(
   IN EFI_DEBUG_SUPPORT_PROTOCOL          *This,
   IN UINTN                               ProcessorIndex,
   IN EFI_PERIODIC_CALLBACK               PeriodicCallback
@@ -614,7 +584,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_REGISTER_EXCEPTION_CALLBACK) (
+(EFIAPI *EFI_REGISTER_EXCEPTION_CALLBACK)(
   IN EFI_DEBUG_SUPPORT_PROTOCOL          *This,
   IN UINTN                               ProcessorIndex,
   IN EFI_EXCEPTION_CALLBACK              ExceptionCallback,
@@ -636,7 +606,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_INVALIDATE_INSTRUCTION_CACHE) (
+(EFIAPI *EFI_INVALIDATE_INSTRUCTION_CACHE)(
   IN EFI_DEBUG_SUPPORT_PROTOCOL          *This,
   IN UINTN                               ProcessorIndex,
   IN VOID                                *Start,
@@ -646,6 +616,12 @@ EFI_STATUS
 //
 // DebugSupport protocol definition
 //
+/**
+  @par Protocol Description:
+  This protocol provides the services to allow the debug agent to register 
+  callback functions that are called either periodically or when specific 
+  processor exceptions occur.
+**/
 struct _EFI_DEBUG_SUPPORT_PROTOCOL {
   EFI_INSTRUCTION_SET_ARCHITECTURE  Isa;
   EFI_GET_MAXIMUM_PROCESSOR_INDEX   GetMaximumProcessorIndex;

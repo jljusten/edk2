@@ -15,163 +15,685 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 
 #include "HiiDatabase.h"
+#include "HiiHandle.h"
 
-EFI_GUID *
-GetGuidOfFirstFormset (
-  CONST EFI_HII_FORM_PACKAGE * FormPackage
-) 
-{
-  UINT8             *StartOfNextPackage;
-  EFI_IFR_OP_HEADER *OpCodeData;
+EFI_GUID  gFrameworkHiiCompatbilityGuid = EFI_IFR_FRAMEWORK_GUID;
+EFI_GUID  gTianoHiiIfrGuid              = EFI_IFR_TIANO_GUID;
 
-  StartOfNextPackage = (UINT8 *) FormPackage + FormPackage->Header.Length;
-  OpCodeData = (EFI_IFR_OP_HEADER *) (FormPackage + 1);
-
-  while ((UINT8 *) OpCodeData < StartOfNextPackage) {
-    if (OpCodeData->OpCode == EFI_IFR_FORM_SET_OP) {
-      return AllocateCopyPool (sizeof(EFI_GUID), &(((EFI_IFR_FORM_SET *) OpCodeData)->Guid));
-    }
-    OpCodeData = (EFI_IFR_OP_HEADER *) ((UINT8 *) OpCodeData + OpCodeData->Length);
-  }
-
-  ASSERT (FALSE);
-
-  return NULL;
-}
 
 EFI_HII_HANDLE
-FrameworkHiiHandleToUefiHiiHandle (
-  IN CONST EFI_HII_THUNK_PRIVATE_DATA *Private,
-  IN FRAMEWORK_EFI_HII_HANDLE          FrameworkHiiHandle
+FwHiiHandleToUefiHiiHandle (
+  IN CONST HII_THUNK_PRIVATE_DATA      *Private,
+  IN FRAMEWORK_EFI_HII_HANDLE          FwHiiHandle
   )
 {
-  HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY  *HandleMapEntry;
+  HII_THUNK_CONTEXT            *ThunkContext;
 
-  ASSERT (FrameworkHiiHandle != (FRAMEWORK_EFI_HII_HANDLE) 0);
+  ASSERT (FwHiiHandle != (FRAMEWORK_EFI_HII_HANDLE) 0);
   ASSERT (Private != NULL);
 
-  HandleMapEntry = FrameworkHiiHandleToMapDatabaseEntry (Private, FrameworkHiiHandle);
+  ThunkContext = FwHiiHandleToThunkContext (Private, FwHiiHandle);
 
-  if (HandleMapEntry != NULL) {
-    return HandleMapEntry->UefiHiiHandle;
+  if (ThunkContext != NULL) {
+    return ThunkContext->UefiHiiHandle;
   }
   
   return (EFI_HII_HANDLE) NULL;
 }
 
 
-HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *
-FrameworkHiiHandleToMapDatabaseEntry (
-  IN CONST EFI_HII_THUNK_PRIVATE_DATA *Private,
-  IN FRAMEWORK_EFI_HII_HANDLE          FrameworkHiiHandle
+HII_THUNK_CONTEXT *
+FwHiiHandleToThunkContext (
+  IN CONST HII_THUNK_PRIVATE_DATA      *Private,
+  IN FRAMEWORK_EFI_HII_HANDLE          FwHiiHandle
   )
 {
-  LIST_ENTRY                 *ListEntry;
-  HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *HandleMapEntry;
+  LIST_ENTRY                 *Link;
+  HII_THUNK_CONTEXT           *ThunkContext;
 
-  for (ListEntry = Private->HiiThunkHandleMappingDBListHead.ForwardLink;
-       ListEntry != &Private->HiiThunkHandleMappingDBListHead;
-       ListEntry = ListEntry->ForwardLink
-       ) {
-    HandleMapEntry = HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY_FROM_LISTENTRY (ListEntry);
 
-    if (FrameworkHiiHandle == HandleMapEntry->FrameworkHiiHandle) {
-      return HandleMapEntry;
+  Link = GetFirstNode (&Private->ThunkContextListHead);
+
+  while (!IsNull (&Private->ThunkContextListHead, Link)) {
+    ThunkContext = HII_THUNK_CONTEXT_FROM_LINK (Link);
+
+    if (FwHiiHandle == ThunkContext->FwHiiHandle) {
+      return ThunkContext;
     }
+
+    Link = GetNextNode (&Private->ThunkContextListHead, Link);
   }
 
-  return (HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *) NULL;
+  return NULL;
 }
 
-HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *
-UefiHiiHandleToMapDatabaseEntry (
-  IN CONST EFI_HII_THUNK_PRIVATE_DATA *Private,
+HII_THUNK_CONTEXT *
+UefiHiiHandleToThunkContext (
+  IN CONST HII_THUNK_PRIVATE_DATA     *Private,
   IN EFI_HII_HANDLE                   UefiHiiHandle
   )
 {
-  LIST_ENTRY                 *ListEntry;
-  HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *HandleMapEntry;
+  LIST_ENTRY                 *Link;
+  HII_THUNK_CONTEXT           *ThunkContext;
 
-  for (ListEntry = Private->HiiThunkHandleMappingDBListHead.ForwardLink;
-       ListEntry != &Private->HiiThunkHandleMappingDBListHead;
-       ListEntry = ListEntry->ForwardLink
-       ) {
-    HandleMapEntry = HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY_FROM_LISTENTRY (ListEntry);
+  Link = GetFirstNode (&Private->ThunkContextListHead);
 
-    if (UefiHiiHandle == HandleMapEntry->UefiHiiHandle) {
-      return HandleMapEntry;
+  while (!IsNull (&Private->ThunkContextListHead, Link)) {
+    ThunkContext = HII_THUNK_CONTEXT_FROM_LINK (Link);
+
+    if (UefiHiiHandle == ThunkContext->UefiHiiHandle) {
+      return ThunkContext;
     }
+    Link = GetNextNode (&Private->ThunkContextListHead, Link);
   }
 
-  return (HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *) NULL;
+  return NULL;
 }
 
-EFI_HII_HANDLE *
-TagGuidToUefiIfrHiiHandle (
-  IN CONST EFI_HII_THUNK_PRIVATE_DATA *Private,
+HII_THUNK_CONTEXT *
+TagGuidToIfrPackThunkContext (
+  IN CONST HII_THUNK_PRIVATE_DATA *Private,
   IN CONST EFI_GUID                   *Guid
   )
 {
-  LIST_ENTRY                 *ListEntry;
-  HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *HandleMapEntry;
+  LIST_ENTRY                 *Link;
+  HII_THUNK_CONTEXT           *ThunkContext;
 
-  for (ListEntry = Private->HiiThunkHandleMappingDBListHead.ForwardLink;
-       ListEntry != &Private->HiiThunkHandleMappingDBListHead;
-       ListEntry = ListEntry->ForwardLink
-       ) {
-    HandleMapEntry = HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY_FROM_LISTENTRY (ListEntry);
+  Link = GetFirstNode (&Private->ThunkContextListHead);
 
-    if (CompareGuid (Guid, &HandleMapEntry->TagGuid) && HandleMapEntry->DoesPackageListImportStringPackages) {
-      return HandleMapEntry->UefiHiiHandle;
+  while (!IsNull (&Private->ThunkContextListHead, Link)) {
+    ThunkContext = HII_THUNK_CONTEXT_FROM_LINK (Link);
+
+    if (CompareGuid (Guid, &ThunkContext->TagGuid) && (ThunkContext->IfrPackageCount != 0)) {
+      return ThunkContext;
     }
+
+    Link = GetNextNode (&Private->ThunkContextListHead, Link);
   }
 
-  return (EFI_HII_HANDLE *) NULL;
+  return NULL;
   
 }
 
-BOOLEAN
-IsFrameworkHiiDatabaseHandleDepleted (
-  IN CONST EFI_HII_THUNK_PRIVATE_DATA *Private
-  )
+
+VOID
+DestroyThunkContextForUefiHiiHandle (
+  IN HII_THUNK_PRIVATE_DATA     *Private,
+  IN EFI_HII_HANDLE             UefiHiiHandle
+ )
 {
-  return (BOOLEAN) (Private->StaticHiiHandle == (UINTN) Private->StaticPureUefiHiiHandle);
+  HII_THUNK_CONTEXT     *ThunkContext;
+
+  ThunkContext = UefiHiiHandleToThunkContext (Private, UefiHiiHandle);
+  ASSERT (ThunkContext != NULL);
+
+  DestroyThunkContext (ThunkContext);
 }
 
-EFI_STATUS
 
-AssignHiiHandle (
-  IN OUT EFI_HII_THUNK_PRIVATE_DATA *Private,
-  OUT    FRAMEWORK_EFI_HII_HANDLE   *Handle
+/**
+  This function create a HII_THUNK_CONTEXT for a package list registered
+  by a module calling EFI_HII_DATABASE_PROTOCOL.NewPackageList. It records
+  the PackageListGuid in EFI_HII_PACKAGE_LIST_HEADER in the TagGuid in 
+  HII_THUNK_CONTEXT created. This TagGuid will be used as a key to s
+
+**/
+HII_THUNK_CONTEXT *
+CreateThunkContextForUefiHiiHandle (
+  IN  EFI_HII_HANDLE             UefiHiiHandle
+ )
+{
+  EFI_STATUS            Status;
+  EFI_GUID              PackageGuid;
+  HII_THUNK_CONTEXT      *ThunkContext;
+
+  ThunkContext = AllocateZeroPool (sizeof (*ThunkContext));
+  ASSERT (ThunkContext != NULL);
+  
+  ThunkContext->Signature = HII_THUNK_CONTEXT_SIGNATURE;
+
+  Status = AllocateHiiHandle (&ThunkContext->FwHiiHandle);
+  if (EFI_ERROR (Status)) {
+    return NULL;
+  }
+  
+  ThunkContext->UefiHiiHandle = UefiHiiHandle;
+  
+  Status = HiiLibExtractGuidFromHiiHandle (UefiHiiHandle, &PackageGuid);
+  ASSERT_EFI_ERROR (Status);
+  
+  CopyGuid(&ThunkContext->TagGuid, &PackageGuid);
+
+  InitializeListHead (&ThunkContext->QuestionIdMapListHead);
+  InitializeListHead (&ThunkContext->OneOfOptionMapListHead);
+  
+  return ThunkContext;
+}
+
+
+UINTN
+GetPackageCountByType (
+  IN CONST EFI_HII_PACKAGE_LIST_HEADER     *PackageListHeader,
+  IN       UINT8                           PackageType
   )
 {
-  ASSERT (Handle != NULL);
+  UINTN                     Count;
+  EFI_HII_PACKAGE_HEADER    *PackageHeader;
 
-  *Handle = Private->StaticHiiHandle;
-  Private->StaticHiiHandle += 1;
+  PackageHeader = (EFI_HII_PACKAGE_HEADER *) ((UINT8 *) PackageListHeader + sizeof (EFI_HII_PACKAGE_LIST_HEADER));
+  Count = 0;
+  
+  while (PackageHeader->Type != EFI_HII_PACKAGE_END) {
+    if (PackageHeader->Type == PackageType ) {
+      Count++;
+    }
+    PackageHeader = (EFI_HII_PACKAGE_HEADER *) ((UINT8 *) PackageHeader + PackageHeader->Length);
+  }
+  
+  
+  return Count;
+}
 
-  if (IsFrameworkHiiDatabaseHandleDepleted (Private)) {
-    return EFI_OUT_OF_RESOURCES;
+LIST_ENTRY *
+GetOneOfOptionMapEntryListHead (
+  IN CONST HII_THUNK_CONTEXT  *ThunkContext,
+  IN       UINT16             QuestionId
+  )
+{
+  LIST_ENTRY            *Link;
+  ONE_OF_OPTION_MAP     *Map;
+
+  Link = GetFirstNode (&ThunkContext->OneOfOptionMapListHead);
+
+  while (!IsNull (&ThunkContext->OneOfOptionMapListHead, Link)) {
+    Map = ONE_OF_OPTION_MAP_FROM_LINK (Link);
+    if (QuestionId == Map->QuestionId) {
+      return &Map->OneOfOptionMapEntryListHead;
+    }
+    Link = GetNextNode (&ThunkContext->OneOfOptionMapListHead, Link);
+  }
+  
+  return NULL;
+}
+
+EFI_HII_PACKAGE_HEADER *
+GetIfrPackage (
+  IN CONST EFI_HII_PACKAGES               *Packages
+  )
+{
+  UINTN                         Index;
+  TIANO_AUTOGEN_PACKAGES_HEADER **TianoAutogenPackageHdrArray;
+
+  ASSERT (Packages != NULL);
+
+  TianoAutogenPackageHdrArray = (TIANO_AUTOGEN_PACKAGES_HEADER **) (((UINT8 *) &Packages->GuidId) + sizeof (Packages->GuidId));
+  
+  for (Index = 0; Index < Packages->NumberOfPackages; Index++) {
+    //
+    // The current UEFI HII build tool generate a binary in the format defined by 
+    // TIANO_AUTOGEN_PACKAGES_HEADER. We assume that all packages generated in
+    // this binary is with same package type. So the returned IfrPackageCount and StringPackageCount
+    // may not be the exact number of valid package number in the binary generated 
+    // by HII Build tool.
+    //
+    switch (TianoAutogenPackageHdrArray[Index]->PackageHeader.Type) {
+      case EFI_HII_PACKAGE_FORM:
+        return &TianoAutogenPackageHdrArray[Index]->PackageHeader;
+        break;
+      case EFI_HII_PACKAGE_STRINGS:
+      case EFI_HII_PACKAGE_SIMPLE_FONTS:
+        break;
+
+      //
+      // The following fonts are invalid for a module that using Framework to UEFI thunk layer.
+      //
+      case EFI_HII_PACKAGE_KEYBOARD_LAYOUT:
+      case EFI_HII_PACKAGE_FONTS:
+      case EFI_HII_PACKAGE_IMAGES:
+      default:
+        ASSERT (FALSE);
+        return NULL;
+        break;
+    }
   }
 
+  return NULL;
+}
+
+VOID
+GetFormSetGuid (
+  IN  EFI_HII_PACKAGE_HEADER  *Package,
+  OUT EFI_GUID                *FormSetGuid
+  )
+{
+  UINTN                         Offset;
+  EFI_IFR_OP_HEADER             *OpCode;
+  EFI_IFR_FORM_SET              *FormSet;
+
+  Offset = sizeof (EFI_HII_PACKAGE_HEADER);
+  while (Offset < Package->Length) {
+    OpCode = (EFI_IFR_OP_HEADER *)((UINT8 *) Package + Offset);
+
+    switch (OpCode->OpCode) {
+    case EFI_IFR_FORM_SET_OP:
+      FormSet = (EFI_IFR_FORM_SET *) OpCode;
+      CopyGuid (FormSetGuid, (EFI_GUID *)(VOID *)&FormSet->Guid);
+      return;
+      
+      default:
+        break;
+      
+    }
+    Offset += OpCode->Length;
+  }
+
+  //
+  // A proper IFR must have a formset opcode.
+  //
+  ASSERT (FALSE);
+
+}
+
+
+VOID
+GetAttributesOfFirstFormSet (
+  IN    OUT HII_THUNK_CONTEXT  *ThunkContext
+  )
+{
+  EFI_STATUS                    Status;
+  EFI_HII_PACKAGE_LIST_HEADER   *List;
+  EFI_HII_PACKAGE_HEADER        *Package;
+  UINTN                         Size;
+  EFI_IFR_OP_HEADER             *OpCode;
+  UINTN                         Offset;
+  EFI_IFR_GUID_CLASS            *Class;
+  EFI_IFR_FORM_SET              *FormSet;
+  EFI_IFR_GUID_SUBCLASS         *SubClass;
+
+  Status = HiiLibExportPackageLists (ThunkContext->UefiHiiHandle, &List, &Size);
+  ASSERT_EFI_ERROR (Status);
+
+  //
+  // There must be at least one EFI_HII_PACKAGE_FORM in the package list.
+  //
+  ASSERT (GetPackageCountByType (List, EFI_HII_PACKAGE_FORM) >= 1);
+
+  //
+  // Skip the package list header.
+  //
+  Package = (EFI_HII_PACKAGE_HEADER *) (List + 1);
+
+  while (Package->Type != EFI_HII_PACKAGE_END) {
+
+    if (Package->Type == EFI_HII_PACKAGE_FORM) {
+
+      //
+      // Skip the package header
+      //
+      Offset = sizeof (EFI_HII_PACKAGE_HEADER);
+      while (Offset < Package->Length) {
+        OpCode = (EFI_IFR_OP_HEADER *)((UINT8 *) Package + Offset);
+
+        switch (OpCode->OpCode) {
+        case EFI_IFR_FORM_SET_OP:
+          FormSet = (EFI_IFR_FORM_SET *) OpCode;
+          ThunkContext->FormSetTitle = FormSet->FormSetTitle;
+          ThunkContext->FormSetHelp  = FormSet->Help;
+          break;
+          
+
+        case EFI_IFR_GUID_OP:
+          Class = (EFI_IFR_GUID_CLASS*) OpCode;
+          if (CompareGuid ((EFI_GUID *)(VOID *)&Class->Guid, &gTianoHiiIfrGuid)) {
+            Class = (EFI_IFR_GUID_CLASS *) OpCode;
+
+            switch (Class->ExtendOpCode) {
+              case EFI_IFR_EXTEND_OP_CLASS:
+                ThunkContext->FormSetClass = Class->Class;
+                break;
+              case EFI_IFR_EXTEND_OP_SUBCLASS:
+                SubClass = (EFI_IFR_GUID_SUBCLASS *) OpCode;
+                ThunkContext->FormSetSubClass = SubClass->SubClass;
+                break;
+
+              default:
+                break;
+            }
+          }
+          break;
+          
+        default:
+          break;
+        
+        }
+
+        Offset += OpCode->Length;
+      }
+      //
+      // The attributes of first FormSet is ready now.
+      //
+      FreePool (List);
+      return;
+      
+      break;
+    }
+
+    Package = (EFI_HII_PACKAGE_HEADER *) ((UINT8 *) Package + Package->Length);
+  }
+
+}
+
+
+EFI_STATUS
+CreateQuestionIdMap (
+  IN    OUT HII_THUNK_CONTEXT  *ThunkContext
+  )
+{
+  EFI_STATUS                    Status;
+  EFI_HII_PACKAGE_LIST_HEADER   *List;
+  EFI_HII_PACKAGE_HEADER        *Package;
+  UINTN                         Size;
+  EFI_IFR_OP_HEADER             *OpCode;
+  UINTN                         Offset;
+  QUESTION_ID_MAP               *IdMap;
+  EFI_IFR_VARSTORE              *VarStore;
+  EFI_IFR_FORM_SET              *FormSet;
+  EFI_IFR_QUESTION_HEADER       *Question;
+  LIST_ENTRY                    *QuestionIdMapEntryListHead;
+  LIST_ENTRY                    *OneOfOptinMapEntryListHead;
+  QUESTION_ID_MAP_ENTRY         *IdMapEntry;
+  EFI_IFR_GUID_OPTIONKEY        *OptionMap;
+  ONE_OF_OPTION_MAP             *OneOfOptionMap;
+  ONE_OF_OPTION_MAP_ENTRY       *OneOfOptionMapEntry;
+  EFI_IFR_GUID_CLASS            *Class;
+  EFI_IFR_GUID_SUBCLASS         *SubClass;
+  UINT8                         OneOfType;
+  EFI_IFR_ONE_OF                *OneOfOpcode;
+
+  //
+  // Set to a invalid value.
+  //
+  OneOfType = (UINT8) -1;
+  
+
+  Status = HiiLibExportPackageLists (ThunkContext->UefiHiiHandle, &List, &Size);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  //
+  // Get all VarStoreId and build the the QuestionId map.
+  // EFI_IFR_QUESTION_HEADER.VarStoreInfo.VarOffset -> Framework Question ID
+  // EFI_IFR_QUESTION_HEADER.QuestionId             -> UEFI Question ID
+  //
+
+  //
+  // Skip the package list header.
+  //
+  Package = (EFI_HII_PACKAGE_HEADER *) (List + 1);
+
+  while (Package->Type != EFI_HII_PACKAGE_END) {
+
+    if (Package->Type == EFI_HII_PACKAGE_FORM) {
+
+      //
+      // Skip the package header
+      //
+      Offset = sizeof (EFI_HII_PACKAGE_HEADER);
+      while (Offset < Package->Length) {
+        OpCode = (EFI_IFR_OP_HEADER *)((UINT8 *) Package + Offset);
+
+        switch (OpCode->OpCode) {
+        case EFI_IFR_FORM_SET_OP:
+          FormSet = (EFI_IFR_FORM_SET *) OpCode;
+          ThunkContext->FormSetTitle = FormSet->FormSetTitle;
+          ThunkContext->FormSetHelp  = FormSet->Help;
+          break;
+          
+        case EFI_IFR_VARSTORE_OP:
+          //
+          // IFR built from Framework VFR only has UEFI Buffer Type Storage
+          //
+          VarStore = (EFI_IFR_VARSTORE *) OpCode;
+          IdMap = AllocateZeroPool (sizeof (QUESTION_ID_MAP));
+          ASSERT (IdMap != NULL);
+          
+          IdMap->Signature  = QUESTION_ID_MAP_SIGNATURE;
+          IdMap->VarStoreId = VarStore->VarStoreId;
+          IdMap->VarSize    = VarStore->Size;
+          InitializeListHead (&IdMap->MapEntryListHead);
+          InsertTailList (&ThunkContext->QuestionIdMapListHead, &IdMap->Link);
+          break;
+
+        case EFI_IFR_NUMERIC_OP:
+        case EFI_IFR_CHECKBOX_OP:
+        case EFI_IFR_ONE_OF_OP:
+        case EFI_IFR_ORDERED_LIST_OP:
+        case EFI_IFR_STRING_OP:
+        //case EFI_IFR_PASSWORD_OP:
+          Question = (EFI_IFR_QUESTION_HEADER *)(OpCode + 1);
+          QuestionIdMapEntryListHead = GetMapEntryListHead (ThunkContext, Question->VarStoreId);
+
+          if (QuestionIdMapEntryListHead != NULL) {
+            //
+            // If the Question is using Buffer (EFI_IFR_VARSTORE_OP) type VarStore.
+            //
+            IdMapEntry = AllocateZeroPool (sizeof (QUESTION_ID_MAP_ENTRY));
+            ASSERT (IdMapEntry != NULL);
+
+            IdMapEntry->FwQId = Question->VarStoreInfo.VarOffset;
+            IdMapEntry->UefiQid = Question->QuestionId;
+            IdMapEntry->Signature = QUESTION_ID_MAP_ENTRY_SIGNATURE;
+
+            InsertTailList (QuestionIdMapEntryListHead, &IdMapEntry->Link);
+          }
+
+          if (OpCode->OpCode == EFI_IFR_ONE_OF_OP) {
+            OneOfOpcode = (EFI_IFR_ONE_OF *) OpCode;
+            OneOfType   = OneOfOpcode->Flags & EFI_IFR_NUMERIC_SIZE;
+          }
+
+          break;
+       
+        case EFI_IFR_GUID_OP:
+          OptionMap = (EFI_IFR_GUID_OPTIONKEY *) OpCode;
+          if (CompareGuid ((EFI_GUID *)(VOID *)&OptionMap->Guid, &gFrameworkHiiCompatbilityGuid)) {
+            if (OptionMap->ExtendOpCode == EFI_IFR_EXTEND_OP_OPTIONKEY) {
+              OneOfOptinMapEntryListHead = GetOneOfOptionMapEntryListHead (ThunkContext, OptionMap->QuestionId);
+              if (OneOfOptinMapEntryListHead == NULL) {
+                OneOfOptionMap = AllocateZeroPool (sizeof (ONE_OF_OPTION_MAP));
+                ASSERT (OneOfOptionMap != NULL);
+
+                OneOfOptionMap->Signature = ONE_OF_OPTION_MAP_SIGNATURE;
+                OneOfOptionMap->QuestionId = OptionMap->QuestionId;
+
+                //
+                // Make sure OneOfType is initialized.
+                //
+                ASSERT (OneOfType != (UINT8) -1);
+                OneOfOptionMap->ValueType = OneOfType;
+                InitializeListHead (&OneOfOptionMap->OneOfOptionMapEntryListHead);
+                OneOfOptinMapEntryListHead = &OneOfOptionMap->OneOfOptionMapEntryListHead;
+                InsertTailList (&ThunkContext->OneOfOptionMapListHead, &OneOfOptionMap->Link);
+              }
+              OneOfOptionMapEntry = AllocateZeroPool (sizeof (ONE_OF_OPTION_MAP_ENTRY));
+              ASSERT (OneOfOptionMapEntry != NULL);
+
+              OneOfOptionMapEntry->Signature = ONE_OF_OPTION_MAP_ENTRY_SIGNATURE;
+              OneOfOptionMapEntry->FwKey = OptionMap->KeyValue;
+              CopyMem (&OneOfOptionMapEntry->Value, &OptionMap->OptionValue, sizeof (EFI_IFR_TYPE_VALUE));
+              
+              InsertTailList (OneOfOptinMapEntryListHead, &OneOfOptionMapEntry->Link);
+            }
+         } else if (CompareGuid ((EFI_GUID *)(VOID *)&OptionMap->Guid, &gTianoHiiIfrGuid)) {
+            Class = (EFI_IFR_GUID_CLASS *) OpCode;
+
+            switch (Class->ExtendOpCode) {
+              case EFI_IFR_EXTEND_OP_CLASS:
+                ThunkContext->FormSetClass = Class->Class;
+                break;
+              case EFI_IFR_EXTEND_OP_SUBCLASS:
+                SubClass = (EFI_IFR_GUID_SUBCLASS *) OpCode;
+                ThunkContext->FormSetSubClass = SubClass->SubClass;
+                break;
+
+              default:
+                break;
+            }
+          }
+          break;
+          
+        default:
+          break;
+        
+        }
+
+        Offset += OpCode->Length;
+      }
+      //
+      // Only Form Package is in a Package List.
+      //
+      break;
+    }
+
+    Package = (EFI_HII_PACKAGE_HEADER *) (UINT8 *) Package + Package->Length;
+  }
+
+  FreePool (List);
   return EFI_SUCCESS;
 }
 
-EFI_STATUS
-AssignPureUefiHiiHandle (
-  IN OUT EFI_HII_THUNK_PRIVATE_DATA *Private,
-    OUT    FRAMEWORK_EFI_HII_HANDLE   *Handle
+
+LIST_ENTRY *
+GetMapEntryListHead (
+  IN CONST HII_THUNK_CONTEXT  *ThunkContext,
+  IN       UINT16             VarStoreId
   )
 {
-  ASSERT (Handle != NULL);
+  LIST_ENTRY            *Link;
+  QUESTION_ID_MAP       *Map;
 
-  *Handle = Private->StaticPureUefiHiiHandle;
-  Private->StaticPureUefiHiiHandle -= 1;
+  Link = GetFirstNode (&ThunkContext->QuestionIdMapListHead);
 
-  if (IsFrameworkHiiDatabaseHandleDepleted (Private)) {
-    return EFI_OUT_OF_RESOURCES;
+  while (!IsNull (&ThunkContext->QuestionIdMapListHead, Link)) {
+    Map = QUESTION_ID_MAP_FROM_LINK (Link);
+    if (VarStoreId == Map->VarStoreId) {
+      return &Map->MapEntryListHead;
+    }
+    Link = GetNextNode (&ThunkContext->QuestionIdMapListHead, Link);
+  }
+  return NULL;
+}
+
+
+HII_THUNK_CONTEXT *
+CreateThunkContext (
+  IN  HII_THUNK_PRIVATE_DATA      *Private,
+  IN  UINTN                       StringPackageCount,
+  IN  UINTN                       IfrPackageCount
+  )
+{
+  EFI_STATUS                   Status;
+  HII_THUNK_CONTEXT            *ThunkContext;
+
+  ThunkContext = AllocateZeroPool (sizeof (HII_THUNK_CONTEXT));
+  ASSERT (ThunkContext != NULL);
+  
+  ThunkContext->Signature = HII_THUNK_CONTEXT_SIGNATURE;
+  ThunkContext->IfrPackageCount = IfrPackageCount;
+  ThunkContext->StringPackageCount = StringPackageCount;
+  Status = AllocateHiiHandle (&ThunkContext->FwHiiHandle);
+  if (EFI_ERROR (Status)) {
+    return NULL;
   }
 
-  return EFI_SUCCESS;
+  InitializeListHead (&ThunkContext->QuestionIdMapListHead);
+  InitializeListHead (&ThunkContext->OneOfOptionMapListHead);
+
+
+  return ThunkContext;
+     
 }
+
+VOID
+DestroyThunkContext (
+  IN HII_THUNK_CONTEXT          *ThunkContext
+  )
+{
+  ASSERT (ThunkContext != NULL);
+
+  FreeHiiHandle (ThunkContext->FwHiiHandle);
+
+  DestroyQuestionIdMap (&ThunkContext->QuestionIdMapListHead);
+
+  DestoryOneOfOptionMap (&ThunkContext->OneOfOptionMapListHead);
+
+  RemoveEntryList (&ThunkContext->Link);
+
+  FreePool (ThunkContext);
+}
+
+
+VOID
+DestroyQuestionIdMap (
+  IN LIST_ENTRY     *QuestionIdMapListHead
+  )
+{
+  QUESTION_ID_MAP           *IdMap;
+  QUESTION_ID_MAP_ENTRY     *IdMapEntry;
+  LIST_ENTRY                *Link;
+  LIST_ENTRY                *Link2;
+
+  while (!IsListEmpty (QuestionIdMapListHead)) {
+    Link = GetFirstNode (QuestionIdMapListHead);
+    
+    IdMap = QUESTION_ID_MAP_FROM_LINK (Link);
+
+    while (!IsListEmpty (&IdMap->MapEntryListHead)) {
+      Link2 = GetFirstNode (&IdMap->MapEntryListHead);
+      
+      IdMapEntry = QUESTION_ID_MAP_ENTRY_FROM_LINK (Link2);
+
+      RemoveEntryList (Link2);
+
+      FreePool (IdMapEntry);
+    }
+
+    RemoveEntryList (Link);
+    FreePool (IdMap);
+  }
+}
+
+VOID
+DestoryOneOfOptionMap (
+  IN LIST_ENTRY     *OneOfOptionMapListHead
+  )
+{
+  ONE_OF_OPTION_MAP         *Map;
+  ONE_OF_OPTION_MAP_ENTRY   *MapEntry;
+  LIST_ENTRY                *Link;
+  LIST_ENTRY                *Link2;
+
+  while (!IsListEmpty (OneOfOptionMapListHead)) {
+    Link = GetFirstNode (OneOfOptionMapListHead);
+    
+    Map = ONE_OF_OPTION_MAP_FROM_LINK (Link);
+
+    while (!IsListEmpty (&Map->OneOfOptionMapEntryListHead)) {
+      Link2 = GetFirstNode (&Map->OneOfOptionMapEntryListHead);
+      
+      MapEntry = ONE_OF_OPTION_MAP_ENTRY_FROM_LINK (Link2);
+
+      RemoveEntryList (Link2);
+
+      FreePool (MapEntry);
+    }
+
+    RemoveEntryList (Link);
+    FreePool (Map);
+  }
+}
+
+
+
 

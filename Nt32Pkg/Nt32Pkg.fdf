@@ -24,7 +24,7 @@
 # existing system flash.
 #
 ################################################################################
-[FD.Fv_Recovery]
+[FD.Nt32]
 BaseAddress   = 0x0|gEfiNt32PkgTokenSpaceGuid.PcdWinNtFdBaseAddress  #The base address of the FLASH Device.
 Size          = 0x002a0000                                           #The size in bytes of the FLASH Device
 ErasePolarity = 1
@@ -93,9 +93,9 @@ DATA = {
   0x8D, 0x2B, 0xF1, 0xFF, 0x96, 0x76, 0x8B, 0x4C,
   0xA9, 0x85, 0x27, 0x47, 0x07, 0x5B, 0x4F, 0x50,
   # Crc:UINT32            #WorkingBlockValid:1, WorkingBlockInvalid:1, Reserved
-  0x85, 0xae, 0x2d, 0xbf, 0xFE, 0xFF, 0xFF, 0xFF,
-  # WriteQueueSize: UINT32
-  0xE4, 0x1F, 0x00, 0x00
+  0x77, 0x13, 0x9B, 0xD7, 0xFE, 0xFF, 0xFF, 0xFF,
+  # WriteQueueSize: UINT64
+  0xE0, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 }
 
 0x00290000|0x00010000
@@ -227,23 +227,17 @@ INF  MdeModulePkg/Application/HelloWorld/HelloWorld.inf
 FILE APPLICATION = c57ad6b7-0515-40a8-9d21-551652854e37 {
     SECTION COMPRESS PI_STD {
       SECTION GUIDED {
-        SECTION PE32 = EdkShellBinPkg/FullShell/ia32/Shell_Full.efi
+        SECTION PE32 = EdkShellBinPkg/FullShell/Ia32/Shell_Full.efi
       }
     }
   }
+
 FILE DRIVER = 961578FE-B6B7-44c3-AF35-6BC705CD2B1F {
-    SECTION COMPRESS PI_STD {
-      SECTION GUIDED {
-        SECTION PE32 = FatBinPkg/EnhancedFatDxe/Ia32/Fat.efi
-      }
-    }
+    SECTION PE32 = FatBinPkg/EnhancedFatDxe/Ia32/Fat.efi
   }
+
 FILE FREEFORM = 7BB28B99-61BB-11D5-9A5D-0090273FC14D {
-    SECTION COMPRESS PI_STD {
-      SECTION GUIDED {
-        SECTION RAW = MdeModulePkg/Logo/Logo.bmp
-      }
-    }
+    SECTION RAW = MdeModulePkg/Logo/Logo.bmp
   }
 
 

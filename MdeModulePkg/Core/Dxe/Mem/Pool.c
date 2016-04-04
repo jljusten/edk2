@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <DxeMain.h>
+#include "DxeMain.h"
+#include "Imem.h"
 
 #define POOL_FREE_SIGNATURE   EFI_SIGNATURE_32('p','f','r','0')
 typedef struct {
@@ -66,15 +67,17 @@ typedef struct {
     EFI_MEMORY_TYPE  MemoryType;
     LIST_ENTRY       FreeList[MAX_POOL_LIST];
     LIST_ENTRY       Link;
-} POOL; 
-
-
-POOL            PoolHead[EfiMaxMemoryType];
-LIST_ENTRY      PoolHeadList;
+} POOL;
 
 //
+// Pool header for each memory type.
 //
+POOL            mPoolHead[EfiMaxMemoryType];
+
 //
+// List of pool header to search for the appropriate memory type.
+//
+LIST_ENTRY      mPoolHeadList = INITIALIZE_LIST_HEAD_VARIABLE (mPoolHeadList);
 
 
 /**
@@ -90,21 +93,20 @@ CoreInitializePool (
   UINTN  Index;
 
   for (Type=0; Type < EfiMaxMemoryType; Type++) {
-    PoolHead[Type].Signature  = 0;
-    PoolHead[Type].Used       = 0;
-    PoolHead[Type].MemoryType = (EFI_MEMORY_TYPE) Type;
+    mPoolHead[Type].Signature  = 0;
+    mPoolHead[Type].Used       = 0;
+    mPoolHead[Type].MemoryType = (EFI_MEMORY_TYPE) Type;
     for (Index=0; Index < MAX_POOL_LIST; Index++) {
-        InitializeListHead (&PoolHead[Type].FreeList[Index]);
+        InitializeListHead (&mPoolHead[Type].FreeList[Index]);
     }
   }
-  InitializeListHead (&PoolHeadList);
 }
 
 
 /**
   Look up pool head for specified memory type.
 
-  @param  MemoryType             Memory type of which pool head is looked for 
+  @param  MemoryType             Memory type of which pool head is looked for
 
   @return Pointer of Corresponding pool head.
 
@@ -119,12 +121,16 @@ LookupPoolHead (
   UINTN           Index;
 
   if (MemoryType >= 0 && MemoryType < EfiMaxMemoryType) {
-    return &PoolHead[MemoryType];
+    return &mPoolHead[MemoryType];
   }
 
+  //
+  // MemoryType values in the range 0x80000000..0xFFFFFFFF are reserved for use by UEFI 
+  // OS loaders that are provided by operating system vendors
+  //
   if (MemoryType < 0) {
 
-    for (Link = PoolHeadList.ForwardLink; Link != &PoolHeadList; Link = Link->ForwardLink) {
+    for (Link = mPoolHeadList.ForwardLink; Link != &mPoolHeadList; Link = Link->ForwardLink) {
       Pool = CR(Link, POOL, Link, POOL_SIGNATURE);
       if (Pool->MemoryType == MemoryType) {
         return Pool;
@@ -143,7 +149,7 @@ LookupPoolHead (
       InitializeListHead (&Pool->FreeList[Index]);
     }
 
-    InsertHeadList (&PoolHeadList, &Pool->Link);
+    InsertHeadList (&mPoolHeadList, &Pool->Link);
 
     return Pool;
   }
@@ -151,19 +157,18 @@ LookupPoolHead (
   return NULL;
 }
 
- 
 
 
 /**
   Allocate pool of a particular type.
 
-  @param  PoolType               Type of pool to allocate 
-  @param  Size                   The amount of pool to allocate 
-  @param  Buffer                 The address to return a pointer to the allocated 
-                                 pool 
+  @param  PoolType               Type of pool to allocate
+  @param  Size                   The amount of pool to allocate
+  @param  Buffer                 The address to return a pointer to the allocated
+                                 pool
 
-  @retval EFI_INVALID_PARAMETER  PoolType not valid 
-  @retval EFI_OUT_OF_RESOURCES   Size exceeds max pool size or allocation failed. 
+  @retval EFI_INVALID_PARAMETER  PoolType not valid
+  @retval EFI_OUT_OF_RESOURCES   Size exceeds max pool size or allocation failed.
   @retval EFI_SUCCESS            Pool successfully allocated.
 
 **/
@@ -184,9 +189,9 @@ CoreAllocatePool (
        PoolType == EfiConventionalMemory) {
     return EFI_INVALID_PARAMETER;
   }
-  
+
   *Buffer = NULL;
-  
+
   //
   // If size is too large, fail it
   // Base on the EFI spec, return status of EFI_OUT_OF_RESOURCES
@@ -214,8 +219,8 @@ CoreAllocatePool (
   Internal function to allocate pool of a particular type.
   Caller must have the memory lock held
 
-  @param  PoolType               Type of pool to allocate 
-  @param  Size                   The amount of pool to allocate 
+  @param  PoolType               Type of pool to allocate
+  @param  Size                   The amount of pool to allocate
 
   @return The allocate pool, or NULL
 
@@ -235,7 +240,6 @@ CoreAllocatePoolI (
   UINTN       Index;
   UINTN       FSize;
   UINTN       Offset;
-  UINTN       Adjustment;
   UINTN       NoPages;
 
   ASSERT_LOCKED (&gMemoryLock);
@@ -243,13 +247,13 @@ CoreAllocatePoolI (
   //
   // Adjust the size by the pool header & tail overhead
   //
-  
+
   //
   // Adjusting the Size to be of proper alignment so that
   // we don't get an unaligned access fault later when
   // pool_Tail is being initialized
   //
-  ALIGN_VARIABLE (Size, Adjustment);
+  Size = ALIGN_VARIABLE (Size);
 
   Size += POOL_OVERHEAD;
   Index = SIZE_TO_LIST(Size);
@@ -292,7 +296,7 @@ CoreAllocatePoolI (
       FSize = LIST_TO_SIZE(Index);
 
       while (Offset + FSize <= DEFAULT_PAGE_ALLOCATION) {
-        Free = (POOL_FREE *) &NewPage[Offset];          
+        Free = (POOL_FREE *) &NewPage[Offset];
         Free->Signature = POOL_FREE_SIGNATURE;
         Free->Index     = (UINT32)Index;
         InsertHeadList (&Pool->FreeList[Index], &Free->Link);
@@ -318,7 +322,7 @@ Done:
   Buffer = NULL;
 
   if (Head != NULL) {
-    
+
     //
     // If we have a pool buffer, fill in the header & tail info
     //
@@ -331,14 +335,13 @@ Done:
     Buffer          = Head->Data;
     DEBUG_CLEAR_MEMORY (Buffer, Size - POOL_OVERHEAD);
 
-    DEBUG (
-      (DEBUG_POOL,
-      "AllocatePoolI: Type %x, Addr %x (len %x) %,d\n",
-       PoolType, 
-       Buffer, 
-       Size - POOL_OVERHEAD, 
-      Pool->Used)
-      );
+    DEBUG ((
+      DEBUG_POOL,
+      "AllocatePoolI: Type %x, Addr %p (len %lx) %,ld\n", PoolType,
+      Buffer,
+      (UINT64)(Size - POOL_OVERHEAD),
+      (UINT64) Pool->Used
+      ));
 
     //
     // Account the allocation
@@ -346,21 +349,20 @@ Done:
     Pool->Used += Size;
 
   } else {
-    DEBUG ((DEBUG_ERROR | DEBUG_POOL, "AllocatePool: failed to allocate %d bytes\n", Size));
+    DEBUG ((DEBUG_ERROR | DEBUG_POOL, "AllocatePool: failed to allocate %ld bytes\n", (UINT64) Size));
   }
 
   return Buffer;
 }
-  
 
 
 
 /**
   Frees pool.
 
-  @param  Buffer                 The allocated pool entry to free 
+  @param  Buffer                 The allocated pool entry to free
 
-  @retval EFI_INVALID_PARAMETER  Buffer is not a valid value. 
+  @retval EFI_INVALID_PARAMETER  Buffer is not a valid value.
   @retval EFI_SUCCESS            Pool successfully freed.
 
 **/
@@ -372,7 +374,7 @@ CoreFreePool (
 {
   EFI_STATUS Status;
 
-  if (NULL == Buffer) {
+  if (Buffer == NULL) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -388,9 +390,9 @@ CoreFreePool (
   Internal function to free a pool entry.
   Caller must have the memory lock held
 
-  @param  Buffer                 The allocated pool entry to free 
+  @param  Buffer                 The allocated pool entry to free
 
-  @retval EFI_INVALID_PARAMETER  Buffer not valid 
+  @retval EFI_INVALID_PARAMETER  Buffer not valid
   @retval EFI_SUCCESS            Buffer successfully freed.
 
 **/
@@ -411,19 +413,19 @@ CoreFreePoolI (
   UINTN       Offset;
   BOOLEAN     AllFree;
 
-  ASSERT(NULL != Buffer);
+  ASSERT(Buffer != NULL);
   //
   // Get the head & tail of the pool entry
   //
   Head = CR (Buffer, POOL_HEAD, Data, POOL_HEAD_SIGNATURE);
-  ASSERT(NULL != Head);
+  ASSERT(Head != NULL);
 
   if (Head->Signature != POOL_HEAD_SIGNATURE) {
     return EFI_INVALID_PARAMETER;
   }
 
   Tail = HEAD_TO_TAIL (Head);
-  ASSERT(NULL != Tail);
+  ASSERT(Tail != NULL);
 
   //
   // Debug
@@ -449,10 +451,10 @@ CoreFreePoolI (
     return EFI_INVALID_PARAMETER;
   }
   Pool->Used -= Size;
-  DEBUG ((DEBUG_POOL, "FreePool: %x (len %x) %,d\n", Head->Data, Head->Size - POOL_OVERHEAD, Pool->Used));
+  DEBUG ((DEBUG_POOL, "FreePool: %p (len %lx) %,ld\n", Head->Data, (UINT64)(Head->Size - POOL_OVERHEAD), (UINT64) Pool->Used));
 
   //
-  // Determine the pool list 
+  // Determine the pool list
   //
   Index = SIZE_TO_LIST(Size);
   DEBUG_CLEAR_MEMORY (Head, Size);
@@ -475,18 +477,18 @@ CoreFreePoolI (
     // Put the pool entry onto the free pool list
     //
     Free = (POOL_FREE *) Head;
-    ASSERT(NULL != Free);
+    ASSERT(Free != NULL);
     Free->Signature = POOL_FREE_SIGNATURE;
     Free->Index     = (UINT32)Index;
     InsertHeadList (&Pool->FreeList[Index], &Free->Link);
 
     //
-    // See if all the pool entries in the same page as Free are freed pool 
+    // See if all the pool entries in the same page as Free are freed pool
     // entries
     //
     NewPage = (CHAR8 *)((UINTN)Free & ~((DEFAULT_PAGE_ALLOCATION) -1));
     Free = (POOL_FREE *) &NewPage[0];
-    ASSERT(NULL != Free);
+    ASSERT(Free != NULL);
 
     if (Free->Signature == POOL_FREE_SIGNATURE) {
 
@@ -494,12 +496,12 @@ CoreFreePoolI (
 
       AllFree = TRUE;
       Offset = 0;
-      
+
       while ((Offset < DEFAULT_PAGE_ALLOCATION) && (AllFree)) {
         FSize = LIST_TO_SIZE(Index);
         while (Offset + FSize <= DEFAULT_PAGE_ALLOCATION) {
           Free = (POOL_FREE *) &NewPage[Offset];
-          ASSERT(NULL != Free);
+          ASSERT(Free != NULL);
           if (Free->Signature != POOL_FREE_SIGNATURE) {
             AllFree = FALSE;
           }
@@ -511,20 +513,20 @@ CoreFreePoolI (
       if (AllFree) {
 
         //
-        // All of the pool entries in the same page as Free are free pool 
+        // All of the pool entries in the same page as Free are free pool
         // entries
         // Remove all of these pool entries from the free loop lists.
         //
         Free = (POOL_FREE *) &NewPage[0];
-        ASSERT(NULL != Free);
+        ASSERT(Free != NULL);
         Index = Free->Index;
         Offset = 0;
-        
+
         while (Offset < DEFAULT_PAGE_ALLOCATION) {
           FSize = LIST_TO_SIZE(Index);
           while (Offset + FSize <= DEFAULT_PAGE_ALLOCATION) {
             Free = (POOL_FREE *) &NewPage[Offset];
-            ASSERT(NULL != Free);
+            ASSERT(Free != NULL);
             RemoveEntryList (&Free->Link);
             Offset += FSize;
           }
@@ -540,7 +542,7 @@ CoreFreePoolI (
   }
 
   //
-  // If this is an OS specific memory type, then check to see if the last 
+  // If this is an OS specific memory type, then check to see if the last
   // portion of that memory type has been freed.  If it has, then free the
   // list entry for that memory type
   //

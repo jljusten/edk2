@@ -12,11 +12,13 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
 
 
+
+/**
+  Disables CPU interrupts.
+
+**/
 VOID
 EFIAPI
 DisableInterrupts (

@@ -53,6 +53,7 @@
   UefiLib
   DebugLib
   BaseLib
+  PcdLib
 
 [Guids]
   gEfiGenericPlatformVariableGuid               # ALWAYS_CONSUMED
@@ -63,3 +64,5 @@
 [Depex]
   gEfiVariableArchProtocolGuid AND gEfiVariableWriteArchProtocolGuid
   
+[Pcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdRealTimeClockUpdateTimeout

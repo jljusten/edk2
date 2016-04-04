@@ -1,7 +1,7 @@
 /** @file
-  Serial I/O Port library functions with no library constructor/destructor
+  Null Serial Port library instance with empty functions.
 
-  Copyright (c) 2006, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -18,11 +18,15 @@
 
 #include <Library/SerialPortLib.h>
 
-/*
-
-  Programmed hardware of Serial port.
-
-  @return    Always return EFI_UNSUPPORTED.
+/**
+  Initialize the serial device hardware.
+  
+  If no initialization is required, then return RETURN_SUCCESS.
+  If the serial device was successfuly initialized, then return RETURN_SUCCESS.
+  If the serial device could not be initialized, then return RETURN_DEVICE_ERROR.
+  
+  @retval RETURN_SUCCESS        The serial device was initialized.
+  @retval RETURN_DEVICE_ERROR   The serail device could not be initialized.
 
 **/
 RETURN_STATUS
@@ -35,13 +39,22 @@ SerialPortInitialize (
 }
 
 /**
-  Write data to serial device.
+  Write data from buffer to serial device. 
+ 
+  Writes NumberOfBytes data bytes from Buffer to the serial device.  
+  The number of bytes actually written to the serial device is returned.
+  If the return value is less than NumberOfBytes, then the write operation failed.
 
-  @param  Buffer           Point of data buffer which need to be writed.
-  @param  NumberOfBytes    Number of output bytes which are cached in Buffer.
+  If Buffer is NULL, then ASSERT(). 
 
-  @retval 0                Write data failed.
-  @retval !0               Actual number of bytes writed to serial device.
+  If NumberOfBytes is zero, then return 0.
+
+  @param  Buffer           Pointer to the data buffer to be written.
+  @param  NumberOfBytes    Number of bytes to written to the serial device.
+
+  @retval 0                NumberOfBytes is 0.
+  @retval >0               The number of bytes written to the serial device.  
+                           If this value is less than NumberOfBytes, then the read operation failed.
 
 **/
 UINTN
@@ -56,13 +69,14 @@ SerialPortWrite (
 
 
 /**
-  Read data from serial device and save the datas in buffer.
+  Reads data from a serial device into a buffer.
 
-  @param  Buffer           Point of data buffer which need to be writed.
-  @param  NumberOfBytes    Number of output bytes which are cached in Buffer.
+  @param  Buffer           Pointer to the data buffer to store the data read from the serial device.
+  @param  NumberOfBytes    Number of bytes to read from the serial device.
 
-  @retval 0                Read data failed.
-  @retval !0               Aactual number of bytes read from serial device.
+  @retval 0                NumberOfBytes is 0.
+  @retval >0               The number of bytes read from the serial device.  
+                           If this value is less than NumberOfBytes, then the read operation failed.
 
 **/
 UINTN
@@ -73,5 +87,25 @@ SerialPortRead (
 )
 {
   return 0;
+}
+
+/**
+  Polls a serial device to see if there is any data waiting to be read.
+
+  Polls aserial device to see if there is any data waiting to be read.
+  If there is data waiting to be read from the serial device, then TRUE is returned.
+  If there is no data waiting to be read from the serial device, then FALSE is returned.
+
+  @retval TRUE             Data is waiting to be read from the serial device.
+  @retval FALSE            There is no data waiting to be read from the serial device.
+
+**/
+BOOLEAN
+EFIAPI
+SerialPortPoll (
+  VOID
+  )
+{
+  return FALSE;
 }
 

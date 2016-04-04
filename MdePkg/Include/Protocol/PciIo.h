@@ -1,7 +1,8 @@
 /** @file
-  EFI PCI I/O Protocol
+  EFI PCI I/O Protocol provides the basic Memory, I/O, PCI configuration, 
+  and DMA interfaces that a driver uses to access its PCI controller.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -15,9 +16,9 @@
 #ifndef __PCI_IO_H__
 #define __PCI_IO_H__
 
-//
-// Global ID for the PCI I/O Protocol
-//
+///
+/// Global ID for the PCI I/O Protocol
+///
 #define EFI_PCI_IO_PROTOCOL_GUID \
   { \
     0x4cf5b200, 0x68b8, 0x4ca5, {0x9e, 0xec, 0xb2, 0x3e, 0x3f, 0x50, 0x2, 0x9a } \
@@ -25,9 +26,9 @@
 
 typedef struct _EFI_PCI_IO_PROTOCOL  EFI_PCI_IO_PROTOCOL;
 
-//
-// Prototypes for the PCI I/O Protocol
-//
+///
+/// Prototypes for the PCI I/O Protocol
+///
 typedef enum {
   EfiPciIoWidthUint8      = 0,
   EfiPciIoWidthUint16,
@@ -47,36 +48,36 @@ typedef enum {
 //
 // Complete PCI address generater
 //
-#define EFI_PCI_IO_PASS_THROUGH_BAR               0xff    // Special BAR that passes a memory or I/O cycle through unchanged
-#define EFI_PCI_IO_ATTRIBUTE_MASK                 0x077f  // All the following I/O and Memory cycles
-#define EFI_PCI_IO_ATTRIBUTE_ISA_MOTHERBOARD_IO   0x0001  // I/O cycles 0x0000-0x00FF (10 bit decode)
-#define EFI_PCI_IO_ATTRIBUTE_ISA_IO               0x0002  // I/O cycles 0x0100-0x03FF or greater (10 bit decode)
-#define EFI_PCI_IO_ATTRIBUTE_VGA_PALETTE_IO       0x0004  // I/O cycles 0x3C6, 0x3C8, 0x3C9 (10 bit decode)
-#define EFI_PCI_IO_ATTRIBUTE_VGA_MEMORY           0x0008  // MEM cycles 0xA0000-0xBFFFF (24 bit decode)
-#define EFI_PCI_IO_ATTRIBUTE_VGA_IO               0x0010  // I/O cycles 0x3B0-0x3BB and 0x3C0-0x3DF (10 bit decode)
-#define EFI_PCI_IO_ATTRIBUTE_IDE_PRIMARY_IO       0x0020  // I/O cycles 0x1F0-0x1F7, 0x3F6, 0x3F7 (10 bit decode)
-#define EFI_PCI_IO_ATTRIBUTE_IDE_SECONDARY_IO     0x0040  // I/O cycles 0x170-0x177, 0x376, 0x377 (10 bit decode)
-#define EFI_PCI_IO_ATTRIBUTE_MEMORY_WRITE_COMBINE 0x0080  // Map a memory range so write are combined
-#define EFI_PCI_IO_ATTRIBUTE_IO                   0x0100  // Enable the I/O decode bit in the PCI Config Header
-#define EFI_PCI_IO_ATTRIBUTE_MEMORY               0x0200  // Enable the Memory decode bit in the PCI Config Header
-#define EFI_PCI_IO_ATTRIBUTE_BUS_MASTER           0x0400  // Enable the DMA bit in the PCI Config Header
-#define EFI_PCI_IO_ATTRIBUTE_MEMORY_CACHED        0x0800  // Map a memory range so all r/w accesses are cached
-#define EFI_PCI_IO_ATTRIBUTE_MEMORY_DISABLE       0x1000  // Disable a memory range
-#define EFI_PCI_IO_ATTRIBUTE_EMBEDDED_DEVICE      0x2000  // Clear for an add-in PCI Device
-#define EFI_PCI_IO_ATTRIBUTE_EMBEDDED_ROM         0x4000  // Clear for a physical PCI Option ROM accessed through ROM BAR
-#define EFI_PCI_IO_ATTRIBUTE_DUAL_ADDRESS_CYCLE   0x8000  // Clear for PCI controllers that can not genrate a DAC
-#define EFI_PCI_IO_ATTRIBUTE_ISA_IO_16            0x10000 // I/O cycles 0x0100-0x03FF or greater (16 bit decode)
-#define EFI_PCI_IO_ATTRIBUTE_VGA_PALETTE_IO_16    0x20000 // I/O cycles 0x3C6, 0x3C8, 0x3C9 (16 bit decode)
-#define EFI_PCI_IO_ATTRIBUTE_VGA_IO_16            0x30000 // I/O cycles 0x3B0-0x3BB and 0x3C0-0x3DF (16 bit decode)
+#define EFI_PCI_IO_PASS_THROUGH_BAR               0xff    ///< Special BAR that passes a memory or I/O cycle through unchanged
+#define EFI_PCI_IO_ATTRIBUTE_MASK                 0x077f  ///< All the following I/O and Memory cycles
+#define EFI_PCI_IO_ATTRIBUTE_ISA_MOTHERBOARD_IO   0x0001  ///< I/O cycles 0x0000-0x00FF (10 bit decode)
+#define EFI_PCI_IO_ATTRIBUTE_ISA_IO               0x0002  ///< I/O cycles 0x0100-0x03FF or greater (10 bit decode)
+#define EFI_PCI_IO_ATTRIBUTE_VGA_PALETTE_IO       0x0004  ///< I/O cycles 0x3C6, 0x3C8, 0x3C9 (10 bit decode)
+#define EFI_PCI_IO_ATTRIBUTE_VGA_MEMORY           0x0008  ///< MEM cycles 0xA0000-0xBFFFF (24 bit decode)
+#define EFI_PCI_IO_ATTRIBUTE_VGA_IO               0x0010  ///< I/O cycles 0x3B0-0x3BB and 0x3C0-0x3DF (10 bit decode)
+#define EFI_PCI_IO_ATTRIBUTE_IDE_PRIMARY_IO       0x0020  ///< I/O cycles 0x1F0-0x1F7, 0x3F6, 0x3F7 (10 bit decode)
+#define EFI_PCI_IO_ATTRIBUTE_IDE_SECONDARY_IO     0x0040  ///< I/O cycles 0x170-0x177, 0x376, 0x377 (10 bit decode)
+#define EFI_PCI_IO_ATTRIBUTE_MEMORY_WRITE_COMBINE 0x0080  ///< Map a memory range so write are combined
+#define EFI_PCI_IO_ATTRIBUTE_IO                   0x0100  ///< Enable the I/O decode bit in the PCI Config Header
+#define EFI_PCI_IO_ATTRIBUTE_MEMORY               0x0200  ///< Enable the Memory decode bit in the PCI Config Header
+#define EFI_PCI_IO_ATTRIBUTE_BUS_MASTER           0x0400  ///< Enable the DMA bit in the PCI Config Header
+#define EFI_PCI_IO_ATTRIBUTE_MEMORY_CACHED        0x0800  ///< Map a memory range so all r/w accesses are cached
+#define EFI_PCI_IO_ATTRIBUTE_MEMORY_DISABLE       0x1000  ///< Disable a memory range
+#define EFI_PCI_IO_ATTRIBUTE_EMBEDDED_DEVICE      0x2000  ///< Clear for an add-in PCI Device
+#define EFI_PCI_IO_ATTRIBUTE_EMBEDDED_ROM         0x4000  ///< Clear for a physical PCI Option ROM accessed through ROM BAR
+#define EFI_PCI_IO_ATTRIBUTE_DUAL_ADDRESS_CYCLE   0x8000  ///< Clear for PCI controllers that can not genrate a DAC
+#define EFI_PCI_IO_ATTRIBUTE_ISA_IO_16            0x10000 ///< I/O cycles 0x0100-0x03FF or greater (16 bit decode)
+#define EFI_PCI_IO_ATTRIBUTE_VGA_PALETTE_IO_16    0x20000 ///< I/O cycles 0x3C6, 0x3C8, 0x3C9 (16 bit decode)
+#define EFI_PCI_IO_ATTRIBUTE_VGA_IO_16            0x30000 ///< I/O cycles 0x3B0-0x3BB and 0x3C0-0x3DF (16 bit decode)
 
 #define EFI_PCI_DEVICE_ENABLE                     (EFI_PCI_IO_ATTRIBUTE_IO | EFI_PCI_IO_ATTRIBUTE_MEMORY | EFI_PCI_IO_ATTRIBUTE_BUS_MASTER)
 #define EFI_VGA_DEVICE_ENABLE                     (EFI_PCI_IO_ATTRIBUTE_VGA_PALETTE_IO | EFI_PCI_IO_ATTRIBUTE_VGA_MEMORY | EFI_PCI_IO_ATTRIBUTE_VGA_IO | EFI_PCI_IO_ATTRIBUTE_IO)
 
-//
-// *******************************************************
-// EFI_PCI_IO_PROTOCOL_OPERATION
-// *******************************************************
-//
+///
+/// *******************************************************
+/// EFI_PCI_IO_PROTOCOL_OPERATION
+/// *******************************************************
+///
 typedef enum {
   EfiPciIoOperationBusMasterRead,
   EfiPciIoOperationBusMasterWrite,
@@ -84,11 +85,11 @@ typedef enum {
   EfiPciIoOperationMaximum
 } EFI_PCI_IO_PROTOCOL_OPERATION;
 
-//
-// *******************************************************
-// EFI_PCI_IO_PROTOCOL_ATTRIBUTE_OPERATION
-// *******************************************************
-//
+///
+/// *******************************************************
+/// EFI_PCI_IO_PROTOCOL_ATTRIBUTE_OPERATION
+/// *******************************************************
+///
 typedef enum {
   EfiPciIoAttributeOperationGet,
   EfiPciIoAttributeOperationSet,
@@ -122,7 +123,7 @@ typedef enum {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_POLL_IO_MEM) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_POLL_IO_MEM)(
   IN EFI_PCI_IO_PROTOCOL           *This,
   IN  EFI_PCI_IO_PROTOCOL_WIDTH    Width,
   IN  UINT8                        BarIndex,
@@ -155,7 +156,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_IO_MEM) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_IO_MEM)(
   IN EFI_PCI_IO_PROTOCOL              *This,
   IN     EFI_PCI_IO_PROTOCOL_WIDTH    Width,
   IN     UINT8                        BarIndex,
@@ -189,7 +190,7 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_CONFIG) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_CONFIG)(
   IN EFI_PCI_IO_PROTOCOL              *This,
   IN     EFI_PCI_IO_PROTOCOL_WIDTH    Width,
   IN     UINT32                       Offset,
@@ -232,7 +233,7 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_COPY_MEM) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_COPY_MEM)(
   IN EFI_PCI_IO_PROTOCOL              *This,
   IN     EFI_PCI_IO_PROTOCOL_WIDTH    Width,
   IN     UINT8                        DestBarIndex,
@@ -263,7 +264,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_MAP) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_MAP)(
   IN EFI_PCI_IO_PROTOCOL                *This,
   IN     EFI_PCI_IO_PROTOCOL_OPERATION  Operation,
   IN     VOID                           *HostAddress,
@@ -284,7 +285,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_UNMAP) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_UNMAP)(
   IN EFI_PCI_IO_PROTOCOL           *This,
   IN  VOID                         *Mapping
   );
@@ -311,7 +312,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_ALLOCATE_BUFFER) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_ALLOCATE_BUFFER)(
   IN EFI_PCI_IO_PROTOCOL           *This,
   IN  EFI_ALLOCATE_TYPE            Type,
   IN  EFI_MEMORY_TYPE              MemoryType,
@@ -334,7 +335,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_FREE_BUFFER) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_FREE_BUFFER)(
   IN EFI_PCI_IO_PROTOCOL           *This,
   IN  UINTN                        Pages,
   IN  VOID                         *HostAddress
@@ -353,7 +354,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_FLUSH) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_FLUSH)(
   IN EFI_PCI_IO_PROTOCOL  *This
   );
 
@@ -372,7 +373,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_GET_LOCATION) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_GET_LOCATION)(
   IN EFI_PCI_IO_PROTOCOL          *This,
   OUT UINTN                       *SegmentNumber,
   OUT UINTN                       *BusNumber,
@@ -401,7 +402,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_ATTRIBUTES) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_ATTRIBUTES)(
   IN EFI_PCI_IO_PROTOCOL                       *This,
   IN  EFI_PCI_IO_PROTOCOL_ATTRIBUTE_OPERATION  Operation,
   IN  UINT64                                   Attributes,
@@ -432,7 +433,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_GET_BAR_ATTRIBUTES) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_GET_BAR_ATTRIBUTES)(
   IN EFI_PCI_IO_PROTOCOL             *This,
   IN  UINT8                          BarIndex,
   OUT UINT64                         *Supports, OPTIONAL
@@ -465,7 +466,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCI_IO_PROTOCOL_SET_BAR_ATTRIBUTES) (
+(EFIAPI *EFI_PCI_IO_PROTOCOL_SET_BAR_ATTRIBUTES)(
   IN EFI_PCI_IO_PROTOCOL              *This,
   IN     UINT64                       Attributes,
   IN     UINT8                        BarIndex,
@@ -473,9 +474,14 @@ EFI_STATUS
   IN OUT UINT64                       *Length
   );
 
-//
-// Interface structure for the PCI I/O Protocol
-//
+/**  
+  @par Protocol Description:
+  The EFI_PCI_IO_PROTOCOL provides the basic Memory, I/O, PCI configuration, 
+  and DMA interfaces that are used to abstract accesses to PCI controllers. 
+  There is one EFI_PCI_IO_PROTOCOL instance for each PCI controller on a PCI bus. 
+  A device driver that wishes to manage a PCI controller in a system will have to 
+  retrieve the EFI_PCI_IO_PROTOCOL instance that is associated with the PCI controller. 
+**/
 struct _EFI_PCI_IO_PROTOCOL {
   EFI_PCI_IO_PROTOCOL_POLL_IO_MEM         PollMem;
   EFI_PCI_IO_PROTOCOL_POLL_IO_MEM         PollIo;
@@ -492,7 +498,20 @@ struct _EFI_PCI_IO_PROTOCOL {
   EFI_PCI_IO_PROTOCOL_ATTRIBUTES          Attributes;
   EFI_PCI_IO_PROTOCOL_GET_BAR_ATTRIBUTES  GetBarAttributes;
   EFI_PCI_IO_PROTOCOL_SET_BAR_ATTRIBUTES  SetBarAttributes;
+  
+  ///
+  /// The size, in bytes, of the ROM image.
+  ///
   UINT64                                  RomSize;
+
+  ///
+  /// A pointer to the in memory copy of the ROM image. The PCI Bus Driver is responsible 
+  /// for allocating memory for the ROM image, and copying the contents of the ROM to memory. 
+  /// The contents of this buffer are either from the PCI option ROM that can be accessed 
+  /// through the ROM BAR of the PCI controller, or it is from a platform-specific location. 
+  /// The Attributes() function can be used to determine from which of these two sources 
+  /// the RomImage buffer was initialized.
+  /// 
   VOID                                    *RomImage;
 };
 

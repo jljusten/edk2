@@ -1,5 +1,5 @@
 /** @file
-  Task priority (TPL) function
+  Task priority (TPL) functions.
 
 Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <DxeMain.h>
-
+#include "DxeMain.h"
+#include "Event.h"
 
 /**
   Set Interrupt State.
@@ -35,41 +35,12 @@ CoreSetInterruptState (
   }
 }
 
-//
-// Return the highest set bit
-//
-
-/**
-  Return the highest set bit.
-
-  @param  Number  The value to check 
-
-  @return Bit position of the highest set bit
-
-**/
-UINTN
-CoreHighestSetBit (
-  IN UINTN     Number
-  )
-{
-  UINTN   msb;
-  
-  msb = 31;
-  while ((msb > 0) && ((Number & (UINTN)(1 << msb)) == 0)) {
-    msb--;
-  }
-
-  return msb;
-}
-
-
-
 
 /**
   Raise the task priority level to the new level.
   High level is implemented by disabling processor interrupts.
 
-  @param  NewTpl  New task priority level 
+  @param  NewTpl  New task priority level
 
   @return The previous task priority level
 
@@ -129,15 +100,14 @@ CoreRestoreTpl (
   //
 
   if (OldTpl >= TPL_HIGH_LEVEL  &&  NewTpl < TPL_HIGH_LEVEL) {
-    gEfiCurrentTpl = TPL_HIGH_LEVEL;  
+    gEfiCurrentTpl = TPL_HIGH_LEVEL;
   }
 
   //
   // Dispatch any pending events
   //
-
-  while ((-2 << NewTpl) & gEventPending) {
-    gEfiCurrentTpl = CoreHighestSetBit (gEventPending);
+  while (((-2 << NewTpl) & gEventPending) != 0) {
+    gEfiCurrentTpl = HighBitSet64 (gEventPending);
     if (gEfiCurrentTpl < TPL_HIGH_LEVEL) {
       CoreSetInterruptState (TRUE);
     }

@@ -2,7 +2,7 @@
   EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL as defined in UEFI 2.0.  
   This protocol provides service to convert text to device paths and device nodes.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -18,9 +18,9 @@
 
 #include <Protocol/DevicePath.h>
 
-//
-// Device Path From Text protocol
-//
+///
+/// Device Path From Text protocol
+///
 #define EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL_GUID \
   { \
     0x5c99a21, 0xc70f, 0x4ad2, {0x8a, 0x5f, 0x35, 0xdf, 0x33, 0x43, 0xf5, 0x1e  } \
@@ -39,10 +39,9 @@
 **/
 typedef
 EFI_DEVICE_PATH_PROTOCOL*
-(EFIAPI *EFI_DEVICE_PATH_FROM_TEXT_NODE) (
+(EFIAPI *EFI_DEVICE_PATH_FROM_TEXT_NODE)(
   IN CONST CHAR16                 *TextDeviceNode
-  )
-;    
+  );    
   
 
 /**
@@ -58,11 +57,14 @@ EFI_DEVICE_PATH_PROTOCOL*
 **/
 typedef
 EFI_DEVICE_PATH_PROTOCOL*
-(EFIAPI *EFI_DEVICE_PATH_FROM_TEXT_PATH) (
+(EFIAPI *EFI_DEVICE_PATH_FROM_TEXT_PATH)(
   IN CONST CHAR16                 *TextDevicePath
-  )
-;  
-  
+  );  
+
+/**
+  @par Protocol Description:
+  This protocol converts text to device paths and device nodes.
+**/   
 typedef struct {
   EFI_DEVICE_PATH_FROM_TEXT_NODE  ConvertTextToDeviceNode;
   EFI_DEVICE_PATH_FROM_TEXT_PATH  ConvertTextToDevicePath;

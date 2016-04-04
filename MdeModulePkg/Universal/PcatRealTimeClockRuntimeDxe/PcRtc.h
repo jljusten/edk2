@@ -17,7 +17,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define _RTC_H_
 
 
-#include <PiDxe.h>
+#include <Uefi.h>
 
 #include <Protocol/RealTimeClock.h>
 #include <Guid/GenericPlatformVariable.h>
@@ -32,6 +32,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
+#include <Library/PcdLib.h>
 
 
 typedef struct {
@@ -418,8 +419,7 @@ ConvertRtcTimeToEfiTime (
   IN OUT EFI_TIME        *Time,
   IN     UINT8           Century,
   IN     RTC_REGISTER_B  RegisterB
-  )
-;
+  );
 
 EFI_STATUS
 RtcWaitToUpdate (

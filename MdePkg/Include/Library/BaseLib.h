@@ -1,7 +1,7 @@
 /** @file
   Memory-only library functions with no library constructor/destructor
 
-  Copyright (c) 2006 - 2007, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -15,20 +15,18 @@
 #ifndef __BASE_LIB__
 #define __BASE_LIB__
 
-//
-// Definitions for architecture specific types
-// These include SPIN_LOCK and BASE_LIBRARY_JUMP_BUFFER
-//
-
-//
-// SPIN_LOCK
-//
+///
+/// Definitions for SPIN_LOCK
+///
 typedef volatile UINTN              SPIN_LOCK;
 
+//
+// Definitions for architecture specific types
+//
 #if   defined (MDE_CPU_IA32)
-//
-// IA32 context buffer used by SetJump() and LongJump()
-//
+///
+/// IA32 context buffer used by SetJump() and LongJump()
+///
 typedef struct {
   UINT32                            Ebx;
   UINT32                            Esi;
@@ -42,9 +40,9 @@ typedef struct {
 
 #elif defined (MDE_CPU_IPF)
 
-//
-// IPF context buffer used by SetJump() and LongJump()
-//
+///
+/// IPF context buffer used by SetJump() and LongJump()
+///
 typedef struct {
   UINT64                            F2[2];
   UINT64                            F3[2];
@@ -89,9 +87,9 @@ typedef struct {
 #define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 0x10
 
 #elif defined (MDE_CPU_X64)
-//
-// X64 context buffer used by SetJump() and LongJump()
-//
+///
+/// X64 context buffer used by SetJump() and LongJump()
+///
 typedef struct {
   UINT64                            Rbx;
   UINT64                            Rsp;
@@ -108,9 +106,9 @@ typedef struct {
 #define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 8
 
 #elif defined (MDE_CPU_EBC)
-//
-// EBC context buffer used by SetJump() and LongJump()
-//
+///
+/// EBC context buffer used by SetJump() and LongJump()
+///
 typedef struct {
   UINT64                            R0;
   UINT64                            R1;
@@ -271,8 +269,8 @@ StrSize (
   @param  FirstString   Pointer to a Null-terminated Unicode string.
   @param  SecondString  Pointer to a Null-terminated Unicode string.
 
-  @retval 0   FirstString is identical to SecondString.
-  @retval !=0 FirstString is not identical to SecondString.
+  @retval 0      FirstString is identical to SecondString.
+  @return others FirstString is not identical to SecondString.
 
 **/
 INTN
@@ -309,8 +307,8 @@ StrCmp (
   @param  SecondString  Pointer to a Null-terminated Unicode string.
   @param  Length        Maximum number of Unicode characters to compare.
 
-  @retval 0   FirstString is identical to SecondString.
-  @retval !=0 FirstString is not identical to SecondString.
+  @retval 0      FirstString is identical to SecondString.
+  @return others FirstString is not identical to SecondString.
 
 **/
 INTN
@@ -430,7 +428,7 @@ StrnCat (
   @param  SearchString	Pointer to a Null-terminated Unicode string to search for.
 
   @retval NULL            If the SearchString does not appear in String.
-  @retval !NULL           If there is a match.
+  @return others          If there is a match.
 
 **/
 CHAR16 *
@@ -471,7 +469,7 @@ StrStr (
 
   @param  String			    Pointer to a Null-terminated Unicode string.
 
-  @retval UINTN
+  @retval Value translated from String.
 
 **/
 UINTN
@@ -511,7 +509,7 @@ StrDecimalToUintn (
 
   @param  String			    Pointer to a Null-terminated Unicode string.
 
-  @retval UINT64
+  @retval Value translated from String.
 
 **/
 UINT64
@@ -553,7 +551,7 @@ StrDecimalToUint64 (
 
   @param  String			    Pointer to a Null-terminated Unicode string.
 
-  @retval UINTN
+  @retval Value translated from String.
 
 **/
 UINTN
@@ -595,7 +593,7 @@ StrHexToUintn (
 
   @param  String			    Pointer to a Null-terminated Unicode string.
 
-  @retval UINT64
+  @retval Value translated from String.
 
 **/
 UINT64
@@ -622,13 +620,12 @@ CHAR16
 EFIAPI
 NibbleToHexChar (
   IN UINT8      Nibble
-  )
-;
+  );
 
 /** 
   Convert binary buffer to a Unicode String in a specified sequence. 
 
-  This function converts bytes in the binary Buffer Buf to a Unicode String Str. 
+  This function converts bytes in the memory block pointed by Buffer to a Unicode String Str. 
   Each byte will be represented by two Unicode characters. For example, byte 0xA1 will 
   be converted into two Unicode character L'A' and L'1'. In the output String, the Unicode Character 
   for the Most Significant Nibble will be put before the Unicode Character for the Least Significant
@@ -660,8 +657,7 @@ BufToHexString (
   IN OUT       UINTN                *StringLen,
   IN     CONST UINT8                *Buffer,
   IN           UINTN                BufferSizeInBytes
-  )
-;
+  );
 
 
 /**
@@ -705,8 +701,7 @@ HexStringToBuf (
   IN OUT       UINTN                    *BufferSizeInBytes,
   IN     CONST CHAR16                   *String,
   OUT          UINTN                    *ConvertedStrLen  OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -719,6 +714,10 @@ HexStringToBuf (
 
   If Digit is NULL, then ASSERT.
 
+  @param  Digit       The output hexadecimal digit.
+
+  @param  Char        The input Unicode character.
+
   @retval TRUE        Char is in the range of Hexadecimal number. Digit is updated
                       to the byte value of the number.
   @retval FALSE       Char is not in the range of Hexadecimal number. Digit is keep
@@ -730,8 +729,7 @@ EFIAPI
 IsHexDigit (
   OUT UINT8      *Digit,
   IN  CHAR16      Char
-  )
-;
+  );
 
 /**
   Convert one Null-terminated Unicode string to a Null-terminated
@@ -905,8 +903,8 @@ AsciiStrSize (
   @param  FirstString   Pointer to a Null-terminated ASCII string.
   @param  SecondString  Pointer to a Null-terminated ASCII string.
 
-  @retval 0   FirstString is identical to SecondString.
-  @retval !=0 FirstString is not identical to SecondString.
+  @retval 0      FirstString is identical to SecondString.
+  @return others FirstString is not identical to SecondString.
 
 **/
 INTN
@@ -940,10 +938,10 @@ AsciiStrCmp (
   @param  FirstString   Pointer to a Null-terminated ASCII string.
   @param  SecondString  Pointer to a Null-terminated ASCII string.
 
-  @retval 0   FirstString is identical to SecondString using case insensitive
-              comparisons.
-  @retval !=0 FirstString is not identical to SecondString using case
-              insensitive comparisons.
+  @retval 0      FirstString is identical to SecondString using case insensitive
+                 comparisons.
+  @return others FirstString is not identical to SecondString using case
+                 insensitive comparisons.
 
 **/
 INTN
@@ -978,8 +976,8 @@ AsciiStriCmp (
   @param  SecondString  Pointer to a Null-terminated ASCII string.
   @param  Length        Maximum number of ASCII characters for compare.
   
-  @retval 0   FirstString is identical to SecondString.
-  @retval !=0 FirstString is not identical to SecondString.
+  @retval 0      FirstString is identical to SecondString.
+  @return others FirstString is not identical to SecondString.
 
 **/
 INTN
@@ -1085,11 +1083,11 @@ AsciiStrnCat (
   String contains more than PcdMaximumAsciiStringLength Unicode characters
   not including the Null-terminator, then ASSERT().
 
-  @param  String				  Pointer to a Null-terminated ASCII string.
-  @param  SearchString	  Pointer to a Null-terminated ASCII string to search for.
+  @param  String          Pointer to a Null-terminated ASCII string.
+  @param  SearchString    Pointer to a Null-terminated ASCII string to search for.
 
   @retval NULL            If the SearchString does not appear in String.
-  @retval !NULL           If there is a match.
+  @return others          If there is a match.
 
 **/
 CHAR8 *
@@ -1127,7 +1125,7 @@ AsciiStrStr (
 
   @param  String			    Pointer to a Null-terminated ASCII string.
 
-  @retval UINTN
+  @retval Value translated from String.
 
 **/
 UINTN
@@ -1164,7 +1162,7 @@ AsciiStrDecimalToUintn (
 
   @param  String			    Pointer to a Null-terminated ASCII string.
 
-  @retval UINT64
+  @retval Value translated from String.
 
 **/
 UINT64
@@ -1205,7 +1203,7 @@ AsciiStrDecimalToUint64 (
 
   @param  String			    Pointer to a Null-terminated ASCII string.
 
-  @retval UINTN
+  @retval Value translated from String.
 
 **/
 UINTN
@@ -1246,7 +1244,7 @@ AsciiStrHexToUintn (
 
   @param  String			    Pointer to a Null-terminated ASCII string.
 
-  @retval UINT64
+  @retval Value translated from String.
 
 **/
 UINT64
@@ -1595,6 +1593,8 @@ IsNodeAtEnd (
 
   @param  FirstEntry  A pointer to a node in a linked list.
   @param  SecondEntry A pointer to another node in the same linked list.
+  
+  @return SecondEntry
 
 **/
 LIST_ENTRY *
@@ -2192,15 +2192,15 @@ DivS64x64Remainder (
 
   If the Buffer is NULL, then ASSERT().
 
-  @param  Uint16  Pointer to a 16-bit value that may be unaligned.
+  @param  Buffer  Pointer to a 16-bit value that may be unaligned.
 
-  @return *Uint16
+  @return The 16-bit value read from Buffer.
 
 **/
 UINT16
 EFIAPI
 ReadUnaligned16 (
-  IN      CONST UINT16              *Uint16
+  IN CONST UINT16              *Buffer
   );
 
 
@@ -2213,17 +2213,17 @@ ReadUnaligned16 (
 
   If the Buffer is NULL, then ASSERT().
 
-  @param  Uint16  Pointer to a 16-bit value that may be unaligned.
+  @param  Buffer  Pointer to a 16-bit value that may be unaligned.
   @param  Value   16-bit value to write to Buffer.
 
-  @return Value
+  @return The 16-bit value to write to Buffer.
 
 **/
 UINT16
 EFIAPI
 WriteUnaligned16 (
-  OUT     UINT16                    *Uint16,
-  IN      UINT16                    Value
+  OUT UINT16                    *Buffer,
+  IN  UINT16                    Value
   );
 
 
@@ -2237,13 +2237,13 @@ WriteUnaligned16 (
 
   @param  Buffer  Pointer to a 24-bit value that may be unaligned.
 
-  @return The value read.
+  @return The 24-bit value read from Buffer.
 
 **/
 UINT32
 EFIAPI
 ReadUnaligned24 (
-  IN      CONST UINT32              *Buffer
+  IN CONST UINT32              *Buffer
   );
 
 
@@ -2259,14 +2259,14 @@ ReadUnaligned24 (
   @param  Buffer  Pointer to a 24-bit value that may be unaligned.
   @param  Value   24-bit value to write to Buffer.
 
-  @return The value written.
+  @return The 24-bit value to write to Buffer.
 
 **/
 UINT32
 EFIAPI
 WriteUnaligned24 (
-  OUT     UINT32                    *Buffer,
-  IN      UINT32                    Value
+  OUT UINT32                    *Buffer,
+  IN  UINT32                    Value
   );
 
 
@@ -2278,15 +2278,15 @@ WriteUnaligned24 (
 
   If the Buffer is NULL, then ASSERT().
 
-  @param  Uint32  Pointer to a 32-bit value that may be unaligned.
+  @param  Buffer  Pointer to a 32-bit value that may be unaligned.
 
-  @return *Uint32
+  @return The 32-bit value read from Buffer.
 
 **/
 UINT32
 EFIAPI
 ReadUnaligned32 (
-  IN      CONST UINT32              *Uint32
+  IN CONST UINT32              *Buffer
   );
 
 
@@ -2299,17 +2299,17 @@ ReadUnaligned32 (
 
   If the Buffer is NULL, then ASSERT().
 
-  @param  Uint32  Pointer to a 32-bit value that may be unaligned.
+  @param  Buffer  Pointer to a 32-bit value that may be unaligned.
   @param  Value   32-bit value to write to Buffer.
 
-  @return Value
+  @return The 32-bit value to write to Buffer.
 
 **/
 UINT32
 EFIAPI
 WriteUnaligned32 (
-  OUT     UINT32                    *Uint32,
-  IN      UINT32                    Value
+  OUT UINT32                    *Buffer,
+  IN  UINT32                    Value
   );
 
 
@@ -2321,15 +2321,15 @@ WriteUnaligned32 (
 
   If the Buffer is NULL, then ASSERT().
 
-  @param  Uint64  Pointer to a 64-bit value that may be unaligned.
+  @param  Buffer  Pointer to a 64-bit value that may be unaligned.
 
-  @return *Uint64
+  @return The 64-bit value read from Buffer.
 
 **/
 UINT64
 EFIAPI
 ReadUnaligned64 (
-  IN      CONST UINT64              *Uint64
+  IN CONST UINT64              *Buffer
   );
 
 
@@ -2342,17 +2342,17 @@ ReadUnaligned64 (
 
   If the Buffer is NULL, then ASSERT().
 
-  @param  Uint64  Pointer to a 64-bit value that may be unaligned.
+  @param  Buffer  Pointer to a 64-bit value that may be unaligned.
   @param  Value   64-bit value to write to Buffer.
 
-  @return Value
+  @return The 64-bit value to write to Buffer.
 
 **/
 UINT64
 EFIAPI
 WriteUnaligned64 (
-  OUT     UINT64                    *Uint64,
-  IN      UINT64                    Value
+  OUT UINT64                    *Buffer,
+  IN  UINT64                    Value
   );
 
 
@@ -3048,7 +3048,7 @@ GetSpinLockProperties (
   @param  SpinLock  A pointer to the spin lock to initialize to the released
                     state.
 
-  @return SpinLock
+  @return SpinLock in release state.
 
 **/
 SPIN_LOCK *
@@ -3075,7 +3075,7 @@ InitializeSpinLock (
 
   @param  SpinLock  A pointer to the spin lock to place in the acquired state.
 
-  @return SpinLock
+  @return SpinLock accquired lock.
 
 **/
 SPIN_LOCK *
@@ -3120,7 +3120,7 @@ AcquireSpinLockOrFail (
 
   @param  SpinLock  A pointer to the spin lock to release.
 
-  @return SpinLock
+  @return SpinLock released lock.
 
 **/
 SPIN_LOCK *
@@ -3245,6 +3245,7 @@ InterlockedCompareExchange64 (
   @param  CompareValue  Pointer value used in compare operation.
   @param  ExchangeValue Pointer value used in exchange operation.
 
+  @return The original *Value before exchange.
 **/
 VOID *
 EFIAPI
@@ -3271,8 +3272,8 @@ InterlockedCompareExchangePointer (
   If Buffer is NULL, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
-  @param  Buffer			Pointer to the buffer to carry out the sum operation.
-  @param  Length	    The size, in bytes, of Buffer .
+  @param  Buffer      Pointer to the buffer to carry out the sum operation.
+  @param  Length      The size, in bytes, of Buffer .
 
   @return Sum         The sum of Buffer with carry bits dropped during additions.
 
@@ -3297,9 +3298,8 @@ CalculateSum8 (
   If Buffer is NULL, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
-
-  @param  Buffer			Pointer to the buffer to carry out the checksum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the checksum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
   @return Checksum	  The 2's complement checksum of Buffer.
 
@@ -3325,8 +3325,8 @@ CalculateCheckSum8 (
   If Length is not aligned on a 16-bit boundary, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
-  @param  Buffer			Pointer to the buffer to carry out the sum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the sum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
   @return Sum         The sum of Buffer with carry bits dropped during additions.
 
@@ -3353,8 +3353,8 @@ CalculateSum16 (
   If Length is not aligned on a 16-bit boundary, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
-  @param  Buffer			Pointer to the buffer to carry out the checksum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the checksum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
   @return Checksum	  The 2's complement checksum of Buffer.
 
@@ -3380,8 +3380,8 @@ CalculateCheckSum16 (
   If Length is not aligned on a 32-bit boundary, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
-  @param  Buffer			Pointer to the buffer to carry out the sum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the sum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
   @return Sum         The sum of Buffer with carry bits dropped during additions.
 
@@ -3408,8 +3408,8 @@ CalculateSum32 (
   If Length is not aligned on a 32-bit boundary, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
-  @param  Buffer			Pointer to the buffer to carry out the checksum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the checksum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
   @return Checksum	  The 2's complement checksum of Buffer.
 
@@ -3435,8 +3435,8 @@ CalculateCheckSum32 (
   If Length is not aligned on a 64-bit boundary, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
-  @param  Buffer			Pointer to the buffer to carry out the sum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the sum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
   @return Sum         The sum of Buffer with carry bits dropped during additions.
 
@@ -3463,8 +3463,8 @@ CalculateSum64 (
   If Length is not aligned on a 64-bit boundary, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
-  @param  Buffer			Pointer to the buffer to carry out the checksum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the checksum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
   @return Checksum	  The 2's complement checksum of Buffer.
 
@@ -3477,12 +3477,12 @@ CalculateCheckSum64 (
   );
 
 
-//
-// Base Library CPU Functions
-//
+///
+/// Base Library CPU Functions
+///
 typedef
 VOID
-(EFIAPI *SWITCH_STACK_ENTRY_POINT) (
+(EFIAPI *SWITCH_STACK_ENTRY_POINT)(
   IN      VOID                      *Context1,  OPTIONAL
   IN      VOID                      *Context2   OPTIONAL
   );
@@ -3552,8 +3552,6 @@ LongJump (
 /**
   Enables CPU interrupts.
 
-  Enables CPU interrupts.
-
 **/
 VOID
 EFIAPI
@@ -3565,8 +3563,6 @@ EnableInterrupts (
 /**
   Disables CPU interrupts.
 
-  Disables CPU interrupts.
-
 **/
 VOID
 EFIAPI
@@ -3576,9 +3572,6 @@ DisableInterrupts (
 
 
 /**
-  Disables CPU interrupts and returns the interrupt state prior to the disable
-  operation.
-
   Disables CPU interrupts and returns the interrupt state prior to the disable
   operation.
 
@@ -3597,9 +3590,6 @@ SaveAndDisableInterrupts (
   Enables CPU interrupts for the smallest window required to capture any
   pending interrupts.
 
-  Enables CPU interrupts for the smallest window required to capture any
-  pending interrupts.
-
 **/
 VOID
 EFIAPI
@@ -3611,8 +3601,8 @@ EnableDisableInterrupts (
 /**
   Retrieves the current CPU interrupt state.
 
-  Retrieves the current CPU interrupt state. Returns TRUE is interrupts are
-  currently enabled. Otherwise returns FALSE.
+  Returns TRUE is interrupts are currently enabled. Otherwise
+  returns FALSE.
 
   @retval TRUE  CPU interrupts are enabled.
   @retval FALSE CPU interrupts are disabled.
@@ -3682,6 +3672,8 @@ CpuPause (
                       function.
   @param  NewStack    A pointer to the new stack to use for the EntryPoint
                       function.
+  @param  ...         Extended parameters.
+
 
 **/
 VOID
@@ -4621,9 +4613,9 @@ AsmReadDbr (
 
   All processor implementations provide at least 4 performance counters
   (PMC/PMD [4]...PMC/PMD [7] pairs), and 4 performance monitor counter overflow
-  status registers (PMC [0]¡­ PMC [3]).  Processor implementations may provide
+  status registers (PMC [0]... PMC [3]).  Processor implementations may provide
   additional implementation-dependent PMC and PMD to increase the number of
-  ¡®generic¡¯ performance counters (PMC/PMD pairs).  The remainder of PMC and PMD
+  'generic' performance counters (PMC/PMD pairs).  The remainder of PMC and PMD
   register set is implementation dependent.  No parameter checking is performed
   on Index.  If the Index value is beyond the implemented PMC register range,
   zero value will be returned.
@@ -4647,9 +4639,9 @@ AsmReadPmc (
 
   All processor implementations provide at least 4 performance counters
   (PMC/PMD [4]...PMC/PMD [7] pairs), and 4 performance monitor counter
-  overflow status registers (PMC [0]¡­ PMC [3]).  Processor implementations may
+  overflow status registers (PMC [0]... PMC [3]).  Processor implementations may
   provide additional implementation-dependent PMC and PMD to increase the number
-  of ¡®generic¡¯ performance counters (PMC/PMD pairs).  The remainder of PMC and PMD
+  of 'generic' performance counters (PMC/PMD pairs).  The remainder of PMC and PMD
   register set is implementation dependent.  No parameter checking is performed
   on Index.  If the Index value is beyond the implemented PMD register range,
   zero value will be returned.
@@ -4729,8 +4721,8 @@ AsmWriteDbr (
   Writes current value of Performance Monitor Configuration Register specified by Index.
   All processor implementations provide at least 4 performance counters
   (PMC/PMD [4]...PMC/PMD [7] pairs), and 4 performance monitor counter overflow status
-  registers (PMC [0]¡­ PMC [3]).  Processor implementations may provide additional
-  implementation-dependent PMC and PMD to increase the number of ¡®generic¡¯ performance
+  registers (PMC [0]... PMC [3]).  Processor implementations may provide additional
+  implementation-dependent PMC and PMD to increase the number of 'generic' performance
   counters (PMC/PMD pairs).  The remainder of PMC and PMD register set is implementation
   dependent.  No parameter checking is performed on Index.  If the Index value is
   beyond the implemented PMC register range, the write is ignored.
@@ -4756,8 +4748,8 @@ AsmWritePmc (
   Writes current value of Performance Monitor Data Register specified by Index.
   All processor implementations provide at least 4 performance counters
   (PMC/PMD [4]...PMC/PMD [7] pairs), and 4 performance monitor counter overflow
-  status registers (PMC [0]¡­ PMC [3]).  Processor implementations may provide
-  additional implementation-dependent PMC and PMD to increase the number of ¡®generic¡¯
+  status registers (PMC [0]... PMC [3]).  Processor implementations may provide
+  additional implementation-dependent PMC and PMD to increase the number of 'generic'
   performance counters (PMC/PMD pairs).  The remainder of PMC and PMD register set
   is implementation dependent.  No parameter checking is performed on Index.  If the
   Index value is beyond the implemented PMD register range, the write is ignored.
@@ -4860,7 +4852,7 @@ AsmCpuVirtual (
   as optional, a unique return code of 0xFFFFFFFFFFFFFFFF is returned in the
   Status field of the PAL_CALL_RETURN structure.
   This indicates that the procedure is not present in this PAL implementation.
-  It is the caller¡¯s responsibility to check for this return code after calling
+  It is the caller's responsibility to check for this return code after calling
   any optional PAL procedure.
   No parameter checking is performed on the 5 input parameters, but there are
   some common rules that the caller should follow when making a PAL call.  Any
@@ -4924,12 +4916,10 @@ AsmSwitchStackAndBackingStore (
   IN      VOID                      *NewBsp
   );
 
-
-//
-// Bugbug: This call should be removed after
-//         the PalCall Instance issue has been fixed.
-//
 /**
+  @todo   This call should be removed after the PalCall
+          Instance issue has been fixed.
+
   Performs a PAL call using static calling convention.
 
   An internal function to perform a PAL call using static calling convention.
@@ -4937,9 +4927,9 @@ AsmSwitchStackAndBackingStore (
   @param  PalEntryPoint The entry point address of PAL. The address in ar.kr5
                         would be used if this parameter were NULL on input.
   @param  Arg1          The first argument of a PAL call.
-  @param  Arg1          The second argument of a PAL call.
-  @param  Arg1          The third argument of a PAL call.
-  @param  Arg1          The fourth argument of a PAL call.
+  @param  Arg2          The second argument of a PAL call.
+  @param  Arg3          The third argument of a PAL call.
+  @param  Arg4          The fourth argument of a PAL call.
 
   @return The values returned in r8, r9, r10 and r11.
 
@@ -4955,124 +4945,122 @@ PalCallStatic (
 
 
 #elif defined (MDE_CPU_IA32) || defined (MDE_CPU_X64)
-//
-// IA32 and X64 Specific Functions
-//
-//
-// Byte packed structure for 16-bit Real Mode EFLAGS
-//
+///
+/// IA32 and X64 Specific Functions
+/// Byte packed structure for 16-bit Real Mode EFLAGS
+///
 typedef union {
   struct {
-    UINT32  CF:1;           // Carry Flag
-    UINT32  Reserved_0:1;   // Reserved
-    UINT32  PF:1;           // Parity Flag
-    UINT32  Reserved_1:1;   // Reserved
-    UINT32  AF:1;           // Auxiliary Carry Flag
-    UINT32  Reserved_2:1;   // Reserved
-    UINT32  ZF:1;           // Zero Flag
-    UINT32  SF:1;           // Sign Flag
-    UINT32  TF:1;           // Trap Flag
-    UINT32  IF:1;           // Interrupt Enable Flag
-    UINT32  DF:1;           // Direction Flag
-    UINT32  OF:1;           // Overflow Flag
-    UINT32  IOPL:2;         // I/O Privilege Level
-    UINT32  NT:1;           // Nested Task
-    UINT32  Reserved_3:1;   // Reserved
+    UINT32  CF:1;           /// Carry Flag
+    UINT32  Reserved_0:1;   /// Reserved
+    UINT32  PF:1;           /// Parity Flag
+    UINT32  Reserved_1:1;   /// Reserved
+    UINT32  AF:1;           /// Auxiliary Carry Flag
+    UINT32  Reserved_2:1;   /// Reserved
+    UINT32  ZF:1;           /// Zero Flag
+    UINT32  SF:1;           /// Sign Flag
+    UINT32  TF:1;           /// Trap Flag
+    UINT32  IF:1;           /// Interrupt Enable Flag
+    UINT32  DF:1;           /// Direction Flag
+    UINT32  OF:1;           /// Overflow Flag
+    UINT32  IOPL:2;         /// I/O Privilege Level
+    UINT32  NT:1;           /// Nested Task
+    UINT32  Reserved_3:1;   /// Reserved
   } Bits;
   UINT16    Uint16;
 } IA32_FLAGS16;
 
-//
-// Byte packed structure for EFLAGS/RFLAGS
-// 32-bits on IA-32
-// 64-bits on X64.  The upper 32-bits on X64 are reserved
-//
+///
+/// Byte packed structure for EFLAGS/RFLAGS
+/// 32-bits on IA-32
+/// 64-bits on X64.  The upper 32-bits on X64 are reserved
+///
 typedef union {
   struct {
-    UINT32  CF:1;           // Carry Flag
-    UINT32  Reserved_0:1;   // Reserved
-    UINT32  PF:1;           // Parity Flag
-    UINT32  Reserved_1:1;   // Reserved
-    UINT32  AF:1;           // Auxiliary Carry Flag
-    UINT32  Reserved_2:1;   // Reserved
-    UINT32  ZF:1;           // Zero Flag
-    UINT32  SF:1;           // Sign Flag
-    UINT32  TF:1;           // Trap Flag
-    UINT32  IF:1;           // Interrupt Enable Flag
-    UINT32  DF:1;           // Direction Flag
-    UINT32  OF:1;           // Overflow Flag
-    UINT32  IOPL:2;         // I/O Privilege Level
-    UINT32  NT:1;           // Nested Task
-    UINT32  Reserved_3:1;   // Reserved
-    UINT32  RF:1;           // Resume Flag
-    UINT32  VM:1;           // Virtual 8086 Mode
-    UINT32  AC:1;           // Alignment Check
-    UINT32  VIF:1;          // Virtual Interrupt Flag
-    UINT32  VIP:1;          // Virtual Interrupt Pending
-    UINT32  ID:1;           // ID Flag
-    UINT32  Reserved_4:10;  // Reserved
+    UINT32  CF:1;           /// Carry Flag
+    UINT32  Reserved_0:1;   /// Reserved
+    UINT32  PF:1;           /// Parity Flag
+    UINT32  Reserved_1:1;   /// Reserved
+    UINT32  AF:1;           /// Auxiliary Carry Flag
+    UINT32  Reserved_2:1;   /// Reserved
+    UINT32  ZF:1;           /// Zero Flag
+    UINT32  SF:1;           /// Sign Flag
+    UINT32  TF:1;           /// Trap Flag
+    UINT32  IF:1;           /// Interrupt Enable Flag
+    UINT32  DF:1;           /// Direction Flag
+    UINT32  OF:1;           /// Overflow Flag
+    UINT32  IOPL:2;         /// I/O Privilege Level
+    UINT32  NT:1;           /// Nested Task
+    UINT32  Reserved_3:1;   /// Reserved
+    UINT32  RF:1;           /// Resume Flag
+    UINT32  VM:1;           /// Virtual 8086 Mode
+    UINT32  AC:1;           /// Alignment Check
+    UINT32  VIF:1;          /// Virtual Interrupt Flag
+    UINT32  VIP:1;          /// Virtual Interrupt Pending
+    UINT32  ID:1;           /// ID Flag
+    UINT32  Reserved_4:10;  /// Reserved
   } Bits;
   UINTN     UintN;
 } IA32_EFLAGS32;
 
-//
-// Byte packed structure for Control Register 0 (CR0)
-// 32-bits on IA-32
-// 64-bits on X64.  The upper 32-bits on X64 are reserved
-//
+///
+/// Byte packed structure for Control Register 0 (CR0)
+/// 32-bits on IA-32
+/// 64-bits on X64.  The upper 32-bits on X64 are reserved
+///
 typedef union {
   struct {
-    UINT32  PE:1;           // Protection Enable
-    UINT32  MP:1;           // Monitor Coprocessor
-    UINT32  EM:1;           // Emulation
-    UINT32  TS:1;           // Task Switched
-    UINT32  ET:1;           // Extension Type
-    UINT32  NE:1;           // Numeric Error
-    UINT32  Reserved_0:10;  // Reserved
-    UINT32  WP:1;           // Write Protect
-    UINT32  Reserved_1:1;   // Reserved
-    UINT32  AM:1;           // Alignment Mask
-    UINT32  Reserved_2:10;  // Reserved
-    UINT32  NW:1;           // Mot Write-through
-    UINT32  CD:1;           // Cache Disable
-    UINT32  PG:1;           // Paging
+    UINT32  PE:1;           /// Protection Enable
+    UINT32  MP:1;           /// Monitor Coprocessor
+    UINT32  EM:1;           /// Emulation
+    UINT32  TS:1;           /// Task Switched
+    UINT32  ET:1;           /// Extension Type
+    UINT32  NE:1;           /// Numeric Error
+    UINT32  Reserved_0:10;  /// Reserved
+    UINT32  WP:1;           /// Write Protect
+    UINT32  Reserved_1:1;   /// Reserved
+    UINT32  AM:1;           /// Alignment Mask
+    UINT32  Reserved_2:10;  /// Reserved
+    UINT32  NW:1;           /// Mot Write-through
+    UINT32  CD:1;           /// Cache Disable
+    UINT32  PG:1;           /// Paging
   } Bits;
   UINTN     UintN;
 } IA32_CR0;
 
-//
-// Byte packed structure for Control Register 4 (CR4)
-// 32-bits on IA-32
-// 64-bits on X64.  The upper 32-bits on X64 are reserved
-//
+///
+/// Byte packed structure for Control Register 4 (CR4)
+/// 32-bits on IA-32
+/// 64-bits on X64.  The upper 32-bits on X64 are reserved
+///
 typedef union {
   struct {
-    UINT32  VME:1;          // Virtual-8086 Mode Extensions
-    UINT32  PVI:1;          // Protected-Mode Virtual Interrupts
-    UINT32  TSD:1;          // Time Stamp Disable
-    UINT32  DE:1;           // Debugging Extensions
-    UINT32  PSE:1;          // Page Size Extensions
-    UINT32  PAE:1;          // Physical Address Extension
-    UINT32  MCE:1;          // Machine Check Enable
-    UINT32  PGE:1;          // Page Global Enable
-    UINT32  PCE:1;          // Performance Monitoring Counter
-                            // Enable
-    UINT32  OSFXSR:1;       // Operating System Support for
-                            // FXSAVE and FXRSTOR instructions
-    UINT32  OSXMMEXCPT:1;   // Operating System Support for
-                            // Unmasked SIMD Floating Point
-                            // Exceptions
-    UINT32  Reserved_0:2;   // Reserved
-    UINT32  VMXE:1;         // VMX Enable
-    UINT32  Reserved_1:18;  // Reseved
+    UINT32  VME:1;          /// Virtual-8086 Mode Extensions
+    UINT32  PVI:1;          /// Protected-Mode Virtual Interrupts
+    UINT32  TSD:1;          /// Time Stamp Disable
+    UINT32  DE:1;           /// Debugging Extensions
+    UINT32  PSE:1;          /// Page Size Extensions
+    UINT32  PAE:1;          /// Physical Address Extension
+    UINT32  MCE:1;          /// Machine Check Enable
+    UINT32  PGE:1;          /// Page Global Enable
+    UINT32  PCE:1;          /// Performance Monitoring Counter
+                            /// Enable
+    UINT32  OSFXSR:1;       /// Operating System Support for
+                            /// FXSAVE and FXRSTOR instructions
+    UINT32  OSXMMEXCPT:1;   /// Operating System Support for
+                            /// Unmasked SIMD Floating Point
+                            /// Exceptions
+    UINT32  Reserved_0:2;   /// Reserved
+    UINT32  VMXE:1;         /// VMX Enable
+    UINT32  Reserved_1:18;  /// Reseved
   } Bits;
   UINTN     UintN;
 } IA32_CR4;
 
-//
-// Byte packed structure for an IDTR, GDTR, LDTR descriptor
-/// @bug  How to make this structure byte-packed in a compiler independent way?
-//
+///
+/// Byte packed structure for an IDTR, GDTR, LDTR descriptor
+/// @todo  How to make this structure byte-packed in a compiler independent way?
+///
 #pragma pack (1)
 typedef struct {
   UINT16  Limit;
@@ -5086,30 +5074,30 @@ typedef struct {
 #define IA32_IDT_GATE_TYPE_INTERRUPT_32  0x8E
 #define IA32_IDT_GATE_TYPE_TRAP_32       0x8F
 
-//
-// Byte packed structure for an Interrupt Gate Descriptor
-//
+///
+/// Byte packed structure for an Interrupt Gate Descriptor
+///
 typedef union {
   struct {
-    UINT32  OffsetLow:16;   // Offset bits 15..0
-    UINT32  Selector:16;    // Selector
-    UINT32  Reserved_0:8;   // Reserved
-    UINT32  GateType:8;     // Gate Type.  See #defines above
-    UINT32  OffsetHigh:16;  // Offset bits 31..16
+    UINT32  OffsetLow:16;   /// Offset bits 15..0
+    UINT32  Selector:16;    /// Selector
+    UINT32  Reserved_0:8;   /// Reserved
+    UINT32  GateType:8;     /// Gate Type.  See #defines above
+    UINT32  OffsetHigh:16;  /// Offset bits 31..16
   } Bits;
   UINT64  Uint64;
 } IA32_IDT_GATE_DESCRIPTOR;
 
-//
-// Byte packed structure for an FP/SSE/SSE2 context
-//
+///
+/// Byte packed structure for an FP/SSE/SSE2 context
+///
 typedef struct {
   UINT8  Buffer[512];
 } IA32_FX_BUFFER;
 
-//
-// Structures for the 16-bit real mode thunks
-//
+///
+/// Structures for the 16-bit real mode thunks
+///
 typedef struct {
   UINT32                            Reserved1;
   UINT32                            Reserved2;
@@ -5173,9 +5161,9 @@ typedef union {
   IA32_BYTE_REGS                    H;
 } IA32_REGISTER_SET;
 
-//
-// Byte packed structure for an 16-bit real mode thunks
-//
+///
+/// Byte packed structure for an 16-bit real mode thunks
+///
 typedef struct {
   IA32_REGISTER_SET                 *RealModeState;
   VOID                              *RealModeBuffer;
@@ -7068,7 +7056,7 @@ AsmDisablePaging32 (
   If EntryPoint is 0, then ASSERT().
   If NewStack is 0, then ASSERT().
 
-  @param  Cs          The 16-bit selector to load in the CS before EntryPoint
+  @param  CodeSelector The 16-bit selector to load in the CS before EntryPoint
                       is called. The descriptor in the GDT that this selector
                       references must be setup for long mode.
   @param  EntryPoint  The 64-bit virtual address of the function to call with
@@ -7109,7 +7097,7 @@ AsmEnablePaging64 (
   If EntryPoint is 0, then ASSERT().
   If NewStack is 0, then ASSERT().
 
-  @param  Cs          The 16-bit selector to load in the CS before EntryPoint
+  @param  CodeSelector The 16-bit selector to load in the CS before EntryPoint
                       is called. The descriptor in the GDT that this selector
                       references must be setup for 32-bit protected mode.
   @param  EntryPoint  The 64-bit virtual address of the function to call with
@@ -7230,10 +7218,7 @@ AsmPrepareAndThunk16 (
   IN OUT  THUNK_CONTEXT             *ThunkContext
   );
 
-#else
-
 #endif
-
 #endif
 
 

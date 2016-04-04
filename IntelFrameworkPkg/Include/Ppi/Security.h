@@ -2,7 +2,7 @@
   This file declares Security Architectural PPI.
   
   This PPI is installed by some platform PEIM that abstracts the security policy to the PEI
-  Foundation, namely the case of a PEIM¡¯s authentication state being returned during the PEI section
+  Foundation, namely the case of a PEIM's authentication state being returned during the PEI section
   extraction process.
   
   Copyright (c) 2006, Intel Corporation
@@ -51,7 +51,7 @@ typedef struct _EFI_PEI_SECURITY_PPI  EFI_PEI_SECURITY_PPI;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PEI_SECURITY_AUTHENTICATION_STATE) (
+(EFIAPI *EFI_PEI_SECURITY_AUTHENTICATION_STATE)(
   IN EFI_PEI_SERVICES             **PeiServices,
   IN EFI_PEI_SECURITY_PPI         *This,
   IN UINT32                       AuthenticationStatus,

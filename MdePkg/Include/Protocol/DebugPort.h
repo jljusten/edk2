@@ -4,7 +4,7 @@
   This protocol is used by debug agent to communicate with the
   remote debug host.
   
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -19,9 +19,9 @@
 #define __DEBUG_PORT_H__
 
 
-//
-// DebugPortIo protocol {EBA4E8D2-3858-41EC-A281-2647BA9660D0}
-//
+///
+/// DebugPortIo protocol {EBA4E8D2-3858-41EC-A281-2647BA9660D0}
+///
 #define EFI_DEBUGPORT_PROTOCOL_GUID \
   { \
     0xEBA4E8D2, 0x3858, 0x41EC, {0xA2, 0x81, 0x26, 0x47, 0xBA, 0x96, 0x60, 0xD0 } \
@@ -46,7 +46,7 @@ typedef struct _EFI_DEBUGPORT_PROTOCOL EFI_DEBUGPORT_PROTOCOL;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DEBUGPORT_RESET) (
+(EFIAPI *EFI_DEBUGPORT_RESET)(
   IN EFI_DEBUGPORT_PROTOCOL               *This
   );
 
@@ -66,7 +66,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DEBUGPORT_WRITE) (
+(EFIAPI *EFI_DEBUGPORT_WRITE)(
   IN EFI_DEBUGPORT_PROTOCOL               *This,
   IN UINT32                               Timeout,
   IN OUT UINTN                            *BufferSize,
@@ -90,7 +90,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DEBUGPORT_READ) (
+(EFIAPI *EFI_DEBUGPORT_READ)(
   IN EFI_DEBUGPORT_PROTOCOL               *This,
   IN UINT32                               Timeout,
   IN OUT UINTN                            *BufferSize,
@@ -109,13 +109,17 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DEBUGPORT_POLL) (
+(EFIAPI *EFI_DEBUGPORT_POLL)(
   IN EFI_DEBUGPORT_PROTOCOL               *This
   );
 
 //
 // DebugPort protocol definition
 //
+/**
+  @par Protocol Description:
+  This protocol provides the communication link between the debug agent and the remote host.
+**/ 
 struct _EFI_DEBUGPORT_PROTOCOL {
   EFI_DEBUGPORT_RESET Reset;
   EFI_DEBUGPORT_WRITE Write;

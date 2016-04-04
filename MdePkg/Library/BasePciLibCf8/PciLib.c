@@ -1,7 +1,8 @@
 /** @file
-  PCI Library using Port CF8/CFC access.
+  PCI Library functions that use I/O ports 0xCF8 and 0xCFC to perform
+  PCI Configuration cycles. Layers on top of one PCI CF8 Library instance.
 
-  Copyright (c) 2006, Intel Corporation<BR>
+  Copyright (c) 2006 - 2008, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -14,7 +15,6 @@
 
 
 #include <Base.h>
-
 
 #include <Library/PciLib.h>
 #include <Library/PciCf8Lib.h>
@@ -54,7 +54,7 @@ PciRead8 (
 
   @param  Address Address that encodes the PCI Bus, Device, Function and
                   Register.
-  @param  Value   The value to write.
+  @param  Data    The value to write.
 
   @return The value written to the PCI configuration register.
 
@@ -63,10 +63,10 @@ UINT8
 EFIAPI
 PciWrite8 (
   IN      UINTN                     Address,
-  IN      UINT8                     Data
+  IN      UINT8                     Value
   )
 {
-  return PciCf8Write8 (Address, Data);
+  return PciCf8Write8 (Address, Value);
 }
 
 /**
@@ -382,7 +382,7 @@ PciRead16 (
 
   @param  Address Address that encodes the PCI Bus, Device, Function and
                   Register.
-  @param  Value   The value to write.
+  @param  Data    The value to write.
 
   @return The value written to the PCI configuration register.
 
@@ -391,10 +391,10 @@ UINT16
 EFIAPI
 PciWrite16 (
   IN      UINTN                     Address,
-  IN      UINT16                    Data
+  IN      UINT16                    Value
   )
 {
-  return PciCf8Write16 (Address, Data);
+  return PciCf8Write16 (Address, Value);
 }
 
 /**
@@ -710,7 +710,7 @@ PciRead32 (
 
   @param  Address Address that encodes the PCI Bus, Device, Function and
                   Register.
-  @param  Value   The value to write.
+  @param  Data    The value to write.
 
   @return The value written to the PCI configuration register.
 
@@ -719,10 +719,10 @@ UINT32
 EFIAPI
 PciWrite32 (
   IN      UINTN                     Address,
-  IN      UINT32                    Data
+  IN      UINT32                    Value
   )
 {
-  return PciCf8Write32 (Address, Data);
+  return PciCf8Write32 (Address, Value);
 }
 
 /**

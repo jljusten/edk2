@@ -1,5 +1,5 @@
 /** @file
-  Mde UEFI library functions.
+  This module provide help function for displaying unicode string.
 
   Copyright (c) 2006, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials                          
@@ -14,9 +14,7 @@
 
 
 
-//
-// Include common header file for this module.
-//
+
 #include "UefiLibInternal.h"
 
 typedef struct {
@@ -24,7 +22,7 @@ typedef struct {
   UINT32  Width;
 } UNICODE_WIDTH_ENTRY;
 
-UNICODE_WIDTH_ENTRY mUnicodeWidthTable[] = {
+GLOBAL_REMOVE_IF_UNREFERENCED CONST UNICODE_WIDTH_ENTRY mUnicodeWidthTable[] = {
   //
   // General script area
   //
@@ -207,10 +205,10 @@ GetGlyphWidth (
   IN CHAR16  UnicodeChar
   )
 {
-  UINTN               Index;
-  UINTN               Low;
-  UINTN               High;
-  UNICODE_WIDTH_ENTRY *Item;
+  UINTN                     Index;
+  UINTN                     Low;
+  UINTN                     High;
+  CONST UNICODE_WIDTH_ENTRY *Item;
 
   Item  = NULL;
   Low   = 0;

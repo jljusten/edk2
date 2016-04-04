@@ -1,7 +1,7 @@
 /** @file
-  The Decompress Protocol Interface
+  The Decompress Protocol Interface as defined in UEFI spec
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -57,7 +57,7 @@ typedef struct _EFI_DECOMPRESS_PROTOCOL  EFI_DECOMPRESS_PROTOCOL;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DECOMPRESS_GET_INFO) (
+(EFIAPI *EFI_DECOMPRESS_GET_INFO)(
   IN EFI_DECOMPRESS_PROTOCOL            *This,
   IN   VOID                             *Source,
   IN   UINT32                           SourceSize,
@@ -99,7 +99,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DECOMPRESS_DECOMPRESS) (
+(EFIAPI *EFI_DECOMPRESS_DECOMPRESS)(
   IN EFI_DECOMPRESS_PROTOCOL              *This,
   IN     VOID                             *Source,
   IN     UINT32                           SourceSize,
@@ -109,6 +109,11 @@ EFI_STATUS
   IN     UINT32                           ScratchSize
   );
 
+/**
+  @par Protocol Description:
+  Provides a decompression service.
+
+**/ 
 struct _EFI_DECOMPRESS_PROTOCOL {
   EFI_DECOMPRESS_GET_INFO   GetInfo;
   EFI_DECOMPRESS_DECOMPRESS Decompress;

@@ -1,7 +1,7 @@
-/**@file
-  Library utility functions for Runtime driver.
+/** @file
+  UEFI Runtime Library implementation for non IPF processor types.
 
-Copyright (c) 2006 Intel Corporation. <BR>
+Copyright (c) 2006 - 2008 Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -25,12 +25,11 @@ STATIC BOOLEAN                mEfiAtRuntime           = FALSE;
 EFI_RUNTIME_SERVICES          *mRT;
 
 /**
-  Set AtRuntime flag as TRUE after ExitBootServices
+  Set AtRuntime flag as TRUE after ExitBootServices.
 
   @param[in]  Event   The Event that is being processed
   @param[in]  Context Event Context
 **/
-STATIC
 VOID
 EFIAPI
 RuntimeLibExitBootServicesEvent (
@@ -54,7 +53,6 @@ RuntimeLibExitBootServicesEvent (
   @param[in]    Event   The Event that is being processed
   @param[in]    Context Event Context
 **/
-STATIC
 VOID
 EFIAPI
 RuntimeLibVirtualNotifyEvent (
@@ -72,6 +70,8 @@ RuntimeLibVirtualNotifyEvent (
 
 /**
   Intialize runtime Driver Lib if it has not yet been initialized.
+  It will ASSERT() if gRT is NULL or gBS is NULL.
+  It will ASSERT() if that operation fails.
 
   @param[in]  ImageHandle   The firmware allocated handle for the EFI image.
   @param[in]  SystemTable   A pointer to the EFI System Table.
@@ -87,13 +87,13 @@ RuntimeDriverLibConstruct (
 {
   EFI_STATUS  Status;
 
+  ASSERT (gRT != NULL);
+  ASSERT (gBS != NULL);
+
   mRT = gRT;
-  ASSERT (mRT != NULL);
-  
   //
   // Register SetVirtualAddressMap () notify function
   //
-  ASSERT (gBS != NULL);
   Status = gBS->CreateEvent (
                   EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE,
                   TPL_NOTIFY,
@@ -118,9 +118,13 @@ RuntimeDriverLibConstruct (
 }
 
 /**
-  This routine will free some resources which have been allocated in
-  EfiInitializeRuntimeDriverLib(). If a runtime driver exits with an error,
-  it must call this routine to free the allocated resource before the exiting.
+  If a runtime driver exits with an error, it must call this routine 
+  to free the allocated resource before the exiting.
+  It will ASSERT() if gBS is NULL.
+  It will ASSERT() if that operation fails.
+
+  @param[in]  ImageHandle   The firmware allocated handle for the EFI image.
+  @param[in]  SystemTable   A pointer to the EFI System Table.
 
   @retval     EFI_SUCCESS       Shutdown the Runtime Driver Lib successfully
   @retval     EFI_UNSUPPORTED   Runtime Driver lib was not initialized at all
@@ -148,7 +152,7 @@ RuntimeDriverLibDeconstruct (
 }
 
 /**
-  Return TRUE if ExitBootServices () has been called
+  Return TRUE if ExitBootServices () has been called.
 
   @retval TRUE If ExitBootServices () has been called
 **/
@@ -162,7 +166,7 @@ EfiAtRuntime (
 }
 
 /**
-  Return TRUE if SetVirtualAddressMap () has been called
+  Return TRUE if SetVirtualAddressMap () has been called.
 
   @retval TRUE  If SetVirtualAddressMap () has been called
 **/

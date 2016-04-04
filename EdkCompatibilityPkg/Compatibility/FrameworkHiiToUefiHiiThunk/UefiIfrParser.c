@@ -28,7 +28,6 @@ FORM_EXPRESSION  *mSuppressExpression;
 FORM_EXPRESSION  *mGrayOutExpression;
 
 EFI_GUID  gZeroGuid = {0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0}};
-EFI_GUID  gTianoHiiIfrGuid = EFI_IFR_TIANO_GUID;
 
 /**
   Initialize Statement header members.
@@ -980,7 +979,7 @@ ParseOpCodes (
       //
       // check the formset GUID
       //
-      if (CompareMem (&FormSet->Guid, &((EFI_IFR_FORM_SET *) OpCodeData)->Guid, sizeof (EFI_GUID)) != 0) {
+      if (!CompareGuid ((EFI_GUID *)(VOID *)&FormSet->Guid, (EFI_GUID *)(VOID *)&((EFI_IFR_FORM_SET *) OpCodeData)->Guid)) {
         return EFI_INVALID_PARAMETER;
       }
 

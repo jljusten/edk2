@@ -1,6 +1,11 @@
 /** @file
   CalculateCrc32 Boot Services as defined in DXE CIS.
 
+  This Boot Services is in the Runtime Driver because this service is
+  also required by SetVirtualAddressMap() when the EFI System Table and
+  EFI Runtime Services Table are converted from physical address to
+  virtual addresses.	This requires that the 32-bit CRC be recomputed.
+
 Copyright (c) 2006, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
@@ -10,28 +15,17 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-  Crc32.c
-
-Abstract:
-
-  This Boot Services is in the Runtime Driver because this service is
-  also required by SetVirtualAddressMap() when the EFI System Table and
-  EFI Runtime Services Table are converted from physical address to
-  virtual addresses.  This requires that the 32-bit CRC be recomputed.
-
 **/
 
 
-#include <PiDxe.h>
+#include <Uefi.h>
 
 UINT32  mCrcTable[256];
 
 /**
   Calculate CRC32 for target data.
 
-  @param  Len                   The target data.
+  @param  Data                  The target data.
   @param  DataSize              The target data size.
   @param  CrcOut                The CRC32 for target data.
 
@@ -68,13 +62,13 @@ RuntimeDriverCalculateCrc32 (
 
 /**
   Reverse bits for 32bit data.
+  This is a internal function.
 
   @param  Value                 The data to be reversed.
 
-  @retrun                       Data reversed.
+  @return                       Data reversed.
 
 **/
-STATIC
 UINT32
 ReverseBits (
   UINT32  Value
@@ -85,7 +79,7 @@ ReverseBits (
 
   NewValue = 0;
   for (Index = 0; Index < 32; Index++) {
-    if (Value & (1 << Index)) {
+    if ((Value & (1 << Index)) != 0) {
       NewValue = NewValue | (1 << (31 - Index));
     }
   }
@@ -95,11 +89,6 @@ ReverseBits (
 
 /**
   Initialize CRC32 table.
-
-  @param  None
-
-  @retrun None
-
 **/
 VOID
 RuntimeDriverInitializeCrc32Table (
@@ -113,7 +102,7 @@ RuntimeDriverInitializeCrc32Table (
   for (TableEntry = 0; TableEntry < 256; TableEntry++) {
     Value = ReverseBits ((UINT32) TableEntry);
     for (Index = 0; Index < 8; Index++) {
-      if (Value & 0x80000000) {
+      if ((Value & 0x80000000) != 0) {
         Value = (Value << 1) ^ 0x04c11db7;
       } else {
         Value = Value << 1;

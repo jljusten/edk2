@@ -1,5 +1,7 @@
 /** @file
-Copyright (c) 2007, Intel Corporation
+Parser for IFR binary encoding.
+
+Copyright (c) 2007 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -7,15 +9,6 @@ http://opensource.org/licenses/bsd-license.php
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  IfrParse.c
-
-Abstract:
-
-  Parser for IFR binary encoding.
-
 
 **/
 
@@ -32,6 +25,7 @@ FORM_EXPRESSION  *mSuppressExpression;
 FORM_EXPRESSION  *mGrayOutExpression;
 
 EFI_GUID  gTianoHiiIfrGuid = EFI_IFR_TIANO_GUID;
+GLOBAL_REMOVE_IF_UNREFERENCED EFI_GUID  mFrameworkHiiCompatibilityGuid = EFI_IFR_FRAMEWORK_GUID;
 
 
 /**
@@ -95,6 +89,54 @@ CreateStatement (
   return Statement;
 }
 
+EFI_STATUS
+UpdateCheckBoxStringToken (
+  IN CONST FORM_BROWSER_FORMSET *FormSet,
+  IN       FORM_BROWSER_STATEMENT *Statement
+  )
+{
+  CHAR16                  Str[MAXIMUM_VALUE_CHARACTERS];
+  EFI_STRING_ID           Id;
+  EFI_STATUS              Status;
+
+  ASSERT (Statement != NULL);
+  ASSERT (Statement->Operand == EFI_IFR_NUMERIC_OP);
+  
+  UnicodeValueToString (Str, 0, Statement->VarStoreInfo.VarName, MAXIMUM_VALUE_CHARACTERS - 1);
+  
+  Status = HiiLibNewString (FormSet->HiiHandle, &Id, Str);
+
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  Statement->VarStoreInfo.VarName = Id;
+    
+  return EFI_SUCCESS;
+}
+
+BOOLEAN
+IsNextOpCodeGuidedVarEqName (
+  UINT8 *OpCodeData
+  )
+{
+  //
+  // Get next opcode
+  //
+  OpCodeData += ((EFI_IFR_OP_HEADER *) OpCodeData)->Length;
+  if (*OpCodeData == EFI_IFR_GUID_OP) {
+    if (CompareGuid (&mFrameworkHiiCompatibilityGuid, (EFI_GUID *)(OpCodeData + sizeof (EFI_IFR_OP_HEADER)))) {
+      //
+      // Specific GUIDed opcodes to support IFR generated from Framework HII VFR 
+      //
+      if ((((EFI_IFR_GUID_VAREQNAME *) OpCodeData)->ExtendOpCode) == EFI_IFR_EXTEND_OP_VAREQNAME) {
+        return TRUE;
+      }
+    }
+  }
+
+  return FALSE;
+}
 
 /**
   Initialize Question's members.
@@ -118,6 +160,7 @@ CreateQuestion (
   LIST_ENTRY               *Link;
   FORMSET_STORAGE          *Storage;
   NAME_VALUE_NODE          *NameValueNode;
+  EFI_STATUS               Status;
 
   Statement = CreateStatement (OpCodeData, FormSet, Form);
   if (Statement == NULL) {
@@ -136,6 +179,19 @@ CreateQuestion (
     // VarStoreId of zero indicates no variable storage
     //
     return Statement;
+  }
+
+  //
+  // Take a look at next OpCode to see whether it is a GUIDed opcode to support
+  // Framework Compatibility
+  //
+  if (FeaturePcdGet (PcdFrameworkHiiCompatibilitySupport)) {
+    if ((*OpCodeData == EFI_IFR_NUMERIC_OP) && IsNextOpCodeGuidedVarEqName (OpCodeData)) {
+      Status = UpdateCheckBoxStringToken (FormSet, Statement);
+      if (EFI_ERROR (Status)) {
+        return NULL;
+      }
+    }
   }
 
   //
@@ -337,7 +393,7 @@ InitializeRequestElement (
     StrLen = UnicodeSPrint (RequestElement, 30 * sizeof (CHAR16), L"&%s", Question->VariableName);
   }
 
-  if ((Question->Operand == EFI_IFR_PASSWORD_OP) && (Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK)) {
+  if ((Question->Operand == EFI_IFR_PASSWORD_OP) && ((Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) == EFI_IFR_FLAG_CALLBACK)) {
     //
     // Password with CALLBACK flag is stored in encoded format,
     // so don't need to append it to <ConfigRequest>
@@ -371,11 +427,9 @@ InitializeRequestElement (
 
 
 /**
-  Free resources of a Expression
+  Free resources of a Expression.
 
   @param  FormSet                Pointer of the Expression
-
-  @return None.
 
 **/
 VOID
@@ -402,11 +456,9 @@ DestroyExpression (
 
 
 /**
-  Free resources of a storage
+  Free resources of a storage.
 
   @param  Storage                Pointer of the storage
-
-  @return None.
 
 **/
 VOID
@@ -444,11 +496,9 @@ DestroyStorage (
 
 
 /**
-  Free resources of a Statement
+  Free resources of a Statement.
 
   @param  Statement              Pointer of the Statement
-
-  @return None.
 
 **/
 VOID
@@ -511,11 +561,9 @@ DestroyStatement (
 
 
 /**
-  Free resources of a Form
+  Free resources of a Form.
 
-  @param  Form                   Pointer of the Form
-
-  @return None.
+  @param  Form                   Pointer of the Form.
 
 **/
 VOID
@@ -557,11 +605,9 @@ DestroyForm (
 
 
 /**
-  Free resources allocated for a FormSet
+  Free resources allocated for a FormSet.
 
   @param  FormSet                Pointer of the FormSet
-
-  @return None.
 
 **/
 VOID
@@ -641,7 +687,10 @@ IsExpressionOpCode (
 {
   if (((Operand >= EFI_IFR_EQ_ID_VAL_OP) && (Operand <= EFI_IFR_NOT_OP)) ||
       ((Operand >= EFI_IFR_MATCH_OP) && (Operand <= EFI_IFR_SPAN_OP)) ||
-      (Operand == EFI_IFR_CATENATE_OP)
+      (Operand == EFI_IFR_CATENATE_OP) ||
+      (Operand == EFI_IFR_TO_LOWER_OP) ||
+      (Operand == EFI_IFR_TO_UPPER_OP) ||
+      (Operand == EFI_IFR_VERSION_OP)
      ) {
     return TRUE;
   } else {
@@ -656,8 +705,6 @@ IsExpressionOpCode (
   @param  FormSet                The FormSet to be counted.
   @param  NumberOfStatement      Number of Statemens(Questions)
   @param  NumberOfExpression     Number of Expression OpCodes
-
-  @return None.
 
 **/
 VOID
@@ -692,6 +739,7 @@ CountOpCodes (
   *NumberOfStatement = StatementCount;
   *NumberOfExpression = ExpressionCount;
 }
+
 
 
 /**
@@ -791,7 +839,7 @@ ParseOpCodes (
     //
     // If scope bit set, push onto scope stack
     //
-    if (Scope) {
+    if (Scope != 0) {
       PushScope (Operand);
     }
 
@@ -1091,7 +1139,7 @@ ParseOpCodes (
       CurrentStatement = CreateStatement (OpCodeData, FormSet, CurrentForm);
       CurrentStatement->Flags = ((EFI_IFR_SUBTITLE *) OpCodeData)->Flags;
 
-      if (Scope) {
+      if (Scope != 0) {
         mInScopeSubtitle = TRUE;
       }
       break;
@@ -1187,7 +1235,7 @@ ParseOpCodes (
 
       InitializeRequestElement (FormSet, CurrentStatement);
 
-      if ((Operand == EFI_IFR_ONE_OF_OP) && Scope) {
+      if ((Operand == EFI_IFR_ONE_OF_OP) && Scope != 0) {
         SuppressForOption = TRUE;
       }
       break;
@@ -1208,7 +1256,7 @@ ParseOpCodes (
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_OTHER;
       CurrentStatement->BufferValue = AllocateZeroPool (CurrentStatement->StorageWidth);
 
-      if (Scope) {
+      if (Scope != 0) {
         SuppressForOption = TRUE;
       }
       break;
@@ -1221,6 +1269,7 @@ ParseOpCodes (
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_BOOLEAN;
 
       InitializeRequestElement (FormSet, CurrentStatement);
+
       break;
 
     case EFI_IFR_STRING_OP:
@@ -1233,11 +1282,11 @@ ParseOpCodes (
       //
       CurrentStatement->Minimum = ((EFI_IFR_STRING *) OpCodeData)->MinSize;
       CurrentStatement->Maximum = ((EFI_IFR_STRING *) OpCodeData)->MaxSize;
-      CurrentStatement->StorageWidth = (UINT16)((UINTN) CurrentStatement->Maximum * sizeof (UINT16));
+      CurrentStatement->StorageWidth = (UINT16)((UINTN) CurrentStatement->Maximum * sizeof (CHAR16));
       CurrentStatement->Flags = ((EFI_IFR_STRING *) OpCodeData)->Flags;
 
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_STRING;
-      CurrentStatement->BufferValue = AllocateZeroPool (CurrentStatement->StorageWidth);
+      CurrentStatement->BufferValue = AllocateZeroPool (CurrentStatement->StorageWidth + sizeof (CHAR16));
 
       InitializeRequestElement (FormSet, CurrentStatement);
       break;
@@ -1252,10 +1301,10 @@ ParseOpCodes (
       //
       CopyMem (&CurrentStatement->Minimum, &((EFI_IFR_PASSWORD *) OpCodeData)->MinSize, sizeof (UINT16));
       CopyMem (&CurrentStatement->Maximum, &((EFI_IFR_PASSWORD *) OpCodeData)->MaxSize, sizeof (UINT16));
-      CurrentStatement->StorageWidth = (UINT16)((UINTN) CurrentStatement->Maximum * sizeof (UINT16));
+      CurrentStatement->StorageWidth = (UINT16)((UINTN) CurrentStatement->Maximum * sizeof (CHAR16));
 
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_STRING;
-      CurrentStatement->BufferValue = AllocateZeroPool (CurrentStatement->StorageWidth);
+      CurrentStatement->BufferValue = AllocateZeroPool ((CurrentStatement->StorageWidth + sizeof (CHAR16)));
 
       InitializeRequestElement (FormSet, CurrentStatement);
       break;
@@ -1320,7 +1369,7 @@ ParseOpCodes (
       //
       InsertTailList (&CurrentStatement->DefaultListHead, &CurrentDefault->Link);
 
-      if (Scope) {
+      if (Scope != 0) {
         InScopeDefault = TRUE;
       }
       break;
@@ -1528,6 +1577,7 @@ ParseOpCodes (
           break;
         }
       }
+
       break;
 
     //

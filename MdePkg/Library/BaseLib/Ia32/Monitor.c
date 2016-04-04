@@ -12,11 +12,25 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
 
 
+
+/**
+  Sets up a monitor buffer that is used by AsmMwait().
+
+  Executes a MONITOR instruction with the register state specified by Eax, Ecx
+  and Edx. Returns Eax. This function is only available on IA-32 and X64.
+
+  @param  Eax The value to load into EAX or RAX before executing the MONITOR
+              instruction.
+  @param  Ecx The value to load into ECX or RCX before executing the MONITOR
+              instruction.
+  @param  Edx The value to load into EDX or RDX before executing the MONITOR
+              instruction.
+
+  @return Eax
+
+**/
 UINTN
 EFIAPI
 AsmMonitor (

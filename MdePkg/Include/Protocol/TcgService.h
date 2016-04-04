@@ -2,7 +2,7 @@
   TCG Service Protocol as defined in TCG_EFI_Protocol_1_20_Final
   See http://trustedcomputinggroup.org for the latest specification
 
-  Copyright (c) 2007, Intel Corporation
+  Copyright (c) 2007 - 2008, Intel Corporation 
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -26,8 +26,6 @@ typedef struct _EFI_TCG_PROTOCOL EFI_TCG_PROTOCOL;
 //
 // Set structure alignment to 1-byte
 //
-#pragma pack (push, 1)
-
 typedef struct {
   UINT8  Major;
   UINT8  Minor;
@@ -46,11 +44,6 @@ typedef struct _TCG_EFI_BOOT_SERVICE_CAPABILITY {
 } TCG_EFI_BOOT_SERVICE_CAPABILITY;
 
 typedef UINT32   TCG_ALGORITHM_ID;
-
-//
-// Restore original structure alignment
-//
-#pragma pack (pop)
 
 /**
   This service provides EFI protocol capability information, state information 
@@ -79,7 +72,7 @@ typedef UINT32   TCG_ALGORITHM_ID;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCG_STATUS_CHECK) (
+(EFIAPI *EFI_TCG_STATUS_CHECK)(
   IN      EFI_TCG_PROTOCOL          *This,
   OUT     TCG_EFI_BOOT_SERVICE_CAPABILITY
                                     *ProtocolCapability,
@@ -107,7 +100,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCG_HASH_ALL) (
+(EFIAPI *EFI_TCG_HASH_ALL)(
   IN      EFI_TCG_PROTOCOL          *This,
   IN      UINT8                     *HashData,
   IN      UINT64                    HashDataLen,
@@ -137,7 +130,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCG_LOG_EVENT) (
+(EFIAPI *EFI_TCG_LOG_EVENT)(
   IN      EFI_TCG_PROTOCOL          *This,
   IN      TCG_PCR_EVENT             *TCGLogData,
   IN OUT  UINT32                    *EventNumber,
@@ -161,7 +154,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCG_PASS_THROUGH_TO_TPM) (
+(EFIAPI *EFI_TCG_PASS_THROUGH_TO_TPM)(
   IN      EFI_TCG_PROTOCOL          *This,
   IN      UINT32                    TpmInputParamterBlockSize,
   IN      UINT8                     *TpmInputParamterBlock,
@@ -194,7 +187,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCG_HASH_LOG_EXTEND_EVENT) (
+(EFIAPI *EFI_TCG_HASH_LOG_EXTEND_EVENT)(
   IN      EFI_TCG_PROTOCOL          *This,
   IN      EFI_PHYSICAL_ADDRESS      HashData,
   IN      UINT64                    HashDataLen,
@@ -205,27 +198,17 @@ EFI_STATUS
   );
 
 /**
+  @par Protocol Description:
   The EFI_TCG Protocol abstracts TCG activity.
 
-  @param  StatusCheck        This service provides information on the TPM.
-  @param  HashAll            This service abstracts the capability to do a hash 
-                             operation on a data buffer.
-  @param  LogEvent           This service abstracts the capability to add 
-                             an entry to the Event Log.
-  @param  PassThroughToTPM   This service provides a pass-through capability 
-                             from the caller to the system¡¯s TPM.
-  @param  HashLogExtendEvent This service abstracts the capability to do a hash 
-                             operation on a data buffer, extend a specific TPM PCR 
-                             with the hash result, and add an entry to the Event Log. 
-
 **/
-typedef struct _EFI_TCG_PROTOCOL {
+struct _EFI_TCG_PROTOCOL {
   EFI_TCG_STATUS_CHECK              StatusCheck;
   EFI_TCG_HASH_ALL                  HashAll;
   EFI_TCG_LOG_EVENT                 LogEvent;
   EFI_TCG_PASS_THROUGH_TO_TPM       PassThroughToTpm;
   EFI_TCG_HASH_LOG_EXTEND_EVENT     HashLogExtendEvent;
-} EFI_TCG_PROTOCOL;
+};
 
 extern EFI_GUID gEfiTcgProtocolGuid;
 

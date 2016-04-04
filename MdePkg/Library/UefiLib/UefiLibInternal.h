@@ -1,4 +1,4 @@
-/**@file
+/** @file
   Internal include file for UefiLib.
 
   Copyright (c) 2007, Intel Corporation.<BR>
@@ -14,20 +14,21 @@
 #define __UEFI_LIB_INTERNAL_H_
 
 
-#include <PiDxe.h>
+#include <Uefi.h>
 #include <Protocol/DriverBinding.h>
 #include <Protocol/ComponentName.h>
 #include <Protocol/ComponentName2.h>
 #include <Protocol/DriverConfiguration.h>
 #include <Protocol/DriverDiagnostics.h>
 #include <Protocol/DriverDiagnostics2.h>
-#include <Protocol/FirmwareVolume2.h>
 #include <Protocol/LoadedImage.h>
 
 #include <Guid/EventGroup.h>
 #include <Guid/EventLegacyBios.h>
+#include <Guid/GlobalVariable.h>
 #include <Library/UefiLib.h>
 #include <Library/UefiBootServicesTableLib.h>
+#include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>

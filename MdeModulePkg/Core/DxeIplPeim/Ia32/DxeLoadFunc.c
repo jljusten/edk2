@@ -18,7 +18,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 //
 // Global Descriptor Table (GDT)
 //
-GLOBAL_REMOVE_IF_UNREFERENCED IA32_GDT gGdtEntries [] = {
+GLOBAL_REMOVE_IF_UNREFERENCED IA32_GDT gGdtEntries[] = {
 /* selector { Global Segment Descriptor                              } */  
 /* 0x00 */  {{0,      0,  0,  0,    0,  0,  0,  0,    0,  0, 0,  0,  0}}, //null descriptor 
 /* 0x08 */  {{0xffff, 0,  0,  0x2,  1,  0,  1,  0xf,  0,  0, 1,  1,  0}}, //linear data segment descriptor
@@ -44,10 +44,6 @@ GLOBAL_REMOVE_IF_UNREFERENCED  IA32_DESCRIPTOR gLidtDescriptor = {
   0
 };
 
-
-
-
-
 /**
    Transfers control to DxeCore.
 
@@ -57,14 +53,12 @@ GLOBAL_REMOVE_IF_UNREFERENCED  IA32_DESCRIPTOR gLidtDescriptor = {
 
    @param DxeCoreEntryPoint         The entrypoint of DxeCore.
    @param HobList                   The start of HobList passed to DxeCore.
-   @param EndOfPeiSignal            The PPI descriptor for EFI_END_OF_PEI_PPI.
 
 **/
 VOID
 HandOffToDxeCore (
   IN EFI_PHYSICAL_ADDRESS   DxeCoreEntryPoint,
-  IN EFI_PEI_HOB_POINTERS   HobList,
-  IN EFI_PEI_PPI_DESCRIPTOR *EndOfPeiSignal
+  IN EFI_PEI_HOB_POINTERS   HobList
   )
 {
   EFI_STATUS                Status;
@@ -93,7 +87,7 @@ HandOffToDxeCore (
     TopOfStack = BaseOfStack + EFI_SIZE_TO_PAGES (STACK_SIZE) * EFI_PAGE_SIZE - 32;
 
     //
-    //  X64 Calling Conventions requires that the stack must be aligned to 16 bytes
+    //  x64 Calling Conventions requires that the stack must be aligned to 16 bytes
     //
     TopOfStack = (EFI_PHYSICAL_ADDRESS) (UINTN) ALIGN_POINTER (TopOfStack, 16);
 
@@ -110,7 +104,7 @@ HandOffToDxeCore (
     //
     // End of PEI phase singal
     //
-    Status = PeiServicesInstallPpi (EndOfPeiSignal);
+    Status = PeiServicesInstallPpi (&gEndOfPeiSignalPpi);
     ASSERT_EFI_ERROR (Status);
     
     AsmWriteCr3 (PageTables);
@@ -128,7 +122,6 @@ HandOffToDxeCore (
                  EFI_SIZE_TO_PAGES((SizeOfTemplate + sizeof (X64_IDT_GATE_DESCRIPTOR)) * 32), 
                  &VectorAddress
                  );
-  
       ASSERT_EFI_ERROR (Status);
   
       IdtTable      = (X64_IDT_GATE_DESCRIPTOR *) (UINTN) (VectorAddress + SizeOfTemplate * 32);
@@ -152,7 +145,8 @@ HandOffToDxeCore (
       AsmWriteIdtr (&gLidtDescriptor);
     }
     //
-    // Go to Long Mode. Interrupts will not get turned on until the CPU AP is loaded.
+    // Go to Long Mode and transfer control to DxeCore.
+    // Interrupts will not get turned on until the CPU AP is loaded.
     // Call x64 drivers passing in single argument, a pointer to the HOBs.
     // 
     AsmEnablePaging64 (
@@ -173,14 +167,17 @@ HandOffToDxeCore (
     //
     // End of PEI phase singal
     //
-    Status = PeiServicesInstallPpi (EndOfPeiSignal);
+    Status = PeiServicesInstallPpi (&gEndOfPeiSignalPpi);
     ASSERT_EFI_ERROR (Status);
 
     //
     // Update the contents of BSP stack HOB to reflect the real stack info passed to DxeCore.
     //    
     UpdateStackHob (BaseOfStack, STACK_SIZE);
-
+    
+    //
+    // Transfer the control to the entry point of DxeCore.
+    //
     SwitchStack (
       (SWITCH_STACK_ENTRY_POINT)(UINTN)DxeCoreEntryPoint,
       HobList.Raw,

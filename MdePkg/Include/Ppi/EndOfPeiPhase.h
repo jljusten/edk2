@@ -1,8 +1,10 @@
 /** @file
-  PPI to be used to signal when the PEI ownership of the memory map
-  officially ends and DXE will take over
+  This PPI will be installed at the end of PEI for all boot paths, including 
+  normal, recovery, and S3. It allows for PEIMs to possibly quiesce hardware, 
+  build handoff information for the next phase of execution, 
+  or provide some terminal processing behavior.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -17,8 +19,8 @@
 
 **/
 
-#ifndef __END_OF_PEI_SIGNAL_PPI_H__
-#define __END_OF_PEI_SIGNAL_PPI_H__
+#ifndef __END_OF_PEI_PHASE_PPI_H__
+#define __END_OF_PEI_PHASE_PPI_H__
 
 #define EFI_PEI_END_OF_PEI_PHASE_PPI_GUID \
   { \

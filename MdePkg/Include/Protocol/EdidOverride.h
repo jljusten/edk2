@@ -4,7 +4,7 @@
   Allow platform to provide EDID information to producer of the Graphics Output
   protocol.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -17,8 +17,6 @@
 
 #ifndef __EDID_OVERRIDE_H__
 #define __EDID_OVERRIDE_H__
-
-#include <PiDxe.h>
 
 #define EFI_EDID_OVERRIDE_PROTOCOL_GUID \
   { \
@@ -48,16 +46,23 @@ typedef struct _EFI_EDID_OVERRIDE_PROTOCOL EFI_EDID_OVERRIDE_PROTOCOL;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_EDID_OVERRIDE_PROTOCOL_GET_EDID) (
+(EFIAPI *EFI_EDID_OVERRIDE_PROTOCOL_GET_EDID)(
   IN  EFI_EDID_OVERRIDE_PROTOCOL          *This,
   IN  EFI_HANDLE                          *ChildHandle,
   OUT UINT32                              *Attributes,
   IN OUT UINTN                            *EdidSize,
   IN OUT UINT8                            **Edid
-  )
-;
+  );
 
+/**
+  @par Protocol Description:
+  This protocol is produced by the platform to allow the platform to provide 
+  EDID information to the producer of the Graphics Output protocol.
+**/
 struct _EFI_EDID_OVERRIDE_PROTOCOL {
+  ///
+  /// Returns EDID values and attributes that the Video BIOS must use. 
+  ///
   EFI_EDID_OVERRIDE_PROTOCOL_GET_EDID   GetEdid;
 };
                                              

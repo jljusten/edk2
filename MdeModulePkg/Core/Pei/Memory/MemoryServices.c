@@ -1,5 +1,6 @@
 /** @file
-
+  EFI PEI Core memory services
+  
 Copyright (c) 2006, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
@@ -9,70 +10,44 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
-Module Name:
-
-  MemoryServices.c
-
-Abstract:
-
-  EFI PEI Core memory services
-
 **/
 
 #include <PeiMain.h>
 
+/**
+
+  Initialize the memory services.
+
+  @param PrivateData     Points to PeiCore's private instance data.
+  @param SecCoreData     Points to a data structure containing information about the PEI core's operating
+                         environment, such as the size and location of temporary RAM, the stack location and
+                         the BFV location.
+  @param OldCoreData     Pointer to the PEI Core data.
+                         NULL if being run in non-permament memory mode.
+
+**/
 VOID
 InitializeMemoryServices (
   IN PEI_CORE_INSTANCE           *PrivateData,
   IN CONST EFI_SEC_PEI_HAND_OFF  *SecCoreData,
   IN PEI_CORE_INSTANCE           *OldCoreData
   )
-/*++
-
-Routine Description:
-
-  Initialize the memory services.
-
-Arguments:
-
-  PeiServices          - The PEI core services table.
-  SecCoreData          - Points to a data structure containing information about the PEI core's operating
-                         environment, such as the size and location of temporary RAM, the stack location and
-                         the BFV location.
-
-  OldCoreData          - Pointer to the PEI Core data.
-                         NULL if being run in non-permament memory mode.
-
-Returns:
-
-  None
-
---*/
 {
   
-  PrivateData->SwitchStackSignal      = FALSE;
+  PrivateData->SwitchStackSignal    = FALSE;
 
+  //
+  // First entering PeiCore, following code will initialized some field
+  // in PeiCore's private data according to hand off data from sec core.
+  //
   if (OldCoreData == NULL) {
 
     PrivateData->PeiMemoryInstalled = FALSE;
-
-    PrivateData->BottomOfCarHeap        = SecCoreData->PeiTemporaryRamBase; 
-    PrivateData->TopOfCarHeap           = (VOID *)((UINTN)(PrivateData->BottomOfCarHeap) + SecCoreData->PeiTemporaryRamSize);
-    PrivateData->SizeOfTemporaryMemory  = SecCoreData->TemporaryRamSize;
-    PrivateData->StackSize              = (UINT64) SecCoreData->StackSize;
-    
-    DEBUG_CODE_BEGIN ();
-      PrivateData->SizeOfCacheAsRam = SecCoreData->PeiTemporaryRamSize + SecCoreData->StackSize;
-      PrivateData->MaxTopOfCarHeap  = (VOID *) ((UINTN) PrivateData->BottomOfCarHeap + (UINTN) PrivateData->SizeOfCacheAsRam);
-      PrivateData->StackBase        = (EFI_PHYSICAL_ADDRESS) (UINTN) SecCoreData->StackBase;
-      PrivateData->StackSize        = (UINT64) SecCoreData->StackSize;
-    DEBUG_CODE_END ();
-
-    PrivateData->HobList.Raw = PrivateData->BottomOfCarHeap;
+    PrivateData->HobList.Raw        = SecCoreData->PeiTemporaryRamBase;
     
     PeiCoreBuildHobHandoffInfoTable (
       BOOT_WITH_FULL_CONFIGURATION,
-      (EFI_PHYSICAL_ADDRESS) (UINTN) PrivateData->BottomOfCarHeap,
+      (EFI_PHYSICAL_ADDRESS) (UINTN) SecCoreData->PeiTemporaryRamBase,
       (UINTN) SecCoreData->PeiTemporaryRamSize
       );
 
@@ -85,6 +60,22 @@ Returns:
   return;
 }
 
+/**
+
+  This function registers the found memory configuration with the PEI Foundation.
+
+  The usage model is that the PEIM that discovers the permanent memory shall invoke this service.
+  This routine will hold discoveried memory information into PeiCore's private data,
+  and set SwitchStackSignal flag. After PEIM who discovery memory is dispatched,
+  PeiDispatcher will migrate temporary memory to permenement memory.
+  
+  @param PeiServices        An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation.
+  @param MemoryBegin        Start of memory address.
+  @param MemoryLength       Length of memory.
+
+  @return EFI_SUCCESS Always success.
+
+**/
 EFI_STATUS
 EFIAPI
 PeiInstallPeiMemory (
@@ -92,24 +83,6 @@ PeiInstallPeiMemory (
   IN EFI_PHYSICAL_ADDRESS    MemoryBegin,
   IN UINT64                  MemoryLength
   )
-/*++
-
-Routine Description:
-
-  Install the permanent memory is now available.
-  Creates HOB (PHIT and Stack).
-
-Arguments:
-
-  PeiServices   - The PEI core services table.
-  MemoryBegin   - Start of memory address.
-  MemoryLength  - Length of memory.
-
-Returns:
-
-  Status  - EFI_SUCCESS
-            
---*/
 {
   PEI_CORE_INSTANCE                     *PrivateData;
 
@@ -125,41 +98,34 @@ Returns:
   return EFI_SUCCESS;   
 }
 
+/**
+
+  Memory allocation service on permanent memory,
+  not usable prior to the memory installation.
+
+
+  @param PeiServices     An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation.
+  @param MemoryType      Type of memory to allocate.
+  @param Pages           Number of pages to allocate.
+  @param Memory          Pointer of memory allocated.
+
+  @retval EFI_SUCCESS              The allocation was successful
+  @retval EFI_NOT_AVAILABLE_YET    Called with permanent memory not available
+  @retval EFI_OUT_OF_RESOURCES     There is not enough HOB heap to satisfy the requirement
+                                   to allocate the number of pages.
+
+**/
 EFI_STATUS
 EFIAPI
 PeiAllocatePages (
-  IN CONST EFI_PEI_SERVICES           **PeiServices,
-  IN EFI_MEMORY_TYPE            MemoryType,
-  IN UINTN                      Pages,
-  OUT EFI_PHYSICAL_ADDRESS      *Memory
+  IN CONST EFI_PEI_SERVICES     **PeiServices,
+  IN       EFI_MEMORY_TYPE      MemoryType,
+  IN       UINTN                Pages,
+  OUT      EFI_PHYSICAL_ADDRESS *Memory
   )
-/*++
-
-Routine Description:
-
-  Memory allocation service on permanent memory, 
-  not usable prior to the memory installation.
-
-Arguments:
-
-  PeiServices - The PEI core services table.
-  MemoryType  - Type of memory to allocate.
-  Pages       - Number of pages to allocate.
-  Memory      - Pointer of memory allocated.
-
-Returns:
-
-  Status - EFI_SUCCESS              The allocation was successful
-           EFI_INVALID_PARAMETER    Only AllocateAnyAddress is supported.
-           EFI_NOT_AVAILABLE_YET    Called with permanent memory not available
-           EFI_OUT_OF_RESOURCES     There is not enough HOB heap to satisfy the requirement
-                                    to allocate the number of pages.
-
---*/
 {
   PEI_CORE_INSTANCE                       *PrivateData;
   EFI_PEI_HOB_POINTERS                    Hob;
-  EFI_PHYSICAL_ADDRESS                    Offset;
   EFI_PHYSICAL_ADDRESS                    *FreeMemoryTop;
   EFI_PHYSICAL_ADDRESS                    *FreeMemoryBottom;
 
@@ -172,7 +138,7 @@ Returns:
   if (!PrivateData->PeiMemoryInstalled) {
     //
     // When PeiInstallMemory is called but CAR has *not* been moved to temporary memory,
-    // the AllocatePage will dependent the field of PEI_CORE_INSTANCE structure.
+    // the AllocatePage will dependent on the field of PEI_CORE_INSTANCE structure.
     //
     if (!PrivateData->SwitchStackSignal) {
       return EFI_NOT_AVAILABLE_YET;
@@ -185,19 +151,10 @@ Returns:
     FreeMemoryBottom  = &(Hob.HandoffInformationTable->EfiFreeMemoryBottom);
   }
 
-  
-
   //
-  // Check to see if on 4k boundary
+  // Check to see if on 4k boundary, If not aligned, make the allocation aligned.
   //
-  Offset = *(FreeMemoryTop) & 0xFFF;
-  
-  //
-  // If not aligned, make the allocation aligned.
-  //
-  if (Offset != 0) {
-    *(FreeMemoryTop) -= Offset;
-  }
+  *(FreeMemoryTop) -= *(FreeMemoryTop) & 0xFFF;
   
   //
   // Verify that there is sufficient memory to satisfy the allocation
@@ -232,51 +189,49 @@ Returns:
   }
 }
 
+/**
 
+  Pool allocation service. Before permenent memory is discoveried, the pool will 
+  be allocated the heap in the CAR. Genenrally, the size of heap in temporary 
+  memory does not exceed to 64K, so the biggest pool size could be allocated is 
+  64K.
+
+  @param PeiServices               An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation.
+  @param Size                      Amount of memory required
+  @param Buffer                    Address of pointer to the buffer
+
+  @retval EFI_SUCCESS              The allocation was successful
+  @retval EFI_OUT_OF_RESOURCES     There is not enough heap to satisfy the requirement
+                                   to allocate the requested size.
+
+**/
 EFI_STATUS
 EFIAPI
 PeiAllocatePool (
-  IN CONST EFI_PEI_SERVICES           **PeiServices,
-  IN UINTN                      Size,
-  OUT VOID                      **Buffer
+  IN CONST EFI_PEI_SERVICES     **PeiServices,
+  IN       UINTN                Size,
+  OUT      VOID                 **Buffer
   )
-/*++
-
-Routine Description:
-
-  Memory allocation service on the CAR.  
-
-Arguments:
-
-  PeiServices - The PEI core services table.
-
-  Size        - Amount of memory required
-
-  Buffer      - Address of pointer to the buffer
-
-Returns:
-
-  Status - EFI_SUCCESS              The allocation was successful
-           EFI_OUT_OF_RESOURCES     There is not enough heap to satisfy the requirement
-                                    to allocate the requested size.
-                                    
---*/
 {
   EFI_STATUS               Status;
   EFI_HOB_MEMORY_POOL      *Hob;
 
- //
- // If some "post-memory" PEIM wishes to allocate larger pool,
- // it should use AllocatePages service instead.
- //
- ASSERT (Size < 0x10000 - sizeof (EFI_HOB_MEMORY_POOL));
- Status = PeiServicesCreateHob (
+  //
+  // If some "post-memory" PEIM wishes to allocate larger pool,
+  // it should use AllocatePages service instead.
+  //
+  
+  //
+  // Generally, the size of heap in temporary memory does not exceed to 64K,
+  // so the maxmium size of pool is 0x10000 - sizeof (EFI_HOB_MEMORY_POOL)
+  //
+  ASSERT (Size < 0x10000 - sizeof (EFI_HOB_MEMORY_POOL));
+  Status = PeiServicesCreateHob (
              EFI_HOB_TYPE_MEMORY_POOL,
              (UINT16)(sizeof (EFI_HOB_MEMORY_POOL) + Size),
              (VOID **)&Hob
              );
   *Buffer = Hob+1;  
-
 
   return Status;
 }

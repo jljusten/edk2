@@ -12,9 +12,7 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
+
 
 
 #include "BaseLibInternals.h"
@@ -44,6 +42,6 @@ LowBitSet32 (
     return -1;
   }
 
-  for (BitIndex = 0; (Operand & 1) == 0; BitIndex++, Operand >>= 1);
+  for (BitIndex = 0; 0 == (Operand & 1); BitIndex++, Operand >>= 1);
   return BitIndex;
 }

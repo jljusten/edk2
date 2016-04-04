@@ -1,6 +1,8 @@
 /** @file
+Implementation for EFI_HII_FONT_PROTOCOL.
 
-Copyright (c) 2007, Intel Corporation
+
+Copyright (c) 2007 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,23 +11,12 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-    Font.c
-
-Abstract:
-
-    Implementation for EFI_HII_FONT_PROTOCOL.
-
-Revision History
-
-
 **/
 
 
 #include "HiiDatabase.h"
 
-static EFI_GRAPHICS_OUTPUT_BLT_PIXEL        mEfiColors[16] = {
+STATIC EFI_GRAPHICS_OUTPUT_BLT_PIXEL        mEfiColors[16] = {
   //
   // B     G     R
   //
@@ -51,6 +42,8 @@ static EFI_GRAPHICS_OUTPUT_BLT_PIXEL        mEfiColors[16] = {
 /**
   Insert a character cell information to the list specified by GlyphInfoList.
 
+  This is a internal function.
+
   @param  CharValue               Unicode character value, which identifies a glyph
                                   block.
   @param  GlyphInfoList           HII_GLYPH_INFO list head.
@@ -61,7 +54,6 @@ static EFI_GRAPHICS_OUTPUT_BLT_PIXEL        mEfiColors[16] = {
                                   task.
 
 **/
-STATIC
 EFI_STATUS
 NewCell (
   IN  CHAR16                         CharValue,
@@ -94,6 +86,8 @@ NewCell (
 /**
   Get a character cell information from the list specified by GlyphInfoList.
 
+  This is a internal function.
+
   @param  CharValue               Unicode character value, which identifies a glyph
                                   block.
   @param  GlyphInfoList           HII_GLYPH_INFO list head.
@@ -105,7 +99,6 @@ NewCell (
                                   not exist.
 
 **/
-STATIC
 EFI_STATUS
 GetCell (
   IN  CHAR16                         CharValue,
@@ -143,6 +136,8 @@ GetCell (
 /**
   Convert the glyph for a single character into a bitmap.
 
+  This is a internal function.
+
   @param  Private                 HII database driver private data.
   @param  Char                    Character to retrieve.
   @param  StringInfo              Points to the string font and color information
@@ -158,7 +153,6 @@ GetCell (
   @retval EFI_INVALID_PARAMETER   Any input parameter is invalid.
 
 **/
-STATIC
 EFI_STATUS
 GetGlyphBuffer (
   IN  HII_DATABASE_PRIVATE_DATA      *Private,
@@ -266,7 +260,28 @@ GetGlyphBuffer (
   return EFI_NOT_FOUND;
 }
 
-STATIC
+/**
+  Convert bitmap data of the glyph to blt structure.
+
+  This is a internal function.
+
+  @param GlyphBuffer     Buffer points to bitmap data of glyph.
+  @param  Foreground     The color of the "on" pixels in the glyph in the
+                         bitmap.
+  @param  Background     The color of the "off" pixels in the glyph in the
+                         bitmap.
+  @param  ImageWidth     Width of the character or character cell, in
+                         pixels.
+  @param  ImageHeight    Height of the character or character cell, in
+                         pixels.
+  @param  Transparent             If TRUE, the Background color is ignored and all
+                                  "off" pixels in the character's drawn wil use the
+                                  pixel value from BltBuffer.
+  @param  Origin                  On input, points to the origin of the to be
+                                  displayed character, on output, points to the
+                                  next glyph's origin.
+
+**/
 VOID
 NarrowGlyphToBlt (
   IN     UINT8                         *GlyphBuffer,
@@ -278,8 +293,8 @@ NarrowGlyphToBlt (
   IN OUT EFI_GRAPHICS_OUTPUT_BLT_PIXEL **Origin
   )
 {
-  UINT8                                X;
-  UINT8                                Y;
+  UINT8                                Xpos;
+  UINT8                                Ypos;
   UINT8                                Height;
   UINT8                                Width;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL        *Buffer;
@@ -293,13 +308,13 @@ NarrowGlyphToBlt (
 
   Buffer = *Origin;
 
-  for (Y = 0; Y < Height; Y++) {
-    for (X = 0; X < Width; X++) {
-      if ((GlyphBuffer[Y] & (1 << X)) != 0) {
-        Buffer[Y * ImageWidth + (Width - X - 1)] = Foreground;
+  for (Ypos = 0; Ypos < Height; Ypos++) {
+    for (Xpos = 0; Xpos < Width; Xpos++) {
+      if ((GlyphBuffer[Ypos] & (1 << Xpos)) != 0) {
+        Buffer[Ypos * ImageWidth + (Width - Xpos - 1)] = Foreground;
       } else {
         if (!Transparent) {
-          Buffer[Y * ImageWidth + (Width - X - 1)] = Background;
+          Buffer[Ypos * ImageWidth + (Width - Xpos - 1)] = Background;
         }
       }
     }
@@ -312,23 +327,28 @@ NarrowGlyphToBlt (
 /**
   Convert bitmap data of the glyph to blt structure.
 
+  This is a internal function.
+
   @param  GlyphBuffer             Buffer points to bitmap data of glyph.
   @param  Foreground              The color of the "on" pixels in the glyph in the
                                   bitmap.
   @param  Background              The color of the "off" pixels in the glyph in the
                                   bitmap.
-  @param  Width                   Width of the character or character cell, in
+  @param  ImageWidth              Width of the character or character cell, in
                                   pixels.
-  @param  Height                  Height of the character or character cell, in
+  @param  ImageHeight             Height of the character or character cell, in
                                   pixels.
   @param  Transparent             If TRUE, the Background color is ignored and all
                                   "off" pixels in the character's drawn wil use the
                                   pixel value from BltBuffer.
-  @param  BltBuffer               Points to the blt buffer.
+  @param  Cell                    Points to EFI_HII_GLYPH_INFO structure.
+  @param  Attributes              The attribute of incoming glyph in GlyphBuffer.
+  @param  Origin                  On input, points to the origin of the to be
+                                  displayed character, on output, points to the
+                                  next glyph's origin.
 
 
 **/
-STATIC
 VOID
 GlyphToBlt (
   IN     UINT8                         *GlyphBuffer,
@@ -337,20 +357,20 @@ GlyphToBlt (
   IN     UINTN                         ImageWidth,
   IN     UINTN                         ImageHeight,
   IN     BOOLEAN                       Transparent,
-  IN     EFI_HII_GLYPH_INFO            Cell,
+  IN     CONST EFI_HII_GLYPH_INFO      *Cell,
   IN     UINT8                         Attributes,
   IN OUT EFI_GRAPHICS_OUTPUT_BLT_PIXEL **Origin
   )
 {
-  UINT8                                X;
-  UINT8                                Y;
+  UINT8                                Xpos;
+  UINT8                                Ypos;
   UINT8                                Data;
   UINT8                                Index;
   UINTN                                OffsetY;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL        *BltBuffer;
 
   ASSERT (GlyphBuffer != NULL && Origin != NULL && *Origin != NULL);
-  ASSERT (Cell.Width <= ImageWidth && Cell.Height <= ImageHeight);
+  ASSERT (Cell->Width <= ImageWidth && Cell->Height <= ImageHeight);
 
   BltBuffer = *Origin;
 
@@ -366,58 +386,60 @@ GlyphToBlt (
   // The glyph's upper left hand corner pixel is the most significant bit of the
   // first bitmap byte.
   //
-  for (Y = 0; Y < Cell.Height; Y++) {
-    OffsetY = BITMAP_LEN_1_BIT (Cell.Width, Y);
+  for (Ypos = 0; Ypos < Cell->Height; Ypos++) {
+    OffsetY = BITMAP_LEN_1_BIT (Cell->Width, Ypos);
 
     //
     // All bits in these bytes are meaningful.
     //
-    for (X = 0; X < Cell.Width / 8; X++) {
-      Data  = *(GlyphBuffer + OffsetY + X);
+    for (Xpos = 0; Xpos < Cell->Width / 8; Xpos++) {
+      Data  = *(GlyphBuffer + OffsetY + Xpos);
       for (Index = 0; Index < 8; Index++) {
         if ((Data & (1 << Index)) != 0) {
-          BltBuffer[Y * ImageWidth + X * 8 + (8 - Index - 1)] = Foreground;
+          BltBuffer[Ypos * ImageWidth + Xpos * 8 + (8 - Index - 1)] = Foreground;
         } else {
           if (!Transparent) {
-            BltBuffer[Y * ImageWidth + X * 8 + (8 - Index - 1)] = Background;
+            BltBuffer[Ypos * ImageWidth + Xpos * 8 + (8 - Index - 1)] = Background;
           }
         }
       }
     }
 
-    if (Cell.Width % 8 != 0) {
+    if (Cell->Width % 8 != 0) {
       //
       // There are some padding bits in this byte. Ignore them.
       //
-      Data  = *(GlyphBuffer + OffsetY + X);
-      for (Index = 0; Index < Cell.Width % 8; Index++) {
+      Data  = *(GlyphBuffer + OffsetY + Xpos);
+      for (Index = 0; Index < Cell->Width % 8; Index++) {
         if ((Data & (1 << (8 - Index - 1))) != 0) {
-          BltBuffer[Y * ImageWidth + X * 8 + Index] = Foreground;
+          BltBuffer[Ypos * ImageWidth + Xpos * 8 + Index] = Foreground;
         } else {
           if (!Transparent) {
-            BltBuffer[Y * ImageWidth + X * 8 + Index] = Background;
+            BltBuffer[Ypos * ImageWidth + Xpos * 8 + Index] = Background;
           }
         }
       }
     } // end of if (Width % 8...)
 
-  } // end of for (Y=0...)
+  } // end of for (Ypos=0...)
 
-  *Origin = BltBuffer + Cell.Width;
+  *Origin = BltBuffer + Cell->Width;
 }
 
 
 /**
   Convert bitmap data of the glyph to blt structure.
 
+  This is a internal function.
+
   @param  GlyphBuffer             Buffer points to bitmap data of glyph.
   @param  Foreground              The color of the "on" pixels in the glyph in the
                                   bitmap.
   @param  Background              The color of the "off" pixels in the glyph in the
                                   bitmap.
-  @param  Width                   Width of the character or character cell, in
+  @param  ImageWidth              Width of the character or character cell, in
                                   pixels.
-  @param  Height                  Height of the character or character cell, in
+  @param  ImageHeight             Height of the character or character cell, in
                                   pixels.
   @param  Transparent             If TRUE, the Background color is ignored and all
                                   "off" pixels in the character's drawn wil use the
@@ -431,7 +453,6 @@ GlyphToBlt (
   @return Points to the address of next origin node in BltBuffer.
 
 **/
-STATIC
 VOID
 GlyphToImage (
   IN     UINT8                         *GlyphBuffer,
@@ -440,7 +461,7 @@ GlyphToImage (
   IN     UINTN                         ImageWidth,
   IN     UINTN                         ImageHeight,
   IN     BOOLEAN                       Transparent,
-  IN     EFI_HII_GLYPH_INFO            Cell,
+  IN     CONST EFI_HII_GLYPH_INFO      *Cell,
   IN     UINT8                         Attributes,
   IN OUT EFI_GRAPHICS_OUTPUT_BLT_PIXEL **Origin
   )
@@ -448,7 +469,7 @@ GlyphToImage (
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL        *Buffer;
 
   ASSERT (GlyphBuffer != NULL && Origin != NULL && *Origin != NULL);
-  ASSERT (Cell.Width <= ImageWidth && Cell.Height <= ImageHeight);
+  ASSERT (Cell->Width <= ImageWidth && Cell->Height <= ImageHeight);
 
   Buffer = *Origin;
 
@@ -457,7 +478,7 @@ GlyphToImage (
     // This character is a non-spacing key, print it OR'd with the previous glyph.
     // without advancing cursor.
     //
-    Buffer -= Cell.Width;
+    Buffer -= Cell->Width;
     GlyphToBlt (
       GlyphBuffer,
       Foreground,
@@ -511,7 +532,7 @@ GlyphToImage (
 
   } else if ((Attributes & PROPORTIONAL_GLYPH) == PROPORTIONAL_GLYPH) {
     //
-    // This character is proportional glyph, i.e. Cell.Width * Cell.Height pixels.
+    // This character is proportional glyph, i.e. Cell->Width * Cell->Height pixels.
     //
     GlyphToBlt (
       GlyphBuffer,
@@ -531,6 +552,8 @@ GlyphToImage (
 /**
   Write the output parameters of FindGlyphBlock().
 
+  This is a internal function.
+
   @param  BufferIn                Buffer which stores the bitmap data of the found
                                   block.
   @param  BufferLen               Length of BufferIn.
@@ -548,7 +571,6 @@ GlyphToImage (
                                   task.
 
 **/
-STATIC
 EFI_STATUS
 WriteOutputParam (
   IN  UINT8                          *BufferIn,
@@ -817,6 +839,8 @@ FindGlyphBlock (
 /**
   Copy a Font Name to a new created EFI_FONT_INFO structure.
 
+  This is a internal function.
+
   @param  FontName                NULL-terminated string.
   @param  FontInfo                a new EFI_FONT_INFO which stores the FontName.
                                   It's caller's responsibility to free this buffer.
@@ -826,7 +850,6 @@ FindGlyphBlock (
                                   task.
 
 **/
-STATIC
 EFI_STATUS
 SaveFontName (
   IN  EFI_STRING                       FontName,
@@ -905,15 +928,16 @@ GetSystemFont (
 
 
 /**
-  Check whether EFI_FONT_DISPLAY_INFO points to system default font and color.
+  Check whether EFI_FONT_DISPLAY_INFO points to system default font and color or
+  returns the system default according to the optional inputs.
+
+  This is a internal function.
 
   @param  Private                 HII database driver private data.
   @param  StringInfo              Points to the string output information,
                                   including the color and font.
-  @param  SystemInfo              If not NULL, points to system default font and
-                                  color when incoming StringInfo does not match the
-                                  default.  Points to NULL if matches. It's
-                                  caller's reponsibility to free this buffer.
+  @param  SystemInfo              If not NULL, points to system default font and color.
+
   @param  SystemInfoLen           If not NULL, output the length of default system
                                   info.
 
@@ -921,7 +945,6 @@ GetSystemFont (
   @retval FALSE                   No.
 
 **/
-STATIC
 BOOLEAN
 IsSystemFontInfo (
   IN  HII_DATABASE_PRIVATE_DATA      *Private,
@@ -933,6 +956,7 @@ IsSystemFontInfo (
   EFI_STATUS                          Status;
   EFI_FONT_DISPLAY_INFO               *SystemDefault;
   UINTN                               DefaultLen;
+  BOOLEAN                             Flag;
 
   ASSERT (Private != NULL && Private->Signature == HII_DATABASE_PRIVATE_DATA_SIGNATURE);
 
@@ -940,28 +964,69 @@ IsSystemFontInfo (
     return TRUE;
   }
 
-  //
-  // Check whether incoming string font and color matches system default.
-  //
   Status = GetSystemFont (Private, &SystemDefault, &DefaultLen);
   ASSERT_EFI_ERROR (Status);
 
+  //
+  // Record the system default info.
+  //
   if (SystemInfo != NULL) {
     *SystemInfo = SystemDefault;
-  } else {
-    SafeFreePool (SystemDefault);
   }
 
   if (SystemInfoLen != NULL) {
     *SystemInfoLen = DefaultLen;
   }
 
-  if (StringInfo == NULL ||
-      (StringInfo != NULL && CompareMem (SystemDefault, StringInfo, DefaultLen) == 0)) {
+  if (StringInfo == NULL) {
     return TRUE;
   }
 
-  return FALSE;
+  Flag = FALSE;
+  //
+  // Check the FontInfoMask to see whether it is retrieving system info.
+  //
+  if ((StringInfo->FontInfoMask & (EFI_FONT_INFO_SYS_FONT | EFI_FONT_INFO_ANY_FONT)) == 0) {
+    if (StrCmp (StringInfo->FontInfo.FontName, SystemDefault->FontInfo.FontName) != 0) {
+      goto Exit;
+    }
+  }
+  if ((StringInfo->FontInfoMask & (EFI_FONT_INFO_SYS_SIZE | EFI_FONT_INFO_ANY_SIZE)) == 0) {
+    if (StringInfo->FontInfo.FontSize != SystemDefault->FontInfo.FontSize) {
+      goto Exit;
+    }
+  }
+  if ((StringInfo->FontInfoMask & (EFI_FONT_INFO_SYS_STYLE | EFI_FONT_INFO_ANY_STYLE)) == 0) {
+    if (StringInfo->FontInfo.FontStyle != SystemDefault->FontInfo.FontStyle) {
+      goto Exit;
+    }
+  }
+  if ((StringInfo->FontInfoMask & EFI_FONT_INFO_SYS_FORE_COLOR) == 0) {
+    if (CompareMem (
+          &StringInfo->ForegroundColor, 
+          &SystemDefault->ForegroundColor, 
+          sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL)
+          ) != 0) {
+      goto Exit;
+    }
+  }
+  if ((StringInfo->FontInfoMask & EFI_FONT_INFO_SYS_BACK_COLOR) == 0) {
+    if (CompareMem (
+          &StringInfo->BackgroundColor, 
+          &SystemDefault->BackgroundColor, 
+          sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL)
+          ) != 0) {
+      goto Exit;
+    }
+  }
+
+  Flag = TRUE;
+
+Exit:
+  if (SystemInfo == NULL) {
+    SafeFreePool (SystemDefault);    
+  }
+  return Flag;
 }
 
 
@@ -1277,6 +1342,8 @@ IsFontInfoExisted (
 /**
   Check whether the unicode represents a line break or not.
 
+  This is a internal function.
+
   @param  Char                    Unicode character
 
   @retval 0                       Yes, it is a line break.
@@ -1287,7 +1354,6 @@ IsFontInfoExisted (
   @retval -1                      No, it is not a link break.
 
 **/
-STATIC
 INT8
 IsLineBreak (
   IN  CHAR16    Char
@@ -1370,9 +1436,12 @@ IsLineBreak (
                                   EFI_HII_OUT_FLAG_CLIP is implied. If this points
                                   to a NULL on entry, then a              buffer
                                   will be allocated to hold the generated image and
-                                  the pointer updated on exit. It is the caller¡¯s
+                                  the pointer updated on exit. It is the caller's
                                   responsibility to free this buffer.
-  @param  BltX,BLTY               Specifies the offset from the left and top edge
+  @param  BltX                    Specifies the offset from the left and top edge
+                                  of the image of the first character cell in the
+                                  image.
+  @param  BltY                    Specifies the offset from the left and top edge
                                   of the image of the first character cell in the
                                   image.
   @param  RowInfoArray            If this is non-NULL on entry, then on exit, this
@@ -1381,7 +1450,7 @@ IsLineBreak (
                                   updated to contain the        number of elements.
                                   This array describes the characters which were at
                                   least partially drawn and the heights of the
-                                  rows. It is the caller¡¯s responsibility to free
+                                  rows. It is the caller's responsibility to free
                                   this buffer.
   @param  RowInfoArraySize        If this is non-NULL on entry, then on exit it
                                   contains the number of elements in RowInfoArray.
@@ -1400,6 +1469,7 @@ IsLineBreak (
   @retval EFI_OUT_OF_RESOURCES    Unable to allocate an output buffer for
                                   RowInfoArray or Blt.
   @retval EFI_INVALID_PARAMETER   The String or Blt was NULL.
+  @retval EFI_INVALID_PARAMETER Flags were invalid combination..
 
 **/
 EFI_STATUS
@@ -1470,16 +1540,16 @@ HiiStringToImage (
   //
   // These two flags require that EFI_HII_OUT_FLAG_CLIP be also set.
   //
-  if ((Flags & (EFI_HII_OUT_FLAG_CLIP | EFI_HII_OUT_FLAG_CLEAN_X)) ==  EFI_HII_OUT_FLAG_CLEAN_X) {
+  if ((Flags & (EFI_HII_OUT_FLAG_CLIP | EFI_HII_OUT_FLAG_CLIP_CLEAN_X)) ==  EFI_HII_OUT_FLAG_CLIP_CLEAN_X) {
     return EFI_INVALID_PARAMETER;
   }
-  if ((Flags & (EFI_HII_OUT_FLAG_CLIP | EFI_HII_OUT_FLAG_CLEAN_Y)) ==  EFI_HII_OUT_FLAG_CLEAN_Y) {
+  if ((Flags & (EFI_HII_OUT_FLAG_CLIP | EFI_HII_OUT_FLAG_CLIP_CLEAN_Y)) ==  EFI_HII_OUT_FLAG_CLIP_CLEAN_Y) {
     return EFI_INVALID_PARAMETER;
   }
   //
   // This flag cannot be used with EFI_HII_OUT_FLAG_CLEAN_X.
   //
-  if ((Flags & (EFI_HII_OUT_FLAG_WRAP | EFI_HII_OUT_FLAG_CLEAN_X)) ==  (EFI_HII_OUT_FLAG_WRAP | EFI_HII_OUT_FLAG_CLEAN_X)) {
+  if ((Flags & (EFI_HII_OUT_FLAG_WRAP | EFI_HII_OUT_FLAG_CLIP_CLEAN_X)) ==  (EFI_HII_OUT_FLAG_WRAP | EFI_HII_OUT_FLAG_CLIP_CLEAN_X)) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -1633,7 +1703,7 @@ HiiStringToImage (
     //
 
     Transparent = (BOOLEAN) ((Flags & EFI_HII_OUT_FLAG_TRANSPARENT) == EFI_HII_OUT_FLAG_TRANSPARENT ? TRUE : FALSE);
-    if ((Flags & EFI_HII_OUT_FLAG_CLEAN_Y) == EFI_HII_OUT_FLAG_CLEAN_Y) {
+    if ((Flags & EFI_HII_OUT_FLAG_CLIP_CLEAN_Y) == EFI_HII_OUT_FLAG_CLIP_CLEAN_Y) {
       //
       // Don't draw at all if there is only one row and
       // the row's bottom-most on pixel cannot fit.
@@ -1660,7 +1730,6 @@ HiiStringToImage (
         if (LineHeight < Cell[Index].Height) {
           LineHeight = (UINTN) Cell[Index].Height;
         }
-        BaseLineOffset += (UINTN) Cell[Index].OffsetY;
 
         if ((Flags & EFI_HII_IGNORE_LINE_BREAK) == 0 &&
             (Flags & EFI_HII_OUT_FLAG_WRAP) == 0 &&
@@ -1705,7 +1774,7 @@ HiiStringToImage (
         //
         if (!LineBreak) {
           Flags &= (~ (EFI_HII_OUT_FLAGS) EFI_HII_OUT_FLAG_WRAP);
-          Flags |= EFI_HII_OUT_FLAG_CLEAN_X;
+          Flags |= EFI_HII_OUT_FLAG_CLIP_CLEAN_X;
         }
       }
 
@@ -1713,7 +1782,7 @@ HiiStringToImage (
       // Clip the right-most character if cannot fit when EFI_HII_OUT_FLAG_CLEAN_X is set.
       //
       if (LineWidth + BltX <= Image->Width ||
-          (LineWidth + BltX > Image->Width && (Flags & EFI_HII_OUT_FLAG_CLEAN_X) == 0)) {
+        (LineWidth + BltX > Image->Width && (Flags & EFI_HII_OUT_FLAG_CLIP_CLEAN_X) == 0)) {
         //
         // Record right-most character in RowInfo even if it is partially displayed.
         //
@@ -1729,7 +1798,7 @@ HiiStringToImage (
         if (Index > 0) {
           RowInfo[RowIndex].EndIndex       = Index - 1;
           RowInfo[RowIndex].LineWidth      = LineWidth - Cell[Index].AdvanceX;
-          RowInfo[RowIndex].BaselineOffset = BaseLineOffset - Cell[Index].OffsetY;
+          RowInfo[RowIndex].BaselineOffset = BaseLineOffset;
           if (LineHeight > Cell[Index - 1].Height) {
             LineHeight = Cell[Index - 1].Height;
           }
@@ -1749,7 +1818,7 @@ HiiStringToImage (
       //
       if (RowIndex == MaxRowNum - 1 && Image->Height < LineHeight) {
         LineHeight = Image->Height;
-        if ((Flags & EFI_HII_OUT_FLAG_CLEAN_Y) == EFI_HII_OUT_FLAG_CLEAN_Y) {
+        if ((Flags & EFI_HII_OUT_FLAG_CLIP_CLEAN_Y) == EFI_HII_OUT_FLAG_CLIP_CLEAN_Y) {
           //
           // Don't draw at all if the row's bottom-most on pixel cannot fit.
           //
@@ -1776,7 +1845,7 @@ HiiStringToImage (
             RowInfo[RowIndex].LineWidth,
             RowInfo[RowIndex].LineHeight,
             Transparent,
-            Cell[Index1],
+            &Cell[Index1],
             Attributes[Index1],
             &BufferPtr
             );
@@ -1817,7 +1886,7 @@ HiiStringToImage (
             Image->Width,
             Image->Height,
             Transparent,
-            Cell[Index1],
+            &Cell[Index1],
             Attributes[Index1],
             &BufferPtr
             );
@@ -1923,7 +1992,7 @@ Exit:
   @param  Flags                   Describes how the string is to be drawn.
   @param  PackageList             The package list in the HII database to search
                                   for the specified string.
-  @param  StringId                The string¡¯s id, which is unique within
+  @param  StringId                The string's id, which is unique within
                                   PackageList.
   @param  Language                Points to the language for the retrieved string.
                                   If NULL, then the current system language is
@@ -1939,9 +2008,12 @@ Exit:
                                   EFI_HII_OUT_FLAG_CLIP is implied. If this points
                                   to a NULL on entry, then a              buffer
                                   will be allocated to hold the generated image and
-                                  the pointer updated on exit. It is the caller¡¯s
+                                  the pointer updated on exit. It is the caller's
                                   responsibility to free this buffer.
-  @param  BltX,BLTY               Specifies the offset from the left and top edge
+  @param  BltX                    Specifies the offset from the left and top edge
+                                  of the image of the first character cell in the
+                                  image.
+  @param  BltY                    Specifies the offset from the left and top edge
                                   of the image of the first character cell in the
                                   image.
   @param  RowInfoArray            If this is non-NULL on entry, then on exit, this
@@ -1950,7 +2022,7 @@ Exit:
                                   updated to contain the        number of elements.
                                   This array describes the characters which were at
                                   least partially drawn and the heights of the
-                                  rows. It is the caller¡¯s responsibility to free
+                                  rows. It is the caller's responsibility to free
                                   this buffer.
   @param  RowInfoArraySize        If this is non-NULL on entry, then on exit it
                                   contains the number of elements in RowInfoArray.
@@ -1968,7 +2040,10 @@ Exit:
   @retval EFI_SUCCESS             The string was successfully rendered.
   @retval EFI_OUT_OF_RESOURCES    Unable to allocate an output buffer for
                                   RowInfoArray or Blt.
-  @retval EFI_INVALID_PARAMETER   The PackageList was NULL.
+  @retval EFI_INVALID_PARAMETER  The Blt or PackageList was NULL.
+  @retval EFI_INVALID_PARAMETER  Flags were invalid combination.
+  @retval EFI_NOT_FOUND         The specified PackageList is not in the Database or the stringid is not 
+                          in the specified PackageList. 
 
 **/
 EFI_STATUS
@@ -1992,6 +2067,10 @@ HiiStringIdToImage (
   HII_DATABASE_PRIVATE_DATA           *Private;
   EFI_STRING                          String;
   UINTN                               StringSize;
+  UINTN                               FontLen;
+  EFI_FONT_INFO                       *StringFontInfo;
+  EFI_FONT_DISPLAY_INFO               *NewStringInfo;
+  CHAR8                               CurrentLang[RFC_3066_ENTRY_SIZE];
 
   if (This == NULL || PackageList == NULL || Blt == NULL || PackageList == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -2001,7 +2080,14 @@ HiiStringIdToImage (
     return EFI_NOT_FOUND;
   }
 
-  Private = HII_FONT_DATABASE_PRIVATE_DATA_FROM_THIS (This);
+  //
+  // When Language points to NULL, current system language is used.
+  //
+  if (Language != NULL) {
+    AsciiStrCpy (CurrentLang, (CHAR8 *) Language);
+  } else {
+    GetCurrentLanguage (CurrentLang);
+  }
 
   //
   // Get the string to be displayed.
@@ -2013,14 +2099,18 @@ HiiStringIdToImage (
     return EFI_OUT_OF_RESOURCES;
   }
 
+  Private        = HII_FONT_DATABASE_PRIVATE_DATA_FROM_THIS (This);
+  StringFontInfo = NULL;
+  NewStringInfo  = NULL;
+  
   Status = Private->HiiString.GetString (
                                 &Private->HiiString,
-                                Language,
+                                CurrentLang,
                                 PackageList,
                                 StringId,
                                 String,
                                 &StringSize,
-                                NULL
+                                &StringFontInfo
                                 );
   if (Status == EFI_BUFFER_TOO_SMALL) {
     SafeFreePool (String);
@@ -2041,11 +2131,42 @@ HiiStringIdToImage (
   }
 
   if (EFI_ERROR (Status)) {
-    SafeFreePool (String);
-    return Status;
+      goto Exit;
+  }
+    
+  //
+  // When StringInfo specifies that string will be output in the system default font and color,
+  // use particular stringfontinfo described in string package instead if exists. 
+  // StringFontInfo equals NULL means system default font attaches with the string block.
+  //
+  if (StringFontInfo != NULL && IsSystemFontInfo (Private, (EFI_FONT_DISPLAY_INFO *) StringInfo, NULL, NULL)) {
+    FontLen = sizeof (EFI_FONT_DISPLAY_INFO) - sizeof (CHAR16) + StrSize (StringFontInfo->FontName);
+    NewStringInfo = AllocateZeroPool (FontLen);
+    if (NewStringInfo == NULL) {      
+      Status = EFI_OUT_OF_RESOURCES;
+      goto Exit;
+    }
+    NewStringInfo->FontInfoMask       = EFI_FONT_INFO_SYS_FORE_COLOR | EFI_FONT_INFO_SYS_BACK_COLOR;
+    NewStringInfo->FontInfo.FontStyle = StringFontInfo->FontStyle;
+    NewStringInfo->FontInfo.FontSize  = StringFontInfo->FontSize;    
+    StrCpy (NewStringInfo->FontInfo.FontName, StringFontInfo->FontName);
+  
+    Status = HiiStringToImage (
+               This, 
+               Flags, 
+               String, 
+               NewStringInfo, 
+               Blt, 
+               BltX, 
+               BltY, 
+               RowInfoArray,
+               RowInfoArraySize,
+               ColumnInfoArray
+               );
+    goto Exit;
   }
 
-  return HiiStringToImage (
+  Status = HiiStringToImage (
            This,
            Flags,
            String,
@@ -2058,6 +2179,12 @@ HiiStringIdToImage (
            ColumnInfoArray
            );
 
+Exit:
+  SafeFreePool (String);
+  SafeFreePool (StringFontInfo);
+  SafeFreePool (NewStringInfo);
+
+  return Status;
 }
 
 
@@ -2071,7 +2198,7 @@ HiiStringIdToImage (
                                   system font and color.
   @param  Blt                     Thus must point to a NULL on entry. A buffer will
                                   be allocated to hold the output and the pointer
-                                  updated on exit. It is the caller¡¯s
+                                  updated on exit. It is the caller's
                                   responsibility to free this buffer.
   @param  Baseline                Number of pixels from the bottom of the bitmap to
                                   the baseline.
@@ -2182,7 +2309,7 @@ HiiGetGlyph (
     Image->Width,
     Image->Height,
     FALSE,
-    Cell,
+    &Cell,
     Attributes,
     &BltBuffer
     );
@@ -2231,8 +2358,10 @@ Exit:
                                   returned font handle or points to NULL if there
                                   are no more matching fonts.
   @param  StringInfoIn            Upon entry, points to the font to return
-                                  information about.
-  @param  StringInfoOut           Upon return, contains the matching font¡¯s
+                                  information about. 
+                                  If NULL, then the information about the system default 
+                                  font will be returned.
+  @param  StringInfoOut           Upon return, contains the matching font's
                                   information.  If NULL, then no information is
                                   returned. It's caller's responsibility to free
                                   this buffer.
@@ -2242,7 +2371,7 @@ Exit:
 
   @retval EFI_SUCCESS             Matching font returned successfully.
   @retval EFI_NOT_FOUND           No matching font was found.
-  @retval EFI_INVALID_PARAMETER   StringInfoIn is NULL.
+  @retval EFI_INVALID_PARAMETER  StringInfoIn->FontInfoMask is an invalid combination.
   @retval EFI_OUT_OF_RESOURCES    There were insufficient resources to complete the
                                   request.
 
@@ -2252,7 +2381,7 @@ EFIAPI
 HiiGetFontInfo (
   IN  CONST EFI_HII_FONT_PROTOCOL    *This,
   IN  OUT   EFI_FONT_HANDLE          *FontHandle,
-  IN  CONST EFI_FONT_DISPLAY_INFO    *StringInfoIn,
+  IN  CONST EFI_FONT_DISPLAY_INFO    *StringInfoIn, OPTIONAL
   OUT       EFI_FONT_DISPLAY_INFO    **StringInfoOut,
   IN  CONST EFI_STRING               String OPTIONAL
   )
@@ -2267,51 +2396,71 @@ HiiGetFontInfo (
   EFI_STRING                         StringIn;
   EFI_FONT_HANDLE                    LocalFontHandle;
 
-  if (This == NULL || StringInfoIn == NULL) {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  //
-  // Check the font information mask to make sure it is valid.
-  //
-  if (((StringInfoIn->FontInfoMask & (EFI_FONT_INFO_SYS_FONT  | EFI_FONT_INFO_ANY_FONT))  ==
-       (EFI_FONT_INFO_SYS_FONT | EFI_FONT_INFO_ANY_FONT))   ||
-      ((StringInfoIn->FontInfoMask & (EFI_FONT_INFO_SYS_SIZE  | EFI_FONT_INFO_ANY_SIZE))  ==
-       (EFI_FONT_INFO_SYS_SIZE | EFI_FONT_INFO_ANY_SIZE))   ||
-      ((StringInfoIn->FontInfoMask & (EFI_FONT_INFO_SYS_STYLE | EFI_FONT_INFO_ANY_STYLE)) ==
-       (EFI_FONT_INFO_SYS_STYLE | EFI_FONT_INFO_ANY_STYLE)) ||
-      ((StringInfoIn->FontInfoMask & (EFI_FONT_INFO_RESIZE    | EFI_FONT_INFO_ANY_SIZE))  ==
-       (EFI_FONT_INFO_RESIZE | EFI_FONT_INFO_ANY_SIZE))     ||
-      ((StringInfoIn->FontInfoMask & (EFI_FONT_INFO_RESTYLE   | EFI_FONT_INFO_ANY_STYLE)) ==
-       (EFI_FONT_INFO_RESTYLE | EFI_FONT_INFO_ANY_STYLE))) {
+  if (This == NULL) {
     return EFI_INVALID_PARAMETER;
   }
 
   FontInfo        = NULL;
+  SystemDefault   = NULL;
   LocalFontHandle = NULL;
   if (FontHandle != NULL) {
     LocalFontHandle = *FontHandle;
+  }
+
+  Private = HII_FONT_DATABASE_PRIVATE_DATA_FROM_THIS (This);
+
+  //
+  // Already searched to the end of the whole list, return directly.
+  //
+  if (LocalFontHandle == &Private->FontInfoList) {
+    LocalFontHandle = NULL;
+    Status = EFI_NOT_FOUND;
+    goto Exit;
   }
 
   //
   // Get default system display info, if StringInfoIn points to
   // system display info, return it directly.
   //
-  Private = HII_FONT_DATABASE_PRIVATE_DATA_FROM_THIS (This);
-
   if (IsSystemFontInfo (Private, (EFI_FONT_DISPLAY_INFO *) StringInfoIn, &SystemDefault, &StringInfoOutLen)) {
-    if (StringInfoOut != NULL) {
-      *StringInfoOut = AllocateCopyPool (StringInfoOutLen, (EFI_FONT_DISPLAY_INFO *) StringInfoIn);
-      if (*StringInfoOut == NULL) {
-        Status = EFI_OUT_OF_RESOURCES;
-        LocalFontHandle = NULL;
-        goto Exit;
+    //
+    // System font is the first node. When handle is not NULL, system font can not
+    // be found any more.
+    //
+    if (LocalFontHandle == NULL) {
+      if (StringInfoOut != NULL) {
+        *StringInfoOut = AllocateCopyPool (StringInfoOutLen, SystemDefault);
+        if (*StringInfoOut == NULL) {
+          Status = EFI_OUT_OF_RESOURCES;
+          LocalFontHandle = NULL;
+          goto Exit;
+        }
       }
-    }
 
-    LocalFontHandle = Private->FontInfoList.ForwardLink;
-    Status = EFI_SUCCESS;
-    goto Exit;
+      LocalFontHandle = Private->FontInfoList.ForwardLink;
+      Status = EFI_SUCCESS;
+      goto Exit;
+    } else {
+      LocalFontHandle = NULL;
+      Status = EFI_NOT_FOUND;
+      goto Exit;
+    }
+  }
+
+  //
+  // Check the font information mask to make sure it is valid.
+  //
+  if (((StringInfoIn->FontInfoMask & (EFI_FONT_INFO_SYS_FONT  | EFI_FONT_INFO_ANY_FONT))  == 
+       (EFI_FONT_INFO_SYS_FONT | EFI_FONT_INFO_ANY_FONT))   ||
+      ((StringInfoIn->FontInfoMask & (EFI_FONT_INFO_SYS_SIZE  | EFI_FONT_INFO_ANY_SIZE))  == 
+       (EFI_FONT_INFO_SYS_SIZE | EFI_FONT_INFO_ANY_SIZE))   ||
+      ((StringInfoIn->FontInfoMask & (EFI_FONT_INFO_SYS_STYLE | EFI_FONT_INFO_ANY_STYLE)) == 
+       (EFI_FONT_INFO_SYS_STYLE | EFI_FONT_INFO_ANY_STYLE)) ||
+      ((StringInfoIn->FontInfoMask & (EFI_FONT_INFO_RESIZE    | EFI_FONT_INFO_ANY_SIZE))  == 
+       (EFI_FONT_INFO_RESIZE | EFI_FONT_INFO_ANY_SIZE))     ||           
+      ((StringInfoIn->FontInfoMask & (EFI_FONT_INFO_RESTYLE   | EFI_FONT_INFO_ANY_STYLE)) == 
+       (EFI_FONT_INFO_RESTYLE | EFI_FONT_INFO_ANY_STYLE))) {
+    return EFI_INVALID_PARAMETER;
   }
 
   //
@@ -2331,22 +2480,26 @@ HiiGetFontInfo (
 
   if ((StringInfoIn->FontInfoMask & EFI_FONT_INFO_SYS_SIZE) == EFI_FONT_INFO_SYS_SIZE) {
     InfoOut.FontInfo.FontSize = SystemDefault->FontInfo.FontSize;
-  } else if ((StringInfoIn->FontInfoMask & EFI_FONT_INFO_SYS_STYLE) == EFI_FONT_INFO_SYS_STYLE) {
+  } 
+  if ((StringInfoIn->FontInfoMask & EFI_FONT_INFO_SYS_STYLE) == EFI_FONT_INFO_SYS_STYLE) {
     InfoOut.FontInfo.FontStyle = SystemDefault->FontInfo.FontStyle;
-  } else if ((StringInfoIn->FontInfoMask & EFI_FONT_INFO_SYS_FORE_COLOR) == EFI_FONT_INFO_SYS_FORE_COLOR) {
+  }
+  if ((StringInfoIn->FontInfoMask & EFI_FONT_INFO_SYS_FORE_COLOR) == EFI_FONT_INFO_SYS_FORE_COLOR) {
     InfoOut.ForegroundColor = SystemDefault->ForegroundColor;
-  } else if ((StringInfoIn->FontInfoMask & EFI_FONT_INFO_SYS_BACK_COLOR) == EFI_FONT_INFO_SYS_BACK_COLOR) {
+  }
+  if ((StringInfoIn->FontInfoMask & EFI_FONT_INFO_SYS_BACK_COLOR) == EFI_FONT_INFO_SYS_BACK_COLOR) {
     InfoOut.BackgroundColor = SystemDefault->BackgroundColor;
   }
+  
 
   FontInfo->FontSize  = InfoOut.FontInfo.FontSize;
   FontInfo->FontStyle = InfoOut.FontInfo.FontStyle;
 
   if (IsFontInfoExisted (Private, FontInfo, &InfoOut.FontInfoMask, LocalFontHandle, &GlobalFont)) {
+    //
+    // Test to guarantee all characters are available in the found font.
+    //    
     if (String != NULL) {
-      //
-      // Test to guarantee all characters are available in the found font.
-      //
       StringIn = String;
       while (*StringIn != 0) {
         Status = FindGlyphBlock (GlobalFont->FontPackage, *StringIn, NULL, NULL, NULL);
@@ -2356,29 +2509,27 @@ HiiGetFontInfo (
         }
         StringIn++;
       }
-
-      //
-      // Write to output parameter
-      //
-      if (StringInfoOut != NULL) {
-        StringInfoOutLen = sizeof (EFI_FONT_DISPLAY_INFO) - sizeof (EFI_FONT_INFO) + GlobalFont->FontInfoSize;
-        *StringInfoOut   = (EFI_FONT_DISPLAY_INFO *) AllocateZeroPool (StringInfoOutLen);
-        if (*StringInfoOut == NULL) {
-          Status = EFI_OUT_OF_RESOURCES;
-          LocalFontHandle = NULL;
-          goto Exit;
-        }
-        CopyMem (*StringInfoOut, &InfoOut, sizeof (EFI_FONT_DISPLAY_INFO));
-        CopyMem (&(*StringInfoOut)->FontInfo, GlobalFont->FontInfo, GlobalFont->FontInfoSize);
-      }
-      LocalFontHandle = GlobalFont->Entry.ForwardLink;
-
-      Status = EFI_SUCCESS;
-      goto Exit;
     }
-  } else {
-    LocalFontHandle = NULL;
-  }
+    //
+    // Write to output parameter
+    //
+    if (StringInfoOut != NULL) {
+      StringInfoOutLen = sizeof (EFI_FONT_DISPLAY_INFO) - sizeof (EFI_FONT_INFO) + GlobalFont->FontInfoSize;
+      *StringInfoOut   = (EFI_FONT_DISPLAY_INFO *) AllocateZeroPool (StringInfoOutLen);      
+      if (*StringInfoOut == NULL) {
+        Status = EFI_OUT_OF_RESOURCES;
+        LocalFontHandle = NULL;
+        goto Exit;
+      }
+      
+      CopyMem (*StringInfoOut, &InfoOut, sizeof (EFI_FONT_DISPLAY_INFO));
+      CopyMem (&(*StringInfoOut)->FontInfo, GlobalFont->FontInfo, GlobalFont->FontInfoSize);
+    }
+    
+    LocalFontHandle = GlobalFont->Entry.ForwardLink;    
+    Status = EFI_SUCCESS;
+    goto Exit;
+  }  
 
   Status = EFI_NOT_FOUND;
 
@@ -2392,4 +2543,5 @@ Exit:
   SafeFreePool (FontInfo);
   return Status;
 }
+
 

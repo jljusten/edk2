@@ -1,10 +1,9 @@
-
 /** @file
   This file defines the encoding for the VFR (Visual Form Representation) language.
   IFR is primarily consumed by the EFI presentation engine, and produced by EFI
   internal application and drivers as well as all add-in card option-ROM drivers
 
-  Copyright (c) 2006 - 2007, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -21,9 +20,9 @@
 #ifndef __UEFI_INTERNAL_FORMREPRESENTATION_H__
 #define __UEFI_INTERNAL_FORMREPRESENTATION_H__
 
-//
-// The following types are currently defined:
-//
+///
+/// The following types are currently defined:
+///
 typedef UINT32  RELOFST;
 
 typedef VOID*   EFI_HII_HANDLE;
@@ -41,9 +40,9 @@ typedef UINT32  EFI_HII_FONT_STYLE;
 #pragma pack(1)
 
 
-//
-// HII package list
-//
+///
+/// HII package list
+///
 typedef struct {
   EFI_GUID               PackageListGuid;
   UINT32                 PackageLength;
@@ -133,6 +132,7 @@ typedef struct _EFI_HII_SIMPLE_FONT_PACKAGE_HDR {
 // Font Package
 //
 
+#define EFI_HII_FONT_STYLE_NORMAL            0x00000000
 #define EFI_HII_FONT_STYLE_BOLD              0x00000001
 #define EFI_HII_FONT_STYLE_ITALIC            0x00000002
 #define EFI_HII_FONT_STYLE_EMBOSS            0x00010000
@@ -580,6 +580,9 @@ typedef union {
   EFI_STRING_ID   string;
 } EFI_IFR_TYPE_VALUE;
 
+//
+// IFR Opcodes
+//
 #define EFI_IFR_FORM_OP                0x01
 #define EFI_IFR_SUBTITLE_OP            0x02
 #define EFI_IFR_TEXT_OP                0x03
@@ -723,14 +726,14 @@ typedef struct _EFI_IFR_VARSTORE {
 
 typedef struct _EFI_IFR_VARSTORE_EFI {
   EFI_IFR_OP_HEADER        Header;
-  UINT16                   VarStoreId;
+  EFI_VARSTORE_ID          VarStoreId;
   EFI_GUID                 Guid;
   UINT32                   Attributes;
 } EFI_IFR_VARSTORE_EFI;
 
 typedef struct _EFI_IFR_VARSTORE_NAME_VALUE {
   EFI_IFR_OP_HEADER        Header;
-  UINT16                   VarStoreId;
+  EFI_VARSTORE_ID          VarStoreId;
   EFI_GUID                 Guid;
 } EFI_IFR_VARSTORE_NAME_VALUE;
 
@@ -1299,7 +1302,7 @@ typedef enum {
   EfiKeyB8,
   EfiKeyB9,
   EfiKeyB10,
-  EfiKeyRshift,
+  EfiKeyRShift,
   EfiKeyUpArrow,
   EfiKeyOne,
   EfiKeyTwo,
@@ -1390,22 +1393,24 @@ typedef struct {
   UINT16                  AffectedAttribute;
 } EFI_KEY_DESCRIPTOR;
 
-//
-// A key which is affected by all the standard shift modifiers.  
-// Most keys would be expected to have this bit active.
-//
+///
+/// A key which is affected by all the standard shift modifiers.  
+/// Most keys would be expected to have this bit active.
+///
 #define EFI_AFFECTED_BY_STANDARD_SHIFT       0x0001
-//
-// This key is affected by the caps lock so that if a keyboard driver
-// would need to disambiguate between a key which had a ¡°1¡± defined
-// versus a ¡°a¡± character.  Having this bit turned on would tell
-// the keyboard driver to use the appropriate shifted state or not.
-//
+
+///
+/// This key is affected by the caps lock so that if a keyboard driver
+/// would need to disambiguate between a key which had a "1" defined
+/// versus a "a" character.  Having this bit turned on would tell
+/// the keyboard driver to use the appropriate shifted state or not.
+///
 #define EFI_AFFECTED_BY_CAPS_LOCK            0x0002
-//
-// Similar to the case of CAPS lock, if this bit is active, the key
-// is affected by the num lock being turned on.
-//
+
+///
+/// Similar to the case of CAPS lock, if this bit is active, the key
+/// is affected by the num lock being turned on.
+///
 #define EFI_AFFECTED_BY_NUM_LOCK             0x0004
 
 typedef struct {
@@ -1421,17 +1426,6 @@ typedef struct {
   UINT16                  LayoutCount;
   // EFI_HII_KEYBOARD_LAYOUT Layout[];
 } EFI_HII_KEYBOARD_PACKAGE_HDR;
-
-typedef struct {
-  CHAR16                  Language[3];
-  CHAR16                  Space;
-  CHAR16                  DescriptionString[1];
-} EFI_DESCRIPTION_STRING;
-
-typedef struct {
-  UINT16                  DescriptionCount;
-  EFI_DESCRIPTION_STRING  DescriptionString[1];
-} EFI_DESCRIPTION_STRING_BUNDLE;
 
 //
 // Modifier values
@@ -1451,7 +1445,7 @@ typedef struct {
 #define EFI_LEFT_SHIFT_MODIFIER          0x000C
 #define EFI_RIGHT_SHIFT_MODIFIER         0x000D
 #define EFI_CAPS_LOCK_MODIFIER           0x000E
-#define EFI_NUM_LOCK _MODIFIER           0x000F
+#define EFI_NUM_LOCK_MODIFIER            0x000F
 #define EFI_LEFT_ARROW_MODIFIER          0x0010
 #define EFI_RIGHT_ARROW_MODIFIER         0x0011
 #define EFI_DOWN_ARROW_MODIFIER          0x0012
@@ -1484,18 +1478,22 @@ typedef struct {
 #define EFI_PAUSE_MODIFIER               0x0025
 #define EFI_BREAK_MODIFIER               0x0026
 
+#define EFI_LEFT_LOGO_MODIFIER           0x0027
+#define EFI_RIGHT_LOGO_MODIFIER          0x0028
+#define EFI_MENU_MODIFIER                0x0029
+
 #pragma pack()
 
 
 
-//
-// References to string tokens must use this macro to enable scanning for
-// token usages.
-//
-//
-// STRING_TOKEN is not defined in UEFI specification. But it is placed 
-// here for the easy access by C files and VFR source files.
-//
+///
+/// References to string tokens must use this macro to enable scanning for
+/// token usages.
+///
+///
+/// STRING_TOKEN is not defined in UEFI specification. But it is placed 
+/// here for the easy access by C files and VFR source files.
+///
 #define STRING_TOKEN(t) t
 
 #endif

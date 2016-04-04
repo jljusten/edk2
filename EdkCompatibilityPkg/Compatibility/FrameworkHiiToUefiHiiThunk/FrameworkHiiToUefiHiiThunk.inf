@@ -37,6 +37,10 @@
 #
 
 [Sources.common]
+  HiiHandle.c
+  HiiHandle.h
+  ConfigAccess.c
+  ConfigAccess.h
   OpcodeCreation.c
   OpcodeCreation.h
   UefiIfrParserInternal.h
@@ -55,10 +59,10 @@
   Forms.c
   HiiDatabase.h
   HiiDatabase.c
-  ConfigAccess.c
-  ConfigAccess.h
   Utility.c
   Utility.h
+
+  SetupBrowser.c
  
 
 [Packages]
@@ -81,7 +85,6 @@
   PrintLib
 
 [Protocols]
-  gEfiHiiProtocolGuid
   gEfiHiiImageProtocolGuid
   gEfiHiiDatabaseProtocolGuid
   gEfiHiiStringProtocolGuid
@@ -90,12 +93,14 @@
   gEfiHiiConfigAccessProtocolGuid
   gEfiFormCallbackProtocolGuid
   gEfiUnicodeCollation2ProtocolGuid
+  gEfiHiiCompatibilityProtocolGuid
+  gEfiFormBrowserCompatibilityProtocolGuid
 
 [Depex]
-  gEfiHiiImageProtocolGuid AND
   gEfiHiiDatabaseProtocolGuid AND
   gEfiHiiStringProtocolGuid AND
+  gEfiHiiConfigRoutingProtocolGuid AND
   gEfiHiiFontProtocolGuid AND
-  gEfiHiiConfigRoutingProtocolGuid
+  gEfiFormBrowser2ProtocolGuid
 
 

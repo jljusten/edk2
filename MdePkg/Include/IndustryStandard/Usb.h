@@ -129,7 +129,7 @@ typedef struct {
 #pragma pack()
 
 
-enum {
+typedef enum {
   //
   // USB request type
   //
@@ -170,6 +170,7 @@ enum {
   USB_DESC_TYPE_INTERFACE = 0x04,
   USB_DESC_TYPE_ENDPOINT  = 0x05,
   USB_DESC_TYPE_HID       = 0x21,
+  USB_DESC_TYPE_REPORT    = 0x22,
 
   //
   // Features to be cleared by CLEAR_FEATURE requests
@@ -190,13 +191,24 @@ enum {
   //
   //Use 200 ms to increase the error handling response time
   //
-  EFI_USB_INTERRUPT_DELAY = 2000000,
-};
+  EFI_USB_INTERRUPT_DELAY = 2000000
+} USB_TYPES_DEFINITION;
 
 
 //
 // HID constants definition, see HID rev1.0
 //
+
+//
+// HID standard GET_DESCRIPTOR request.
+//
+#define USB_HID_GET_DESCRIPTOR_REQ_TYPE  0x81
+
+//
+// HID specific requests.
+//
+#define USB_HID_CLASS_GET_REQ_TYPE       0xa1
+#define USB_HID_CLASS_SET_REQ_TYPE       0x21
 
 //
 // HID report item format
@@ -294,9 +306,9 @@ enum {
 #define EFI_USB_SET_PROTOCOL_REQUEST  0x0b
 
 #pragma pack(1)
-//
-// Descriptor header for Report/Physical Descriptors
-//
+///
+/// Descriptor header for Report/Physical Descriptors
+///
 typedef struct hid_class_descriptor {
   UINT8   DescriptorType;
   UINT16  DescriptorLength;

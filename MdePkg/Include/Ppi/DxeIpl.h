@@ -1,8 +1,8 @@
 /** @file
   This file declares DXE Initial Program Load PPI.
-  When the PEI core is done it calls the DXE IPL via this PPI.
+  When the PEI core is done it calls the DXE IPL PPI to load the DXE Foundation.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -31,33 +31,43 @@ typedef struct _EFI_DXE_IPL_PPI EFI_DXE_IPL_PPI;
   The architectural PPI that the PEI Foundation invokes when 
   there are no additional PEIMs to invoke.
 
+  This function is invoked by the PEI Foundation.
+  The PEI Foundation will invoke this service when there are
+  no additional PEIMs to invoke in the system.
+  If this PPI does not exist, it is an error condition and
+  an ill-formed firmware set. The DXE IPL PPI should never
+  return after having been invoked by the PEI Foundation.
+  The DXE IPL PPI can do many things internally, including the following:
+    - Invoke the DXE entry point from a firmware volume
+    - Invoke the recovery processing modules
+    - Invoke the S3 resume modules
+
   @param  This           Pointer to the DXE IPL PPI instance
   @param  PeiServices    Pointer to the PEI Services Table.
   @param  HobList        Pointer to the list of Hand-Off Block (HOB) entries.
 
-  @retval EFI_SUCCESS           Upon this return code, the PEI Foundation should enter
-                                some exception handling.Under normal circumstances, the DXE IPL PPI should not return.
+  @retval EFI_SUCCESS    Upon this return code, the PEI Foundation should enter
+                         some exception handling.Under normal circumstances, 
+                         the DXE IPL PPI should not return.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DXE_IPL_ENTRY) (
-  IN EFI_DXE_IPL_PPI              *This,
+(EFIAPI *EFI_DXE_IPL_ENTRY)(
+  IN CONST EFI_DXE_IPL_PPI        *This,
   IN EFI_PEI_SERVICES             **PeiServices,
   IN EFI_PEI_HOB_POINTERS         HobList
   );
 
-/**
-  @par Ppi Description:
-  Final service to be invoked by the PEI Foundation.
-  The DXE IPL PPI is responsible for locating and loading the DXE Foundation.
-  The DXE IPL PPI may use PEI services to locate and load the DXE Foundation.
-
-  @param Entry
-  The entry point to the DXE IPL PPI.
-
-**/
+///
+/// Final service to be invoked by the PEI Foundation.
+/// The DXE IPL PPI is responsible for locating and loading the DXE Foundation.
+/// The DXE IPL PPI may use PEI services to locate and load the DXE Foundation.
+///
 struct _EFI_DXE_IPL_PPI {
+  ///
+  /// The entry point to the DXE IPL PPI.
+  ///
   EFI_DXE_IPL_ENTRY Entry;
 };
 

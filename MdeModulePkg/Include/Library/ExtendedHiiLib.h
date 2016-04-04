@@ -1,6 +1,6 @@
 /** @file
-  This library includes the APIs that is specific to EDK II's implementation.
-  It extended the UEFI Specification to define GUIDed device path.
+  This library includes two extended HII functions to 
+  create and destory Hii Package by create the virtual Driver Handle.
 
 Copyright (c) 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
@@ -21,7 +21,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
   that there should be DevicePath Protocol installed on it.
   This routine create a virtual Driver Handle by installing a vendor device
   path on it, so as to use it to invoke HiiDatabase.NewPackageList().
-  The Device Path created is a Vendor Device Path specific to Intel's implemenation.
+  The Device Path created is a Vendor Device Path specific to Intel's implemenation
+  and it is defined as HII_VENDOR_DEVICE_PATH_NODE.
+  
 
   @param  DriverHandle           Handle to be returned
 
@@ -33,8 +35,7 @@ EFI_STATUS
 EFIAPI
 HiiLibCreateHiiDriverHandle (
   OUT EFI_HANDLE               *DriverHandle
-  )
-;
+  );
 
 /**
   Destroy the Driver Handle created by CreateHiiDriverHandle().
@@ -50,8 +51,7 @@ VOID
 EFIAPI
 HiiLibDestroyHiiDriverHandle (
   IN EFI_HANDLE                 DriverHandle
-  )
-;
+  );
 
 
 #endif

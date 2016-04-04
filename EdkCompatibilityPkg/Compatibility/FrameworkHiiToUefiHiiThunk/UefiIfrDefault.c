@@ -26,12 +26,12 @@
 
 #include "UefiIfrParser.h"
 #include "UefiIfrDefault.h"
+#include "HiiDatabase.h"
 
 //
 // Extern Variables
 //
 extern CONST EFI_HII_DATABASE_PROTOCOL            *mHiiDatabase;
-extern CONST EFI_HII_FONT_PROTOCOL                *mHiiFontProtocol;
 extern CONST EFI_HII_IMAGE_PROTOCOL               *mHiiImageProtocol;
 extern CONST EFI_HII_STRING_PROTOCOL              *mHiiStringProtocol;
 extern CONST EFI_HII_CONFIG_ROUTING_PROTOCOL      *mHiiConfigRoutingProtocol;
@@ -432,8 +432,6 @@ ExtractFormDefault (
   Link = GetFirstNode (&Form->StatementListHead);
   while (!IsNull (&Form->StatementListHead, Link)) {
     Question = FORM_BROWSER_STATEMENT_FROM_LINK (Link);
-    Link = GetNextNode (&Form->StatementListHead, Link);
-
     //
     // Reset Question to its default value
     //
@@ -442,6 +440,7 @@ ExtractFormDefault (
       continue;
     }
 
+    Link = GetNextNode (&Form->StatementListHead, Link);
   }
   return EFI_SUCCESS;
 }
@@ -546,20 +545,20 @@ GetBufferTypeDefaultId (
   OUT       LIST_ENTRY      *UefiDefaultsListHead
   )
 {
-  LIST_ENTRY                  *StorageListEntry;
+  LIST_ENTRY                  *StorageLink;
   FORMSET_STORAGE             *Storage;
   EFI_STATUS                  Status;
 
-  StorageListEntry = GetFirstNode (&FormSet->StorageListHead);
+  StorageLink = GetFirstNode (&FormSet->StorageListHead);
 
-  while (!IsNull (&FormSet->StorageListHead, StorageListEntry)) {
-    Storage = FORMSET_STORAGE_FROM_LINK(StorageListEntry);
+  while (!IsNull (&FormSet->StorageListHead, StorageLink)) {
+    Storage = FORMSET_STORAGE_FROM_LINK(StorageLink);
 
     if (Storage->Type == EFI_HII_VARSTORE_BUFFER) {
       Status = GetBufferTypeDefaultIdAndStorageId (DefaultStore, Storage, FormSet, UefiDefaultsListHead);
     }
 
-    StorageListEntry = GetNextNode (&FormSet->StorageListHead, StorageListEntry);
+    StorageLink = GetNextNode (&FormSet->StorageListHead, StorageLink);
   }
   
   return EFI_SUCCESS;
@@ -587,7 +586,7 @@ UefiIfrGetBufferTypeDefaults (
 {
   FORM_BROWSER_FORMSET *FormSet;
   EFI_GUID              FormSetGuid;
-  LIST_ENTRY            *DefaultListEntry;
+  LIST_ENTRY            *DefaultLink;
   FORMSET_DEFAULTSTORE  *DefaultStore;
   EFI_STATUS            Status;
 
@@ -604,14 +603,14 @@ UefiIfrGetBufferTypeDefaults (
   ASSERT (UefiDefaults != NULL);
   InitializeListHead (*UefiDefaults);
 
-  DefaultListEntry = GetFirstNode (&FormSet->DefaultStoreListHead);
-  while (!IsNull (&FormSet->DefaultStoreListHead, DefaultListEntry)) {
-    DefaultStore = FORMSET_DEFAULTSTORE_FROM_LINK(DefaultListEntry);
+  DefaultLink = GetFirstNode (&FormSet->DefaultStoreListHead);
+  while (!IsNull (&FormSet->DefaultStoreListHead, DefaultLink)) {
+    DefaultStore = FORMSET_DEFAULTSTORE_FROM_LINK(DefaultLink);
 
     Status = GetBufferTypeDefaultId (DefaultStore, FormSet, *UefiDefaults);
     ASSERT_EFI_ERROR (Status);
 
-    DefaultListEntry = GetNextNode (&FormSet->DefaultStoreListHead, DefaultListEntry);    
+    DefaultLink = GetNextNode (&FormSet->DefaultStoreListHead, DefaultLink);    
   }
 
   DestroyFormSet (FormSet);
@@ -640,7 +639,7 @@ UefiIfrGetBufferTypeDefaults (
                                                            FRAMEWORK_EFI_IFR_FLAG_MANUFACTURING.
 **/
 EFI_STATUS
-UefiDefaultsToFrameworkDefaults (
+UefiDefaultsToFwDefaults (
   IN     LIST_ENTRY                  *ListHead,
   IN     UINTN                       DefaultMask,
   OUT    EFI_HII_VARIABLE_PACK_LIST  **VariablePackList
@@ -653,6 +652,7 @@ UefiDefaultsToFrameworkDefaults (
   UINT16                            DefaultId;
   EFI_HII_VARIABLE_PACK             *Pack;
   EFI_HII_VARIABLE_PACK_LIST        *PackList;
+  UINTN                             Index;
 
   if (DefaultMask == FRAMEWORK_EFI_IFR_FLAG_DEFAULT) {
     DefaultId = EFI_HII_DEFAULT_CLASS_STANDARD;
@@ -686,6 +686,11 @@ UefiDefaultsToFrameworkDefaults (
     List = GetNextNode (ListHead, List);  
   }
 
+  if (Count == 0) {
+    *VariablePackList = NULL;
+    return EFI_NOT_FOUND;
+  }
+
   Size = Size + Count * (sizeof (EFI_HII_VARIABLE_PACK_LIST) + sizeof (EFI_HII_VARIABLE_PACK));
   
   *VariablePackList = AllocateZeroPool (Size);
@@ -695,6 +700,7 @@ UefiDefaultsToFrameworkDefaults (
 
   PackList = (EFI_HII_VARIABLE_PACK_LIST *) *VariablePackList;
   Pack     = (EFI_HII_VARIABLE_PACK *) (PackList + 1);
+  Index = 0;
   while (!IsNull (ListHead, List)) {
     Node = UEFI_IFR_BUFFER_STORAGE_NODE_FROM_LIST(List);
 
@@ -718,8 +724,8 @@ UefiDefaultsToFrameworkDefaults (
       // Initialize EFI_HII_VARIABLE_PACK
       //
       Pack->Header.Type   = 0;
-      Pack->Header.Length = Size;
-      Pack->VariableNameLength = StrSize (Node->Name);
+      Pack->Header.Length = (UINT32) Size;
+      Pack->VariableNameLength = (UINT32) StrSize (Node->Name);
       CopyMem (&Pack->VariableGuid, &Node->Guid, sizeof (EFI_GUID));
       
       CopyMem ((UINT8 *) Pack + sizeof (EFI_HII_VARIABLE_PACK), Node->Name, StrSize (Node->Name));
@@ -728,10 +734,13 @@ UefiDefaultsToFrameworkDefaults (
       Size += sizeof (EFI_HII_VARIABLE_PACK_LIST);
 
       //
-      // initialize EFI_HII_VARIABLE_PACK_LIST
+      // Initialize EFI_HII_VARIABLE_PACK_LIST
       //
       PackList->VariablePack = Pack;
-      PackList->NextVariablePack = (EFI_HII_VARIABLE_PACK_LIST *)((UINT8 *) PackList + Size);
+      Index++;
+      if (Index < Count) {
+        PackList->NextVariablePack = (EFI_HII_VARIABLE_PACK_LIST *)((UINT8 *) PackList + Size);
+      }
             
     }
     
@@ -758,19 +767,17 @@ FreeDefaultList (
   IN     LIST_ENTRY                  *ListHead
   )
 {
-  LIST_ENTRY *Node;
+  LIST_ENTRY *Link;
   UEFI_IFR_BUFFER_STORAGE_NODE *Default;
 
-  Node = GetFirstNode (ListHead);
-  
-  while (!IsNull (ListHead, Node)) {
-    Default = UEFI_IFR_BUFFER_STORAGE_NODE_FROM_LIST(Node);
+  while (!IsListEmpty (ListHead)) {
+    Link = GetFirstNode (ListHead);
+    
+    Default = UEFI_IFR_BUFFER_STORAGE_NODE_FROM_LIST(Link);
 
-    RemoveEntryList (Node);
+    RemoveEntryList (Link);
    
     DestroyDefaultNode (Default);
-    
-    Node = GetFirstNode (ListHead);
   }
 
   FreePool (ListHead);

@@ -4,7 +4,7 @@
   Abstraction of a basic serial device. Targeted at 16550 UART, but
   could be much more generic.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -23,22 +23,22 @@
     0xBB25CF6F, 0xF1D4, 0x11D2, {0x9A, 0x0C, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0xFD } \
   }
 
-//
-// Protocol GUID defined in EFI1.1.
-// 
+///
+/// Protocol GUID defined in EFI1.1.
+/// 
 #define SERIAL_IO_PROTOCOL  EFI_SERIAL_IO_PROTOCOL_GUID
 
 typedef struct _EFI_SERIAL_IO_PROTOCOL EFI_SERIAL_IO_PROTOCOL;
 
 
-//
-// Backward-compatible with EFI1.1.
-// 
+///
+/// Backward-compatible with EFI1.1.
+/// 
 typedef EFI_SERIAL_IO_PROTOCOL  SERIAL_IO_INTERFACE;
 
-//
-// Serial IO Data structures
-//
+///
+/// Serial IO Data structures
+///
 typedef enum {
   DefaultParity,
   NoParity,
@@ -95,10 +95,9 @@ typedef enum {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SERIAL_RESET) (
+(EFIAPI *EFI_SERIAL_RESET)(
   IN EFI_SERIAL_IO_PROTOCOL *This
-  )
-;
+  );
 
 /**
   Sets the baud rate, receive FIFO depth, transmit/receice time out, parity, 
@@ -128,7 +127,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SERIAL_SET_ATTRIBUTES) (
+(EFIAPI *EFI_SERIAL_SET_ATTRIBUTES)(
   IN EFI_SERIAL_IO_PROTOCOL         *This,
   IN UINT64                         BaudRate,
   IN UINT32                         ReceiveFifoDepth,
@@ -136,8 +135,7 @@ EFI_STATUS
   IN EFI_PARITY_TYPE                Parity,
   IN UINT8                          DataBits,
   IN EFI_STOP_BITS_TYPE             StopBits
-  )
-;
+  );
 
 /**
   Set the control bits on a serial device
@@ -152,11 +150,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SERIAL_SET_CONTROL_BITS) (
+(EFIAPI *EFI_SERIAL_SET_CONTROL_BITS)(
   IN EFI_SERIAL_IO_PROTOCOL         *This,
   IN UINT32                         Control
-  )
-;
+  );
 
 /**
   Retrieves the status of thecontrol bits on a serial device
@@ -170,11 +167,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SERIAL_GET_CONTROL_BITS) (
+(EFIAPI *EFI_SERIAL_GET_CONTROL_BITS)(
   IN EFI_SERIAL_IO_PROTOCOL         *This,
   OUT UINT32                        *Control
-  )
-;
+  );
 
 /**
   Writes data to a serial device.
@@ -191,12 +187,11 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SERIAL_WRITE) (
+(EFIAPI *EFI_SERIAL_WRITE)(
   IN EFI_SERIAL_IO_PROTOCOL         *This,
   IN OUT UINTN                      *BufferSize,
   IN VOID                           *Buffer
-  )
-;
+  );
 
 /**
   Writes data to a serial device.
@@ -213,30 +208,43 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SERIAL_READ) (
+(EFIAPI *EFI_SERIAL_READ)(
   IN EFI_SERIAL_IO_PROTOCOL         *This,
   IN OUT UINTN                      *BufferSize,
   OUT VOID                          *Buffer
-  )
-;
+  );
 
 /**
+  @par Data Structure Description:
   The data values in SERIAL_IO_MODE are read-only and are updated by the code 
   that produces the SERIAL_IO_PROTOCOL member functions.
 
-  ControlMask - A mask fo the Control bits that the device supports. The device
+  @param ControlMask
+  A mask fo the Control bits that the device supports. The device
   must always support the Input Buffer Empty control bit.
-  TimeOut  - If applicable, the number of microseconds to wait before timing out
+  
+  @param TimeOut
+  If applicable, the number of microseconds to wait before timing out
   a Read or Write operation.
-  BaudRate - If applicable, the current baud rate setting of the device; otherwise,
+  
+  @param BaudRate
+  If applicable, the current baud rate setting of the device; otherwise,
   baud rate has the value of zero to indicate that device runs at the
   device's designed speed.
-  ReceiveFifoDepth - The number of characters the device will buffer on input
-  DataBits - The number of characters the device will buffer on input
-  Parity   - If applicable, this is the EFI_PARITY_TYPE that is computed or 
+  
+  @param ReceiveFifoDepth
+  The number of characters the device will buffer on input
+  
+  @param DataBits
+  The number of characters the device will buffer on input
+  
+  @param Parity
+  If applicable, this is the EFI_PARITY_TYPE that is computed or 
   checked as each character is transmitted or reveived. If the device
   does not support parity the value is the default parity value.
-  StopBits - If applicable, the EFI_STOP_BITS_TYPE number of stop bits per
+  
+  @param StopBits
+  If applicable, the EFI_STOP_BITS_TYPE number of stop bits per
   character. If the device does not support stop bits the value is
   the default stop bit values.
 
@@ -258,7 +266,18 @@ typedef struct {
 #define EFI_SERIAL_IO_PROTOCOL_REVISION    0x00010000
 #define SERIAL_IO_INTERFACE_REVISION  EFI_SERIAL_IO_PROTOCOL_REVISION
 
+/**  
+  @par Protocol Description:
+  The Serial I/O protocol is used to communicate with UART-style serial devices. 
+  These can be standard UART serial ports in PC-AT systems, serial ports attached 
+  to a USB interface, or potentially any character-based I/O device.
+**/
 struct _EFI_SERIAL_IO_PROTOCOL {
+  ///
+  /// The revision to which the EFI_SERIAL_IO_PROTOCOL adheres. All future revisions 
+  /// must be backwards compatible. If a future version is not back wards compatible, 
+  /// it is not the same GUID.
+  ///
   UINT32                      Revision;
   EFI_SERIAL_RESET            Reset;
   EFI_SERIAL_SET_ATTRIBUTES   SetAttributes;

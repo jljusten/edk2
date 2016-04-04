@@ -12,11 +12,14 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
 
 
+
+/**
+  Enables CPU interrupts for the smallest window required to capture any
+  pending interrupts.
+
+**/
 VOID
 EFIAPI
 EnableDisableInterrupts (

@@ -1,7 +1,7 @@
 /** @file
-  Provide generic extract guided section functions.
+  Provide generic extract guided section functions for Dxe phase.
 
-  Copyright (c) 2007, Intel Corporation<BR>
+  Copyright (c) 2007 - 2008, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -21,7 +21,7 @@
 #include <Library/ExtractGuidedSectionLib.h>
 
 STATIC GUID                 *mExtractHandlerGuidTable;
-STATIC UINT32               mNumberOfExtractHandler;
+STATIC UINT32               mNumberOfExtractHandler = 0;
 
 STATIC EXTRACT_GUIDED_SECTION_DECODE_HANDLER   *mExtractDecodeHandlerTable;
 STATIC EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER *mExtractGetInfoHandlerTable;
@@ -52,34 +52,34 @@ DxeExtractGuidedSectionLibConstructor (
   
   mExtractDecodeHandlerTable  = (EXTRACT_GUIDED_SECTION_DECODE_HANDLER *) AllocatePool (PcdGet32 (PcdMaximumGuidedExtractHandler) * sizeof (EXTRACT_GUIDED_SECTION_DECODE_HANDLER));
   if (mExtractDecodeHandlerTable == NULL) {
+    FreePool (mExtractHandlerGuidTable);
     return RETURN_OUT_OF_RESOURCES;
   }
 
   mExtractGetInfoHandlerTable = (EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER *) AllocatePool (PcdGet32 (PcdMaximumGuidedExtractHandler) * sizeof (EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER));
   if (mExtractGetInfoHandlerTable == NULL) {
+    FreePool (mExtractHandlerGuidTable);
+    FreePool (mExtractDecodeHandlerTable);
     return RETURN_OUT_OF_RESOURCES;
   }
-  
-  //
-  // the initialized number is Zero.
-  //
-  mNumberOfExtractHandler = 0;
   
   return RETURN_SUCCESS;
 }
 
 /**
-  Get the supported exract guided section Handler guid list.
-  If ExtractHandlerGuidTable = NULL, then ASSERT.
+  Get the supported exract guided section Handler guid table, which is maintained
+  by library. The caller can directly get the guid table 
+  without responsibility to allocate or free this table buffer.  
+  It will ASSERT () if ExtractHandlerGuidTable = NULL.
 
-  @param[in, out]  ExtractHandlerGuidTable   The extract Handler guid pointer list.
+  @param[out]  ExtractHandlerGuidTable   The extract Handler guid pointer list.
 
-  @retval  return the number of the supported extract guided Handler.
+  @return the number of the supported extract guided Handler.
 **/
 UINTN
 EFIAPI
 ExtractGuidedSectionGetGuidList (
-  IN OUT  GUID  **ExtractHandlerGuidTable
+  OUT  GUID  **ExtractHandlerGuidTable
   )
 {
   ASSERT (ExtractHandlerGuidTable != NULL);
@@ -120,17 +120,13 @@ ExtractGuidedSectionRegisterHandlers (
   //
   for (Index = 0; Index < mNumberOfExtractHandler; Index ++) {
     if (CompareGuid (&mExtractHandlerGuidTable[Index], SectionGuid)) {
-      break;
+      //
+      // If the guided handler has been registered before, only update its handler.
+      //
+      mExtractDecodeHandlerTable [Index] = DecodeHandler;
+      mExtractGetInfoHandlerTable [Index] = GetInfoHandler;
+      return RETURN_SUCCESS;
     }
-  }
-
-  //
-  // If the guided handler has been registered before, only update its handler.
-  //
-  if (Index < mNumberOfExtractHandler) {
-    mExtractDecodeHandlerTable [Index] = DecodeHandler;
-    mExtractGetInfoHandlerTable [Index] = GetInfoHandler;
-    return RETURN_SUCCESS;
   }
   
   //
@@ -167,8 +163,8 @@ ExtractGuidedSectionRegisterHandlers (
   @param[out] SectionAttribute      The attribute of the input guided section.
 
   @retval  RETURN_SUCCESS           Get the required information successfully.
-  @retval  RETURN_INVALID_PARAMETER The input data can't be parsed correctly. 
-                                    The GUID in InputSection does not match any registered guid list.
+  @retval  RETURN_UNSUPPORTED       Guided section data is not supported.
+  @retval  RETURN_INVALID_PARAMETER The input data is not the valid guided section.
 
 **/
 RETURN_STATUS
@@ -195,26 +191,22 @@ ExtractGuidedSectionGetInfo (
   //
   for (Index = 0; Index < mNumberOfExtractHandler; Index ++) {
     if (CompareGuid (&mExtractHandlerGuidTable[Index], &(((EFI_GUID_DEFINED_SECTION *) InputSection)->SectionDefinitionGuid))) {
-      break;
+      //
+      // Call the match handler to getinfo for the input section data.
+      //
+      return mExtractGetInfoHandlerTable [Index] (
+                InputSection,
+                OutputBufferSize,
+                ScratchBufferSize,
+                SectionAttribute
+              );
     }
   }
 
   //
   // Not found, the input guided section is not supported. 
   //
-  if (Index == mNumberOfExtractHandler) {
-    return RETURN_INVALID_PARAMETER;
-  }
-
-  //
-  // Call the match handler to getinfo for the input section data.
-  //
-  return mExtractGetInfoHandlerTable [Index] (
-            InputSection,
-            OutputBufferSize,
-            ScratchBufferSize,
-            SectionAttribute
-          );
+  return RETURN_UNSUPPORTED;
 }
 
 /**
@@ -237,9 +229,9 @@ ExtractGuidedSectionGetInfo (
                             A pointer to a caller-allocated UINT32 that indicates the
                             authentication status of the output buffer. 
 
-  @retval  RETURN_SUCCESS           Get the output data, size and AuthenticationStatus successfully.
-  @retval  RETURN_INVALID_PARAMETER The input data can't be parsed correctly. 
-                                    The GUID in InputSection does not match any registered guid.
+  @retval  RETURN_SUCCESS           Get the output data and AuthenticationStatus successfully.
+  @retval  RETURN_UNSUPPORTED       Guided section data is not supported to be decoded.
+  @retval  RETURN_INVALID_PARAMETER The input data is not the valid guided section.
 
 **/
 RETURN_STATUS
@@ -253,6 +245,9 @@ ExtractGuidedSectionDecode (
 {
   UINT32 Index;
   
+  //
+  // Check the input parameters
+  //
   if (InputSection == NULL) {
     return RETURN_INVALID_PARAMETER;
   }
@@ -261,28 +256,24 @@ ExtractGuidedSectionDecode (
   ASSERT (AuthenticationStatus != NULL);
 
   //
-  // Search the match registered GetInfo handler for the input guided section.
+  // Search the match registered extract handler for the input guided section.
   //
   for (Index = 0; Index < mNumberOfExtractHandler; Index ++) {
     if (CompareGuid (&mExtractHandlerGuidTable[Index], &(((EFI_GUID_DEFINED_SECTION *) InputSection)->SectionDefinitionGuid))) {
-      break;
+      //
+      // Call the match handler to extract raw data for the input section data.
+      //
+      return mExtractDecodeHandlerTable [Index] (
+                InputSection,
+                OutputBuffer,
+                ScratchBuffer,
+                AuthenticationStatus
+              );
     }
   }
 
   //
   // Not found, the input guided section is not supported. 
   //
-  if (Index == mNumberOfExtractHandler) {
-    return RETURN_INVALID_PARAMETER;
-  }
-
-  //
-  // Call the match handler to getinfo for the input section data.
-  //
-  return mExtractDecodeHandlerTable [Index] (
-            InputSection,
-            OutputBuffer,
-            ScratchBuffer,
-            AuthenticationStatus
-          );
+  return RETURN_UNSUPPORTED;
 }

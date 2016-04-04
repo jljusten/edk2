@@ -27,8 +27,7 @@ VOID *
 EFIAPI
 GetHobList (
   VOID
-  )
-;
+  );
 
 /**
   Returns the next instance of a HOB type from the starting HOB.
@@ -51,8 +50,7 @@ EFIAPI
 GetNextHob (
   IN UINT16                 Type,
   IN CONST VOID             *HobStart
-  )
-;
+  );
 
 /**
   Returns the first instance of a HOB type among the whole HOB list.
@@ -69,8 +67,7 @@ VOID *
 EFIAPI
 GetFirstHob (
   IN UINT16                 Type
-  )
-;
+  );
 
 /**
   This function searches the first instance of a HOB from the starting HOB pointer. 
@@ -96,8 +93,7 @@ EFIAPI
 GetNextGuidHob (
   IN CONST EFI_GUID         *Guid,
   IN CONST VOID             *HobStart
-  )
-;
+  );
 
 /**
   This function searches the first instance of a HOB among the whole HOB list. 
@@ -117,8 +113,7 @@ VOID *
 EFIAPI
 GetFirstGuidHob (
   IN CONST EFI_GUID         *Guid
-  )
-;
+  );
 
 /**
   Get the Boot Mode from the HOB list.
@@ -135,8 +130,7 @@ EFI_BOOT_MODE
 EFIAPI
 GetBootModeHob (
   VOID
-  )
-;
+  );
 
 /**
   Builds a HOB for a loaded PE32 module.
@@ -160,8 +154,7 @@ BuildModuleHob (
   IN EFI_PHYSICAL_ADDRESS   MemoryAllocationModule,
   IN UINT64                 ModuleLength,
   IN EFI_PHYSICAL_ADDRESS   EntryPoint
-  )
-;
+  );
 
 /**
   Builds a HOB that describes a chunk of system memory.
@@ -184,8 +177,7 @@ BuildResourceDescriptorHob (
   IN EFI_RESOURCE_ATTRIBUTE_TYPE  ResourceAttribute,
   IN EFI_PHYSICAL_ADDRESS         PhysicalStart,
   IN UINT64                       NumberOfBytes
-  )
-;
+  );
 
 /**
   Builds a GUID HOB with a certain data length.
@@ -210,8 +202,7 @@ EFIAPI
 BuildGuidHob (
   IN CONST EFI_GUID              *Guid,
   IN UINTN                       DataLength
-  )
-;
+  );
 
 /**
   Copies a data buffer to a newly-built HOB.
@@ -239,8 +230,7 @@ BuildGuidDataHob (
   IN CONST EFI_GUID              *Guid,
   IN VOID                        *Data,
   IN UINTN                       DataLength
-  )
-;
+  );
 
 /**
   Builds a Firmware Volume HOB.
@@ -259,8 +249,7 @@ EFIAPI
 BuildFvHob (
   IN EFI_PHYSICAL_ADDRESS        BaseAddress,
   IN UINT64                      Length
-  )
-;
+  );
 
 /**
   Builds a EFI_HOB_TYPE_FV2 HOB.
@@ -283,8 +272,7 @@ BuildFv2Hob (
   IN          UINT64                      Length,
   IN CONST    EFI_GUID                    *FvName,
   IN CONST    EFI_GUID                    *FileName
-  )
-;
+  );
 
 /**
   Builds a Capsule Volume HOB.
@@ -303,8 +291,7 @@ EFIAPI
 BuildCvHob (
   IN EFI_PHYSICAL_ADDRESS        BaseAddress,
   IN UINT64                      Length
-  )
-;
+  );
 
 /**
   Builds a HOB for the CPU.
@@ -323,8 +310,7 @@ EFIAPI
 BuildCpuHob (
   IN UINT8                       SizeOfMemorySpace,
   IN UINT8                       SizeOfIoSpace
-  )
-;
+  );
 
 /**
   Builds a HOB for the Stack.
@@ -343,8 +329,7 @@ EFIAPI
 BuildStackHob (
   IN EFI_PHYSICAL_ADDRESS        BaseAddress,
   IN UINT64                      Length
-  )
-;
+  );
 
 /**
   Builds a HOB for the BSP store.
@@ -365,8 +350,7 @@ BuildBspStoreHob (
   IN EFI_PHYSICAL_ADDRESS        BaseAddress,
   IN UINT64                      Length,
   IN EFI_MEMORY_TYPE             MemoryType
-  )
-;
+  );
 
 /**
   Builds a HOB for the memory allocation.
@@ -387,18 +371,36 @@ BuildMemoryAllocationHob (
   IN EFI_PHYSICAL_ADDRESS        BaseAddress,
   IN UINT64                      Length,
   IN EFI_MEMORY_TYPE             MemoryType
-  )
-;
+  );
 
+///
+/// Get a HOB's type from HOB header
+///
 #define GET_HOB_TYPE(Hob)     ((Hob).Header->HobType)
+
+///
+/// Get a HOB's length from HOB header
+///
 #define GET_HOB_LENGTH(Hob)   ((Hob).Header->HobLength)
+
+///
+/// Get the pointer to next HOB in HOB List
+///
 #define GET_NEXT_HOB(Hob)     ((Hob).Raw + GET_HOB_LENGTH (Hob))
+
+///
+/// Judge if the HOB is the end of HOB List
+///
 #define END_OF_HOB_LIST(Hob)  (GET_HOB_TYPE (Hob) == (UINT16)EFI_HOB_TYPE_END_OF_HOB_LIST)
 
-//
-// Get the data and data size field of GUID 
-//
+///
+/// Get the pointer to data field of GUID HOB 
+///
 #define GET_GUID_HOB_DATA(GuidHob)      ((VOID *) (((UINT8 *) &((GuidHob)->Name)) + sizeof (EFI_GUID)))
+
+///
+/// Get the data size of GUID HOB
+///
 #define GET_GUID_HOB_DATA_SIZE(GuidHob) (((GuidHob)->Header).HobLength - sizeof (EFI_HOB_GUID_TYPE))
 
 #endif

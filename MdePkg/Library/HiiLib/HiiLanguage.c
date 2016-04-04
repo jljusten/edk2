@@ -1,7 +1,7 @@
 /** @file
   Language related HII Library implementation.
 
-  Copyright (c) 2006, Intel Corporation<BR>
+  Copyright (c) 2006 - 2008, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -15,37 +15,18 @@
 
 #include "InternalHiiLib.h"
 
-EFI_STATUS
-EFIAPI
-HiiLibGetCurrentLanguage (
-  OUT     CHAR8               *Lang
-  )
-{
-  EFI_STATUS  Status;
-  UINTN       Size;
+/**
+  Get next language from language code list (with separator ';').
 
-  ASSERT (Lang != NULL);
+  If LangCode is NULL, then ASSERT.
+  If Lang is NULL, then ASSERT.
 
-  //
-  // Get current language setting
-  //
-  Size = RFC_3066_ENTRY_SIZE;
-  Status = gRT->GetVariable (
-                  L"PlatformLang",
-                  &gEfiGlobalVariableGuid,
-                  NULL,
-                  &Size,
-                  Lang
-                  );
+  @param  LangCode    On input: point to first language in the list. On
+                                 output: point to next language in the list, or
+                                 NULL if no more language in the list.
+  @param  Lang           The first language in the list.
 
-  if (EFI_ERROR (Status)) {
-    AsciiStrCpy (Lang, (CHAR8 *) PcdGetPtr (PcdUefiVariableDefaultPlatformLang));
-  }
-
-  return Status;
-}
-
-
+**/
 VOID
 EFIAPI
 HiiLibGetNextLanguage (
@@ -57,6 +38,7 @@ HiiLibGetNextLanguage (
   CHAR8  *StringPtr;
 
   ASSERT (LangCode != NULL);
+  ASSERT (*LangCode != NULL);
   ASSERT (Lang != NULL);
 
   Index = 0;
@@ -75,6 +57,18 @@ HiiLibGetNextLanguage (
 }
 
 
+/**
+  This function returns the list of supported languages, in the format specified
+  in UEFI specification Appendix M.
+
+  If HiiHandle is not a valid Handle in the default HII database, then ASSERT.
+
+  @param  HiiHandle              The HII package list handle.
+
+  @retval   !NULL  The supported languages.
+  @retval   NULL    If Supported Languages can not be retrived.
+
+**/
 CHAR8 *
 EFIAPI
 HiiLibGetSupportedLanguages (
@@ -85,21 +79,21 @@ HiiLibGetSupportedLanguages (
   UINTN       BufferSize;
   CHAR8       *LanguageString;
 
-  ASSERT (HiiHandle != NULL);
   ASSERT (IsHiiHandleRegistered (HiiHandle));
   //
   // Collect current supported Languages for given HII handle
+  // First try allocate 4K buffer to store the current supported languages.
   //
   BufferSize = 0x1000;
   LanguageString = AllocateZeroPool (BufferSize);
   if (LanguageString == NULL) {
     return NULL;
   }
-  
+
   Status = mHiiStringProt->GetLanguages (mHiiStringProt, HiiHandle, LanguageString, &BufferSize);
   
   if (Status == EFI_BUFFER_TOO_SMALL) {
-    gBS->FreePool (LanguageString);
+    FreePool (LanguageString);
     LanguageString = AllocateZeroPool (BufferSize);
     if (LanguageString == NULL) {
       return NULL;
@@ -116,6 +110,17 @@ HiiLibGetSupportedLanguages (
 }
 
 
+/**
+  This function returns the number of supported languages on HiiHandle.
+
+  If HiiHandle is not a valid Handle in the default HII database, then ASSERT.
+  If not enough resource to complete the operation, then ASSERT.
+
+  @param  HiiHandle              The HII package list handle.
+
+  @return The  number of supported languages.
+
+**/
 UINT16
 EFIAPI
 HiiLibGetSupportedLanguageNumber (
@@ -138,11 +143,24 @@ HiiLibGetSupportedLanguageNumber (
     HiiLibGetNextLanguage (&LanguageString, Lang);
     LangNumber++;
   }
-  gBS->FreePool (Languages);
+  FreePool (Languages);
 
   return LangNumber;
 }
 
+/**
+  This function returns the list of supported 2nd languages, in the format specified
+  in UEFI specification Appendix M.
+
+  If HiiHandle is not a valid Handle in the default HII database, then ASSERT.
+  If not enough resource to complete the operation, then ASSERT.
+
+  @param  HiiHandle              The HII package list handle.
+  @param  FirstLanguage          Pointer to language name buffer.
+  
+  @return The supported languages.
+
+**/
 CHAR8 *
 EFIAPI
 HiiLibGetSupportedSecondaryLanguages (
@@ -158,16 +176,18 @@ HiiLibGetSupportedSecondaryLanguages (
   ASSERT (IsHiiHandleRegistered (HiiHandle));
   //
   // Collect current supported 2nd Languages for given HII handle
+  // First try allocate 4K buffer to store the current supported 2nd languages.
   //
   BufferSize = 0x1000;
   LanguageString = AllocateZeroPool (BufferSize);
   if (LanguageString == NULL) {
     return NULL;
   }
+
   Status = mHiiStringProt->GetSecondaryLanguages (mHiiStringProt, HiiHandle, FirstLanguage, LanguageString, &BufferSize);
   
   if (Status == EFI_BUFFER_TOO_SMALL) {
-    gBS->FreePool (LanguageString);
+    FreePool (LanguageString);
     LanguageString = AllocateZeroPool (BufferSize);
     if (LanguageString == NULL) {
       return NULL;

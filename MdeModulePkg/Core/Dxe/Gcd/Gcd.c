@@ -1,7 +1,7 @@
 /** @file
   The file contains the GCD related services in the EFI Boot Services Table.
-    The GCD services are used to manage the memory and I/O regions that 
-    are accessible to the CPU that is executing the DXE core.
+  The GCD services are used to manage the memory and I/O regions that
+  are accessible to the CPU that is executing the DXE core.
 
 Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
@@ -14,7 +14,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <DxeMain.h>
+#include "DxeMain.h"
+#include "Gcd.h"
 
 #define MINIMUM_INITIAL_MEMORY_SIZE 0x10000
 
@@ -26,7 +27,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
                                        EFI_RESOURCE_ATTRIBUTE_EXECUTION_PROTECTED | \
                                        EFI_RESOURCE_ATTRIBUTE_16_BIT_IO           | \
                                        EFI_RESOURCE_ATTRIBUTE_32_BIT_IO           | \
-                                       EFI_RESOURCE_ATTRIBUTE_64_BIT_IO           ) 
+                                       EFI_RESOURCE_ATTRIBUTE_64_BIT_IO           )
 
 #define TESTED_MEMORY_ATTRIBUTES      (EFI_RESOURCE_ATTRIBUTE_PRESENT     | \
                                        EFI_RESOURCE_ATTRIBUTE_INITIALIZED | \
@@ -49,7 +50,10 @@ LIST_ENTRY         mGcdIoSpaceMap      = INITIALIZE_LIST_HEAD_VARIABLE (mGcdIoSp
 
 EFI_GCD_MAP_ENTRY mGcdMemorySpaceMapEntryTemplate = {
   EFI_GCD_MAP_SIGNATURE,
-  { NULL, NULL },
+  {
+    NULL,
+    NULL
+  },
   0,
   0,
   0,
@@ -62,7 +66,10 @@ EFI_GCD_MAP_ENTRY mGcdMemorySpaceMapEntryTemplate = {
 
 EFI_GCD_MAP_ENTRY mGcdIoSpaceMapEntryTemplate = {
   EFI_GCD_MAP_SIGNATURE,
-  { NULL, NULL },
+  {
+    NULL,
+    NULL
+  },
   0,
   0,
   0,
@@ -75,7 +82,7 @@ EFI_GCD_MAP_ENTRY mGcdIoSpaceMapEntryTemplate = {
 
 GCD_ATTRIBUTE_CONVERSION_ENTRY mAttributeConversionTable[] = {
   { EFI_RESOURCE_ATTRIBUTE_UNCACHEABLE,             EFI_MEMORY_UC,          TRUE  },
-  { EFI_RESOURCE_ATTRIBUTE_UNCACHED_EXPORTED,       EFI_MEMORY_UCE,         TRUE  },   
+  { EFI_RESOURCE_ATTRIBUTE_UNCACHED_EXPORTED,       EFI_MEMORY_UCE,         TRUE  },
   { EFI_RESOURCE_ATTRIBUTE_WRITE_COMBINEABLE,       EFI_MEMORY_WC,          TRUE  },
   { EFI_RESOURCE_ATTRIBUTE_WRITE_THROUGH_CACHEABLE, EFI_MEMORY_WT,          TRUE  },
   { EFI_RESOURCE_ATTRIBUTE_WRITE_BACK_CACHEABLE,    EFI_MEMORY_WB,          TRUE  },
@@ -85,7 +92,7 @@ GCD_ATTRIBUTE_CONVERSION_ENTRY mAttributeConversionTable[] = {
   { EFI_RESOURCE_ATTRIBUTE_PRESENT,                 EFI_MEMORY_PRESENT,     FALSE },
   { EFI_RESOURCE_ATTRIBUTE_INITIALIZED,             EFI_MEMORY_INITIALIZED, FALSE },
   { EFI_RESOURCE_ATTRIBUTE_TESTED,                  EFI_MEMORY_TESTED,      FALSE },
-  { 0, 0, FALSE }
+  { 0,                                              0,                      FALSE }
 };
 
 
@@ -147,15 +154,14 @@ CoreReleaseGcdIoLock (
 //
 // GCD Initialization Worker Functions
 //
-
 /**
   Aligns a value to the specified boundary.
 
-  @param  Value                  64 bit value to align 
-  @param  Alignment              Log base 2 of the boundary to align Value to 
-  @param  RoundUp                TRUE if Value is to be rounded up to the nearest 
-                                 aligned boundary.  FALSE is Value is to be 
-                                 rounded down to the nearest aligned boundary. 
+  @param  Value                  64 bit value to align
+  @param  Alignment              Log base 2 of the boundary to align Value to
+  @param  RoundUp                TRUE if Value is to be rounded up to the nearest
+                                 aligned boundary.  FALSE is Value is to be
+                                 rounded down to the nearest aligned boundary.
 
   @return A 64 bit value is the aligned to the value nearest Value with an alignment by Alignment.
 
@@ -180,7 +186,7 @@ AlignValue (
 /**
   Aligns address to the page boundary.
 
-  @param  Value                  64 bit address to align 
+  @param  Value                  64 bit address to align
 
   @return A 64 bit value is the aligned to the value nearest Value with an alignment by Alignment.
 
@@ -197,7 +203,7 @@ PageAlignAddress (
 /**
   Aligns length to the page boundary.
 
-  @param  Value                  64 bit length to align 
+  @param  Value                  64 bit length to align
 
   @return A 64 bit value is the aligned to the value nearest Value with an alignment by Alignment.
 
@@ -217,10 +223,10 @@ PageAlignLength (
 /**
   Allocate pool for two entries.
 
-  @param  TopEntry               An entry of GCD map 
-  @param  BottomEntry            An entry of GCD map 
+  @param  TopEntry               An entry of GCD map
+  @param  BottomEntry            An entry of GCD map
 
-  @retval EFI_OUT_OF_RESOURCES   No enough buffer to be allocated. 
+  @retval EFI_OUT_OF_RESOURCES   No enough buffer to be allocated.
   @retval EFI_SUCCESS            Both entries successfully allocated.
 
 **/
@@ -230,12 +236,12 @@ CoreAllocateGcdMapEntry (
   IN OUT EFI_GCD_MAP_ENTRY  **BottomEntry
   )
 {
-  *TopEntry = CoreAllocateZeroBootServicesPool (sizeof (EFI_GCD_MAP_ENTRY));
+  *TopEntry = AllocateZeroPool (sizeof (EFI_GCD_MAP_ENTRY));
   if (*TopEntry == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
-  *BottomEntry = CoreAllocateZeroBootServicesPool (sizeof (EFI_GCD_MAP_ENTRY));
+  *BottomEntry = AllocateZeroPool (sizeof (EFI_GCD_MAP_ENTRY));
   if (*BottomEntry == NULL) {
     CoreFreePool (*TopEntry);
     return EFI_OUT_OF_RESOURCES;
@@ -248,13 +254,13 @@ CoreAllocateGcdMapEntry (
 /**
   Internal function.  Inserts a new descriptor into a sorted list
 
-  @param  Link                   The linked list to insert the range BaseAddress 
-                                 and Length into 
-  @param  Entry                  A pointer to the entry that is inserted 
-  @param  BaseAddress            The base address of the new range 
-  @param  Length                 The length of the new range in bytes 
-  @param  TopEntry               Top pad entry to insert if needed. 
-  @param  BottomEntry            Bottom pad entry to insert if needed. 
+  @param  Link                   The linked list to insert the range BaseAddress
+                                 and Length into
+  @param  Entry                  A pointer to the entry that is inserted
+  @param  BaseAddress            The base address of the new range
+  @param  Length                 The length of the new range in bytes
+  @param  TopEntry               Top pad entry to insert if needed.
+  @param  BottomEntry            Bottom pad entry to insert if needed.
 
   @retval EFI_SUCCESS            The new range was inserted into the linked list
 
@@ -278,7 +284,7 @@ CoreInsertGcdMapEntry (
     Entry->BaseAddress      = BaseAddress;
     BottomEntry->EndAddress = BaseAddress - 1;
     InsertTailList (Link, &BottomEntry->Link);
-  } 
+  }
 
   if ((BaseAddress + Length - 1) < Entry->EndAddress) {
     CopyMem (TopEntry, Entry, sizeof (EFI_GCD_MAP_ENTRY));
@@ -292,14 +298,14 @@ CoreInsertGcdMapEntry (
 
 
 /**
-  Merge the Gcd region specified by Link and its adjacent entry
+  Merge the Gcd region specified by Link and its adjacent entry.
 
-  @param  Link                   Specify the entry to be merged (with its 
-                                 adjacent entry). 
-  @param  Forward                Direction (forward or backward). 
-  @param  Map                    Boundary. 
+  @param  Link                   Specify the entry to be merged (with its
+                                 adjacent entry).
+  @param  Forward                Direction (forward or backward).
+  @param  Map                    Boundary.
 
-  @retval EFI_SUCCESS            Successfully returned. 
+  @retval EFI_SUCCESS            Successfully returned.
   @retval EFI_UNSUPPORTED        These adjacent regions could not merge.
 
 **/
@@ -367,11 +373,11 @@ CoreMergeGcdMapEntry (
 /**
   Merge adjacent entries on total chain.
 
-  @param  TopEntry               Top entry of GCD map. 
-  @param  BottomEntry            Bottom entry of GCD map. 
-  @param  StartLink              Start link of the list for this loop. 
-  @param  EndLink                End link of the list for this loop. 
-  @param  Map                    Boundary. 
+  @param  TopEntry               Top entry of GCD map.
+  @param  BottomEntry            Bottom entry of GCD map.
+  @param  StartLink              Start link of the list for this loop.
+  @param  EndLink                End link of the list for this loop.
+  @param  Map                    Boundary.
 
   @retval EFI_SUCCESS            GCD map successfully cleaned up.
 
@@ -408,15 +414,15 @@ CoreCleanupGcdMapEntry (
 /**
   Search a segment of memory space in GCD map. The result is a range of GCD entry list.
 
-  @param  BaseAddress            The start address of the segment. 
-  @param  Length                 The length of the segment. 
-  @param  StartLink              The first GCD entry involves this segment of 
-                                 memory space. 
-  @param  EndLink                The first GCD entry involves this segment of 
-                                 memory space. 
-  @param  Map                    Points to the start entry to search. 
+  @param  BaseAddress            The start address of the segment.
+  @param  Length                 The length of the segment.
+  @param  StartLink              The first GCD entry involves this segment of
+                                 memory space.
+  @param  EndLink                The first GCD entry involves this segment of
+                                 memory space.
+  @param  Map                    Points to the start entry to search.
 
-  @retval EFI_SUCCESS            Successfully found the entry. 
+  @retval EFI_SUCCESS            Successfully found the entry.
   @retval EFI_NOT_FOUND          Not found.
 
 **/
@@ -444,7 +450,7 @@ CoreSearchGcdMapEntry (
       *StartLink = Link;
     }
     if (*StartLink != NULL) {
-      if ((BaseAddress + Length - 1) >= Entry->BaseAddress && 
+      if ((BaseAddress + Length - 1) >= Entry->BaseAddress &&
           (BaseAddress + Length - 1) <= Entry->EndAddress     ) {
         *EndLink = Link;
         return EFI_SUCCESS;
@@ -452,6 +458,7 @@ CoreSearchGcdMapEntry (
     }
     Link = Link->ForwardLink;
   }
+
   return EFI_NOT_FOUND;
 }
 
@@ -459,7 +466,7 @@ CoreSearchGcdMapEntry (
 /**
   Count the amount of GCD map entries.
 
-  @param  Map                    Points to the start entry to do the count loop. 
+  @param  Map                    Points to the start entry to do the count loop.
 
   @return The count.
 
@@ -478,6 +485,7 @@ CoreCountGcdMapEntry (
     Count++;
     Link = Link->ForwardLink;
   }
+
   return Count;
 }
 
@@ -486,7 +494,7 @@ CoreCountGcdMapEntry (
 /**
   Return the memory attribute specified by Attributes
 
-  @param  Attributes             A num with some attribute bits on. 
+  @param  Attributes             A num with some attribute bits on.
 
   @return The enum value of memory attribute.
 
@@ -524,23 +532,23 @@ ConverToCpuArchAttributes (
 /**
   Do operation on a segment of memory space specified (add, free, remove, change attribute ...).
 
-  @param  Operation              The type of the operation 
-  @param  GcdMemoryType          Additional information for the operation 
-  @param  GcdIoType              Additional information for the operation 
-  @param  BaseAddress            Start address of the segment 
-  @param  Length                 length of the segment 
-  @param  Capabilities           The alterable attributes of a newly added entry 
-  @param  Attributes             The attributes needs to be set 
+  @param  Operation              The type of the operation
+  @param  GcdMemoryType          Additional information for the operation
+  @param  GcdIoType              Additional information for the operation
+  @param  BaseAddress            Start address of the segment
+  @param  Length                 length of the segment
+  @param  Capabilities           The alterable attributes of a newly added entry
+  @param  Attributes             The attributes needs to be set
 
-  @retval EFI_INVALID_PARAMETER  Length is 0 or address (length) not aligned when 
-                                 setting attribute. 
-  @retval EFI_SUCCESS            Action successfully done. 
-  @retval EFI_UNSUPPORTED        Could not find the proper descriptor on this 
-                                 segment or  set an upsupported attribute. 
-  @retval EFI_ACCESS_DENIED      Operate on an space non-exist or is used for an 
-                                 image. 
-  @retval EFI_NOT_FOUND          Free a non-using space or remove a non-exist 
-                                 space, and so on. 
+  @retval EFI_INVALID_PARAMETER  Length is 0 or address (length) not aligned when
+                                 setting attribute.
+  @retval EFI_SUCCESS            Action successfully done.
+  @retval EFI_UNSUPPORTED        Could not find the proper descriptor on this
+                                 segment or  set an upsupported attribute.
+  @retval EFI_ACCESS_DENIED      Operate on an space non-exist or is used for an
+                                 image.
+  @retval EFI_NOT_FOUND          Free a non-using space or remove a non-exist
+                                 space, and so on.
   @retval EFI_OUT_OF_RESOURCES   No buffer could be allocated.
 
 **/
@@ -563,7 +571,7 @@ CoreConvertSpace (
   EFI_GCD_MAP_ENTRY  *BottomEntry;
   LIST_ENTRY         *StartLink;
   LIST_ENTRY         *EndLink;
-  
+
   EFI_CPU_ARCH_PROTOCOL           *CpuArch;
   UINT64                          CpuArchAttributes;
 
@@ -655,7 +663,6 @@ CoreConvertSpace (
       if ((Attributes & EFI_MEMORY_RUNTIME) != 0) {
         if ((BaseAddress & EFI_PAGE_MASK) != 0 || (Length & EFI_PAGE_MASK) != 0) {
           Status = EFI_INVALID_PARAMETER;
-
           goto Done;
         }
       }
@@ -677,9 +684,6 @@ CoreConvertSpace (
     goto Done;
   }
 
-  //
-  //
-  //
   if (Operation == GCD_SET_ATTRIBUTES_MEMORY_OPERATION) {
     //
     // Call CPU Arch Protocol to attempt to set attributes on the range
@@ -775,15 +779,15 @@ Done:
 /**
   Check whether an entry could be used to allocate space.
 
-  @param  Operation              Allocate memory or IO 
-  @param  Entry                  The entry to be tested 
-  @param  GcdMemoryType          The desired memory type 
-  @param  GcdIoType              The desired IO type 
+  @param  Operation              Allocate memory or IO
+  @param  Entry                  The entry to be tested
+  @param  GcdMemoryType          The desired memory type
+  @param  GcdIoType              The desired IO type
 
-  @retval EFI_NOT_FOUND          The memory type does not match or there's an 
-                                 image handle on the entry. 
-  @retval EFI_UNSUPPORTED        The operation unsupported. 
-  @retval EFI_SUCCESS            It's ok for this entry to be used to allocate 
+  @retval EFI_NOT_FOUND          The memory type does not match or there's an
+                                 image handle on the entry.
+  @retval EFI_UNSUPPORTED        The operation unsupported.
+  @retval EFI_SUCCESS            It's ok for this entry to be used to allocate
                                  space.
 
 **/
@@ -819,18 +823,18 @@ CoreAllocateSpaceCheckEntry (
 /**
   Allocate space on specified address and length.
 
-  @param  Operation              The type of operation (memory or IO) 
-  @param  GcdAllocateType        The type of allocate operation 
-  @param  GcdMemoryType          The desired memory type 
-  @param  GcdIoType              The desired IO type 
-  @param  Alignment              Align with 2^Alignment 
-  @param  Length                 Length to allocate 
-  @param  BaseAddress            Base address to allocate 
-  @param  ImageHandle            The image handle consume the allocated space. 
-  @param  DeviceHandle           The device handle consume the allocated space. 
+  @param  Operation              The type of operation (memory or IO)
+  @param  GcdAllocateType        The type of allocate operation
+  @param  GcdMemoryType          The desired memory type
+  @param  GcdIoType              The desired IO type
+  @param  Alignment              Align with 2^Alignment
+  @param  Length                 Length to allocate
+  @param  BaseAddress            Base address to allocate
+  @param  ImageHandle            The image handle consume the allocated space.
+  @param  DeviceHandle           The device handle consume the allocated space.
 
-  @retval EFI_INVALID_PARAMETER  Invalid parameter. 
-  @retval EFI_NOT_FOUND          No descriptor for the desired space exists. 
+  @retval EFI_INVALID_PARAMETER  Invalid parameter.
+  @retval EFI_NOT_FOUND          No descriptor for the desired space exists.
   @retval EFI_SUCCESS            Space successfully allocated.
 
 **/
@@ -973,7 +977,7 @@ CoreAllocateSpace (
       }
 
       if (GcdAllocateType == EfiGcdAllocateMaxAddressSearchTopDown ||
-          GcdAllocateType == EfiGcdAllocateAnySearchTopDown           ) {
+          GcdAllocateType == EfiGcdAllocateAnySearchTopDown) {
         if ((Entry->BaseAddress + Length) > MaxAddress) {
           continue;
         }
@@ -1071,12 +1075,12 @@ Done:
 /**
   Add a segment of memory to GCD map.
 
-  @param  GcdMemoryType          Memory type of the segment. 
-  @param  BaseAddress            Base address of the segment. 
-  @param  Length                 Length of the segment. 
-  @param  Capabilities           alterable attributes of the segment. 
+  @param  GcdMemoryType          Memory type of the segment.
+  @param  BaseAddress            Base address of the segment.
+  @param  Length                 Length of the segment.
+  @param  Capabilities           alterable attributes of the segment.
 
-  @retval EFI_INVALID_PARAMETER  Invalid parameters. 
+  @retval EFI_INVALID_PARAMETER  Invalid parameters.
   @retval EFI_SUCCESS            Successfully add a segment of memory space.
 
 **/
@@ -1106,20 +1110,21 @@ CoreInternalAddMemorySpace (
   Allocates nonexistent memory, reserved memory, system memory, or memorymapped
   I/O resources from the global coherency domain of the processor.
 
-  @param  GcdAllocateType        The type of allocate operation 
-  @param  GcdMemoryType          The desired memory type 
-  @param  Alignment              Align with 2^Alignment 
-  @param  Length                 Length to allocate 
-  @param  BaseAddress            Base address to allocate 
-  @param  ImageHandle            The image handle consume the allocated space. 
-  @param  DeviceHandle           The device handle consume the allocated space. 
+  @param  GcdAllocateType        The type of allocate operation
+  @param  GcdMemoryType          The desired memory type
+  @param  Alignment              Align with 2^Alignment
+  @param  Length                 Length to allocate
+  @param  BaseAddress            Base address to allocate
+  @param  ImageHandle            The image handle consume the allocated space.
+  @param  DeviceHandle           The device handle consume the allocated space.
 
-  @retval EFI_INVALID_PARAMETER  Invalid parameter. 
-  @retval EFI_NOT_FOUND          No descriptor contains the desired space. 
+  @retval EFI_INVALID_PARAMETER  Invalid parameter.
+  @retval EFI_NOT_FOUND          No descriptor contains the desired space.
   @retval EFI_SUCCESS            Memory space successfully allocated.
 
 **/
 EFI_STATUS
+EFIAPI
 CoreAllocateMemorySpace (
   IN     EFI_GCD_ALLOCATE_TYPE  GcdAllocateType,
   IN     EFI_GCD_MEMORY_TYPE    GcdMemoryType,
@@ -1131,14 +1136,14 @@ CoreAllocateMemorySpace (
   )
 {
   return CoreAllocateSpace (
-           GCD_ALLOCATE_MEMORY_OPERATION, 
-           GcdAllocateType, 
-           GcdMemoryType, 
-           (EFI_GCD_IO_TYPE) 0, 
-           Alignment, 
-           Length, 
-           BaseAddress, 
-           ImageHandle, 
+           GCD_ALLOCATE_MEMORY_OPERATION,
+           GcdAllocateType,
+           GcdMemoryType,
+           (EFI_GCD_IO_TYPE) 0,
+           Alignment,
+           Length,
+           BaseAddress,
+           ImageHandle,
            DeviceHandle
            );
 }
@@ -1148,15 +1153,16 @@ CoreAllocateMemorySpace (
   Adds reserved memory, system memory, or memory-mapped I/O resources to the
   global coherency domain of the processor.
 
-  @param  GcdMemoryType          Memory type of the memory space. 
-  @param  BaseAddress            Base address of the memory space. 
-  @param  Length                 Length of the memory space. 
-  @param  Capabilities           alterable attributes of the memory space. 
+  @param  GcdMemoryType          Memory type of the memory space.
+  @param  BaseAddress            Base address of the memory space.
+  @param  Length                 Length of the memory space.
+  @param  Capabilities           alterable attributes of the memory space.
 
   @retval EFI_SUCCESS            Merged this memory space into GCD map.
 
 **/
 EFI_STATUS
+EFIAPI
 CoreAddMemorySpace (
   IN EFI_GCD_MEMORY_TYPE   GcdMemoryType,
   IN EFI_PHYSICAL_ADDRESS  BaseAddress,
@@ -1178,7 +1184,7 @@ CoreAddMemorySpace (
     Status = CoreAllocateMemorySpace (
                EfiGcdAllocateAddress,
                GcdMemoryType,
-               EFI_PAGE_SHIFT,         
+               EFI_PAGE_SHIFT,
                PageLength,
                &PageBaseAddress,
                gDxeCoreImageHandle,
@@ -1197,7 +1203,7 @@ CoreAddMemorySpace (
         Status = CoreAllocateMemorySpace (
                    EfiGcdAllocateAddress,
                    GcdMemoryType,
-                   EFI_PAGE_SHIFT,         
+                   EFI_PAGE_SHIFT,
                    EFI_PAGE_SIZE,
                    &PageBaseAddress,
                    gDxeCoreImageHandle,
@@ -1223,13 +1229,14 @@ CoreAddMemorySpace (
   Frees nonexistent memory, reserved memory, system memory, or memory-mapped
   I/O resources from the global coherency domain of the processor.
 
-  @param  BaseAddress            Base address of the memory space. 
-  @param  Length                 Length of the memory space. 
+  @param  BaseAddress            Base address of the memory space.
+  @param  Length                 Length of the memory space.
 
   @retval EFI_SUCCESS            Space successfully freed.
 
 **/
 EFI_STATUS
+EFIAPI
 CoreFreeMemorySpace (
   IN EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN UINT64                Length
@@ -1243,13 +1250,14 @@ CoreFreeMemorySpace (
   Removes reserved memory, system memory, or memory-mapped I/O resources from
   the global coherency domain of the processor.
 
-  @param  BaseAddress            Base address of the memory space. 
-  @param  Length                 Length of the memory space. 
+  @param  BaseAddress            Base address of the memory space.
+  @param  Length                 Length of the memory space.
 
   @retval EFI_SUCCESS            Successfully remove a segment of memory space.
 
 **/
 EFI_STATUS
+EFIAPI
 CoreRemoveMemorySpace (
   IN EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN UINT64                Length
@@ -1262,7 +1270,7 @@ CoreRemoveMemorySpace (
 /**
   Build a memory descriptor according to an entry.
 
-  @param  Descriptor             The descriptor to be built 
+  @param  Descriptor             The descriptor to be built
   @param  Entry                  According to this entry
 
 **/
@@ -1285,14 +1293,15 @@ BuildMemoryDescriptor (
 /**
   Retrieves the descriptor for a memory region containing a specified address.
 
-  @param  BaseAddress            Specified start address 
-  @param  Descriptor             Specified length 
+  @param  BaseAddress            Specified start address
+  @param  Descriptor             Specified length
 
-  @retval EFI_INVALID_PARAMETER  Invalid parameter 
+  @retval EFI_INVALID_PARAMETER  Invalid parameter
   @retval EFI_SUCCESS            Successfully get memory space descriptor.
 
 **/
 EFI_STATUS
+EFIAPI
 CoreGetMemorySpaceDescriptor (
   IN  EFI_PHYSICAL_ADDRESS             BaseAddress,
   OUT EFI_GCD_MEMORY_SPACE_DESCRIPTOR  *Descriptor
@@ -1313,7 +1322,7 @@ CoreGetMemorySpaceDescriptor (
   CoreAcquireGcdMemoryLock ();
 
   //
-  // Search for the list of descriptors that contain BaseAddress 
+  // Search for the list of descriptors that contain BaseAddress
   //
   Status = CoreSearchGcdMapEntry (BaseAddress, 1, &StartLink, &EndLink, &mGcdMemorySpaceMap);
   if (EFI_ERROR (Status)) {
@@ -1336,15 +1345,16 @@ CoreGetMemorySpaceDescriptor (
   Modifies the attributes for a memory region in the global coherency domain of the
   processor.
 
-  @param  BaseAddress            Specified start address 
-  @param  Length                 Specified length 
-  @param  Attributes             Specified attributes 
+  @param  BaseAddress            Specified start address
+  @param  Length                 Specified length
+  @param  Attributes             Specified attributes
 
-  @retval EFI_SUCCESS            Successfully set attribute of a segment of 
+  @retval EFI_SUCCESS            Successfully set attribute of a segment of
                                  memory space.
 
 **/
 EFI_STATUS
+EFIAPI
 CoreSetMemorySpaceAttributes (
   IN EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN UINT64                Length,
@@ -1359,15 +1369,16 @@ CoreSetMemorySpaceAttributes (
   Returns a map of the memory resources in the global coherency domain of the
   processor.
 
-  @param  NumberOfDescriptors    Number of descriptors. 
-  @param  MemorySpaceMap         Descriptor array 
+  @param  NumberOfDescriptors    Number of descriptors.
+  @param  MemorySpaceMap         Descriptor array
 
-  @retval EFI_INVALID_PARAMETER  Invalid parameter 
-  @retval EFI_OUT_OF_RESOURCES   No enough buffer to allocate 
+  @retval EFI_INVALID_PARAMETER  Invalid parameter
+  @retval EFI_OUT_OF_RESOURCES   No enough buffer to allocate
   @retval EFI_SUCCESS            Successfully get memory space map.
 
 **/
 EFI_STATUS
+EFIAPI
 CoreGetMemorySpaceMap (
   OUT UINTN                            *NumberOfDescriptors,
   OUT EFI_GCD_MEMORY_SPACE_DESCRIPTOR  **MemorySpaceMap
@@ -1398,7 +1409,7 @@ CoreGetMemorySpaceMap (
   //
   // Allocate the MemorySpaceMap
   //
-  *MemorySpaceMap = CoreAllocateBootServicesPool (*NumberOfDescriptors * sizeof (EFI_GCD_MEMORY_SPACE_DESCRIPTOR));
+  *MemorySpaceMap = AllocatePool (*NumberOfDescriptors * sizeof (EFI_GCD_MEMORY_SPACE_DESCRIPTOR));
   if (*MemorySpaceMap == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
@@ -1426,15 +1437,16 @@ Done:
 /**
   Adds reserved I/O or I/O resources to the global coherency domain of the processor.
 
-  @param  GcdIoType              IO type of the segment. 
-  @param  BaseAddress            Base address of the segment. 
-  @param  Length                 Length of the segment. 
+  @param  GcdIoType              IO type of the segment.
+  @param  BaseAddress            Base address of the segment.
+  @param  Length                 Length of the segment.
 
-  @retval EFI_SUCCESS            Merged this segment into GCD map. 
+  @retval EFI_SUCCESS            Merged this segment into GCD map.
   @retval EFI_INVALID_PARAMETER  Parameter not valid
 
 **/
 EFI_STATUS
+EFIAPI
 CoreAddIoSpace (
   IN EFI_GCD_IO_TYPE       GcdIoType,
   IN EFI_PHYSICAL_ADDRESS  BaseAddress,
@@ -1455,20 +1467,21 @@ CoreAddIoSpace (
   Allocates nonexistent I/O, reserved I/O, or I/O resources from the global coherency
   domain of the processor.
 
-  @param  GcdAllocateType        The type of allocate operation 
-  @param  GcdIoType              The desired IO type 
-  @param  Alignment              Align with 2^Alignment 
-  @param  Length                 Length to allocate 
-  @param  BaseAddress            Base address to allocate 
-  @param  ImageHandle            The image handle consume the allocated space. 
-  @param  DeviceHandle           The device handle consume the allocated space. 
+  @param  GcdAllocateType        The type of allocate operation
+  @param  GcdIoType              The desired IO type
+  @param  Alignment              Align with 2^Alignment
+  @param  Length                 Length to allocate
+  @param  BaseAddress            Base address to allocate
+  @param  ImageHandle            The image handle consume the allocated space.
+  @param  DeviceHandle           The device handle consume the allocated space.
 
-  @retval EFI_INVALID_PARAMETER  Invalid parameter. 
-  @retval EFI_NOT_FOUND          No descriptor contains the desired space. 
+  @retval EFI_INVALID_PARAMETER  Invalid parameter.
+  @retval EFI_NOT_FOUND          No descriptor contains the desired space.
   @retval EFI_SUCCESS            IO space successfully allocated.
 
 **/
 EFI_STATUS
+EFIAPI
 CoreAllocateIoSpace (
   IN     EFI_GCD_ALLOCATE_TYPE  GcdAllocateType,
   IN     EFI_GCD_IO_TYPE        GcdIoType,
@@ -1480,14 +1493,14 @@ CoreAllocateIoSpace (
   )
 {
   return CoreAllocateSpace (
-           GCD_ALLOCATE_IO_OPERATION, 
-           GcdAllocateType, 
-           (EFI_GCD_MEMORY_TYPE) 0, 
-           GcdIoType, 
-           Alignment, 
-           Length, 
-           BaseAddress, 
-           ImageHandle, 
+           GCD_ALLOCATE_IO_OPERATION,
+           GcdAllocateType,
+           (EFI_GCD_MEMORY_TYPE) 0,
+           GcdIoType,
+           Alignment,
+           Length,
+           BaseAddress,
+           ImageHandle,
            DeviceHandle
            );
 }
@@ -1497,13 +1510,14 @@ CoreAllocateIoSpace (
   Frees nonexistent I/O, reserved I/O, or I/O resources from the global coherency
   domain of the processor.
 
-  @param  BaseAddress            Base address of the segment. 
-  @param  Length                 Length of the segment. 
+  @param  BaseAddress            Base address of the segment.
+  @param  Length                 Length of the segment.
 
   @retval EFI_SUCCESS            Space successfully freed.
 
 **/
 EFI_STATUS
+EFIAPI
 CoreFreeIoSpace (
   IN EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN UINT64                Length
@@ -1517,13 +1531,14 @@ CoreFreeIoSpace (
   Removes reserved I/O or I/O resources from the global coherency domain of the
   processor.
 
-  @param  BaseAddress            Base address of the segment. 
-  @param  Length                 Length of the segment. 
+  @param  BaseAddress            Base address of the segment.
+  @param  Length                 Length of the segment.
 
   @retval EFI_SUCCESS            Successfully removed a segment of IO space.
 
 **/
 EFI_STATUS
+EFIAPI
 CoreRemoveIoSpace (
   IN EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN UINT64                Length
@@ -1536,7 +1551,7 @@ CoreRemoveIoSpace (
 /**
   Build a IO descriptor according to an entry.
 
-  @param  Descriptor             The descriptor to be built 
+  @param  Descriptor             The descriptor to be built
   @param  Entry                  According to this entry
 
 **/
@@ -1557,14 +1572,15 @@ BuildIoDescriptor (
 /**
   Retrieves the descriptor for an I/O region containing a specified address.
 
-  @param  BaseAddress            Specified start address 
-  @param  Descriptor             Specified length 
+  @param  BaseAddress            Specified start address
+  @param  Descriptor             Specified length
 
-  @retval EFI_INVALID_PARAMETER  Descriptor is NULL. 
+  @retval EFI_INVALID_PARAMETER  Descriptor is NULL.
   @retval EFI_SUCCESS            Successfully get the IO space descriptor.
 
 **/
 EFI_STATUS
+EFIAPI
 CoreGetIoSpaceDescriptor (
   IN  EFI_PHYSICAL_ADDRESS         BaseAddress,
   OUT EFI_GCD_IO_SPACE_DESCRIPTOR  *Descriptor
@@ -1585,7 +1601,7 @@ CoreGetIoSpaceDescriptor (
   CoreAcquireGcdIoLock ();
 
   //
-  // Search for the list of descriptors that contain BaseAddress 
+  // Search for the list of descriptors that contain BaseAddress
   //
   Status = CoreSearchGcdMapEntry (BaseAddress, 1, &StartLink, &EndLink, &mGcdIoSpaceMap);
   if (EFI_ERROR (Status)) {
@@ -1607,15 +1623,16 @@ CoreGetIoSpaceDescriptor (
 /**
   Returns a map of the I/O resources in the global coherency domain of the processor.
 
-  @param  NumberOfDescriptors    Number of descriptors. 
-  @param  IoSpaceMap             Descriptor array 
+  @param  NumberOfDescriptors    Number of descriptors.
+  @param  IoSpaceMap             Descriptor array
 
-  @retval EFI_INVALID_PARAMETER  Invalid parameter 
-  @retval EFI_OUT_OF_RESOURCES   No enough buffer to allocate 
+  @retval EFI_INVALID_PARAMETER  Invalid parameter
+  @retval EFI_OUT_OF_RESOURCES   No enough buffer to allocate
   @retval EFI_SUCCESS            Successfully get IO space map.
 
 **/
 EFI_STATUS
+EFIAPI
 CoreGetIoSpaceMap (
   OUT UINTN                        *NumberOfDescriptors,
   OUT EFI_GCD_IO_SPACE_DESCRIPTOR  **IoSpaceMap
@@ -1646,7 +1663,7 @@ CoreGetIoSpaceMap (
   //
   // Allocate the IoSpaceMap
   //
-  *IoSpaceMap = CoreAllocateBootServicesPool (*NumberOfDescriptors * sizeof (EFI_GCD_IO_SPACE_DESCRIPTOR));
+  *IoSpaceMap = AllocatePool (*NumberOfDescriptors * sizeof (EFI_GCD_IO_SPACE_DESCRIPTOR));
   if (*IoSpaceMap == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
@@ -1668,16 +1685,16 @@ CoreGetIoSpaceMap (
 Done:
   CoreReleaseGcdIoLock ();
   return Status;
-}  
+}
 
 
 /**
   Converts a Resource Descriptor HOB attributes mask to an EFI Memory Descriptor
   capabilities mask
 
-  @param  GcdMemoryType          Type of resource in the GCD memory map. 
-  @param  Attributes             The attribute mask in the Resource Descriptor 
-                                 HOB. 
+  @param  GcdMemoryType          Type of resource in the GCD memory map.
+  @param  Attributes             The attribute mask in the Resource Descriptor
+                                 HOB.
 
   @return The capabilities mask for an EFI Memory Descriptor.
 
@@ -1690,7 +1707,7 @@ CoreConvertResourceDescriptorHobAttributesToCapabilities (
 {
   UINT64                          Capabilities;
   GCD_ATTRIBUTE_CONVERSION_ENTRY  *Conversion;
-  
+
   //
   // Convert the Resource HOB Attributes to an EFI Memory Capabilities mask
   //
@@ -1701,23 +1718,22 @@ CoreConvertResourceDescriptorHobAttributesToCapabilities (
       }
     }
   }
-  
+
   return Capabilities;
 }
 
 
 /**
-  External function. Initializes the GCD and memory services based on the memory
-  descriptor HOBs.  This function is responsible for priming the GCD map and the
-  memory map, so memory allocations and resource allocations can be made.  The first
-  part of this function can not depend on any memory services until at least one
-  memory descriptor is provided to the memory services.  Then the memory services
-  can be used to intialize the GCD map.
+  External function. Initializes memory services based on the memory
+  descriptor HOBs.  This function is responsible for priming the memory
+  map, so memory allocations and resource allocations can be made.
+  The first part of this function can not depend on any memory services
+  until at least one memory descriptor is provided to the memory services.
 
-  @param  HobStart               The start address of the HOB. 
-  @param  MemoryBaseAddress      Start address of memory region found to init DXE 
-                                 core. 
-  @param  MemoryLength           Length of memory region found to init DXE core. 
+  @param  HobStart               The start address of the HOB.
+  @param  MemoryBaseAddress      Start address of memory region found to init DXE
+                                 core.
+  @param  MemoryLength           Length of memory region found to init DXE core.
 
   @retval EFI_SUCCESS            Memory services successfully initialized.
 
@@ -1804,7 +1820,7 @@ CoreInitializeMemoryServices (
       if (ResourceHob->ResourceType == EFI_RESOURCE_SYSTEM_MEMORY                                       &&
           (ResourceHob->ResourceAttribute & MEMORY_ATTRIBUTE_MASK) == TESTED_MEMORY_ATTRIBUTES    ) {
 
-        if (PhitHob->EfiFreeMemoryBottom >= ResourceHob->PhysicalStart                         && 
+        if (PhitHob->EfiFreeMemoryBottom >= ResourceHob->PhysicalStart                         &&
             PhitHob->EfiFreeMemoryTop    <= (ResourceHob->PhysicalStart + ResourceHob->ResourceLength)    ) {
 
           //
@@ -1859,10 +1875,9 @@ CoreInitializeMemoryServices (
         //
         // See if this resource descrior HOB describes tested system memory below MaxAddress
         //
-        if (ResourceHob->ResourceType == EFI_RESOURCE_SYSTEM_MEMORY                                       &&
-            (ResourceHob->ResourceAttribute & MEMORY_ATTRIBUTE_MASK) == TESTED_MEMORY_ATTRIBUTES &&
-            ResourceHob->PhysicalStart + ResourceHob->ResourceLength <= MaxAddress                            ) {
-
+        if (ResourceHob->ResourceType == EFI_RESOURCE_SYSTEM_MEMORY &&
+           (ResourceHob->ResourceAttribute & MEMORY_ATTRIBUTE_MASK) == TESTED_MEMORY_ATTRIBUTES &&
+            ResourceHob->PhysicalStart + ResourceHob->ResourceLength <= MaxAddress) {
           //
           // See if this is the highest tested system memory region below MaxAddress
           //
@@ -1886,11 +1901,8 @@ CoreInitializeMemoryServices (
     MaxAddress = ResourceHob->PhysicalStart;
   } while (Found && MaxMemoryLength < MINIMUM_INITIAL_MEMORY_SIZE);
 
-  //
-  //
-  //
-  if ((Length < MINIMUM_INITIAL_MEMORY_SIZE)                                                 ||
-      (MaxMemoryBaseAddress > BaseAddress && MaxMemoryLength >= MINIMUM_INITIAL_MEMORY_SIZE)    ) {
+  if ((Length < MINIMUM_INITIAL_MEMORY_SIZE) ||
+      (MaxMemoryBaseAddress > BaseAddress && MaxMemoryLength >= MINIMUM_INITIAL_MEMORY_SIZE)) {
     BaseAddress = MaxMemoryBaseAddress;
     Length      = MaxMemoryLength;
     Attributes  = MaxMemoryAttributes;
@@ -1926,30 +1938,27 @@ CoreInitializeMemoryServices (
 /**
   External function. Initializes the GCD and memory services based on the memory
   descriptor HOBs.  This function is responsible for priming the GCD map and the
-  memory map, so memory allocations and resource allocations can be made.  The first
-  part of this function can not depend on any memory services until at least one
-  memory descriptor is provided to the memory services.  Then the memory services
-  can be used to intialize the GCD map. The HobStart will be relocated to a pool
-  buffer.
+  memory map, so memory allocations and resource allocations can be made. The
+  HobStart will be relocated to a pool buffer.
 
-  @param  HobStart               The start address of the HOB 
-  @param  MemoryBaseAddress      Start address of memory region found to init DXE 
-                                 core. 
-  @param  MemoryLength           Length of memory region found to init DXE core. 
+  @param  HobStart               The start address of the HOB
+  @param  MemoryBaseAddress      Start address of memory region found to init DXE
+                                 core.
+  @param  MemoryLength           Length of memory region found to init DXE core.
 
   @retval EFI_SUCCESS            GCD services successfully initialized.
 
 **/
 EFI_STATUS
 CoreInitializeGcdServices (
-  IN OUT VOID                  **HobStart,
+  IN OUT VOID              **HobStart,
   IN EFI_PHYSICAL_ADDRESS  MemoryBaseAddress,
   IN UINT64                MemoryLength
   )
 {
-  EFI_PEI_HOB_POINTERS                   Hob;
+  EFI_PEI_HOB_POINTERS               Hob;
   VOID                               *NewHobList;
-  EFI_HOB_HANDOFF_INFO_TABLE  *PhitHob;
+  EFI_HOB_HANDOFF_INFO_TABLE         *PhitHob;
   UINT8                              SizeOfMemorySpace;
   UINT8                              SizeOfIoSpace;
   EFI_HOB_RESOURCE_DESCRIPTOR        *ResourceHob;
@@ -1967,6 +1976,7 @@ CoreInitializeGcdServices (
   UINTN                              Index;
   UINT64                             Capabilities;
   EFI_HOB_CPU *                      CpuHob;
+
   //
   // Cache the PHIT HOB for later use
   //
@@ -1979,11 +1989,11 @@ CoreInitializeGcdServices (
   ASSERT (CpuHob != NULL);
   SizeOfMemorySpace = CpuHob->SizeOfMemorySpace;
   SizeOfIoSpace     = CpuHob->SizeOfIoSpace;
- 
+
   //
   // Initialize the GCD Memory Space Map
   //
-  Entry = CoreAllocateCopyPool (sizeof (EFI_GCD_MAP_ENTRY), &mGcdMemorySpaceMapEntryTemplate);
+  Entry = AllocateCopyPool (sizeof (EFI_GCD_MAP_ENTRY), &mGcdMemorySpaceMapEntryTemplate);
   ASSERT (Entry != NULL);
 
   Entry->EndAddress = LShiftU64 (1, SizeOfMemorySpace) - 1;
@@ -1993,7 +2003,7 @@ CoreInitializeGcdServices (
   //
   // Initialize the GCD I/O Space Map
   //
-  Entry = CoreAllocateCopyPool (sizeof (EFI_GCD_MAP_ENTRY), &mGcdIoSpaceMapEntryTemplate);
+  Entry = AllocateCopyPool (sizeof (EFI_GCD_MAP_ENTRY), &mGcdIoSpaceMapEntryTemplate);
   ASSERT (Entry != NULL);
 
   Entry->EndAddress = LShiftU64 (1, SizeOfIoSpace) - 1;
@@ -2001,7 +2011,7 @@ CoreInitializeGcdServices (
   InsertHeadList (&mGcdIoSpaceMap, &Entry->Link);
 
   //
-  // Walk the HOB list and add all resource descriptors to the GCD 
+  // Walk the HOB list and add all resource descriptors to the GCD
   //
   for (Hob.Raw = *HobStart; !END_OF_HOB_LIST(Hob); Hob.Raw = GET_NEXT_HOB(Hob)) {
 
@@ -2041,7 +2051,6 @@ CoreInitializeGcdServices (
       }
 
       if (GcdMemoryType != EfiGcdMemoryTypeNonExistent) {
-
         //
         // Convert the Resource HOB Attributes to an EFI Memory Capabilities mask
         //
@@ -2093,7 +2102,7 @@ CoreInitializeGcdServices (
       if (!EFI_ERROR (Status)) {
         Status = CoreAllocateMemorySpace (
                    EfiGcdAllocateAddress,
-                   Descriptor.GcdMemoryType, 
+                   Descriptor.GcdMemoryType,
                    0,
                    MemoryHob->AllocDescriptor.MemoryLength,
                    &BaseAddress,
@@ -2116,7 +2125,7 @@ CoreInitializeGcdServices (
       BaseAddress = FirmwareVolumeHob->BaseAddress;
       Status = CoreAllocateMemorySpace (
                  EfiGcdAllocateAddress,
-                 EfiGcdMemoryTypeMemoryMappedIo, 
+                 EfiGcdMemoryTypeMemoryMappedIo,
                  0,
                  FirmwareVolumeHob->Length,
                  &BaseAddress,
@@ -2129,8 +2138,8 @@ CoreInitializeGcdServices (
   //
   // Relocate HOB List to an allocated pool buffer.
   //
-  NewHobList = CoreAllocateCopyPool (
-                 (UINTN)PhitHob->EfiFreeMemoryBottom - (UINTN)(*HobStart), 
+  NewHobList = AllocateCopyPool (
+                 (UINTN)PhitHob->EfiFreeMemoryBottom - (UINTN)(*HobStart),
                  *HobStart
                  );
   ASSERT (NewHobList != NULL);

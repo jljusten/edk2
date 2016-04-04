@@ -7,7 +7,7 @@
 
   UEFI 2.0 can boot from any device that produces a LoadFile protocol.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -26,16 +26,16 @@
     0x56EC3091, 0x954C, 0x11d2, {0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B } \
   }
 
-//
-// Protocol Guid defined by EFI1.1.
-//
+///
+/// Protocol Guid defined by EFI1.1.
+///
 #define LOAD_FILE_PROTOCOL EFI_LOAD_FILE_PROTOCOL_GUID
 
 typedef struct _EFI_LOAD_FILE_PROTOCOL EFI_LOAD_FILE_PROTOCOL;
 
-//
-// Backward-compatible with EFI1.1
-// 
+///
+/// Backward-compatible with EFI1.1
+/// 
 typedef EFI_LOAD_FILE_PROTOCOL  EFI_LOAD_FILE_INTERFACE;
 
 /**
@@ -68,15 +68,18 @@ typedef EFI_LOAD_FILE_PROTOCOL  EFI_LOAD_FILE_INTERFACE;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_LOAD_FILE) (
+(EFIAPI *EFI_LOAD_FILE)(
   IN EFI_LOAD_FILE_PROTOCOL           *This,
   IN EFI_DEVICE_PATH_PROTOCOL         *FilePath,
   IN BOOLEAN                          BootPolicy,
   IN OUT UINTN                        *BufferSize,
   IN VOID                             *Buffer OPTIONAL
-  )
-;
+  );
 
+/**  
+  @par Protocol Description:
+  The EFI_LOAD_FILE_PROTOCOL is a simple protocol used to obtain files from arbitrary devices.
+**/
 struct _EFI_LOAD_FILE_PROTOCOL {
   EFI_LOAD_FILE LoadFile;
 };

@@ -1,5 +1,4 @@
-/** 
-    @file   
+/** @file   
   ACPI Watchdog Action Table as defined at
   Microsoft Hardware Watchdog Timer Specification.
 
@@ -23,9 +22,9 @@
 // Ensure proper structure formats
 //
 #pragma pack(1)
-//
-// Watchdog Action Table definition.
-//
+///
+/// Watchdog Action Table definition.
+///
 typedef struct {
   EFI_ACPI_DESCRIPTION_HEADER             Header;
   UINT32                                  WatchdogHeaderLength;
@@ -53,14 +52,14 @@ typedef struct {
 
 #pragma pack()
 
-//
-// WDAT Revision (defined in spec)
-//
-#define EFI_ACPI_WATCHDOG_ACTION_1_0_TABLE_REVISION  0x01
+///
+/// WDAT Revision (defined in spec)
+///
+#define EFI_ACPI_WATCHDOG_ACTION_1_0_TABLE_REVISION       0x01
 
-//
-// WDAT 1.0 Flags
-//
+///
+/// WDAT 1.0 Flags
+///
 #define EFI_ACPI_WDAT_1_0_WATCHDOG_ENABLED                0x1
 #define EFI_ACPI_WDAT_1_0_WATCHDOG_STOPPED_IN_SLEEP_STATE 0x80
 

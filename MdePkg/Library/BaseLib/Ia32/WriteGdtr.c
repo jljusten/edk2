@@ -12,12 +12,19 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
+
 #include <BaseLibInternals.h>
 
 
+/**
+  Writes the current Global Descriptor Table Register (GDTR) descriptor.
+
+  Writes and the current GDTR descriptor specified by Gdtr. This function is
+  only available on IA-32 and X64.
+
+  @param  Gdtr  Pointer to a GDTR descriptor.
+
+**/
 VOID
 EFIAPI
 InternalX86WriteGdtr (

@@ -4,7 +4,7 @@
   and destroy child of the driver to communicate with other host using TCP protocol.
   The EFI TCPv4 Protocol provides services to send and receive data stream.
 
-  Copyright (c) 2006, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -33,7 +33,7 @@
 typedef struct _EFI_TCP4_PROTOCOL EFI_TCP4_PROTOCOL;
 
 typedef struct {
-  EFI_HANDLE        InstanceHandle;
+  EFI_HANDLE              InstanceHandle;
   EFI_IPv4_ADDRESS        LocalAddress;
   UINT16                  LocalPort;
   EFI_IPv4_ADDRESS        RemoteAddress;
@@ -178,15 +178,14 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP4_GET_MODE_DATA) (
+(EFIAPI *EFI_TCP4_GET_MODE_DATA)(
   IN CONST  EFI_TCP4_PROTOCOL                  *This,
   OUT       EFI_TCP4_CONNECTION_STATE          *Tcp4State      OPTIONAL,
   OUT       EFI_TCP4_CONFIG_DATA               *Tcp4ConfigData OPTIONAL,
   OUT       EFI_IP4_MODE_DATA                  *Ip4ModeData    OPTIONAL,
   OUT       EFI_MANAGED_NETWORK_CONFIG_DATA    *MnpConfigData  OPTIONAL,
   OUT       EFI_SIMPLE_NETWORK_MODE            *SnpModeData    OPTIONAL
-  )
-;
+  );
 
 /**
   Initialize or brutally reset the operational parameters for this EFI TCPv4 instance.
@@ -210,11 +209,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP4_CONFIGURE) (
+(EFIAPI *EFI_TCP4_CONFIGURE)(
   IN EFI_TCP4_PROTOCOL                   *This,
   IN EFI_TCP4_CONFIG_DATA                *TcpConfigData OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -252,14 +250,13 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP4_ROUTES) (
+(EFIAPI *EFI_TCP4_ROUTES)(
   IN EFI_TCP4_PROTOCOL                   *This,
   IN BOOLEAN                             DeleteRoute,
   IN EFI_IPv4_ADDRESS                    *SubnetAddress,
   IN EFI_IPv4_ADDRESS                    *SubnetMask,
   IN EFI_IPv4_ADDRESS                    *GatewayAddress
-  )
-;
+  );
 
 /**
   Initiate a nonblocking TCP connection request for an active TCP instance.
@@ -285,11 +282,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP4_CONNECT) (
+(EFIAPI *EFI_TCP4_CONNECT)(
   IN EFI_TCP4_PROTOCOL                   *This,
   IN EFI_TCP4_CONNECTION_TOKEN           *ConnectionToken
-  )
-;
+  );
 
 
 /**
@@ -315,11 +311,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP4_ACCEPT) (
+(EFIAPI *EFI_TCP4_ACCEPT)(
   IN EFI_TCP4_PROTOCOL                   *This,
   IN EFI_TCP4_LISTEN_TOKEN               *ListenToken
-  )
-;
+  );
 
 /**
   Queues outgoing data into the transmit queue.
@@ -354,11 +349,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP4_TRANSMIT) (
+(EFIAPI *EFI_TCP4_TRANSMIT)(
   IN EFI_TCP4_PROTOCOL                   *This,
   IN EFI_TCP4_IO_TOKEN                   *Token
-  )
-;
+  );
 
 
 /**
@@ -398,11 +392,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP4_RECEIVE) (
+(EFIAPI *EFI_TCP4_RECEIVE)(
   IN EFI_TCP4_PROTOCOL                   *This,
   IN EFI_TCP4_IO_TOKEN                   *Token
-  )
-;
+  );
 
 /**
   Disconnecting a TCP connection gracefully or reset a TCP connection. This function is a
@@ -429,11 +422,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP4_CLOSE) (
+(EFIAPI *EFI_TCP4_CLOSE)(
   IN EFI_TCP4_PROTOCOL                   *This,
   IN EFI_TCP4_CLOSE_TOKEN                *CloseToken
-  )
-;
+  );
 
 /**
   Abort an asynchronous connection, listen, transmission or receive request.
@@ -458,11 +450,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP4_CANCEL) (
+(EFIAPI *EFI_TCP4_CANCEL)(
   IN EFI_TCP4_PROTOCOL                   *This,
   IN EFI_TCP4_COMPLETION_TOKEN           *Token OPTIONAL
-  )
-;
+  );
 
 
 /**
@@ -480,11 +471,18 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP4_POLL) (
+(EFIAPI *EFI_TCP4_POLL)(
   IN EFI_TCP4_PROTOCOL                   *This
-  )
-;
+  );
 
+/**  
+  @par Protocol Description:
+  The EFI_TCP4_PROTOCOL defines the EFI TCPv4 Protocol child to be used by 
+  any network drivers or applications to send or receive data stream. 
+  It can either listen on a specified port as a service or actively connected 
+  to remote peer as a client. Each instance has its own independent settings, 
+  such as the routing table.
+**/
 struct _EFI_TCP4_PROTOCOL {
   EFI_TCP4_GET_MODE_DATA                 GetModeData;
   EFI_TCP4_CONFIGURE                     Configure;

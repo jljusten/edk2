@@ -1,6 +1,8 @@
 /** @file
+Implementation for EFI_HII_IMAGE_PROTOCOL.
 
-Copyright (c) 2007, Intel Corporation
+
+Copyright (c) 2007 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,46 +11,31 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-    Image.c
-
-Abstract:
-
-    Implementation for EFI_HII_IMAGE_PROTOCOL.
-
-Revision History
-
-
 **/
 
 
 #include "HiiDatabase.h"
 
-#ifndef DISABLE_UNUSED_HII_PROTOCOLS
 
-STATIC
+/**
+  Get the imageid of last image block: EFI_HII_IIBT_END_BLOCK when input
+  ImageId is zero, otherwise return the address of the
+  corresponding image block with identifier specified by ImageId.
+
+  This is a internal function.
+
+  @param ImageBlock      Points to the beginning of a series of image blocks stored in order.
+  @param ImageId         If input ImageId is 0, output the image id of the EFI_HII_IIBT_END_BLOCK;
+                         else use this id to find its corresponding image block address.
+
+  @return The image block address when input ImageId is not zero; otherwise return NULL.
+
+**/
 UINT8*
 GetImageIdOrAddress (
   IN  UINT8           *ImageBlock,
   IN OUT EFI_IMAGE_ID *ImageId
   )
-/*++
-
-  Routine Description:
-    Get the imageid of last image block: EFI_HII_IIBT_END_BLOCK when input
-    ImageId is zero, otherwise return the address of the
-    corresponding image block with identifier specified by ImageId.
-
-  Arguments:
-    ImageBlock     - Points to the beginning of a series of image blocks stored in order.
-    ImageId        - If input ImageId is 0, output the image id of the EFI_HII_IIBT_END_BLOCK;
-                     else use this id to find its corresponding image block address.
-
-  Returns:
-    The image block address when input ImageId is not zero; otherwise return NULL.
-
---*/
 {
   EFI_IMAGE_ID                   ImageIdCurrent;
   UINT8                          *ImageBlockHdr;
@@ -199,13 +186,15 @@ GetImageIdOrAddress (
 /**
   Convert pixels from EFI_GRAPHICS_OUTPUT_BLT_PIXEL to EFI_HII_RGB_PIXEL style.
 
+  This is a internal function.
+
+
   @param  BitMapOut              Pixels in EFI_HII_RGB_PIXEL format.
   @param  BitMapIn               Pixels in EFI_GRAPHICS_OUTPUT_BLT_PIXEL format.
   @param  PixelNum               The number of pixels to be converted.
 
 
 **/
-STATIC
 VOID
 CopyGopToRgbPixel (
   OUT EFI_HII_RGB_PIXEL              *BitMapOut,
@@ -226,13 +215,15 @@ CopyGopToRgbPixel (
 /**
   Convert pixels from EFI_HII_RGB_PIXEL to EFI_GRAPHICS_OUTPUT_BLT_PIXEL style.
 
+  This is a internal function.
+
+
   @param  BitMapOut              Pixels in EFI_GRAPHICS_OUTPUT_BLT_PIXEL format.
   @param  BitMapIn               Pixels in EFI_HII_RGB_PIXEL format.
   @param  PixelNum               The number of pixels to be converted.
 
 
 **/
-STATIC
 VOID
 CopyRgbToGopPixel (
   OUT EFI_GRAPHICS_OUTPUT_BLT_PIXEL  *BitMapOut,
@@ -253,6 +244,9 @@ CopyRgbToGopPixel (
 /**
   Output pixels in "1 bit per pixel" format to an image.
 
+  This is a internal function.
+
+
   @param  Image                  Points to the image which will store the pixels.
   @param  Data                   Stores the value of output pixels, 0 or 1.
   @param  PaletteInfo            PaletteInfo which stores the color of the output
@@ -261,7 +255,6 @@ CopyRgbToGopPixel (
 
 
 **/
-STATIC
 VOID
 Output1bitPixel (
   IN OUT EFI_IMAGE_INPUT             *Image,
@@ -269,8 +262,8 @@ Output1bitPixel (
   IN EFI_HII_IMAGE_PALETTE_INFO      *PaletteInfo
   )
 {
-  UINT16                             X;
-  UINT16                             Y;
+  UINT16                             Xpos;
+  UINT16                             Ypos;
   UINTN                              OffsetY;
   UINT8                              Index;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL      *BitMapPtr;
@@ -300,18 +293,18 @@ Output1bitPixel (
   //
   // Convert the pixel from one bit to corresponding color.
   //
-  for (Y = 0; Y < Image->Height; Y++) {
-    OffsetY = BITMAP_LEN_1_BIT (Image->Width, Y);
+  for (Ypos = 0; Ypos < Image->Height; Ypos++) {
+    OffsetY = BITMAP_LEN_1_BIT (Image->Width, Ypos);
     //
     // All bits in these bytes are meaningful
     //
-    for (X = 0; X < Image->Width / 8; X++) {
-      Byte = *(Data + OffsetY + X);
+    for (Xpos = 0; Xpos < Image->Width / 8; Xpos++) {
+      Byte = *(Data + OffsetY + Xpos);
       for (Index = 0; Index < 8; Index++) {
         if ((Byte & (1 << Index)) != 0) {
-          BitMapPtr[Y * Image->Width + X * 8 + (8 - Index - 1)] = PaletteValue[1];
+          BitMapPtr[Ypos * Image->Width + Xpos * 8 + (8 - Index - 1)] = PaletteValue[1];
         } else {
-          BitMapPtr[Y * Image->Width + X * 8 + (8 - Index - 1)] = PaletteValue[0];
+          BitMapPtr[Ypos * Image->Width + Xpos * 8 + (8 - Index - 1)] = PaletteValue[0];
         }
       }
     }
@@ -320,12 +313,12 @@ Output1bitPixel (
       //
       // Padding bits in this byte should be ignored.
       //
-      Byte = *(Data + OffsetY + X);
+      Byte = *(Data + OffsetY + Xpos);
       for (Index = 0; Index < Image->Width % 8; Index++) {
         if ((Byte & (1 << (8 - Index - 1))) != 0) {
-          BitMapPtr[Y * Image->Width + X * 8 + Index] = PaletteValue[1];
+          BitMapPtr[Ypos * Image->Width + Xpos * 8 + Index] = PaletteValue[1];
         } else {
-          BitMapPtr[Y * Image->Width + X * 8 + Index] = PaletteValue[0];
+          BitMapPtr[Ypos * Image->Width + Xpos * 8 + Index] = PaletteValue[0];
         }
       }
     }
@@ -336,15 +329,17 @@ Output1bitPixel (
 /**
   Output pixels in "4 bit per pixel" format to an image.
 
+  This is a internal function.
+
+
   @param  Image                  Points to the image which will store the pixels.
   @param  Data                   Stores the value of output pixels, 0 ~ 15.
-  @param  PaletteInfo            PaletteInfo which stores the color of the output
+  @param[in]  PaletteInfo            PaletteInfo which stores the color of the output
                                  pixels. Each entry corresponds to a color within
                                  [0, 15].
 
 
 **/
-STATIC
 VOID
 Output4bitPixel (
   IN OUT EFI_IMAGE_INPUT             *Image,
@@ -352,8 +347,8 @@ Output4bitPixel (
   IN EFI_HII_IMAGE_PALETTE_INFO      *PaletteInfo
   )
 {
-  UINT16                             X;
-  UINT16                             Y;
+  UINT16                             Xpos;
+  UINT16                             Ypos;
   UINTN                              OffsetY;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL      *BitMapPtr;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL      PaletteValue[16];
@@ -383,23 +378,23 @@ Output4bitPixel (
   //
   // Convert the pixel from 4 bit to corresponding color.
   //
-  for (Y = 0; Y < Image->Height; Y++) {
-    OffsetY = BITMAP_LEN_4_BIT (Image->Width, Y);
+  for (Ypos = 0; Ypos < Image->Height; Ypos++) {
+    OffsetY = BITMAP_LEN_4_BIT (Image->Width, Ypos);
     //
     // All bits in these bytes are meaningful
     //
-    for (X = 0; X < Image->Width / 2; X++) {
-      Byte = *(Data + OffsetY + X);
-      BitMapPtr[Y * Image->Width + X * 2]     = PaletteValue[Byte >> 4];
-      BitMapPtr[Y * Image->Width + X * 2 + 1] = PaletteValue[Byte & 0x0F];
+    for (Xpos = 0; Xpos < Image->Width / 2; Xpos++) {
+      Byte = *(Data + OffsetY + Xpos);
+      BitMapPtr[Ypos * Image->Width + Xpos * 2]     = PaletteValue[Byte >> 4];
+      BitMapPtr[Ypos * Image->Width + Xpos * 2 + 1] = PaletteValue[Byte & 0x0F];
     }
 
     if (Image->Width % 2 != 0) {
       //
       // Padding bits in this byte should be ignored.
       //
-      Byte = *(Data + OffsetY + X);
-      BitMapPtr[Y * Image->Width + X * 2]     = PaletteValue[Byte >> 4];
+      Byte = *(Data + OffsetY + Xpos);
+      BitMapPtr[Ypos * Image->Width + Xpos * 2]     = PaletteValue[Byte >> 4];
     }
   }
 }
@@ -408,15 +403,17 @@ Output4bitPixel (
 /**
   Output pixels in "8 bit per pixel" format to an image.
 
+  This is a internal function.
+
+
   @param  Image                  Points to the image which will store the pixels.
   @param  Data                   Stores the value of output pixels, 0 ~ 255.
-  @param  PaletteInfo            PaletteInfo which stores the color of the output
+  @param[in]  PaletteInfo        PaletteInfo which stores the color of the output
                                  pixels. Each entry corresponds to a color within
                                  [0, 255].
 
 
 **/
-STATIC
 VOID
 Output8bitPixel (
   IN OUT EFI_IMAGE_INPUT             *Image,
@@ -424,8 +421,8 @@ Output8bitPixel (
   IN EFI_HII_IMAGE_PALETTE_INFO      *PaletteInfo
   )
 {
-  UINT16                             X;
-  UINT16                             Y;
+  UINT16                             Xpos;
+  UINT16                             Ypos;
   UINTN                              OffsetY;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL      *BitMapPtr;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL      PaletteValue[256];
@@ -454,14 +451,14 @@ Output8bitPixel (
   //
   // Convert the pixel from 8 bits to corresponding color.
   //
-  for (Y = 0; Y < Image->Height; Y++) {
-    OffsetY = BITMAP_LEN_8_BIT (Image->Width, Y);
+  for (Ypos = 0; Ypos < Image->Height; Ypos++) {
+    OffsetY = BITMAP_LEN_8_BIT (Image->Width, Ypos);
     //
     // All bits are meaningful since the bitmap is 8 bits per pixel.
     //
-    for (X = 0; X < Image->Width; X++) {
-      Byte = *(Data + OffsetY + X);
-      BitMapPtr[OffsetY + X] = PaletteValue[Byte];
+    for (Xpos = 0; Xpos < Image->Width; Xpos++) {
+      Byte = *(Data + OffsetY + Xpos);
+      BitMapPtr[OffsetY + Xpos] = PaletteValue[Byte];
     }
   }
 
@@ -471,20 +468,22 @@ Output8bitPixel (
 /**
   Output pixels in "24 bit per pixel" format to an image.
 
+  This is a internal function.
+
+
   @param  Image                  Points to the image which will store the pixels.
   @param  Data                   Stores the color of output pixels, allowing 16.8
                                  millions colors.
 
 
 **/
-STATIC
 VOID
 Output24bitPixel (
   IN OUT EFI_IMAGE_INPUT             *Image,
   IN EFI_HII_RGB_PIXEL               *Data
   )
 {
-  UINT16                             Y;
+  UINT16                             Ypos;
   UINTN                              OffsetY;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL      *BitMapPtr;
 
@@ -492,8 +491,8 @@ Output24bitPixel (
 
   BitMapPtr = Image->Bitmap;
 
-  for (Y = 0; Y < Image->Height; Y++) {
-    OffsetY = BITMAP_LEN_8_BIT (Image->Width, Y);
+  for (Ypos = 0; Ypos < Image->Height; Ypos++) {
+    OffsetY = BITMAP_LEN_8_BIT (Image->Width, Ypos);
     CopyRgbToGopPixel (&BitMapPtr[OffsetY], &Data[OffsetY], Image->Width);
   }
 
@@ -503,7 +502,12 @@ Output24bitPixel (
 /**
   Convert the image from EFI_IMAGE_INPUT to EFI_IMAGE_OUTPUT format.
 
+  This is a internal function.
+
+
   @param  BltBuffer              Buffer points to bitmap data of incoming image.
+  @param  BltX                   Specifies the offset from the left and top edge of
+                                  the output image of the first pixel in the image.
   @param  BltY                   Specifies the offset from the left and top edge of
                                   the output image of the first pixel in the image.
   @param  Width                  Width of the incoming image, in pixels.
@@ -517,7 +521,6 @@ Output24bitPixel (
   @retval EFI_INVALID_PARAMETER  Any incoming parameter is invalid.
 
 **/
-STATIC
 EFI_STATUS
 ImageToBlt (
   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL   *BltBuffer,
@@ -530,8 +533,8 @@ ImageToBlt (
   )
 {
   EFI_IMAGE_OUTPUT                   *ImageOut;
-  UINTN                              X;
-  UINTN                              Y;
+  UINTN                              Xpos;
+  UINTN                              Ypos;
   UINTN                              OffsetY1; // src buffer
   UINTN                              OffsetY2; // dest buffer
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL      SrcPixel;
@@ -552,17 +555,17 @@ ImageToBlt (
 
   ZeroMem (&ZeroPixel, sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
 
-  for (Y = 0; Y < Height; Y++) {
-    OffsetY1 = Width * Y;
-    OffsetY2 = ImageOut->Width * (BltY + Y);
-    for (X = 0; X < Width; X++) {
-      SrcPixel = BltBuffer[OffsetY1 + X];
+  for (Ypos = 0; Ypos < Height; Ypos++) {
+    OffsetY1 = Width * Ypos;
+    OffsetY2 = ImageOut->Width * (BltY + Ypos);
+    for (Xpos = 0; Xpos < Width; Xpos++) {
+      SrcPixel = BltBuffer[OffsetY1 + Xpos];
       if (Transparent) {
         if (CompareMem (&SrcPixel, &ZeroPixel, 3) != 0) {
-          ImageOut->Image.Bitmap[OffsetY2 + BltX + X] = SrcPixel;
+          ImageOut->Image.Bitmap[OffsetY2 + BltX + Xpos] = SrcPixel;
         }
       } else {
-        ImageOut->Image.Bitmap[OffsetY2 + BltX + X] = SrcPixel;
+        ImageOut->Image.Bitmap[OffsetY2 + BltX + Xpos] = SrcPixel;
       }
     }
   }
@@ -610,7 +613,7 @@ HiiNewImage (
   UINTN                               NewBlockSize;
   EFI_IMAGE_INPUT                     *ImageIn;
 
-  if (This == NULL || ImageId == NULL || Image == NULL || PackageList == NULL) {
+  if (This == NULL || ImageId == NULL || Image == NULL || Image->Bitmap == NULL) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -790,18 +793,18 @@ HiiNewImage (
   @param  This                   A pointer to the EFI_HII_IMAGE_PROTOCOL instance.
   @param  PackageList            Handle of the package list where this image will
                                  be searched.
-  @param  ImageId                The image¡¯s id,, which is unique within
+  @param  ImageId                The image's id,, which is unique within
                                  PackageList.
   @param  Image                  Points to the image.
-  @param  ImageSize              On entry, points to the size of the buffer pointed
-                                 to by Image, in bytes.  On return, points to the
-                                 length of the image, in bytes.
 
   @retval EFI_SUCCESS            The new image was returned successfully.
-  @retval EFI_NOT_FOUND          The image specified by ImageId is not available.
+  @retval EFI_NOT_FOUND           The image specified by ImageId is not in the
+                                                database. The specified PackageList is not in the database.
   @retval EFI_BUFFER_TOO_SMALL   The buffer specified by ImageSize is too small to
                                  hold the image.
   @retval EFI_INVALID_PARAMETER  The Image or ImageSize was NULL.
+  @retval EFI_OUT_OF_RESOURCES   The bitmap could not be retrieved because there was not
+                                                     enough memory.
 
 **/
 EFI_STATUS
@@ -810,8 +813,7 @@ HiiGetImage (
   IN  CONST EFI_HII_IMAGE_PROTOCOL   *This,
   IN  EFI_HII_HANDLE                 PackageList,
   IN  EFI_IMAGE_ID                   ImageId,
-  OUT EFI_IMAGE_INPUT                *Image,
-  OUT UINTN                          *ImageSize
+  OUT EFI_IMAGE_INPUT                *Image
   )
 {
   HII_DATABASE_PRIVATE_DATA           *Private;
@@ -831,7 +833,7 @@ HiiGetImage (
   UINT8                               PaletteIndex;
   UINT16                              PaletteSize;
 
-  if (This == NULL || ImageSize == NULL || Image == NULL || ImageId < 1 || PackageList == NULL) {
+  if (This == NULL || Image == NULL || ImageId < 1) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -897,13 +899,12 @@ HiiGetImage (
     // Use the common block code since the definition of these structures is the same.
     //
     CopyMem (&Iibt1bit, ImageBlock, sizeof (EFI_HII_IIBT_IMAGE_1BIT_BLOCK));
-    ImageLength = sizeof (EFI_IMAGE_INPUT) + sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL) *
-                  (Iibt1bit.Bitmap.Width * Iibt1bit.Bitmap.Height - 1);
-    if (*ImageSize < ImageLength) {
-      *ImageSize = ImageLength;
-      return EFI_BUFFER_TOO_SMALL;
+    ImageLength = sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL) *
+                  (Iibt1bit.Bitmap.Width * Iibt1bit.Bitmap.Height);
+    Image->Bitmap = (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *) AllocateZeroPool (ImageLength);
+    if (Image->Bitmap == NULL) {
+      return EFI_OUT_OF_RESOURCES;
     }
-    ZeroMem (Image, ImageLength);
 
     if (Flag) {
       Image->Flags = EFI_IMAGE_TRANSPARENT;
@@ -956,13 +957,11 @@ HiiGetImage (
       ImageBlock + sizeof (EFI_HII_IMAGE_BLOCK) + sizeof (UINT16),
       sizeof (UINT16)
       );
-    ImageLength = sizeof (EFI_IMAGE_INPUT) +
-                  sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL) * (Width * Height - 1);
-    if (*ImageSize < ImageLength) {
-      *ImageSize = ImageLength;
-      return EFI_BUFFER_TOO_SMALL;
+    ImageLength = sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL) * (Width * Height);
+    Image->Bitmap = (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *) AllocateZeroPool (ImageLength);
+    if (Image->Bitmap == NULL) {
+      return EFI_OUT_OF_RESOURCES;
     }
-    ZeroMem (Image, ImageLength);
 
     if (Flag) {
       Image->Flags = EFI_IMAGE_TRANSPARENT;
@@ -993,13 +992,13 @@ HiiGetImage (
 
   @param  This                   A pointer to the EFI_HII_IMAGE_PROTOCOL instance.
   @param  PackageList            The package list containing the images.
-  @param  ImageId                The image¡¯s id,, which is unique within
+  @param  ImageId                The image's id,, which is unique within
                                  PackageList.
   @param  Image                  Points to the image.
 
   @retval EFI_SUCCESS            The new image was updated successfully.
   @retval EFI_NOT_FOUND          The image specified by ImageId is not in the
-                                 database.
+                                                database. The specified PackageList is not in the database.    
   @retval EFI_INVALID_PARAMETER  The Image was NULL.
 
 **/
@@ -1036,7 +1035,7 @@ HiiSetImage (
   UINT32                               Part1Size;
   UINT32                               Part2Size;
 
-  if (This == NULL || Image == NULL || ImageId < 1 || PackageList == NULL) {
+  if (This == NULL || Image == NULL || ImageId < 1 || Image->Bitmap == NULL) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -1196,8 +1195,10 @@ HiiSetImage (
                                  this image and  EFI_HII_DRAW_FLAG_CLIP is implied.
                                  If this points to a  NULL on entry, then a buffer
                                  will be allocated to hold  the generated image and
-                                 the pointer updated on exit. It is the caller¡¯s
+                                 the pointer updated on exit. It is the caller's
                                  responsibility to free this buffer.
+  @param  BltX                   Specifies the offset from the left and top edge of
+                                 the  output image of the first pixel in the image.
   @param  BltY                   Specifies the offset from the left and top edge of
                                  the  output image of the first pixel in the image.
 
@@ -1227,8 +1228,8 @@ HiiDrawImage (
   UINTN                               BufferLen;
   UINTN                               Width;
   UINTN                               Height;
-  UINTN                               X;
-  UINTN                               Y;
+  UINTN                               Xpos;
+  UINTN                               Ypos;
   UINTN                               OffsetY1;
   UINTN                               OffsetY2;
   EFI_FONT_DISPLAY_INFO               *FontInfo;
@@ -1310,11 +1311,11 @@ HiiDrawImage (
     if (Width == ImageIn->Width && Height == ImageIn->Height) {
       CopyMem (BltBuffer, ImageIn->Bitmap, BufferLen);
     } else {
-      for (Y = 0; Y < Height; Y++) {
-        OffsetY1 = ImageIn->Width * Y;
-        OffsetY2 = Width * Y;
-        for (X = 0; X < Width; X++) {
-          BltBuffer[OffsetY2 + X] = ImageIn->Bitmap[OffsetY1 + X];
+      for (Ypos = 0; Ypos < Height; Ypos++) {
+        OffsetY1 = ImageIn->Width * Ypos;
+        OffsetY2 = Width * Ypos;
+        for (Xpos = 0; Xpos < Width; Xpos++) {
+          BltBuffer[OffsetY2 + Xpos] = ImageIn->Bitmap[OffsetY1 + Xpos];
         }
       }
     }
@@ -1441,16 +1442,18 @@ HiiDrawImage (
                                  EFI_HII_DRAW_FLAG_CLIP is implied. If this points
                                  to a  NULL on entry, then a buffer will be
                                  allocated to hold  the generated image and the
-                                 pointer updated on exit. It is the caller¡¯s
+                                 pointer updated on exit. It is the caller's
                                  responsibility to free this buffer.
+  @param  BltX                   Specifies the offset from the left and top edge of
+                                 the  output image of the first pixel in the image.
   @param  BltY                   Specifies the offset from the left and top edge of
                                  the  output image of the first pixel in the image.
 
   @retval EFI_SUCCESS            The image was successfully drawn.
   @retval EFI_OUT_OF_RESOURCES   Unable to allocate an output buffer for Blt.
-  @retval EFI_INVALID_PARAMETER  The Image was NULL.
-  @retval EFI_NOT_FOUND          The specified packagelist could not be found in
-                                 current database.
+  @retval EFI_INVALID_PARAMETER  The Blt was NULL.
+  @retval EFI_NOT_FOUND          The image specified by ImageId is not in the database. 
+                           The specified PackageList is not in the database.                             
 
 **/
 EFI_STATUS
@@ -1466,14 +1469,12 @@ HiiDrawImageId (
   )
 {
   EFI_STATUS                          Status;
-  EFI_IMAGE_INPUT                     ImageTemp;
-  EFI_IMAGE_INPUT                     *Image;
-  UINTN                               ImageSize;
+  EFI_IMAGE_INPUT                     Image;
 
   //
   // Check input parameter.
   //
-  if (This == NULL || PackageList == NULL || Blt == NULL || PackageList == NULL) {
+  if (This == NULL || Blt == NULL) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -1484,26 +1485,16 @@ HiiDrawImageId (
   //
   // Get the specified Image.
   //
-  ImageSize = 0;
-  Status = HiiGetImage (This, PackageList, ImageId, &ImageTemp, &ImageSize);
-  if (Status != EFI_BUFFER_TOO_SMALL) {
+  Status = HiiGetImage (This, PackageList, ImageId, &Image);
+  if (EFI_ERROR (Status)) {
     return Status;
   }
-
-  Image = (EFI_IMAGE_INPUT *) AllocateZeroPool (ImageSize);
-  if (Image == NULL) {
-    return EFI_OUT_OF_RESOURCES;
-  }
-  Status = HiiGetImage (This, PackageList, ImageId, Image, &ImageSize);
-  ASSERT_EFI_ERROR (Status);
 
   //
   // Draw this image.
   //
-  Status = HiiDrawImage (This, Flags, Image, Blt, BltX, BltY);
-  SafeFreePool (Image);
+  Status = HiiDrawImage (This, Flags, &Image, Blt, BltX, BltY);
+  SafeFreePool (Image.Bitmap);
   return Status;
 }
-
-#endif
 

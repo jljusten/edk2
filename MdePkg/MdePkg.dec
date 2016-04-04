@@ -1,7 +1,7 @@
 #/** @file
 #
 # This Package provides headers and libraries that conform to EFI/PI Industry standards.
-# Copyright (c) 2007, Intel Corporation.
+# Copyright (c) 2007 - 2008, Intel Corporation.
 #
 # All rights reserved.
 #    This program and the accompanying materials are licensed and made available under
@@ -29,7 +29,7 @@
   Include/Ia32
 
 [Includes.X64]
-  Include/x64
+  Include/X64
 
 [Includes.IPF]
   Include/Ipf
@@ -43,6 +43,7 @@
   UefiRuntimeLib|Include/Library/UefiRuntimeLib.h
   UefiLib|Include/Library/UefiLib.h
   UefiDriverEntryPoint|Include/Library/UefiDriverEntryPoint.h
+  ## UEFI Decompress Library Functions defintion for UEFI compress algorithm
   UefiDecompressLib|Include/Library/UefiDecompressLib.h
   UefiBootServicesTableLib|Include/Library/UefiBootServicesTableLib.h
   UefiApplicationEntryPoint|Include/Library/UefiApplicationEntryPoint.h
@@ -82,9 +83,11 @@
   BaseLib|Include/Library/BaseLib.h
   BasePeCoffLib|Include/Library/PeCoffLib.h
   GraphicsLib|Include/Library/GraphicsLib.h
+  ## Extract Guided Section Library class defintions that provides many handlers for the different guided section data.
   ExtractGuidedSectionLib|Include/Library/ExtractGuidedSectionLib.h
   IfrSupportLib|Include/Library/IfrSupportLib.h
   PeiPiLib|Include/Library/PeiPiLib.h
+  ## Serial I/O Port library functions definition.
   SerialPortLib|Include/Library/SerialPortLib.h
   DxePiLib|Include/Library/DxePiLib.h
   
@@ -231,7 +234,6 @@
   gEfiEdidOverrideProtocolGuid   = { 0x48ECB431, 0xFB72, 0x45C0, { 0xA9, 0x22, 0xF4, 0x58, 0xFE, 0x04, 0x0B, 0xD5 }}
   gEfiUgaIoProtocolGuid          = { 0x61A4D49E, 0x6F68, 0x4F1B, { 0xB9, 0x22, 0xA8, 0x6E, 0xED, 0x0B, 0x07, 0xA2 }}
   gEfiUgaDrawProtocolGuid        = { 0x982C298B, 0xF4FA, 0x41CB, { 0xB8, 0x38, 0x77, 0xAA, 0x68, 0x8F, 0xB8, 0x39 }}
-  gEfiUgaIoProtocolGuid          = { 0x61a4d49e, 0x6f68, 0x4f1b, { 0xb9, 0x22, 0xa8, 0x6e, 0xed, 0x0b, 0x07, 0xa2 }}
   gEfiLoadedImageProtocolGuid    = { 0x5B1B31A1, 0x9562, 0x11D2, { 0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B }}
   gEfiLoadedImageDevicePathProtocolGuid = { 0xbc62157e, 0x3e33, 0x4fec, {0x99, 0x20, 0x2d, 0x3b, 0x36, 0xd7, 0x50, 0xdf }}
   gEfiLoadFileProtocolGuid       = { 0x56EC3091, 0x954C, 0x11D2, { 0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B }}
@@ -278,7 +280,6 @@
   gPcdProtocolGuid               = { 0x11B34006, 0xD85B, 0x4D0A, { 0xA2, 0x90, 0xD5, 0xA5, 0x71, 0x31, 0x0E, 0xF7 }}
   gEfiTcgProtocolGuid            = { 0xf541796d, 0xa62e, 0x4954, { 0xa7, 0x75, 0x95, 0x84, 0xf6, 0x1b, 0x9c, 0xdd }}
 
-  gEfiFormBrowserProtocolGuid    =   {0xE5A1333E, 0xE1B4, 0x4D55, {0xCE, 0xEB, 0x35, 0xC3, 0xEF, 0x13, 0x34, 0x43}}
   gEfiFormBrowser2ProtocolGuid   =   {0xb9d4c360, 0xbcfb, 0x4f9b, {0x92, 0x98, 0x53, 0xc1, 0x36, 0x98, 0x22, 0x58}}
   gEfiHiiStringProtocolGuid      =   {0x0fd96974, 0x23aa, 0x4cdc, {0xb9, 0xcb, 0x98, 0xd1, 0x77, 0x50, 0x32, 0x2a}}
   gEfiHiiImageProtocolGuid       =   {0x31a6406a, 0x6bdf, 0x4e46, {0xb2, 0xa2, 0xeb, 0xaa, 0x89, 0xc4, 0x09, 0x20}}
@@ -292,7 +293,7 @@
   gEfiMdePkgTokenSpaceGuid.PcdDriverDiagnosticsDisable|FALSE|BOOLEAN|0x0000000e
   gEfiMdePkgTokenSpaceGuid.PcdComponentName2Disable|FALSE|BOOLEAN|0x000000010
   gEfiMdePkgTokenSpaceGuid.PcdDriverDiagnostics2Disable|FALSE|BOOLEAN|0x00000011
-  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultLangDepricate|FALSE|BOOLEAN|0x00000012
+  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultLangDeprecate|FALSE|BOOLEAN|0x00000012             # Indicates whether EFI 1.1 ISO 639-2 language supports are obsolete.
 
 [PcdsFixedAtBuild.common]
   gEfiMdePkgTokenSpaceGuid.PcdMaximumUnicodeStringLength|1000000|UINT32|0x00000001
@@ -331,31 +332,22 @@
   gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueMouseReset|0x01020001|UINT32|0x30001000c
   gEfiMdePkgTokenSpaceGuid.PcdMaximumGuidedExtractHandler|0x10|UINT32|0x00000025
   gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultTimeout|0x0008|UINT16|0x0000001b
-  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultLangCodes|"engfra"|VOID*|0x0000001c
-  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultLang|"eng"|VOID*|0x0000001d
-  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultPlatformLangCodes|"en-US;fr-FR"|VOID*|0x0000001e
-  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultPlatformLang|"en-US"|VOID*|0x0000001f
+  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultLang|"eng"|VOID*|0x0000001d                      # default current ISO 639-2 language: English.
+  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultPlatformLangCodes|"en-US;fr-FR"|VOID*|0x0000001e # default platform supported RFC 3066 languages: (American) English & French. 
+  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultPlatformLang|"en-US"|VOID*|0x0000001f            # defualt current RFC 3066 language: (American) English.
+  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultLangCodes|"engfra"|VOID*|0x0000001c              # Default current ISO 639-2 language: English.
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultBaudRate|115200|UINT64|0x00000020
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultDataBits|8|UINT8|0x00000021
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultParity|1|UINT8|0x00000022
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultStopBits|1|UINT8|0x00000023
   gEfiMdePkgTokenSpaceGuid.PcdDefaultTerminalType|0|UINT8|0x00000024  # 0-PCANSI, 1-VT100, 2-VT00+, 3-UTF8
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueMouseInterfaceError|0x01020005|UINT32|0x30001000
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueMouseEnable|0x01020004|UINT32|0x30001001
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueMouseDisable|0x01020002|UINT32|0x30001002
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardEnable|0x01010004|UINT32|0x30001003
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardDisable|0x01010002|UINT32|0x30001004
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardPresenceDetect|0x01010003|UINT32|0x30001005
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardReset|0x01010001|UINT32|0x30001006
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardClearBuffer|0x01011000|UINT32|0x30001007
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardSelfTest|0x01011001|UINT32|0x30001008
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardInterfaceError|0x01010005|UINT32|0x30001009
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardInputError|0x01010007|UINT32|0x3000100a
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueMouseInputError|0x01020007|UINT32|0x3000100b
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueMouseReset|0x01020001|UINT32|0x3000100c
   gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValuePeiHandoffToDxe|0x3031001|UINT32|0x3000100d           # EFI_SOFTWARE_PEI_MODULE | EFI_SW_PEI_CORE_PC_HANDOFF_TO_NEXT
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValuePeimDispatch|0x3020002|UINT32|0x3000100e              # EFI_SOFTWARE_PEI_CORE | EFI_SW_PC_INIT_BEGIN
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValuePeiCoreEntry|0x3020000|UINT32|0x3000100f              # EFI_SOFTWARE_PEI_CORE | EFI_SW_PC_INIT
+  ## Status code value for indicating one PEIM is dispatched.
+  #  value: EFI_SOFTWARE_PEI_CORE | EFI_SW_PC_INIT_BEGIN
+  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValuePeimDispatch|0x3020002|UINT32|0x3000100e
+  ## Status code value for indicating entering PeiCore
+  #  value: EFI_SOFTWARE_PEI_CORE | EFI_SW_PC_INIT
+  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValuePeiCoreEntry|0x3020000|UINT32|0x3000100f
   gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueDxeCoreEntry|0x3041000|UINT32|0x30001010              # EFI_SOFTWARE_DXE_CORE | EFI_SW_DXE_CORE_PC_ENTRY_POINT
   gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueDxeCoreHandoffToBds|0x3041001|UINT32|0x30001011       # EFI_SOFTWARE_DXE_CORE | EFI_SW_DXE_CORE_PC_HANDOFF_TO_NEXT
   gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueBootServiceExit|0x3100019|UINT32|0x30001012           # EFI_SOFTWARE_EFI_BOOT_SERVICE | EFI_SW_BS_PC_EXIT_BOOT_SERVICES
@@ -378,6 +370,8 @@
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultParity|1|UINT8|0x00000022
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultStopBits|1|UINT8|0x00000023
   gEfiMdePkgTokenSpaceGuid.PcdDefaultTerminalType|0|UINT8|0x00000024  # 0-PCANSI, 1-VT100, 2-VT00+, 3-UTF8
+  gEfiMdePkgTokenSpaceGuid.PcdMaximumGuidedExtractHandler|0x10|UINT32|0x00000025
+
 
 [PcdsDynamic.common]
   gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultTimeout|0x0008|UINT16|0x0000001b

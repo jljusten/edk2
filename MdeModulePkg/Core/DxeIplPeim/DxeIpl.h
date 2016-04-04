@@ -18,16 +18,14 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <PiPei.h>
 #include <Ppi/DxeIpl.h>
-#include <Protocol/EdkDecompress.h>
 #include <Ppi/EndOfPeiPhase.h>
-#include <Protocol/CustomizedDecompress.h>
-#include <Protocol/Decompress.h>
 #include <Ppi/MemoryDiscovered.h>
 #include <Ppi/ReadOnlyVariable2.h>
-#include <Guid/MemoryTypeInformation.h>
 #include <Ppi/Decompress.h>
 #include <Ppi/FirmwareVolumeInfo.h>
+#include <Ppi/GuidedSectionExtraction.h>
 
+#include <Guid/MemoryTypeInformation.h>
 #include <Guid/MemoryAllocationHob.h>
 #include <Guid/FirmwareFileSystem2.h>
 
@@ -51,10 +49,22 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define STACK_SIZE      0x20000
 #define BSP_STORE_SIZE  0x4000
 
+
+//
+// This macro aligns the ActualSize with a given alignment and is used to 
+// calculate the size an image occupies.
+//
 #define GET_OCCUPIED_SIZE(ActualSize, Alignment) ((ActualSize + (Alignment - 1)) & ~(Alignment - 1))
 
+//
+// Indicate whether DxeIpl has been shadowed to memory.
+//
 extern BOOLEAN gInMemory;
 
+//
+// This PPI is installed to indicate the end of the PEI usage of memory 
+//
+extern CONST EFI_PEI_PPI_DESCRIPTOR gEndOfPeiSignalPpi;
 
 
 
@@ -81,19 +91,16 @@ PeiLoadFile (
 
 
 /**
-   Find DxeCore driver from all First Volumes.
+   Searches DxeCore in all firmware Volumes and loads the first
+   instance that contains DxeCore.
 
-   @param FileHandle    Pointer to FFS file to search.
+   @return FileHandle of DxeCore to load DxeCore.
    
-   @return EFI_SUCESS   Success to find the FFS in specificed FV
-   @return others       Fail to find the FFS in specificed FV
-
 **/
-EFI_STATUS
+EFI_PEI_FILE_HANDLE
 DxeIplFindDxeCore (
-  OUT EFI_PEI_FILE_HANDLE   *FileHandle
+  VOID
   );
-
 
 
 /**
@@ -112,7 +119,6 @@ GetImageReadFunction (
   );
 
 
-
 /**
    Main entry point to last PEIM 
     
@@ -127,7 +133,7 @@ GetImageReadFunction (
 EFI_STATUS
 EFIAPI
 DxeLoadCore (
-  IN EFI_DXE_IPL_PPI       *This,
+  IN CONST EFI_DXE_IPL_PPI *This,
   IN EFI_PEI_SERVICES      **PeiServices,
   IN EFI_PEI_HOB_POINTERS  HobList
   );
@@ -143,14 +149,12 @@ DxeLoadCore (
 
    @param DxeCoreEntryPoint         The entrypoint of DxeCore.
    @param HobList                   The start of HobList passed to DxeCore.
-   @param EndOfPeiSignal            The PPI descriptor for EFI_END_OF_PEI_PPI.
 
 **/
 VOID
 HandOffToDxeCore (
   IN EFI_PHYSICAL_ADDRESS   DxeCoreEntryPoint,
-  IN EFI_PEI_HOB_POINTERS   HobList,
-  IN EFI_PEI_PPI_DESCRIPTOR *EndOfPeiSignal
+  IN EFI_PEI_HOB_POINTERS   HobList
   );
 
 
@@ -171,7 +175,98 @@ UpdateStackHob (
   IN UINT64                      Length
   );
 
+/**
+  The ExtractSection() function processes the input section and
+  returns a pointer to the section contents. If the section being
+  extracted does not require processing (if the section
+  GuidedSectionHeader.Attributes has the
+  EFI_GUIDED_SECTION_PROCESSING_REQUIRED field cleared), then
+  OutputBuffer is just updated to point to the start of the
+  section's contents. Otherwise, *Buffer must be allocated
+  from PEI permanent memory.
 
+  @param This                   Indicates the
+                                EFI_PEI_GUIDED_SECTION_EXTRACTION_PPI instance.
+                                Buffer containing the input GUIDed section to be
+                                processed. OutputBuffer OutputBuffer is
+                                allocated from PEI permanent memory and contains
+                                the new section stream.
+  @param InputSection           A pointer to the input buffer, which contains
+                                the input section to be processed.
+  @param OutputBuffer           A pointer to a caller-allocated buffer, whose
+                                size is specified by the contents of OutputSize.
+  @param OutputSize             A pointer to a caller-allocated
+                                UINTN in which the size of *OutputBuffer
+                                allocation is stored. If the function
+                                returns anything other than EFI_SUCCESS,
+                                the value of OutputSize is undefined.
+  @param AuthenticationStatus   A pointer to a caller-allocated
+                                UINT32 that indicates the
+                                authentication status of the
+                                output buffer. If the input
+                                section's GuidedSectionHeader.
+                                Attributes field has the
+                                EFI_GUIDED_SECTION_AUTH_STATUS_VALID 
+                                bit as clear,
+                                AuthenticationStatus must return
+                                zero. These bits reflect the
+                                status of the extraction
+                                operation. If the function
+                                returns anything other than
+                                EFI_SUCCESS, the value of
+                                AuthenticationStatus is
+                                undefined.
+  
+  @retval EFI_SUCCESS           The InputSection was
+                                successfully processed and the
+                                section contents were returned.
+  
+  @retval EFI_OUT_OF_RESOURCES  The system has insufficient
+                                resources to process the request.
+  
+  @retval EFI_INVALID_PARAMETER The GUID in InputSection does
+                                not match this instance of the
+                                GUIDed Section Extraction PPI.
+
+**/
+EFI_STATUS
+CustomGuidedSectionExtract (
+  IN CONST  EFI_PEI_GUIDED_SECTION_EXTRACTION_PPI *This,
+  IN CONST  VOID                                  *InputSection,
+  OUT       VOID                                  **OutputBuffer,
+  OUT       UINTN                                 *OutputSize,
+  OUT       UINT32                                *AuthenticationStatus
+  );
+
+
+/**
+   Decompresses a section to the output buffer.
+
+   This function lookes up the compression type field in the input section and
+   applies the appropriate compression algorithm to compress the section to a
+   callee allocated buffer.
+    
+   @param  This                  Points to this instance of the
+                                 EFI_PEI_DECOMPRESS_PEI PPI.
+   @param  CompressionSection    Points to the compressed section.
+   @param  OutputBuffer          Holds the returned pointer to the decompressed
+                                 sections.
+   @param  OutputSize            Holds the returned size of the decompress
+                                 section streams.
+   
+   @retval EFI_SUCCESS           The section was decompressed successfully.
+                                 OutputBuffer contains the resulting data and
+                                 OutputSize contains the resulting size.
+
+**/
+EFI_STATUS
+EFIAPI 
+Decompress (
+  IN CONST  EFI_PEI_DECOMPRESS_PPI  *This,
+  IN CONST  EFI_COMPRESSION_SECTION *CompressionSection,
+  OUT       VOID                    **OutputBuffer,
+  OUT       UINTN                   *OutputSize
+  );
 
 /**
   Initializes the Dxe Ipl PPI

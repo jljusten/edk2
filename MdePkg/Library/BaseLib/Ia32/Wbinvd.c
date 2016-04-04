@@ -12,11 +12,16 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
 
 
+
+/**
+  Executes a WBINVD instruction.
+
+  Executes a WBINVD instruction. This function is only available on IA-32 and
+  X64.
+
+**/
 VOID
 EFIAPI
 AsmWbinvd (

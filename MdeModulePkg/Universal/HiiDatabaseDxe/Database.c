@@ -1,6 +1,8 @@
 /** @file
+Implementation for EFI_HII_DATABASE_PROTOCOL.
 
-Copyright (c) 2007, Intel Corporation
+
+Copyright (c) 2007 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -8,17 +10,6 @@ http://opensource.org/licenses/bsd-license.php
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-    Database.c
-
-Abstract:
-
-    Implementation for EFI_HII_DATABASE_PROTOCOL.
-
-Revision History
-
 
 **/
 
@@ -33,9 +24,10 @@ STATIC EFI_GUID mHiiDatabaseNotifyGuid = HII_DATABASE_NOTIFY_GUID;
 
 /**
   This function generates a HII_DATABASE_RECORD node and adds into hii database.
+  This is a internal function.
 
   @param  Private                hii database private structure
-  @param  DatabaseRecord         HII_DATABASE_RECORD node which is used to store a
+  @param  DatabaseNode           HII_DATABASE_RECORD node which is used to store a
                                  package list
 
   @retval EFI_SUCCESS            A database record is generated successfully.
@@ -44,7 +36,6 @@ STATIC EFI_GUID mHiiDatabaseNotifyGuid = HII_DATABASE_NOTIFY_GUID;
   @retval EFI_INVALID_PARAMETER  Private is NULL or DatabaseRecord is NULL.
 
 **/
-STATIC
 EFI_STATUS
 GenerateHiiDatabaseRecord (
   IN  HII_DATABASE_PRIVATE_DATA *Private,
@@ -118,6 +109,7 @@ GenerateHiiDatabaseRecord (
 
 /**
   This function checks whether a handle is a valid EFI_HII_HANDLE
+  This is a internal function.
 
   @param  Handle                 Pointer to a EFI_HII_HANDLE
 
@@ -148,6 +140,7 @@ IsHiiHandleValid (
 
 /**
   This function invokes the matching registered function.
+  This is a internal function.
 
   @param  Private                HII Database driver private structure.
   @param  NotifyType             The type of change concerning the database.
@@ -162,7 +155,6 @@ IsHiiHandleValid (
   @retval EFI_INVALID_PARAMETER  Any input parameter is not valid.
 
 **/
-STATIC
 EFI_STATUS
 InvokeRegisteredFunction (
   IN HII_DATABASE_PRIVATE_DATA    *Private,
@@ -357,6 +349,7 @@ InvokeRegisteredFunction (
 
 /**
   This function insert a GUID package to a package list node.
+  This is a internal function.
 
   @param  PackageHdr             Pointer to a buffer stored with GUID package
                                  information.
@@ -371,7 +364,6 @@ InvokeRegisteredFunction (
   @retval EFI_INVALID_PARAMETER  PackageHdr is NULL or PackageList is NULL.
 
 **/
-STATIC
 EFI_STATUS
 InsertGuidPackage (
   IN     VOID                               *PackageHdr,
@@ -417,6 +409,7 @@ InsertGuidPackage (
 
 /**
   This function exports GUID packages to a buffer.
+  This is a internal function.
 
   @param  Private                Hii database private structure.
   @param  Handle                 Identification of a package list.
@@ -431,7 +424,6 @@ InsertGuidPackage (
   @retval EFI_INVALID_PARAMETER  Any input parameter is invalid.
 
 **/
-STATIC
 EFI_STATUS
 ExportGuidPackages (
   IN HII_DATABASE_PRIVATE_DATA          *Private,
@@ -485,6 +477,7 @@ ExportGuidPackages (
 
 /**
   This function deletes all GUID packages from a package list node.
+  This is a internal function.
 
   @param  Private                Hii database private data.
   @param  Handle                 Handle of the package list which contains the to
@@ -496,7 +489,6 @@ ExportGuidPackages (
   @retval EFI_INVALID_PARAMETER  Any input parameter is not valid.
 
 **/
-STATIC
 EFI_STATUS
 RemoveGuidPackages (
   IN     HII_DATABASE_PRIVATE_DATA          *Private,
@@ -542,6 +534,7 @@ RemoveGuidPackages (
 
 /**
   This function insert a Form package to a package list node.
+  This is a internal function.
 
   @param  PackageHdr             Pointer to a buffer stored with Form package
                                  information.
@@ -556,7 +549,6 @@ RemoveGuidPackages (
   @retval EFI_INVALID_PARAMETER  PackageHdr is NULL or PackageList is NULL.
 
 **/
-STATIC
 EFI_STATUS
 InsertFormPackage (
   IN     VOID                               *PackageHdr,
@@ -618,6 +610,7 @@ InsertFormPackage (
 
 /**
   This function exports Form packages to a buffer.
+  This is a internal function.
 
   @param  Private                Hii database private structure.
   @param  Handle                 Identification of a package list.
@@ -632,7 +625,6 @@ InsertFormPackage (
   @retval EFI_INVALID_PARAMETER  Any input parameter is invalid.
 
 **/
-STATIC
 EFI_STATUS
 ExportFormPackages (
   IN HII_DATABASE_PRIVATE_DATA          *Private,
@@ -701,6 +693,7 @@ ExportFormPackages (
 
 /**
   This function deletes all Form packages from a package list node.
+  This is a internal function.
 
   @param  Private                Hii database private data.
   @param  Handle                 Handle of the package list which contains the to
@@ -712,7 +705,6 @@ ExportFormPackages (
   @retval EFI_INVALID_PARAMETER  Any input parameter is not valid.
 
 **/
-STATIC
 EFI_STATUS
 RemoveFormPackages (
   IN     HII_DATABASE_PRIVATE_DATA          *Private,
@@ -758,6 +750,7 @@ RemoveFormPackages (
 
 /**
   This function insert a String package to a package list node.
+  This is a internal function.
 
   @param  Private                Hii database private structure.
   @param  PackageHdr             Pointer to a buffer stored with String package
@@ -775,7 +768,6 @@ RemoveFormPackages (
                                  exists in current package list.
 
 **/
-STATIC
 EFI_STATUS
 InsertStringPackage (
   IN     HII_DATABASE_PRIVATE_DATA          *Private,
@@ -894,6 +886,7 @@ Error:
 
 /**
   This function exports String packages to a buffer.
+  This is a internal function.
 
   @param  Private                Hii database private structure.
   @param  Handle                 Identification of a package list.
@@ -908,7 +901,6 @@ Error:
   @retval EFI_INVALID_PARAMETER  Any input parameter is invalid.
 
 **/
-STATIC
 EFI_STATUS
 ExportStringPackages (
   IN HII_DATABASE_PRIVATE_DATA          *Private,
@@ -976,6 +968,7 @@ ExportStringPackages (
 
 /**
   This function deletes all String packages from a package list node.
+  This is a internal function.
 
   @param  Private                Hii database private data.
   @param  Handle                 Handle of the package list which contains the to
@@ -987,7 +980,6 @@ ExportStringPackages (
   @retval EFI_INVALID_PARAMETER  Any input parameter is not valid.
 
 **/
-STATIC
 EFI_STATUS
 RemoveStringPackages (
   IN     HII_DATABASE_PRIVATE_DATA          *Private,
@@ -1047,6 +1039,7 @@ RemoveStringPackages (
 
 /**
   This function insert a Font package to a package list node.
+  This is a internal function.
 
   @param  Private                Hii database private structure.
   @param  PackageHdr             Pointer to a buffer stored with Font package
@@ -1064,7 +1057,6 @@ RemoveStringPackages (
                                  exists in current hii database.
 
 **/
-STATIC
 EFI_STATUS
 InsertFontPackage (
   IN     HII_DATABASE_PRIVATE_DATA          *Private,
@@ -1190,6 +1182,7 @@ Error:
 
 /**
   This function exports Font packages to a buffer.
+  This is a internal function.
 
   @param  Private                Hii database private structure.
   @param  Handle                 Identification of a package list.
@@ -1204,7 +1197,6 @@ Error:
   @retval EFI_INVALID_PARAMETER  Any input parameter is invalid.
 
 **/
-STATIC
 EFI_STATUS
 ExportFontPackages (
   IN HII_DATABASE_PRIVATE_DATA          *Private,
@@ -1273,6 +1265,7 @@ ExportFontPackages (
 
 /**
   This function deletes all Font packages from a package list node.
+  This is a internal function.
 
   @param  Private                Hii database private data.
   @param  Handle                 Handle of the package list which contains the to
@@ -1284,7 +1277,6 @@ ExportFontPackages (
   @retval EFI_INVALID_PARAMETER  Any input parameter is not valid.
 
 **/
-STATIC
 EFI_STATUS
 RemoveFontPackages (
   IN     HII_DATABASE_PRIVATE_DATA          *Private,
@@ -1359,6 +1351,7 @@ RemoveFontPackages (
 
 /**
   This function insert a Image package to a package list node.
+  This is a internal function.
 
   @param  PackageHdr             Pointer to a buffer stored with Image package
                                  information.
@@ -1373,7 +1366,6 @@ RemoveFontPackages (
   @retval EFI_INVALID_PARAMETER  PackageHdr is NULL or PackageList is NULL.
 
 **/
-STATIC
 EFI_STATUS
 InsertImagePackage (
   IN     VOID                               *PackageHdr,
@@ -1484,6 +1476,7 @@ InsertImagePackage (
 
 /**
   This function exports Image packages to a buffer.
+  This is a internal function.
 
   @param  Private                Hii database private structure.
   @param  Handle                 Identification of a package list.
@@ -1498,7 +1491,6 @@ InsertImagePackage (
   @retval EFI_INVALID_PARAMETER  Any input parameter is invalid.
 
 **/
-STATIC
 EFI_STATUS
 ExportImagePackages (
   IN HII_DATABASE_PRIVATE_DATA          *Private,
@@ -1575,6 +1567,7 @@ ExportImagePackages (
 
 /**
   This function deletes Image package from a package list node.
+  This is a internal function.
 
   @param  Private                Hii database private data.
   @param  Handle                 Handle of the package list which contains the to
@@ -1586,7 +1579,6 @@ ExportImagePackages (
   @retval EFI_INVALID_PARAMETER  Any input parameter is not valid.
 
 **/
-STATIC
 EFI_STATUS
 RemoveImagePackages (
   IN     HII_DATABASE_PRIVATE_DATA          *Private,
@@ -1631,6 +1623,7 @@ RemoveImagePackages (
 
 /**
   This function insert a Simple Font package to a package list node.
+  This is a internal function.
 
   @param  PackageHdr             Pointer to a buffer stored with Simple Font
                                  package information.
@@ -1645,7 +1638,6 @@ RemoveImagePackages (
   @retval EFI_INVALID_PARAMETER  PackageHdr is NULL or PackageList is NULL.
 
 **/
-STATIC
 EFI_STATUS
 InsertSimpleFontPackage (
   IN     VOID                               *PackageHdr,
@@ -1707,6 +1699,7 @@ Error:
 
 /**
   This function exports SimpleFont packages to a buffer.
+  This is a internal function.
 
   @param  Private                Hii database private structure.
   @param  Handle                 Identification of a package list.
@@ -1721,7 +1714,6 @@ Error:
   @retval EFI_INVALID_PARAMETER  Any input parameter is invalid.
 
 **/
-STATIC
 EFI_STATUS
 ExportSimpleFontPackages (
   IN HII_DATABASE_PRIVATE_DATA          *Private,
@@ -1780,6 +1772,7 @@ ExportSimpleFontPackages (
 
 /**
   This function deletes all Simple Font packages from a package list node.
+  This is a internal function.
 
   @param  Private                Hii database private data.
   @param  Handle                 Handle of the package list which contains the to
@@ -1791,7 +1784,6 @@ ExportSimpleFontPackages (
   @retval EFI_INVALID_PARAMETER  Any input parameter is not valid.
 
 **/
-STATIC
 EFI_STATUS
 RemoveSimpleFontPackages (
   IN     HII_DATABASE_PRIVATE_DATA          *Private,
@@ -1835,6 +1827,7 @@ RemoveSimpleFontPackages (
 
 /**
   This function insert a Device path package to a package list node.
+  This is a internal function.
 
   @param  DevicePath             Pointer to a EFI_DEVICE_PATH_PROTOCOL protocol
                                  instance
@@ -1848,7 +1841,6 @@ RemoveSimpleFontPackages (
   @retval EFI_INVALID_PARAMETER  DevicePath is NULL or PackageList is NULL.
 
 **/
-STATIC
 EFI_STATUS
 InsertDevicePathPackage (
   IN     EFI_DEVICE_PATH_PROTOCOL           *DevicePath,
@@ -1895,6 +1887,7 @@ InsertDevicePathPackage (
 
 /**
   This function exports device path package to a buffer.
+  This is a internal function.
 
   @param  Private                Hii database private structure.
   @param  Handle                 Identification of a package list.
@@ -1909,7 +1902,6 @@ InsertDevicePathPackage (
   @retval EFI_INVALID_PARAMETER  Any input parameter is invalid.
 
 **/
-STATIC
 EFI_STATUS
 ExportDevicePathPackage (
   IN HII_DATABASE_PRIVATE_DATA          *Private,
@@ -1966,6 +1958,7 @@ ExportDevicePathPackage (
 
 /**
   This function deletes Device Path package from a package list node.
+  This is a internal function.
 
   @param  Private                Hii database private data.
   @param  Handle                 Handle of the package list.
@@ -1976,7 +1969,6 @@ ExportDevicePathPackage (
   @retval EFI_INVALID_PARAMETER  Any input parameter is not valid.
 
 **/
-STATIC
 EFI_STATUS
 RemoveDevicePathPackage (
   IN     HII_DATABASE_PRIVATE_DATA          *Private,
@@ -2022,6 +2014,7 @@ RemoveDevicePathPackage (
 /**
   This function will insert a device path package to package list firstly then
   invoke notification functions if any.
+  This is a internal function.
 
   @param  Private                Hii database private structure.
   @param  NotifyType             The type of change concerning the database.
@@ -2036,7 +2029,6 @@ RemoveDevicePathPackage (
   @retval EFI_INVALID_PARAMETER  DevicePath is NULL or PackageList is NULL.
 
 **/
-STATIC
 EFI_STATUS
 AddDevicePathPackage (
   IN HII_DATABASE_PRIVATE_DATA        *Private,
@@ -2078,6 +2070,7 @@ AddDevicePathPackage (
 
 /**
   This function insert a Keyboard Layout package to a package list node.
+  This is a internal function.
 
   @param  PackageHdr             Pointer to a buffer stored with Keyboard Layout
                                  package information.
@@ -2092,7 +2085,6 @@ AddDevicePathPackage (
   @retval EFI_INVALID_PARAMETER  PackageHdr is NULL or PackageList is NULL.
 
 **/
-STATIC
 EFI_STATUS
 InsertKeyboardLayoutPackage (
   IN     VOID                               *PackageHdr,
@@ -2149,6 +2141,7 @@ Error:
 
 /**
   This function exports Keyboard Layout packages to a buffer.
+  This is a internal function.
 
   @param  Private                Hii database private structure.
   @param  Handle                 Identification of a package list.
@@ -2164,7 +2157,6 @@ Error:
   @retval EFI_INVALID_PARAMETER  Any input parameter is invalid.
 
 **/
-STATIC
 EFI_STATUS
 ExportKeyboardLayoutPackages (
   IN HII_DATABASE_PRIVATE_DATA          *Private,
@@ -2225,6 +2217,7 @@ ExportKeyboardLayoutPackages (
 
 /**
   This function deletes all Keyboard Layout packages from a package list node.
+  This is a internal function.
 
   @param  Private                Hii database private data.
   @param  Handle                 Handle of the package list which contains the to
@@ -2237,7 +2230,6 @@ ExportKeyboardLayoutPackages (
   @retval EFI_INVALID_PARAMETER  Any input parameter is not valid.
 
 **/
-STATIC
 EFI_STATUS
 RemoveKeyboardLayoutPackages (
   IN     HII_DATABASE_PRIVATE_DATA          *Private,
@@ -2286,6 +2278,8 @@ RemoveKeyboardLayoutPackages (
   invoke notification functions if any. It is the worker function of
   HiiNewPackageList and HiiUpdatePackageList.
 
+  This is a internal function.
+
   @param  Private                Hii database private structure.
   @param  NotifyType             The type of change concerning the database.
   @param  PackageList            Pointer to a package list.
@@ -2299,7 +2293,6 @@ RemoveKeyboardLayoutPackages (
   @retval EFI_INVALID_PARAMETER  Any input parameter is invalid.
 
 **/
-STATIC
 EFI_STATUS
 AddPackages (
   IN HII_DATABASE_PRIVATE_DATA         *Private,
@@ -2503,6 +2496,8 @@ AddPackages (
   This function exports a package list to a buffer. It is the worker function
   of HiiExportPackageList.
 
+  This is a internal function.
+
   @param  Private                Hii database private structure.
   @param  Handle                 Identification of a package list.
   @param  PackageList            Pointer to a package list which will be exported.
@@ -2516,7 +2511,6 @@ AddPackages (
   @retval EFI_INVALID_PARAMETER  Any input parameter is invalid.
 
 **/
-STATIC
 EFI_STATUS
 ExportPackageList (
   IN HII_DATABASE_PRIVATE_DATA          *Private,
@@ -2771,8 +2765,7 @@ HiiNewPackageList (
 
   @retval EFI_SUCCESS            The data associated with the Handle was removed
                                  from  the HII database.
-  @retval EFI_NOT_FOUND          The specified PackageList could not be found in
-                                 database.
+  @retval EFI_NOT_FOUND          The specified andle is not in database.
   @retval EFI_INVALID_PARAMETER  The Handle was not valid.
 
 **/
@@ -2790,8 +2783,12 @@ HiiRemovePackageList (
   HII_DATABASE_PACKAGE_LIST_INSTANCE  *PackageList;
   HII_HANDLE                          *HiiHandle;
 
-  if (This == NULL || !IsHiiHandleValid (Handle)) {
+  if (This == NULL) {
     return EFI_INVALID_PARAMETER;
+  }
+
+  if (!IsHiiHandleValid (Handle)) {
+    return EFI_NOT_FOUND;
   }
 
   Private = HII_DATABASE_DATABASE_PRIVATE_DATA_FROM_THIS (This);
@@ -2879,9 +2876,8 @@ HiiRemovePackageList (
   @retval EFI_SUCCESS            The HII database was successfully updated.
   @retval EFI_OUT_OF_RESOURCES   Unable to allocate enough memory for the updated
                                  database.
-  @retval EFI_INVALID_PARAMETER  Handle or PackageList was NULL.
-  @retval EFI_NOT_FOUND          The Handle was not valid or could not be found in
-                                 database.
+  @retval EFI_INVALID_PARAMETER  PackageList was NULL.
+  @retval EFI_NOT_FOUND          The specified Handle is not in database.
 
 **/
 EFI_STATUS
@@ -2900,7 +2896,7 @@ HiiUpdatePackageList (
   HII_DATABASE_PACKAGE_LIST_INSTANCE  *OldPackageList;
   EFI_HII_PACKAGE_HEADER              PackageHeader;
 
-  if (This == NULL || PackageList == NULL || Handle == NULL) {
+  if (This == NULL || PackageList == NULL) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -2993,12 +2989,17 @@ HiiUpdatePackageList (
   @param  Handle                 An array of EFI_HII_HANDLE instances returned.
 
   @retval EFI_SUCCESS            The matching handles are outputed successfully.
+                                               HandleBufferLength is updated with the actual length.
   @retval EFI_BUFFER_TO_SMALL    The HandleBufferLength parameter indicates that
                                  Handle is too small to support the number of
                                  handles. HandleBufferLength is updated with a
                                  value that will  enable the data to fit.
   @retval EFI_NOT_FOUND          No matching handle could not be found in database.
   @retval EFI_INVALID_PARAMETER  Handle or HandleBufferLength was NULL.
+  
+  @retval EFI_INVALID_PARAMETER  PackageType is not a EFI_HII_PACKAGE_TYPE_GUID but
+                                                     PackageGuid is not NULL, PackageType is a EFI_HII_
+                                                     PACKAGE_TYPE_GUID but PackageGuid is NULL.
 
 **/
 EFI_STATUS
@@ -3329,7 +3330,7 @@ HiiRegisterPackageNotify (
 
   @param  This                   A pointer to the EFI_HII_DATABASE_PROTOCOL
                                  instance.
-  @param  NotifyHandle           The handle of the notification function being
+  @param  NotificationHandle     The handle of the notification function being
                                  unregistered.
 
   @retval EFI_SUCCESS            Notification is unregistered successfully.
@@ -3350,8 +3351,12 @@ HiiUnregisterPackageNotify (
   LIST_ENTRY                          *Link;
   EFI_STATUS                          Status;
 
-  if (This == NULL || NotificationHandle == NULL) {
+  if (This == NULL) {
     return EFI_INVALID_PARAMETER;
+  }
+
+  if (NotificationHandle == NULL) {
+    return EFI_NOT_FOUND;
   }
 
   Status = gBS->OpenProtocol (
@@ -3363,7 +3368,7 @@ HiiUnregisterPackageNotify (
                   EFI_OPEN_PROTOCOL_TEST_PROTOCOL
                   );
   if (EFI_ERROR (Status)) {
-    return EFI_INVALID_PARAMETER;
+    return EFI_NOT_FOUND;
   }
 
   Private = HII_DATABASE_DATABASE_PRIVATE_DATA_FROM_THIS (This);
@@ -3474,7 +3479,7 @@ HiiFindKeyboardLayouts (
       for (Index = 0; Index < LayoutCount; Index++) {
         ResultSize += sizeof (EFI_GUID);
         if (ResultSize <= *KeyGuidBufferLength) {
-          CopyMem (KeyGuidBuffer + Index, Layout + sizeof (UINT16), sizeof (EFI_GUID));
+          CopyMem (KeyGuidBuffer + (ResultSize / sizeof (EFI_GUID) - 1), Layout + sizeof (UINT16), sizeof (EFI_GUID));
           CopyMem (&LayoutLength, Layout, sizeof (UINT16));
           Layout = Layout + LayoutLength;
         }

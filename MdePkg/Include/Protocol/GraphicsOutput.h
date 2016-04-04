@@ -3,7 +3,7 @@
 
   Abstraction of a very simple graphics device.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -16,8 +16,6 @@
 
 #ifndef __GRAPHICS_OUTPUT_H__
 #define __GRAPHICS_OUTPUT_H__
-
-#include <PiDxe.h>
 
 #define EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID \
   { \
@@ -67,13 +65,12 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_GRAPHICS_OUTPUT_PROTOCOL_QUERY_MODE) (
+(EFIAPI *EFI_GRAPHICS_OUTPUT_PROTOCOL_QUERY_MODE)(
   IN  EFI_GRAPHICS_OUTPUT_PROTOCOL          *This,
   IN  UINT32                                ModeNumber,
   OUT UINTN                                 *SizeOfInfo,
   OUT EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  **Info
-  )
-;
+  );
 
 /**
   Return the current video mode information.
@@ -88,11 +85,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_GRAPHICS_OUTPUT_PROTOCOL_SET_MODE) (
+(EFIAPI *EFI_GRAPHICS_OUTPUT_PROTOCOL_SET_MODE)(
   IN  EFI_GRAPHICS_OUTPUT_PROTOCOL *This,
   IN  UINT32                       ModeNumber
-  )
-;
+  );
 
 typedef struct {
   UINT8 Blue;
@@ -106,41 +102,53 @@ typedef union {
   UINT32                        Raw;
 } EFI_GRAPHICS_OUTPUT_BLT_PIXEL_UNION;
 
+///
+/// actions for BltOperations
+///
 typedef enum {
+  ///
+  /// Write data from the  BltBuffer pixel (SourceX, SourceY) 
+  /// directly to every pixel of the video display rectangle 
+  /// (DestinationX, DestinationY) (DestinationX + Width, DestinationY + Height). 
+  /// Only one pixel will be used from the BltBuffer. Delta is NOT used.  
+  ///
   EfiBltVideoFill,
+  
+  ///
+  /// Read data from the video display rectangle 
+  /// (SourceX, SourceY) (SourceX + Width, SourceY + Height) and place it in 
+  /// the BltBuffer rectangle (DestinationX, DestinationY ) 
+  /// (DestinationX + Width, DestinationY + Height). If DestinationX or 
+  /// DestinationY is not zero then Delta must be set to the length in bytes 
+  /// of a row in the BltBuffer.  
+  ///
   EfiBltVideoToBltBuffer,
+  
+  ///
+  /// Write data from the  BltBuffer rectangle 
+  /// (SourceX, SourceY) (SourceX + Width, SourceY + Height) directly to the 
+  /// video display rectangle (DestinationX, DestinationY) 
+  /// (DestinationX + Width, DestinationY + Height). If SourceX or SourceY is 
+  /// not zero then Delta must be set to the length in bytes of a row in the 
+  /// BltBuffer.
+  ///
   EfiBltBufferToVideo, 
+  
+  ///
+  /// Copy from the video display rectangle (SourceX, SourceY)
+  /// (SourceX + Width, SourceY + Height) .to the video display rectangle 
+  /// (DestinationX, DestinationY) (DestinationX + Width, DestinationY + Height). 
+  /// The BltBuffer and Delta  are not used in this mode.
+  /// EfiBltVideoToVideo,
+  ///
   EfiBltVideoToVideo,
+  
   EfiGraphicsOutputBltOperationMax
 } EFI_GRAPHICS_OUTPUT_BLT_OPERATION;
 
 /**
-  The following table defines actions for BltOperations:
-
-  <B>EfiBltVideoFill</B> - Write data from the  BltBuffer pixel (SourceX, SourceY) 
-  directly to every pixel of the video display rectangle 
-  (DestinationX, DestinationY) (DestinationX + Width, DestinationY + Height). 
-  Only one pixel will be used from the BltBuffer. Delta is NOT used.
-
-  <B>EfiBltVideoToBltBuffer</B> - Read data from the video display rectangle 
-  (SourceX, SourceY) (SourceX + Width, SourceY + Height) and place it in 
-  the BltBuffer rectangle (DestinationX, DestinationY ) 
-  (DestinationX + Width, DestinationY + Height). If DestinationX or 
-  DestinationY is not zero then Delta must be set to the length in bytes 
-  of a row in the BltBuffer.
-
-  <B>EfiBltBufferToVideo</B> - Write data from the  BltBuffer rectangle 
-  (SourceX, SourceY) (SourceX + Width, SourceY + Height) directly to the 
-  video display rectangle (DestinationX, DestinationY) 
-  (DestinationX + Width, DestinationY + Height). If SourceX or SourceY is 
-  not zero then Delta must be set to the length in bytes of a row in the 
-  BltBuffer.
-
-  <B>EfiBltVideoToVideo</B> - Copy from the video display rectangle (SourceX, SourceY)
-  (SourceX + Width, SourceY + Height) .to the video display rectangle 
-  (DestinationX, DestinationY) (DestinationX + Width, DestinationY + Height). 
-  The BltBuffer and Delta  are not used in this mode.
-
+  Blt a rectangle of pixels on the graphics screen. Blt stands for BLock Transfer.
+  
   @param  This         Protocol instance pointer.
   @param  BltBuffer    Buffer containing data to blit into video buffer. This
                        buffer has a size of Width*Height*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL)
@@ -160,7 +168,7 @@ typedef enum {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_GRAPHICS_OUTPUT_PROTOCOL_BLT) (
+(EFIAPI *EFI_GRAPHICS_OUTPUT_PROTOCOL_BLT)(
   IN  EFI_GRAPHICS_OUTPUT_PROTOCOL            *This,
   IN  EFI_GRAPHICS_OUTPUT_BLT_PIXEL           *BltBuffer,   OPTIONAL
   IN  EFI_GRAPHICS_OUTPUT_BLT_OPERATION       BltOperation,
@@ -182,6 +190,12 @@ typedef struct {
   UINTN                                  FrameBufferSize;
 } EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE;
 
+/**
+  @par Protocol Description:
+  Provides a basic abstraction to set video modes and copy pixels to and from 
+  the graphics controller's frame buffer. The linear address of the hardware 
+  frame buffer is also exposed so software can write directly to the video hardware.
+**/
 struct _EFI_GRAPHICS_OUTPUT_PROTOCOL {
   EFI_GRAPHICS_OUTPUT_PROTOCOL_QUERY_MODE  QueryMode;
   EFI_GRAPHICS_OUTPUT_PROTOCOL_SET_MODE    SetMode;

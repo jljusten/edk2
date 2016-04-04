@@ -12,11 +12,20 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
 
 
+
+/**
+  Writes a value to Control Register 4 (CR4).
+
+  Writes and returns a new value to CR4. This function is only available on
+  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+
+  @param  Cr4 The value to write to CR4.
+
+  @return The value written to CR4.
+
+**/
 UINTN
 EFIAPI
 AsmWriteCr4 (

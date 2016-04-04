@@ -1,7 +1,9 @@
 /** @file
-  EFI Component Name 2 Protocol
+  UEFI Component Name 2 Protocol as defined in the UEFI 2.1 specification.
+  This protocol is used to retrieve user readable names of drivers 
+  and controllers managed by UEFI Drivers.
 
-  Copyright (c) 2006 - 2007, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -15,11 +17,9 @@
 #ifndef __EFI_COMPONENT_NAME2_H__
 #define __EFI_COMPONENT_NAME2_H__
 
-#include <PiDxe.h>
-
-//
-// Global ID for the Component Name Protocol
-//
+///
+/// Global ID for the Component Name Protocol
+///
 #define EFI_COMPONENT_NAME2_PROTOCOL_GUID \
   {0x6a7a5cff, 0xe8d9, 0x4f70, { 0xba, 0xda, 0x75, 0xab, 0x30, 0x25, 0xce, 0x14 } }
 
@@ -31,7 +31,7 @@ typedef struct _EFI_COMPONENT_NAME2_PROTOCOL  EFI_COMPONENT_NAME2_PROTOCOL;
   the EFI Driver.
 
   @param  This       A pointer to the
-                     EFI_COMPONENT_NAME_PROTOCOL instance.
+                     EFI_COMPONENT_NAME2_PROTOCOL instance.
   
   @param  Language   A pointer to a Null-terminated ASCII string
                      array indicating the language. This is the
@@ -64,7 +64,7 @@ typedef struct _EFI_COMPONENT_NAME2_PROTOCOL  EFI_COMPONENT_NAME2_PROTOCOL;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_COMPONENT_NAME2_GET_DRIVER_NAME) (
+(EFIAPI *EFI_COMPONENT_NAME2_GET_DRIVER_NAME)(
   IN EFI_COMPONENT_NAME2_PROTOCOL          *This,
   IN  CHAR8                                *Language,
   OUT CHAR16                               **DriverName
@@ -76,7 +76,7 @@ EFI_STATUS
   the controller that is being managed by an EFI Driver.
 
   @param  This             A pointer to the
-                           EFI_COMPONENT_NAME_PROTOCOL instance.
+                           EFI_COMPONENT_NAME2_PROTOCOL instance.
 
   @param  ControllerHandle The handle of a controller that the
                            driver specified by This is managing.
@@ -143,7 +143,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_COMPONENT_NAME2_GET_CONTROLLER_NAME) (
+(EFIAPI *EFI_COMPONENT_NAME2_GET_CONTROLLER_NAME)(
   IN EFI_COMPONENT_NAME2_PROTOCOL *This,
   IN  EFI_HANDLE                  ControllerHandle,
   IN  EFI_HANDLE                  ChildHandle        OPTIONAL,
@@ -152,11 +152,24 @@ EFI_STATUS
   );
 
 //
-// Interface structure for the Component Name Protocol
+// Interface structure for the Component Name2 Protocol
 //
+/**
+  @par Protocol Description:
+  This protocol is used to retrieve user readable names of drivers 
+  and controllers managed by UEFI Drivers.
+**/
 struct _EFI_COMPONENT_NAME2_PROTOCOL {
   EFI_COMPONENT_NAME2_GET_DRIVER_NAME      GetDriverName;
   EFI_COMPONENT_NAME2_GET_CONTROLLER_NAME  GetControllerName;
+
+  ///
+  /// A Null-terminated ASCII string array that contains one or more
+  /// supported language codes. This is the list of language codes that
+  /// this protocol supports. The number of languages supported by a
+  /// driver is up to the driver writer. SupportedLanguages is
+  /// specified in RFC 3066 format.  
+  ///
   CHAR8                                    *SupportedLanguages;
 };
 

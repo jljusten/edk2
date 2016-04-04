@@ -13,74 +13,41 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <DxeMain.h>
+#include "DxeMain.h"
 
 
-STATIC EFI_DEBUG_IMAGE_INFO_TABLE_HEADER  mDebugInfoTableHeader = {
+EFI_DEBUG_IMAGE_INFO_TABLE_HEADER  mDebugInfoTableHeader = {
   0,          // volatile UINT32                 UpdateStatus;
   0,          // UINT32                          TableSize;
   NULL        // EFI_DEBUG_IMAGE_INFO            *EfiDebugImageInfoTable;
 };
 
-STATIC EFI_SYSTEM_TABLE_POINTER *mDebugTable = NULL;
+UINTN mMaxTableEntries = 0;
 
-    
+EFI_SYSTEM_TABLE_POINTER *mDebugTable = NULL;
+
+#define FOUR_MEG_ALIGNMENT   0x400000
+
+#define EFI_DEBUG_TABLE_ENTRY_SIZE       (sizeof (VOID *))
 
 /**
   Creates and initializes the DebugImageInfo Table.  Also creates the configuration
   table and registers it into the system table.
-
-  Note:
-    This function allocates memory, frees it, and then allocates memory at an
-    address within the initial allocation. Since this function is called early
-    in DXE core initialization (before drivers are dispatched), this should not
-    be a problem.
 
 **/
 VOID
 CoreInitializeDebugImageInfoTable (
   VOID
   )
-{ 
+{
   EFI_STATUS                          Status;
-  EFI_PHYSICAL_ADDRESS                Mem;
-  UINTN                               NumberOfPages; 
 
   //
-  // Allocate boot services memory for the structure. It's required to be aligned on
-  // a 4M boundary, so allocate a 4M block (plus what we require), free it up, calculate
-  // a 4M aligned address within the memory we just freed, and then allocate memory at that
-  // address for our initial structure.
-  //
-  NumberOfPages = FOUR_MEG_PAGES + EFI_SIZE_TO_PAGES(sizeof (EFI_SYSTEM_TABLE_POINTER));  
-
-  Status = CoreAllocatePages (AllocateAnyPages, EfiBootServicesData, NumberOfPages , &Mem); 
-  ASSERT_EFI_ERROR (Status);
-  if (EFI_ERROR(Status)) {
-    return;
-  }
-  Status = CoreFreePages (Mem, NumberOfPages); 
-  ASSERT_EFI_ERROR (Status);
-  if (EFI_ERROR(Status)) {
-    return;
-  }
-  //
-  // Now get a 4M aligned address within the memory range we were given.
-  // Then allocate memory at that address
-  //
-  Mem = (Mem + FOUR_MEG_MASK) & (~FOUR_MEG_MASK);
-  
-  Status = CoreAllocatePages (AllocateAddress, EfiBootServicesData, NumberOfPages - FOUR_MEG_PAGES, &Mem); 
-  ASSERT_EFI_ERROR (Status);
-  if (EFI_ERROR(Status)) {
-    return;
-  }
-  //
-  // We now have a 4M aligned page allocated, so fill in the data structure.
+  // Allocate 4M aligned page for the structure and fill in the data.
   // Ideally we would update the CRC now as well, but the service may not yet be available.
   // See comments in the CoreUpdateDebugTableCrc32() function below for details.
   //
-  mDebugTable = (EFI_SYSTEM_TABLE_POINTER *)(UINTN)Mem;
+  mDebugTable = AllocateAlignedPages (EFI_SIZE_TO_PAGES (sizeof (EFI_SYSTEM_TABLE_POINTER)), FOUR_MEG_ALIGNMENT); 
   mDebugTable->Signature = EFI_SYSTEM_TABLE_SIGNATURE;
   mDebugTable->EfiSystemTableBase = (EFI_PHYSICAL_ADDRESS) (UINTN) gDxeCoreST;
   mDebugTable->Crc32 = 0;
@@ -104,7 +71,7 @@ CoreUpdateDebugTableCrc32 (
 {
   ASSERT(mDebugTable != NULL);
   mDebugTable->Crc32 = 0;
-  gDxeCoreBS->CalculateCrc32 ((VOID *)mDebugTable, sizeof (EFI_SYSTEM_TABLE_POINTER), &mDebugTable->Crc32);
+  gBS->CalculateCrc32 ((VOID *)mDebugTable, sizeof (EFI_SYSTEM_TABLE_POINTER), &mDebugTable->Crc32);
 }
 
 
@@ -112,9 +79,9 @@ CoreUpdateDebugTableCrc32 (
   Adds a new DebugImageInfo structure to the DebugImageInfo Table.  Re-Allocates
   the table if it's not large enough to accomidate another entry.
 
-  @param  ImageInfoType  type of debug image information 
-  @param  LoadedImage    pointer to the loaded image protocol for the image being 
-                         loaded 
+  @param  ImageInfoType  type of debug image information
+  @param  LoadedImage    pointer to the loaded image protocol for the image being
+                         loaded
   @param  ImageHandle    image handle for the image being loaded
 
 **/
@@ -124,11 +91,10 @@ CoreNewDebugImageInfoEntry (
   IN  EFI_LOADED_IMAGE_PROTOCOL   *LoadedImage,
   IN  EFI_HANDLE                  ImageHandle
   )
-{    
+{
   EFI_DEBUG_IMAGE_INFO      *Table;
   EFI_DEBUG_IMAGE_INFO      *NewTable;
   UINTN                     Index;
-  UINTN                     MaxTableIndex;
   UINTN                     TableSize;
 
   //
@@ -137,22 +103,25 @@ CoreNewDebugImageInfoEntry (
   mDebugInfoTableHeader.UpdateStatus |= EFI_DEBUG_IMAGE_INFO_UPDATE_IN_PROGRESS;
 
   Table = mDebugInfoTableHeader.EfiDebugImageInfoTable;
-  MaxTableIndex = mDebugInfoTableHeader.TableSize;
-
-  for (Index = 0; Index < MaxTableIndex; Index++) {
-    if (Table[Index].NormalImage == NULL) {
-      //
-      // We have found a free entry so exit the loop
-      //
-      break;
+  
+  if (mDebugInfoTableHeader.TableSize < mMaxTableEntries) {
+    //
+    // We still have empty entires in the Table, find the first empty entry.
+    //
+    Index = 0;
+    while (Table[Index].NormalImage != NULL) {
+      Index++;
     }
-  }
-  if (Index == MaxTableIndex) {
+    //
+    // There must be an empty entry in the in the table.
+    //
+    ASSERT (Index < mMaxTableEntries);
+  } else {
     //
     //  Table is full, so re-allocate another page for a larger table...
     //
-    TableSize = MaxTableIndex * EFI_DEBUG_TABLE_ENTRY_SIZE;
-    NewTable = CoreAllocateZeroBootServicesPool (TableSize + EFI_PAGE_SIZE);
+    TableSize = mMaxTableEntries * EFI_DEBUG_TABLE_ENTRY_SIZE;
+    NewTable = AllocateZeroPool (TableSize + EFI_PAGE_SIZE);
     if (NewTable == NULL) {
       mDebugInfoTableHeader.UpdateStatus &= ~EFI_DEBUG_IMAGE_INFO_UPDATE_IN_PROGRESS;
       return;
@@ -170,12 +139,18 @@ CoreNewDebugImageInfoEntry (
     //
     Table = NewTable;
     mDebugInfoTableHeader.EfiDebugImageInfoTable = NewTable;
-    mDebugInfoTableHeader.TableSize += EFI_PAGE_SIZE / EFI_DEBUG_TABLE_ENTRY_SIZE;
+    //
+    // Enlarge the max table entries and set the first empty entry index to
+    // be the original max table entries.
+    //
+    Index             = mMaxTableEntries;
+    mMaxTableEntries += EFI_PAGE_SIZE / EFI_DEBUG_TABLE_ENTRY_SIZE;
   }
+
   //
   // Allocate data for new entry
   //
-  Table[Index].NormalImage = CoreAllocateZeroBootServicesPool (sizeof (EFI_DEBUG_IMAGE_INFO_NORMAL));
+  Table[Index].NormalImage = AllocateZeroPool (sizeof (EFI_DEBUG_IMAGE_INFO_NORMAL));
   if (Table[Index].NormalImage != NULL) {
     //
     // Update the entry
@@ -183,6 +158,11 @@ CoreNewDebugImageInfoEntry (
     Table[Index].NormalImage->ImageInfoType               = (UINT32) ImageInfoType;
     Table[Index].NormalImage->LoadedImageProtocolInstance = LoadedImage;
     Table[Index].NormalImage->ImageHandle                 = ImageHandle;
+    //
+    // Increase the number of EFI_DEBUG_IMAGE_INFO elements and set the mDebugInfoTable in modified status.
+    //
+    mDebugInfoTableHeader.TableSize++;
+    mDebugInfoTableHeader.UpdateStatus |= EFI_DEBUG_IMAGE_INFO_TABLE_MODIFIED;
   }
   mDebugInfoTableHeader.UpdateStatus &= ~EFI_DEBUG_IMAGE_INFO_UPDATE_IN_PROGRESS;
 }
@@ -199,7 +179,7 @@ VOID
 CoreRemoveDebugImageInfoEntry (
   EFI_HANDLE ImageHandle
   )
-{    
+{
   EFI_DEBUG_IMAGE_INFO  *Table;
   UINTN                 Index;
 
@@ -207,7 +187,7 @@ CoreRemoveDebugImageInfoEntry (
 
   Table = mDebugInfoTableHeader.EfiDebugImageInfoTable;
 
-  for (Index = 0; Index < mDebugInfoTableHeader.TableSize; Index++) {
+  for (Index = 0; Index < mMaxTableEntries; Index++) {
     if (Table[Index].NormalImage != NULL && Table[Index].NormalImage->ImageHandle == ImageHandle) {
       //
       // Found a match. Free up the record, then NULL the pointer to indicate the slot
@@ -215,6 +195,11 @@ CoreRemoveDebugImageInfoEntry (
       //
       CoreFreePool (Table[Index].NormalImage);
       Table[Index].NormalImage = NULL;
+      //
+      // Decrease the number of EFI_DEBUG_IMAGE_INFO elements and set the mDebugInfoTable in modified status.
+      //
+      mDebugInfoTableHeader.TableSize--;
+      mDebugInfoTableHeader.UpdateStatus |= EFI_DEBUG_IMAGE_INFO_TABLE_MODIFIED;
       break;
     }
   }

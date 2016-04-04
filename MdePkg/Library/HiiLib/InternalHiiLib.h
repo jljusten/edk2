@@ -15,13 +15,11 @@
 #ifndef __INTERNAL_HII_LIB_H__
 #define __INTERNAL_HII_LIB_H__
 
-#include <PiDxe.h>
+#include <Uefi.h>
 
 #include <Protocol/HiiDatabase.h>
 #include <Protocol/HiiString.h>
 #include <Protocol/DevicePath.h>
-
-#include <Guid/GlobalVariable.h>
 
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -32,17 +30,26 @@
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/PcdLib.h>
 #include <Library/DevicePathLib.h>
+#include <Library/UefiLib.h>
 
 #define HII_LIB_DEFAULT_STRING_SIZE     0x200
 
 
-extern CONST EFI_HII_DATABASE_PROTOCOL   *mHiiDatabaseProt;
-extern CONST EFI_HII_STRING_PROTOCOL     *mHiiStringProt;
+extern CONST EFI_HII_DATABASE_PROTOCOL         *mHiiDatabaseProt;
+extern CONST EFI_HII_STRING_PROTOCOL           *mHiiStringProt;
 
+/**
+  This function check if the Hii Handle is a valid handle registered
+  in the HII database.
+
+  @param HiiHandle The HII Handle.
+
+  @retval TRUE If it is a valid HII handle.
+  @retval FALSE If it is a invalid HII handle.
+**/
 BOOLEAN
 IsHiiHandleRegistered (
   EFI_HII_HANDLE    HiiHandle
-  )
-;
+  );
 
 #endif

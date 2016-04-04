@@ -1,5 +1,5 @@
 /** @file
-  Real Time clock Architectural Protocol as defined in DXE CIS
+  Real Time clock Architectural Protocol as defined in PI Specification VOLUME 2 DXE
 
   This code abstracts time and data functions. Used to provide
   Time and date related EFI runtime services.
@@ -11,7 +11,7 @@
 
   No CRC of the EFI system table is required, as it is done in the DXE core.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -20,17 +20,14 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
-  @par Revision Reference:
-  Version 0.91B.
-
 **/
 
 #ifndef __ARCH_PROTOCOL_REAL_TIME_CLOCK_H__
 #define __ARCH_PROTOCOL_REAL_TIME_CLOCK_H__
 
-//
-// Global ID for the Real Time Clock Architectural Protocol
-//
+///
+/// Global ID for the Real Time Clock Architectural Protocol
+///
 #define EFI_REAL_TIME_CLOCK_ARCH_PROTOCOL_GUID \
   { 0x27CFAC87, 0x46CC, 0x11d4, {0x9A, 0x38, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D } }
 

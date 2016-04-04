@@ -13,8 +13,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#ifndef __INTERNAL_SMBUS_LIB_H
-#define __INTERNAL_SMBUS_LIB_H
+#ifndef __INTERNAL_SMBUS_LIB_H_
+#define __INTERNAL_SMBUS_LIB_H_
 
 
 #include <PiDxe.h>
@@ -84,7 +84,6 @@ EFIAPI
 SmbusLibConstructor (
   IN EFI_HANDLE                ImageHandle,
   IN EFI_SYSTEM_TABLE          *SystemTable
-  )
-;
+  );
 
 #endif

@@ -4,7 +4,7 @@
   Every EFI driver and application is passed an image handle when it is loaded.
   This image handle will contain a Loaded Image Protocol.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -30,44 +30,78 @@
     0xbc62157e, 0x3e33, 0x4fec, {0x99, 0x20, 0x2d, 0x3b, 0x36, 0xd7, 0x50, 0xdf } \
   }
 
-//
-// Protocol GUID defined in EFI1.1.
-// 
+///
+/// Protocol GUID defined in EFI1.1.
+/// 
 #define LOADED_IMAGE_PROTOCOL   EFI_LOADED_IMAGE_PROTOCOL_GUID
 
-//
-// EFI_SYSTEM_TABLE & EFI_IMAGE_UNLOAD are defined in EfiApi.h
-//
+///
+/// EFI_SYSTEM_TABLE & EFI_IMAGE_UNLOAD are defined in EfiApi.h
+///
 #define EFI_LOADED_IMAGE_PROTOCOL_REVISION  0x1000
 
-//
-// Revision defined in EFI1.1.
-// 
+///
+/// Revision defined in EFI1.1.
+/// 
 #define EFI_LOADED_IMAGE_INFORMATION_REVISION    EFI_LOADED_IMAGE_PROTOCOL_REVISION
 
-
+/**  
+  @par Protocol Description:
+  Can be used on any image handle to obtain information about the loaded image.
+**/
 typedef struct {
+  ///
+  /// Defines the revision of the EFI_LOADED_IMAGE_PROTOCOL structure. 
+  /// All future revisions will be backward compatible to the current revision.
+  ///
   UINT32                    Revision;
+
+  ///
+  /// Parent image's image handle. NULL if the image is loaded directly from 
+  /// the firmware's boot manager. 
+  ///
   EFI_HANDLE                ParentHandle;
   EFI_SYSTEM_TABLE          *SystemTable;
 
   //
   // Source location of image
   //
+  ///
+  /// The device handle that the EFI Image was loaded from. 
+  ///
   EFI_HANDLE                DeviceHandle;
+  
+  ///
+  /// A pointer to the file path portion specific to DeviceHandle 
+  /// that the EFI Image was loaded from. 
+  ///
   EFI_DEVICE_PATH_PROTOCOL  *FilePath;
-  VOID                      *Reserved;
+  VOID                      *Reserved;       ///< Reserved. DO NOT USE.
 
   //
   // Images load options
   //
+  ///
+  /// The size in bytes of LoadOptions.
+  ///
   UINT32                    LoadOptionsSize;
+  
+  ///
+  /// A pointer to the image's binary load options.
+  ///
   VOID                      *LoadOptions;
 
   //
   // Location of where image was loaded
   //
+  ///
+  /// The base address at which the image was loaded.
+  ///
   VOID                      *ImageBase;
+  
+  ///
+  /// The size in bytes of the loaded image.
+  ///
   UINT64                    ImageSize;
   EFI_MEMORY_TYPE           ImageCodeType;
   EFI_MEMORY_TYPE           ImageDataType;

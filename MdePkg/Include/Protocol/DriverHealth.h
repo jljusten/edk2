@@ -1,7 +1,7 @@
 /** @file
   EFI Driver Health Protocol
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -22,9 +22,9 @@
   
 typedef struct _EFI_DRIVER_HEALTH_PROTOCOL  EFI_DRIVER_HEALTH_PROTOCOL;
 
-//
-// EFI_DRIVER_HEALTH_HEALTH_STATUS
-//
+///
+/// EFI_DRIVER_HEALTH_HEALTH_STATUS
+///
 typedef enum {
   EfiDriverHealthStatusHealthy,
   EfiDriverHealthStatusRepairRequired,
@@ -34,9 +34,9 @@ typedef enum {
   EfiDriverHealthStatusRebootRequired
 } EFI_DRIVER_HEALTH_HEALTH_STATUS;
 
-//
-// EFI_DRIVER_HEALTH_HII_MESSAGE
-//
+///
+/// EFI_DRIVER_HEALTH_HII_MESSAGE
+///
 typedef struct {
   EFI_HII_HANDLE  HiiHandle;
   EFI_STRING_ID   StringId;
@@ -55,7 +55,7 @@ typedef struct {
 **/
 typedef
 VOID
-(EFIAPI *EFI_DRIVER_HEALTH_REPAIR_PROGRESS_NOTIFY) (
+(EFIAPI *EFI_DRIVER_HEALTH_REPAIR_PROGRESS_NOTIFY)(
   IN UINTN  Value,
   IN UINTN  Limit
   );
@@ -161,7 +161,7 @@ VOID
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DRIVER_HEALTH_GET_HEALTH_STATUS) (
+(EFIAPI *EFI_DRIVER_HEALTH_GET_HEALTH_STATUS)(
   IN  EFI_DRIVER_HEALTH_PROTOCOL       *This,
   IN  EFI_HANDLE                       ControllerHandle  OPTIONAL,
   IN  EFI_HANDLE                       ChildHandle       OPTIONAL,
@@ -183,7 +183,8 @@ EFI_STATUS
                            drivers when an attempt is made to repair a bus controller.
                            If will not be NULL when an attempt is made to repair a 
                            child controller produced by the driver.
-  @param  RepairNotify     A notification function that may be used by a driver to 
+  @param  ProgressNotification
+                           A notification function that may be used by a driver to 
                            report the progress of the repair operation.  This is 
                            an optional parameter that may be NULL.  
 
@@ -201,7 +202,7 @@ EFI_STATUS
 */
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DRIVER_HEALTH_REPAIR) (
+(EFIAPI *EFI_DRIVER_HEALTH_REPAIR)(
   IN  EFI_DRIVER_HEALTH_PROTOCOL                *This,
   IN  EFI_HANDLE                                ControllerHandle,
   IN  EFI_HANDLE                                ChildHandle           OPTIONAL,
@@ -230,15 +231,6 @@ EFI_STATUS
   may then need to be reconnected or the system may need to be rebooted for the 
   configuration changes to take affect.  Figure 2-1 below shows all the possible 
   health states of a controller and the legal transitions between the health states. 
-
-  @param GetHealthStatus     Retrieves the health status of a controller in the 
-                             platform.  This function can also optionally return 
-                             warning messages, error messages, and a set of HII 
-                             Forms that may be repair a controller that is not 
-                             properly configured.
-  @param Repair              Performs a repair operation on a controller in the 
-                             platform.  This function can optionally report repair 
-                             progress information back to the platform.
 
 **/
 struct _EFI_DRIVER_HEALTH_PROTOCOL {

@@ -1,5 +1,8 @@
 /**@file
-  Support for Basic Graphics operations.
+  Library supports diplaying graphical splash screen,
+  locking of keyboard input and printing character on
+  screen. These basic graphics operations are based on UEFI HII, 
+  Graphics Output protocol or UGA Draw protocol.
 
   BugBug: Currently *.BMP files are supported. This will be replaced
           when Tiano graphics format is supported.
@@ -291,9 +294,8 @@ ConvertBmpToGopBlt (
 
   @param  Password - Password used to lock ConIn device
 
-  @retval EFI_SUCCESS     - ConsoleControl has been flipped to graphics and logo
-                          displayed.
-  @retval EFI_UNSUPPORTED - Logo not found
+  @retval EFI_SUCCESS     lock the Console In Spliter virtual handle successfully..
+  @retval EFI_UNSUPPORTED password not found
 
 **/
 EFI_STATUS

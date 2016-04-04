@@ -14,13 +14,12 @@
 #include <Guid/PeiPeCoffLoader.h>
 #include <Guid/MemoryAllocationHob.h>
 #include <Guid/Acpi.h>
-#include <Guid/Smbios.h>
+#include <Guid/SmBios.h>
 #include <Guid/Mps.h>
 #include <Guid/FlashMapHob.h>
 #include <Guid/SystemNvDataGuid.h>
 
 #include <Protocol/Decompress.h>
-#include <Protocol/EdkDecompress.h>
 #include <Protocol/StatusCode.h>
 #include <Protocol/FirmwareVolumeBlock.h>
 

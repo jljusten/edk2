@@ -1,7 +1,7 @@
 /** @file
   This file provides control over block-oriented firmware devices.
 
-  Copyright (c) 2006 - 2007, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -29,12 +29,11 @@ typedef struct _EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL EFI_FIRMWARE_VOLUME_BLOCK_PRO
   The GetAttributes() function retrieves the attributes and
   current settings of the block. Status Codes Returned
 
-  @param This   Indicates the EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL
-                instance.
+  @param This       Indicates the EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL instance.
 
-  @param Attributes Pointer to EFI_FVB_ATTRIBUTES in which the
+  @param Attributes Pointer to EFI_FVB_ATTRIBUTES_2 in which the
                     attributes and current settings are
-                    returned. Type EFI_FVB_ATTRIBUTES is defined
+                    returned. Type EFI_FVB_ATTRIBUTES_2 is defined
                     in EFI_FIRMWARE_VOLUME_HEADER.
 
   @retval EFI_SUCCESS The firmware volume attributes were
@@ -43,9 +42,9 @@ typedef struct _EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL EFI_FIRMWARE_VOLUME_BLOCK_PRO
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_FVB_GET_ATTRIBUTES) (
+(EFIAPI * EFI_FVB_GET_ATTRIBUTES)(
   IN CONST  EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL  *This,
-  OUT       EFI_FVB_ATTRIBUTES                  *Attributes
+  OUT       EFI_FVB_ATTRIBUTES_2                *Attributes
 );
 
 
@@ -53,20 +52,17 @@ EFI_STATUS
   The SetAttributes() function sets configurable firmware volume
   attributes and returns the new settings of the firmware volume.
 
-  @param This   Indicates the EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL
-                instance.
+  @param This         Indicates the EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL instance.
 
   @param Attributes   On input, Attributes is a pointer to
-                      EFI_FVB_ATTRIBUTES that contains the
+                      EFI_FVB_ATTRIBUTES_2 that contains the
                       desired firmware volume settings. On
                       successful return, it contains the new
                       settings of the firmware volume. Type
-                      EFI_FVB_ATTRIBUTES is defined in
+                      EFI_FVB_ATTRIBUTES_2 is defined in
                       EFI_FIRMWARE_VOLUME_HEADER.
-
   
-  @retval EFI_SUCCESS The firmware volume attributes were
-                      returned.
+  @retval EFI_SUCCESS           The firmware volume attributes were returned.
 
   @retval EFI_INVALID_PARAMETER The attributes requested are in
                                 conflict with the capabilities
@@ -76,9 +72,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_FVB_SET_ATTRIBUTES) (
+(EFIAPI * EFI_FVB_SET_ATTRIBUTES)(
   IN CONST  EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL  *This,
-  IN OUT    EFI_FVB_ATTRIBUTES                  *Attributes
+  IN OUT    EFI_FVB_ATTRIBUTES_2                *Attributes
 );
 
 
@@ -87,27 +83,21 @@ EFI_STATUS
   a memory-mapped firmware volume. This function should be called
   only for memory-mapped firmware volumes.
 
-  @param This   Indicates the EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL
-                nstance.
+  @param This     Indicates the EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL instance.
   
   @param Address  Pointer to a caller-allocated
                   EFI_PHYSICAL_ADDRESS that, on successful
                   return from GetPhysicalAddress(), contains the
-                  base address of the firmware volume. Type
-                  EFI_PHYSICAL_ADDRESS is defined in
-                  AllocatePages() in the UEFI 2.0 specification.
+                  base address of the firmware volume.
   
-  @retval EFI_SUCCESS The firmware volume base address is
-                      returned.
+  @retval EFI_SUCCESS       The firmware volume base address is returned.
   
-  @retval EFI_NOT_SUPPORTED The firmware volume is not memory
-                            mapped.
-
+  @retval EFI_NOT_SUPPORTED The firmware volume is not memory mapped.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_FVB_GET_PHYSICAL_ADDRESS) (
+(EFIAPI * EFI_FVB_GET_PHYSICAL_ADDRESS)(
   IN CONST  EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL  *This,
   OUT       EFI_PHYSICAL_ADDRESS                *Address
 );
@@ -119,15 +109,12 @@ EFI_STATUS
   retrieve the block map (see EFI_FIRMWARE_VOLUME_HEADER).
 
 
-  @param This   Indicates the EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL
-                instance.
+  @param This           Indicates the EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL instance.
 
-  @param Lba  Indicates the block for which to return the size.
-              Type EFI_LBA is defined in the BLOCK_IO Protocol
-              (section 11.6) in the UEFI 2.0 specification.
+  @param Lba            Indicates the block for which to return the size.
 
-  @param BlockSize  Pointer to a caller-allocated UINTN in which
-                    the size of the block is returned.
+  @param BlockSize      Pointer to a caller-allocated UINTN in which
+                        the size of the block is returned.
 
   @param NumberOfBlocks Pointer to a caller-allocated UINTN in
                         which the number of consecutive blocks,
@@ -136,16 +123,14 @@ EFI_STATUS
                         BlockSize.
 
   
-  @retval EFI_SUCCESS The firmware volume base address is
-                      returned.
+  @retval EFI_SUCCESS             The firmware volume base address is returned.
   
-  @retval EFI_INVALID_PARAMETER   The requested LBA is out of
-                                  range.
+  @retval EFI_INVALID_PARAMETER   The requested LBA is out of range.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_FVB_GET_BLOCK_SIZE) (
+(EFIAPI * EFI_FVB_GET_BLOCK_SIZE)(
   IN CONST  EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL  *This,
   IN        EFI_LBA                             Lba,
   OUT       UINTN                               *BlockSize,
@@ -167,13 +152,12 @@ EFI_STATUS
   indicate the number of bytes actually read. The caller must be
   aware that a read may be partially completed.
 
-  @param This Indicates the EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL
-              instance. Lba The starting logical block index
-              from which to read. Type EFI_LBA is defined in the
-              BLOCK_IO Protocol (section 11.6) in the UEFI 2.0
-              specification.
+  @param This     Indicates the EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL instance.
+  
+  @param Lba      The starting logical block index
+                  from which to read.
 
-  @param Offset Offset into the block at which to begin reading.
+  @param Offset   Offset into the block at which to begin reading.
 
   @param NumBytes Pointer to a UINTN. At entry, *NumBytes
                   contains the total size of the buffer. At
@@ -183,8 +167,8 @@ EFI_STATUS
   @param Buffer   Pointer to a caller-allocated buffer that will
                   be used to hold the data that is read.
 
-  @retval EFI_SUCCESS The firmware volume was read successfully
-                      and contents are in Buffer.
+  @retval EFI_SUCCESS         The firmware volume was read successfully
+                              and contents are in Buffer.
   
   @retval EFI_BAD_BUFFER_SIZE Read attempted across an LBA
                               boundary. On output, NumBytes
@@ -201,15 +185,13 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_FVB_READ) (
+(EFIAPI *EFI_FVB_READ)(
   IN CONST  EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL  *This,
   IN        EFI_LBA                             Lba,
   IN        UINTN                               Offset,
   IN OUT    UINTN                               *NumBytes,
   IN OUT    UINT8                               *Buffer
 );
-
-
 
 /**
   The Write() function writes the specified number of bytes from
@@ -239,25 +221,21 @@ EFI_STATUS
   fully flushed to the hardware before the Write() service
   returns.
 
-  @param This Indicates the EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL
-              instance.
+  @param This     Indicates the EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL instance.
   
-  @param Lba  The starting logical block index to write to. Type
-              EFI_LBA is defined in the BLOCK_IO Protocol
-              (section 11.6) in the UEFI 2.0 specification.
-              Offset Offset into the block at which to begin
-              writing.
+  @param Lba      The starting logical block index to write to.
+  
+  @param Offset   Offset into the block at which to begin writing.
   
   @param NumBytes Pointer to a UINTN. At entry, *NumBytes
                   contains the total size of the buffer. At
                   exit, *NumBytes contains the total number of
                   bytes actually written.
   
-  @param Buffer Pointer to a caller-allocated buffer that
-                contains the source for the write.
+  @param Buffer   Pointer to a caller-allocated buffer that
+                  contains the source for the write.
   
-  @retval EFI_SUCCESS The firmware volume was written
-                      successfully.
+  @retval EFI_SUCCESS         The firmware volume was written successfully.
   
   @retval EFI_BAD_BUFFER_SIZE The write was attempted across an
                               LBA boundary. On output, NumBytes
@@ -274,7 +252,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_FVB_WRITE) (
+(EFIAPI * EFI_FVB_WRITE)(
   IN CONST  EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL  *This,
   IN        EFI_LBA                             Lba,
   IN        UINTN                               Offset,
@@ -285,9 +263,9 @@ EFI_STATUS
 
 
 
-//
-// EFI_LBA_LIST_TERMINATOR
-//
+///
+/// EFI_LBA_LIST_TERMINATOR
+///
 #define EFI_LBA_LIST_TERMINATOR   0xFFFFFFFFFFFFFFFFULL
 
 
@@ -339,14 +317,13 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_FVB_ERASE_BLOCKS) (
+(EFIAPI * EFI_FVB_ERASE_BLOCKS)(
   IN CONST  EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL  *This,
   ...
 );
 
-
-
 /**
+  @par Protocol Description:
   The Firmware Volume Block Protocol is the low-level interface
   to a firmware volume. File-level access to a firmware volume
   should not be done using the Firmware Volume Block Protocol.
@@ -368,45 +345,6 @@ EFI_STATUS
   Firmware Volume Protocol abstracts the file system that is
   used to format the firmware volume and the hardware
   device-hardening features that may be present.
-
-
-  @param GetPhysicalAddress   Retrieves the memory-mapped
-                              address of the firmware volume.
-                              See the GetPhysicalAddress()
-                              function description. 
-
-  @param GetBlockSize   Retrieves the size for a specific block.
-                        Also returns the number of consecutive
-                        similarly sized blocks. See the
-                        GetBlockSize() function description.
-
-  @param Read   Reads n bytes into a buffer from the firmware
-                volume hardware. See the Read() function
-                description.
-
-  @param Write  Writes n bytes from a buffer into the firmware
-                volume hardware. See the Write() function
-                description.
-
-  @param EraseBlocks  Erases specified block(s) and sets all
-                      values as indicated by the
-                      EFI_FVB_ERASE_POLARITY bit. See the
-                      EraseBlocks() function description. Type
-                      EFI_FVB_ERASE_POLARITY is defined in
-                      EFI_FIRMWARE_VOLUME_HEADER. ParentHandle
-                      Handle of the parent firmware volume. Type
-                      EFI_HANDLE is defined in
-                      InstallProtocolInterface() in the UEFI 2.0
-                      specification.
-  
-  @param GetAttributes Retrieves the current volume attributes.
-                       See the GetAttributes() function
-                       description.
-  
-  @param SetAttributes Sets the current volume attributes. See
-                       the SetAttributes() function description.
-  
-
 **/
 struct _EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL {
   EFI_FVB_GET_ATTRIBUTES        GetAttributes;
@@ -416,6 +354,9 @@ struct _EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL {
   EFI_FVB_READ                  Read;
   EFI_FVB_WRITE                 Write;
   EFI_FVB_ERASE_BLOCKS          EraseBlocks;
+  ///
+  /// Handle of the parent firmware volume.
+  ///  
   EFI_HANDLE                    ParentHandle;
 };
 

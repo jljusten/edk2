@@ -1,7 +1,7 @@
 /** @file
-  UEFI Decompress Library.
+  UEFI Decompress Library implementation refer to UEFI specification.
 
-  Copyright (c) 2006, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -16,6 +16,7 @@
 #include <Base.h>
 
 
+#include <Library/BaseLib.h>
 #include <Library/UefiDecompressLib.h>
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -23,7 +24,7 @@
 #include "BaseUefiDecompressLibInternals.h"
 
 /**
-  Read NumOfBit of bits from source into mBitBuf
+  Read NumOfBit of bits from source into mBitBuf.
 
   Shift mBitBuf NumOfBits left. Read in NumOfBits of bits from source.
 
@@ -79,7 +80,7 @@ FillBuf (
 }
 
 /**
-  Get NumOfBits of bits out from mBitBuf
+  Get NumOfBits of bits out from mBitBuf.
 
   Get NumOfBits of bits out from mBitBuf. Fill mBitBuf with subsequent 
   NumOfBits of bits from source. Returns NumOfBits of bits that are 
@@ -122,7 +123,7 @@ GetBits (
   @param  NumOfChar Number of symbols in the symbol set
   @param  BitLen    Code length array
   @param  TableBits The width of the mapping table
-  @param  Table     The table
+  @param  Table     The table to be created
 
   @retval  0 OK.
   @retval  BAD_TABLE The table is corrupted.
@@ -225,7 +226,7 @@ MakeTable (
           *Pointer = Avail++;
         }
 
-        if (Index3 & Mask) {
+        if ((Index3 & Mask) != 0) {
           Pointer = &Sd->mRight[*Pointer];
         } else {
           Pointer = &Sd->mLeft[*Pointer];
@@ -273,7 +274,7 @@ DecodeP (
 
     do {
 
-      if (Sd->mBitBuf & Mask) {
+      if ((Sd->mBitBuf & Mask) != 0) {
         Val = Sd->mRight[Val];
       } else {
         Val = Sd->mLeft[Val];
@@ -542,7 +543,7 @@ DecodeC (
     Mask = 1U << (BITBUFSIZ - 1 - 12);
 
     do {
-      if (Sd->mBitBuf & Mask) {
+      if ((Sd->mBitBuf & Mask) != 0) {
         Index2 = Sd->mRight[Index2];
       } else {
         Index2 = Sd->mLeft[Index2];
@@ -561,9 +562,7 @@ DecodeC (
 
 /**
   Decode the source data and put the resulting data into the destination buffer.
-
-  Decode the source data and put the resulting data into the destination buffer.
-  
+ 
   @param  Sd The global scratch data
 
 **/
@@ -638,7 +637,9 @@ Done:
 }
 
 /**
-  Retrieves the size of the uncompressed buffer and the size of the scratch buffer.
+  Given a compressed source buffer, this function retrieves the size of 
+  the uncompressed buffer and the size of the scratch buffer required 
+  to decompress the compressed source buffer.
 
   Retrieves the size of the uncompressed buffer and the temporary scratch buffer 
   required to decompress the buffer specified by Source and SourceSize.
@@ -665,10 +666,14 @@ Done:
                           is required to decompress the compressed buffer specified 
                           by Source and SourceSize.
 
-  @retval  RETURN_SUCCESS The size of destination buffer and the size of scratch 
-                          buffer are successull retrieved.
-  @retval  RETURN_INVALID_PARAMETER The source data is corrupted
-
+  @retval  RETURN_SUCCESS The size of the uncompressed data was returned 
+                          in DestinationSize and the size of the scratch 
+                          buffer was returned in ScratchSize.
+  @retval  RETURN_INVALID_PARAMETER 
+                          The size of the uncompressed data or the size of 
+                          the scratch buffer cannot be determined from 
+                          the compressed data specified by Source 
+                          and SourceSize.
 **/
 RETURN_STATUS
 EFIAPI
@@ -685,18 +690,17 @@ UefiDecompressGetInfo (
   ASSERT (DestinationSize != NULL);
   ASSERT (ScratchSize != NULL);
 
-  *ScratchSize  = sizeof (SCRATCH_DATA);
-
   if (SourceSize < 8) {
     return RETURN_INVALID_PARAMETER;
   }
 
-  CopyMem (&CompressedSize, Source, sizeof (UINT32));
-  CopyMem (DestinationSize, (VOID *)((UINT8 *)Source + 4), sizeof (UINT32));
-
+  CompressedSize   = ReadUnaligned32 ((UINT32 *)Source);
   if (SourceSize < (CompressedSize + 8)) {
     return RETURN_INVALID_PARAMETER;
   }
+
+  *ScratchSize  = sizeof (SCRATCH_DATA);
+  *DestinationSize = ReadUnaligned32 ((UINT32 *)Source + 1);
 
   return RETURN_SUCCESS;
 }
@@ -704,6 +708,7 @@ UefiDecompressGetInfo (
 /**
   Decompresses a compressed source buffer.
 
+  Extracts decompressed data to its original form.
   This function is designed so that the decompression algorithm can be implemented
   without using any memory services.  As a result, this function is not allowed to
   call any memory allocation services in its implementation.  It is the caller's r
@@ -723,9 +728,11 @@ UefiDecompressGetInfo (
                       This is an optional parameter that may be NULL if the 
                       required scratch buffer size is 0.
                      
-  @retval  RETURN_SUCCESS Decompression is successfull
-  @retval  RETURN_INVALID_PARAMETER The source data is corrupted
-
+  @retval  RETURN_SUCCESS Decompression completed successfully, and 
+                          the uncompressed buffer is returned in Destination.
+  @retval  RETURN_INVALID_PARAMETER 
+                          The source buffer specified by Source is corrupted 
+                          (not in a valid compressed format).
 **/
 RETURN_STATUS
 EFIAPI
@@ -769,7 +776,6 @@ UefiDecompress (
   //
   // The length of the field 'Position Set Code Length Array Size' in Block Header.
   // For UEFI 2.0 de/compression algorithm(Version 1), mPBit = 4
-  // For Tiano de/compression algorithm(Version 2), mPBit = 5
   //
   Sd->mPBit     = 4;
   Sd->mSrcBase  = (UINT8 *)Src;

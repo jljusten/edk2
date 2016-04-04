@@ -4,7 +4,7 @@
   The Block IO protocol is used to abstract block devices like hard drives,
   DVD-ROMs and floppy drives.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -25,14 +25,14 @@
 
 typedef struct _EFI_BLOCK_IO_PROTOCOL  EFI_BLOCK_IO_PROTOCOL;
 
-//
-// Protocol GUID name defined in EFI1.1.
-// 
+///
+/// Protocol GUID name defined in EFI1.1.
+/// 
 #define BLOCK_IO_PROTOCOL       EFI_BLOCK_IO_PROTOCOL_GUID
 
-//
-// Protocol defined in EFI1.1.
-// 
+///
+/// Protocol defined in EFI1.1.
+/// 
 typedef EFI_BLOCK_IO_PROTOCOL   EFI_BLOCK_IO;
 
 /**
@@ -48,11 +48,10 @@ typedef EFI_BLOCK_IO_PROTOCOL   EFI_BLOCK_IO;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_BLOCK_RESET) (
+(EFIAPI *EFI_BLOCK_RESET)(
   IN EFI_BLOCK_IO_PROTOCOL          *This,
   IN BOOLEAN                        ExtendedVerification
-  )
-;
+  );
 
 /**
   Read BufferSize bytes from Lba into Buffer.
@@ -74,14 +73,13 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_BLOCK_READ) (
+(EFIAPI *EFI_BLOCK_READ)(
   IN EFI_BLOCK_IO_PROTOCOL          *This,
   IN UINT32                         MediaId,
   IN EFI_LBA                        Lba,
   IN UINTN                          BufferSize,
   OUT VOID                          *Buffer
-  )
-;
+  );
 
 /**
   Write BufferSize bytes from Lba into Buffer.
@@ -104,14 +102,13 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_BLOCK_WRITE) (
+(EFIAPI *EFI_BLOCK_WRITE)(
   IN EFI_BLOCK_IO_PROTOCOL          *This,
   IN UINT32                         MediaId,
   IN EFI_LBA                        Lba,
   IN UINTN                          BufferSize,
   IN VOID                           *Buffer
-  )
-;
+  );
 
 /**
   Flush the Block Device.
@@ -125,47 +122,83 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_BLOCK_FLUSH) (
+(EFIAPI *EFI_BLOCK_FLUSH)(
   IN EFI_BLOCK_IO_PROTOCOL  *This
-  )
-;
+  );
 
 /**
   Block IO read only mode data and updated only via members of BlockIO
-
 **/
 typedef struct {
-  UINT32  MediaId;    ///< The curent media Id. If the media changes, this value is changed.
-  BOOLEAN RemovableMedia;  ///< TRUE if the media is removable; otherwise, FALSE.
-  BOOLEAN MediaPresent;    /**< TRUE if there is a media currently present in the device;
-             othersise, FALSE. THis field shows the media present status
-             as of the most recent ReadBlocks() or WriteBlocks() call.
-        **/
-  BOOLEAN LogicalPartition;  /**< TRUE if LBA 0 is the first block of a partition; otherwise
-             FALSE. For media with only one partition this would be TRUE.
-        **/
-  BOOLEAN ReadOnly;    /**< TRUE if the media is marked read-only otherwise, FALSE.
-             This field shows the read-only status as of the most recent WriteBlocks () call.
-        **/
-  BOOLEAN WriteCaching;    ///< TRUE if the WriteBlock () function caches write data.
+  ///
+  /// The curent media Id. If the media changes, this value is changed.
+  ///
+  UINT32  MediaId;         
+   
+  ///
+  /// TRUE if the media is removable; otherwise, FALSE.
+  ///    
+  BOOLEAN RemovableMedia;
+  
+  ///
+  /// TRUE if there is a media currently present in the device;
+  /// othersise, FALSE. THis field shows the media present status
+  /// as of the most recent ReadBlocks() or WriteBlocks() call.  
+  ///
+  BOOLEAN MediaPresent;
 
-  UINT32  BlockSize;    /**< The intrinsic block size of the device. If the media changes, then
-             this field is updated.
-        **/
-  UINT32  IoAlign;    ///< Supplies the alignment requirement for any buffer to read or write block(s).
-
-  EFI_LBA LastBlock;    /**< The last logical block address on the device.
-             If the media changes, then this field is updated.
-        **/
+  ///
+  /// TRUE if LBA 0 is the first block of a partition; otherwise
+  /// FALSE. For media with only one partition this would be TRUE.
+  ///
+  BOOLEAN LogicalPartition;
+  
+  ///
+  /// TRUE if the media is marked read-only otherwise, FALSE.
+  /// This field shows the read-only status as of the most recent WriteBlocks () call.
+  ///
+  BOOLEAN ReadOnly;
+  
+  ///
+  /// TRUE if the WriteBlock () function caches write data.
+  ///
+  BOOLEAN WriteCaching; 
+  
+  ///
+  /// The intrinsic block size of the device. If the media changes, then
+  /// this field is updated.  
+  ///
+  UINT32  BlockSize; 
+  
+  ///
+  /// Supplies the alignment requirement for any buffer to read or write block(s).
+  ///
+  UINT32  IoAlign; 
+  
+  ///
+  /// The last logical block address on the device.
+  /// If the media changes, then this field is updated. 
+  ///
+  EFI_LBA LastBlock; 
 } EFI_BLOCK_IO_MEDIA;
 
 #define EFI_BLOCK_IO_PROTOCOL_REVISION  0x00010000
-//
-// Revision defined in EFI1.1.
-// 
+
+///
+/// Revision defined in EFI1.1.
+/// 
 #define EFI_BLOCK_IO_INTERFACE_REVISION   EFI_BLOCK_IO_PROTOCOL_REVISION
 
+/**
+  @par Protocol Description:
+  This protocol provides control over block devices.
+**/
 struct _EFI_BLOCK_IO_PROTOCOL {
+  ///
+  /// The revision to which the block IO interface adheres. All future
+  /// revisions must be backwards compatible. If a future version is not
+  /// back wards compatible, it is not the same GUID.
+  ///
   UINT64              Revision;
 
   EFI_BLOCK_IO_MEDIA  *Media;

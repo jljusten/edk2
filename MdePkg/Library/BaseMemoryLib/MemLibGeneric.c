@@ -10,7 +10,7 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-  The following BaseMemoryLib instances share the same version of this file:
+  The following BaseMemoryLib instances contain the same copy of this file:
 
     BaseMemoryLib
     PeiMemoryLib
@@ -18,9 +18,7 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
+
 
 
 #include "MemLibInternals.h"
@@ -101,7 +99,7 @@ InternalMemSetMem64 (
   Set Buffer to 0 for Size bytes.
 
   @param  Buffer Memory to set.
-  @param  Size Number of bytes to set
+  @param  Length Number of bytes to set
 
   @return Buffer
 

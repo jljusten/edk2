@@ -6,7 +6,7 @@
   a single hardware device or a virtual device that is an agregation
   of multiple physical devices.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -20,23 +20,21 @@
 #ifndef __SIMPLE_TEXT_OUT_H__
 #define __SIMPLE_TEXT_OUT_H__
 
-#include <PiDxe.h>
-
 #define EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_GUID \
   { \
     0x387477c2, 0x69c7, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b } \
   }
 
-//
-// Protocol GUID defined in EFI1.1.
-// 
+///
+/// Protocol GUID defined in EFI1.1.
+/// 
 #define SIMPLE_TEXT_OUTPUT_PROTOCOL   EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_GUID
 
 typedef struct _EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL;
 
-//
-// Backward-compatible with EFI1.1.
-// 
+///
+/// Backward-compatible with EFI1.1.
+/// 
 typedef EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL   SIMPLE_TEXT_OUTPUT_INTERFACE;
 
 //
@@ -161,11 +159,10 @@ typedef EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL   SIMPLE_TEXT_OUTPUT_INTERFACE;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TEXT_RESET) (
-  IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL           *This,
+(EFIAPI *EFI_TEXT_RESET)(
+  IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL        *This,
   IN BOOLEAN                                ExtendedVerification
-  )
-;
+  );
 
 /**
   Write a Unicode string to the output device.
@@ -187,11 +184,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TEXT_STRING) (
+(EFIAPI *EFI_TEXT_STRING)(
   IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL        *This,
   IN CHAR16                                 *String
-  )
-;
+  );
 
 /**
   Verifies that all characters in a Unicode string can be output to the 
@@ -209,11 +205,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TEXT_TEST_STRING) (
+(EFIAPI *EFI_TEXT_TEST_STRING)(
   IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL        *This,
   IN CHAR16                                 *String
-  )
-;
+  );
 
 /**
   Returns information for an available text mode that the output device(s)
@@ -233,13 +228,12 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TEXT_QUERY_MODE) (
+(EFIAPI *EFI_TEXT_QUERY_MODE)(
   IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL        *This,
   IN UINTN                                  ModeNumber,
   OUT UINTN                                 *Columns,
   OUT UINTN                                 *Rows
-  )
-;
+  );
 
 /**
   Sets the output device(s) to a specified mode.
@@ -254,11 +248,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TEXT_SET_MODE) (
+(EFIAPI *EFI_TEXT_SET_MODE)(
   IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL        *This,
   IN UINTN                                  ModeNumber
-  )
-;
+  );
 
 /**
   Sets the background and foreground colors for the OutputString () and
@@ -276,11 +269,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TEXT_SET_ATTRIBUTE) (
+(EFIAPI *EFI_TEXT_SET_ATTRIBUTE)(
   IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL        *This,
   IN UINTN                                  Attribute
-  )
-;
+  );
 
 /**
   Clears the output device(s) display to the currently selected background 
@@ -295,10 +287,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TEXT_CLEAR_SCREEN) (
+(EFIAPI *EFI_TEXT_CLEAR_SCREEN)(
   IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL   *This
-  )
-;
+  );
 
 /**
   Sets the current coordinates of the cursor position
@@ -319,12 +310,11 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TEXT_SET_CURSOR_POSITION) (
+(EFIAPI *EFI_TEXT_SET_CURSOR_POSITION)(
   IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL        *This,
   IN UINTN                                  Column,
   IN UINTN                                  Row
-  )
-;
+  );
 
 /**
   Makes the cursor visible or invisible
@@ -342,21 +332,32 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TEXT_ENABLE_CURSOR) (
+(EFIAPI *EFI_TEXT_ENABLE_CURSOR)(
   IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL        *This,
   IN BOOLEAN                                Visible
-  )
-;
+  );
 
 /**
+  @par Data Structure Description:
   Mode Structure pointed to by Simple Text Out protocol.
 
-  MaxMode   - The number of modes supported by QueryMode () and SetMode ().
-  Mode      - The text mode of the output device(s).
-  Attribute - The current character output attribute
-  CursorColumn  - The cursor's column.
-  CursorRow     - The cursor's row.
-  CursorVisible - The cursor is currently visbile or not.
+  @param MaxMode
+  The number of modes supported by QueryMode () and SetMode ().
+  
+  @param Mode
+  The text mode of the output device(s).
+  
+  @param Attribute
+  The current character output attribute
+  
+  @param CursorColumn
+  The cursor's column.
+  
+  @param CursorRow
+  The cursor's row.
+  
+  @param CursorVisible
+  The cursor is currently visbile or not.
 
 **/
 typedef struct {
@@ -372,6 +373,13 @@ typedef struct {
   BOOLEAN CursorVisible;
 } EFI_SIMPLE_TEXT_OUTPUT_MODE;
 
+/**  
+  @par Protocol Description:
+  The SIMPLE_TEXT_OUTPUT protocol is used to control text-based output devices. 
+  It is the minimum required protocol for any handle supplied as the ConsoleOut 
+  or StandardError device. In addition, the minimum supported text mode of such 
+  devices is at least 80 x 25 characters.
+**/
 struct _EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL {
   EFI_TEXT_RESET                Reset;
 

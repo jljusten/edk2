@@ -1,7 +1,7 @@
 /** @file
   The file provides services to access to images in the images database.
   
-  Copyright (c) 2006 - 2007, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -21,9 +21,9 @@
 typedef struct _EFI_HII_IMAGE_PROTOCOL EFI_HII_IMAGE_PROTOCOL;
 
 
-//
-// Flags in EFI_IMAGE_INPUT
-// 
+///
+/// Flags in EFI_IMAGE_INPUT
+/// 
 #define EFI_IMAGE_TRANSPARENT 0x00000001
 
 /**
@@ -48,7 +48,7 @@ typedef struct _EFI_IMAGE_INPUT {
   UINT32                          Flags;
   UINT16                          Width;
   UINT16                          Height;
-  EFI_GRAPHICS_OUTPUT_BLT_PIXEL   Bitmap[1];
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL   *Bitmap;
 } EFI_IMAGE_INPUT;
 
 
@@ -58,14 +58,14 @@ typedef struct _EFI_IMAGE_INPUT {
   owned by PackageList, and returns a new image identifier
   (ImageId).
 
-  @param This   A pointer to the EFI_HII_IMAGE_PROTOCOL
-                instance. PackageList Handle of the package list
-                where this image will be added.
+  @param This        A pointer to the EFI_HII_IMAGE_PROTOCOL instance. 
+  
+  @param PackageList Handle of the package list where this image will be added.
 
-  @param ImageId  On return, contains the new image id, which is
-                  unique within PackageList.
+  @param ImageId     On return, contains the new image id, which is
+                     unique within PackageList.
 
-  @param Image  Points to the image.
+  @param Image       Points to the image.
 
   @retval EFI_SUCCESS             The new image was added
                                   successfully
@@ -79,7 +79,7 @@ typedef struct _EFI_IMAGE_INPUT {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_NEW_IMAGE) (
+(EFIAPI *EFI_HII_NEW_IMAGE)(
   IN CONST  EFI_HII_IMAGE_PROTOCOL  *This,
   IN        EFI_HII_HANDLE          PackageList,
   OUT       EFI_IMAGE_ID            *ImageId,
@@ -98,43 +98,34 @@ EFI_STATUS
   updated to the size of buffer actually required to hold the
   image.
 
-  @param This   A pointer to the EFI_HII_IMAGE_PROTOCOL
-                instance.
+  @param This         A pointer to the EFI_HII_IMAGE_PROTOCOL instance. 
   
   @param PackageList  The package list in the HII database to
                       search for the specified image.
   
-  @param ImageId  The image's id, which is unique within
-                  PackageList.
+  @param ImageId      The image's id, which is unique within
+                      PackageList.
   
-  @param Image  Points to the new image.
+  @param Image        Points to the new image.
   
-  @param ImageSize  On entry, points to the size of the buffer
-                    pointed to by Image, in bytes. On return,
-                    points to the length of the image, in bytes.
+  @retval EFI_SUCCESS            The image was returned successfully.
+
+  @retval EFI_NOT_FOUND          The image specified by ImageId is not
+                                 available. Or The specified PackageList is not in the database.
   
-  
-  @retval EFI_SUCCESS   The image was returned successfully.
-  
-  @retval EFI_NOT_FOUND The image specified by ImageId is not
-                        available.
-  
-  @retval EFI_BUFFER_TOO_SMALL  The buffer specified by
-                                ImageLength is too small to hold
-                                the image.
-  
-  @retval EFI_INVALID_PARAMETER The Image or Langugae was NULL.
+  @retval EFI_INVALID_PARAMETER  The Image or Langugae was NULL.
+  @retval EFI_OUT_OF_RESOURCES   The bitmap could not be retrieved because there was not
+                                 enough memory.
 
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_GET_IMAGE) (
+(EFIAPI *EFI_HII_GET_IMAGE)(
   IN CONST  EFI_HII_IMAGE_PROTOCOL  *This,
   IN        EFI_HII_HANDLE          PackageList,
   IN        EFI_IMAGE_ID            ImageId,
-  OUT       EFI_IMAGE_INPUT         *Image,
-  OUT       UINTN                   *ImageSize
+  OUT       EFI_IMAGE_INPUT         *Image
 );
 
 /**
@@ -143,28 +134,25 @@ EFI_STATUS
   specified PackageListHandle to the image specified by Image.
 
 
-  @param This   A pointer to the EFI_HII_IMAGE_PROTOCOL
-                instance.
+  @param This         A pointer to the EFI_HII_IMAGE_PROTOCOL instance. 
 
   @param PackageList  The package list containing the images.
 
-  @param ImageId  The image id, which is unique within
-                  PackageList.
+  @param ImageId      The image id, which is unique within PackageList.
 
-  @param Image  Points to the image.
+  @param Image        Points to the image.
 
-  @retval EFI_SUCCESS The image was successfully updated.
+  @retval EFI_SUCCESS           The image was successfully updated.
   
-  @retval EFI_NOT_FOUND   The image specified by ImageId is not
-                          in the database.
+  @retval EFI_NOT_FOUND         The image specified by ImageId is not in the database.
+                                The specified PackageList is not in the database. 
   
-  @retval EFI_INVALID_PARAMETER   The Image or Language was
-                                  NULL.
+  @retval EFI_INVALID_PARAMETER The Image or Language was NULL.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_SET_IMAGE) (
+(EFIAPI *EFI_HII_SET_IMAGE)(
   IN CONST  EFI_HII_IMAGE_PROTOCOL  *This,
   IN        EFI_HII_HANDLE          PackageList,
   IN        EFI_IMAGE_ID            ImageId,
@@ -180,8 +168,8 @@ typedef UINT32  EFI_HII_DRAW_FLAGS;
 #define EFI_HII_DRAW_FLAG_CLIP          0x00000001
 #define EFI_HII_DRAW_FLAG_TRANSPARENT   0x00000030
 #define EFI_HII_DRAW_FLAG_DEFAULT       0x00000000
-#define EFI_HII_DRAW_FLAG_FORCE_TRANS   0x00000001
-#define EFI_HII_DRAW_FLAG_FORCE_OPAQUE  0x00000002
+#define EFI_HII_DRAW_FLAG_FORCE_TRANS   0x00000010
+#define EFI_HII_DRAW_FLAG_FORCE_OPAQUE  0x00000020
 #define EFI_HII_DIRECT_TO_SCREEN        0x00000080
 
 
@@ -218,7 +206,7 @@ typedef struct _EFI_IMAGE_OUTPUT {
   images can be clipped. If EFI_HII_DRAW_FLAG_CLIP is set, then
   all pixels drawn outside the bounding box specified by Width and
   Height are ignored. If EFI_HII_DRAW_FLAG_TRANSPARENT is set,
-  then all ????off???? pixels in the images drawn will use the
+  then all 'off' pixels in the images drawn will use the
   pixel value from Blt. This flag cannot be used if Blt is NULL
   upon entry. If EFI_HII_DIRECT_TO_SCREEN is set, then the image
   will be written directly to the output device specified by
@@ -226,29 +214,28 @@ typedef struct _EFI_IMAGE_OUTPUT {
   specified by Bitmap.
 
 
-  @param This   A pointer to the EFI_HII_IMAGE_PROTOCOL
-                instance.
+  @param This       A pointer to the EFI_HII_IMAGE_PROTOCOL instance. 
+ 
+  @param Flags      Describes how the image is to be drawn.
+                    EFI_HII_DRAW_FLAGS is defined in Related
+                    Definitions, below.
   
-  @param Flags  Describes how the image is to be drawn.
-                EFI_HII_DRAW_FLAGS is defined in Related
-                Definitions, below.
+  @param Image      Points to the image to be displayed. 
   
-  @param Image  Points to the image to be displayed. 
-  
-  @param Blt  If this points to a non-NULL on entry, this points
-              to the image, which is Width pixels wide and
-              Height pixels high. The image will be drawn onto
-              this image and EFI_HII_DRAW_FLAG_CLIP is implied.
-              If this points to a NULL on entry, then a buffer
-              will be allocated to hold the generated image and
-              the pointer updated on exit. It is the caller????s
-              responsibility to free this buffer.
+  @param Blt        If this points to a non-NULL on entry, this points
+                    to the image, which is Width pixels wide and
+                    Height pixels high. The image will be drawn onto
+                    this image and EFI_HII_DRAW_FLAG_CLIP is implied.
+                    If this points to a NULL on entry, then a buffer
+                    will be allocated to hold the generated image and
+                    the pointer updated on exit. It is the caller's
+                    responsibility to free this buffer.
 
-  @param BltX, BltY   Specifies the offset from the left and top
-                      edge of the image of the first pixel in
-                      the image.
+  @param BltX, BltY Specifies the offset from the left and top
+                    edge of the image of the first pixel in
+                    the image.
 
-  @retval EFI_SUCCESS   The image was successfully updated.
+  @retval EFI_SUCCESS           The image was successfully updated.
 
   @retval EFI_OUT_OF_RESOURCES  Unable to allocate an output
                                 buffer for RowInfoArray or Blt.
@@ -260,7 +247,7 @@ typedef struct _EFI_IMAGE_OUTPUT {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_DRAW_IMAGE) (
+(EFIAPI *EFI_HII_DRAW_IMAGE)(
   IN CONST  EFI_HII_IMAGE_PROTOCOL  *This,
   IN        EFI_HII_DRAW_FLAGS      Flags,
   IN CONST  EFI_IMAGE_INPUT         *Image,
@@ -291,54 +278,54 @@ EFI_STATUS
   Height are ignored. The EFI_HII_DRAW_FLAG_TRANSPARENT flag
   determines whether the image will be drawn transparent or
   opaque. If EFI_HII_DRAW_FLAG_FORCE_TRANS is set, then the image
-  will be drawn so that all ????off???? pixels in the image will
+  will be drawn so that all 'off' pixels in the image will
   be drawn using the pixel value from Blt and all other pixels
   will be copied. If EFI_HII_DRAW_FLAG_FORCE_OPAQUE is set, then
-  the image????s pixels will be copied directly to the
+  the image's pixels will be copied directly to the
   destination. If EFI_HII_DRAW_FLAG_DEFAULT is set, then the image
   will be drawn transparently or opaque, depending on the
-  image????s transparency setting (see EFI_IMAGE_TRANSPARENT).
+  image's transparency setting (see EFI_IMAGE_TRANSPARENT).
   Images cannot be drawn transparently if Blt is NULL. If
   EFI_HII_DIRECT_TO_SCREEN is set, then the image will be written
   directly to the output device specified by Screen. Otherwise the
   image will be rendered to the bitmap specified by Bitmap.
 
-  @param This   A pointer to the EFI_HII_IMAGE_PROTOCOL
-                instance.
+  @param This         A pointer to the EFI_HII_IMAGE_PROTOCOL instance. 
 
-  @param Flags  Describes how the image is to be drawn.
+  @param Flags        Describes how the image is to be drawn.
 
   @param PackageList  The package list in the HII database to
                       search for the specified image.
 
-  @param ImageId  The image's id, which is unique within
-                  PackageList.
+  @param ImageId      The image's id, which is unique within PackageList.
 
-  @param Blt  If this points to a non-NULL on entry, this points
-              to the image, which is Width pixels wide and
-              Height pixels high. The image will be drawn onto
-              this image and EFI_HII_DRAW_FLAG_CLIP is implied.
-              If this points to a NULL on entry, then a buffer
-              will be allocated to hold the generated image and
-              the pointer updated on exit. It is the caller's
-              responsibility to free this buffer.
+  @param Blt          If this points to a non-NULL on entry, this points
+                      to the image, which is Width pixels wide and
+                      Height pixels high. The image will be drawn onto
+                      this image and EFI_HII_DRAW_FLAG_CLIP is implied.
+                      If this points to a NULL on entry, then a buffer
+                      will be allocated to hold the generated image and
+                      the pointer updated on exit. It is the caller's
+                      responsibility to free this buffer.
 
   @param BltX, BltY   Specifies the offset from the left and top
                       edge of the output image of the first
                       pixel in the image.
 
-  @retval EFI_SUCCESS   The image was successfully updated.
+  @retval EFI_SUCCESS           The image was successfully updated.
   
   @retval EFI_OUT_OF_RESOURCES  Unable to allocate an output
                                 buffer for RowInfoArray or Blt.
   
-  @retval EFI_INVALID_PARAMETER The Image or Blt or Height or
-                                Width was NULL.
+  @retval EFI_NOT_FOUND         The image specified by ImageId is not in the database. 
+                                Or The specified PackageList is not in the database.                            
+  
+  @retval EFI_INVALID_PARAMETER The Blt was NULL.    
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_DRAW_IMAGE_ID) (
+(EFIAPI *EFI_HII_DRAW_IMAGE_ID)(
 IN CONST  EFI_HII_IMAGE_PROTOCOL  *This,
 IN        EFI_HII_DRAW_FLAGS      Flags,
 IN        EFI_HII_HANDLE          PackageList,
@@ -350,20 +337,8 @@ IN        UINTN                   BltY
 
 
 /**
-  
-  services to access to images in the images database.
-
-  @param NewImage   Add a new image.
-
-  @param GetImage   Retrieve an image and related font
-                    information.
-
-  @param SetImage   Change an image. EFI_INVALID_LANGUAGE The
-                    language specified by FirstLanguage is not
-                    present in the specified package list.
-                    EFI_INVALID_PARAMETER FirstLanguage is NULL
-                    or SecondLanguage is NULL.
-
+  @par Protocol Description:  
+  Services to access to images in the images database.
 **/
 struct _EFI_HII_IMAGE_PROTOCOL {
   EFI_HII_NEW_IMAGE     NewImage;

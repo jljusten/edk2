@@ -1,5 +1,6 @@
 /** @file
-
+  EFI PEI Core dispatch services
+  
 Copyright (c) 2006, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
@@ -9,23 +10,13 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-  Dispatcher.c
-
-Abstract:
-
-  EFI PEI Core dispatch services
-
-Revision History
-
 **/
 
 #include <PeiMain.h>
 
-//
-//CAR is filled with this initial value during SEC phase
-//
+///
+/// CAR is filled with this initial value during SEC phase
+///
 #define INIT_CAR_VALUE 0x5AA55AA5
 
 typedef struct {
@@ -33,27 +24,21 @@ typedef struct {
   EFI_HANDLE            Handle;
 } PEIM_FILE_HANDLE_EXTENDED_DATA;
 
+/**
+
+  Discover all Peims and optional Apriori file in one FV. There is at most one
+  Apriori file in one FV.
+
+
+  @param Private         - Pointer to the private data passed in from caller
+  @param VolumeHandle    - Fv handle.
+
+**/
 VOID
 DiscoverPeimsAndOrderWithApriori (
   IN  PEI_CORE_INSTANCE    *Private,
   IN  EFI_PEI_FV_HANDLE    VolumeHandle
   )
-/*++
-
-Routine Description:
-
-  Discover all Peims and optional Apriori file in one FV. There is at most one
-  Apriori file in one FV.
-
-Arguments:
-
-  Private          - Pointer to the private data passed in from caller
-  VolumeHandle     - Fv handle.
-Returns:
-
-  NONE
-
---*/
 {
   EFI_STATUS                          Status;
   EFI_PEI_FV_HANDLE                   FileHandle;
@@ -115,7 +100,7 @@ Returns:
       Private->AprioriCount -= sizeof (EFI_FFS_FILE_HEADER) - sizeof (EFI_COMMON_SECTION_HEADER);
       Private->AprioriCount /= sizeof (EFI_GUID);
 
-      SetMem (FileGuid, sizeof (FileGuid), 0);
+      ZeroMem (FileGuid, sizeof (FileGuid));
       for (Index = 0; Index < PeimCount; Index++) {
         //
         // Make an array of file name guids that matches the FileHandle array so we can convert
@@ -187,6 +172,14 @@ Returns:
 
 }
 
+/**
+  Shadow PeiCore module from flash to installed memory.
+  
+  @param PeiServices     An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation.
+  @param PrivateInMem    PeiCore's private data structure
+
+  @return PeiCore function address after shadowing.
+**/
 VOID*
 ShadowPeiCore(
   EFI_PEI_SERVICES     **PeiServices,
@@ -223,35 +216,30 @@ ShadowPeiCore(
               );
   ASSERT_EFI_ERROR (Status);
 
+  //
+  // Compute the PeiCore's function address after shaowed PeiCore.
+  // _ModuleEntryPoint is PeiCore main function entry
+  //
   return (VOID*) ((UINTN) EntryPoint + (UINTN) PeiCore - (UINTN) _ModuleEntryPoint);
 }
 
+/**
+  Conduct PEIM dispatch.
+
+  @param SecCoreData     Points to a data structure containing information about the PEI core's operating
+                         environment, such as the size and location of temporary RAM, the stack location and
+                         the BFV location.
+  @param Private         Pointer to the private data passed in from caller
+
+  @retval EFI_SUCCESS   - Successfully dispatched PEIM.
+  @retval EFI_NOT_FOUND - The dispatch failed.
+
+**/
 VOID
 PeiDispatcher (
   IN CONST EFI_SEC_PEI_HAND_OFF  *SecCoreData,
   IN PEI_CORE_INSTANCE           *Private
   )
-
-/*++
-
-Routine Description:
-
-  Conduct PEIM dispatch.
-
-Arguments:
-
-  SecCoreData          - Points to a data structure containing information about the PEI core's operating
-                         environment, such as the size and location of temporary RAM, the stack location and
-                         the BFV location.
-  PrivateData          - Pointer to the private data passed in from caller
-  DispatchData         - Pointer to PEI_CORE_DISPATCH_DATA data.
-
-Returns:
-
-  EFI_SUCCESS   - Successfully dispatched PEIM.
-  EFI_NOT_FOUND - The dispatch failed.
-
---*/
 {
   EFI_STATUS                          Status;
   UINT32                              Index1;
@@ -264,8 +252,6 @@ Returns:
   UINT32                              AuthenticationState;
   EFI_PHYSICAL_ADDRESS                EntryPoint;
   EFI_PEIM_ENTRY_POINT2               PeimEntryPoint;
-  BOOLEAN                             PeimNeedingDispatch;
-  BOOLEAN                             PeimDispatchOnThisPass;
   UINTN                               SaveCurrentPeimCount;
   UINTN                               SaveCurrentFvCount;
   EFI_PEI_FILE_HANDLE                 SaveCurrentFileHandle;
@@ -274,7 +260,8 @@ Returns:
   TEMPORARY_RAM_SUPPORT_PPI           *TemporaryRamSupportPpi;
   EFI_HOB_HANDOFF_INFO_TABLE          *OldHandOffTable;
   EFI_HOB_HANDOFF_INFO_TABLE          *NewHandOffTable;
-  INTN                                Offset;
+  INTN                                StackOffset;
+  INTN                                HeapOffset;
   PEI_CORE_INSTANCE                   *PrivateInMem;
   UINT64                              NewPeiStackSize;
   UINT64                              OldPeiStackSize;
@@ -348,12 +335,22 @@ Returns:
   // satisfied, this dipatcher should run only once.
   //
   do {
-    PeimNeedingDispatch = FALSE;
-    PeimDispatchOnThisPass = FALSE;
-
+    //
+    // In case that reenter PeiCore happens, the last pass record is still available.   
+    //
+    if (!Private->PeimDispatcherReenter) {
+      Private->PeimNeedingDispatch      = FALSE;
+      Private->PeimDispatchOnThisPass   = FALSE;
+    } else {
+      Private->PeimDispatcherReenter    = FALSE;
+    }
+    
     for (FvCount = Private->CurrentPeimFvCount; FvCount < Private->FvCount; FvCount++) {
       Private->CurrentPeimFvCount = FvCount;
-      VolumeHandle = Private->Fv[FvCount].FvHeader;
+      //
+      // Get this Fv Handle by PeiService FvFindNextVolume.
+      //
+      PeiFvFindNextVolume ((CONST EFI_PEI_SERVICES **) PeiServices, FvCount, &VolumeHandle);
 
       if (Private->CurrentPeimCount == 0) {
         //
@@ -375,7 +372,7 @@ Returns:
 
         if (Private->Fv[FvCount].PeimState[PeimCount] == PEIM_STATE_NOT_DISPATCHED) {
           if (!DepexSatisfied (Private, PeimFileHandle, PeimCount)) {
-            PeimNeedingDispatch = TRUE;
+            Private->PeimNeedingDispatch = TRUE;
           } else {
             Status = PeiFfsGetFileInfo (PeimFileHandle, &FvFileInfo);
             ASSERT_EFI_ERROR (Status);
@@ -427,7 +424,7 @@ Returns:
                   PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **) PeiServices);
                 }
 
-                PeimDispatchOnThisPass = TRUE;
+                Private->PeimDispatchOnThisPass = TRUE;
               }
 
               REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
@@ -466,7 +463,7 @@ Returns:
               //
               // Reserve the size of new stack at bottom of physical memory
               //
-              OldPeiStackSize = Private->StackSize;
+              OldPeiStackSize = (UINT64) SecCoreData->StackSize;
               NewPeiStackSize = (RShiftU64 (Private->PhysicalMemoryLength, 1) + EFI_PAGE_MASK) & ~EFI_PAGE_MASK;
               if (FixedPcdGet32(PcdPeiCoreMaxPeiStackSize) > (UINT32) NewPeiStackSize) {
                 Private->StackSize = NewPeiStackSize;
@@ -480,16 +477,14 @@ Returns:
               // But if new stack is smaller than the size of old stack, we also reserve
               // the size of old stack at bottom of permenent memory.
               //
-              StackGap = 0;
-              if (Private->StackSize > OldPeiStackSize) {
-                StackGap = Private->StackSize - OldPeiStackSize;
-              }
+              ASSERT (Private->StackSize >= OldPeiStackSize);
+              StackGap = Private->StackSize - OldPeiStackSize;
 
               //
               // Update HandOffHob for new installed permenent memory
               //
               OldHandOffTable   = Private->HobList.HandoffInformationTable;
-              OldCheckingBottom = (UINTN)OldHandOffTable;
+              OldCheckingBottom = (UINTN)(SecCoreData->TemporaryRamBase);
               OldCheckingTop    = (UINTN)(OldCheckingBottom + SecCoreData->TemporaryRamSize);
 
               //
@@ -497,9 +492,21 @@ Returns:
               // CAUTION: The new base is computed accounding to gap of new stack.
               //
               NewPermenentMemoryBase = Private->PhysicalMemoryBegin + StackGap;
-              Offset                 = (UINTN) NewPermenentMemoryBase - (UINTN) SecCoreData->TemporaryRamBase;
-              NewHandOffTable        = (EFI_HOB_HANDOFF_INFO_TABLE *)((UINTN)OldHandOffTable + Offset);
-              PrivateInMem           = (PEI_CORE_INSTANCE *)((UINTN) (VOID*) Private + Offset);
+              
+              //
+              // Caculate stack offset and heap offset between CAR and new permement 
+              // memory seperately.
+              //
+              StackOffset            = (UINTN) NewPermenentMemoryBase - (UINTN) SecCoreData->StackBase;
+              HeapOffset             = (INTN) ((UINTN) Private->PhysicalMemoryBegin + Private->StackSize - \
+                                               (UINTN) SecCoreData->PeiTemporaryRamBase);
+              DEBUG ((EFI_D_INFO, "Heap Offset = 0x%X Stack Offset = 0x%X\n", HeapOffset, StackOffset));
+              
+              //
+              // Caculate new HandOffTable and PrivateData address in permenet memory's stack
+              //
+              NewHandOffTable        = (EFI_HOB_HANDOFF_INFO_TABLE *)((UINTN)OldHandOffTable + HeapOffset);
+              PrivateInMem           = (PEI_CORE_INSTANCE *)((UINTN) (VOID*) Private + StackOffset);
 
               //
               // TemporaryRamSupportPpi is produced by platform's SEC
@@ -514,6 +521,12 @@ Returns:
 
 
               if (!EFI_ERROR (Status)) {
+                //
+                // Temporary Ram support Ppi is provided by platform, it will copy 
+                // temporary memory to permenent memory and do stack switching.
+                // After invoken temporary Ram support, following code's stack is in 
+                // memory but not in CAR.
+                //
                 TemporaryRamSupportPpi->TemporaryRamMigration (
                                           (CONST EFI_PEI_SERVICES **) PeiServices,
                                           (EFI_PHYSICAL_ADDRESS)(UINTN) SecCoreData->TemporaryRamBase,
@@ -522,11 +535,11 @@ Returns:
                                           );
 
               } else {
-                CopyMem (
-                  (VOID*)(UINTN) NewPermenentMemoryBase,
-                  SecCoreData->TemporaryRamBase,
-                  SecCoreData->TemporaryRamSize
-                  );
+                //
+                // In IA32/x64/Itanium architecture, we need platform provide
+                // TEMPORAY_RAM_MIGRATION_PPI.
+                //
+                ASSERT (FALSE);
               }
 
 
@@ -536,7 +549,7 @@ Returns:
               //
               PrivateInMem->PS          = &PrivateInMem->ServiceTableShadow;
               PrivateInMem->CpuIo       = &PrivateInMem->ServiceTableShadow.CpuIo;
-              PrivateInMem->HobList.Raw = (VOID*) ((UINTN) PrivateInMem->HobList.Raw + Offset);
+              PrivateInMem->HobList.Raw = (VOID*) ((UINTN) PrivateInMem->HobList.Raw + HeapOffset);
               PrivateInMem->StackBase   = (EFI_PHYSICAL_ADDRESS)(((UINTN)PrivateInMem->PhysicalMemoryBegin + EFI_PAGE_MASK) & ~EFI_PAGE_MASK);
 
               PeiServices = &PrivateInMem->PS;
@@ -550,7 +563,7 @@ Returns:
               // Update HandOffHob for new installed permenent memory
               //
               NewHandOffTable->EfiEndOfHobList =
-                (EFI_PHYSICAL_ADDRESS)((UINTN) NewHandOffTable->EfiEndOfHobList + Offset);
+                (EFI_PHYSICAL_ADDRESS)((UINTN) NewHandOffTable->EfiEndOfHobList + HeapOffset);
               NewHandOffTable->EfiMemoryTop        = PrivateInMem->PhysicalMemoryBegin +
                                                      PrivateInMem->PhysicalMemoryLength;
               NewHandOffTable->EfiMemoryBottom     = PrivateInMem->PhysicalMemoryBegin;
@@ -561,10 +574,11 @@ Returns:
               //
               // We need convert the PPI desciptor's pointer
               //
-              ConvertPpiPointers ((CONST EFI_PEI_SERVICES **)PeiServices, 
+              ConvertPpiPointers (PrivateInMem, 
                                   OldCheckingBottom, 
                                   OldCheckingTop, 
-                                  NewHandOffTable);
+                                  HeapOffset
+                                  );
 
               DEBUG ((EFI_D_INFO, "Stack Hob: BaseAddress=0x%X Length=0x%X\n",
                                   (UINTN)PrivateInMem->StackBase,
@@ -577,6 +591,11 @@ Returns:
               //
               PrivateInMem->PeiMemoryInstalled     = TRUE;
 
+              //
+              // Indicate that PeiCore reenter
+              //
+              PrivateInMem->PeimDispatcherReenter  = TRUE;
+              
               //
               // Shadow PEI Core. When permanent memory is avaiable, shadow
               // PEI Core and PEIMs to get high performance.
@@ -660,67 +679,57 @@ Returns:
     //  pass. If we did not dispatch a PEIM there is no point in trying again
     //  as it will fail the next time too (nothing has changed).
     //
-  } while (PeimNeedingDispatch && PeimDispatchOnThisPass);
+  } while (Private->PeimNeedingDispatch && Private->PeimDispatchOnThisPass);
 
 }
 
+/**
+  Initialize the Dispatcher's data members
+
+  @param PrivateData     PeiCore's private data structure
+  @param OldCoreData     Old data from SecCore
+                         NULL if being run in non-permament memory mode.
+  @param SecCoreData     Points to a data structure containing information about the PEI core's operating
+                         environment, such as the size and location of temporary RAM, the stack location and
+                         the BFV location.
+
+  @return None.
+
+**/
 VOID
 InitializeDispatcherData (
   IN PEI_CORE_INSTANCE            *PrivateData,
   IN PEI_CORE_INSTANCE            *OldCoreData,
   IN CONST EFI_SEC_PEI_HAND_OFF   *SecCoreData
   )
-/*++
-
-Routine Description:
-
-  Initialize the Dispatcher's data members
-
-Arguments:
-
-  PeiServices          - The PEI core services table.
-  OldCoreData          - Pointer to old core data (before switching stack).
-                         NULL if being run in non-permament memory mode.
-  SecCoreData          - Points to a data structure containing information about the PEI core's operating
-                         environment, such as the size and location of temporary RAM, the stack location and
-                         the BFV location.
-
-Returns:
-
-  None.
-
---*/
 {
   if (OldCoreData == NULL) {
+    PrivateData->PeimDispatcherReenter = FALSE;
     PeiInitializeFv (PrivateData, SecCoreData);
   }
 
   return;
 }
 
+/**
+  This routine parses the Dependency Expression, if available, and
+  decides if the module can be executed.
 
+
+  @param Private         PeiCore's private data structure
+  @param FileHandle      PEIM's file handle
+  @param PeimCount       Peim count in all dispatched PEIMs.
+
+  @retval TRUE   Can be dispatched
+  @retval FALSE  Cannot be dispatched
+
+**/
 BOOLEAN
 DepexSatisfied (
   IN PEI_CORE_INSTANCE          *Private,
   IN EFI_PEI_FILE_HANDLE        FileHandle,
   IN UINTN                      PeimCount
   )
-/*++
-
-Routine Description:
-
-  This routine parses the Dependency Expression, if available, and
-  decides if the module can be executed.
-
-Arguments:
-  PeiServices - The PEI Service Table
-  CurrentPeimAddress - Address of the PEIM Firmware File under investigation
-
-Returns:
-  TRUE  - Can be dispatched
-  FALSE - Cannot be dispatched
-
---*/
 {
   EFI_STATUS           Status;
   VOID                 *DepexData;
@@ -758,11 +767,11 @@ Returns:
   This routine enable a PEIM to register itself to shadow when PEI Foundation
   discovery permanent memory.
 
-	@param FileHandle  	File handle of a PEIM.
+  @param FileHandle             File handle of a PEIM.
 
-  @retval EFI_NOT_FOUND  				The file handle doesn't point to PEIM itself.
-  @retval EFI_ALREADY_STARTED		Indicate that the PEIM has been registered itself.
-  @retval EFI_SUCCESS						Successfully to register itself.
+  @retval EFI_NOT_FOUND         The file handle doesn't point to PEIM itself.
+  @retval EFI_ALREADY_STARTED   Indicate that the PEIM has been registered itself.
+  @retval EFI_SUCCESS           Successfully to register itself.
 
 **/
 EFI_STATUS
@@ -793,120 +802,3 @@ PeiRegisterForShadow (
   return EFI_SUCCESS;
 }
 
-
-
-/**
-  Get Fv image from the FV type file, then install FV INFO ppi, Build FV hob.
-
-	@param PeiServices          Pointer to the PEI Core Services Table.
-	@param FileHandle  	        File handle of a Fv type file.
-  @param AuthenticationState  Pointer to attestation authentication state of image.
-
-
-  @retval EFI_NOT_FOUND  				FV image can't be found.
-  @retval EFI_SUCCESS						Successfully to process it.
-
-**/
-EFI_STATUS
-ProcessFvFile (
-  IN  EFI_PEI_SERVICES      **PeiServices,
-  IN  EFI_PEI_FILE_HANDLE   FvFileHandle,
-  OUT UINT32                *AuthenticationState
-  )
-{
-  EFI_STATUS            Status;
-  EFI_PEI_FV_HANDLE     FvImageHandle;
-  EFI_FV_INFO           FvImageInfo;
-  UINT32                FvAlignment;
-  VOID                  *FvBuffer;
-  EFI_PEI_HOB_POINTERS  HobFv2;
-
-  FvBuffer             = NULL;
-  *AuthenticationState = 0;
-
-  //
-  // Check if this EFI_FV_FILETYPE_FIRMWARE_VOLUME_IMAGE file has already
-  // been extracted.
-  //
-  HobFv2.Raw = GetHobList ();
-  while ((HobFv2.Raw = GetNextHob (EFI_HOB_TYPE_FV2, HobFv2.Raw)) != NULL) {
-    if (CompareGuid (&(((EFI_FFS_FILE_HEADER *)FvFileHandle)->Name), &HobFv2.FirmwareVolume2->FileName)) {
-      //
-      // this FILE has been dispatched, it will not be dispatched again.
-      //
-      return EFI_SUCCESS;
-    }
-    HobFv2.Raw = GET_NEXT_HOB (HobFv2);
-  }
-
-  //
-  // Find FvImage in FvFile
-  //
-  Status = PeiFfsFindSectionData (
-             (CONST EFI_PEI_SERVICES **) PeiServices,
-             EFI_SECTION_FIRMWARE_VOLUME_IMAGE,
-             FvFileHandle,
-             (VOID **)&FvImageHandle
-             );
-
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-  //
-  // Collect FvImage Info.
-  //
-  Status = PeiFfsGetVolumeInfo (FvImageHandle, &FvImageInfo);
-  ASSERT_EFI_ERROR (Status);
-  //
-  // FvAlignment must be more than 8 bytes required by FvHeader structure.
-  //
-  FvAlignment = 1 << ((FvImageInfo.FvAttributes & EFI_FVB2_ALIGNMENT) >> 16);
-  if (FvAlignment < 8) {
-    FvAlignment = 8;
-  }
-  //
-  // Check FvImage
-  //
-  if ((UINTN) FvImageInfo.FvStart % FvAlignment != 0) {
-    FvBuffer = AllocateAlignedPages (EFI_SIZE_TO_PAGES ((UINT32) FvImageInfo.FvSize), FvAlignment);
-    if (FvBuffer == NULL) {
-      return EFI_OUT_OF_RESOURCES;
-    }
-    CopyMem (FvBuffer, FvImageInfo.FvStart, (UINTN) FvImageInfo.FvSize);
-    //
-    // Update FvImageInfo after reload FvImage to new aligned memory
-    //
-    PeiFfsGetVolumeInfo ((EFI_PEI_FV_HANDLE) FvBuffer, &FvImageInfo);
-  }
-
-  //
-  // Install FvPpi and Build FvHob
-  //
-  PiLibInstallFvInfoPpi (
-    NULL,
-    FvImageInfo.FvStart,
-    (UINT32) FvImageInfo.FvSize,
-    &(FvImageInfo.FvName),
-    &(((EFI_FFS_FILE_HEADER*)FvFileHandle)->Name)
-    );
-
-  //
-  // Inform HOB consumer phase, i.e. DXE core, the existance of this FV
-  //
-  BuildFvHob (
-    (EFI_PHYSICAL_ADDRESS) (UINTN) FvImageInfo.FvStart,
-    FvImageInfo.FvSize
-  );
-  //
-  // Makes the encapsulated volume show up in DXE phase to skip processing of
-  // encapsulated file again.
-  //
-  BuildFv2Hob (
-    (EFI_PHYSICAL_ADDRESS) (UINTN) FvImageInfo.FvStart,
-    FvImageInfo.FvSize,
-    &FvImageInfo.FvName,
-    &(((EFI_FFS_FILE_HEADER *)FvFileHandle)->Name)
-    );
-
-  return EFI_SUCCESS;
-}

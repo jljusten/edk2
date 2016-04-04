@@ -2,7 +2,7 @@
   Utility functions to generate checksum based on 2's complement
   algorithm.
 
-  Copyright (c) 2007, Intel Corporation<BR>
+  Copyright (c) 2007 - 2008, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -13,11 +13,7 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
 #include <BaseLibInternals.h>
-
 
 /**
   Calculate the sum of all elements in a buffer in unit of UINT8. 
@@ -31,17 +27,17 @@
   If Buffer is NULL, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
 
-  @param  Buffer			Pointer to the buffer to carry out the sum operation.
-  @param  Length	    The size, in bytes, of Buffer .
+  @param  Buffer      Pointer to the buffer to carry out the sum operation.
+  @param  Length      The size, in bytes, of Buffer .
 
-  @return Sum         The sum of Buffer with carry bits dropped during additions.
+  @return The sum of Buffer with carry bits dropped during additions.
 
 **/
 UINT8
 EFIAPI
 CalculateSum8 (
-  IN      CONST UINT8     	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT8        *Buffer,
+  IN      UINTN              Length
   )
 {
   UINT8     Sum;
@@ -70,18 +66,17 @@ CalculateSum8 (
   If Buffer is NULL, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
+  @param  Buffer      Pointer to the buffer to carry out the checksum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
-  @param  Buffer			Pointer to the buffer to carry out the checksum operation.
-  @param  Length	    The size, in bytes, of Buffer.
-
-  @return Checksum	  The 2's complement checksum of Buffer.
+  @return The 2's complement checksum of Buffer.
 
 **/
 UINT8
 EFIAPI
 CalculateCheckSum8 (
-  IN      CONST UINT8     	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT8        *Buffer,
+  IN      UINTN              Length
   )
 {
   UINT8     CheckSum;
@@ -107,17 +102,17 @@ CalculateCheckSum8 (
   If Length is not aligned on a 16-bit boundary, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
-  @param  Buffer			Pointer to the buffer to carry out the sum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the sum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
-  @return Sum         The sum of Buffer with carry bits dropped during additions.
+  @return The sum of Buffer with carry bits dropped during additions.
 
 **/
 UINT16
 EFIAPI
 CalculateSum16 (
-  IN      CONST UINT16    	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT16       *Buffer,
+  IN      UINTN              Length
   )
 {
   UINT16    Sum;
@@ -152,17 +147,17 @@ CalculateSum16 (
   If Length is not aligned on a 16-bit boundary, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
 
-  @param  Buffer			Pointer to the buffer to carry out the checksum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the checksum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
-  @return Checksum	  The 2's complement checksum of Buffer.
+  @return The 2's complement checksum of Buffer.
 
 **/
 UINT16
 EFIAPI
 CalculateCheckSum16 (
-  IN      CONST UINT16    	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT16         *Buffer,
+  IN      UINTN                Length
   )
 {
   UINT16     CheckSum;
@@ -189,17 +184,17 @@ CalculateCheckSum16 (
   If Length is not aligned on a 32-bit boundary, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
-  @param  Buffer			Pointer to the buffer to carry out the sum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the sum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
-  @return Sum         The sum of Buffer with carry bits dropped during additions.
+  @return The sum of Buffer with carry bits dropped during additions.
 
 **/
 UINT32
 EFIAPI
 CalculateSum32 (
-  IN      CONST UINT32    	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT32         *Buffer,
+  IN      UINTN                Length
   )
 {
   UINT32    Sum;
@@ -234,17 +229,17 @@ CalculateSum32 (
   If Length is not aligned on a 32-bit boundary, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
 
-  @param  Buffer			Pointer to the buffer to carry out the checksum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the checksum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
-  @return Checksum	  The 2's complement checksum of Buffer.
+  @return The 2's complement checksum of Buffer.
 
 **/
 UINT32
 EFIAPI
 CalculateCheckSum32 (
-  IN      CONST UINT32    	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT32         *Buffer,
+  IN      UINTN                Length
   )
 {
   UINT32     CheckSum;
@@ -271,17 +266,17 @@ CalculateCheckSum32 (
   If Length is not aligned on a 64-bit boundary, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
-  @param  Buffer			Pointer to the buffer to carry out the sum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the sum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
-  @return Sum         The sum of Buffer with carry bits dropped during additions.
+  @return The sum of Buffer with carry bits dropped during additions.
 
 **/
 UINT64
 EFIAPI
 CalculateSum64 (
-  IN      CONST UINT64    	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT64         *Buffer,
+  IN      UINTN                Length
   )
 {
   UINT64    Sum;
@@ -316,17 +311,17 @@ CalculateSum64 (
   If Length is not aligned on a 64-bit boundary, then ASSERT().
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
 
-  @param  Buffer			Pointer to the buffer to carry out the checksum operation.
-  @param  Length	    The size, in bytes, of Buffer.
+  @param  Buffer      Pointer to the buffer to carry out the checksum operation.
+  @param  Length      The size, in bytes, of Buffer.
 
-  @return Checksum	  The 2's complement checksum of Buffer.
+  @return The 2's complement checksum of Buffer.
 
 **/
 UINT64
 EFIAPI
 CalculateCheckSum64 (
-  IN      CONST UINT64    	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT64         *Buffer,
+  IN      UINTN                Length
   )
 {
   UINT64     CheckSum;

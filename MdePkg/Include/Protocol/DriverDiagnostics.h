@@ -1,7 +1,7 @@
 /** @file
   EFI Driver Diagnostics Protocol
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -15,11 +15,9 @@
 #ifndef __EFI_DRIVER_DIAGNOSTICS_H__
 #define __EFI_DRIVER_DIAGNOSTICS_H__
 
-#include <PiDxe.h>
-
-//
-// Global ID for the Driver Diagnostics Protocol as defined in UEFI 2.0.
-//
+///
+/// Global ID for the Driver Diagnostics Protocol as defined in UEFI 2.0.
+///
 #define EFI_DRIVER_DIAGNOSTICS_PROTOCOL_GUID \
   { \
     0x0784924f, 0xe296, 0x11d4, {0x9a, 0x49, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d } \
@@ -88,7 +86,7 @@ typedef enum {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DRIVER_DIAGNOSTICS_RUN_DIAGNOSTICS) (
+(EFIAPI *EFI_DRIVER_DIAGNOSTICS_RUN_DIAGNOSTICS)(
   IN EFI_DRIVER_DIAGNOSTICS_PROTOCOL                        *This,
   IN  EFI_HANDLE                                            ControllerHandle,
   IN  EFI_HANDLE                                            ChildHandle  OPTIONAL,
@@ -99,24 +97,18 @@ EFI_STATUS
   OUT CHAR16                                                **Buffer
   );
 
-
-//
-//
-
 /**
   Interface structure for the Driver Diagnostics Protocol.
 
   @par Protocol Description:
   Used to perform diagnostics on a controller that an EFI Driver is managing.
-
-  @param RunDiagnostics      Runs diagnostics on a controller.
-  @param SupportedLanguages  A Null-terminated ASCII string that contains one or more
-                             ISO 639-2 language codes.  This is the list of language 
-                             codes that this protocol supports.
-
 **/
 struct _EFI_DRIVER_DIAGNOSTICS_PROTOCOL {
   EFI_DRIVER_DIAGNOSTICS_RUN_DIAGNOSTICS  RunDiagnostics;
+  ///
+  /// A Null-terminated ASCII string that contains one or more RFC 3066
+  /// language codes.  This is the list of language codes that this protocol supports.  
+  ///  
   CHAR8                                   *SupportedLanguages;
 };
 

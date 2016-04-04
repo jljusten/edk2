@@ -1,7 +1,7 @@
 /** @file
   HII Library implementation that uses DXE protocols and services.
 
-  Copyright (c) 2006, Intel Corporation<BR>
+  Copyright (c) 2006 - 2008, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -14,6 +14,25 @@
 
 
 #include "InternalHiiLib.h"
+
+/**
+  This function adds the string into String Package of each language
+  supported by the package list.
+
+  If String is NULL, then ASSERT.
+  If StringId is NULL, the ASSERT.
+  If PackageList could not be found in the default HII database, then ASSERT.
+
+  @param  PackageList            Handle of the package list where this string will
+                                            be added.
+  @param  StringId               On return, contains the new strings id, which is
+                                          unique within PackageList.
+  @param  String                 Points to the new null-terminated string.
+
+  @retval EFI_SUCCESS             The new string was added successfully.
+  @retval EFI_OUT_OF_RESOURCES   Could not add the string due to lack of resources.
+
+**/
 EFI_STATUS
 EFIAPI
 HiiLibNewString (
@@ -38,6 +57,10 @@ HiiLibNewString (
   while (*LangStrings != 0) {
     HiiLibGetNextLanguage (&LangStrings, Lang);
 
+    //
+    // For each language supported by the package,
+    // a string token is created.
+    //
     Status = mHiiStringProt->NewString (
                                  mHiiStringProt,
                                  PackageList,
@@ -58,6 +81,24 @@ HiiLibNewString (
   
 }
 
+
+/**
+  This function update the specified string in String Package of each language
+  supported by the package list.
+
+  If String is NULL, then ASSERT.
+  If PackageList could not be found in the default HII database, then ASSERT.
+  If StringId is not found in PackageList, then ASSERT.
+
+  @param  PackageList            Handle of the package list where this string will
+                                            be added.
+  @param  StringId               Ths String Id to be updated.
+  @param  String                 Points to the new null-terminated string.
+
+  @retval EFI_SUCCESS            The new string was added successfully.
+  @retval EFI_OUT_OF_RESOURCES   Could not add the string due to lack of resources.
+
+**/
 EFI_STATUS
 EFIAPI
 HiiLibSetString (
@@ -82,6 +123,10 @@ HiiLibSetString (
   while (*LangStrings != 0) {
     HiiLibGetNextLanguage (&LangStrings, Lang);
 
+    //
+    // For each language supported by the package,
+    // the string is updated.
+    //
     Status = mHiiStringProt->SetString (
                                  mHiiStringProt,
                                  PackageList,
@@ -101,6 +146,22 @@ HiiLibSetString (
 }
 
 
+/**
+  Get the string given the StringId and String package Producer's Guid. The caller
+  is responsible to free the *String.
+
+  If PackageList with the matching ProducerGuid is not found, then ASSERT.
+  If PackageList with the matching ProducerGuid is found but no String is
+  specified by StringId is found, then ASSERT.
+
+  @param  ProducerGuid           The Guid of String package list.
+  @param  StringId               The String ID.
+  @param  String                 The output string.
+
+  @retval EFI_SUCCESS            Operation is successful.
+  @retval EFI_OUT_OF_RESOURCES   There is not enought memory in the system.
+
+**/
 EFI_STATUS
 EFIAPI
 HiiLibGetStringFromToken (
@@ -124,7 +185,7 @@ HiiLibGetStringFromToken (
     if (EFI_ERROR(Status)) {
       return Status;
     }
-    if (CompareGuid (&Guid, ProducerGuid) == TRUE) {
+    if (CompareGuid (&Guid, ProducerGuid)) {
       break;
     }
   }
@@ -142,11 +203,35 @@ HiiLibGetStringFromToken (
 
 Out:
   if (HiiHandleBuffer != NULL) {
-    gBS->FreePool (HiiHandleBuffer);
+    FreePool (HiiHandleBuffer);
   }
   return Status;
 }
 
+/**
+  This function try to retrieve string from String package of current language.
+  If fails, it try to retrieve string from String package of first language it support.
+
+  If StringSize is NULL, then ASSERT.
+  If String is NULL and *StringSize is not 0, then ASSERT.
+  If PackageList could not be found in the default HII database, then ASSERT.
+  If StringId is not found in PackageList, then ASSERT.
+
+  @param  PackageList     The package list in the HII database to search for
+                                     the specified string.
+  @param  StringId          The string's id, which is unique within
+                                      PackageList.
+  @param  String             Points to the new null-terminated string.
+  @param  StringSize       On entry, points to the size of the buffer pointed
+                                 to by String, in bytes. On return, points to the
+                                 length of the string, in bytes.
+
+  @retval EFI_SUCCESS            The string was returned successfully.
+  @retval EFI_NOT_FOUND          The string specified by StringId is not available.
+  @retval EFI_BUFFER_TOO_SMALL   The buffer specified by StringLength is too small
+                                 to hold the string.
+
+**/
 EFI_STATUS
 EFIAPI
 HiiLibGetString (
@@ -162,11 +247,11 @@ HiiLibGetString (
   CHAR8       Lang[RFC_3066_ENTRY_SIZE];
   CHAR8       CurrentLang[RFC_3066_ENTRY_SIZE];
 
-  ASSERT (String != NULL);
   ASSERT (StringSize != NULL);
+  ASSERT (!(*StringSize != 0 && String == NULL));
   ASSERT (IsHiiHandleRegistered (PackageList));
 
-  HiiLibGetCurrentLanguage (CurrentLang);
+  GetCurrentLanguage (CurrentLang);
 
   Status = mHiiStringProt->GetString (
                                mHiiStringProt,
@@ -184,7 +269,7 @@ HiiLibGetString (
     
     LangStrings = Languages;
     HiiLibGetNextLanguage (&LangStrings, Lang);
-    gBS->FreePool (Languages);
+    FreePool (Languages);
 
     Status = mHiiStringProt->GetString (
                                  mHiiStringProt,
@@ -201,6 +286,23 @@ HiiLibGetString (
 }
 
 
+/**
+  Get string specified by StringId form the HiiHandle. The caller
+  is responsible to free the *String.
+
+  If String is NULL, then ASSERT.
+  If HiiHandle could not be found in the default HII database, then ASSERT.
+  If StringId is not found in PackageList, then ASSERT.
+
+  @param  HiiHandle              The HII handle of package list.
+  @param  StringId               The String ID.
+  @param  String                 The output string.
+
+  @retval EFI_NOT_FOUND          String is not found.
+  @retval EFI_SUCCESS            Operation is successful.
+  @retval EFI_OUT_OF_RESOURCES   There is not enought memory in the system.
+
+**/
 EFI_STATUS
 EFIAPI
 HiiLibGetStringFromHandle (
@@ -222,7 +324,7 @@ HiiLibGetStringFromHandle (
 
   Status = HiiLibGetString (HiiHandle, StringId, *String, &StringSize);
   if (Status == EFI_BUFFER_TOO_SMALL) {
-    gBS->FreePool (*String);
+    FreePool (*String);
     *String = AllocateZeroPool (StringSize);
     if (*String == NULL) {
       return EFI_OUT_OF_RESOURCES;
@@ -240,7 +342,7 @@ HiiLibGetStringFromHandle (
 // Each entry is 5 CHAR8 values long.  The first 3 CHAR8 values are the ISO 639-2 code.
 // The last 2 CHAR8 values are the ISO 639-1 code.
 //
-CHAR8 Iso639ToRfc3066ConversionTable[] =
+GLOBAL_REMOVE_IF_UNREFERENCED CONST CHAR8 Iso639ToRfc3066ConversionTable[] =
 "\
 aaraa\
 abkab\

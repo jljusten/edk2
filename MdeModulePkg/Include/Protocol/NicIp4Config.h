@@ -1,6 +1,7 @@
-/*++
+/** @file
+  This file defines NicIp4Config Protocol.
 
-Copyright (c) 2006, Intel Corporation
+Copyright (c) 2006 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,13 +10,7 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-  NicIp4Config.h
-
-Abstract:
-
---*/
+**/
 
 #ifndef __NIC_IP4_CONFIG_H__
 #define __NIC_IP4_CONFIG_H__
@@ -38,7 +33,7 @@ Abstract:
 
 typedef struct _EFI_NIC_IP4_CONFIG_PROTOCOL EFI_NIC_IP4_CONFIG_PROTOCOL;
 
-enum {
+typedef enum {
   //
   // Config source: dhcp or static
   //
@@ -47,8 +42,8 @@ enum {
   IP4_CONFIG_SOURCE_MAX,
 
   IP4_NIC_NAME_LENGTH        = 64,
-  MAX_IP4_CONFIG_IN_VARIABLE = 16,
-};
+  MAX_IP4_CONFIG_IN_VARIABLE = 16
+} IP4_CONFIG_TYPE;
 
 //
 // The following structures are used by drivers/applications other
@@ -89,7 +84,7 @@ typedef struct {
 
 typedef
 EFI_STATUS
-(EFIAPI *EFI_NIC_IP4_CONFIG_GET_INFO) (
+(EFIAPI *EFI_NIC_IP4_CONFIG_GET_INFO)(
   IN EFI_NIC_IP4_CONFIG_PROTOCOL  *This,
   IN OUT UINTN                    *Len,
   OUT NIC_IP4_CONFIG_INFO         *NicConfig     OPTIONAL
@@ -97,7 +92,7 @@ EFI_STATUS
 
 typedef
 EFI_STATUS
-(EFIAPI *EFI_NIC_IP4_CONFIG_SET_INFO) (
+(EFIAPI *EFI_NIC_IP4_CONFIG_SET_INFO)(
   IN EFI_NIC_IP4_CONFIG_PROTOCOL  *This,
   IN NIC_IP4_CONFIG_INFO          *NicConfig,    OPTIONAL
   IN BOOLEAN                      ReConfig
@@ -105,7 +100,7 @@ EFI_STATUS
 
 typedef
 EFI_STATUS
-(EFIAPI *EFI_NIC_IP4_CONFIG_GET_NAME) (
+(EFIAPI *EFI_NIC_IP4_CONFIG_GET_NAME)(
   IN  EFI_NIC_IP4_CONFIG_PROTOCOL *This,
   IN  UINT16                      *Name,         OPTIONAL
   IN  NIC_ADDR                    *NicAddr       OPTIONAL

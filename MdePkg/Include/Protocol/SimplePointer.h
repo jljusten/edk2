@@ -3,7 +3,7 @@
 
   Abstraction of a very simple pointer device like a mice or tracekballs.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -57,7 +57,7 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SIMPLE_POINTER_RESET) (
+(EFIAPI *EFI_SIMPLE_POINTER_RESET)(
   IN EFI_SIMPLE_POINTER_PROTOCOL            *This,
   IN BOOLEAN                                ExtendedVerification
   );
@@ -78,14 +78,25 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_SIMPLE_POINTER_GET_STATE) (
+(EFIAPI *EFI_SIMPLE_POINTER_GET_STATE)(
   IN EFI_SIMPLE_POINTER_PROTOCOL          *This,
   IN OUT EFI_SIMPLE_POINTER_STATE         *State
   );
 
+/**  
+  @par Protocol Description:
+  The EFI_SIMPLE_POINTER_PROTOCOL provides a set of services for a pointer 
+  device that can use used as an input device from an application written 
+  to this specification. The services include the ability to reset the 
+  pointer device, retrieve get the state of the pointer device, and 
+  retrieve the capabilities of the pointer device.
+**/
 struct _EFI_SIMPLE_POINTER_PROTOCOL {
   EFI_SIMPLE_POINTER_RESET      Reset;
   EFI_SIMPLE_POINTER_GET_STATE  GetState;
+  ///
+  /// Event to use with WaitForEvent() to wait for input from the pointer device.
+  ///
   EFI_EVENT                     WaitForInput;
   EFI_SIMPLE_POINTER_MODE       *Mode;
 };

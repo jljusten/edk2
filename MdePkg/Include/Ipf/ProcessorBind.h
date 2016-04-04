@@ -16,9 +16,9 @@
 #define __PROCESSOR_BIND_H__
 
 
-//
-// Define the processor type so other code can make processor based choices
-//
+///
+/// Define the processor type so other code can make processor based choices
+///
 #define MDE_CPU_IPF
 
 
@@ -30,11 +30,16 @@
 
 #if __INTEL_COMPILER
 //
+// Disable ICC's remark #869: "Parameter" was never referenced warning.
+// This is legal ANSI C code so we disable the remark that is turned on with -Wall
+//
+#pragma warning ( disable : 869 )
+
+//
 // Disable ICC's remark #1418: external function definition with no prior declaration.
 // This is legal ANSI C code so we disable the remark that is turned on with /W4
 //
 #pragma warning ( disable : 1418 )
-
 
 //
 // Disable ICC's remark #1419: external declaration in primary source file
@@ -220,9 +225,9 @@ typedef INT64   INTN;
   #define GLOBAL_REMOVE_IF_UNREFERENCED
 #endif
 
-//
-// A pointer to a function in IPF points to a plabel.
-//
+///
+/// A pointer to a function in IPF points to a plabel.
+///
 typedef struct {
   UINT64  EntryPoint;
   UINT64  GP;

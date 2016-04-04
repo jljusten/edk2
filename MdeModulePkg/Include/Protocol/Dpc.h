@@ -1,6 +1,8 @@
-/*++
+/** @file
 
-Copyright (c) 2007, Intel Corporation
+  EFI Deferred Procedure Call Protocol
+
+Copyright (c) 2007 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,17 +11,7 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-  Dpc.h
-
-Abstract:
-
-  EFI Deferred Procedure Call Protocol
-
-Revision History
-
---*/
+**/
 
 
 #ifndef __DPC_H__
@@ -48,7 +40,7 @@ typedef struct _EFI_DPC_PROTOCOL  EFI_DPC_PROTOCOL;
 **/
 typedef
 VOID
-(EFIAPI *EFI_DPC_PROCEDURE) (
+(EFIAPI *EFI_DPC_PROCEDURE)(
   IN VOID  *DpcContext
   );
 
@@ -70,7 +62,7 @@ VOID
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DPC_QUEUE_DPC) (
+(EFIAPI *EFI_DPC_QUEUE_DPC)(
   IN EFI_DPC_PROTOCOL   *This,
   IN EFI_TPL            DpcTpl,
   IN EFI_DPC_PROCEDURE  DpcProcedure,
@@ -91,7 +83,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_DPC_DISPATCH_DPC) (
+(EFIAPI *EFI_DPC_DISPATCH_DPC)(
   IN EFI_DPC_PROTOCOL  *This
   );
 

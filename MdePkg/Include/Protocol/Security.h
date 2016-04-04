@@ -1,5 +1,5 @@
 /** @file
-  Security Architectural Protocol as defined in the DXE CIS
+  Security Architectural Protocol as defined in PI Specification VOLUME 2 DXE
 
   Used to provide Security services.  Specifically, dependening upon the 
   authentication state of a discovered driver in a Firmware Volume, the 
@@ -14,7 +14,7 @@
   in the Schedule-On-Request (SOR) state.  This will allow for later disposition 
   of the driver by platform agent, such as Platform BDS.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -23,19 +23,14 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
-  @par Revision Reference:
-  Version 0.91B.
-
 **/
 
 #ifndef __ARCH_PROTOCOL_SECURITY_H__
 #define __ARCH_PROTOCOL_SECURITY_H__
 
-#include <PiDxe.h>
-
-//
-// Global ID for the Security Code Architectural Protocol
-//
+///
+/// Global ID for the Security Code Architectural Protocol
+///
 #define EFI_SECURITY_ARCH_PROTOCOL_GUID  \
   { 0xA46423E3, 0x4617, 0x49f1, {0xB9, 0xFF, 0xD1, 0xBF, 0xA9, 0x11, 0x58, 0x39 } }
 
@@ -88,12 +83,11 @@ typedef struct _EFI_SECURITY_ARCH_PROTOCOL    EFI_SECURITY_ARCH_PROTOCOL;
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_SECURITY_FILE_AUTHENTICATION_STATE) (
+(EFIAPI *EFI_SECURITY_FILE_AUTHENTICATION_STATE)(
   IN EFI_SECURITY_ARCH_PROTOCOL     *This,
   IN  UINT32                        AuthenticationStatus,
   IN  EFI_DEVICE_PATH_PROTOCOL      *File
-  )
-;
+  );
 
 //
 // Interface stucture for the Timer Architectural Protocol
@@ -116,12 +110,6 @@ EFI_STATUS
   wrapped in an Authentication Section.  See the Firmware File System 
   Specification for details on the GUIDed Section Extraction Protocol and 
   Authentication Sections.
-
-  @par Protocol Parameters:
-
-  FileAuthenticationState - This service is called upon fault with respect to 
-  the authentication of a section of a file.
-
 **/
 struct _EFI_SECURITY_ARCH_PROTOCOL {
   EFI_SECURITY_FILE_AUTHENTICATION_STATE  FileAuthenticationState;

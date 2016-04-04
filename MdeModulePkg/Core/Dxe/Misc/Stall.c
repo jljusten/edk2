@@ -16,7 +16,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 // Include statements
 //
 
-#include <DxeMain.h>
+#include "DxeMain.h"
 
 
 
@@ -25,8 +25,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
   @param  Microseconds           The number of microseconds to stall execution.
 
-  @retval EFI_SUCCESS            Execution was stalled for at least the requested 
-                                 amount of microseconds. 
+  @retval EFI_SUCCESS            Execution was stalled for at least the requested
+                                 amount of microseconds.
   @retval EFI_NOT_AVAILABLE_YET  gMetronome is not available yet
 
 **/

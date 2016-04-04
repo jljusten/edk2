@@ -1,7 +1,9 @@
 /** @file
-  EFI PXE Base Code CallBack Protocol
+  EFI PXE Base Code CallBack Protocol is as defined in UEFI specification.
+  It is invoked when the PXE Base Code Protocol is about to transmit, has received, 
+  or is waiting to receive a packet.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -15,9 +17,9 @@
 #ifndef _PXE_BASE_CODE_CALLBACK_H_
 #define _PXE_BASE_CODE_CALLBACK_H_
 
-//
-// Call Back Definitions
-//
+///
+/// Call Back Definitions
+///
 #define EFI_PXE_BASE_CODE_CALLBACK_PROTOCOL_GUID \
   { \
     0x245dca21, 0xfb7b, 0x11d3, {0x8f, 0x01, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b } \
@@ -30,14 +32,14 @@
 #define EFI_PXE_BASE_CODE_CALLBACK_INTERFACE_REVISION  \
         EFI_PXE_BASE_CODE_CALLBACK_PROTOCOL_REVISION
 
-//
-// Protocol definition
-//
+///
+/// Protocol definition
+///
 typedef struct _EFI_PXE_BASE_CODE_CALLBACK_PROTOCOL  EFI_PXE_BASE_CODE_CALLBACK_PROTOCOL;
 
-//
-// Protocol defined in EFI1.1.
-// 
+///
+/// Protocol defined in EFI1.1.
+/// 
 typedef EFI_PXE_BASE_CODE_CALLBACK_PROTOCOL   EFI_PXE_BASE_CODE_CALLBACK;
 
 typedef enum {
@@ -86,7 +88,18 @@ EFI_PXE_BASE_CODE_CALLBACK_STATUS
   IN EFI_PXE_BASE_CODE_PACKET             *Packet     OPTIONAL
   );
 
+/**  
+  @par Protocol Description:
+  Protocol that is invoked when the PXE Base Code Protocol is about 
+  to transmit, has received, or is waiting to receive a packet.
+
+**/
 struct _EFI_PXE_BASE_CODE_CALLBACK_PROTOCOL {
+  ///
+  ///  The revision of the EFI_PXE_BASE_CODE_PROTOCOL. All future revisions must 
+  ///  be backwards compatible. If a future version is not backwards compatible 
+  ///  it is not the same GUID.
+  ///
   UINT64            Revision;
   EFI_PXE_CALLBACK  Callback;
 };

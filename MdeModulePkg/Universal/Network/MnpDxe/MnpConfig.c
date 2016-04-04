@@ -1,6 +1,6 @@
 /** @file
 
-Copyright (c) 2005 - 2007, Intel Corporation
+Copyright (c) 2005 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -469,7 +469,8 @@ ERROR:
 **/
 VOID
 MnpFlushServiceData (
-  MNP_SERVICE_DATA  *MnpServiceData
+  IN MNP_SERVICE_DATA  *MnpServiceData,
+  IN EFI_HANDLE        ImageHandle
   )
 {
   NET_CHECK_SIGNATURE (MnpServiceData, MNP_SERVICE_DATA_SIGNATURE);
@@ -509,6 +510,16 @@ MnpFlushServiceData (
     DEBUG ((EFI_D_WARN, "MnpFlushServiceData: Memory leak, MnpServiceData->NbufCnt != 0.\n"));
   }
   );
+
+  //
+  // Close the Simple Network Protocol.
+  //
+  gBS->CloseProtocol (
+        MnpServiceData->ControllerHandle,
+        &gEfiSimpleNetworkProtocolGuid,
+        ImageHandle,
+        MnpServiceData->ControllerHandle
+        );
 }
 
 

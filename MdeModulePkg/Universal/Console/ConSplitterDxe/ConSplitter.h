@@ -1,7 +1,7 @@
-/**@file
+/** @file
   Private data structures for the Console Splitter driver
 
-Copyright (c) 2006 - 2007 Intel Corporation. <BR>
+Copyright (c) 2006 - 2008 Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -15,7 +15,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #ifndef _CON_SPLITTER_H_
 #define _CON_SPLITTER_H_
 
-#include <PiDxe.h>
+#include <Uefi.h>
 #include <Guid/PrimaryStandardErrorDevice.h>
 #include <Guid/PrimaryConsoleOutDevice.h>
 #include <Protocol/GraphicsOutput.h>
@@ -76,7 +76,7 @@ extern EFI_GUID                     gSimpleTextInExNotifyGuid;
 #define CONSOLE_SPLITTER_MODES_ALLOC_UNIT     32
 #define MAX_STD_IN_PASSWORD                   80
 
-#define VarConOutMode L"ConOutMode"
+#define VARCONOUTMODE L"ConOutMode"
 
 typedef struct {
   UINTN   Column;
@@ -183,40 +183,40 @@ typedef struct {
 } TEXT_OUT_AND_GOP_DATA;
 
 typedef struct {
-  UINT64                             Signature;
-  EFI_HANDLE                         VirtualHandle;
-  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    TextOut;
-  EFI_SIMPLE_TEXT_OUTPUT_MODE        TextOutMode;
-
-  EFI_UGA_DRAW_PROTOCOL              UgaDraw;
-  UINT32                             UgaHorizontalResolution;
-  UINT32                             UgaVerticalResolution;
-  UINT32                             UgaColorDepth;
-  UINT32                             UgaRefreshRate;
-  EFI_UGA_PIXEL                      *UgaBlt;
-
-  EFI_GRAPHICS_OUTPUT_PROTOCOL       GraphicsOutput;
-  EFI_GRAPHICS_OUTPUT_BLT_PIXEL      *GraphicsOutputBlt;
+  UINT64                                Signature;
+  EFI_HANDLE                            VirtualHandle;
+  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL       TextOut;
+  EFI_SIMPLE_TEXT_OUTPUT_MODE           TextOutMode;
+                                        
+  EFI_UGA_DRAW_PROTOCOL                 UgaDraw;
+  UINT32                                UgaHorizontalResolution;
+  UINT32                                UgaVerticalResolution;
+  UINT32                                UgaColorDepth;
+  UINT32                                UgaRefreshRate;
+  EFI_UGA_PIXEL                         *UgaBlt;
+                                        
+  EFI_GRAPHICS_OUTPUT_PROTOCOL          GraphicsOutput;
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL         *GraphicsOutputBlt;
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  *GraphicsOutputModeBuffer;
-  UINTN                              CurrentNumberOfGraphicsOutput;
-  UINTN                              CurrentNumberOfUgaDraw;
-  BOOLEAN                            HardwareNeedsStarting;
-
-  EFI_CONSOLE_CONTROL_PROTOCOL       ConsoleControl;
-
-  UINTN                              CurrentNumberOfConsoles;
-  TEXT_OUT_AND_GOP_DATA              *TextOutList;
-  UINTN                              TextOutListCount;
-  TEXT_OUT_SPLITTER_QUERY_DATA       *TextOutQueryData;
-  UINTN                              TextOutQueryDataCount;
-  INT32                              *TextOutModeMap;
-
-  EFI_CONSOLE_CONTROL_SCREEN_MODE    ConsoleOutputMode;
-
-  UINTN                              DevNullColumns;
-  UINTN                              DevNullRows;
-  CHAR16                             *DevNullScreen;
-  INT32                              *DevNullAttributes;
+  UINTN                                 CurrentNumberOfGraphicsOutput;
+  UINTN                                 CurrentNumberOfUgaDraw;
+  BOOLEAN                               HardwareNeedsStarting;
+                                        
+  EFI_CONSOLE_CONTROL_PROTOCOL          ConsoleControl;
+                                        
+  UINTN                                 CurrentNumberOfConsoles;
+  TEXT_OUT_AND_GOP_DATA                 *TextOutList;
+  UINTN                                 TextOutListCount;
+  TEXT_OUT_SPLITTER_QUERY_DATA          *TextOutQueryData;
+  UINTN                                 TextOutQueryDataCount;
+  INT32                                 *TextOutModeMap;
+                                        
+  EFI_CONSOLE_CONTROL_SCREEN_MODE       ConsoleOutputMode;
+                                        
+  UINTN                                 DevNullColumns;
+  UINTN                                 DevNullRows;
+  CHAR16                                *DevNullScreen;
+  INT32                                 *DevNullAttributes;
 
 } TEXT_OUT_SPLITTER_PRIVATE_DATA;
 
@@ -251,101 +251,237 @@ typedef struct {
 //
 // Function Prototypes
 //
+
+/**
+  The user Entry Point for module ConSplitter. The user code starts with this function.
+
+  Installs driver module protocols and. Creates virtual device handles for ConIn,
+  ConOut, and StdErr. Installs Simple Text In protocol, Simple Text In Ex protocol,
+  Simple Pointer protocol, Absolute Pointer protocol on those virtual handlers. 
+  Installs Graphics Output protocol and/or UGA Draw protocol if needed.
+
+  @param[in] ImageHandle    The firmware allocated handle for the EFI image.
+  @param[in] SystemTable    A pointer to the EFI System Table.
+
+  @retval EFI_SUCCESS       The entry point is executed successfully.
+  @retval other             Some error occurs when executing this entry point.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterDriverEntry (
   IN EFI_HANDLE                       ImageHandle,
   IN EFI_SYSTEM_TABLE                 *SystemTable
-  )
-;
+  );
 
+/**
+  Construct console input devices' private data.
+
+  @param  ConInPrivate             A pointer to the TEXT_IN_SPLITTER_PRIVATE_DATA
+                                   structure.
+
+  @retval EFI_OUT_OF_RESOURCES     Out of resources.
+  @retval EFI_SUCCESS              Console Input Devcie's private data has been constructed.
+  @retval other                    Failed to construct private data.
+
+**/
 EFI_STATUS
 ConSplitterTextInConstructor (
   TEXT_IN_SPLITTER_PRIVATE_DATA       *Private
-  )
-;
+  );
 
+/**
+  Construct console output devices' private data.
+
+  @param  ConOutPrivate            A pointer to the TEXT_IN_SPLITTER_PRIVATE_DATA
+                                   structure.
+
+  @retval EFI_OUT_OF_RESOURCES     Out of resources.
+  @retval EFI_SUCCESS              Text Input Devcie's private data has been constructed.
+
+**/
 EFI_STATUS
 ConSplitterTextOutConstructor (
   TEXT_OUT_SPLITTER_PRIVATE_DATA      *Private
-  )
-;
+  );
 
 //
 // Driver Binding Functions
 //
+
+/**
+  Test to see if Console In Device could be supported on the ControllerHandle. 
+
+  @param  This                Protocol instance pointer.
+  @param  ControllerHandle    Handle of device to test.
+  @param  RemainingDevicePath Optional parameter use to pick a specific child
+                              device to start.
+
+  @retval EFI_SUCCESS         This driver supports this device.
+  @retval other               This driver does not support this device.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterConInDriverBindingSupported (
   IN  EFI_DRIVER_BINDING_PROTOCOL     *This,
   IN  EFI_HANDLE                      ControllerHandle,
   IN  EFI_DEVICE_PATH_PROTOCOL        *RemainingDevicePath
-  )
-;
+  );
 
+/**
+  Test to see if Simple Pointer protocol could be supported on the ControllerHandle. 
+
+  @param  This                Protocol instance pointer.
+  @param  ControllerHandle    Handle of device to test.
+  @param  RemainingDevicePath Optional parameter use to pick a specific child
+                              device to start.
+
+  @retval EFI_SUCCESS         This driver supports this device.
+  @retval other               This driver does not support this device.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterSimplePointerDriverBindingSupported (
   IN  EFI_DRIVER_BINDING_PROTOCOL     *This,
   IN  EFI_HANDLE                      ControllerHandle,
   IN  EFI_DEVICE_PATH_PROTOCOL        *RemainingDevicePath
-  )
-;
+  );
 
+/**
+  Test to see if Console Out Device could be supported on the ControllerHandle. 
+
+  @param  This                Protocol instance pointer.
+  @param  ControllerHandle    Handle of device to test.
+  @param  RemainingDevicePath Optional parameter use to pick a specific child
+                              device to start.
+
+  @retval EFI_SUCCESS         This driver supports this device.
+  @retval other               This driver does not support this device.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterConOutDriverBindingSupported (
   IN  EFI_DRIVER_BINDING_PROTOCOL     *This,
   IN  EFI_HANDLE                      ControllerHandle,
   IN  EFI_DEVICE_PATH_PROTOCOL        *RemainingDevicePath
-  )
-;
+  );
 
+/**
+  Test to see if Standard Error Device could be supported on the ControllerHandle. 
+
+  @param  This                Protocol instance pointer.
+  @param  ControllerHandle    Handle of device to test.
+  @param  RemainingDevicePath Optional parameter use to pick a specific child
+                              device to start.
+
+  @retval EFI_SUCCESS         This driver supports this device.
+  @retval other               This driver does not support this device.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterStdErrDriverBindingSupported (
   IN  EFI_DRIVER_BINDING_PROTOCOL     *This,
   IN  EFI_HANDLE                      ControllerHandle,
   IN  EFI_DEVICE_PATH_PROTOCOL        *RemainingDevicePath
-  )
-;
+  );
 
+/**
+  Start Console In Consplitter on device handle. 
+  
+  @param  This                 Protocol instance pointer.
+  @param  ControllerHandle     Handle of device to bind driver to.
+  @param  RemainingDevicePath  Optional parameter use to pick a specific child
+                               device to start.
+
+  @retval EFI_SUCCESS          Console In Consplitter is added to ControllerHandle.
+  @retval other                Console In Consplitter does not support this device.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterConInDriverBindingStart (
   IN  EFI_DRIVER_BINDING_PROTOCOL     *This,
   IN  EFI_HANDLE                      ControllerHandle,
   IN  EFI_DEVICE_PATH_PROTOCOL        *RemainingDevicePath
-  )
-;
+  );
 
+/**
+  Start Simple Pointer Consplitter on device handle. 
+  
+  @param  This                 Protocol instance pointer.
+  @param  ControllerHandle     Handle of device to bind driver to.
+  @param  RemainingDevicePath  Optional parameter use to pick a specific child
+                               device to start.
+
+  @retval EFI_SUCCESS          Simple Pointer Consplitter is added to ControllerHandle.
+  @retval other                Simple Pointer Consplitter does not support this device.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterSimplePointerDriverBindingStart (
   IN  EFI_DRIVER_BINDING_PROTOCOL     *This,
   IN  EFI_HANDLE                      ControllerHandle,
   IN  EFI_DEVICE_PATH_PROTOCOL        *RemainingDevicePath
-  )
-;
+  );
 
+/**
+  Start Console Out Consplitter on device handle. 
+  
+  @param  This                 Protocol instance pointer.
+  @param  ControllerHandle     Handle of device to bind driver to.
+  @param  RemainingDevicePath  Optional parameter use to pick a specific child
+                               device to start.
+
+  @retval EFI_SUCCESS          Console Out Consplitter is added to ControllerHandle.
+  @retval other                Console Out Consplitter does not support this device.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterConOutDriverBindingStart (
   IN  EFI_DRIVER_BINDING_PROTOCOL     *This,
   IN  EFI_HANDLE                      ControllerHandle,
   IN  EFI_DEVICE_PATH_PROTOCOL        *RemainingDevicePath
-  )
-;
+  );
 
+/**
+  Start Standard Error Consplitter on device handle. 
+  
+  @param  This                 Protocol instance pointer.
+  @param  ControllerHandle     Handle of device to bind driver to.
+  @param  RemainingDevicePath  Optional parameter use to pick a specific child
+                               device to start.
+
+  @retval EFI_SUCCESS          Standard Error Consplitter is added to ControllerHandle.
+  @retval other                Standard Error Consplitter does not support this device.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterStdErrDriverBindingStart (
   IN  EFI_DRIVER_BINDING_PROTOCOL     *This,
   IN  EFI_HANDLE                      ControllerHandle,
   IN  EFI_DEVICE_PATH_PROTOCOL        *RemainingDevicePath
-  )
-;
+  );
 
+/**
+  Stop Console In ConSplitter on ControllerHandle by closing Console In Devcice GUID.
+
+  @param  This              Protocol instance pointer.
+  @param  ControllerHandle  Handle of device to stop driver on
+  @param  NumberOfChildren  Number of Handles in ChildHandleBuffer. If number of
+                            children is zero stop the entire bus driver.
+  @param  ChildHandleBuffer List of Child Handles to Stop.
+
+  @retval EFI_SUCCESS       This driver is removed ControllerHandle
+  @retval other             This driver was not removed from this device
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterConInDriverBindingStop (
@@ -353,9 +489,22 @@ ConSplitterConInDriverBindingStop (
   IN  EFI_HANDLE                      ControllerHandle,
   IN  UINTN                           NumberOfChildren,
   IN  EFI_HANDLE                      *ChildHandleBuffer
-  )
-;
+  );
 
+/**
+  Stop Simple Pointer protocol ConSplitter on ControllerHandle by closing
+  Simple Pointer protocol.
+
+  @param  This              Protocol instance pointer.
+  @param  ControllerHandle  Handle of device to stop driver on
+  @param  NumberOfChildren  Number of Handles in ChildHandleBuffer. If number of
+                            children is zero stop the entire bus driver.
+  @param  ChildHandleBuffer List of Child Handles to Stop.
+
+  @retval EFI_SUCCESS       This driver is removed ControllerHandle
+  @retval other             This driver was not removed from this device
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterSimplePointerDriverBindingStop (
@@ -363,9 +512,21 @@ ConSplitterSimplePointerDriverBindingStop (
   IN  EFI_HANDLE                      ControllerHandle,
   IN  UINTN                           NumberOfChildren,
   IN  EFI_HANDLE                      *ChildHandleBuffer
-  )
-;
+  );
 
+/**
+  Stop Console Out ConSplitter on ControllerHandle by closing Console Out Devcice GUID.
+
+  @param  This              Protocol instance pointer.
+  @param  ControllerHandle  Handle of device to stop driver on
+  @param  NumberOfChildren  Number of Handles in ChildHandleBuffer. If number of
+                            children is zero stop the entire bus driver.
+  @param  ChildHandleBuffer List of Child Handles to Stop.
+
+  @retval EFI_SUCCESS       This driver is removed ControllerHandle
+  @retval other             This driver was not removed from this device
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterConOutDriverBindingStop (
@@ -373,9 +534,21 @@ ConSplitterConOutDriverBindingStop (
   IN  EFI_HANDLE                      ControllerHandle,
   IN  UINTN                           NumberOfChildren,
   IN  EFI_HANDLE                      *ChildHandleBuffer
-  )
-;
+  );
 
+/**
+  Stop Standard Error ConSplitter on ControllerHandle by closing Standard Error GUID.
+
+  @param  This              Protocol instance pointer.
+  @param  ControllerHandle  Handle of device to stop driver on
+  @param  NumberOfChildren  Number of Handles in ChildHandleBuffer. If number of
+                            children is zero stop the entire bus driver.
+  @param  ChildHandleBuffer List of Child Handles to Stop.
+
+  @retval EFI_SUCCESS       This driver is removed ControllerHandle
+  @retval other             This driver was not removed from this device
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterStdErrDriverBindingStop (
@@ -383,31 +556,63 @@ ConSplitterStdErrDriverBindingStop (
   IN  EFI_HANDLE                      ControllerHandle,
   IN  UINTN                           NumberOfChildren,
   IN  EFI_HANDLE                      *ChildHandleBuffer
-  )
-;
+  );
 
-//
-// Driver binding functions
-//
 
+/**
+  Test to see if Absolute Pointer protocol could be supported on the ControllerHandle. 
+
+  @param  This                Protocol instance pointer.
+  @param  ControllerHandle    Handle of device to test.
+  @param  RemainingDevicePath Optional parameter use to pick a specific child
+                              device to start.
+
+  @retval EFI_SUCCESS         This driver supports this device.
+  @retval other               This driver does not support this device.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterAbsolutePointerDriverBindingSupported (
   IN  EFI_DRIVER_BINDING_PROTOCOL     *This,
   IN  EFI_HANDLE                      ControllerHandle,
   IN  EFI_DEVICE_PATH_PROTOCOL        *RemainingDevicePath
-  )
-;
+  );
 
+/**
+  Start Absolute Pointer Consplitter on device handle. 
+  
+  @param  This                 Protocol instance pointer.
+  @param  ControllerHandle     Handle of device to bind driver to.
+  @param  RemainingDevicePath  Optional parameter use to pick a specific child
+                               device to start.
+
+  @retval EFI_SUCCESS          Absolute Pointer Consplitter is added to ControllerHandle.
+  @retval other                Absolute Pointer Consplitter does not support this device.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterAbsolutePointerDriverBindingStart (
   IN  EFI_DRIVER_BINDING_PROTOCOL     *This,
   IN  EFI_HANDLE                      ControllerHandle,
   IN  EFI_DEVICE_PATH_PROTOCOL        *RemainingDevicePath
-  )
-;
+  );
 
+/**
+  Stop Absolute Pointer protocol ConSplitter on ControllerHandle by closing
+  Absolute Pointer protocol.
+
+  @param  This              Protocol instance pointer.
+  @param  ControllerHandle  Handle of device to stop driver on
+  @param  NumberOfChildren  Number of Handles in ChildHandleBuffer. If number of
+                            children is zero stop the entire bus driver.
+  @param  ChildHandleBuffer List of Child Handles to Stop.
+
+  @retval EFI_SUCCESS       This driver is removed ControllerHandle
+  @retval other             This driver was not removed from this device
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterAbsolutePointerDriverBindingStop (
@@ -415,81 +620,105 @@ ConSplitterAbsolutePointerDriverBindingStop (
   IN  EFI_HANDLE                      ControllerHandle,
   IN  UINTN                           NumberOfChildren,
   IN  EFI_HANDLE                      *ChildHandleBuffer
-  )
-;
+  );
 
+/**
+  Add Absolute Pointer Device in Consplitter Absolute Pointer list.
+
+  @param  Private                  Text In Splitter pointer.
+  @param  AbsolutePointer          Absolute Pointer protocol pointer.
+
+  @retval EFI_SUCCESS              Absolute Pointer Device added successfully.
+  @retval EFI_OUT_OF_RESOURCES     Could not grow the buffer size.
+
+**/
 EFI_STATUS
 ConSplitterAbsolutePointerAddDevice (
   IN  TEXT_IN_SPLITTER_PRIVATE_DATA     *Private,
   IN  EFI_ABSOLUTE_POINTER_PROTOCOL     *AbsolutePointer
-  )
-;
+  );
 
+/**
+  Remove Absolute Pointer Device in Consplitter Absolute Pointer list.
+
+  @param  Private                  Text In Splitter pointer.
+  @param  AbsolutePointer          Absolute Pointer protocol pointer.
+
+  @retval EFI_SUCCESS              Absolute Pointer Device removed successfully.
+  @retval EFI_NOT_FOUND            No Absolute Pointer Device found.
+
+**/
 EFI_STATUS
 ConSplitterAbsolutePointerDeleteDevice (
   IN  TEXT_IN_SPLITTER_PRIVATE_DATA     *Private,
   IN  EFI_ABSOLUTE_POINTER_PROTOCOL     *AbsolutePointer
-  )
-;
+  );
 
 //
 // Absolute Pointer protocol interfaces
 //
 
+
+/**
+  Resets the pointer device hardware.
+
+  @param  This                     Protocol instance pointer.
+  @param  ExtendedVerification     Driver may perform diagnostics on reset.
+
+  @retval EFI_SUCCESS              The device was reset.
+  @retval EFI_DEVICE_ERROR         The device is not functioning correctly and
+                                   could not be reset.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterAbsolutePointerReset (
   IN EFI_ABSOLUTE_POINTER_PROTOCOL   *This,
   IN BOOLEAN                         ExtendedVerification
-  )
-/*++
+  );
 
-  Routine Description:
-    Resets the pointer device hardware.
 
-  Arguments:
-    This                  - Protocol instance pointer.
-    ExtendedVerification  - Driver may perform diagnostics on reset.
+/**
+  Retrieves the current state of a pointer device.
 
-  Returns:
-    EFI_SUCCESS           - The device was reset.
-    EFI_DEVICE_ERROR      - The device is not functioning correctly and could
-                            not be reset.
+  @param  This                     Protocol instance pointer.
+  @param  State                    A pointer to the state information on the
+                                   pointer device.
 
---*/
-;
+  @retval EFI_SUCCESS              The state of the pointer device was returned in
+                                   State..
+  @retval EFI_NOT_READY            The state of the pointer device has not changed
+                                   since the last call to GetState().
+  @retval EFI_DEVICE_ERROR         A device error occurred while attempting to
+                                   retrieve the pointer device's current state.
 
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterAbsolutePointerGetState (
   IN EFI_ABSOLUTE_POINTER_PROTOCOL   *This,
   IN OUT EFI_ABSOLUTE_POINTER_STATE  *State
-  )
-/*++
+  );
 
-  Routine Description:
-    Retrieves the current state of a pointer device.
+/**
+  This event agregates all the events of the pointer devices in the splitter.
+  If the ConIn is password locked then return.
+  If any events of physical pointer devices are signaled, signal the pointer
+  splitter event. This will cause the calling code to call
+  ConSplitterAbsolutePointerGetState ().
 
-  Arguments:
-    This                  - Protocol instance pointer.
-    State                 - A pointer to the state information on the pointer device.
+  @param  Event                    The Event assoicated with callback.
+  @param  Context                  Context registered when Event was created.
 
-  Returns:
-    EFI_SUCCESS           - The state of the pointer device was returned in State..
-    EFI_NOT_READY         - The state of the pointer device has not changed since the last call to
-                            GetState().
-    EFI_DEVICE_ERROR      - A device error occurred while attempting to retrieve the pointer
-                            device's current state.
---*/
-;
+  @return None
 
+**/
 VOID
 EFIAPI
 ConSplitterAbsolutePointerWaitForInput (
   IN  EFI_EVENT                       Event,
   IN  VOID                            *Context
-  )
-;
+  );
 
 /**
   Retrieves a Unicode string that is the user readable name of the driver.
@@ -696,6 +925,50 @@ ConSplitterSimplePointerComponentNameGetControllerName (
   OUT CHAR16                                          **ControllerName
   );
 
+/**
+  Retrieves a Unicode string that is the user readable name of the controller
+  that is being managed by an EFI Driver.
+
+  @param  This                   A pointer to the EFI_COMPONENT_NAME_PROTOCOL
+                                 instance.
+  @param  ControllerHandle       The handle of a controller that the driver
+                                 specified by This is managing.  This handle
+                                 specifies the controller whose name is to be
+                                 returned.
+  @param  ChildHandle            The handle of the child controller to retrieve the
+                                 name of.  This is an optional parameter that may
+                                 be NULL.  It will be NULL for device drivers.  It
+                                 will also be NULL for a bus drivers that wish to
+                                 retrieve the name of the bus controller.  It will
+                                 not be NULL for a bus driver that wishes to
+                                 retrieve the name of a child controller.
+  @param  Language               A pointer to RFC3066 language identifier. This is
+                                 the language of the controller name that that the
+                                 caller is requesting, and it must match one of the
+                                 languages specified in SupportedLanguages.  The
+                                 number of languages supported by a driver is up to
+                                 the driver writer.
+  @param  ControllerName         A pointer to the Unicode string to return.  This
+                                 Unicode string is the name of the controller
+                                 specified by ControllerHandle and ChildHandle in
+                                 the language specified by Language from the point
+                                 of view of the driver specified by This.
+
+  @retval EFI_SUCCESS            The Unicode string for the user readable name in
+                                 the language specified by Language for the driver
+                                 specified by This was returned in DriverName.
+  @retval EFI_INVALID_PARAMETER  ControllerHandle is not a valid EFI_HANDLE.
+  @retval EFI_INVALID_PARAMETER  ChildHandle is not NULL and it is not a valid
+                                 EFI_HANDLE.
+  @retval EFI_INVALID_PARAMETER  Language is NULL.
+  @retval EFI_INVALID_PARAMETER  ControllerName is NULL.
+  @retval EFI_UNSUPPORTED        The driver specified by This is not currently
+                                 managing the controller specified by
+                                 ControllerHandle and ChildHandle.
+  @retval EFI_UNSUPPORTED        The driver specified by This does not support the
+                                 language specified by Language.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterAbsolutePointerComponentNameGetControllerName (
@@ -704,8 +977,7 @@ ConSplitterAbsolutePointerComponentNameGetControllerName (
   IN  EFI_HANDLE                                      ChildHandle        OPTIONAL,
   IN  CHAR8                                           *Language,
   OUT CHAR16                                          **ControllerName
-  )
-;
+  );
 
 /**
   Retrieves a Unicode string that is the user readable name of the controller
@@ -868,168 +1140,280 @@ ConSplitterStdErrComponentNameGetControllerName (
 //
 // TextIn Constructor/Destructor functions
 //
+
+/**
+  Add Text Input Device in Consplitter Text Input list.
+
+  @param  Private                  Text In Splitter pointer.
+  @param  TextIn                   Simple Text Input protocol pointer.
+
+  @retval EFI_SUCCESS              Text Input Device added successfully.
+  @retval EFI_OUT_OF_RESOURCES     Could not grow the buffer size.
+
+**/
 EFI_STATUS
 ConSplitterTextInAddDevice (
   IN  TEXT_IN_SPLITTER_PRIVATE_DATA      *Private,
   IN  EFI_SIMPLE_TEXT_INPUT_PROTOCOL     *TextIn
-  )
-;
+  );
 
+/**
+  Remove Simple Text Device in Consplitter Absolute Pointer list.
+
+  @param  Private                  Text In Splitter pointer.
+  @param  TextIn                   Simple Text protocol pointer.
+
+  @retval EFI_SUCCESS              Simple Text Device removed successfully.
+  @retval EFI_NOT_FOUND            No Simple Text Device found.
+
+**/
 EFI_STATUS
 ConSplitterTextInDeleteDevice (
   IN  TEXT_IN_SPLITTER_PRIVATE_DATA      *Private,
   IN  EFI_SIMPLE_TEXT_INPUT_PROTOCOL     *TextIn
-  )
-;
+  );
 
 //
 // SimplePointer Constuctor/Destructor functions
 //
+
+/**
+  Add Simple Pointer Device in Consplitter Simple Pointer list.
+
+  @param  Private                  Text In Splitter pointer.
+  @param  SimplePointer            Simple Pointer protocol pointer.
+
+  @retval EFI_SUCCESS              Simple Pointer Device added successfully.
+  @retval EFI_OUT_OF_RESOURCES     Could not grow the buffer size.
+
+**/
 EFI_STATUS
 ConSplitterSimplePointerAddDevice (
   IN  TEXT_IN_SPLITTER_PRIVATE_DATA   *Private,
   IN  EFI_SIMPLE_POINTER_PROTOCOL     *SimplePointer
-  )
-;
+  );
 
+/**
+  Remove Simple Pointer Device in Consplitter Absolute Pointer list.
+
+  @param  Private                  Text In Splitter pointer.
+  @param  SimplePointer            Simple Pointer protocol pointer.
+
+  @retval EFI_SUCCESS              Simple Pointer Device removed successfully.
+  @retval EFI_NOT_FOUND            No Simple Pointer Device found.
+
+**/
 EFI_STATUS
 ConSplitterSimplePointerDeleteDevice (
   IN  TEXT_IN_SPLITTER_PRIVATE_DATA   *Private,
   IN  EFI_SIMPLE_POINTER_PROTOCOL     *SimplePointer
-  )
-;
+  );
 
 //
 // TextOut Constuctor/Destructor functions
 //
+
+/**
+  Add Text Output Device in Consplitter Text Output list.
+
+  @param  Private                  Text Out Splitter pointer.
+  @param  TextOut                  Simple Text Output protocol pointer.
+  @param  GraphicsOutput           Graphics Output protocol pointer.
+  @param  UgaDraw                  UGA Draw protocol pointer.
+
+  @retval EFI_SUCCESS              Text Output Device added successfully.
+  @retval EFI_OUT_OF_RESOURCES     Could not grow the buffer size.
+
+**/
 EFI_STATUS
 ConSplitterTextOutAddDevice (
   IN  TEXT_OUT_SPLITTER_PRIVATE_DATA     *Private,
   IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    *TextOut,
   IN  EFI_GRAPHICS_OUTPUT_PROTOCOL       *GraphicsOutput,
   IN  EFI_UGA_DRAW_PROTOCOL              *UgaDraw
-  )
-;
+  );
 
+/**
+  Remove Text Out Device in Consplitter Text Out list.
+
+  @param  Private                  Text Out Splitter pointer.
+  @param  TextOut                  Simple Text Output Pointer protocol pointer.
+
+  @retval EFI_SUCCESS              Text Out Device removed successfully.
+  @retval EFI_NOT_FOUND            No Text Out Device found.
+
+**/
 EFI_STATUS
 ConSplitterTextOutDeleteDevice (
   IN  TEXT_OUT_SPLITTER_PRIVATE_DATA     *Private,
   IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    *TextOut
-  )
-;
+  );
 
 //
 // TextIn I/O Functions
 //
+
+/**
+  Reset the input device and optionaly run diagnostics
+
+  @param  This                     Protocol instance pointer.
+  @param  ExtendedVerification     Driver may perform diagnostics on reset.
+
+  @retval EFI_SUCCESS              The device was reset.
+  @retval EFI_DEVICE_ERROR         The device is not functioning properly and could
+                                   not be reset.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextInReset (
   IN  EFI_SIMPLE_TEXT_INPUT_PROTOCOL     *This,
   IN  BOOLEAN                            ExtendedVerification
-  )
-;
+  );
 
+/**
+  Reads the next keystroke from the input device. The WaitForKey Event can
+  be used to test for existance of a keystroke via WaitForEvent () call.
+  If the ConIn is password locked make it look like no keystroke is availible
+
+  @param  This                     Protocol instance pointer.
+  @param  Key                      Driver may perform diagnostics on reset.
+
+  @retval EFI_SUCCESS              The keystroke information was returned.
+  @retval EFI_NOT_READY            There was no keystroke data availiable.
+  @retval EFI_DEVICE_ERROR         The keydtroke information was not returned due
+                                   to hardware errors.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextInReadKeyStroke (
   IN  EFI_SIMPLE_TEXT_INPUT_PROTOCOL     *This,
   OUT EFI_INPUT_KEY                      *Key
-  )
-;
+  );
+
+/**
+  Add Text Input Ex Device in Consplitter Text Input Ex list.
+
+  @param  Private                  Text In Splitter pointer.
+  @param  TextInEx                 Simple Text Ex Input protocol pointer.
+
+  @retval EFI_SUCCESS              Text Input Ex Device added successfully.
+  @retval EFI_OUT_OF_RESOURCES     Could not grow the buffer size.
+
+**/
 EFI_STATUS
 ConSplitterTextInExAddDevice (
   IN  TEXT_IN_SPLITTER_PRIVATE_DATA         *Private,
   IN  EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL     *TextInEx
-  )
-;
+  );
 
+/**
+  Remove Simple Text Ex Device in Consplitter Absolute Pointer list.
+
+  @param  Private                  Text In Splitter pointer.
+  @param  TextInEx                 Simple Text Ex protocol pointer.
+
+  @retval EFI_SUCCESS              Simple Text Ex Device removed successfully.
+  @retval EFI_NOT_FOUND            No Simple Text Ex Device found.
+
+**/
 EFI_STATUS
 ConSplitterTextInExDeleteDevice (
   IN  TEXT_IN_SPLITTER_PRIVATE_DATA         *Private,
   IN  EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL     *TextInEx
-  )
-;
+  );
 
 //
 // Simple Text Input Ex protocol function prototypes
 //
 
+
+/**
+  Reset the input device and optionaly run diagnostics
+
+  @param  This                     Protocol instance pointer.
+  @param  ExtendedVerification     Driver may perform diagnostics on reset.
+
+  @retval EFI_SUCCESS              The device was reset.
+  @retval EFI_DEVICE_ERROR         The device is not functioning properly and could
+                                   not be reset.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextInResetEx (
   IN EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL  *This,
   IN BOOLEAN                            ExtendedVerification
-  )
-/*++
+  );
 
-  Routine Description:
-    Reset the input device and optionaly run diagnostics
 
-  Arguments:
-    This                 - Protocol instance pointer.
-    ExtendedVerification - Driver may perform diagnostics on reset.
+/**
+  Reads the next keystroke from the input device. The WaitForKey Event can
+  be used to test for existance of a keystroke via WaitForEvent () call.
 
-  Returns:
-    EFI_SUCCESS           - The device was reset.
-    EFI_DEVICE_ERROR      - The device is not functioning properly and could
-                            not be reset.
+  @param  This                     Protocol instance pointer.
+  @param  KeyData                  A pointer to a buffer that is filled in with the
+                                   keystroke state data for the key that was
+                                   pressed.
 
---*/
-;
+  @retval EFI_SUCCESS              The keystroke information was returned.
+  @retval EFI_NOT_READY            There was no keystroke data availiable.
+  @retval EFI_DEVICE_ERROR         The keystroke information was not returned due
+                                   to hardware errors.
+  @retval EFI_INVALID_PARAMETER    KeyData is NULL.
 
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextInReadKeyStrokeEx (
   IN  EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL *This,
   OUT EFI_KEY_DATA                      *KeyData
-  )
-/*++
+  );
 
-  Routine Description:
-    Reads the next keystroke from the input device. The WaitForKey Event can
-    be used to test for existance of a keystroke via WaitForEvent () call.
 
-  Arguments:
-    This       - Protocol instance pointer.
-    KeyData    - A pointer to a buffer that is filled in with the keystroke
-                 state data for the key that was pressed.
+/**
+  Set certain state for the input device.
 
-  Returns:
-    EFI_SUCCESS           - The keystroke information was returned.
-    EFI_NOT_READY         - There was no keystroke data availiable.
-    EFI_DEVICE_ERROR      - The keystroke information was not returned due to
-                            hardware errors.
-    EFI_INVALID_PARAMETER - KeyData is NULL.
+  @param  This                     Protocol instance pointer.
+  @param  KeyToggleState           A pointer to the EFI_KEY_TOGGLE_STATE to set the
+                                   state for the input device.
 
---*/
-;
+  @retval EFI_SUCCESS              The device state was set successfully.
+  @retval EFI_DEVICE_ERROR         The device is not functioning correctly and
+                                   could not have the setting adjusted.
+  @retval EFI_UNSUPPORTED          The device does not have the ability to set its
+                                   state.
+  @retval EFI_INVALID_PARAMETER    KeyToggleState is NULL.
 
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextInSetState (
   IN EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL  *This,
   IN EFI_KEY_TOGGLE_STATE               *KeyToggleState
-  )
-/*++
+  );
 
-  Routine Description:
-    Set certain state for the input device.
 
-  Arguments:
-    This                  - Protocol instance pointer.
-    KeyToggleState        - A pointer to the EFI_KEY_TOGGLE_STATE to set the
-                            state for the input device.
+/**
+  Register a notification function for a particular keystroke for the input device.
 
-  Returns:
-    EFI_SUCCESS           - The device state was set successfully.
-    EFI_DEVICE_ERROR      - The device is not functioning correctly and could
-                            not have the setting adjusted.
-    EFI_UNSUPPORTED       - The device does not have the ability to set its state.
-    EFI_INVALID_PARAMETER - KeyToggleState is NULL.
+  @param  This                     Protocol instance pointer.
+  @param  KeyData                  A pointer to a buffer that is filled in with the
+                                   keystroke information data for the key that was
+                                   pressed.
+  @param  KeyNotificationFunction  Points to the function to be called when the key
+                                   sequence is typed specified by KeyData.
+  @param  NotifyHandle             Points to the unique handle assigned to the
+                                   registered notification.
 
---*/
-;
+  @retval EFI_SUCCESS              The notification function was registered
+                                   successfully.
+  @retval EFI_OUT_OF_RESOURCES     Unable to allocate resources for necesssary data
+                                   structures.
+  @retval EFI_INVALID_PARAMETER    KeyData or NotifyHandle is NULL.
 
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextInRegisterKeyNotify (
@@ -1037,145 +1421,269 @@ ConSplitterTextInRegisterKeyNotify (
   IN EFI_KEY_DATA                       *KeyData,
   IN EFI_KEY_NOTIFY_FUNCTION            KeyNotificationFunction,
   OUT EFI_HANDLE                        *NotifyHandle
-  )
-/*++
+  );
 
-  Routine Description:
-    Register a notification function for a particular keystroke for the input device.
 
-  Arguments:
-    This                    - Protocol instance pointer.
-    KeyData                 - A pointer to a buffer that is filled in with the keystroke
-                              information data for the key that was pressed.
-    KeyNotificationFunction - Points to the function to be called when the key
-                              sequence is typed specified by KeyData.
-    NotifyHandle            - Points to the unique handle assigned to the registered notification.
+/**
+  Remove a registered notification function from a particular keystroke.
 
-  Returns:
-    EFI_SUCCESS             - The notification function was registered successfully.
-    EFI_OUT_OF_RESOURCES    - Unable to allocate resources for necesssary data structures.
-    EFI_INVALID_PARAMETER   - KeyData or NotifyHandle is NULL.
+  @param  This                     Protocol instance pointer.
+  @param  NotificationHandle       The handle of the notification function being
+                                   unregistered.
 
---*/
-;
+  @retval EFI_SUCCESS              The notification function was unregistered
+                                   successfully.
+  @retval EFI_INVALID_PARAMETER    The NotificationHandle is invalid.
+  @retval EFI_NOT_FOUND            Can not find the matching entry in database.
 
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextInUnregisterKeyNotify (
   IN EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL  *This,
   IN EFI_HANDLE                         NotificationHandle
-  )
-/*++
+  );
 
-  Routine Description:
-    Remove a registered notification function from a particular keystroke.
+/**
+  This event agregates all the events of the ConIn devices in the spliter.
+  If the ConIn is password locked then return.
+  If any events of physical ConIn devices are signaled, signal the ConIn
+  spliter event. This will cause the calling code to call
+  ConSplitterTextInReadKeyStroke ().
 
-  Arguments:
-    This                    - Protocol instance pointer.
-    NotificationHandle      - The handle of the notification function being unregistered.
+  @param  Event                    The Event assoicated with callback.
+  @param  Context                  Context registered when Event was created.
 
-  Returns:
-    EFI_SUCCESS             - The notification function was unregistered successfully.
-    EFI_INVALID_PARAMETER   - The NotificationHandle is invalid.
-    EFI_NOT_FOUND           - Can not find the matching entry in database.
+  @return None
 
---*/
-;
+**/
 VOID
 EFIAPI
 ConSplitterTextInWaitForKey (
   IN  EFI_EVENT                       Event,
   IN  VOID                            *Context
-  )
-;
+  );
+/**
+  Return TRUE if StdIn is locked. The ConIn device on the virtual handle is
+  the only device locked.
 
+  NONE
+
+  @retval TRUE                     StdIn locked
+  @retval FALSE                    StdIn working normally
+
+**/
 BOOLEAN
 ConSpliterConssoleControlStdInLocked (
   VOID
-  )
-;
+  );
+/**
+  This timer event will fire when StdIn is locked. It will check the key
+  sequence on StdIn to see if it matches the password. Any error in the
+  password will cause the check to reset. As long a mConIn.PasswordEnabled is
+  TRUE the StdIn splitter will not report any input.
 
+  @param  Event                  The Event this notify function registered to.
+  @param  Context                Pointer to the context data registerd to the
+                                 Event.
+
+  @return None
+
+**/
 VOID
 EFIAPI
 ConSpliterConsoleControlLockStdInEvent (
   IN  EFI_EVENT                       Event,
   IN  VOID                            *Context
-  )
-;
+  );
 
+/**
+  If Password is NULL unlock the password state variable and set the event
+  timer. If the Password is too big return an error. If the Password is valid
+  Copy the Password and enable state variable and then arm the periodic timer
+
+  @param  This                     Console Control protocol pointer.
+  @param  Password                 The password input.
+
+  @retval EFI_SUCCESS              Lock the StdIn device
+  @retval EFI_INVALID_PARAMETER    Password is NULL
+  @retval EFI_OUT_OF_RESOURCES     Buffer allocation to store the password fails
+
+**/
 EFI_STATUS
 EFIAPI
 ConSpliterConsoleControlLockStdIn (
   IN  EFI_CONSOLE_CONTROL_PROTOCOL    *This,
   IN  CHAR16                          *Password
-  )
-;
+  );
 
+/**
+  Reads the next keystroke from the input device. The WaitForKey Event can
+  be used to test for existance of a keystroke via WaitForEvent () call.
+
+  @param  Private                  Protocol instance pointer.
+  @param  Key                      Driver may perform diagnostics on reset.
+
+  @retval EFI_SUCCESS              The keystroke information was returned.
+  @retval EFI_NOT_READY            There was no keystroke data availiable.
+  @retval EFI_DEVICE_ERROR         The keydtroke information was not returned due
+                                   to hardware errors.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextInPrivateReadKeyStroke (
   IN  TEXT_IN_SPLITTER_PRIVATE_DATA   *Private,
   OUT EFI_INPUT_KEY                   *Key
-  )
-;
+  );
 
+/**
+  Reset the input device and optionaly run diagnostics
+
+  @param  This                     Protocol instance pointer.
+  @param  ExtendedVerification     Driver may perform diagnostics on reset.
+
+  @retval EFI_SUCCESS              The device was reset.
+  @retval EFI_DEVICE_ERROR         The device is not functioning properly and could
+                                   not be reset.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterSimplePointerReset (
   IN  EFI_SIMPLE_POINTER_PROTOCOL     *This,
   IN  BOOLEAN                         ExtendedVerification
-  )
-;
+  );
 
+/**
+  Reads the next keystroke from the input device. The WaitForKey Event can
+  be used to test for existance of a keystroke via WaitForEvent () call.
+  If the ConIn is password locked make it look like no keystroke is availible
+
+  @param  This                     A pointer to protocol instance.
+  @param  State                    A pointer to state information on the pointer device
+
+  @retval EFI_SUCCESS              The keystroke information was returned in State.
+  @retval EFI_NOT_READY            There was no keystroke data availiable.
+  @retval EFI_DEVICE_ERROR         The keydtroke information was not returned due
+                                   to hardware errors.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterSimplePointerGetState (
   IN  EFI_SIMPLE_POINTER_PROTOCOL     *This,
   IN OUT EFI_SIMPLE_POINTER_STATE     *State
-  )
-;
+  );
 
+/**
+  This event agregates all the events of the ConIn devices in the spliter.
+  If the ConIn is password locked then return.
+  If any events of physical ConIn devices are signaled, signal the ConIn
+  spliter event. This will cause the calling code to call
+  ConSplitterTextInReadKeyStroke ().
+
+  @param  Event                    The Event assoicated with callback.
+  @param  Context                  Context registered when Event was created.
+
+  @return None
+
+**/
 VOID
 EFIAPI
 ConSplitterSimplePointerWaitForInput (
   IN  EFI_EVENT                       Event,
   IN  VOID                            *Context
-  )
-;
+  );
 
 //
 // TextOut I/O Functions
 //
-VOID
-ConSplitterSynchronizeModeData (
-  TEXT_OUT_SPLITTER_PRIVATE_DATA      *Private
-  )
-;
 
+/**
+  Reset the text output device hardware and optionaly run diagnostics
+
+  @param  This                     Protocol instance pointer.
+  @param  ExtendedVerification     Driver may perform more exhaustive verfication
+                                   operation of the device during reset.
+
+  @retval EFI_SUCCESS              The text output device was reset.
+  @retval EFI_DEVICE_ERROR         The text output device is not functioning
+                                   correctly and could not be reset.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextOutReset (
   IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    *This,
   IN  BOOLEAN                            ExtendedVerification
-  )
-;
+  );
 
+/**
+  Write a Unicode string to the output device.
+
+  @param  This                     Protocol instance pointer.
+  @param  WString                  The NULL-terminated Unicode string to be
+                                   displayed on the output device(s). All output
+                                   devices must also support the Unicode drawing
+                                   defined in this file.
+
+  @retval EFI_SUCCESS              The string was output to the device.
+  @retval EFI_DEVICE_ERROR         The device reported an error while attempting to
+                                   output the text.
+  @retval EFI_UNSUPPORTED          The output device's mode is not currently in a
+                                   defined text mode.
+  @retval EFI_WARN_UNKNOWN_GLYPH   This warning code indicates that some of the
+                                   characters in the Unicode string could not be
+                                   rendered and were skipped.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextOutOutputString (
   IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    *This,
   IN  CHAR16                             *WString
-  )
-;
+  );
 
+/**
+  Verifies that all characters in a Unicode string can be output to the
+  target device.
+
+  @param  This                     Protocol instance pointer.
+  @param  WString                  The NULL-terminated Unicode string to be
+                                   examined for the output device(s).
+
+  @retval EFI_SUCCESS              The device(s) are capable of rendering the
+                                   output string.
+  @retval EFI_UNSUPPORTED          Some of the characters in the Unicode string
+                                   cannot be rendered by one or more of the output
+                                   devices mapped by the EFI handle.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextOutTestString (
   IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    *This,
   IN  CHAR16                             *WString
-  )
-;
+  );
 
+/**
+  Returns information for an available text mode that the output device(s)
+  supports.
+
+  @param  This                     Protocol instance pointer.
+  @param  ModeNumber               The mode number to return information on.
+  @param  Columns                  Returns the columns of the text output device
+                                   for the requested ModeNumber.
+  @param  Rows                     Returns the rows of the text output device
+                                   for the requested ModeNumber.
+
+  @retval EFI_SUCCESS              The requested mode information was returned.
+  @retval EFI_DEVICE_ERROR         The device had an error and could not complete
+                                   the request.
+  @retval EFI_UNSUPPORTED          The mode number was not valid.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextOutQueryMode (
@@ -1183,57 +1691,154 @@ ConSplitterTextOutQueryMode (
   IN  UINTN                              ModeNumber,
   OUT UINTN                              *Columns,
   OUT UINTN                              *Rows
-  )
-;
+  );
 
+/**
+  Sets the output device(s) to a specified mode.
+
+  @param  This                     Protocol instance pointer.
+  @param  ModeNumber               The mode number to set.
+
+  @retval EFI_SUCCESS              The requested text mode was set.
+  @retval EFI_DEVICE_ERROR         The device had an error and could not complete
+                                   the request.
+  @retval EFI_UNSUPPORTED          The mode number was not valid.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextOutSetMode (
   IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    *This,
   IN  UINTN                              ModeNumber
-  )
-;
+  );
 
+/**
+  Sets the background and foreground colors for the OutputString () and
+  ClearScreen () functions.
+
+  @param  This                     Protocol instance pointer.
+  @param  Attribute                The attribute to set. Bits 0..3 are the
+                                   foreground color, and bits 4..6 are the
+                                   background color. All other bits are undefined
+                                   and must be zero. The valid Attributes are
+                                   defined in this file.
+
+  @retval EFI_SUCCESS              The attribute was set.
+  @retval EFI_DEVICE_ERROR         The device had an error and could not complete
+                                   the request.
+  @retval EFI_UNSUPPORTED          The attribute requested is not defined.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextOutSetAttribute (
   IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    *This,
   IN  UINTN                              Attribute
-  )
-;
+  );
 
+/**
+  Clears the output device(s) display to the currently selected background
+  color.
+
+  @param  This                     Protocol instance pointer.
+
+  @retval EFI_SUCCESS              The operation completed successfully.
+  @retval EFI_DEVICE_ERROR         The device had an error and could not complete
+                                   the request.
+  @retval EFI_UNSUPPORTED          The output device is not in a valid text mode.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextOutClearScreen (
   IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    *This
-  )
-;
+  );
 
+/**
+  Sets the current coordinates of the cursor position
+
+  @param  This                     Protocol instance pointer.
+  @param  Column                   The column position to set the cursor to. Must be
+                                   greater than or equal to zero and less than the
+                                   number of columns by QueryMode ().
+  @param  Row                      The row position to set the cursor to. Must be
+                                   greater than or equal to zero and less than the
+                                   number of rows by QueryMode ().
+
+  @retval EFI_SUCCESS              The operation completed successfully.
+  @retval EFI_DEVICE_ERROR         The device had an error and could not complete
+                                   the request.
+  @retval EFI_UNSUPPORTED          The output device is not in a valid text mode,
+                                   or the cursor position is invalid for the
+                                   current mode.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextOutSetCursorPosition (
   IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    *This,
   IN  UINTN                              Column,
   IN  UINTN                              Row
-  )
-;
+  );
 
+
+/**
+  Makes the cursor visible or invisible
+
+  @param  This                     Protocol instance pointer.
+  @param  Visible                  If TRUE, the cursor is set to be visible. If
+                                   FALSE, the cursor is set to be invisible.
+
+  @retval EFI_SUCCESS              The operation completed successfully.
+  @retval EFI_DEVICE_ERROR         The device had an error and could not complete
+                                   the request, or the device does not support
+                                   changing the cursor mode.
+  @retval EFI_UNSUPPORTED          The output device is not in a valid text mode.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSplitterTextOutEnableCursor (
   IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    *This,
   IN  BOOLEAN                            Visible
-  )
-;
+  );
 
+/**
+  Take the passed in Buffer of size SizeOfCount and grow the buffer
+  by MAX (CONSOLE_SPLITTER_CONSOLES_ALLOC_UNIT, MaxGrow) * SizeOfCount
+  bytes. Copy the current data in Buffer to the new version of Buffer
+  and free the old version of buffer.
+
+  @param  SizeOfCount              Size of element in array
+  @param  Count                    Current number of elements in array
+  @param  Buffer                   Bigger version of passed in Buffer with all the
+                                   data
+
+  @retval EFI_SUCCESS              Buffer size has grown
+  @retval EFI_OUT_OF_RESOURCES     Could not grow the buffer size.
+
+**/
 EFI_STATUS
 ConSplitterGrowBuffer (
   IN  UINTN                           SizeOfCount,
   IN  UINTN                           *Count,
   IN OUT  VOID                        **Buffer
-  )
-;
+  );
 
+/**
+  Return the current video mode information. Also returns info about existence
+  of Graphics Output devices or UGA Draw devices in system, and if the Std In device is locked. All the
+  arguments are optional and only returned if a non NULL pointer is passed in.
+
+  @param  This                    Protocol instance pointer.
+  @param  Mode                    Are we in text of grahics mode.
+  @param  GopExists               TRUE if GOP Spliter has found a GOP/UGA device
+  @param  StdInLocked             TRUE if StdIn device is keyboard locked
+
+  @retval EFI_SUCCESS             Mode information returned.
+  @retval EFI_INVALID_PARAMETER   Invalid parameters.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSpliterConsoleControlGetMode (
@@ -1241,17 +1846,45 @@ ConSpliterConsoleControlGetMode (
   OUT EFI_CONSOLE_CONTROL_SCREEN_MODE *Mode,
   OUT BOOLEAN                         *GopExists,
   OUT BOOLEAN                         *StdInLocked
-  )
-;
+  );
 
+/**
+  Set the current mode to either text or graphics. Graphics is
+  for Quiet Boot.
+
+  @param  This                    Protocol instance pointer.
+  @param  Mode                    Mode to set the
+
+  @retval EFI_SUCCESS             Mode information returned.
+  @retval EFI_INVALID_PARAMETER   Invalid parameter.
+  @retval EFI_UNSUPPORTED         Operation unsupported.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSpliterConsoleControlSetMode (
   IN  EFI_CONSOLE_CONTROL_PROTOCOL    *This,
   IN  EFI_CONSOLE_CONTROL_SCREEN_MODE Mode
-  )
-;
+  );
 
+/**
+  Return the current video mode information.
+
+  @param  This                    Protocol instance pointer.
+  @param  ModeNumber              The mode number to return information on.
+  @param  SizeOfInfo              A pointer to the size, in bytes, of the Info
+                                  buffer.
+  @param  Info                    Caller allocated buffer that returns information
+                                  about ModeNumber.
+
+  @retval EFI_SUCCESS             Mode information returned.
+  @retval EFI_BUFFER_TOO_SMALL    The Info buffer was too small.
+  @retval EFI_DEVICE_ERROR        A hardware error occurred trying to retrieve the
+                                  video mode.
+  @retval EFI_NOT_STARTED         Video display is not initialized. Call SetMode ()
+  @retval EFI_INVALID_PARAMETER   One of the input args was NULL.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSpliterGraphicsOutputQueryMode (
@@ -1259,17 +1892,73 @@ ConSpliterGraphicsOutputQueryMode (
   IN  UINT32                            ModeNumber,
   OUT UINTN                              *SizeOfInfo,
   OUT EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  **Info
-  )
-;
+  );
 
+/**
+  Graphics output protocol interface to set video mode.
+
+  @param  This                    Protocol instance pointer.
+  @param  ModeNumber              The mode number to be set.
+
+  @retval EFI_SUCCESS             Graphics mode was changed.
+  @retval EFI_DEVICE_ERROR        The device had an error and could not complete
+                                  the request.
+  @retval EFI_UNSUPPORTED         ModeNumber is not supported by this device.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSpliterGraphicsOutputSetMode (
   IN  EFI_GRAPHICS_OUTPUT_PROTOCOL * This,
   IN  UINT32                       ModeNumber
-  )
-;
+  );
 
+/**
+  The following table defines actions for BltOperations.
+
+  EfiBltVideoFill - Write data from the  BltBuffer pixel (SourceX, SourceY)
+  directly to every pixel of the video display rectangle
+  (DestinationX, DestinationY)
+  (DestinationX + Width, DestinationY + Height).
+  Only one pixel will be used from the BltBuffer. Delta is NOT used.
+  EfiBltVideoToBltBuffer - Read data from the video display rectangle
+  (SourceX, SourceY) (SourceX + Width, SourceY + Height) and place it in
+  the BltBuffer rectangle (DestinationX, DestinationY )
+  (DestinationX + Width, DestinationY + Height). If DestinationX or
+  DestinationY is not zero then Delta must be set to the length in bytes
+  of a row in the BltBuffer.
+  EfiBltBufferToVideo - Write data from the  BltBuffer rectangle
+  (SourceX, SourceY) (SourceX + Width, SourceY + Height) directly to the
+  video display rectangle (DestinationX, DestinationY)
+  (DestinationX + Width, DestinationY + Height). If SourceX or SourceY is
+  not zero then Delta must be set to the length in bytes of a row in the
+  BltBuffer.
+  EfiBltVideoToVideo - Copy from the video display rectangle
+  (SourceX, SourceY) (SourceX + Width, SourceY + Height) .
+  to the video display rectangle (DestinationX, DestinationY)
+  (DestinationX + Width, DestinationY + Height).
+  The BltBuffer and Delta  are not used in this mode.
+
+  @param  This                    Protocol instance pointer.
+  @param  BltBuffer               Buffer containing data to blit into video buffer.
+                                  This buffer has a size of
+                                  Width*Height*sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL)
+  @param  BltOperation            Operation to perform on BlitBuffer and video
+                                  memory
+  @param  SourceX                 X coordinate of source for the BltBuffer.
+  @param  SourceY                 Y coordinate of source for the BltBuffer.
+  @param  DestinationX            X coordinate of destination for the BltBuffer.
+  @param  DestinationY            Y coordinate of destination for the BltBuffer.
+  @param  Width                   Width of rectangle in BltBuffer in pixels.
+  @param  Height                  Hight of rectangle in BltBuffer in pixels. 
+  @param  Delta                   OPTIONAL.
+
+  @retval EFI_SUCCESS             The Blt operation completed.
+  @retval EFI_INVALID_PARAMETER   BltOperation is not valid.
+  @retval EFI_DEVICE_ERROR        A hardware error occured writting to the video
+                                  buffer.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSpliterGraphicsOutputBlt (
@@ -1283,17 +1972,43 @@ ConSpliterGraphicsOutputBlt (
   IN  UINTN                                         Width,
   IN  UINTN                                         Height,
   IN  UINTN                                         Delta         OPTIONAL
-  )
-;
+  );
 
+/**
+  Write data from the buffer to video display based on Graphics Output setting. 
+
+  @param  Private                 Consplitter Text Out pointer.
+  @param  GraphicsOutput          Graphics Output protocol pointer.
+  @param  UgaDraw                 UGA Draw protocol pointer.
+
+  @retval EFI_UNSUPPORTED         No graphics devcie available .
+  @retval EFI_SUCCESS             The Blt operation completed.
+  @retval EFI_INVALID_PARAMETER   BltOperation is not valid.
+  @retval EFI_DEVICE_ERROR        A hardware error occured writting to the video buffer.
+                 
+
+**/
 EFI_STATUS
 DevNullGopSync (
   IN  TEXT_OUT_SPLITTER_PRIVATE_DATA  *Private,
   IN  EFI_GRAPHICS_OUTPUT_PROTOCOL    *GraphicsOutput,
   IN  EFI_UGA_DRAW_PROTOCOL           *UgaDraw
-  )
-;
+  );
 
+/**
+  Return the current video mode information.
+
+  @param  This                    Protocol instance pointer.
+  @param  HorizontalResolution    Current video horizontal resolution in pixels
+  @param  VerticalResolution      Current video vertical resolution in pixels
+  @param  ColorDepth              Current video color depth in bits per pixel
+  @param  RefreshRate             Current video refresh rate in Hz.
+
+  @retval EFI_SUCCESS             Mode information returned.
+  @retval EFI_NOT_STARTED         Video display is not initialized. Call SetMode ()
+  @retval EFI_INVALID_PARAMETER   One of the input args was NULL.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSpliterUgaDrawGetMode (
@@ -1302,9 +2017,22 @@ ConSpliterUgaDrawGetMode (
   OUT UINT32                          *VerticalResolution,
   OUT UINT32                          *ColorDepth,
   OUT UINT32                          *RefreshRate
-  )
-;
+  );
 
+/**
+  Return the current video mode information.
+
+  @param  This                    Protocol instance pointer.
+  @param  HorizontalResolution    Current video horizontal resolution in pixels
+  @param  VerticalResolution      Current video vertical resolution in pixels
+  @param  ColorDepth              Current video color depth in bits per pixel
+  @param  RefreshRate             Current video refresh rate in Hz.
+
+  @retval EFI_SUCCESS             Mode information returned.
+  @retval EFI_NOT_STARTED         Video display is not initialized. Call SetMode ()
+  @retval EFI_OUT_OF_RESOURCES    Out of resources.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSpliterUgaDrawSetMode (
@@ -1313,9 +2041,54 @@ ConSpliterUgaDrawSetMode (
   IN UINT32                           VerticalResolution,
   IN UINT32                           ColorDepth,
   IN UINT32                           RefreshRate
-  )
-;
+  );
 
+/**
+  The following table defines actions for BltOperations.
+
+  EfiUgaVideoFill - Write data from the  BltBuffer pixel (SourceX, SourceY)
+  directly to every pixel of the video display rectangle
+  (DestinationX, DestinationY)
+  (DestinationX + Width, DestinationY + Height).
+  Only one pixel will be used from the BltBuffer. Delta is NOT used.
+  EfiUgaVideoToBltBuffer - Read data from the video display rectangle
+  (SourceX, SourceY) (SourceX + Width, SourceY + Height) and place it in
+  the BltBuffer rectangle (DestinationX, DestinationY )
+  (DestinationX + Width, DestinationY + Height). If DestinationX or
+  DestinationY is not zero then Delta must be set to the length in bytes
+  of a row in the BltBuffer.
+  EfiUgaBltBufferToVideo - Write data from the  BltBuffer rectangle
+  (SourceX, SourceY) (SourceX + Width, SourceY + Height) directly to the
+  video display rectangle (DestinationX, DestinationY)
+  (DestinationX + Width, DestinationY + Height). If SourceX or SourceY is
+  not zero then Delta must be set to the length in bytes of a row in the
+  BltBuffer.
+  EfiUgaVideoToVideo - Copy from the video display rectangle
+  (SourceX, SourceY) (SourceX + Width, SourceY + Height) .
+  to the video display rectangle (DestinationX, DestinationY)
+  (DestinationX + Width, DestinationY + Height).
+  The BltBuffer and Delta  are not used in this mode.
+
+  @param  This                    Protocol instance pointer.
+  @param  BltBuffer               Buffer containing data to blit into video buffer.
+                                  This buffer has a size of
+                                  Width*Height*sizeof(EFI_UGA_PIXEL)
+  @param  BltOperation            Operation to perform on BlitBuffer and video
+                                  memory
+  @param  SourceX                 X coordinate of source for the BltBuffer.
+  @param  SourceY                 Y coordinate of source for the BltBuffer.
+  @param  DestinationX            X coordinate of destination for the BltBuffer.
+  @param  DestinationY            Y coordinate of destination for the BltBuffer.
+  @param  Width                   Width of rectangle in BltBuffer in pixels.
+  @param  Height                  Hight of rectangle in BltBuffer in pixels. 
+  @param  Delta                   OPTIONAL.
+
+  @retval EFI_SUCCESS             The Blt operation completed.
+  @retval EFI_INVALID_PARAMETER   BltOperation is not valid.
+  @retval EFI_DEVICE_ERROR        A hardware error occured writting to the video
+                                  buffer.
+
+**/
 EFI_STATUS
 EFIAPI
 ConSpliterUgaDrawBlt (
@@ -1329,56 +2102,144 @@ ConSpliterUgaDrawBlt (
   IN  UINTN                                         Width,
   IN  UINTN                                         Height,
   IN  UINTN                                         Delta         OPTIONAL
-  )
-;
+  );
 
+/**
+  Write data from the buffer to video display based on UGA Draw setting. 
+
+  @param  Private                 Consplitter Text Out pointer.
+  @param  GraphicsOutput          Graphics Output protocol pointer.
+  @param  UgaDraw                 UGA Draw protocol pointer.
+
+  @retval EFI_UNSUPPORTED         No graphics devcie available .
+  @retval EFI_SUCCESS             The Blt operation completed.
+  @retval EFI_INVALID_PARAMETER   BltOperation is not valid.
+  @retval EFI_DEVICE_ERROR        A hardware error occured writting to the video buffer.
+                  
+**/
 EFI_STATUS
 DevNullUgaSync (
   IN  TEXT_OUT_SPLITTER_PRIVATE_DATA  *Private,
   IN  EFI_GRAPHICS_OUTPUT_PROTOCOL    *GraphicsOutput,
   IN  EFI_UGA_DRAW_PROTOCOL           *UgaDraw
-  )
-;
+  );
 
+/**
+  Write a Unicode string to the output device.
+
+  @param  Private                 Pointer to the console output splitter's private
+                                  data. It indicates the calling context.
+  @param  WString                 The NULL-terminated Unicode string to be
+                                  displayed on the output device(s). All output
+                                  devices must also support the Unicode drawing
+                                  defined in this file.
+
+  @retval EFI_SUCCESS             The string was output to the device.
+  @retval EFI_DEVICE_ERROR        The device reported an error while attempting to
+                                  output the text.
+  @retval EFI_UNSUPPORTED         The output device's mode is not currently in a
+                                  defined text mode.
+  @retval EFI_WARN_UNKNOWN_GLYPH  This warning code indicates that some of the
+                                  characters in the Unicode string could not be
+                                  rendered and were skipped.
+
+**/
 EFI_STATUS
 DevNullTextOutOutputString (
   IN  TEXT_OUT_SPLITTER_PRIVATE_DATA  *Private,
   IN  CHAR16                          *WString
-  )
-;
+  );
 
+/**
+  Sets the output device(s) to a specified mode.
+
+  @param  Private                 Private data structure pointer.
+  @param  ModeNumber              The mode number to set.
+
+  @retval EFI_SUCCESS             The requested text mode was set.
+  @retval EFI_DEVICE_ERROR        The device had an error and could not complete
+                                  the request.
+  @retval EFI_UNSUPPORTED         The mode number was not valid.
+  @retval EFI_OUT_OF_RESOURCES    Out of resources.
+
+**/
 EFI_STATUS
 DevNullTextOutSetMode (
   IN  TEXT_OUT_SPLITTER_PRIVATE_DATA  *Private,
   IN  UINTN                           ModeNumber
-  )
-;
+  );
 
+/**
+  Clears the output device(s) display to the currently selected background
+  color.
+
+  @param  Private                 Protocol instance pointer.
+
+  @retval EFI_SUCCESS             The operation completed successfully.
+  @retval EFI_DEVICE_ERROR        The device had an error and could not complete
+                                  the request.
+  @retval EFI_UNSUPPORTED         The output device is not in a valid text mode.
+
+**/
 EFI_STATUS
 DevNullTextOutClearScreen (
   IN  TEXT_OUT_SPLITTER_PRIVATE_DATA  *Private
-  )
-;
+  );
 
+/**
+  Sets the current coordinates of the cursor position.
+
+  @param  Private                 Protocol instance pointer.
+  @param  Column                  
+  @param  Row                     the position to set the cursor to. Must be
+                                  greater than or equal to zero and less than the
+                                  number of columns and rows by QueryMode ().
+
+  @retval EFI_SUCCESS             The operation completed successfully.
+  @retval EFI_DEVICE_ERROR        The device had an error and could not complete
+                                  the request.
+  @retval EFI_UNSUPPORTED         The output device is not in a valid text mode, or
+                                  the cursor position is invalid for the current
+                                  mode.
+
+**/
 EFI_STATUS
 DevNullTextOutSetCursorPosition (
   IN  TEXT_OUT_SPLITTER_PRIVATE_DATA  *Private,
   IN  UINTN                           Column,
   IN  UINTN                           Row
-  )
-;
+  );
 
+/**
+  Implements SIMPLE_TEXT_OUTPUT.EnableCursor().
+  In this driver, the cursor cannot be hidden.
+
+  @param  Private                 Indicates the calling context.
+  @param  Visible                 If TRUE, the cursor is set to be visible, If
+                                  FALSE, the cursor is set to be invisible.
+
+  @retval EFI_SUCCESS             The request is valid.
+
+**/
 EFI_STATUS
 DevNullTextOutEnableCursor (
   IN  TEXT_OUT_SPLITTER_PRIVATE_DATA  *Private,
   IN  BOOLEAN                         Visible
-  )
-;
+  );
 
+/**
+  Take the DevNull TextOut device and update the Simple Text Out on every
+  UGA device.
+
+  @param  Private                 Indicates the calling context.
+
+  @retval EFI_SUCCESS             The request is valid.
+  @retval other                   Return status of TextOut->OutputString ()
+
+**/
 EFI_STATUS
 DevNullSyncStdOut (
   IN  TEXT_OUT_SPLITTER_PRIVATE_DATA  *Private
-  )
-;
+  );
 
 #endif

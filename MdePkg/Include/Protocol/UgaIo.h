@@ -3,7 +3,7 @@
 
   Abstraction of a very simple graphics device.
   
-  Copyright (c) 2006 - 2007, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation 
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -54,10 +54,6 @@ typedef struct _UGA_DEVICE {
 }
 UGA_DEVICE, *PUGA_DEVICE;
 
-#ifndef UGA_IO_REQUEST_CODE
-//
-// Prevent conflicts with UGA typedefs.
-//
 typedef enum {
   UgaIoGetVersion             = 1,
   UgaIoGetChildDevice,
@@ -85,8 +81,6 @@ typedef enum {
 }
 UGA_IO_REQUEST_CODE, *PUGA_IO_REQUEST_CODE;
 
-#endif
-
 typedef struct {
   IN UGA_IO_REQUEST_CODE  ioRequestCode;
   IN VOID                 *pvInBuffer;
@@ -100,8 +94,7 @@ typedef struct {
 /**
   Dynamically allocate storage for a child UGA_DEVICE .
 
-  @param[in]     This            The EFI_UGA_IO_PROTOCOL instance. Type EFI_UGA_IO_PROTOCOL is 
-                                 defined in Section 10.7.
+  @param[in]     This            The EFI_UGA_IO_PROTOCOL instance. 
   @param[in]     ParentDevice    ParentDevice specifies a pointer to the parent device of Device.
   @param[in]     DeviceData      A pointer to UGA_DEVICE_DATA returned from a call to DispatchService()
                                  with a UGA_DEVICE of Parent and an IoRequest of type UgaIoGetChildDevice.      
@@ -117,7 +110,7 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_UGA_IO_PROTOCOL_CREATE_DEVICE) (
+(EFIAPI *EFI_UGA_IO_PROTOCOL_CREATE_DEVICE)(
   IN  EFI_UGA_IO_PROTOCOL  *This,
   IN  UGA_DEVICE           *ParentDevice,
   IN  UGA_DEVICE_DATA      *DeviceData,
@@ -141,36 +134,37 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_UGA_IO_PROTOCOL_DELETE_DEVICE) (
+(EFIAPI *EFI_UGA_IO_PROTOCOL_DELETE_DEVICE)(
   IN EFI_UGA_IO_PROTOCOL  * This,
   IN UGA_DEVICE           * Device
   );
 
-
-typedef UGA_STATUS (EFIAPI *PUGA_FW_SERVICE_DISPATCH) (IN PUGA_DEVICE pDevice, IN OUT PUGA_IO_REQUEST pIoRequest);
-
 /**
+  This is the main UGA service dispatch routine for all UGA_IO_REQUEST s.
 
-  Routine Description:
-
-    This is the main UGA service dispatch routine for all UGA_IO_REQUEST s.
-
-  Arguments:
-
-    pDevice    - pDevice specifies a pointer to a device object associated with a 
+  @param pDevice pDevice specifies a pointer to a device object associated with a 
                  device enumerated by a pIoRequest->ioRequestCode of type 
                  UgaIoGetChildDevice. The root device for the EFI_UGA_IO_PROTOCOL 
                  is represented by pDevice being set to NULL.
 
-    pIoRequest - pIoRequest points to a caller allocated buffer that contains data
+  @param pIoRequest 
+                 pIoRequest points to a caller allocated buffer that contains data
                  defined by pIoRequest->ioRequestCode. See Related Definitions for
                  a definition of UGA_IO_REQUEST_CODE s and their associated data 
                  structures.
 
-  Returns:
+  @return UGA_STATUS
 
-  Varies depending on pIoRequest.
+**/
+typedef UGA_STATUS 
+(EFIAPI *PUGA_FW_SERVICE_DISPATCH)(
+  IN PUGA_DEVICE pDevice, 
+  IN OUT PUGA_IO_REQUEST pIoRequest
+  );
 
+/**  
+  @par Protocol Description:
+  Provides a basic abstraction to send I/O requests to the graphics device and any of its children.
 **/
 struct _EFI_UGA_IO_PROTOCOL {
   EFI_UGA_IO_PROTOCOL_CREATE_DEVICE CreateDevice;

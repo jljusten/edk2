@@ -5,7 +5,7 @@
   information from configuration applications, routing the
   results to the appropriate drivers.
   
-  Copyright (c) 2006 - 2007, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -24,7 +24,6 @@
 
 
 typedef struct _EFI_HII_CONFIG_ROUTING_PROTOCOL EFI_HII_CONFIG_ROUTING_PROTOCOL;
-
 
 /**
    
@@ -54,11 +53,11 @@ typedef struct _EFI_HII_CONFIG_ROUTING_PROTOCOL EFI_HII_CONFIG_ROUTING_PROTOCOL;
   GUID=...&NAME=00480050&PATH=...&Fred=16&George=16&Ron=12&Neville=11&
   GUID=...&NAME=00480050&PATH=...&ALTCFG=0037&Fred=12&Neville=7
 
-  @param This   Points to the EFI_HII_CONFIG_ROUTING_PROTOCOL
-                instance.
+  @param This       Points to the EFI_HII_CONFIG_ROUTING_PROTOCOL
+                    instance.
 
-  @param Request  A null-terminated Unicode string in
-                  <MultiConfigRequest> format.
+  @param Request    A null-terminated Unicode string in
+                    <MultiConfigRequest> format.
 
   @param Progress   On return, points to a character in the
                     Request string. Points to the string's null
@@ -75,14 +74,14 @@ typedef struct _EFI_HII_CONFIG_ROUTING_PROTOCOL EFI_HII_CONFIG_ROUTING_PROTOCOL;
                     Request string. String to be allocated by
                     the called function.
 
-  @retval EFI_SUCCESS   The Results string is filled with the
-                        values corresponding to all requested
-                        names.
+  @retval EFI_SUCCESS             The Results string is filled with the
+                                  values corresponding to all requested
+                                  names.
 
-  @retval EFI_OUT_OF_MEMORY   Not enough memory to store the
-                              parts of the results that must be
-                              stored awaiting possible future
-                              protocols.
+  @retval EFI_OUT_OF_MEMORY       Not enough memory to store the
+                                  parts of the results that must be
+                                  stored awaiting possible future
+                                  protocols.
 
   @retval EFI_INVALID_PARAMETER   For example, passing in a NULL
                                   for the Request parameter
@@ -108,7 +107,7 @@ typedef struct _EFI_HII_CONFIG_ROUTING_PROTOCOL EFI_HII_CONFIG_ROUTING_PROTOCOL;
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_HII_ROUTING_EXTRACT_CONFIG ) (
+(EFIAPI * EFI_HII_ROUTING_EXTRACT_CONFIG)(
   IN CONST  EFI_HII_CONFIG_ROUTING_PROTOCOL *This,
   IN CONST  EFI_STRING                      Request,
   OUT       EFI_STRING                      *Progress,
@@ -127,8 +126,7 @@ EFI_STATUS
   the configuration using the corresponding drivers??
   EFI_HII_CONFIG_ACCESS_PROTOCOL.ExtractConfig() interfaces below.
   
-  @param This   Points to the EFI_HII_CONFIG_ROUTING_PROTOCOL
-                instance.
+  @param This     Points to the EFI_HII_CONFIG_ROUTING_PROTOCOL instance.
   
   @param Results  A null-terminated Unicode string in
                   <MultiConfigAltResp> format which has all
@@ -136,14 +134,14 @@ EFI_STATUS
                   string. String to be allocated by this
                   function. De-allocation is up to the caller.
   
-  @retval EFI_SUCCESS   The Results string is filled with the
-                        values corresponding to all requested
-                        names.
+  @retval EFI_SUCCESS             The Results string is filled with the
+                                  values corresponding to all requested
+                                  names.
   
-  @retval EFI_OUT_OF_MEMORY   Not enough memory to store the
-                              parts of the results that must be
-                              stored awaiting possible future
-                              protocols.
+  @retval EFI_OUT_OF_MEMORY       Not enough memory to store the
+                                  parts of the results that must be
+                                  stored awaiting possible future
+                                  protocols.
   
   @retval EFI_INVALID_PARAMETERS  For example, passing in a NULL
                                   for the Results parameter
@@ -153,7 +151,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_HII_ROUTING_EXPORT_CONFIG ) (
+(EFIAPI * EFI_HII_ROUTING_EXPORT_CONFIG)(
   IN CONST  EFI_HII_CONFIG_ROUTING_PROTOCOL *This,
   OUT       EFI_STRING                      *Results
 );
@@ -170,38 +168,37 @@ EFI_STATUS
   to the driver whose routing information is defined by the
   <ConfigHdr> in turn.
 
-  @param This   Points to the EFI_HII_CONFIG_ROUTING_PROTOCOL
-                instance.
+  @param This           Points to the EFI_HII_CONFIG_ROUTING_PROTOCOL instance.
 
   @param Configuration  A null-terminated Unicode string in
                         <MulltiConfigResp> format.
 
-  @param Progress   A pointer to a string filled in with the
-                    offset of the most recent '&' before the
-                    first failing name / value pair (or the
-                    beginning of the string if the failure is in
-                    the first name / value pair) or the
-                    terminating NULL if all was successful.
+  @param Progress       A pointer to a string filled in with the
+                        offset of the most recent '&' before the
+                        first failing name / value pair (or the
+                        beginning of the string if the failure is in
+                        the first name / value pair) or the
+                        terminating NULL if all was successful.
 
-  @retval EFI_SUCCESS   The results have been distributed or are
-                        awaiting distribution.
+  @retval EFI_SUCCESS             The results have been distributed or are
+                                  awaiting distribution.
   
-  @retval EFI_OUT_OF_MEMORY   Not enough memory to store the
-                              parts of the results that must be
-                              stored awaiting possible future
-                              protocols.
+  @retval EFI_OUT_OF_MEMORY       Not enough memory to store the
+                                  parts of the results that must be
+                                  stored awaiting possible future
+                                  protocols.
   
   @retval EFI_INVALID_PARAMETERS  Passing in a NULL for the
                                   Results parameter would result
                                   in this type of error.
   
-  @retval EFI_NOT_FOUND   Target for the specified routing data
-                          was not found
+  @retval EFI_NOT_FOUND           Target for the specified routing data
+                                  was not found
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_HII_ROUTING_ROUTE_CONFIG ) (
+(EFIAPI * EFI_HII_ROUTING_ROUTE_CONFIG)(
   IN CONST  EFI_HII_CONFIG_ROUTING_PROTOCOL *This,
   IN CONST  EFI_STRING                      Configuration,
   OUT       EFI_STRING                      *Progress
@@ -220,20 +217,19 @@ EFI_STATUS
   spaces). The call fails if, for any (offset, width) pair in
   ConfigRequest, offset+value >= BlockSize.
 
-  @param This   Points to the EFI_HII_CONFIG_ROUTING_PROTOCOL
-                instance.
+  @param This      Points to the EFI_HII_CONFIG_ROUTING_PROTOCOL instance.
 
   @param ConfigRequest  A null-terminated Unicode string in
                         <ConfigRequest> format.
 
-  @param Block  Array of bytes defining the block's
-                configuration.
+  @param Block      Array of bytes defining the block's
+                    configuration.
 
   @param BlockSize  Length in bytes of Block.
 
-  @param Config   Filled-in configuration string. String
-                  allocated by the function. Returned only if
-                  call is successful.
+  @param Config     Filled-in configuration string. String
+                    allocated by the function. Returned only if
+                    call is successful.
 
   @param Progress   A pointer to a string filled in with the
                     offset of the most recent '&' before the
@@ -242,12 +238,13 @@ EFI_STATUS
                     the first name / value pair) or the
                     terminating NULL if all was successful.
 
-  @retval EFI_SUCCESS   The request succeeded. Progress points
-                        to the null terminator at the end of the
-                        ConfigRequest string.
-  @retval EFI_OUT_OF_MEMORY   Not enough memory to allocate
-                              Config. Progress points to the
-                              first character of ConfigRequest.
+  @retval EFI_SUCCESS             The request succeeded. Progress points
+                                  to the null terminator at the end of the
+                                  ConfigRequest string.
+
+  @retval EFI_OUT_OF_MEMORY       Not enough memory to allocate
+                                  Config. Progress points to the
+                                  first character of ConfigRequest.
 
   @retval EFI_INVALID_PARAMETERS  Passing in a NULL for the
                                   ConfigRequest or Block
@@ -256,11 +253,11 @@ EFI_STATUS
                                   to the first character of
                                   ConfigRequest.
 
-  @retval EFI_NOT_FOUND   Target for the specified routing data
-                          was not found. Progress points to the
-                          'G' in "GUID" of the errant routing
-                          data. EFI_DEVICE_ERROR Block not large
-                          enough. Progress undefined.
+  @retval EFI_NOT_FOUND           Target for the specified routing data
+                                  was not found. Progress points to the
+                                  'G' in "GUID" of the errant routing
+                                  data. EFI_DEVICE_ERROR Block not large
+                                  enough. Progress undefined.
 
   @retval EFI_INVALID_PARAMETER   Encountered non <BlockName>
                                   formatted string. Block is
@@ -271,7 +268,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_HII_ROUTING_BLOCK_TO_CONFIG ) (
+(EFIAPI * EFI_HII_ROUTING_BLOCK_TO_CONFIG)(
   IN CONST  EFI_HII_CONFIG_ROUTING_PROTOCOL *This,
   IN CONST  EFI_STRING                      ConfigRequest,
   IN CONST  UINT8                           *Block,
@@ -283,7 +280,6 @@ EFI_STATUS
 
 
 /**
-   
   This function maps a configuration containing a series of
   <BlockConfig> formatted name value pairs in ConfigResp into a
   Block so it may be stored in a linear mapped storage such as a
@@ -297,13 +293,12 @@ EFI_STATUS
   The results are
   55 AA 02 07 04 05
 
-  @param This   Points to the EFI_HII_CONFIG_ROUTING_PROTOCOL
-                instance.
+  @param This           Points to the EFI_HII_CONFIG_ROUTING_PROTOCOL instance.
 
-  @param ConfigResp   A  null-terminated Unicode string in
-                      <ConfigResp> format.
+  @param ConfigResp     A null-terminated Unicode string in
+                        <ConfigResp> format.
 
-  @param CurrentBlock   A possibly null array of bytes
+  @param Block          A possibly null array of bytes
                         representing the current block. Only
                         bytes referenced in the ConfigResp
                         string in the block are modified. If
@@ -314,23 +309,36 @@ EFI_STATUS
                         parameter is updated and an appropriate
                         status (see below) is returned.
 
-  @param BlockSize  The length of the Block in units of UINT8.
-                    On input, this is the size of the Block. On
-                    output, if successful, contains the index of
-                    the last modified byte in the Block.
+  @param BlockSize      The length of the Block in units of UINT8.
+                        On input, this is the size of the Block. On
+                        output, if successful, contains the index of
+                        the last modified byte in the Block.
 
-  @param Progress   On return, points to an element of the
-                    ConfigResp string filled in with the offset
-                    of the most recent "&" before the first
-                    failing name / value pair (or the beginning
-                    of the string if the failure is in the first
-                    name / value pair) or the terminating NULL
-                    if all was successful.
+  @param Progress       On return, points to an element of the
+                        ConfigResp string filled in with the offset
+                        of the most recent "&" before the first
+                        failing name / value pair (or the beginning
+                        of the string if the failure is in the first
+                        name / value pair) or the terminating NULL
+                        if all was successful.
+
+  @retval EFI_SUCCESS            The request succeeded. Progress points to the null
+                                 terminator at the end of the ConfigResp string.
+  @retval EFI_OUT_OF_RESOURCES   Not enough memory to allocate Config.     Progress
+                                 points to the first character of ConfigResp.
+  @retval EFI_INVALID_PARAMETER  Passing in a NULL for the ConfigResp or
+                                 Block parameter would result in this type of
+                                 error. Progress points to the first character of
+                                         ConfigResp.
+  @retval EFI_INVALID_PARAMETER  Encountered non <BlockName> formatted name /
+                                 value pair. Block is left updated and
+                                 Progress points at the '&' preceding the first
+                                 non-<BlockName>.
 
 **/
 typedef
 EFI_STATUS
-(EFIAPI * EFI_HII_ROUTING_CONFIG_TO_BLOCK ) (
+(EFIAPI * EFI_HII_ROUTING_CONFIG_TO_BLOCK)(
   IN CONST  EFI_HII_CONFIG_ROUTING_PROTOCOL *This,
   IN CONST  EFI_STRING                      ConfigResp,
   IN OUT    UINT8                           *Block,
@@ -338,9 +346,41 @@ EFI_STATUS
   OUT       EFI_STRING                      *Progress
 );
 
+/**
+  This helper function is to be called by drivers to extract portions of 
+  a larger configuration string.
+          
+  @param This              A pointer to the EFI_HII_CONFIG_ROUTING_PROTOCOL instance.    
+  @param Configuration     A null-terminated Unicode string in <MultiConfigAltResp> format.
+  @param Guid              A pointer to the GUID value to search for in the 
+                           routing portion of the ConfigResp string when retrieving 
+                           the requested data. If Guid is NULL, then all GUID 
+                           values will be searched for.
+  @param Name              A pointer to the NAME value to search for in the 
+                           routing portion of the ConfigResp string when retrieving 
+                           the requested data. If Name is NULL, then all Name 
+                           values will be searched for.                         
+  @param DevicePath        A pointer to the PATH value to search for in the 
+                           routing portion of the ConfigResp string when retrieving 
+                           the requested data. If DevicePath is NULL, then all 
+                           DevicePath values will be searched for.             
+  @param AltCfgId          A pointer to the ALTCFG value to search for in the 
+                           routing portion of the ConfigResp string when retrieving 
+                           the requested data.  If this parameter is NULL, 
+                           then the current setting will be retrieved.
+  @param AltCfgResp        A pointer to a buffer which will be allocated by the 
+                           function which contains the retrieved string as requested.  
+                           This buffer is only allocated if the call was successful. 
+  
+  @retval EFI_SUCCESS             The request succeeded. The requested data was extracted 
+                                  and placed in the newly allocated AltCfgResp buffer.
+  @retval EFI_OUT_OF_RESOURCES    Not enough memory to allocate AltCfgResp.    
+  @retval EFI_INVALID_PARAMETER   Any parameter is invalid.
+  @retval EFI_NOT_FOUND           Target for the specified routing data was not found.
+**/
 typedef
 EFI_STATUS 
-(EFIAPI * EFI_HII_GET_ALT_CFG) (
+(EFIAPI * EFI_HII_GET_ALT_CFG)(
   IN  CONST EFI_HII_CONFIG_ROUTING_PROTOCOL    *This, 
   IN  CONST EFI_STRING                         Configuration, 
   IN  CONST EFI_GUID                           *Guid, 
@@ -348,53 +388,13 @@ EFI_STATUS
   IN  CONST EFI_DEVICE_PATH_PROTOCOL           *DevicePath,  
   IN  CONST UINT16                             *AltCfgId,
   OUT EFI_STRING                               *AltCfgResp 
-  )
-/*++
-
-  Routine Description:
-    This helper function is to be called by drivers to extract portions of 
-    a larger configuration string.
-    
-  Arguments:          
-    This                   - A pointer to the EFI_HII_CONFIG_ROUTING_PROTOCOL instance.    
-    Configuration          - A null-terminated Unicode string in <MultiConfigAltResp> format.
-    Guid                   - A pointer to the GUID value to search for in the 
-                             routing portion of the ConfigResp string when retrieving 
-                             the requested data. If Guid is NULL, then all GUID 
-                             values will be searched for.
-    Name                   - A pointer to the NAME value to search for in the 
-                             routing portion of the ConfigResp string when retrieving 
-                             the requested data. If Name is NULL, then all Name 
-                             values will be searched for.                         
-    DevicePath             - A pointer to the PATH value to search for in the 
-                             routing portion of the ConfigResp string when retrieving 
-                             the requested data. If DevicePath is NULL, then all 
-                             DevicePath values will be searched for.             
-    AltCfgId               - A pointer to the ALTCFG value to search for in the 
-                             routing portion of the ConfigResp string when retrieving 
-                             the requested data.  If this parameter is NULL, 
-                             then the current setting will be retrieved.
-    AltCfgResp             - A pointer to a buffer which will be allocated by the 
-                             function which contains the retrieved string as requested.  
-                             This buffer is only allocated if the call was successful. 
-    
-  Returns:              
-    EFI_SUCCESS            - The request succeeded. The requested data was extracted 
-                             and placed in the newly allocated AltCfgResp buffer.
-    EFI_OUT_OF_RESOURCES   - Not enough memory to allocate AltCfgResp.    
-    EFI_INVALID_PARAMETER  - Any parameter is invalid.
-    EFI_NOT_FOUND          - Target for the specified routing data was not found.
-                             
---*/        
-;
-
+  );
 
 /**
-   
+  @par Protocol Description:   
   This protocol defines the configuration routing interfaces
   between external applications and the HII. There may only be one
   instance of this protocol in the system.
-
 **/
 struct _EFI_HII_CONFIG_ROUTING_PROTOCOL {
   EFI_HII_ROUTING_EXTRACT_CONFIG  ExtractConfig;

@@ -12,9 +12,7 @@
 
 **/
 
-//
-// Include common header file for this module.
-//
+
 
 
 #include "BaseLibInternals.h"
@@ -27,7 +25,7 @@
 
   If List is NULL, then ASSERT().
   If List->ForwardLink is NULL, then ASSERT().
-  If List->backLink is NULL, then ASSERT().
+  If List->BackLink is NULL, then ASSERT().
   If Node is NULL, then ASSERT();
   If PcdMaximumLinkedListLenth is not zero, and prior to insertion the number
   of nodes in ListHead, including the ListHead node, is greater than or
@@ -41,6 +39,7 @@
 
 **/
 BOOLEAN
+EFIAPI
 IsNodeInList (
   IN      CONST LIST_ENTRY      *List,
   IN      CONST LIST_ENTRY      *Node
@@ -384,6 +383,8 @@ IsNodeAtEnd (
 
   @param  FirstEntry  A pointer to a node in a linked list.
   @param  SecondEntry A pointer to another node in the same linked list.
+  
+  @return SecondEntry after the nodes are swapped
 
 **/
 LIST_ENTRY *
@@ -410,7 +411,7 @@ SwapListEntries (
   Ptr = RemoveEntryList (FirstEntry);
 
   //
-  // If FirstEntry immediately follows SecondEntry, FirstEntry willl be placed
+  // If FirstEntry immediately follows SecondEntry, FirstEntry will be placed
   // immediately in front of SecondEntry
   //
   if (Ptr->BackLink == SecondEntry) {
@@ -451,7 +452,9 @@ SwapListEntries (
 
   @param  Entry A pointer to a node in a linked list
 
-  @return Entry
+  @return The node following Entry in the doubly linked list.
+          If Entry is the only node in the linked list, then
+          the head node of the linked list is returned.
 
 **/
 LIST_ENTRY *

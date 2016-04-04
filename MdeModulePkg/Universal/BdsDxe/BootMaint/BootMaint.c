@@ -17,43 +17,59 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "Bds.h"
 #include "FrontPage.h"
 
-EFI_GUID EfiLegacyDevOrderGuid = EFI_LEGACY_DEV_ORDER_VARIABLE_GUID;
-EFI_GUID mBootMaintGuid = BOOT_MAINT_FORMSET_GUID;
-EFI_GUID mFileExplorerGuid = FILE_EXPLORE_FORMSET_GUID;
+EFI_DEVICE_PATH_PROTOCOL  EndDevicePath[] = {
+  END_DEVICE_PATH_TYPE,
+  END_ENTIRE_DEVICE_PATH_SUBTYPE,
+  END_DEVICE_PATH_LENGTH,
+  0
+};
 
-CHAR16  mBootMaintStorageName[] = L"BmData";
-CHAR16  mFileExplorerStorageName[] = L"FeData";
 
+EFI_GUID EfiLegacyDevOrderGuid  = EFI_LEGACY_DEV_ORDER_VARIABLE_GUID;
+EFI_GUID mBootMaintGuid         = BOOT_MAINT_FORMSET_GUID;
+EFI_GUID mFileExplorerGuid      = FILE_EXPLORE_FORMSET_GUID;
+
+CHAR16  mBootMaintStorageName[]     = L"BmData";
+CHAR16  mFileExplorerStorageName[]  = L"FeData";
+
+/**
+  Init all memu.
+
+  @param CallbackData    The BMM context data.
+
+**/
 VOID
 InitAllMenu (
   IN  BMM_CALLBACK_DATA    *CallbackData
   );
 
+/**
+  Free up all Menu Option list.
+
+**/
 VOID
 FreeAllMenu (
   VOID
   );
 
+/**
+  Create string tokens for a menu from its help strings and display strings
+
+
+  @param CallbackData    The BMM context data.
+  @param HiiHandle       Hii Handle of the package to be updated.
+  @param MenuOption      The Menu whose string tokens need to be created
+
+  @retval  EFI_SUCCESS      string tokens created successfully
+  @retval  others           contain some errors
+
+**/
 EFI_STATUS
 CreateMenuStringToken (
   IN BMM_CALLBACK_DATA                *CallbackData,
   IN EFI_HII_HANDLE                   HiiHandle,
   IN BM_MENU_OPTION                   *MenuOption
   )
-/*++
-
-Routine Description:
-  Create string tokens for a menu from its help strings and display strings
-
-Arguments:
-  HiiHandle       - Hii Handle of the package to be updated.
-  MenuOption      - The Menu whose string tokens need to be created
-
-Returns:
-  EFI_SUCCESS     - string tokens created successfully
-  others          - contain some errors
-
---*/
 {
   BM_MENU_ENTRY *NewMenuEntry;
   UINTN         Index;
@@ -81,6 +97,28 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  This function allows a caller to extract the current configuration for one
+  or more named elements from the target driver.
+
+
+  @param This            Points to the EFI_HII_CONFIG_ACCESS_PROTOCOL.
+  @param Request         A null-terminated Unicode string in <ConfigRequest> format.
+  @param Progress        On return, points to a character in the Request string.
+                         Points to the string's null terminator if request was successful.
+                         Points to the most recent '&' before the first failing name/value
+                         pair (or the beginning of the string if the failure is in the
+                         first name/value pair) if the request was not successful.
+  @param Results         A null-terminated Unicode string in <ConfigAltResp> format which
+                         has all values filled in for the names in the Request string.
+                         String to be allocated by the called function.
+
+  @retval  EFI_SUCCESS            The Results is filled with the requested values.
+  @retval  EFI_OUT_OF_RESOURCES   Not enough memory to store the results.
+  @retval  EFI_INVALID_PARAMETER  Request is NULL, illegal syntax, or unknown name.
+  @retval  EFI_NOT_FOUND          Routing data doesn't match any storage in this driver.
+
+**/
 EFI_STATUS
 EFIAPI
 BootMaintExtractConfig (
@@ -89,31 +127,6 @@ BootMaintExtractConfig (
   OUT EFI_STRING                             *Progress,
   OUT EFI_STRING                             *Results
   )
-/*++
-
-  Routine Description:
-    This function allows a caller to extract the current configuration for one
-    or more named elements from the target driver.
-
-  Arguments:
-    This       - Points to the EFI_HII_CONFIG_ACCESS_PROTOCOL.
-    Request    - A null-terminated Unicode string in <ConfigRequest> format.
-    Progress   - On return, points to a character in the Request string.
-                 Points to the string's null terminator if request was successful.
-                 Points to the most recent '&' before the first failing name/value
-                 pair (or the beginning of the string if the failure is in the
-                 first name/value pair) if the request was not successful.
-    Results    - A null-terminated Unicode string in <ConfigAltResp> format which
-                 has all values filled in for the names in the Request string.
-                 String to be allocated by the called function.
-
-  Returns:
-    EFI_SUCCESS           - The Results is filled with the requested values.
-    EFI_OUT_OF_RESOURCES  - Not enough memory to store the results.
-    EFI_INVALID_PARAMETER - Request is NULL, illegal syntax, or unknown name.
-    EFI_NOT_FOUND         - Routing data doesn't match any storage in this driver.
-
---*/
 {
   EFI_STATUS         Status;
   UINTN              BufferSize;
@@ -136,6 +149,24 @@ BootMaintExtractConfig (
   return Status;
 }
 
+/**
+  This function processes the results of changes in configuration.
+
+
+  @param This            - Points to the EFI_HII_CONFIG_ACCESS_PROTOCOL.
+  @param Action          - Specifies the type of action taken by the browser.
+  @param QuestionId      - A unique value which is sent to the original exporting driver
+                         so that it can identify the type of data to expect.
+  @param Type            - The type of value for the question.
+  @param Value           - A pointer to the data being sent to the original exporting driver.
+  @param ActionRequest   - On return, points to the action requested by the callback function.
+
+  @retval  EFI_SUCCESS           The callback successfully handled the action.
+  @retval  EFI_OUT_OF_RESOURCES  Not enough storage is available to hold the variable and its data.
+  @retval  EFI_DEVICE_ERROR      The variable could not be saved.
+  @retval  EFI_UNSUPPORTED       The specified Action is not supported by the callback.
+
+**/
 EFI_STATUS
 EFIAPI
 BootMaintCallback (
@@ -146,27 +177,6 @@ BootMaintCallback (
   IN  EFI_IFR_TYPE_VALUE                     *Value,
   OUT EFI_BROWSER_ACTION_REQUEST             *ActionRequest
   )
-/*++
-
-  Routine Description:
-    This function processes the results of changes in configuration.
-
-  Arguments:
-    This          - Points to the EFI_HII_CONFIG_ACCESS_PROTOCOL.
-    Action        - Specifies the type of action taken by the browser.
-    QuestionId    - A unique value which is sent to the original exporting driver
-                    so that it can identify the type of data to expect.
-    Type          - The type of value for the question.
-    Value         - A pointer to the data being sent to the original exporting driver.
-    ActionRequest - On return, points to the action requested by the callback function.
-
-  Returns:
-    EFI_SUCCESS          - The callback successfully handled the action.
-    EFI_OUT_OF_RESOURCES - Not enough storage is available to hold the variable and its data.
-    EFI_DEVICE_ERROR     - The variable could not be saved.
-    EFI_UNSUPPORTED      - The specified Action is not supported by the callback.
-
---*/
 {
   BMM_CALLBACK_DATA *Private;
   BM_MENU_ENTRY     *NewMenuEntry;
@@ -527,27 +537,23 @@ BootMaintCallback (
   return Status;
 }
 
+/**
+  Function handling request to apply changes for BMM pages.
+
+  @param Private            Pointer to callback data buffer.
+  @param CurrentFakeNVMap   Pointer to buffer holding data of various values used by BMM
+  @param FormId             ID of the form which has sent the request to apply change.
+
+  @retval  EFI_SUCCESS       Change successfully applied.
+  @retval  Other             Error occurs while trying to apply changes.
+
+**/
 EFI_STATUS
 ApplyChangeHandler (
   IN  BMM_CALLBACK_DATA               *Private,
   IN  BMM_FAKE_NV_DATA                *CurrentFakeNVMap,
   IN  EFI_FORM_ID                     FormId
   )
-/*++
-
-Routine Description:
-  Function handling request to apply changes for BMM pages.
-
-Arguments:
-  Private          - Pointer to callback data buffer.
-  CurrentFakeNVMap - Pointer to buffer holding data of various values used by BMM
-  FormId           - ID of the form which has sent the request to apply change.
-
-Returns:
-  EFI_SUCCESS      - Change successfully applied.
-  Other            - Error occurs while trying to apply changes.
-
---*/
 {
   BM_CONSOLE_CONTEXT  *NewConsoleContext;
   BM_TERMINAL_CONTEXT *NewTerminalContext;
@@ -717,6 +723,14 @@ Error:
   return Status;
 }
 
+/**
+  Discard all changes done to the BMM pages such as Boot Order change,
+  Driver order change.
+
+  @param Private            The BMM context data.
+  @param CurrentFakeNVMap   The current Fack NV Map.
+
+**/
 VOID
 DiscardChangeHandler (
   IN  BMM_CALLBACK_DATA               *Private,
@@ -763,24 +777,18 @@ DiscardChangeHandler (
   }
 }
 
+/**
+  Initialize the Boot Maintenance Utitliy.
+
+
+  @retval  EFI_SUCCESS      utility ended successfully
+  @retval  others           contain some errors
+
+**/
 EFI_STATUS
 InitializeBM (
   VOID
   )
-/*++
-
-Routine Description:
-  Initialize the Boot Maintenance Utitliy
-
-Arguments:
-  ImageHandle     - caller provided handle
-  SystemTable     - caller provided system tables
-
-Returns:
-  EFI_SUCCESS     - utility ended successfully
-  others          - contain some errors
-
---*/
 {
   EFI_LEGACY_BIOS_PROTOCOL    *LegacyBios;
   EFI_HII_PACKAGE_LIST_HEADER *PackageList;
@@ -793,7 +801,7 @@ Returns:
   //
   // Create CallbackData structures for Driver Callback
   //
-  BmmCallbackInfo = EfiAllocateZeroPool (sizeof (BMM_CALLBACK_DATA));
+  BmmCallbackInfo = AllocateZeroPool (sizeof (BMM_CALLBACK_DATA));
   if (BmmCallbackInfo == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
@@ -801,8 +809,8 @@ Returns:
   //
   // Create LoadOption in BmmCallbackInfo for Driver Callback
   //
-  Ptr = EfiAllocateZeroPool (sizeof (BM_LOAD_CONTEXT) + sizeof (BM_FILE_CONTEXT) + sizeof (BM_HANDLE_CONTEXT) + sizeof (BM_MENU_ENTRY));
-  if (!Ptr) {
+  Ptr = AllocateZeroPool (sizeof (BM_LOAD_CONTEXT) + sizeof (BM_FILE_CONTEXT) + sizeof (BM_HANDLE_CONTEXT) + sizeof (BM_MENU_ENTRY));
+  if (Ptr == NULL) {
     SafeFreePool (BmmCallbackInfo);
     return EFI_OUT_OF_RESOURCES;
   }
@@ -907,7 +915,7 @@ Returns:
   // Allocate space for creation of Buffer
   //
   gUpdateData.BufferSize = UPDATE_DATA_SIZE;
-  gUpdateData.Data = EfiAllocateZeroPool (UPDATE_DATA_SIZE);
+  gUpdateData.Data = AllocateZeroPool (UPDATE_DATA_SIZE);
   if (gUpdateData.Data == NULL) {
     SafeFreePool (BmmCallbackInfo->LoadContext);
     SafeFreePool (BmmCallbackInfo);
@@ -1020,6 +1028,14 @@ Returns:
   return Status;
 }
 
+/**
+  Initialized all Menu Option List.
+
+  @param CallbackData    The BMM context data.
+
+  
+
+**/
 VOID
 InitAllMenu (
   IN  BMM_CALLBACK_DATA    *CallbackData
@@ -1041,6 +1057,14 @@ InitAllMenu (
   GetAllConsoles ();
 }
 
+/**
+  Free up all Menu Option list.
+
+  
+
+  
+
+**/
 VOID
 FreeAllMenu (
   VOID
@@ -1055,25 +1079,22 @@ FreeAllMenu (
   FreeAllConsoles ();
 }
 
+/**
+  Intialize all the string depositories.
+
+
+  
+
+  
+
+**/
 VOID
 InitializeStringDepository (
   VOID
   )
-/*++
-
-Routine Description:
-  Intialize all the string depositories.
-
-Arguments:
-  None.
-
-Returns:
-  None.
-
---*/
 {
   STRING_DEPOSITORY *StringDepository;
-  StringDepository              = EfiAllocateZeroPool (sizeof (STRING_DEPOSITORY) * STRING_DEPOSITORY_NUMBER);
+  StringDepository              = AllocateZeroPool (sizeof (STRING_DEPOSITORY) * STRING_DEPOSITORY_NUMBER);
   FileOptionStrDepository       = StringDepository++;
   ConsoleOptionStrDepository    = StringDepository++;
   BootOptionStrDepository       = StringDepository++;
@@ -1083,23 +1104,21 @@ Returns:
   TerminalStrDepository         = StringDepository;
 }
 
+/**
+  Fetch a usable string node from the string depository and return the string token.
+
+
+  @param CallbackData    The BMM context data.
+  @param StringDepository  The string repository.
+
+  @retval  EFI_STRING_ID           String token.
+
+**/
 EFI_STRING_ID
 GetStringTokenFromDepository (
   IN   BMM_CALLBACK_DATA     *CallbackData,
   IN   STRING_DEPOSITORY     *StringDepository
   )
-/*++
-
-Routine Description:
-  Fetch a usable string node from the string depository and return the string token.
-
-Arguments:
-  StringDepository       - Pointer of the string depository.
-
-Returns:
-  EFI_STRING_ID          - String token.
-
---*/
 {
   STRING_LIST_NODE  *CurrentListNode;
   STRING_LIST_NODE  *NextListNode;
@@ -1115,7 +1134,7 @@ Returns:
     //
     // If there is no usable node in the list, update the list.
     //
-    NextListNode = EfiAllocateZeroPool (sizeof (STRING_LIST_NODE));
+    NextListNode = AllocateZeroPool (sizeof (STRING_LIST_NODE));
 
     HiiLibNewString (CallbackData->BmmHiiHandle, &(NextListNode->StringToken), L" ");
     ASSERT (NextListNode->StringToken != 0);
@@ -1134,22 +1153,19 @@ Returns:
   return StringDepository->CurrentNode->StringToken;
 }
 
+/**
+  Reclaim string depositories by moving the current node pointer to list head..
+
+
+   
+
+  
+
+**/
 VOID
 ReclaimStringDepository (
   VOID
   )
-/*++
-
-Routine Description:
-  Reclaim string depositories by moving the current node pointer to list head..
-
-Arguments:
-  None.
-
-Returns:
-  None.
-
---*/
 {
   UINTN             DepositoryIndex;
   STRING_DEPOSITORY *StringDepository;
@@ -1161,22 +1177,19 @@ Returns:
   }
 }
 
+/**
+  Release resource for all the string depositories.
+
+
+  
+
+  
+
+**/
 VOID
 CleanUpStringDepository (
   VOID
   )
-/*++
-
-Routine Description:
-  Release resource for all the string depositories.
-
-Arguments:
-  None.
-
-Returns:
-  None.
-
---*/
 {
   UINTN             NodeIndex;
   UINTN             DepositoryIndex;
@@ -1204,20 +1217,20 @@ Returns:
   SafeFreePool (FileOptionStrDepository);
 }
 
+/**
+  Start boot maintenance manager
+
+
+  
+
+  @retval EFI_SUCCESS If BMM is invoked successfully.
+  @return Other value if BMM return unsuccessfully.
+
+**/
 EFI_STATUS
 BdsStartBootMaint (
   VOID
   )
-/*++
-
-Routine Description:
-  Start boot maintenance manager
-
-Arguments:
-
-Returns:
-
---*/
 {
   EFI_STATUS      Status;
   LIST_ENTRY      BdsBootOptionList;
@@ -1237,37 +1250,28 @@ Returns:
   BdsLibEnumerateAllBootOption (&BdsBootOptionList);
 
   //
-  // Drop the TPL level from TPL_APPLICATION to TPL_APPLICATION
-  //
-  gBS->RestoreTPL (TPL_APPLICATION);
-
-  //
   // Init the BMM
   //
   Status = InitializeBM ();
 
-  //
-  // Raise the TPL level back to TPL_APPLICATION
-  //
-  gBS->RaiseTPL (TPL_APPLICATION);
-
   return Status;
 }
 
+/**
+  Dispatch BMM formset and FileExplorer formset.
+
+
+  @param CallbackData    The BMM context data.
+
+  @retval EFI_SUCCESS If function complete successfully.
+  @return Other value if the Setup Browser process BMM's pages and
+           return unsuccessfully.
+
+**/
 EFI_STATUS
 FormSetDispatcher (
   IN  BMM_CALLBACK_DATA    *CallbackData
   )
-/*++
-
-Routine Description:
-  Dispatch BMM formset and FileExplorer formset.
-
-Arguments:
-
-Returns:
-
---*/
 {
   EFI_STATUS                 Status;
   EFI_BROWSER_ACTION_REQUEST ActionRequest;
@@ -1321,4 +1325,59 @@ Returns:
 
   return Status;
 }
+
+
+/**
+  Deletete the Boot Option from EFI Variable. The Boot Order Arrray
+  is also updated.
+
+  @param OptionNumber    EDES_TODO: Add parameter description
+  @param BootOrder       The Boot Order array.
+  @param BootOrderSize   The size of the Boot Order Array.
+
+  @return Other value if the Boot Option specified by OptionNumber is not deleteed succesfully.
+  @retval EFI_SUCCESS    If function return successfully.
+
+**/
+EFI_STATUS
+BdsDeleteBootOption (
+  IN UINTN                       OptionNumber,
+  IN OUT UINT16                  *BootOrder,
+  IN OUT UINTN                   *BootOrderSize
+  )
+{
+  UINT16      BootOption[100];
+  UINTN       Index;
+  EFI_STATUS  Status;
+  UINTN       Index2Del;
+
+  Status    = EFI_SUCCESS;
+  Index2Del = 0;
+
+  UnicodeSPrint (BootOption, sizeof (BootOption), L"Boot%04x", OptionNumber);
+  Status = EfiLibDeleteVariable (BootOption, &gEfiGlobalVariableGuid);
+  //
+  // adjust boot order array
+  //
+  for (Index = 0; Index < *BootOrderSize / sizeof (UINT16); Index++) {
+    if (BootOrder[Index] == OptionNumber) {
+      Index2Del = Index;
+      break;
+    }
+  }
+
+  if (Index != *BootOrderSize / sizeof (UINT16)) {
+    for (Index = 0; Index < *BootOrderSize / sizeof (UINT16) - 1; Index++) {
+      if (Index >= Index2Del) {
+        BootOrder[Index] = BootOrder[Index + 1];
+      }
+    }
+
+    *BootOrderSize -= sizeof (UINT16);
+  }
+
+  return Status;
+
+}
+
 

@@ -17,7 +17,7 @@
 
 [Defines]
   INF_VERSION                    = 0x00010005
-  BASE_NAME                      = DxeMain
+  BASE_NAME                      = DxeCore
   FILE_GUID                      = D6A2CB7F-6A18-4e2f-B43B-9920A733700A
   MODULE_TYPE                    = DXE_CORE
   VERSION_STRING                 = 1.0
@@ -26,22 +26,14 @@
 
   ENTRY_POINT                    = DxeMain
 
-#  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
+#  VALID_ARCHITECTURES           = IA32 X64 IPF
 
 [Sources.common]
-  Library.h
-  Imem.h
-  Image.h
-  Hand.h
-  Gcd.h
-  FwVolDriver.h
-  FwVolBlock.h
-  Exec.h
   DxeMain.h
-  DebugImageInfo.h
   SectionExtraction/CoreSectionExtraction.c
   Image/ImageFile.c
   Image/Image.c
+  Image/Image.h
   Misc/DebugImageInfo.c
   Misc/Stall.c
   Misc/SetWatchdogTimer.c
@@ -51,20 +43,25 @@
   Hand/Notify.c
   Hand/Locate.c
   Hand/Handle.c
+  Hand/Handle.h
   Gcd/Gcd.c
+  Gcd/Gcd.h
   Mem/Pool.c
   Mem/Page.c
   Mem/MemData.c
+  Mem/Imem.h
   FwVolBlock/FwVolBlock.c
+  FwVolBlock/FwVolBlock.h
   FwVol/FwVolWrite.c
   FwVol/FwVolRead.c
   FwVol/FwVolAttrib.c
   FwVol/Ffs.c
   FwVol/FwVol.c
+  FwVol/FwVolDriver.h
   Event/Tpl.c
   Event/Timer.c
   Event/Event.c
-  Event/ExecData.c
+  Event/Event.h
   Dispatcher/Dependency.c
   Dispatcher/Dispatcher.c
   DxeMain/DxeProtocolNotify.c
@@ -73,7 +70,7 @@
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
-  
+
 [LibraryClasses]
   BaseMemoryLib
   CacheMaintenanceLib
@@ -87,6 +84,9 @@
   PeCoffLib
   ExtractGuidedSectionLib
   MemoryAllocationLib
+  UefiBootServicesTableLib
+  DevicePathLib
+  ReportStatusCodeLib
 
 [Guids]
   gEfiEventLegacyBootGuid                       # ALWAYS_CONSUMED
@@ -106,8 +106,6 @@
 [Protocols]
   gEfiStatusCodeRuntimeProtocolGuid             # PROTOCOL SOMETIMES_CONSUMED
   gEfiCapsuleArchProtocolGuid                   # PROTOCOL ALWAYS_CONSUMED
-  gEfiTianoDecompressProtocolGuid               # PROTOCOL ALWAYS_CONSUMED
-  gEfiCustomizedDecompressProtocolGuid          # PROTOCOL ALWAYS_CONSUMED
   gEfiDecompressProtocolGuid                    # PROTOCOL ALWAYS_CONSUMED
   gEfiLoadPeImageProtocolGuid                   # PROTOCOL ALWAYS_PRODUCED
   gEfiSimpleFileSystemProtocolGuid              # PROTOCOL ALWAYS_CONSUMED

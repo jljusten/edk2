@@ -1,4 +1,6 @@
 /** @file
+Implementation for handling the User Interface option processing.
+
 
 Copyright (c) 2004 - 2007, Intel Corporation
 All rights reserved. This program and the accompanying materials
@@ -8,17 +10,6 @@ http://opensource.org/licenses/bsd-license.php
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  ProcessOptions.c
-
-Abstract:
-
-  Implementation for handling the User Interface option processing.
-
-Revision History
-
 
 **/
 
@@ -113,7 +104,7 @@ ValueToOption (
 /**
   Print Question Value according to it's storage width and display attributes.
 
-  @param  Event                  The event to wait for
+  @param  Question               The Question to be printed.
   @param  FormattedNumber        Buffer for output string.
   @param  BufferSize             The FormattedNumber buffer size in bytes.
 
@@ -265,10 +256,6 @@ PasswordCallback (
 /**
   Display error message for invalid password.
 
-  None.
-
-  @return None.
-
 **/
 VOID
 PasswordInvalid (
@@ -341,6 +328,7 @@ ProcessOptions (
     //
     // Initialize Option value array
     //
+
     if (Question->BufferValue[0] == 0) {
       GetQuestionDefault (Selection->FormSet, Selection->Form, Question, 0);
     }
@@ -624,7 +612,7 @@ ProcessOptions (
       //
       // For interactive passwords, old password is validated by callback
       //
-      if (Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) {
+      if ((Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK)  != 0) {
         //
         // Use a NULL password to test whether old password is required
         //
@@ -707,7 +695,7 @@ ProcessOptions (
         //
         // Reset state machine for interactive password
         //
-        if (Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) {
+        if ((Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) != 0) {
           PasswordCallback (Selection, MenuOption, NULL);
         }
 
@@ -725,7 +713,7 @@ ProcessOptions (
         //
         // Reset state machine for interactive password
         //
-        if (Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) {
+        if ((Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) != 0) {
           PasswordCallback (Selection, MenuOption, NULL);
         }
 
@@ -741,7 +729,7 @@ ProcessOptions (
         //
         // Two password match, send it to Configuration Driver
         //
-        if (Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) {
+        if ((Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) != 0) {
           PasswordCallback (Selection, MenuOption, StringPtr);
         } else {
           CopyMem (Question->BufferValue, StringPtr, Maximum * sizeof (CHAR16));
@@ -751,7 +739,7 @@ ProcessOptions (
         //
         // Reset state machine for interactive password
         //
-        if (Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) {
+        if ((Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) != 0) {
           PasswordCallback (Selection, MenuOption, NULL);
         }
 
@@ -781,11 +769,8 @@ ProcessOptions (
   FormattedString and the glyph width of each line cannot exceed gHelpBlockWidth.
 
   @param  StringPtr              The entire help string.
-  @param  MenuOption             The MenuOption for this Question.
+  @param  FormattedString        The oupput formatted string.
   @param  RowCount               TRUE: if Question is selected.
-  @param  OptionString           Pointer of the Option String to be displayed.
-
-  @return None.
 
 **/
 VOID

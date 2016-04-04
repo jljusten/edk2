@@ -15,13 +15,6 @@
 #ifndef __HII_LIB_H__
 #define __HII_LIB_H__
 
-//
-// Limited buffer size recommended by RFC4646 (4.3.  Length Considerations)
-// (42 characters plus a NULL terminator)
-//
-#define RFC_3066_ENTRY_SIZE             (42 + 1)
-
-#define ISO_639_2_ENTRY_SIZE            3
 
 /**
   Assemble EFI_HII_PACKAGE_LIST according to the passed in packages.
@@ -30,11 +23,10 @@
   If not enough resource to complete the operation, then ASSERT.
 
   @param  NumberOfPackages       Number of packages.
-  @param  GuidId                          Package GUID.
-  @param  ...                                Variable argument list for packages to be assembled.
+  @param  GuidId                 Package GUID.
+  @param  ...                    Variable argument list for packages to be assembled.
 
-  @return EFI_HII_PACKAGE_LIST_HEADER Pointer of EFI_HII_PACKAGE_LIST_HEADER. The function will ASSERT if system has
-                                                                not enough resource to complete the operation.
+  @return Pointer of EFI_HII_PACKAGE_LIST_HEADER.
 
 **/
 EFI_HII_PACKAGE_LIST_HEADER *
@@ -43,8 +35,7 @@ HiiLibPreparePackageList (
   IN UINTN                    NumberOfPackages,
   IN CONST EFI_GUID                 *GuidId,
   ...
-  )
-;
+  );
 
 /**
   This function allocates pool for an EFI_HII_PACKAGE_LIST structure
@@ -78,8 +69,7 @@ HiiLibAddPackages (
   IN       EFI_HANDLE          DriverHandle, OPTIONAL
   OUT      EFI_HII_HANDLE      *HiiHandle,
   ...
-  )
-;
+  );
 
 /**
   Removes a package list from the default HII database.
@@ -90,15 +80,12 @@ HiiLibAddPackages (
   @param  HiiHandle                The handle that was previously registered to the data base that is requested for removal.
                                              List later.
 
-  @return  VOID
-
 **/
 VOID
 EFIAPI
 HiiLibRemovePackages (
   IN      EFI_HII_HANDLE      HiiHandle
-  )
-;
+  );
 
 /**
   This function adds the string into String Package of each language
@@ -124,8 +111,7 @@ HiiLibNewString (
   IN  EFI_HII_HANDLE                  PackageList,
   OUT EFI_STRING_ID                   *StringId,
   IN  CONST EFI_STRING                String
-  )
-;
+  );
 
 /**
   This function update the specified string in String Package of each language
@@ -150,15 +136,14 @@ HiiLibSetString (
   IN  EFI_HII_HANDLE                  PackageList,
   IN  EFI_STRING_ID                   StringId,
   IN  CONST EFI_STRING                String
-  )
-;
+  );
 
 /**
   This function try to retrieve string from String package of current language.
   If fails, it try to retrieve string from String package of first language it support.
 
-  If String is NULL, then ASSERT.
   If StringSize is NULL, then ASSERT.
+  If String is NULL and *StringSize is not 0, then ASSERT.
   If PackageList could not be found in the default HII database, then ASSERT.
   If StringId is not found in PackageList, then ASSERT.
 
@@ -175,10 +160,8 @@ HiiLibSetString (
   @retval EFI_NOT_FOUND          The string specified by StringId is not available.
   @retval EFI_BUFFER_TOO_SMALL   The buffer specified by StringLength is too small
                                  to hold the string.
-  @retval EFI_INVALID_PARAMETER  The String or StringSize was NULL.
 
 **/
-
 EFI_STATUS
 EFIAPI
 HiiLibGetString (
@@ -186,8 +169,7 @@ HiiLibGetString (
   IN  EFI_STRING_ID                   StringId,
   OUT EFI_STRING                      String,
   IN  OUT UINTN                       *StringSize
-  )
-;
+  );
 
 /**
   Get string specified by StringId form the HiiHandle. The caller
@@ -204,7 +186,6 @@ HiiLibGetString (
   @retval EFI_NOT_FOUND          String is not found.
   @retval EFI_SUCCESS            Operation is successful.
   @retval EFI_OUT_OF_RESOURCES   There is not enought memory in the system.
-  @retval EFI_INVALID_PARAMETER  The String is NULL.
 
 **/
 EFI_STATUS
@@ -213,8 +194,7 @@ HiiLibGetStringFromHandle (
   IN  EFI_HII_HANDLE                  HiiHandle,
   IN  EFI_STRING_ID                   StringId,
   OUT EFI_STRING                      *String
-  )
-;
+  );
 
 /**
   Get the string given the StringId and String package Producer's Guid. The caller
@@ -238,8 +218,7 @@ HiiLibGetStringFromToken (
   IN  EFI_GUID                        *ProducerGuid,
   IN  EFI_STRING_ID                   StringId,
   OUT EFI_STRING                      *String
-  )
-;
+  );
 
 /**
   Determines the handles that are currently active in the database.
@@ -261,8 +240,7 @@ EFIAPI
 HiiLibGetHiiHandles (
   IN OUT UINTN                     *HandleBufferLength,
   OUT    EFI_HII_HANDLE            **HiiHandleBuffer
-  )
-;
+  );
 
 /**
   Extract Hii package list GUID for given HII handle.
@@ -281,8 +259,7 @@ EFIAPI
 HiiLibExtractGuidFromHiiHandle (
   IN      EFI_HII_HANDLE      Handle,
   OUT     EFI_GUID            *Guid
-  )
-;
+  );
 
 /**
   Find HII Handle in the default HII database associated with given Device Path.
@@ -301,31 +278,8 @@ EFI_HII_HANDLE
 EFIAPI
 HiiLibDevicePathToHiiHandle (
   IN EFI_DEVICE_PATH_PROTOCOL   *DevicePath
-  )
-;
+  );
 
-
-/**
-  Determine what is the current language setting. The space reserved for Lang
-  must be at least RFC_3066_ENTRY_SIZE bytes;
-
-  If Lang is NULL, then ASSERT.
-
-  @param  Lang                   Pointer of system language. Lang will always be filled with 
-                                         a valid RFC 3066 language string. If "PlatformLang" is not
-                                         set in the system, the default language specifed by PcdUefiVariableDefaultPlatformLang
-                                         is returned.
-
-  @return  EFI_SUCCESS     If the EFI Variable with "PlatformLang" is set and return in Lang.
-  @return  EFI_NOT_FOUND If the EFI Variable with "PlatformLang" is not set, but a valid default language is return in Lang.
-
-**/
-EFI_STATUS
-EFIAPI
-HiiLibGetCurrentLanguage (
-  OUT     CHAR8               *Lang
-  )
-;
 
 /**
   Get next language from language code list (with separator ';').
@@ -344,8 +298,7 @@ EFIAPI
 HiiLibGetNextLanguage (
   IN OUT CHAR8      **LangCode,
   OUT CHAR8         *Lang
-  )
-;
+  );
 
 /**
   This function returns the list of supported languages, in the format specified
@@ -363,8 +316,7 @@ CHAR8 *
 EFIAPI
 HiiLibGetSupportedLanguages (
   IN EFI_HII_HANDLE           HiiHandle
-  )
-;
+  );
 
 /**
   This function returns the list of supported 2nd languages, in the format specified
@@ -384,8 +336,7 @@ EFIAPI
 HiiLibGetSupportedSecondaryLanguages (
   IN EFI_HII_HANDLE           HiiHandle,
   IN CONST CHAR8              *FirstLanguage
-  )
-;
+  );
 
 
 /**
@@ -403,8 +354,79 @@ UINT16
 EFIAPI
 HiiLibGetSupportedLanguageNumber (
   IN EFI_HII_HANDLE           HiiHandle
-  )
-;
+  );
+
+/**
+  Exports the contents of one or all package lists in the HII database into a buffer.
+
+  If Handle is not NULL and not a valid EFI_HII_HANDLE registered in the database, 
+  then ASSERT.
+  If PackageListHeader is NULL, then ASSERT.
+  If PackageListSize is NULL, then ASSERT.
+
+  @param  Handle                 The HII Handle.
+  @param  PackageListHeader      A pointer to a buffer that will contain the results of 
+                                 the export function.
+  @param  PackageListSize        On output, the length of the buffer that is required for the exported data.
+
+  @retval EFI_SUCCESS            Package exported.
+
+  @retval EFI_OUT_OF_RESOURCES   Not enought memory to complete the operations.
+
+**/
+EFI_STATUS 
+EFIAPI
+HiiLibExportPackageLists (
+  IN EFI_HII_HANDLE                    Handle,
+  OUT EFI_HII_PACKAGE_LIST_HEADER      **PackageListHeader,
+  OUT UINTN                            *PackageListSize
+  );
+
+/**
+  
+  This function returns a list of the package handles of the   
+  specified type that are currently active in the HII database. The   
+  pseudo-type EFI_HII_PACKAGE_TYPE_ALL will cause all package   
+  handles to be listed.
+
+  If HandleBufferLength is NULL, then ASSERT.
+  If HandleBuffer is NULL, the ASSERT.
+  If PackageType is EFI_HII_PACKAGE_TYPE_GUID and PackageGuid is
+  NULL, then ASSERT.
+  If PackageType is not EFI_HII_PACKAGE_TYPE_GUID and PackageGuid is not
+  NULL, then ASSERT.
+  
+  
+  @param PackageType          Specifies the package type of the packages
+                              to list or EFI_HII_PACKAGE_TYPE_ALL for
+                              all packages to be listed.
+  
+  @param PackageGuid          If PackageType is
+                              EFI_HII_PACKAGE_TYPE_GUID, then this is
+                              the pointer to the GUID which must match
+                              the Guid field of
+                              EFI_HII_PACKAGE_GUID_HEADER. Otherwise, it
+                              must be NULL.
+  
+  @param HandleBufferLength   On output, the length of the handle buffer
+                              that is required for the handles found.
+
+  @param HandleBuffer         On output, an array of EFI_HII_HANDLE  instances returned.
+                              The caller is responcible to free this pointer allocated.
+
+  @retval EFI_SUCCESS           The matching handles are outputed successfully.
+                                HandleBufferLength is updated with the actual length.
+  @retval EFI_OUT_OF_RESOURCES  Not enough resource to complete the operation.
+  @retval EFI_NOT_FOUND         No matching handle could not be found in database.
+**/
+EFI_STATUS
+EFIAPI
+HiiLibListPackageLists (
+  IN        UINT8                     PackageType,
+  IN CONST  EFI_GUID                  *PackageGuid,
+  IN OUT    UINTN                     *HandleBufferLength,
+  OUT       EFI_HII_HANDLE            **Handle
+  );
 
 /**
   Convert language code from RFC3066 to ISO639-2.
@@ -430,8 +452,7 @@ EFIAPI
 ConvertRfc3066LanguageToIso639Language (
   IN  CHAR8   *LanguageRfc3066,
   OUT CHAR8   *LanguageIso639
-  )
-;
+  );
 
 /**
   Convert language code from ISO639-2 to RFC3066.
@@ -457,8 +478,7 @@ EFIAPI
 ConvertIso639LanguageToRfc3066Language (
   IN  CONST CHAR8   *LanguageIso639,
   OUT CHAR8         *LanguageRfc3066
-  )
-;
+  );
 
 /**
   Convert language code list from RFC3066 to ISO639-2, e.g. "en-US;fr-FR" will
@@ -475,7 +495,6 @@ CHAR8 *
 EFIAPI
 Rfc3066ToIso639 (
   CHAR8  *SupportedLanguages
-  )
-;
+  );
 
 #endif

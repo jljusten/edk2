@@ -1,9 +1,9 @@
 /** @file
-  Watchdog Timer Architectural Protocol as defined in the DXE CIS
+  Watchdog Timer Architectural Protocol as defined in PI Specification VOLUME 2 DXE
 
   Used to provide system watchdog timer services
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -11,24 +11,20 @@
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
-
-  @par Revision Reference:
-  Version 0.91B.
-
 **/
 
 #ifndef __ARCH_PROTOCOL_WATCHDOG_TIMER_H__
 #define __ARCH_PROTOCOL_WATCHDOG_TIMER_H__
 
-//
-// Global ID for the Watchdog Timer Architectural Protocol
-//
+///
+/// Global ID for the Watchdog Timer Architectural Protocol
+///
 #define EFI_WATCHDOG_TIMER_ARCH_PROTOCOL_GUID \
   { 0x665E3FF5, 0x46CC, 0x11d4, {0x9A, 0x38, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D } }
 
-//
-// Declare forward reference for the Timer Architectural Protocol
-//
+///
+/// Declare forward reference for the Timer Architectural Protocol
+///
 typedef struct _EFI_WATCHDOG_TIMER_ARCH_PROTOCOL  EFI_WATCHDOG_TIMER_ARCH_PROTOCOL;
 
 /**
@@ -44,7 +40,7 @@ typedef struct _EFI_WATCHDOG_TIMER_ARCH_PROTOCOL  EFI_WATCHDOG_TIMER_ARCH_PROTOC
 **/
 typedef
 VOID
-(EFIAPI *EFI_WATCHDOG_TIMER_NOTIFY) (
+(EFIAPI *EFI_WATCHDOG_TIMER_NOTIFY)(
   IN UINT64  Time
   );
 
@@ -74,7 +70,7 @@ VOID
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_WATCHDOG_TIMER_REGISTER_HANDLER) (
+(EFIAPI *EFI_WATCHDOG_TIMER_REGISTER_HANDLER)(
   IN EFI_WATCHDOG_TIMER_ARCH_PROTOCOL  *This,
   IN EFI_WATCHDOG_TIMER_NOTIFY         NotifyFunction
   );
@@ -97,7 +93,7 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_WATCHDOG_TIMER_SET_TIMER_PERIOD) (
+(EFIAPI *EFI_WATCHDOG_TIMER_SET_TIMER_PERIOD)(
   IN EFI_WATCHDOG_TIMER_ARCH_PROTOCOL  *This,
   IN UINT64                            TimerPeriod
   );
@@ -119,7 +115,7 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_WATCHDOG_TIMER_GET_TIMER_PERIOD) (
+(EFIAPI *EFI_WATCHDOG_TIMER_GET_TIMER_PERIOD)(
   IN  EFI_WATCHDOG_TIMER_ARCH_PROTOCOL  *This,
   OUT UINT64                            *TimerPeriod
   );
@@ -138,18 +134,6 @@ EFI_STATUS
   will be passed to a handler if one has been registered.  If no handler has 
   been registered, or the registered handler returns, then the system will be 
   reset by calling the Runtime Service ResetSystem().
-
-  @param  RegisterHandler  Registers a handler that is invoked when the watchdog
-                           timer fires.
-
-  @param  SetTimerPeriod   Sets the amount of time in 100 ns units to wait before the
-                           watchdog timer is fired. If this function is supported,
-                           then the watchdog timer period will be rounded up to the
-                           nearest supported watchdog timer period.
-
-  @param  GetTimerPeriod   Retrieves the amount of time in 100 ns units that the
-                           system will wait before the watchdog timer is fired.
-
 **/
 struct _EFI_WATCHDOG_TIMER_ARCH_PROTOCOL {
   EFI_WATCHDOG_TIMER_REGISTER_HANDLER  RegisterHandler;

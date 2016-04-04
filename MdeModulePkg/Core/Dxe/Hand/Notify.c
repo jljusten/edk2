@@ -1,5 +1,5 @@
 /** @file
-  UEFI notify infrastructure
+  Support functions for UEFI protocol notification infrastructure.
 
 Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <DxeMain.h>
+#include "DxeMain.h"
+#include "Handle.h"
 
 
 /**
@@ -42,9 +43,9 @@ CoreNotifyProtocolEntry (
 /**
   Removes Protocol from the protocol list (but not the handle list).
 
-  @param  Handle                 The handle to remove protocol on. 
-  @param  Protocol               GUID of the protocol to be moved 
-  @param  Interface              The interface of the protocol 
+  @param  Handle                 The handle to remove protocol on.
+  @param  Protocol               GUID of the protocol to be moved
+  @param  Interface              The interface of the protocol
 
   @return Protocol Entry
 
@@ -71,7 +72,6 @@ CoreRemoveInterfaceFromProtocol (
     //
     // If there's a protocol notify location pointing to this entry, back it up one
     //
-
     for(Link = ProtEntry->Notify.ForwardLink; Link != &ProtEntry->Notify; Link=Link->ForwardLink) {
       ProtNotify = CR(Link, PROTOCOL_NOTIFY, Link, PROTOCOL_NOTIFY_SIGNATURE);
 
@@ -83,7 +83,6 @@ CoreRemoveInterfaceFromProtocol (
     //
     // Remove the protocol interface entry
     //
-
     RemoveEntryList (&Prot->ByProtocol);
   }
 
@@ -91,18 +90,16 @@ CoreRemoveInterfaceFromProtocol (
 }
 
 
-
-
 /**
   Add a new protocol notification record for the request protocol.
 
-  @param  Protocol               The requested protocol to add the notify 
-                                 registration 
-  @param  Event                  The event to signal 
-  @param  Registration           Returns the registration record 
+  @param  Protocol               The requested protocol to add the notify
+                                 registration
+  @param  Event                  The event to signal
+  @param  Registration           Returns the registration record
 
-  @retval EFI_INVALID_PARAMETER  Invalid parameter 
-  @retval EFI_SUCCESS            Successfully returned the registration record 
+  @retval EFI_INVALID_PARAMETER  Invalid parameter
+  @retval EFI_SUCCESS            Successfully returned the registration record
                                  that has been added
 
 **/
@@ -111,13 +108,13 @@ EFIAPI
 CoreRegisterProtocolNotify (
   IN EFI_GUID       *Protocol,
   IN EFI_EVENT      Event,
-  OUT  VOID           **Registration
+  OUT  VOID         **Registration
   )
 {
-  PROTOCOL_ENTRY      *ProtEntry;
-  PROTOCOL_NOTIFY     *ProtNotify;
+  PROTOCOL_ENTRY    *ProtEntry;
+  PROTOCOL_NOTIFY   *ProtNotify;
   EFI_STATUS        Status;
-  
+
   if ((Protocol == NULL) || (Event == NULL) || (Registration == NULL))  {
     return EFI_INVALID_PARAMETER;
   }
@@ -125,7 +122,7 @@ CoreRegisterProtocolNotify (
   CoreAcquireProtocolLock ();
 
   ProtNotify = NULL;
-  
+
   //
   // Get the protocol entry to add the notification too
   //
@@ -136,18 +133,16 @@ CoreRegisterProtocolNotify (
     //
     // Allocate a new notification record
     //
-
-    ProtNotify = CoreAllocateBootServicesPool (sizeof(PROTOCOL_NOTIFY));
-
+    ProtNotify = AllocatePool (sizeof(PROTOCOL_NOTIFY));
     if (ProtNotify != NULL) {
-      
+
       ProtNotify->Signature = PROTOCOL_NOTIFY_SIGNATURE;
       ProtNotify->Protocol = ProtEntry;
       ProtNotify->Event = Event;
       //
       // start at the begining
       //
-      ProtNotify->Position = &ProtEntry->Protocols; 
+      ProtNotify->Position = &ProtEntry->Protocols;
 
       InsertTailList (&ProtEntry->Notify, &ProtNotify->Link);
     }
@@ -170,16 +165,14 @@ CoreRegisterProtocolNotify (
 }
 
 
-
-
 /**
   Reinstall a protocol interface on a device handle.  The OldInterface for Protocol is replaced by the NewInterface.
 
-  @param  UserHandle             Handle on which the interface is to be 
-                                 reinstalled 
-  @param  Protocol               The numeric ID of the interface 
-  @param  OldInterface           A pointer to the old interface 
-  @param  NewInterface           A pointer to the new interface 
+  @param  UserHandle             Handle on which the interface is to be
+                                 reinstalled
+  @param  Protocol               The numeric ID of the interface
+  @param  OldInterface           A pointer to the old interface
+  @param  NewInterface           A pointer to the new interface
 
   @retval EFI_SUCCESS            The protocol interface was installed
   @retval EFI_NOT_FOUND          The OldInterface on the handle was not found
@@ -221,8 +214,8 @@ CoreReinstallProtocolInterface (
   //
   Prot = CoreFindProtocolInterface (UserHandle, Protocol, OldInterface);
   if (Prot == NULL) {
-    CoreReleaseProtocolLock ();
-    return EFI_NOT_FOUND;
+    Status = EFI_NOT_FOUND;
+    goto Done;
   }
 
   //
@@ -236,8 +229,7 @@ CoreReinstallProtocolInterface (
     //
     // One or more drivers refused to release, so return the error
     //
-    CoreReleaseProtocolLock ();
-    return Status;
+    goto Done;
   }
 
   //
@@ -246,8 +238,8 @@ CoreReinstallProtocolInterface (
   Prot = CoreRemoveInterfaceFromProtocol (Handle, Protocol, OldInterface);
 
   if (Prot == NULL) {
-    CoreReleaseProtocolLock ();
-    return EFI_NOT_FOUND;
+    Status = EFI_NOT_FOUND;
+    goto Done;
   }
 
   ProtEntry = Prot->Protocol;
@@ -273,20 +265,26 @@ CoreReinstallProtocolInterface (
   // Release the lock and connect all drivers to UserHandle
   //
   CoreReleaseProtocolLock ();
-  Status = CoreConnectController (
-                  UserHandle, 
-                  NULL, 
-                  NULL, 
-                  TRUE
-                  );
+  //
+  // Return code is ignored on purpose.
+  //
+  CoreConnectController (
+    UserHandle,
+    NULL,
+    NULL,
+    TRUE
+    );
   CoreAcquireProtocolLock ();
-  
+
   //
   // Notify the notification list for this protocol
   //
   CoreNotifyProtocolEntry (ProtEntry);
 
+  Status = EFI_SUCCESS;
+
+Done:
   CoreReleaseProtocolLock ();
-  
-  return EFI_SUCCESS;
+
+  return Status;
 }

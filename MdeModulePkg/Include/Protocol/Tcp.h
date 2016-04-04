@@ -1,6 +1,8 @@
-/*++
+/** @file
 
-Copyright (c) 2004, Intel Corporation
+    This file defines EFI Transmission Control Protocol.
+
+Copyright (c) 2004 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,23 +11,11 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-    tcp.h
-
-Abstract:
-
-    EFI Transmission Control Protocol
+**/
 
 
-
-Revision History
-
---*/
-
-
-#ifndef _EFITCP_H
-#define _EFITCP_H
+#ifndef __EFI_TCP_H__
+#define __EFI_TCP_H__
 
 
 #include <Protocol/PxeBaseCode.h>
@@ -53,7 +43,7 @@ typedef struct {
 
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP_WRITE) (
+(EFIAPI *EFI_TCP_WRITE)(
     IN EFI_PXE_BASE_CODE_PROTOCOL        *This,
     IN UINT16                                    OpFlags,
     IN UINT16                                    *UrgentPointer,
@@ -74,7 +64,7 @@ EFI_STATUS
 
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP_READ) (
+(EFIAPI *EFI_TCP_READ)(
     IN EFI_PXE_BASE_CODE_PROTOCOL        *This,
     IN UINT16                                    OpFlags,
     IN OUT EFI_IP_ADDRESS                        *DestIp,      OPTIONAL
@@ -89,7 +79,7 @@ EFI_STATUS
 
 typedef
 EFI_STATUS
-(EFIAPI *EFI_TCP_SET_PORT_FILTER) (
+(EFIAPI *EFI_TCP_SET_PORT_FILTER)(
     IN EFI_PXE_BASE_CODE_PROTOCOL    *This,
     IN EFI_TCP_PORT_FILTER                   *NewFilter
     );

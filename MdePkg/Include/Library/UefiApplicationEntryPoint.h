@@ -15,9 +15,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #ifndef __UEFI_APPLICATION_ENTRY_POINT_H__
 #define __UEFI_APPLICATION_ENTRY_POINT_H__
 
-//
-// Declare the EFI/UEFI Specification Revision to which this driver is implemented 
-//
+///
+/// Declare the EFI/UEFI Specification Revision to which this driver is implemented 
+///
 extern const UINT32                   _gUefiDriverRevision;
 
 /**
@@ -62,8 +62,6 @@ EfiMain (
 
   @param  Status Status returned by the application that is exiting.
   
-  @retval VOID
-
 **/
 VOID
 EFIAPI
@@ -79,8 +77,6 @@ Exit (
   @param  ImageHandle ImageHandle of the loaded driver.
   @param  SystemTable Pointer to the EFI System Table.
   
-  @retval VOID
-
 **/
 VOID
 EFIAPI
@@ -97,7 +93,6 @@ ProcessLibraryConstructorList (
   @param  ImageHandle ImageHandle of the loaded driver.
   @param  SystemTable Pointer to the EFI System Table.
 
-  @retval VOID
 **/
 VOID
 EFIAPI
@@ -118,7 +113,6 @@ ProcessLibraryDestructorList (
           the user.  
  
 **/
-
 EFI_STATUS
 EFIAPI
 ProcessModuleEntryPointList (

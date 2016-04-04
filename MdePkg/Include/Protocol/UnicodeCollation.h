@@ -1,7 +1,9 @@
 /** @file
   Unicode Collation protocol that follows the UEFI 2.0 specification.
+  This protocol is used to allow code running in the boot services environment 
+  to perform lexical comparison functions on Unicode strings for given languages.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -28,19 +30,19 @@
 typedef struct _EFI_UNICODE_COLLATION_PROTOCOL  EFI_UNICODE_COLLATION_PROTOCOL;
 
 
-//
-// Protocol GUID name defined in EFI1.1.
-// 
+///
+/// Protocol GUID name defined in EFI1.1.
+/// 
 #define UNICODE_COLLATION_PROTOCOL              EFI_UNICODE_COLLATION_PROTOCOL_GUID
 
-//
-// Protocol defined in EFI1.1.
-// 
+///
+/// Protocol defined in EFI1.1.
+/// 
 typedef EFI_UNICODE_COLLATION_PROTOCOL          UNICODE_COLLATION_INTERFACE;
 
-//
-// Protocol data structures and defines
-//
+///
+/// Protocol data structures and defines
+///
 #define EFI_UNICODE_BYTE_ORDER_MARK (CHAR16) (0xfeff)
 
 //
@@ -61,12 +63,11 @@ typedef EFI_UNICODE_COLLATION_PROTOCOL          UNICODE_COLLATION_INTERFACE;
 **/
 typedef
 INTN
-(EFIAPI *EFI_UNICODE_COLLATION_STRICOLL) (
+(EFIAPI *EFI_UNICODE_COLLATION_STRICOLL)(
   IN EFI_UNICODE_COLLATION_PROTOCOL         *This,
   IN CHAR16                                 *Str1,
   IN CHAR16                                 *Str2
-  )
-;
+  );
 
 /**
   Performs a case-insensitive comparison of a Null-terminated Unicode 
@@ -82,12 +83,11 @@ INTN
 **/
 typedef
 BOOLEAN
-(EFIAPI *EFI_UNICODE_COLLATION_METAIMATCH) (
+(EFIAPI *EFI_UNICODE_COLLATION_METAIMATCH)(
   IN EFI_UNICODE_COLLATION_PROTOCOL         *This,
   IN CHAR16                                 *String,
   IN CHAR16                                 *Pattern
-  )
-;
+  );
 
 /**
   Converts all the Unicode characters in a Null-terminated Unicode string to 
@@ -96,16 +96,13 @@ BOOLEAN
   @param  This   Protocol instance pointer.
   @param  String A pointer to a Null-terminated Unicode string.
 
-  NONE
-
 **/
 typedef
 VOID
-(EFIAPI *EFI_UNICODE_COLLATION_STRLWR) (
+(EFIAPI *EFI_UNICODE_COLLATION_STRLWR)(
   IN EFI_UNICODE_COLLATION_PROTOCOL         *This,
   IN OUT CHAR16                             *Str
-  )
-;
+  );
 
 /**
   Converts all the Unicode characters in a Null-terminated Unicode string to upper
@@ -114,16 +111,13 @@ VOID
   @param  This   Protocol instance pointer.
   @param  String A pointer to a Null-terminated Unicode string.
 
-  NONE
-
 **/
 typedef
 VOID
-(EFIAPI *EFI_UNICODE_COLLATION_STRUPR) (
+(EFIAPI *EFI_UNICODE_COLLATION_STRUPR)(
   IN EFI_UNICODE_COLLATION_PROTOCOL         *This,
   IN OUT CHAR16                             *Str
-  )
-;
+  );
 
 /**
   Converts an 8.3 FAT file name in an OEM character set to a Null-terminated 
@@ -136,18 +130,15 @@ VOID
   @param  String  A pointer to a Null-terminated Unicode string. The string must
                   be preallocated to hold FatSize Unicode characters.
 
-  NONE
-
 **/
 typedef
 VOID
-(EFIAPI *EFI_UNICODE_COLLATION_FATTOSTR) (
+(EFIAPI *EFI_UNICODE_COLLATION_FATTOSTR)(
   IN EFI_UNICODE_COLLATION_PROTOCOL         *This,
   IN UINTN                                  FatSize,
   IN CHAR8                                  *Fat,
   OUT CHAR16                                *String
-  )
-;
+  );
 
 /**
   Converts a Null-terminated Unicode string to legal characters in a FAT 
@@ -166,14 +157,18 @@ VOID
 **/
 typedef
 BOOLEAN
-(EFIAPI *EFI_UNICODE_COLLATION_STRTOFAT) (
+(EFIAPI *EFI_UNICODE_COLLATION_STRTOFAT)(
   IN EFI_UNICODE_COLLATION_PROTOCOL         *This,
   IN CHAR16                                 *String,
   IN UINTN                                  FatSize,
   OUT CHAR8                                 *Fat
-  )
-;
+  );
 
+/**  
+  @par Protocol Description:
+  The EFI_UNICODE_COLLATION_PROTOCOL is used to perform case-insensitive 
+  comparisons of Unicode strings. 
+**/
 struct _EFI_UNICODE_COLLATION_PROTOCOL {
   //
   // general
@@ -188,7 +183,11 @@ struct _EFI_UNICODE_COLLATION_PROTOCOL {
   //
   EFI_UNICODE_COLLATION_FATTOSTR    FatToStr;
   EFI_UNICODE_COLLATION_STRTOFAT    StrToFat;
-
+  
+  ///
+  /// LanguagesA Null-terminated ASCII string array that contains one or more 
+  /// language codes. This array is specified in RFC 4646 format.
+  ///
   CHAR8                             *SupportedLanguages;
 };
 

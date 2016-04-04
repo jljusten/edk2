@@ -1,20 +1,5 @@
 /** @file
 
-Copyright (c) 2007, Intel Corporation
-All rights reserved. This program and the accompanying materials
-are licensed and made available under the terms and conditions of the BSD License
-which accompanies this distribution.  The full text of the license may be found at
-http://opensource.org/licenses/bsd-license.php
-
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  UsbMass.h
-
-Abstract:
-
   Defination for the USB mass storage class driver. The USB mass storage
   class is specified in two layers: the bottom layer is the transportation
   protocol. The top layer is the command set. The transportation layer
@@ -23,8 +8,14 @@ Abstract:
   Control/Bulk/Interrupt transport are two transportation protocol. USB mass
   storage class adopts various industrial standard as its command set.
 
-Revision History
+Copyright (c) 2007 - 2008, Intel Corporation
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -32,10 +23,11 @@ Revision History
 #define _EFI_USBMASS_H_
 
 
-#include <PiDxe.h>
+#include <Uefi.h>
 
 #include <Protocol/BlockIo.h>
 #include <Protocol/UsbIo.h>
+#include <Protocol/DevicePath.h>
 
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -43,6 +35,7 @@ Revision History
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiLib.h>
 #include <Library/MemoryAllocationLib.h>
+#include <Library/DevicePathLib.h>
 
 #define USB_IS_IN_ENDPOINT(EndPointAddr)      (((EndPointAddr) & 0x80) == 0x80)
 #define USB_IS_OUT_ENDPOINT(EndPointAddr)     (((EndPointAddr) & 0x80) == 0)
@@ -50,7 +43,7 @@ Revision History
 #define USB_IS_INTERRUPT_ENDPOINT(Attribute)  (((Attribute) & 0x03) == 0x03)
 #define USB_IS_ERROR(Result, Error)           (((Result) & (Error)) != 0)
 
-enum {
+typedef enum {
   //
   // Usb mass storage class code
   //
@@ -79,13 +72,12 @@ enum {
   USB_MASS_CMD_SUCCESS    = 0,
   USB_MASS_CMD_FAIL,
   USB_MASS_CMD_PERSISTENT
-};
+}USB_MASS_DEV_CLASS_AND_VALUE;
 
 typedef
 EFI_STATUS
 (*USB_MASS_INIT_TRANSPORT) (
   IN  EFI_USB_IO_PROTOCOL     *Usb,
-  IN  EFI_HANDLE              Controller,
   OUT VOID                    **Context    OPTIONAL
   );
 
@@ -98,6 +90,7 @@ EFI_STATUS
   IN  EFI_USB_DATA_DIRECTION  DataDir,
   IN  VOID                    *Data,
   IN  UINT32                  DataLen,
+  IN  UINT8                   Lun,
   IN  UINT32                  Timeout,
   OUT UINT32                  *CmdStatus
   );
@@ -107,6 +100,13 @@ EFI_STATUS
 (*USB_MASS_RESET) (
   IN  VOID                    *Context,
   IN  BOOLEAN                 ExtendedVerification
+  );
+
+typedef
+EFI_STATUS
+(*USB_MASS_GET_MAX_LUN) (
+  IN  VOID                    *Context,
+  IN  UINT8                   *MaxLun
   );
 
 typedef
@@ -128,14 +128,26 @@ typedef struct {
   USB_MASS_INIT_TRANSPORT Init;        // Initialize the mass storage transport protocol
   USB_MASS_EXEC_COMMAND   ExecCommand; // Transport command to the device then get result
   USB_MASS_RESET          Reset;       // Reset the device
+  USB_MASS_GET_MAX_LUN    GetMaxLun;   // Get max lun, only for bot
   USB_MASS_FINI           Fini;        // Clean up the resources.
 } USB_MASS_TRANSPORT;
 
 
+/**
+  Use the USB clear feature control transfer to clear the endpoint
+  stall condition.
+
+  @param  UsbIo                  The USB IO protocol to use
+  @param  EndpointAddr           The endpoint to clear stall for
+
+  @retval EFI_SUCCESS            The endpoint stall condtion is clear
+  @retval Others                 Failed to clear the endpoint stall condtion
+
+**/
 EFI_STATUS
 UsbClearEndpointStall (
   IN EFI_USB_IO_PROTOCOL      *UsbIo,
-  IN UINT8                    EndpointAddress
+  IN UINT8                    EndpointAddr
   );
 
 #endif

@@ -87,7 +87,7 @@ Abstract:
 //
 // debug print level
 //
-#define EDKII_GLUE_DebugPrintErrorLevel         EFI_D_ERROR
+#define EDKII_GLUE_DebugPrintErrorLevel         EFI_D_ERROR|EFI_D_INFO
 
 //
 // debug propery mask
@@ -96,7 +96,6 @@ Abstract:
                                                   | DEBUG_PROPERTY_DEBUG_PRINT_ENABLED               \
                                                   | DEBUG_PROPERTY_DEBUG_CODE_ENABLED                \
                                                   | DEBUG_PROPERTY_CLEAR_MEMORY_ENABLED              \
-                                                  | DEBUG_PROPERTY_ASSERT_BREAKPOINT_ENABLED         \
                                                   | DEBUG_PROPERTY_ASSERT_DEADLOOP_ENABLED           \
                                                )
 
@@ -112,7 +111,9 @@ Abstract:
 // [BuildOptions]
 //   *_*_*_CC_FLAGS = /D PCD_EDKII_GLUE_PciExpressBaseAddress=0xC0000000
 //
+#ifndef EDKII_GLUE_PciExpressBaseAddress
 #define EDKII_GLUE_PciExpressBaseAddress        PCD_EDKII_GLUE_PciExpressBaseAddress
+#endif
 
 //
 //

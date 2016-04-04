@@ -2,7 +2,7 @@
 
   Defines data types and constants introduced in UEFI.
 
-  Copyright (c) 2006 - 2007, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -18,10 +18,11 @@
 
 #include "Base.h"
 
-//
-// Basical data type definitions introduced in UEFI.
-// 
+///
+/// Basical data type definitions introduced in UEFI.
+/// 
 typedef GUID                      EFI_GUID;
+
 ///
 /// Function return status for EFI API
 ///
@@ -41,17 +42,17 @@ typedef UINT16                    STRING_REF;
 typedef UINT64                    EFI_PHYSICAL_ADDRESS;
 typedef UINT64                    EFI_VIRTUAL_ADDRESS;
 
-//
-// EFI Time Abstraction:
-//  Year:       2000 - 20XX
-//  Month:      1 - 12
-//  Day:        1 - 31
-//  Hour:       0 - 23
-//  Minute:     0 - 59
-//  Second:     0 - 59
-//  Nanosecond: 0 - 999,999,999
-//  TimeZone:   -1440 to 1440 or 2047
-//
+///
+/// EFI Time Abstraction:
+///  Year:       2000 - 20XX
+///  Month:      1 - 12
+///  Day:        1 - 31
+///  Hour:       0 - 23
+///  Minute:     0 - 59
+///  Second:     0 - 59
+///  Nanosecond: 0 - 999,999,999
+///  TimeZone:   -1440 to 1440 or 2047
+///
 typedef struct {
   UINT16  Year;
   UINT8   Month;
@@ -122,14 +123,13 @@ typedef union {
 #define EFI_CRC_ERROR             RETURN_CRC_ERROR   
 #define EFI_END_OF_MEDIA          RETURN_END_OF_MEDIA
 #define EFI_END_OF_FILE           RETURN_END_OF_FILE
+#define EFI_INVALID_LANGUAGE      RETURN_INVALID_LANGUAGE
 
 #define EFI_WARN_UNKNOWN_GLYPH    RETURN_WARN_UNKNOWN_GLYPH   
 #define EFI_WARN_DELETE_FAILURE   RETURN_WARN_DELETE_FAILURE  
 #define EFI_WARN_WRITE_FAILURE    RETURN_WARN_WRITE_FAILURE   
 #define EFI_WARN_BUFFER_TOO_SMALL RETURN_WARN_BUFFER_TOO_SMALL
 
-
-#define NULL_HANDLE               ((VOID *) 0)
 
 //
 // Define macro to encode the status code.
@@ -147,9 +147,9 @@ typedef union {
     (EFI_SIGNATURE_32 (A, B, C, D) | ((UINT64) (EFI_SIGNATURE_32 (E, F, G, H)) << 32))
 
 
-//
-//  Returns the byte offset to a field within a structure
-//
+///
+///  Returns the byte offset to a field within a structure
+///
 #define EFI_FIELD_OFFSET(TYPE,Field) ((UINTN)(&(((TYPE *) 0)->Field)))
 
 //
@@ -168,5 +168,18 @@ typedef union {
 
 #define EFI_MAX_BIT               MAX_BIT
 #define EFI_MAX_ADDRESS           MAX_ADDRESS
+
+
+///
+/// Limited buffer size for a language code recommended by RFC3066
+/// (42 characters plus a NULL terminator)
+///
+#define RFC_3066_ENTRY_SIZE             (42 + 1)
+
+///
+/// The size of a 3 character ISO639 language code.
+///
+#define ISO_639_2_ENTRY_SIZE            3
+
 
 #endif

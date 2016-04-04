@@ -1,9 +1,9 @@
 /** @file
-  Timer Architectural Protocol as defined in the DXE CIS
+  Timer Architectural Protocol as defined in PI Specification VOLUME 2 DXE
 
   This code is used to provide the timer tick for the DXE core.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -12,42 +12,39 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
-  @par Revision Reference:
-  Version 0.91B.
-
 **/
 
 #ifndef __ARCH_PROTOCOL_TIMER_H__
 #define __ARCH_PROTOCOL_TIMER_H__
 
-//
-// Global ID for the Timer Architectural Protocol
-//
+///
+/// Global ID for the Timer Architectural Protocol
+///
 #define EFI_TIMER_ARCH_PROTOCOL_GUID \
   { 0x26baccb3, 0x6f42, 0x11d4, {0xbc, 0xe7, 0x0, 0x80, 0xc7, 0x3c, 0x88, 0x81 } }
 
-//
-// Declare forward reference for the Timer Architectural Protocol
-//
+///
+/// Declare forward reference for the Timer Architectural Protocol
+///
 typedef struct _EFI_TIMER_ARCH_PROTOCOL   EFI_TIMER_ARCH_PROTOCOL;
 
 /**
   This function of this type is called when a timer interrupt fires.  This 
   function executes at TPL_HIGH_LEVEL.  The DXE Core will register a funtion
-  of tyis type to be called for the timer interrupt, so it can know how much 
+  of this type to be called for the timer interrupt, so it can know how much 
   time has passed.  This information is used to signal timer based events.  
 
-  @param  Time             Time since the last timer interrupt in 100 ns units. This will
-                           typically be TimerPeriod, but if a timer interrupt is missed, and the
-                           EFI_TIMER_ARCH_PROTOCOL driver can detect missed interrupts, then Time
-                           will contain the actual amount of time since the last interrupt.
+  @param  Time   Time since the last timer interrupt in 100 ns units. This will
+                 typically be TimerPeriod, but if a timer interrupt is missed, and the
+                 EFI_TIMER_ARCH_PROTOCOL driver can detect missed interrupts, then Time
+                 will contain the actual amount of time since the last interrupt.
 
   None.
 
 **/
 typedef
 VOID
-(EFIAPI *EFI_TIMER_NOTIFY) (
+(EFIAPI *EFI_TIMER_NOTIFY)(
   IN UINT64  Time
   );
 
@@ -82,7 +79,7 @@ VOID
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_TIMER_REGISTER_HANDLER) (
+(EFIAPI *EFI_TIMER_REGISTER_HANDLER)(
   IN EFI_TIMER_ARCH_PROTOCOL    *This,
   IN EFI_TIMER_NOTIFY           NotifyFunction
 );
@@ -115,7 +112,7 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_TIMER_SET_TIMER_PERIOD) (
+(EFIAPI *EFI_TIMER_SET_TIMER_PERIOD)(
   IN EFI_TIMER_ARCH_PROTOCOL    *This,
   IN UINT64                     TimerPeriod
   );
@@ -136,7 +133,7 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_TIMER_GET_TIMER_PERIOD) (
+(EFIAPI *EFI_TIMER_GET_TIMER_PERIOD)(
   IN EFI_TIMER_ARCH_PROTOCOL      *This,
   OUT UINT64                      *TimerPeriod
   );
@@ -150,7 +147,7 @@ EFI_STATUS
   registered handler should not be able to distinguish a hardware-generated timer 
   interrupt from a software-generated timer interrupt.
 
-  @param  This             The EFI_TIMER_ARCH_PROTOCOL instance.
+  @param  This                  The EFI_TIMER_ARCH_PROTOCOL instance.
 
   @retval EFI_SUCCESS           The soft timer interrupt was generated.
   @retval EFI_UNSUPPORTEDT      The platform does not support the generation of soft timer interrupts.
@@ -158,7 +155,7 @@ EFI_STATUS
 **/
 typedef 
 EFI_STATUS
-(EFIAPI *EFI_TIMER_GENERATE_SOFT_INTERRUPT) (
+(EFIAPI *EFI_TIMER_GENERATE_SOFT_INTERRUPT)(
   IN EFI_TIMER_ARCH_PROTOCOL    *This
   );
 
@@ -173,29 +170,6 @@ EFI_STATUS
   periodic timer interrupt.  When a timer interrupt occurs, the handler is 
   passed the amount of time that has passed since the previous timer 
   interrupt.
-
-  @param RegisterHandler
-  Registers a handler that will be called each time the 
-  timer interrupt fires.  TimerPeriod defines the minimum 
-  time between timer interrupts, so TimerPeriod will also 
-  be the minimum time between calls to the registered 
-  handler.
-
-  @param SetTimerPeriod
-  Sets the period of the timer interrupt in 100 nS units.  
-  This function is optional, and may return EFI_UNSUPPORTED.  
-  If this function is supported, then the timer period will 
-  be rounded up to the nearest supported timer period.
-
-  @param GetTimerPeriod
-  Retrieves the period of the timer interrupt in 100 nS units.
-
-  @param GenerateSoftInterrupt
-  Generates a soft timer interrupt that simulates the firing of 
-  the timer interrupt. This service can be used to invoke the 
-  registered handler if the timer interrupt has been masked for 
-  a period of time.
-
 **/
 struct _EFI_TIMER_ARCH_PROTOCOL {
   EFI_TIMER_REGISTER_HANDLER          RegisterHandler;

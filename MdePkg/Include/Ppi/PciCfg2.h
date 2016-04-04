@@ -1,7 +1,10 @@
 /** @file
-  This file declares PciCfg PPI used to access PCI configuration space in PEI
+  This file declares PciCfg2 PPI.
 
-  Copyright (c) 2006 - 2007, Intel Corporation
+  This ppi Provides platform or chipset-specific access to 
+  the PCI configuration space for a specific PCI segment.
+
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -19,7 +22,6 @@
 #ifndef __PEI_PCI_CFG2_H__
 #define __PEI_PCI_CFG2_H__
 
-#include <ProcessorBind.h>
 #include <Pi/PiPeiCis.h>
 
 #define EFI_PEI_PCI_CFG2_PPI_GUID \
@@ -32,11 +34,11 @@ typedef struct _EFI_PEI_PCI_CFG2_PPI   EFI_PEI_PCI_CFG2_PPI;
   (((bus) << 24) | \
   ((dev) << 16) | \
   ((func) << 8) | \
-  ((reg) < 256 ? (reg) : ((UINT64) (reg) << 32)));
+  ((reg) < 256 ? (reg) : ((UINT64)(reg) << 32)));
 
-//
-// EFI_PEI_PCI_CFG_PPI_WIDTH
-//
+///
+/// EFI_PEI_PCI_CFG_PPI_WIDTH
+///
 typedef enum {
   EfiPeiPciCfgWidthUint8  = 0,
   EfiPeiPciCfgWidthUint16 = 1,
@@ -45,14 +47,33 @@ typedef enum {
   EfiPeiPciCfgWidthMaximum
 } EFI_PEI_PCI_CFG_PPI_WIDTH;
 
-//
-// EFI_PEI_PCI_CFG_PPI_PCI_ADDRESS
-//
+///
+/// EFI_PEI_PCI_CFG_PPI_PCI_ADDRESS
+///
 typedef struct {
+  ///
+  /// 8-bit register offset within the PCI configuration space for a given device's function
+  /// space.
+  ///
   UINT8   Register;
+  ///
+  /// Only the 3 least-significant bits are used to encode one of 8 possible functions within a
+  /// given device.
+  ///
   UINT8   Function;
+  ///
+  /// Only the 5 least-significant bits are used to encode one of 32 possible devices.
+  ///
   UINT8   Device;
+  ///
+  /// 8-bit value to encode between 0 and 255 buses.
+  ///
   UINT8   Bus;
+  ///
+  /// Register number in PCI configuration space. If this field is zero, then Register is used
+  /// for the register number. If this field is non-zero, then Register is ignored and this field
+  /// is used for the register number.
+  ///
   UINT32  ExtendedRegister;
 } EFI_PEI_PCI_CFG_PPI_PCI_ADDRESS;
 
@@ -82,7 +103,7 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PEI_PCI_CFG2_PPI_IO) (
+(EFIAPI *EFI_PEI_PCI_CFG2_PPI_IO)(
   IN CONST  EFI_PEI_SERVICES          **PeiServices,
   IN CONST  EFI_PEI_PCI_CFG2_PPI      *This,
   IN        EFI_PEI_PCI_CFG_PPI_WIDTH Width,
@@ -92,7 +113,8 @@ EFI_STATUS
 
 
 /**
-  PCI read-modify-write operation.
+  Performs a read-modify-write operation on the contents 
+  from a given location in the PCI configuration space.
 
   @param  PeiServices     An indirect pointer to the PEI Services Table
                           published by the PEI Foundation.
@@ -122,13 +144,13 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PEI_PCI_CFG2_PPI_RW) (
+(EFIAPI *EFI_PEI_PCI_CFG2_PPI_RW)(
   IN CONST  EFI_PEI_SERVICES          **PeiServices,
   IN CONST  EFI_PEI_PCI_CFG2_PPI      *This,
   IN        EFI_PEI_PCI_CFG_PPI_WIDTH Width,
   IN        UINT64                    Address,
-  IN CONST  VOID                      *SetBits,
-  IN CONST  VOID                      *ClearBits
+  IN        VOID                      *SetBits,
+  IN        VOID                      *ClearBits
 );
 
 /**

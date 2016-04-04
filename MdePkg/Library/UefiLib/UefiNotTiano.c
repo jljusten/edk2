@@ -1,8 +1,8 @@
 /** @file
-  Library functions that abstract areas of conflict between Tiano an UEFI 2.0.
+  Library functions that abstract areas of conflict between framework and UEFI 2.0.
 
-  Help Port Framework/Tiano code that has conflicts with UEFI 2.0 by hiding the
-  oldconflicts with library functions and supporting implementations of the old
+  Help Port Framework code that has conflicts with UEFI 2.0 by hiding the
+  old conflicts with library functions and supporting implementations of the old
   (EDK/EFI 1.10) and new (EDK II/UEFI 2.0) way. This module is a DXE driver as
   it contains DXE enum extensions for EFI event services.
 
@@ -18,19 +18,20 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 
-//
-// Include common header file for this module.
-//
+
 #include "UefiLibInternal.h"
 
 /**
   An empty function to pass error checking of CreateEventEx ().
 
-  This empty function ensures that EFI_EVENT_NOTIFY_SIGNAL_ALL is error
+  This empty function ensures that EVT_NOTIFY_SIGNAL_ALL is error
   checked correctly since it is now mapped into CreateEventEx() in UEFI 2.0.
+ 
+  @param  Event                 Event whose notification function is being invoked.
+  @param  Context               Pointer to the notification function's context,
+                                which is implementation-dependent.
 
 **/
-STATIC
 VOID
 EFIAPI
 InternalEmptyFuntion (
@@ -42,15 +43,16 @@ InternalEmptyFuntion (
 }
 
 /**
-  Create a Legacy Boot Event.
-
-  Tiano extended the CreateEvent Type enum to add a legacy boot event type.
-  This was bad as Tiano did not own the enum. In UEFI 2.0 CreateEventEx was
-  added and now it's possible to not voilate the UEFI specification by
-  declaring a GUID for the legacy boot event class. This library supports
-  the EDK/EFI 1.10 form and EDK II/UEFI 2.0 form and allows common code to
-  work both ways.
-
+  Creates an EFI event in the Legacy Boot Event Group.  Prior to UEFI 2.0 this 
+  was done via a non blessed UEFI extensions and this library abstracts the 
+  implementation mechanism of this event from the caller.
+  
+  This function abstracts the creation of the Legacy Boot Event.  The Framework 
+  moved from a proprietary to UEFI 2.0 based mechanism.  This library abstracts 
+  the caller from how this event is created to prevent to code form having to 
+  change with the version of the specification supported.
+  If LegacyBootEvent is NULL, then ASSERT().
+  
   @param  LegacyBootEvent   Returns the EFI event returned from gBS->CreateEvent(Ex).
 
   @retval EFI_SUCCESS       Event was created.
@@ -126,16 +128,17 @@ EfiCreateEventLegacyBootEx (
 }
 
 /**
-  Create a Read to Boot Event.
+  Create an EFI event in the Ready To Boot Event Group.  Prior to UEFI 2.0 this 
+  was done via a non-standard UEFI extension, and this library abstracts the 
+  implementation mechanism of this event from the caller.
+  
+  This function abstracts the creation of the Ready to Boot Event.  The Framework 
+  moved from a proprietary to UEFI 2.0-based mechanism.  This library abstracts 
+  the caller from how this event is created to prevent the code form having to 
+  change with the version of the specification supported.
+  If ReadyToBootEvent is NULL, then ASSERT().
 
-  Tiano extended the CreateEvent Type enum to add a ready to boot event type.
-  This was bad as Tiano did not own the enum. In UEFI 2.0 CreateEventEx was
-  added and now it's possible to not voilate the UEFI specification and use
-  the ready to boot event class defined in UEFI 2.0. This library supports
-  the EDK/EFI 1.10 form and EDK II/UEFI 2.0 form and allows common code to
-  work both ways.
-
-  @param  LegacyBootEvent   Returns the EFI event returned from gBS->CreateEvent(Ex).
+  @param  ReadyToBootEvent  Returns the EFI event returned from gBS->CreateEvent(Ex).
 
   @retval EFI_SUCCESS       Event was created.
   @retval Other             Event was not created.
@@ -168,7 +171,7 @@ EfiCreateEventReadyToBoot (
   @param  NotifyTpl         The task priority level of the event.
   @param  NotifyFunction    The notification function to call when the event is signaled.
   @param  NotifyContext     The content to pass to NotifyFunction when the event is signaled.
-  @param  LegacyBootEvent   Returns the EFI event returned from gBS->CreateEvent(Ex).
+  @param  ReadyToBootEvent  Returns the EFI event returned from gBS->CreateEvent(Ex).
 
   @retval EFI_SUCCESS       Event was created.
   @retval Other             Event was not created.
@@ -258,18 +261,17 @@ EfiSignalEventLegacyBoot (
 
 
 /**
-  Check to see if the Firmware Volume (FV) Media Device Path is valid
+  The Framework FwVol Device Path changed to conform to the UEFI 2.0 specification.  
+  This library function abstracts validating a device path node.
 
-  Tiano extended the EFI 1.10 device path nodes. Tiano does not own this enum
-  so as we move to UEFI 2.0 support we must use a mechanism that conforms with
-  the UEFI 2.0 specification to define the FV device path. An UEFI GUIDed
-  device path is defined for Tiano extensions of device path. If the code
-  is compiled to conform with the UEFI 2.0 specification use the new device path
-  else use the old form for backwards compatability. The return value to this
-  function points to a location in FvDevicePathNode and it does not allocate
-  new memory for the GUID pointer that is returned.
-
-  @param  FvDevicePathNode  Pointer to FV device path to check.
+  Check the MEDIA_FW_VOL_FILEPATH_DEVICE_PATH data structure to see if it's valid.  
+  If it is valid, then return the GUID file name from the device path node.  
+  Otherwise, return NULL.  This device path changed in the DXE CIS version 0.92 
+  in a non back ward compatible way to not conflict with the UEFI 2.0 specification.  
+  This function abstracts the differences from the caller.
+  If FvDevicePathNode is NULL, then ASSERT().
+  
+  @param  FvFileDevicePathNode  Pointer to FV device path to check.
 
   @retval NULL              FvDevicePathNode is not valid.
   @retval Other             FvDevicePathNode is valid and pointer to NameGuid was returned.
@@ -293,16 +295,17 @@ EfiGetNameGuidFromFwVolDevicePathNode (
 
 
 /**
-  Initialize a Firmware Volume (FV) Media Device Path node.
+  The Framework FwVol Device Path changed to conform to the UEFI 2.0 specification.  
+  This library function abstracts initializing a device path node.
 
-  Tiano extended the EFI 1.10 device path nodes. Tiano does not own this enum
-  so as we move to UEFI 2.0 support we must use a mechanism that conforms with
-  the UEFI 2.0 specification to define the FV device path. An UEFI GUIDed
-  device path is defined for Tiano extensions of device path. If the code
-  is compiled to conform with the UEFI 2.0 specification use the new device path
-  else use the old form for backwards compatability.
+  Initialize the MEDIA_FW_VOL_FILEPATH_DEVICE_PATH data structure.  This device 
+  path changed in the DXE CIS version 0.92 in a non back ward compatible way to 
+  not conflict with the UEFI 2.0 specification.  This function abstracts the 
+  differences from the caller.
+  If FvDevicePathNode is NULL, then ASSERT().
+  If NameGuid is NULL, then ASSERT().
 
-  @param  FvDevicePathNode  Pointer to a FV device path node to initialize
+  @param  FvFileDevicePathNode  Pointer to a FV device path node to initialize
   @param  NameGuid          FV file name to use in FvDevicePathNode
 
 **/

@@ -13,8 +13,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#ifndef _HOTKEY_H
-#define _HOTKEY_H
+#ifndef _HOTKEY_H_
+#define _HOTKEY_H_
 
 #include "Bds.h"
 #include "String.h"
@@ -35,74 +35,56 @@ typedef struct {
 
 #define BDS_HOTKEY_OPTION_FROM_LINK(a) CR (a, BDS_HOTKEY_OPTION, Link, BDS_HOTKEY_OPTION_SIGNATURE)
 
-#define VarKeyOrder       L"KeyOrder"
+#define VAR_KEY_ORDER       L"KeyOrder"
 
+/**
+
+  Create Key#### for the given hotkey.
+
+
+  @param KeyOption       - The Hot Key Option to be added.
+  @param KeyOptionNumber - The key option number for Key#### (optional).
+
+  @retval  EFI_SUCCESS            Register hotkey successfully.
+  @retval  EFI_INVALID_PARAMETER  The hotkey option is invalid.
+
+**/
 EFI_STATUS
 RegisterHotkey (
   IN EFI_KEY_OPTION     *KeyOption,
   OUT UINT16            *KeyOptionNumber
-)
-/*++
+  );
 
-Routine Description:
-
-  Create Key#### for the given hotkey.
-
-Arguments:
-
-  KeyOption             - The Hot Key Option to be added.
-  KeyOptionNumber       - The key option number for Key#### (optional).
-
-Returns:
-
-  EFI_SUCCESS           - Register hotkey successfully.
-  EFI_INVALID_PARAMETER - The hotkey option is invalid.
-
---*/
-;
-
-EFI_STATUS
-UnregisterHotkey (
-  IN UINT16             KeyOptionNumber
-)
-/*++
-
-Routine Description:
+/**
 
   Delete Key#### for the given Key Option number.
 
-Arguments:
 
-  KeyOptionNumber       - Key option number for Key####
+  @param KeyOptionNumber - Key option number for Key####
 
-Returns:
+  @retval  EFI_SUCCESS            Unregister hotkey successfully.
+  @retval  EFI_NOT_FOUND          No Key#### is found for the given Key Option number.
 
-  EFI_SUCCESS           - Unregister hotkey successfully.
-  EFI_NOT_FOUND         - No Key#### is found for the given Key Option number.
-
---*/
-;
-
-
+**/
 EFI_STATUS
-InitializeHotkeyService (
-  VOID
-  )
-/*++
+UnregisterHotkey (
+  IN UINT16             KeyOptionNumber
+  );
 
-Routine Description:
+
+/**
 
   Process all the "Key####" variables, associate Hotkeys with corresponding Boot Options.
 
-Arguments:
 
-  None
+  @param VOID
 
-Returns:
+  @retval  EFI_SUCCESS    Hotkey services successfully initialized.
 
-  EFI_SUCCESS   - Hotkey services successfully initialized.
-
---*/
-;
+**/
+EFI_STATUS
+InitializeHotkeyService (
+  VOID
+  );
 
 #endif

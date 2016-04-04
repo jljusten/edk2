@@ -1,7 +1,7 @@
 /** @file
   EFI Multicast Trivial File Tranfer Protocol Definition
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -111,9 +111,9 @@ typedef union {
 
 #pragma pack()
 
-//
-// MTFTP4 option definition
-//
+///
+/// MTFTP4 option definition
+///
 typedef struct {
   UINT8                   *OptionStr;
   UINT8                   *ValueStr;
@@ -179,8 +179,7 @@ EFI_STATUS
   IN EFI_MTFTP4_TOKEN     *Token,
   IN UINT16               PacketLen,
   IN EFI_MTFTP4_PACKET    *Paket
-  )
-;
+  );
 
 /**
   Timeout callback funtion.            
@@ -201,8 +200,7 @@ EFI_STATUS
 (EFIAPI *EFI_MTFTP4_TIMEOUT_CALLBACK)( 
   IN EFI_MTFTP4_PROTOCOL  *This,
   IN EFI_MTFTP4_TOKEN     *Token
-  )
-;
+  );
 
 /**
   a callback function that the caller provides to feed data to the
@@ -226,8 +224,7 @@ EFI_STATUS
   IN  EFI_MTFTP4_TOKEN    *Token,
   IN  OUT UINT16          *Length,
   OUT VOID                **Buffer
-  )
-;
+  );
 
 
 /**
@@ -246,8 +243,7 @@ EFI_STATUS
 (EFIAPI *EFI_MTFTP4_GET_MODE_DATA)(
   IN  EFI_MTFTP4_PROTOCOL     *This,
   OUT EFI_MTFTP4_MODE_DATA    *ModeData
-  )
-;
+  );
 
 
 /**
@@ -277,8 +273,7 @@ EFI_STATUS
 (EFIAPI *EFI_MTFTP4_CONFIGURE)(
   IN EFI_MTFTP4_PROTOCOL       *This,
   IN EFI_MTFTP4_CONFIG_DATA    *MtftpConfigData OPTIONAL
-  )
-;   
+  );   
     
     
 /**
@@ -324,8 +319,7 @@ EFI_STATUS
   IN  EFI_MTFTP4_OPTION        *OptionList,
   OUT UINT32                   *PacketLength,
   OUT EFI_MTFTP4_PACKET        **Packet        OPTIONAL
-  )
-;
+  );
 
 /**
   Parses the options in an MTFTPv4 OACK packet.
@@ -357,8 +351,7 @@ EFI_STATUS
   IN  EFI_MTFTP4_PACKET        *Packet,
   OUT UINT32                   *OptionCount,
   OUT EFI_MTFTP4_OPTION        **OptionList OPTIONAL
-  )
-;  
+  );  
 
 
 /**
@@ -384,8 +377,7 @@ EFI_STATUS
 (EFIAPI *EFI_MTFTP4_READ_FILE)(
   IN EFI_MTFTP4_PROTOCOL       *This,
   IN EFI_MTFTP4_TOKEN          *Token
-  )
-;  
+  );  
   
 
 
@@ -415,8 +407,7 @@ EFI_STATUS
 (EFIAPI *EFI_MTFTP4_WRITE_FILE)(
   IN EFI_MTFTP4_PROTOCOL       *This,
   IN EFI_MTFTP4_TOKEN          *Token
-  )
-;  
+  );  
   
 
 /**
@@ -446,8 +437,7 @@ EFI_STATUS
 (EFIAPI *EFI_MTFTP4_READ_DIRECTORY)(
   IN EFI_MTFTP4_PROTOCOL       *This,
   IN EFI_MTFTP4_TOKEN          *Token
-  )
-;    
+  );    
 
 /**
   Polls for incoming data packets and processes outgoing data packets.
@@ -466,12 +456,19 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_MTFTP4_POLL) (
+(EFIAPI *EFI_MTFTP4_POLL)(
   IN EFI_MTFTP4_PROTOCOL       *This
-  )
-;                                                                                                                 
+  );                                                                                                                 
                                                                                                                   
-  
+/**  
+  The EFI MTFTPv4 Protocol provides basic services for client-side unicast 
+  and/or multicast TFTP operations.
+
+  @par Protocol Description:
+  The EFI_MTFTP4_PROTOCOL is designed to be used by UEFI drivers and applications 
+  to transmit and receive data files. The EFI MTFTPv4 Protocol driver uses 
+  the underlying EFI UDPv4 Protocol driver and EFI IPv4 Protocol driver.
+**/  
 struct _EFI_MTFTP4_PROTOCOL {
   EFI_MTFTP4_GET_MODE_DATA     GetModeData;
   EFI_MTFTP4_CONFIGURE         Configure;
@@ -484,18 +481,18 @@ struct _EFI_MTFTP4_PROTOCOL {
 };
 
 struct _EFI_MTFTP4_TOKEN {
-  OUT EFI_STATUS                  Status;
-  IN  EFI_EVENT                   Event;
-  IN  EFI_MTFTP4_OVERRIDE_DATA    *OverrideData;
-  IN  UINT8                       *Filename;
-  IN  UINT8                       *ModeStr;
-  IN  UINT32                      OptionCount;
-  IN  EFI_MTFTP4_OPTION           *OptionList;
-  IN  OUT UINT64                  BufferSize;
-  IN  OUT VOID                    *Buffer;
-  IN  EFI_MTFTP4_CHECK_PACKET     CheckPacket;
-  IN  EFI_MTFTP4_TIMEOUT_CALLBACK TimeoutCallback;
-  IN  EFI_MTFTP4_PACKET_NEEDED    PacketNeeded;
+  EFI_STATUS                  Status;
+  EFI_EVENT                   Event;
+  EFI_MTFTP4_OVERRIDE_DATA    *OverrideData;
+  UINT8                       *Filename;
+  UINT8                       *ModeStr;
+  UINT32                      OptionCount;
+  EFI_MTFTP4_OPTION           *OptionList;
+  OUT UINT64                  BufferSize;
+  OUT VOID                    *Buffer;
+  EFI_MTFTP4_CHECK_PACKET     CheckPacket;
+  EFI_MTFTP4_TIMEOUT_CALLBACK TimeoutCallback;
+  EFI_MTFTP4_PACKET_NEEDED    PacketNeeded;
 };
 
 extern EFI_GUID gEfiMtftp4ServiceBindingProtocolGuid;

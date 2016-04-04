@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#ifndef _IFRLIBRARY_INTERNAL_H
-#define _IFRLIBRARY_INTERNAL_H
+#ifndef _IFRLIBRARY_INTERNAL_H_
+#define _IFRLIBRARY_INTERNAL_H_
 
 
-#include <PiDxe.h>
+#include <Uefi.h>
 
 #include <Guid/GlobalVariable.h>
 #include <Protocol/DevicePath.h>
@@ -32,5 +32,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/PcdLib.h>
 
 #include <MdeModuleHii.h>
+
+extern EFI_GUID mIfrVendorGuid;
 
 #endif

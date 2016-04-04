@@ -4,7 +4,7 @@
   Abstraction of a very simple input device like a keyboard or serial
   terminal.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -25,16 +25,16 @@
     0x387477c1, 0x69c7, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b } \
   }
 
-//
-// Protocol GUID defined in EFI1.1.
-// 
+///
+/// Protocol GUID defined in EFI1.1.
+/// 
 #define SIMPLE_INPUT_PROTOCOL   EFI_SIMPLE_TEXT_INPUT_PROTOCOL_GUID
 
 typedef struct _EFI_SIMPLE_TEXT_INPUT_PROTOCOL  EFI_SIMPLE_TEXT_INPUT_PROTOCOL;
 
-//
-// Backward-compatible with EFI1.1.
-// 
+///
+/// Backward-compatible with EFI1.1.
+/// 
 typedef struct _EFI_SIMPLE_TEXT_INPUT_PROTOCOL  SIMPLE_INPUT_INTERFACE;
 //
 // Data structures
@@ -93,11 +93,10 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_INPUT_RESET) (
+(EFIAPI *EFI_INPUT_RESET)(
   IN EFI_SIMPLE_TEXT_INPUT_PROTOCOL       *This,
   IN BOOLEAN                              ExtendedVerification
-  )
-;
+  );
 
 /**
   Reads the next keystroke from the input device. The WaitForKey Event can 
@@ -114,15 +113,22 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_INPUT_READ_KEY) (
+(EFIAPI *EFI_INPUT_READ_KEY)(
   IN EFI_SIMPLE_TEXT_INPUT_PROTOCOL       *This,
   OUT EFI_INPUT_KEY                       *Key
-  )
-;
+  );
 
+/**  
+  @par Protocol Description:
+  The EFI_SIMPLE_TEXT_INPUT_PROTOCOL is used on the ConsoleIn device. 
+  It is the minimum required protocol for ConsoleIn.
+**/
 struct _EFI_SIMPLE_TEXT_INPUT_PROTOCOL {
   EFI_INPUT_RESET     Reset;
   EFI_INPUT_READ_KEY  ReadKeyStroke;
+  ///
+  /// Event to use with WaitForEvent() to wait for a key to be available
+  ///
   EFI_EVENT           WaitForKey;
 };
 

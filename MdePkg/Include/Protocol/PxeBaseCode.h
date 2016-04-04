@@ -1,7 +1,8 @@
 /** @file
-  EFI PXE Base Code Protocol definitions.
+  EFI PXE Base Code Protocol definitions, which is used to access PXE-compatible 
+  devices for network access and network booting.
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -14,9 +15,9 @@
 #ifndef __PXE_BASE_CODE_PROTOCOL_H__
 #define __PXE_BASE_CODE_PROTOCOL_H__
 
-//
-// PXE Base Code protocol
-//
+///
+/// PXE Base Code protocol
+///
 #define EFI_PXE_BASE_CODE_PROTOCOL_GUID \
   { \
     0x03c4e603, 0xac28, 0x11d3, {0x9a, 0x2d, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0x4d } \
@@ -24,20 +25,20 @@
 
 typedef struct _EFI_PXE_BASE_CODE_PROTOCOL  EFI_PXE_BASE_CODE_PROTOCOL;
 
-//
-// Protocol defined in EFI1.1.
-// 
+///
+/// Protocol defined in EFI1.1.
+/// 
 typedef EFI_PXE_BASE_CODE_PROTOCOL  EFI_PXE_BASE_CODE;
 
-//
-// Default IP TTL and ToS.
-//
+///
+/// Default IP TTL and ToS.
+///
 #define DEFAULT_TTL 16
 #define DEFAULT_ToS 0
 
-//
-// ICMP error format
-//
+///
+/// ICMP error format
+///
 typedef struct {
   UINT8   Type;
   UINT8   Code;
@@ -54,17 +55,17 @@ typedef struct {
   UINT8 Data[494];
 } EFI_PXE_BASE_CODE_ICMP_ERROR;
 
-//
-// TFTP error format
-//
+///
+/// TFTP error format
+///
 typedef struct {
   UINT8 ErrorCode;
   CHAR8 ErrorString[127];
 } EFI_PXE_BASE_CODE_TFTP_ERROR;
 
-//
-// IP Receive Filter definitions
-//
+///
+/// IP Receive Filter definitions
+///
 #define EFI_PXE_BASE_CODE_MAX_IPCNT 8
 
 typedef struct {
@@ -79,9 +80,9 @@ typedef struct {
 #define EFI_PXE_BASE_CODE_IP_FILTER_PROMISCUOUS           0x0004
 #define EFI_PXE_BASE_CODE_IP_FILTER_PROMISCUOUS_MULTICAST 0x0008
 
-//
-// ARP Cache definitions
-//
+///
+/// ARP Cache definitions
+///
 typedef struct {
   EFI_IP_ADDRESS  IpAddr;
   EFI_MAC_ADDRESS MacAddr;
@@ -135,9 +136,9 @@ typedef UINT16  EFI_PXE_BASE_CODE_UDP_PORT;
 #define EFI_PXE_BASE_CODE_BOOT_LAYER_MASK     0x7FFF
 #define EFI_PXE_BASE_CODE_BOOT_LAYER_INITIAL  0x0000
 
-//
-// Discover() server list structure.
-//
+///
+/// Discover() server list structure.
+///
 typedef struct {
   UINT16          Type;
   BOOLEAN         AcceptAnyResponse;
@@ -145,9 +146,9 @@ typedef struct {
   EFI_IP_ADDRESS  IpAddr;
 } EFI_PXE_BASE_CODE_SRVLIST;
 
-//
-// Discover() information override structure.
-//
+///
+/// Discover() information override structure.
+///
 typedef struct {
   BOOLEAN                   UseMCast;
   BOOLEAN                   UseBCast;
@@ -158,9 +159,9 @@ typedef struct {
   EFI_PXE_BASE_CODE_SRVLIST SrvList[1];
 } EFI_PXE_BASE_CODE_DISCOVER_INFO;
 
-//
-// Mtftp() definitions
-//
+///
+/// Mtftp() definitions
+///
 typedef enum {
   EFI_PXE_BASE_CODE_TFTP_FIRST,
   EFI_PXE_BASE_CODE_TFTP_GET_FILE_SIZE,
@@ -249,7 +250,7 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PXE_BASE_CODE_START) (
+(EFIAPI *EFI_PXE_BASE_CODE_START)(
   IN EFI_PXE_BASE_CODE_PROTOCOL            *This,
   IN BOOLEAN                               UseIpv6
   );
@@ -268,7 +269,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PXE_BASE_CODE_STOP) (
+(EFIAPI *EFI_PXE_BASE_CODE_STOP)(
   IN EFI_PXE_BASE_CODE_PROTOCOL    *This
   );
 
@@ -294,7 +295,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PXE_BASE_CODE_DHCP) (
+(EFIAPI *EFI_PXE_BASE_CODE_DHCP)(
   IN EFI_PXE_BASE_CODE_PROTOCOL            *This,
   IN BOOLEAN                               SortOffers
   );
@@ -324,7 +325,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PXE_BASE_CODE_DISCOVER) (
+(EFIAPI *EFI_PXE_BASE_CODE_DISCOVER)(
   IN EFI_PXE_BASE_CODE_PROTOCOL           *This,
   IN UINT16                               Type,
   IN UINT16                               *Layer,
@@ -362,7 +363,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PXE_BASE_CODE_MTFTP) (
+(EFIAPI *EFI_PXE_BASE_CODE_MTFTP)(
   IN EFI_PXE_BASE_CODE_PROTOCOL                *This,
   IN EFI_PXE_BASE_CODE_TFTP_OPCODE             Operation,
   IN OUT VOID                                  *BufferPtr OPTIONAL,
@@ -403,7 +404,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PXE_BASE_CODE_UDP_WRITE) (
+(EFIAPI *EFI_PXE_BASE_CODE_UDP_WRITE)(
   IN EFI_PXE_BASE_CODE_PROTOCOL                *This,
   IN UINT16                                    OpFlags,
   IN EFI_IP_ADDRESS                            *DestIp,
@@ -445,7 +446,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PXE_BASE_CODE_UDP_READ) (
+(EFIAPI *EFI_PXE_BASE_CODE_UDP_READ)(
   IN EFI_PXE_BASE_CODE_PROTOCOL                *This,
   IN UINT16                                    OpFlags,
   IN OUT EFI_IP_ADDRESS                        *DestIp,     OPTIONAL
@@ -471,7 +472,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PXE_BASE_CODE_SET_IP_FILTER) (
+(EFIAPI *EFI_PXE_BASE_CODE_SET_IP_FILTER)(
   IN EFI_PXE_BASE_CODE_PROTOCOL            *This,
   IN EFI_PXE_BASE_CODE_IP_FILTER           *NewFilter
   );
@@ -494,7 +495,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PXE_BASE_CODE_ARP) (
+(EFIAPI *EFI_PXE_BASE_CODE_ARP)(
   IN EFI_PXE_BASE_CODE_PROTOCOL            *This,
   IN EFI_IP_ADDRESS                        *IpAddr,
   IN EFI_MAC_ADDRESS                       *MacAddr OPTIONAL
@@ -522,7 +523,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PXE_BASE_CODE_SET_PARAMETERS) (
+(EFIAPI *EFI_PXE_BASE_CODE_SET_PARAMETERS)(
   IN EFI_PXE_BASE_CODE_PROTOCOL            *This,
   IN BOOLEAN                               *NewAutoArp,     OPTIONAL
   IN BOOLEAN                               *NewSendGUID,    OPTIONAL
@@ -545,7 +546,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PXE_BASE_CODE_SET_STATION_IP) (
+(EFIAPI *EFI_PXE_BASE_CODE_SET_STATION_IP)(
   IN EFI_PXE_BASE_CODE_PROTOCOL            *This,
   IN EFI_IP_ADDRESS                        *NewStationIp,   OPTIONAL
   IN EFI_IP_ADDRESS                        *NewSubnetMask   OPTIONAL
@@ -581,7 +582,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PXE_BASE_CODE_SET_PACKETS) (
+(EFIAPI *EFI_PXE_BASE_CODE_SET_PACKETS)(
   IN EFI_PXE_BASE_CODE_PROTOCOL            *This,
   BOOLEAN                                  *NewDhcpDiscoverValid,   OPTIONAL
   BOOLEAN                                  *NewDhcpAckReceived,     OPTIONAL
@@ -607,7 +608,21 @@ EFI_STATUS
 // 
 #define EFI_PXE_BASE_CODE_INTERFACE_REVISION  EFI_PXE_BASE_CODE_PROTOCOL_REVISION
 
+/**  
+  @par Protocol Description:
+  The EFI_PXE_BASE_CODE_PROTOCOL is used to control PXE-compatible devices.
+  An EFI_PXE_BASE_CODE_PROTOCOL will be layered on top of an
+  EFI_MANAGED_NETWORK_PROTOCOL protocol in order to perform packet level transactions.
+  The EFI_PXE_BASE_CODE_PROTOCOL handle also supports the
+  EFI_LOAD_FILE_PROTOCOL protocol. This provides a clean way to obtain control from the
+  boot manager if the boot path is from the remote device.
+**/
 struct _EFI_PXE_BASE_CODE_PROTOCOL {
+  ///
+  ///  The revision of the EFI_PXE_BASE_CODE_PROTOCOL. All future revisions must 
+  ///  be backwards compatible. If a future version is not backwards compatible 
+  ///  it is not the same GUID.
+  ///
   UINT64                            Revision;
   EFI_PXE_BASE_CODE_START           Start;
   EFI_PXE_BASE_CODE_STOP            Stop;

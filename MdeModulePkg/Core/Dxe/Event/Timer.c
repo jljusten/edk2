@@ -13,86 +13,59 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 
-#include <DxeMain.h>
+#include "DxeMain.h"
+#include "Event.h"
 
 //
-// Internal prototypes
+// Internal data
 //
-/**
-  Returns the current system time.
 
-  @return The current system time
+LIST_ENTRY       mEfiTimerList = INITIALIZE_LIST_HEAD_VARIABLE (mEfiTimerList);
+EFI_LOCK         mEfiTimerLock = EFI_INITIALIZE_LOCK_VARIABLE (TPL_HIGH_LEVEL - 1);
+EFI_EVENT        mEfiCheckTimerEvent = NULL;
 
-**/
-UINT64
-CoreCurrentSystemTime (
-  VOID
-  );
+EFI_LOCK         mEfiSystemTimeLock = EFI_INITIALIZE_LOCK_VARIABLE (TPL_HIGH_LEVEL);
+UINT64           mEfiSystemTime = 0;
 
-/**
-  Checks the sorted timer list against the current system time.
-  Signals any expired event timer.
-
-  @param  CheckEvent             Not used 
-  @param  Context                Not used
-
-**/
-VOID
-EFIAPI
-CoreCheckTimers (
-  IN EFI_EVENT            CheckEvent,
-  IN VOID                 *Context
-  );
-
+//
+// Timer functions
+//
 /**
   Inserts the timer event.
 
-  @param  Event                  Points to the internal structure of timer event 
+  @param  Event                  Points to the internal structure of timer event
                                  to be installed
 
 **/
 VOID
 CoreInsertEventTimer (
   IN IEVENT   *Event
-  );
-
-//
-// Internal data
-//
-
-STATIC LIST_ENTRY       mEfiTimerList = INITIALIZE_LIST_HEAD_VARIABLE (mEfiTimerList);
-STATIC EFI_LOCK         mEfiTimerLock = EFI_INITIALIZE_LOCK_VARIABLE (TPL_HIGH_LEVEL - 1);
-STATIC EFI_EVENT        mEfiCheckTimerEvent;
-
-STATIC EFI_LOCK         mEfiSystemTimeLock = EFI_INITIALIZE_LOCK_VARIABLE (TPL_HIGH_LEVEL);
-STATIC UINT64           mEfiSystemTime = 0;
-
-//
-// Timer functions
-//
-
-
-/**
-  Initializes timer support.
-
-**/
-VOID
-CoreInitializeTimer (
-  VOID
   )
 {
-  EFI_STATUS  Status;
+  UINT64          TriggerTime;
+  LIST_ENTRY      *Link;
+  IEVENT          *Event2;
 
-  Status = CoreCreateEvent (
-              EVT_NOTIFY_SIGNAL,
-              TPL_HIGH_LEVEL - 1,
-              CoreCheckTimers,
-              NULL,
-              &mEfiCheckTimerEvent
-              );
-  ASSERT_EFI_ERROR (Status);
+  ASSERT_LOCKED (&mEfiTimerLock);
+
+  //
+  // Get the timer's trigger time
+  //
+  TriggerTime = Event->u.Timer.TriggerTime;
+
+  //
+  // Insert the timer into the timer database in assending sorted order
+  //
+  for (Link = mEfiTimerList.ForwardLink; Link != &mEfiTimerList; Link = Link->ForwardLink) {
+    Event2 = CR (Link, IEVENT, u.Timer.Link, EVENT_SIGNATURE);
+
+    if (Event2->u.Timer.TriggerTime > TriggerTime) {
+      break;
+    }
+  }
+
+  InsertTailList (Link, &Event->u.Timer.Link);
 }
-
 
 /**
   Returns the current system time.
@@ -110,59 +83,15 @@ CoreCurrentSystemTime (
   CoreAcquireLock (&mEfiSystemTimeLock);
   SystemTime = mEfiSystemTime;
   CoreReleaseLock (&mEfiSystemTimeLock);
+
   return SystemTime;
 }
-
-
-/**
-  Called by the platform code to process a tick.
-
-  @param  Duration               The number of 100ns elasped since the last call 
-                                 to TimerTick
-
-**/
-VOID
-EFIAPI
-CoreTimerTick (
-  IN UINT64   Duration
-  )
-{
-  IEVENT          *Event;
-
-  //
-  // Check runtiem flag in case there are ticks while exiting boot services
-  //
-
-  CoreAcquireLock (&mEfiSystemTimeLock);
-
-  //
-  // Update the system time
-  //
-
-  mEfiSystemTime += Duration;
-
-  //
-  // If the head of the list is expired, fire the timer event
-  // to process it
-  //
-
-  if (!IsListEmpty (&mEfiTimerList)) {
-    Event = CR (mEfiTimerList.ForwardLink, IEVENT, u.Timer.Link, EVENT_SIGNATURE);
-
-    if (Event->u.Timer.TriggerTime <= mEfiSystemTime) {
-      CoreSignalEvent (mEfiCheckTimerEvent);
-    }
-  }
-
-  CoreReleaseLock (&mEfiSystemTimeLock);
-}
-
 
 /**
   Checks the sorted timer list against the current system time.
   Signals any expired event timer.
 
-  @param  CheckEvent             Not used 
+  @param  CheckEvent             Not used
   @param  Context                Not used
 
 **/
@@ -179,7 +108,6 @@ CoreCheckTimers (
   //
   // Check the timer database for expired timers
   //
-
   CoreAcquireLock (&mEfiTimerLock);
   SystemTime = CoreCurrentSystemTime ();
 
@@ -189,7 +117,6 @@ CoreCheckTimers (
     //
     // If this timer is not expired, then we're done
     //
-
     if (Event->u.Timer.TriggerTime > SystemTime) {
       break;
     }
@@ -210,11 +137,9 @@ CoreCheckTimers (
     // If this is a periodic timer, set it
     //
     if (Event->u.Timer.Period) {
-
       //
       // Compute the timers new trigger time
       //
-
       Event->u.Timer.TriggerTime = Event->u.Timer.TriggerTime + Event->u.Timer.Period;
 
       //
@@ -228,7 +153,6 @@ CoreCheckTimers (
       //
       // Add the timer
       //
-
       CoreInsertEventTimer (Event);
     }
   }
@@ -238,59 +162,81 @@ CoreCheckTimers (
 
 
 /**
-  Inserts the timer event.
-
-  @param  Event                  Points to the internal structure of timer event 
-                                 to be installed
+  Initializes timer support.
 
 **/
 VOID
-CoreInsertEventTimer (
-  IN IEVENT   *Event
+CoreInitializeTimer (
+  VOID
   )
 {
-  UINT64          TriggerTime;
-  LIST_ENTRY      *Link;
-  IEVENT          *Event2;
+  EFI_STATUS  Status;
 
-  ASSERT_LOCKED (&mEfiTimerLock);
+  Status = CoreCreateEvent (
+             EVT_NOTIFY_SIGNAL,
+             TPL_HIGH_LEVEL - 1,
+             CoreCheckTimers,
+             NULL,
+             &mEfiCheckTimerEvent
+             );
+  ASSERT_EFI_ERROR (Status);
+}
+
+
+/**
+  Called by the platform code to process a tick.
+
+  @param  Duration               The number of 100ns elasped since the last call
+                                 to TimerTick
+
+**/
+VOID
+EFIAPI
+CoreTimerTick (
+  IN UINT64   Duration
+  )
+{
+  IEVENT          *Event;
 
   //
-  // Get the timer's trigger time
+  // Check runtiem flag in case there are ticks while exiting boot services
   //
-
-  TriggerTime = Event->u.Timer.TriggerTime;
+  CoreAcquireLock (&mEfiSystemTimeLock);
 
   //
-  // Insert the timer into the timer database in assending sorted order
+  // Update the system time
   //
+  mEfiSystemTime += Duration;
 
-  for (Link = mEfiTimerList.ForwardLink; Link  != &mEfiTimerList; Link = Link->ForwardLink) {
-    Event2 = CR (Link, IEVENT, u.Timer.Link, EVENT_SIGNATURE);
+  //
+  // If the head of the list is expired, fire the timer event
+  // to process it
+  //
+  if (!IsListEmpty (&mEfiTimerList)) {
+    Event = CR (mEfiTimerList.ForwardLink, IEVENT, u.Timer.Link, EVENT_SIGNATURE);
 
-    if (Event2->u.Timer.TriggerTime > TriggerTime) {
-      break;
+    if (Event->u.Timer.TriggerTime <= mEfiSystemTime) {
+      CoreSignalEvent (mEfiCheckTimerEvent);
     }
   }
 
-  InsertTailList (Link, &Event->u.Timer.Link);
+  CoreReleaseLock (&mEfiSystemTimeLock);
 }
-
 
 
 
 /**
   Sets the type of timer and the trigger time for a timer event.
 
-  @param  UserEvent              The timer event that is to be signaled at the 
-                                 specified time 
-  @param  Type                   The type of time that is specified in 
-                                 TriggerTime 
-  @param  TriggerTime            The number of 100ns units until the timer 
-                                 expires 
+  @param  UserEvent              The timer event that is to be signaled at the
+                                 specified time
+  @param  Type                   The type of time that is specified in
+                                 TriggerTime
+  @param  TriggerTime            The number of 100ns units until the timer
+                                 expires
 
-  @retval EFI_SUCCESS            The event has been set to be signaled at the 
-                                 requested time 
+  @retval EFI_SUCCESS            The event has been set to be signaled at the
+                                 requested time
   @retval EFI_INVALID_PARAMETER  Event or Type is not valid
 
 **/
@@ -323,7 +269,6 @@ CoreSetTimer (
   //
   // If the timer is queued to the timer database, remove it
   //
-
   if (Event->u.Timer.Link.ForwardLink != NULL) {
     RemoveEntryList (&Event->u.Timer.Link);
     Event->u.Timer.Link.ForwardLink = NULL;
@@ -347,5 +292,6 @@ CoreSetTimer (
   }
 
   CoreReleaseLock (&mEfiTimerLock);
+
   return EFI_SUCCESS;
 }

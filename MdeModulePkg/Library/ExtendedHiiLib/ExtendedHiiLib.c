@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 
-#include <PiDxe.h>
+#include <Uefi.h>
 
 #include <Protocol/DevicePath.h>
 
@@ -27,7 +27,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 //
 // Hii vendor device path template
 //
-HII_VENDOR_DEVICE_PATH  mHiiVendorDevicePathTemplate = {
+GLOBAL_REMOVE_IF_UNREFERENCED CONST HII_VENDOR_DEVICE_PATH  mHiiVendorDevicePathTemplate = {
   {
     {
       {
@@ -40,6 +40,7 @@ HII_VENDOR_DEVICE_PATH  mHiiVendorDevicePathTemplate = {
       },
       EFI_IFR_TIANO_GUID
     },
+    0,
     0
   },
   {
@@ -51,7 +52,21 @@ HII_VENDOR_DEVICE_PATH  mHiiVendorDevicePathTemplate = {
   }
 };
 
+/**
+  The HII driver handle passed in for HiiDatabase.NewPackageList() requires
+  that there should be DevicePath Protocol installed on it.
+  This routine create a virtual Driver Handle by installing a vendor device
+  path on it, so as to use it to invoke HiiDatabase.NewPackageList().
+  The Device Path created is a Vendor Device Path specific to Intel's implemenation
+  and it is defined as HII_VENDOR_DEVICE_PATH_NODE.
+  
 
+  @param  DriverHandle           Handle to be returned
+
+  @retval EFI_SUCCESS            Handle destroy success.
+  @retval EFI_OUT_OF_RESOURCES   Not enough memory.
+
+**/
 EFI_STATUS
 EFIAPI
 HiiLibCreateHiiDriverHandle (
@@ -60,22 +75,23 @@ HiiLibCreateHiiDriverHandle (
 {
   EFI_STATUS                   Status;
   HII_VENDOR_DEVICE_PATH_NODE  *VendorDevicePath;
-  UINT64                       MonotonicCount;
 
   VendorDevicePath = AllocateCopyPool (sizeof (HII_VENDOR_DEVICE_PATH), &mHiiVendorDevicePathTemplate);
   if (VendorDevicePath == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
-  gBS->GetNextMonotonicCount (&MonotonicCount);
-  VendorDevicePath->MonotonicCount = (UINT32) MonotonicCount;
+  //
+  // Use memory address as unique ID to distinguish from different device paths
+  //
+  VendorDevicePath->UniqueId = (UINT64) ((UINTN) VendorDevicePath);
 
   *DriverHandle = NULL;
-  Status = gBS->InstallProtocolInterface (
+  Status = gBS->InstallMultipleProtocolInterfaces (
                   DriverHandle,
                   &gEfiDevicePathProtocolGuid,
-                  EFI_NATIVE_INTERFACE,
-                  VendorDevicePath
+                  VendorDevicePath,
+                  NULL
                   );
   if (EFI_ERROR (Status)) {
     return Status;
@@ -85,6 +101,16 @@ HiiLibCreateHiiDriverHandle (
 }
 
 
+/**
+  Destroy the Driver Handle created by CreateHiiDriverHandle().
+
+  If no Device Path protocol is installed on the DriverHandle, then ASSERT.
+  If this Device Path protocol is failed to be uninstalled, then ASSERT.
+
+  @param  DriverHandle           Handle returned by CreateHiiDriverHandle()
+
+
+**/
 VOID
 EFIAPI
 HiiLibDestroyHiiDriverHandle (

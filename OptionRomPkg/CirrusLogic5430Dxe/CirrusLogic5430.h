@@ -40,7 +40,7 @@
 #include <Library/DevicePathLib.h>
 #include <Library/DxeI2cLib.h>
 
-#include <IndustryStandard/pci22.h>
+#include <IndustryStandard/Pci22.h>
 //
 // Cirrus Logic 5430 PCI Configuration Header values
 //
@@ -140,32 +140,18 @@ extern EFI_DRIVER_SUPPORTED_EFI_VERSION_PROTOCOL  gCirrusLogic5430DriverSupporte
 #define PALETTE_INDEX_REGISTER  0x3c8
 #define PALETTE_DATA_REGISTER   0x3c9
 
-#define ACPI_ADR_DISPLAY_TYPE_VGA               1
-
-#define ACPI_DISPLAY_ADR(_DeviceIdScheme, _HeadId, _NonVgaOutput, _BiosCanDetect, _VendorInfo, _Type, _Port, _Index) \
-          ((UINT32) ( (((_DeviceIdScheme) & 0x1) << 31) |  \
-                      (((_HeadId)         & 0x7) << 18) |  \
-                      (((_NonVgaOutput)   & 0x1) << 17) |  \
-                      (((_BiosCanDetect)  & 0x1) << 16) |  \
-                      (((_VendorInfo)     & 0xf) << 12) |  \
-                      (((_Type)           & 0xf) << 8)  |  \
-                      (((_Port)           & 0xf) << 4)  |  \
-                       ((_Index)          & 0xf) ))
-
 //
 // UGA Draw Hardware abstraction internal worker functions
 //
 EFI_STATUS
 CirrusLogic5430UgaDrawConstructor (
   CIRRUS_LOGIC_5430_PRIVATE_DATA  *Private
-  )
-;
+  );
 
 EFI_STATUS
 CirrusLogic5430UgaDrawDestructor (
   CIRRUS_LOGIC_5430_PRIVATE_DATA  *Private
-  )
-;
+  );
 
 //
 // Graphics Output Hardware abstraction internal worker functions
@@ -173,14 +159,12 @@ CirrusLogic5430UgaDrawDestructor (
 EFI_STATUS
 CirrusLogic5430GraphicsOutputConstructor (
   CIRRUS_LOGIC_5430_PRIVATE_DATA  *Private
-  )
-;
+  );
 
 EFI_STATUS
 CirrusLogic5430GraphicsOutputDestructor (
   CIRRUS_LOGIC_5430_PRIVATE_DATA  *Private
-  )
-;
+  );
 
 
 //
@@ -202,8 +186,7 @@ CirrusLogic5430ControllerDriverSupported (
   IN EFI_DRIVER_BINDING_PROTOCOL  *This,
   IN EFI_HANDLE                   Controller,
   IN EFI_DEVICE_PATH_PROTOCOL     *RemainingDevicePath
-  )
-;
+  );
 
 /**
   TODO: Add function description
@@ -221,8 +204,7 @@ CirrusLogic5430ControllerDriverStart (
   IN EFI_DRIVER_BINDING_PROTOCOL  *This,
   IN EFI_HANDLE                   Controller,
   IN EFI_DEVICE_PATH_PROTOCOL     *RemainingDevicePath
-  )
-;
+  );
 
 /**
   TODO: Add function description
@@ -242,8 +224,7 @@ CirrusLogic5430ControllerDriverStop (
   IN EFI_HANDLE                   Controller,
   IN UINTN                        NumberOfChildren,
   IN EFI_HANDLE                   *ChildHandleBuffer
-  )
-;
+  );
 
 //
 // EFI Component Name Functions
