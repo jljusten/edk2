@@ -177,15 +177,15 @@ TcgMeasureGptTable (
     if (!CompareGuid (&PartitionEntry->PartitionTypeGUID, &mZeroGuid)) {
       NumberOfPartition++;  
     }
-    PartitionEntry++;
+    PartitionEntry = (EFI_PARTITION_ENTRY *)((UINT8 *)PartitionEntry + PrimaryHeader->SizeOfPartitionEntry);
   }
 
   //
-  // Parepare Data for Measurement
+  // Prepare Data for Measurement
   // 
   EventSize = (UINT32)(sizeof (EFI_GPT_DATA) - sizeof (GptData->Partitions) 
                         + NumberOfPartition * PrimaryHeader->SizeOfPartitionEntry);
-  TcgEvent = (TCG_PCR_EVENT *) AllocateZeroPool (EventSize + sizeof (TCG_PCR_EVENT));
+  TcgEvent = (TCG_PCR_EVENT *) AllocateZeroPool (EventSize + sizeof (TCG_PCR_EVENT_HDR));
   if (TcgEvent == NULL) {
     FreePool (PrimaryHeader);
     FreePool (EntryPtr);
@@ -210,13 +210,13 @@ TcgMeasureGptTable (
   for (Index = 0; Index < PrimaryHeader->NumberOfPartitionEntries; Index++) {
     if (!CompareGuid (&PartitionEntry->PartitionTypeGUID, &mZeroGuid)) {
       CopyMem (
-        (UINT8 *)&GptData->Partitions + NumberOfPartition * sizeof (EFI_PARTITION_ENTRY),
+        (UINT8 *)&GptData->Partitions + NumberOfPartition * PrimaryHeader->SizeOfPartitionEntry,
         (UINT8 *)PartitionEntry,
-        sizeof (EFI_PARTITION_ENTRY)
+        PrimaryHeader->SizeOfPartitionEntry
         );
       NumberOfPartition++;
     }
-    PartitionEntry++;
+    PartitionEntry =(EFI_PARTITION_ENTRY *)((UINT8 *)PartitionEntry + PrimaryHeader->SizeOfPartitionEntry);
   }
 
   //
@@ -382,7 +382,20 @@ TcgMeasurePeImage (
   // Measuring PE/COFF Image Header;
   // But CheckSum field and SECURITY data directory (certificate) are excluded
   //
-  Magic = Hdr.Pe32->OptionalHeader.Magic;
+  if (Hdr.Pe32->FileHeader.Machine == IMAGE_FILE_MACHINE_IA64 && Hdr.Pe32->OptionalHeader.Magic == EFI_IMAGE_NT_OPTIONAL_HDR32_MAGIC) {
+    //
+    // NOTE: Some versions of Linux ELILO for Itanium have an incorrect magic value 
+    //       in the PE/COFF Header. If the MachineType is Itanium(IA64) and the 
+    //       Magic value in the OptionalHeader is EFI_IMAGE_NT_OPTIONAL_HDR32_MAGIC
+    //       then override the magic value to EFI_IMAGE_NT_OPTIONAL_HDR64_MAGIC
+    //
+    Magic = EFI_IMAGE_NT_OPTIONAL_HDR64_MAGIC;
+  } else {
+    //
+    // Get the magic value from the PE/COFF Optional Header
+    //
+    Magic = Hdr.Pe32->OptionalHeader.Magic;
+  }
   
   //
   // 3.  Calculate the distance from the base of the image header to the image checksum address.
