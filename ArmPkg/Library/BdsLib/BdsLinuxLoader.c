@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *  
 *  This program and the accompanying materials                          
 *  are licensed and made available under the terms and conditions of the BSD License         
@@ -75,6 +75,13 @@ StartLinux (
     LinuxKernel = (LINUX_KERNEL)(UINTN)LinuxImage;
   }
 
+  // Check if the Linux Image is a uImage
+  if (*(UINT32*)LinuxKernel == LINUX_UIMAGE_SIGNATURE) {
+    // Assume the Image Entry Point is just after the uImage header (64-byte size)
+    LinuxKernel = (LINUX_KERNEL)((UINTN)LinuxKernel + 64);
+    LinuxImageSize -= 64;
+  }
+
   //TODO: Check there is no overlapping between kernel and Atag
 
   //
@@ -96,7 +103,7 @@ StartLinux (
   // Outside BootServices, so can't use Print();
   DEBUG((EFI_D_ERROR, "\nStarting the kernel:\n\n"));
 
-  // jump to kernel with register set
+  // Jump to kernel with register set
   LinuxKernel ((UINTN)0, MachineType, (UINTN)KernelParamsAddress);
 
   // Kernel should never exit
@@ -149,10 +156,22 @@ BdsBootLinuxAtag (
   }
 
   if (InitrdDevicePath) {
-    Status = BdsLoadImage (InitrdDevicePath, AllocateAnyPages, &InitrdImage, &InitrdImageSize);
+    // Load the initrd near to the Linux kernel
+    InitrdImage = LINUX_KERNEL_MAX_OFFSET;
+    Status = BdsLoadImage (InitrdDevicePath, AllocateMaxAddress, &InitrdImage, &InitrdImageSize);
+    if (Status == EFI_OUT_OF_RESOURCES) {
+      Status = BdsLoadImage (InitrdDevicePath, AllocateAnyPages, &InitrdImage, &InitrdImageSize);
+    }
     if (EFI_ERROR(Status)) {
       Print (L"ERROR: Did not find initrd image.\n");
       return Status;
+    }
+    
+    // Check if the initrd is a uInitrd
+    if (*(UINT32*)((UINTN)InitrdImage) == LINUX_UIMAGE_SIGNATURE) {
+      // Skip the 64-byte image header
+      InitrdImage = (EFI_PHYSICAL_ADDRESS)((UINTN)InitrdImage + 64);
+      InitrdImageSize -= 64;
     }
   }
 
@@ -212,10 +231,21 @@ BdsBootLinuxFdt (
   }
 
   if (InitrdDevicePath) {
-    Status = BdsLoadImage (InitrdDevicePath, AllocateAnyPages, &InitrdImage, &InitrdImageSize);
+    InitrdImage = LINUX_KERNEL_MAX_OFFSET;
+    Status = BdsLoadImage (InitrdDevicePath, AllocateMaxAddress, &InitrdImage, &InitrdImageSize);
+    if (Status == EFI_OUT_OF_RESOURCES) {
+      Status = BdsLoadImage (InitrdDevicePath, AllocateAnyPages, &InitrdImage, &InitrdImageSize);
+    }
     if (EFI_ERROR(Status)) {
       Print (L"ERROR: Did not find initrd image.\n");
       return Status;
+    }
+
+    // Check if the initrd is a uInitrd
+    if (*(UINT32*)((UINTN)InitrdImage) == LINUX_UIMAGE_SIGNATURE) {
+      // Skip the 64-byte image header
+      InitrdImage = (EFI_PHYSICAL_ADDRESS)((UINTN)InitrdImage + 64);
+      InitrdImageSize -= 64;
     }
   }
 

@@ -309,7 +309,7 @@ UserProfileManagerCallback (
     Status = EFI_SUCCESS;
     break;
 
-  case EFI_BROWSER_ACTION_CHANGING:
+  case EFI_BROWSER_ACTION_CHANGED:
   {  
     //
     // Handle the request from form.
@@ -338,13 +338,6 @@ UserProfileManagerCallback (
       //
       switch (QuestionId & KEY_SECOND_FORM_MASK) {
       //
-      // Enter delete user profile form.
-      //
-      case KEY_ENTER_NEXT_FORM:
-        SelectUserToDelete ();
-        break;
-
-      //
       // Delete specified user profile.
       //
       case KEY_SELECT_USER:
@@ -369,13 +362,6 @@ UserProfileManagerCallback (
       //
       switch (QuestionId & KEY_SECOND_FORM_MASK) {
       //
-      // Enter modify user profile form.
-      //
-      case KEY_ENTER_NEXT_FORM:
-        SelectUserToModify ();
-        break;
-
-      //
       // Enter user profile information form.
       //
       case KEY_SELECT_USER:
@@ -383,13 +369,6 @@ UserProfileManagerCallback (
         // Judge next 3 bits.
         //
         switch (QuestionId & KEY_MODIFY_INFO_MASK) {
-        //
-        // Display user information form.
-        //
-        case KEY_ENTER_NEXT_FORM:
-          ModifyUserInfo ((UINT8) QuestionId);
-          break;
-
         //
         // Modify user name.
         //
@@ -409,13 +388,6 @@ UserProfileManagerCallback (
           // Judge next 3 bits
           //
           switch (QuestionId & KEY_MODIFY_IP_MASK) {
-          //
-          // Display identity policy modify form.
-          //
-          case KEY_ENTER_NEXT_FORM:
-            ModifyIdentityPolicy ();
-            break;
-
           //
           // Change credential provider option.
           //
@@ -442,7 +414,7 @@ UserProfileManagerCallback (
           //
           case KEY_IP_RETURN_UIF:
             SaveIdentityPolicy ();
-            *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_APPLY;
+            *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_SUBMIT_EXIT;
             break;
 
           default:
@@ -458,13 +430,6 @@ UserProfileManagerCallback (
           // Judge next 3 bits.
           //
           switch (QuestionId & KEY_MODIFY_AP_MASK) {
-          //
-          // Display access policy modify form.
-          //
-          case KEY_ENTER_NEXT_FORM:
-            ModidyAccessPolicy ();
-            break;
-
           //
           // Change access right choice.
           //
@@ -487,65 +452,11 @@ UserProfileManagerCallback (
             break;
 
           //
-          // Load device path form.
-          //
-          case KEY_MODIFY_LOAD:
-            //
-            // Judge next 2 bits.
-            //
-            switch (QuestionId & KEY_DISPLAY_DP_MASK) {
-            //
-            // Permit load device path.
-            //
-            case KEY_PERMIT_MODIFY:
-              DisplayLoadPermit ();
-              break;
-
-            //
-            // Forbid load device path.
-            //
-            case KEY_FORBID_MODIFY:
-              DisplayLoadForbid ();
-              break;
-
-            default:
-              break;
-            }
-            break;
-
-          //
-          // Connect device path form.
-          //
-          case KEY_MODIFY_CONNECT:
-            //
-            // Judge next 2 bits.
-            //
-            switch (QuestionId & KEY_DISPLAY_DP_MASK) {
-            //
-            // Permit connect device path.
-            //
-            case KEY_PERMIT_MODIFY:
-              DisplayConnectPermit ();
-              break;
-
-            //
-            // Forbid connect device path.
-            //
-            case KEY_FORBID_MODIFY:
-              DisplayConnectForbid ();
-              break;
-
-            default:
-              break;
-            }
-            break;
-
-          //
           // Return to user profile information form.
           //
           case KEY_AP_RETURN_UIF:
             SaveAccessPolicy ();
-            *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_APPLY;
+            *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_SUBMIT_EXIT;
             break;
 
           default:
@@ -624,6 +535,179 @@ UserProfileManagerCallback (
         // Connect forbid device path modified.
         //
         case KEY_CONNECT_FORBID_MODIFY:
+          break;
+
+        default:
+          break;
+        }
+        break;
+
+      default:
+        break;
+      }
+      break;
+
+    default:
+      break;
+    }
+  }
+  break;
+
+
+  case EFI_BROWSER_ACTION_CHANGING:
+  {  
+    //
+    // Handle the request from form.
+    //
+    if (Value == NULL) {
+      return EFI_INVALID_PARAMETER;
+    }
+    
+    //
+    // Judge first 2 bits.
+    //
+    switch (QuestionId & KEY_FIRST_FORM_MASK) {
+    //
+    // Delete user profile operation.
+    //
+    case KEY_DEL_USER:
+      //
+      // Judge next 2 bits.
+      //
+      switch (QuestionId & KEY_SECOND_FORM_MASK) {
+      //
+      // Enter delete user profile form.
+      //
+      case KEY_ENTER_NEXT_FORM:
+        SelectUserToDelete ();
+        break;
+
+      default:
+        break;
+      }
+      break;
+
+    //
+    // Modify user profile operation.
+    //
+    case KEY_MODIFY_USER:
+      //
+      // Judge next 2 bits.
+      //
+      switch (QuestionId & KEY_SECOND_FORM_MASK) {
+      //
+      // Enter modify user profile form.
+      //
+      case KEY_ENTER_NEXT_FORM:
+        SelectUserToModify ();
+        break;
+
+      //
+      // Enter user profile information form.
+      //
+      case KEY_SELECT_USER:
+        //
+        // Judge next 3 bits.
+        //
+        switch (QuestionId & KEY_MODIFY_INFO_MASK) {
+        //
+        // Display user information form.
+        //
+        case KEY_ENTER_NEXT_FORM:
+          ModifyUserInfo ((UINT8) QuestionId);
+          break;
+
+        //
+        // Modify identity policy.
+        //
+        case KEY_MODIFY_IP:
+          //
+          // Judge next 3 bits
+          //
+          switch (QuestionId & KEY_MODIFY_IP_MASK) {
+          //
+          // Display identity policy modify form.
+          //
+          case KEY_ENTER_NEXT_FORM:
+            ModifyIdentityPolicy ();
+            break;
+
+          default:
+            break;
+          }
+          break;
+
+        //
+        // Modify access policy.
+        //
+        case KEY_MODIFY_AP:
+          //
+          // Judge next 3 bits.
+          //
+          switch (QuestionId & KEY_MODIFY_AP_MASK) {
+          //
+          // Display access policy modify form.
+          //
+          case KEY_ENTER_NEXT_FORM:
+            ModidyAccessPolicy ();
+            break;
+          //
+          // Load device path form.
+          //
+          case KEY_MODIFY_LOAD:
+            //
+            // Judge next 2 bits.
+            //
+            switch (QuestionId & KEY_DISPLAY_DP_MASK) {
+            //
+            // Permit load device path.
+            //
+            case KEY_PERMIT_MODIFY:
+              DisplayLoadPermit ();
+              break;
+          
+            //
+            // Forbid load device path.
+            //
+            case KEY_FORBID_MODIFY:
+              DisplayLoadForbid ();
+              break;
+          
+            default:
+              break;
+            }
+            break;
+            
+          //
+          // Connect device path form.
+          //
+          case KEY_MODIFY_CONNECT:
+            //
+            // Judge next 2 bits.
+            //
+            switch (QuestionId & KEY_DISPLAY_DP_MASK) {
+            //
+            // Permit connect device path.
+            //
+            case KEY_PERMIT_MODIFY:
+              DisplayConnectPermit ();
+              break;
+          
+            //
+            // Forbid connect device path.
+            //
+            case KEY_FORBID_MODIFY:
+              DisplayConnectForbid ();
+              break;
+          
+            default:
+              break;
+            }
+            break;
+
+          default:
+            break;
+          }
           break;
 
         default:

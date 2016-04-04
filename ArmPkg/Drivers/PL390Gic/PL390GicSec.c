@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *  
 *  This program and the accompanying materials                          
 *  are licensed and made available under the terms and conditions of the BSD License         
@@ -12,7 +12,9 @@
 *
 **/
 
-#include <Uefi.h>
+#include <Base.h>
+#include <Library/ArmLib.h>
+#include <Library/DebugLib.h>
 #include <Library/IoLib.h>
 #include <Library/ArmGicLib.h>
 
@@ -23,12 +25,14 @@
 VOID
 EFIAPI
 ArmGicSetupNonSecure (
+  IN  UINTN         MpId,
   IN  INTN          GicDistributorBase,
   IN  INTN          GicInterruptInterfaceBase
   )
 {
   UINTN InterruptId;
   UINTN CachedPriorityMask;
+  UINTN Index;
 
   CachedPriorityMask = MmioRead32 (GicInterruptInterfaceBase + ARM_GIC_ICCPMR);
 
@@ -45,13 +49,44 @@ ArmGicSetupNonSecure (
     MmioWrite32 (GicInterruptInterfaceBase + ARM_GIC_ICCEIOR, InterruptId);
   }
 
-  // Ensure all GIC interrupts are Non-Secure
-  MmioWrite32 (GicDistributorBase + ARM_GIC_ICDISR, 0xffffffff);     // IRQs  0-31 are Non-Secure : Private Peripheral Interrupt[31:16] & Software Generated Interrupt[15:0]
-  MmioWrite32 (GicDistributorBase + ARM_GIC_ICDISR + 4, 0xffffffff); // IRQs 32-63 are Non-Secure : Shared Peripheral Interrupt
-  MmioWrite32 (GicDistributorBase + ARM_GIC_ICDISR + 8, 0xffffffff); // And another 32 in case we're on the testchip : Shared Peripheral Interrupt (2)
+  // Only the primary core should set the Non Secure bit to the SPIs (Shared Peripheral Interrupt).
+  if (IS_PRIMARY_CORE(MpId)) {
+    // Ensure all GIC interrupts are Non-Secure
+    for (Index = 0; Index < (ArmGicGetMaxNumInterrupts (GicDistributorBase) / 32); Index++) {
+      MmioWrite32 (GicDistributorBase + ARM_GIC_ICDISR + (Index * 4), 0xffffffff);
+    }
+  } else {
+    // The secondary cores only set the Non Secure bit to their banked PPIs
+    MmioWrite32 (GicDistributorBase + ARM_GIC_ICDISR, 0xffffffff);
+  }
 
   // Ensure all interrupts can get through the priority mask
   MmioWrite32 (GicInterruptInterfaceBase + ARM_GIC_ICCPMR, CachedPriorityMask);
+}
+
+/*
+ * This function configures the interrupts set by the mask to be secure.
+ *
+ */
+VOID
+EFIAPI
+ArmGicSetSecureInterrupts (
+  IN  UINTN         GicDistributorBase,
+  IN  UINTN*        GicSecureInterruptMask,
+  IN  UINTN         GicSecureInterruptMaskSize
+  )
+{
+  UINTN  Index;
+  UINT32 InterruptStatus;
+
+  // We must not have more interrupts defined by the mask than the number of available interrupts
+  ASSERT(GicSecureInterruptMaskSize <= (ArmGicGetMaxNumInterrupts (GicDistributorBase) / 32));
+
+  // Set all the interrupts defined by the mask as Secure
+  for (Index = 0; Index < GicSecureInterruptMaskSize; Index++) {
+    InterruptStatus = MmioRead32 (GicDistributorBase + ARM_GIC_ICDISR + (Index * 4));
+    MmioWrite32 (GicDistributorBase + ARM_GIC_ICDISR + (Index * 4), InterruptStatus & (~GicSecureInterruptMask[Index]));
+  }
 }
 
 VOID

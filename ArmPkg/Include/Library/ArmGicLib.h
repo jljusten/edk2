@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *  
 *  This program and the accompanying materials                          
 *  are licensed and made available under the terms and conditions of the BSD License         
@@ -72,13 +72,22 @@
 
 
 //
-// GIC SEC interfaces
+// GIC Secure interfaces
 //
 VOID
 EFIAPI
 ArmGicSetupNonSecure (
+  IN  UINTN         MpId,
   IN  INTN          GicDistributorBase,
   IN  INTN          GicInterruptInterfaceBase
+  );
+
+VOID
+EFIAPI
+ArmGicSetSecureInterrupts (
+  IN  UINTN         GicDistributorBase,
+  IN  UINTN*        GicSecureInterruptMask,
+  IN  UINTN         GicSecureInterruptMaskSize
   );
 
 VOID
@@ -93,27 +102,28 @@ ArmGicEnableDistributor (
   IN  INTN          GicDistributorBase
   );
 
+UINTN
+EFIAPI
+ArmGicGetMaxNumInterrupts (
+  IN  INTN          GicDistributorBase
+  );
+
 VOID
 EFIAPI
 ArmGicSendSgiTo (
   IN  INTN          GicDistributorBase,
   IN  INTN          TargetListFilter,
-  IN  INTN          CPUTargetList
-  );
-
-UINT32
-EFIAPI
-ArmGicAcknowledgeSgiFrom (
-  IN  INTN          GicInterruptInterfaceBase,
-  IN  INTN          CoreId
-  );
-
-UINT32
-EFIAPI
-ArmGicAcknowledgeSgi2From (
-  IN  INTN          GicInterruptInterfaceBase,
-  IN  INTN          CoreId,
+  IN  INTN          CPUTargetList,
   IN  INTN          SgiId
+  );
+
+RETURN_STATUS
+EFIAPI
+ArmGicAcknowledgeInterrupt (
+  IN  UINTN          GicDistributorBase,
+  IN  UINTN          GicInterruptInterfaceBase,
+  OUT UINTN          *CoreId,
+  OUT UINTN          *InterruptId
   );
 
 UINTN

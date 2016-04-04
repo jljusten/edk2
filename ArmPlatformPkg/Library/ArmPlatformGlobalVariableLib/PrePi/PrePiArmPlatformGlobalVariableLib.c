@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -17,6 +17,7 @@
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/PcdLib.h>
+#include <Library/DebugLib.h>
 
 #define IS_XIP() (((UINT32)PcdGet32 (PcdFdBaseAddress) > (UINT32)(PcdGet32 (PcdSystemMemoryBase) + PcdGet32 (PcdSystemMemorySize))) || \
                   ((PcdGet32 (PcdFdBaseAddress) + PcdGet32 (PcdFdSize)) < PcdGet32 (PcdSystemMemoryBase)))
@@ -33,6 +34,9 @@ ArmPlatformGetGlobalVariable (
 {
   UINTN  GlobalVariableBase;
 
+  // Ensure the Global Variable Size have been initialized
+  ASSERT (VariableOffset < PcdGet32 (PcdPeiGlobalVariableSize));
+
   if (IS_XIP()) {
     // In Case of XIP, we expect the Primary Stack at the top of the System Memory
     // The size must be 64bit aligned to allow 64bit variable to be aligned
@@ -44,7 +48,7 @@ ArmPlatformGetGlobalVariable (
   if (VariableSize == 4) {
     *(UINT32*)Variable = ReadUnaligned32 ((CONST UINT32*)(GlobalVariableBase + VariableOffset));
   } else if (VariableSize == 8) {
-    *(UINT32*)Variable = ReadUnaligned64 ((CONST UINT64*)(GlobalVariableBase + VariableOffset));
+    *(UINT64*)Variable = ReadUnaligned64 ((CONST UINT64*)(GlobalVariableBase + VariableOffset));
   } else {
     CopyMem (Variable, (VOID*)(GlobalVariableBase + VariableOffset), VariableSize);
   }
@@ -58,6 +62,9 @@ ArmPlatformSetGlobalVariable (
   )
 {
   UINTN  GlobalVariableBase;
+
+  // Ensure the Global Variable Size have been initialized
+  ASSERT (VariableOffset < PcdGet32 (PcdPeiGlobalVariableSize));
 
   if (IS_XIP()) {
     // In Case of XIP, we expect the Primary Stack at the top of the System Memory
@@ -76,3 +83,23 @@ ArmPlatformSetGlobalVariable (
   }
 }
 
+VOID*
+ArmPlatformGetGlobalVariableAddress (
+  IN  UINTN     VariableOffset
+  )
+{
+  UINTN  GlobalVariableBase;
+
+  // Ensure the Global Variable Size have been initialized
+  ASSERT (VariableOffset < PcdGet32 (PcdPeiGlobalVariableSize));
+
+  if (IS_XIP()) {
+    // In Case of XIP, we expect the Primary Stack at the top of the System Memory
+    // The size must be 64bit aligned to allow 64bit variable to be aligned
+    GlobalVariableBase = PcdGet32 (PcdSystemMemoryBase) + PcdGet32 (PcdSystemMemorySize) - ALIGN_VALUE(PcdGet32 (PcdPeiGlobalVariableSize),0x8);
+  } else {
+    GlobalVariableBase = mGlobalVariableBase;
+  }
+
+  return (VOID*)(GlobalVariableBase + VariableOffset);
+}

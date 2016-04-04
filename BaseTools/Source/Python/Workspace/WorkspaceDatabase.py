@@ -262,7 +262,7 @@ class DscBuildData(PlatformBuildClassObject):
             if self._Header == None:
                 self._GetHeaderInfo()
             if self._Guid == None:
-                EdkLogger.error('build', ATTRIBUTE_NOT_AVAILABLE, "No FILE_GUID", File=self.MetaFile)
+                EdkLogger.error('build', ATTRIBUTE_NOT_AVAILABLE, "No PLATFORM_GUID", File=self.MetaFile)
         return self._Guid
 
     ## Retrieve platform version
@@ -271,7 +271,7 @@ class DscBuildData(PlatformBuildClassObject):
             if self._Header == None:
                 self._GetHeaderInfo()
             if self._Version == None:
-                self._Version = ''
+                EdkLogger.error('build', ATTRIBUTE_NOT_AVAILABLE, "No PLATFORM_VERSION", File=self.MetaFile)
         return self._Version
 
     ## Retrieve platform description file version
@@ -280,7 +280,7 @@ class DscBuildData(PlatformBuildClassObject):
             if self._Header == None:
                 self._GetHeaderInfo()
             if self._DscSpecification == None:
-                self._DscSpecification = ''
+                EdkLogger.error('build', ATTRIBUTE_NOT_AVAILABLE, "No DSC_SPECIFICATION", File=self.MetaFile)                
         return self._DscSpecification
 
     ## Retrieve OUTPUT_DIRECTORY
@@ -298,7 +298,7 @@ class DscBuildData(PlatformBuildClassObject):
             if self._Header == None:
                 self._GetHeaderInfo()
             if self._SupArchList == None:
-                self._SupArchList = ARCH_LIST
+                EdkLogger.error('build', ATTRIBUTE_NOT_AVAILABLE, "No SUPPORTED_ARCHITECTURES", File=self.MetaFile)
         return self._SupArchList
 
     ## Retrieve BUILD_TARGETS
@@ -307,7 +307,7 @@ class DscBuildData(PlatformBuildClassObject):
             if self._Header == None:
                 self._GetHeaderInfo()
             if self._BuildTargets == None:
-                self._BuildTargets = ['DEBUG', 'RELEASE', 'NOOPT']
+                EdkLogger.error('build', ATTRIBUTE_NOT_AVAILABLE, "No BUILD_TARGETS", File=self.MetaFile)
         return self._BuildTargets
 
     ## Retrieve SKUID_IDENTIFIER
@@ -383,10 +383,21 @@ class DscBuildData(PlatformBuildClassObject):
                 self._LoadFixAddress = int (self._LoadFixAddress, 0)
             except:
                 EdkLogger.error("build", PARAMETER_INVALID, "FIX_LOAD_TOP_MEMORY_ADDRESS %s is not valid dec or hex string" % (self._LoadFixAddress))
-            if self._LoadFixAddress < 0:
-                EdkLogger.error("build", PARAMETER_INVALID, "FIX_LOAD_TOP_MEMORY_ADDRESS is set to the invalid negative value %s" % (self._LoadFixAddress))
-            if self._LoadFixAddress != 0xFFFFFFFFFFFFFFFF and self._LoadFixAddress % 0x1000 != 0:
-                EdkLogger.error("build", PARAMETER_INVALID, "FIX_LOAD_TOP_MEMORY_ADDRESS is set to the invalid unaligned 4K value %s" % (self._LoadFixAddress))
+         
+        #
+        # If command line defined, should override the value in DSC file.
+        #
+        if 'FIX_LOAD_TOP_MEMORY_ADDRESS' in GlobalData.gCommandLineDefines.keys():
+            try:
+                self._LoadFixAddress = int(GlobalData.gCommandLineDefines['FIX_LOAD_TOP_MEMORY_ADDRESS'], 0)
+            except:
+                EdkLogger.error("build", PARAMETER_INVALID, "FIX_LOAD_TOP_MEMORY_ADDRESS %s is not valid dec or hex string" % (GlobalData.gCommandLineDefines['FIX_LOAD_TOP_MEMORY_ADDRESS']))
+                
+        if self._LoadFixAddress < 0:
+            EdkLogger.error("build", PARAMETER_INVALID, "FIX_LOAD_TOP_MEMORY_ADDRESS is set to the invalid negative value 0x%x" % (self._LoadFixAddress))
+        if self._LoadFixAddress != 0xFFFFFFFFFFFFFFFF and self._LoadFixAddress % 0x1000 != 0:
+            EdkLogger.error("build", PARAMETER_INVALID, "FIX_LOAD_TOP_MEMORY_ADDRESS is set to the invalid unaligned 4K value 0x%x" % (self._LoadFixAddress))
+            
         return self._LoadFixAddress
 
     ## Retrieve RFCLanguage filter
@@ -452,7 +463,8 @@ class DscBuildData(PlatformBuildClassObject):
                 EdkLogger.error('build', ErrorCode, File=self.MetaFile, Line=LineNo,
                                 ExtraData=ErrorInfo)
             # Check duplication
-            if ModuleFile in self._Modules:
+            # If arch is COMMON, no duplicate module is checked since all modules in all component sections are selected
+            if self._Arch != 'COMMON' and ModuleFile in self._Modules:
                 EdkLogger.error('build', FILE_DUPLICATED, File=self.MetaFile, ExtraData=str(ModuleFile), Line=LineNo)
 
             Module = ModuleBuildClassObject()
@@ -829,6 +841,32 @@ class DscBuildData(PlatformBuildClassObject):
         if (Name, Guid) not in self.Pcds:
             self.Pcds[Name, Guid] = PcdClassObject(Name, Guid, '', '', '', '', '', {}, False, None)
         self.Pcds[Name, Guid].DefaultValue = Value
+
+    def IsPlatformPcdDeclared(self, DecPcds):
+        for PcdType in (MODEL_PCD_FIXED_AT_BUILD, MODEL_PCD_PATCHABLE_IN_MODULE, MODEL_PCD_FEATURE_FLAG,
+                        MODEL_PCD_DYNAMIC_DEFAULT, MODEL_PCD_DYNAMIC_HII, MODEL_PCD_DYNAMIC_VPD,
+                        MODEL_PCD_DYNAMIC_EX_DEFAULT, MODEL_PCD_DYNAMIC_EX_HII, MODEL_PCD_DYNAMIC_EX_VPD):
+            RecordList = self._RawData[PcdType, self._Arch]
+            for TokenSpaceGuid, PcdCName, Setting, Arch, SkuName, Dummy3, Dummy4 in RecordList:
+                if (PcdCName, TokenSpaceGuid) not in DecPcds:
+                    EdkLogger.error('build', PARSER_ERROR,
+                                    "Pcd (%s.%s) defined in DSC is not declared in DEC files." % (TokenSpaceGuid, PcdCName),
+                                    File=self.MetaFile, Line=Dummy4)
+                PcdValue = ''
+                if PcdType in (MODEL_PCD_DYNAMIC_VPD, MODEL_PCD_DYNAMIC_EX_VPD):
+                    if DecPcds[PcdCName, TokenSpaceGuid].DatumType == "VOID*":
+                        PcdValue = AnalyzeVpdPcdData(Setting)[2]
+                    else:
+                        PcdValue = AnalyzeVpdPcdData(Setting)[1]
+                elif PcdType in (MODEL_PCD_DYNAMIC_HII, MODEL_PCD_DYNAMIC_EX_HII):
+                    PcdValue = AnalyzeHiiPcdData(Setting)[3]
+                else:
+                    PcdValue = AnalyzePcdData(Setting)[0]
+                if PcdValue:
+                    Valid, ErrStr = CheckPcdDatum(DecPcds[PcdCName, TokenSpaceGuid].DatumType, PcdValue)
+                    if not Valid:
+                        EdkLogger.error('build', FORMAT_INVALID, ErrStr, File=self.MetaFile, Line=Dummy4,
+                                    ExtraData="%s.%s" % (TokenSpaceGuid, PcdCName))
 
     _Macros             = property(_GetMacros)
     Arch                = property(_GetArch, _SetArch)

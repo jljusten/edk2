@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *  
 *  This program and the accompanying materials                          
 *  are licensed and made available under the terms and conditions of the BSD License         
@@ -13,9 +13,6 @@
 **/
 
 #include "LinuxInternal.h"
-
-//TODO: RemoveMe
-#include <Protocol/DevicePathToText.h>
 
 #define DEFAULT_BOOT_ENTRY_DESCRIPTION  L"Linux"
 #define MAX_STR_INPUT                   300
@@ -227,6 +224,7 @@ LinuxLoaderConfig (
         }
       }
     }
+    FreePool (BootOrder);
   }
 
   if (Choice == LINUX_LOADER_NEW) {

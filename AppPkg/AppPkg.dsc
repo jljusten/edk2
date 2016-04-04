@@ -7,7 +7,7 @@
 #   for important information about configuring this package for your
 #   environment.
 #
-#   Copyright (c) 2010 - 2011, Intel Corporation. All rights reserved.<BR>
+#   Copyright (c) 2010 - 2012, Intel Corporation. All rights reserved.<BR>
 #   This program and the accompanying materials
 #   are licensed and made available under the terms and conditions of the BSD License
 #   which accompanies this distribution. The full text of the license may be found at
@@ -30,8 +30,8 @@
 [PcdsFeatureFlag]
 
 [PcdsFixedAtBuild]
-  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x0f
-  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000000
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x00
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000040
 
 [PcdsFixedAtBuild.IPF]
 
@@ -53,7 +53,13 @@
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
   UefiBootServicesTableLib|MdePkg/Library/UefiBootServicesTableLib/UefiBootServicesTableLib.inf
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
+  #
+  # To enable debugging:
+  #   Enable ONE of the following DebugLib instances, as appropriate for your platform.
+  #
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+#  DebugLib|MdePkg/Library/UefiDebugLibConOut/UefiDebugLibConOut.inf
+
   DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
   PeCoffGetEntryPointLib|MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
   IoLib|MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
@@ -70,6 +76,8 @@
   FileHandleLib|ShellPkg/Library/UefiFileHandleLib/UefiFileHandleLib.inf
   SortLib|ShellPkg/Library/UefiSortLib/UefiSortLib.inf
   PathLib|ShellPkg/Library/BasePathLib/BasePathLib.inf
+
+  CacheMaintenanceLib|MdePkg/Library/BaseCacheMaintenanceLib/BaseCacheMaintenanceLib.inf
 
 ###################################################################################################
 #
@@ -95,42 +103,23 @@
 #### Sample Applications.
   AppPkg/Applications/Hello/Hello.inf        # No LibC includes or functions.
   AppPkg/Applications/Main/Main.inf          # Simple invocation. No other LibC functions.
-  AppPkg/Applications/Enquire/Enquire.inf
+  AppPkg/Applications/Enquire/Enquire.inf    #
 
 #### After extracting the Python distribution, un-comment the following line to build Python.
 #  AppPkg/Applications/Python/PythonCore.inf
 
-##########
-#    Socket Applications - LibC based
-##########
-#  AppPkg/Applications/Sockets/DataSink/DataSink.inf
-#  AppPkg/Applications/Sockets/DataSource/DataSource.inf
-#  SocketPkg/Application/FtpNew/FTP.inf
-#  AppPkg/Applications/Sockets/GetHostByAddr/GetHostByAddr.inf
-#  AppPkg/Applications/Sockets/GetHostByDns/GetHostByDns.inf
-#  AppPkg/Applications/Sockets/GetHostByName/GetHostByName.inf
-#  AppPkg/Applications/Sockets/GetNetByAddr/GetNetByAddr.inf
-#  AppPkg/Applications/Sockets/GetNetByName/GetNetByName.inf
-#  AppPkg/Applications/Sockets/GetServByName/GetServByName.inf
-#  AppPkg/Applications/Sockets/GetServByPort/GetServByPort.inf
-#  AppPkg/Applications/Sockets/RecvDgram/RecvDgram.inf
-#  SocketPkg/Application/route/route.inf
-#  AppPkg/Applications/Sockets/SetHostName/SetHostName.inf
-#  AppPkg/Applications/Sockets/SetSockOpt/SetSockOpt.inf
-#  AppPkg/Applications/Sockets/TftpServer/TftpServer.inf
-#  AppPkg/Applications/Sockets/WebServer/WebServer.inf {
-#    <PcdsFixedAtBuild>
-#      gStdLibTokenSpaceGuid.WebServer_HttpPort|80
-#  }
+
+##############################################################################
+#
+# Specify whether we are running in an emulation environment, or not.
+# Define EMULATE if we are, else keep the DEFINE commented out.
+#
+# DEFINE  EMULATE = 1
 
 ##############################################################################
 #
 #  Include Boilerplate text required for building with the Standard Libraries.
 #
 ##############################################################################
-# Specify whether we are running in an emulation environment, or not.
-# Define EMULATE if we are.
-#
-#DEFINE  EMULATE = 1
-
 !include StdLib/StdLib.inc
+!include AppPkg/Applications/Sockets/Sockets.inc

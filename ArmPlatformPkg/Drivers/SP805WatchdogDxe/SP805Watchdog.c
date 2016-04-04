@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -27,71 +27,7 @@
 #include <Protocol/WatchdogTimer.h>
 #include <Drivers/SP805Watchdog.h>
 
-/**
-  Interface structure for the Watchdog Architectural Protocol.
-
-  @par Protocol Description:
-  This protocol provides a service to set the amount of time to wait
-  before firing the watchdog timer, and it also provides a service to
-  register a handler that is invoked when the watchdog timer fires.
-
-  @par When the watchdog timer fires, control will be passed to a handler
-  if one has been registered.  If no handler has been registered,
-  or the registered handler returns, then the system will be
-  reset by calling the Runtime Service ResetSystem().
-
-  @param RegisterHandler
-  Registers a handler that will be called each time the
-  watchdogtimer interrupt fires.  TimerPeriod defines the minimum
-  time between timer interrupts, so TimerPeriod will also
-  be the minimum time between calls to the registered
-  handler.
-  NOTE: If the watchdog resets the system in hardware, then
-        this function will not have any chance of executing.
-
-  @param SetTimerPeriod
-  Sets the period of the timer interrupt in 100 nS units.
-  This function is optional, and may return EFI_UNSUPPORTED.
-  If this function is supported, then the timer period will
-  be rounded up to the nearest supported timer period.
-
-  @param GetTimerPeriod
-  Retrieves the period of the timer interrupt in 100 nS units.
-
-**/
-EFI_WATCHDOG_TIMER_ARCH_PROTOCOL    gWatchdogTimer = {
-  (EFI_WATCHDOG_TIMER_REGISTER_HANDLER) SP805RegisterHandler,
-  (EFI_WATCHDOG_TIMER_SET_TIMER_PERIOD) SP805SetTimerPeriod,
-  (EFI_WATCHDOG_TIMER_GET_TIMER_PERIOD) SP805GetTimerPeriod
-};
-
 EFI_EVENT                           EfiExitBootServicesEvent = (EFI_EVENT)NULL;
-
-BOOLEAN                             mSP805Initialized = FALSE;
-
-EFI_STATUS
-SP805Identify (
-  VOID
-  )
-{
-  // Check if this is a PrimeCell Peripheral
-  if (    (MmioRead8 (SP805_WDOG_PCELL_ID0) != 0x0D)
-      ||  (MmioRead8 (SP805_WDOG_PCELL_ID1) != 0xF0)
-      ||  (MmioRead8 (SP805_WDOG_PCELL_ID2) != 0x05)
-      ||  (MmioRead8 (SP805_WDOG_PCELL_ID3) != 0xB1)) {
-    return EFI_NOT_FOUND;
-  }
-
-  // Check if this PrimeCell Peripheral is the SP805 Watchdog Timer
-  if (    (MmioRead8 (SP805_WDOG_PERIPH_ID0) != 0x05)
-      ||  (MmioRead8 (SP805_WDOG_PERIPH_ID1) != 0x18)
-      || ((MmioRead8 (SP805_WDOG_PERIPH_ID2) & 0x0000000F) != 0x04)
-      ||  (MmioRead8 (SP805_WDOG_PERIPH_ID3) != 0x00)) {
-    return EFI_NOT_FOUND;
-  }
-
-  return EFI_SUCCESS;
-}
 
 /**
   Make sure the SP805 registers are unlocked for writing.
@@ -255,14 +191,6 @@ SP805SetTimerPeriod (
   EFI_STATUS  Status = EFI_SUCCESS;
   UINT64      Ticks64bit;
 
-  // Initialize the hardware if not already done
-  if( !mSP805Initialized ) {
-    Status = SP805Initialize();
-    if (EFI_ERROR(Status)) {
-      goto EXIT;
-    }
-  }
-
   SP805Unlock();
 
   if( TimerPeriod == 0 ) {
@@ -336,14 +264,6 @@ SP805GetTimerPeriod (
     return EFI_INVALID_PARAMETER;
   }
 
-  // Initialize the hardware if not already done
-  if( !mSP805Initialized ) {
-    Status = SP805Initialize();
-    if (EFI_ERROR(Status)) {
-      goto EXIT;
-    }
-  }
-
   // Check if the watchdog is stopped
   if ( (MmioRead32(SP805_WDOG_CONTROL_REG) & SP805_WDOG_CTRL_INTEN) == 0 ) {
     // It is stopped, so return zero.
@@ -357,9 +277,46 @@ SP805GetTimerPeriod (
 
   *TimerPeriod = ReturnValue;
 
-  EXIT:
   return Status;
 }
+
+/**
+  Interface structure for the Watchdog Architectural Protocol.
+
+  @par Protocol Description:
+  This protocol provides a service to set the amount of time to wait
+  before firing the watchdog timer, and it also provides a service to
+  register a handler that is invoked when the watchdog timer fires.
+
+  @par When the watchdog timer fires, control will be passed to a handler
+  if one has been registered.  If no handler has been registered,
+  or the registered handler returns, then the system will be
+  reset by calling the Runtime Service ResetSystem().
+
+  @param RegisterHandler
+  Registers a handler that will be called each time the
+  watchdogtimer interrupt fires.  TimerPeriod defines the minimum
+  time between timer interrupts, so TimerPeriod will also
+  be the minimum time between calls to the registered
+  handler.
+  NOTE: If the watchdog resets the system in hardware, then
+        this function will not have any chance of executing.
+
+  @param SetTimerPeriod
+  Sets the period of the timer interrupt in 100 nS units.
+  This function is optional, and may return EFI_UNSUPPORTED.
+  If this function is supported, then the timer period will
+  be rounded up to the nearest supported timer period.
+
+  @param GetTimerPeriod
+  Retrieves the period of the timer interrupt in 100 nS units.
+
+**/
+EFI_WATCHDOG_TIMER_ARCH_PROTOCOL    gWatchdogTimer = {
+  (EFI_WATCHDOG_TIMER_REGISTER_HANDLER) SP805RegisterHandler,
+  (EFI_WATCHDOG_TIMER_SET_TIMER_PERIOD) SP805SetTimerPeriod,
+  (EFI_WATCHDOG_TIMER_GET_TIMER_PERIOD) SP805GetTimerPeriod
+};
 
 /**
   Initialize the state information for the Watchdog Timer Architectural Protocol.
@@ -373,42 +330,8 @@ SP805GetTimerPeriod (
 
 **/
 EFI_STATUS
-SP805Initialize (
-  VOID
-  )
-{
-  EFI_STATUS  Status;
-
-  // Check if the SP805 hardware watchdog module exists on board
-  Status = SP805Identify();
-  if (EFI_ERROR( Status )) {
-    Status = EFI_DEVICE_ERROR;
-    goto EXIT;
-  }
-
-  // Unlock access to the SP805 registers
-  SP805Unlock();
-
-  // Stop the watchdog from triggering unexpectedly
-  SP805Stop();
-
-  // Set the watchdog to reset the board when triggered
-  if ( (MmioRead32(SP805_WDOG_CONTROL_REG) & SP805_WDOG_CTRL_RESEN) == 0 ) {
-    MmioOr32(SP805_WDOG_CONTROL_REG, SP805_WDOG_CTRL_RESEN);
-  }
-
-  // Prohibit any rogue access to SP805 registers
-  SP805Lock();
-
-  mSP805Initialized = TRUE;
-
-  EXIT:
-  return Status;
-}
-
-EFI_STATUS
 EFIAPI
-SP805InstallProtocol (
+SP805Initialize (
   IN EFI_HANDLE         ImageHandle,
   IN EFI_SYSTEM_TABLE   *SystemTable
   )
@@ -416,6 +339,20 @@ SP805InstallProtocol (
   EFI_STATUS  Status;
   EFI_HANDLE  Handle;
 
+  // Unlock access to the SP805 registers
+  SP805Unlock ();
+
+  // Stop the watchdog from triggering unexpectedly
+  SP805Stop ();
+
+  // Set the watchdog to reset the board when triggered
+  if ((MmioRead32(SP805_WDOG_CONTROL_REG) & SP805_WDOG_CTRL_RESEN) == 0) {
+    MmioOr32 (SP805_WDOG_CONTROL_REG, SP805_WDOG_CTRL_RESEN);
+  }
+
+  // Prohibit any rogue access to SP805 registers
+  SP805Lock();
+  
   //
   // Make sure the Watchdog Timer Architectural Protocol has not been installed in the system yet.
   // This will avoid conflicts with the universal watchdog
@@ -441,7 +378,7 @@ SP805InstallProtocol (
     goto EXIT;
   }
 
-  EXIT:
+EXIT:
   if(EFI_ERROR(Status)) {
     // The watchdog failed to initialize
     ASSERT(FALSE);

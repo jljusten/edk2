@@ -30,16 +30,16 @@
 #define INT_MODEL       0x01
 #define SCI_INT_VECTOR  0x0009 
 #define SMI_CMD_IO_PORT 0 // If SMM was supported, then this would be 0xB2
-#define ACPI_ENABLE     0x0E1
-#define ACPI_DISABLE    0x01E
+#define ACPI_ENABLE     0
+#define ACPI_DISABLE    0
 #define S4BIOS_REQ      0x00
-#define PM1a_EVT_BLK    0x00000400
+#define PM1a_EVT_BLK    0x0000b000
 #define PM1b_EVT_BLK    0x00000000
-#define PM1a_CNT_BLK    0x00000404
+#define PM1a_CNT_BLK    0x0000b004
 #define PM1b_CNT_BLK    0x00000000
 #define PM2_CNT_BLK     0x00000022
-#define PM_TMR_BLK      0x00000408
-#define GPE0_BLK        0x0000040C
+#define PM_TMR_BLK      0x0000b008
+#define GPE0_BLK        0x0000afe0
 #define GPE1_BLK        0x00000000
 #define PM1_EVT_LEN     0x04
 #define PM1_CNT_LEN     0x02

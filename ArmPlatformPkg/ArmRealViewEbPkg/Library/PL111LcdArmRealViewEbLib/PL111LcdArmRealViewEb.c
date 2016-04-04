@@ -13,9 +13,13 @@
 
 #include <PiDxe.h>
 
-#include <Library/LcdPlatformLib.h>
-#include <Library/IoLib.h>
 #include <Library/DebugLib.h>
+#include <Library/IoLib.h>
+#include <Library/LcdPlatformLib.h>
+#include <Library/UefiBootServicesTableLib.h>
+
+#include <Protocol/EdidDiscovered.h>
+#include <Protocol/EdidActive.h>
 
 #include <Drivers/PL111Lcd.h>
 
@@ -38,27 +42,46 @@ typedef struct {
 
 
 CLCD_RESOLUTION mResolutions[] = {
-    { // Mode 0 : VGA : 640 x 480 x 24 bpp
-        VGA, VGA_H_RES_PIXELS, VGA_V_RES_PIXELS, LCD_BITS_PER_PIXEL_24, 0x2C77,
-        VGA_H_SYNC, VGA_H_BACK_PORCH, VGA_H_FRONT_PORCH,
-        VGA_V_SYNC, VGA_V_BACK_PORCH, VGA_V_FRONT_PORCH
-    },
-    { // Mode 1 : SVGA : 800 x 600 x 24 bpp
-        SVGA, SVGA_H_RES_PIXELS, SVGA_V_RES_PIXELS, LCD_BITS_PER_PIXEL_24, 0x2CAC,
-        SVGA_H_SYNC, SVGA_H_BACK_PORCH, SVGA_H_FRONT_PORCH,
-        SVGA_V_SYNC, SVGA_V_BACK_PORCH, SVGA_V_FRONT_PORCH
-    }
+  { // Mode 0 : VGA : 640 x 480 x 24 bpp
+      VGA, VGA_H_RES_PIXELS, VGA_V_RES_PIXELS, LCD_BITS_PER_PIXEL_24, 0x2C77,
+      VGA_H_SYNC, VGA_H_BACK_PORCH, VGA_H_FRONT_PORCH,
+      VGA_V_SYNC, VGA_V_BACK_PORCH, VGA_V_FRONT_PORCH
+  },
+  { // Mode 1 : SVGA : 800 x 600 x 24 bpp
+      SVGA, SVGA_H_RES_PIXELS, SVGA_V_RES_PIXELS, LCD_BITS_PER_PIXEL_24, 0x2CAC,
+      SVGA_H_SYNC, SVGA_H_BACK_PORCH, SVGA_H_FRONT_PORCH,
+      SVGA_V_SYNC, SVGA_V_BACK_PORCH, SVGA_V_FRONT_PORCH
+  }
 };
 
+EFI_EDID_DISCOVERED_PROTOCOL  mEdidDiscovered = {
+  0,
+  NULL
+};
+
+EFI_EDID_ACTIVE_PROTOCOL      mEdidActive = {
+  0,
+  NULL
+};
 
 EFI_STATUS
 LcdPlatformInitializeDisplay (
-  VOID
+  IN EFI_HANDLE   Handle
   )
 {
+  EFI_STATUS  Status;
+
   MmioWrite32(ARM_EB_SYS_CLCD_REG, 1);
 
-  return EFI_SUCCESS;
+  // Install the EDID Protocols
+  Status = gBS->InstallMultipleProtocolInterfaces(
+    &Handle,
+    &gEfiEdidDiscoveredProtocolGuid,  &mEdidDiscovered,
+    &gEfiEdidActiveProtocolGuid,      &mEdidActive,
+    NULL
+  );
+
+  return Status;
 }
 
 EFI_STATUS

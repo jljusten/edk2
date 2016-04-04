@@ -1,9 +1,9 @@
 /** @file
 
-  The common variable operation routines shared by DXE_RINTIME variable 
+  The common variable operation routines shared by DXE_RUNTIME variable 
   module and DXE_SMM variable module.
   
-Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2012, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -718,6 +718,8 @@ Reclaim (
 
   @param  VariableName        Name of the variable to be found
   @param  VendorGuid          Vendor GUID to be found.
+  @param  IgnoreRtCheck       Ignore EFI_VARIABLE_RUNTIME_ACCESS attribute
+                              check at runtime when searching variable.
   @param  PtrTrack            Variable Track Pointer structure that contains Variable Information.
 
   @retval  EFI_SUCCESS            Variable found successfully
@@ -727,6 +729,7 @@ EFI_STATUS
 FindVariableEx (
   IN     CHAR16                  *VariableName,
   IN     EFI_GUID                *VendorGuid,
+  IN     BOOLEAN                 IgnoreRtCheck,
   IN OUT VARIABLE_POINTER_TRACK  *PtrTrack
   )
 {
@@ -745,7 +748,7 @@ FindVariableEx (
     if (PtrTrack->CurrPtr->State == VAR_ADDED || 
         PtrTrack->CurrPtr->State == (VAR_IN_DELETED_TRANSITION & VAR_ADDED)
        ) {
-      if (!AtRuntime () || ((PtrTrack->CurrPtr->Attributes & EFI_VARIABLE_RUNTIME_ACCESS) != 0)) {
+      if (IgnoreRtCheck || !AtRuntime () || ((PtrTrack->CurrPtr->Attributes & EFI_VARIABLE_RUNTIME_ACCESS) != 0)) {
         if (VariableName[0] == 0) {
           if (PtrTrack->CurrPtr->State == (VAR_IN_DELETED_TRANSITION & VAR_ADDED)) {
             InDeletedVariable   = PtrTrack->CurrPtr;
@@ -781,7 +784,9 @@ FindVariableEx (
   This code finds variable in storage blocks of volatile and non-volatile storage areas.
   If VariableName is an empty string, then we just return the first
   qualified variable without comparing VariableName and VendorGuid.
-  Otherwise, VariableName and VendorGuid are compared.
+  If IgnoreRtCheck is TRUE, then we ignore the EFI_VARIABLE_RUNTIME_ACCESS attribute check
+  at runtime when searching existing variable, only VariableName and VendorGuid are compared.
+  Otherwise, variables without EFI_VARIABLE_RUNTIME_ACCESS are not visible at runtime.
 
   @param  VariableName                Name of the variable to be found.
   @param  VendorGuid                  Vendor GUID to be found.
@@ -790,6 +795,8 @@ FindVariableEx (
   @param  Global                      Pointer to VARIABLE_GLOBAL structure, including
                                       base of volatile variable storage area, base of
                                       NV variable storage area, and a lock.
+  @param  IgnoreRtCheck               Ignore EFI_VARIABLE_RUNTIME_ACCESS attribute
+                                      check at runtime when searching variable.
 
   @retval EFI_INVALID_PARAMETER       If VariableName is not an empty string, while
                                       VendorGuid is NULL.
@@ -802,7 +809,8 @@ FindVariable (
   IN  CHAR16                  *VariableName,
   IN  EFI_GUID                *VendorGuid,
   OUT VARIABLE_POINTER_TRACK  *PtrTrack,
-  IN  VARIABLE_GLOBAL         *Global
+  IN  VARIABLE_GLOBAL         *Global,
+  IN  BOOLEAN                 IgnoreRtCheck
   )
 {
   EFI_STATUS              Status;
@@ -834,7 +842,7 @@ FindVariable (
     PtrTrack->EndPtr   = GetEndPointer   (VariableStoreHeader[Type]);
     PtrTrack->Volatile = (BOOLEAN) (Type == VariableStoreTypeVolatile);
 
-    Status = FindVariableEx (VariableName, VendorGuid, PtrTrack);
+    Status = FindVariableEx (VariableName, VendorGuid, IgnoreRtCheck, PtrTrack);
     if (!EFI_ERROR (Status)) {
       return Status;
     }
@@ -1234,7 +1242,7 @@ AutoUpdateLangVariable (
     // Update Lang if PlatformLang is already set
     // Update PlatformLang if Lang is already set
     //
-    Status = FindVariable (L"PlatformLang", &gEfiGlobalVariableGuid, &Variable, &mVariableModuleGlobal->VariableGlobal);
+    Status = FindVariable (L"PlatformLang", &gEfiGlobalVariableGuid, &Variable, &mVariableModuleGlobal->VariableGlobal, FALSE);
     if (!EFI_ERROR (Status)) {
       //
       // Update Lang
@@ -1243,7 +1251,7 @@ AutoUpdateLangVariable (
       Data         = GetVariableDataPtr (Variable.CurrPtr);
       DataSize     = Variable.CurrPtr->DataSize;
     } else {
-      Status = FindVariable (L"Lang", &gEfiGlobalVariableGuid, &Variable, &mVariableModuleGlobal->VariableGlobal);
+      Status = FindVariable (L"Lang", &gEfiGlobalVariableGuid, &Variable, &mVariableModuleGlobal->VariableGlobal, FALSE);
       if (!EFI_ERROR (Status)) {
         //
         // Update PlatformLang
@@ -1288,7 +1296,7 @@ AutoUpdateLangVariable (
         //
         // Successfully convert PlatformLang to Lang, and set the BestLang value into Lang variable simultaneously.
         //
-        FindVariable (L"Lang", &gEfiGlobalVariableGuid, &Variable, (VARIABLE_GLOBAL *)mVariableModuleGlobal);
+        FindVariable (L"Lang", &gEfiGlobalVariableGuid, &Variable, (VARIABLE_GLOBAL *)mVariableModuleGlobal, FALSE);
 
         Status = UpdateVariable (L"Lang", &gEfiGlobalVariableGuid, BestLang,
                                  ISO_639_2_ENTRY_SIZE + 1, Attributes, &Variable);
@@ -1322,7 +1330,7 @@ AutoUpdateLangVariable (
         //
         // Successfully convert Lang to PlatformLang, and set the BestPlatformLang value into PlatformLang variable simultaneously.
         //
-        FindVariable (L"PlatformLang", &gEfiGlobalVariableGuid, &Variable, &mVariableModuleGlobal->VariableGlobal);
+        FindVariable (L"PlatformLang", &gEfiGlobalVariableGuid, &Variable, &mVariableModuleGlobal->VariableGlobal, FALSE);
 
         Status = UpdateVariable (L"PlatformLang", &gEfiGlobalVariableGuid, BestPlatformLang, 
                                  AsciiStrSize (BestPlatformLang), Attributes, &Variable);
@@ -1418,9 +1426,9 @@ UpdateVariable (
         goto Done;
       }
       //
-      // Only variable that have NV attributes can be updated/deleted in Runtime.
+      // Only variable that have NV|RT attributes can be updated/deleted in Runtime.
       //
-      if ((Variable->CurrPtr->Attributes & EFI_VARIABLE_NON_VOLATILE) == 0) {
+      if (((Variable->CurrPtr->Attributes & EFI_VARIABLE_RUNTIME_ACCESS) == 0) || ((Variable->CurrPtr->Attributes & EFI_VARIABLE_NON_VOLATILE) == 0)) {
         Status = EFI_INVALID_PARAMETER;
         goto Done;      
       }
@@ -1753,6 +1761,63 @@ Done:
 }
 
 /**
+  Check if a Unicode character is a hexadecimal character.
+
+  This function checks if a Unicode character is a 
+  hexadecimal character.  The valid hexadecimal character is 
+  L'0' to L'9', L'a' to L'f', or L'A' to L'F'.
+
+
+  @param Char           The character to check against.
+
+  @retval TRUE          If the Char is a hexadecmial character.
+  @retval FALSE         If the Char is not a hexadecmial character.
+
+**/
+BOOLEAN
+EFIAPI
+IsHexaDecimalDigitCharacter (
+  IN CHAR16             Char
+  )
+{
+  return (BOOLEAN) ((Char >= L'0' && Char <= L'9') || (Char >= L'A' && Char <= L'F') || (Char >= L'a' && Char <= L'f'));
+}
+
+/**
+
+  This code checks if variable is hardware error record variable or not.
+
+  According to UEFI spec, hardware error record variable should use the EFI_HARDWARE_ERROR_VARIABLE VendorGuid
+  and have the L"HwErrRec####" name convention, #### is a printed hex value and no 0x or h is included in the hex value.
+
+  @param VariableName   Pointer to variable name.
+  @param VendorGuid     Variable Vendor Guid.
+
+  @retval TRUE          Variable is hardware error record variable.
+  @retval FALSE         Variable is not hardware error record variable.
+
+**/
+BOOLEAN
+EFIAPI
+IsHwErrRecVariable (
+  IN CHAR16             *VariableName,
+  IN EFI_GUID           *VendorGuid
+  )
+{
+  if (!CompareGuid (VendorGuid, &gEfiHardwareErrorVariableGuid) ||
+      (StrLen (VariableName) != StrLen (L"HwErrRec####")) ||
+      (StrnCmp(VariableName, L"HwErrRec", StrLen (L"HwErrRec")) != 0) ||
+      !IsHexaDecimalDigitCharacter (VariableName[0x8]) ||
+      !IsHexaDecimalDigitCharacter (VariableName[0x9]) ||
+      !IsHexaDecimalDigitCharacter (VariableName[0xA]) ||
+      !IsHexaDecimalDigitCharacter (VariableName[0xB])) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+/**
 
   This code finds variable in storage blocks (Volatile or Non-Volatile).
 
@@ -1789,7 +1854,7 @@ VariableServiceGetVariable (
 
   AcquireLockOnlyAtBootTime(&mVariableModuleGlobal->VariableGlobal.VariableServicesLock);
   
-  Status = FindVariable (VariableName, VendorGuid, &Variable, &mVariableModuleGlobal->VariableGlobal);
+  Status = FindVariable (VariableName, VendorGuid, &Variable, &mVariableModuleGlobal->VariableGlobal, FALSE);
   if (Variable.CurrPtr == NULL || EFI_ERROR (Status)) {
     goto Done;
   }
@@ -1864,7 +1929,7 @@ VariableServiceGetNextVariableName (
 
   AcquireLockOnlyAtBootTime(&mVariableModuleGlobal->VariableGlobal.VariableServicesLock);
 
-  Status = FindVariable (VariableName, VendorGuid, &Variable, &mVariableModuleGlobal->VariableGlobal);
+  Status = FindVariable (VariableName, VendorGuid, &Variable, &mVariableModuleGlobal->VariableGlobal, FALSE);
   if (Variable.CurrPtr == NULL || EFI_ERROR (Status)) {
     goto Done;
   }
@@ -1941,6 +2006,7 @@ VariableServiceGetNextVariableName (
           Status = FindVariableEx (
                      GetVariableNamePtr (Variable.CurrPtr),
                      &Variable.CurrPtr->VendorGuid,
+                     FALSE,
                      &VariableInHob
                      );
           if (!EFI_ERROR (Status)) {
@@ -2041,10 +2107,7 @@ VariableServiceSetVariable (
         (sizeof (VARIABLE_HEADER) + StrSize (VariableName) + DataSize > PcdGet32 (PcdMaxHardwareErrorVariableSize))) {
       return EFI_INVALID_PARAMETER;
     }
-    //
-    // According to UEFI spec, HARDWARE_ERROR_RECORD variable name convention should be L"HwErrRecXXXX".
-    //
-    if (StrnCmp(VariableName, L"HwErrRec", StrLen(L"HwErrRec")) != 0) {
+    if (!IsHwErrRecVariable(VariableName, VendorGuid)) {
       return EFI_INVALID_PARAMETER;
     }
   } else {
@@ -2056,7 +2119,17 @@ VariableServiceSetVariable (
         (sizeof (VARIABLE_HEADER) + StrSize (VariableName) + DataSize > PcdGet32 (PcdMaxVariableSize))) {
       return EFI_INVALID_PARAMETER;
     }  
-  }  
+  }
+
+  if (AtRuntime ()) {
+    //
+    // HwErrRecSupport Global Variable identifies the level of hardware error record persistence
+    // support implemented by the platform. This variable is only modified by firmware and is read-only to the OS.
+    //
+    if (CompareGuid (VendorGuid, &gEfiGlobalVariableGuid) && (StrCmp (VariableName, L"HwErrRecSupport") == 0)) {
+      return EFI_WRITE_PROTECTED;
+    }
+  }
 
   AcquireLockOnlyAtBootTime(&mVariableModuleGlobal->VariableGlobal.VariableServicesLock);
 
@@ -2079,7 +2152,12 @@ VariableServiceSetVariable (
   //
   // Check whether the input variable is already existed.
   //
-  FindVariable (VariableName, VendorGuid, &Variable, &mVariableModuleGlobal->VariableGlobal);
+  Status = FindVariable (VariableName, VendorGuid, &Variable, &mVariableModuleGlobal->VariableGlobal, TRUE);
+  if (!EFI_ERROR (Status)) {
+    if (((Variable.CurrPtr->Attributes & EFI_VARIABLE_RUNTIME_ACCESS) == 0) && AtRuntime ()) {
+      return EFI_WRITE_PROTECTED;
+    }
+  }
 
   //
   // Hook the operation of setting PlatformLangCodes/PlatformLang and LangCodes/Lang.

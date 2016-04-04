@@ -37,7 +37,7 @@ function process_debug_scripts {
 #
 # Setup workspace if it is not set
 #
-if [ -z "$WORKSPACE" ]
+if [ -z "${WORKSPACE:-}" ]
 then
   echo Initializing workspace
   cd ..
@@ -51,20 +51,22 @@ else
 fi
 
 #
-# Pick a default tool type for a given OS
+# Pick a default tool type for a given OS if no toolchain already defined
 #
-case `uname` in
-  CYGWIN*) 
+if [ -z "${TARGET_TOOLS:-}" ]
+then
+  case `uname` in
+    CYGWIN*) 
       TARGET_TOOLS=RVCT31CYGWIN 
       ;;
-  Linux*)  
+    Linux*)  
       if [[ ! -z `locate arm-linux-gnueabi-gcc` ]]; then
         TARGET_TOOLS=ARMLINUXGCC
       else 
         TARGET_TOOLS=ARMGCC 
       fi
       ;;
-  Darwin*) 
+    Darwin*) 
       Major=$(uname -r | cut -f 1 -d '.')
       if [[ $Major == 9 ]]
       then
@@ -74,7 +76,8 @@ case `uname` in
         TARGET_TOOLS=XCODE32
       fi  
       ;;
-esac
+  esac
+fi
 
 TARGET=DEBUG
 for arg in "$@"
@@ -102,9 +105,9 @@ fi
 # Build the edk2 BeagleBoard code
 #
 if [[ $TARGET == RELEASE ]]; then
-  build -p $WORKSPACE/BeagleBoardPkg/BeagleBoardPkg.dsc -a ARM -t $TARGET_TOOLS -b $TARGET -D DEBUG_TARGET=RELEASE $2 $3 $4 $5 $6 $7 $8
+  build -p $WORKSPACE/BeagleBoardPkg/BeagleBoardPkg.dsc -a ARM -t $TARGET_TOOLS -b $TARGET -D DEBUG_TARGET=RELEASE ${2:-} ${3:-} ${4:-} ${5:-} ${6:-} ${7:-} ${8:-}
 else
-  build -p $WORKSPACE/BeagleBoardPkg/BeagleBoardPkg.dsc -a ARM -t $TARGET_TOOLS -b $TARGET $1 $2 $3 $4 $5 $6 $7 $8
+  build -p ${WORKSPACE:-}/BeagleBoardPkg/BeagleBoardPkg.dsc -a ARM -t $TARGET_TOOLS -b $TARGET ${1:-} ${2:-} ${3:-} ${4:-} ${5:-} ${6:-} ${7:-} ${8:-}
 fi
 
 

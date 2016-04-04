@@ -4,7 +4,7 @@
   Layers on top of Firmware Block protocol to produce a file abstraction
   of FV based files.
 
-  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2012, Intel Corporation. All rights reserved.<BR>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions
@@ -175,6 +175,109 @@ FreeFvDeviceResource (
 }
 
 /**
+
+  Firmware volume inherits authentication status from the FV image file and section(in another firmware volume)
+  where it came from.
+
+  @param  FvDevice              A pointer to the FvDevice.
+
+**/
+VOID
+FwVolInheritAuthenticationStatus (
+  IN FV_DEVICE  *FvDevice
+  )
+{
+  EFI_STATUS                        Status;
+  EFI_FIRMWARE_VOLUME_HEADER        *CachedFvHeader;
+  EFI_FIRMWARE_VOLUME_EXT_HEADER    *CachedFvExtHeader;
+  EFI_FIRMWARE_VOLUME2_PROTOCOL     *ParentFvProtocol;
+  UINTN                             Key;
+  EFI_GUID                          FileNameGuid;
+  EFI_FV_FILETYPE                   FileType;
+  EFI_FV_FILE_ATTRIBUTES            FileAttributes;
+  UINTN                             FileSize;
+  EFI_SECTION_TYPE                  SectionType;
+  UINT32                            AuthenticationStatus;
+  EFI_FIRMWARE_VOLUME_HEADER        *FvHeader;
+  EFI_FIRMWARE_VOLUME_EXT_HEADER    *FvExtHeader;
+  UINTN                             BufferSize;
+
+  CachedFvHeader = (EFI_FIRMWARE_VOLUME_HEADER *) (UINTN) FvDevice->CachedFv;
+
+  if (FvDevice->Fv.ParentHandle != NULL) {
+    //
+    // By Parent Handle, find out the FV image file and section(in another firmware volume) where the firmware volume came from 
+    //
+    Status = gBS->HandleProtocol (FvDevice->Fv.ParentHandle, &gEfiFirmwareVolume2ProtocolGuid, (VOID **) &ParentFvProtocol);
+    if (!EFI_ERROR (Status) && (ParentFvProtocol != NULL)) {
+      Key = 0;
+      do {
+        FileType = EFI_FV_FILETYPE_FIRMWARE_VOLUME_IMAGE;
+        Status = ParentFvProtocol->GetNextFile (
+                                     ParentFvProtocol,
+                                     &Key,
+                                     &FileType,
+                                     &FileNameGuid,
+                                     &FileAttributes,
+                                     &FileSize
+                                     );
+        if (EFI_ERROR (Status)) {
+          return;
+        }
+
+        SectionType = EFI_SECTION_FIRMWARE_VOLUME_IMAGE;
+        FvHeader = NULL;
+        BufferSize = 0;
+        Status = ParentFvProtocol->ReadSection (
+                                     ParentFvProtocol,
+                                     &FileNameGuid,
+                                     SectionType,
+                                     0,
+                                     (VOID **) &FvHeader,
+                                     &BufferSize,
+                                     &AuthenticationStatus
+                                     );
+        if (!EFI_ERROR (Status)) {
+          if ((FvHeader->FvLength == CachedFvHeader->FvLength) &&
+              (FvHeader->ExtHeaderOffset == CachedFvHeader->ExtHeaderOffset)) {
+            if (FvHeader->ExtHeaderOffset !=0) {
+              //
+              // Both FVs contain extension header, then compare their FV Name GUID
+              //
+              FvExtHeader = (EFI_FIRMWARE_VOLUME_EXT_HEADER *) ((UINTN) FvHeader + FvHeader->ExtHeaderOffset);
+              CachedFvExtHeader = (EFI_FIRMWARE_VOLUME_EXT_HEADER *) ((UINTN) CachedFvHeader + CachedFvHeader->ExtHeaderOffset);
+              if (CompareGuid (&FvExtHeader->FvName, &CachedFvExtHeader->FvName)) {
+                //
+                // Found the FV image section where the firmware volume came from,
+                // and then inherit authentication status from it.
+                //
+                FvDevice->AuthenticationStatus = AuthenticationStatus;
+                FreePool ((VOID *) FvHeader);
+                return;
+              }
+            } else {
+              //
+              // Both FVs don't contain extension header, then compare their whole FV Image.
+              //
+              if (CompareMem ((VOID *) FvHeader, (VOID *) CachedFvHeader, FvHeader->FvLength) == 0) {
+                //
+                // Found the FV image section where the firmware volume came from
+                // and then inherit authentication status from it.
+                //
+                FvDevice->AuthenticationStatus = AuthenticationStatus;
+                FreePool ((VOID *) FvHeader);
+                return;
+              }
+            }
+          }
+          FreePool ((VOID *) FvHeader);
+        }
+      } while (TRUE);
+    }
+  }
+}
+
+/**
   Check if an FV is consistent and allocate cache for it.
 
   @param  FvDevice              A pointer to the FvDevice to be checked.
@@ -194,6 +297,7 @@ FvCheck (
   EFI_FVB_ATTRIBUTES_2                FvbAttributes;
   EFI_FV_BLOCK_MAP_ENTRY              *BlockMap;
   EFI_FIRMWARE_VOLUME_HEADER          *FwVolHeader;
+  EFI_FIRMWARE_VOLUME_EXT_HEADER      *FwVolExtHeader;
   UINT8                               *FwCache;
   LBA_ENTRY                           *LbaEntry;
   FREE_SPACE_ENTRY                    *FreeSpaceEntry;
@@ -349,14 +453,23 @@ FvCheck (
   //
   // go through the whole FV cache, check the consistence of the FV
   //
-  Ptr           = (UINT8 *) (UINTN) (FvDevice->CachedFv + FvDevice->FwVolHeader->HeaderLength);
-  TopFvAddress  = (UINT8 *) (UINTN) (FvDevice->CachedFv + FvDevice->FwVolHeader->FvLength - 1);
+  if (FvDevice->FwVolHeader->ExtHeaderOffset != 0) {
+    //
+    // Searching for files starts on an 8 byte aligned boundary after the end of the Extended Header if it exists.
+    //
+    FwVolExtHeader = (EFI_FIRMWARE_VOLUME_EXT_HEADER *) (UINTN) (FvDevice->CachedFv + FvDevice->FwVolHeader->ExtHeaderOffset);
+    Ptr = (UINT8 *) FwVolExtHeader + FwVolExtHeader->ExtHeaderSize;
+    Ptr = (UINT8 *) ALIGN_POINTER (Ptr, 8);
+  } else {
+    Ptr = (UINT8 *) (UINTN) (FvDevice->CachedFv + FvDevice->FwVolHeader->HeaderLength);
+  }
+  TopFvAddress = (UINT8 *) (UINTN) (FvDevice->CachedFv + FvDevice->FwVolHeader->FvLength);
 
   //
   // Build FFS list & Free Space List here
   //
-  while (Ptr <= TopFvAddress) {
-    TestLength = TopFvAddress - Ptr + 1;
+  while (Ptr < TopFvAddress) {
+    TestLength = TopFvAddress - Ptr;
 
     if (TestLength > sizeof (EFI_FFS_FILE_HEADER)) {
       TestLength = sizeof (EFI_FFS_FILE_HEADER);
@@ -370,7 +483,7 @@ FvCheck (
       FreeSize  = 0;
 
       do {
-        TestLength = TopFvAddress - Ptr + 1;
+        TestLength = TopFvAddress - Ptr;
 
         if (TestLength > sizeof (EFI_FFS_FILE_HEADER)) {
           TestLength = sizeof (EFI_FFS_FILE_HEADER);
@@ -382,7 +495,7 @@ FvCheck (
 
         FreeSize += TestLength;
         Ptr += TestLength;
-      } while (Ptr <= TopFvAddress);
+      } while (Ptr < TopFvAddress);
 
       FreeSpaceEntry = AllocateZeroPool (sizeof (FREE_SPACE_ENTRY));
       if (FreeSpaceEntry == NULL) {
@@ -602,6 +715,7 @@ FwVolDriverInit (
     FvDevice->Fv.KeySize              = KEYSIZE;
     FvDevice->Fv.GetInfo              = FvGetVolumeInfo;
     FvDevice->Fv.SetInfo              = FvSetVolumeInfo;
+    FvDevice->Fv.ParentHandle         = Fvb->ParentHandle;
 
     Status = FvCheck (FvDevice);
     if (EFI_ERROR (Status)) {
@@ -611,6 +725,8 @@ FwVolDriverInit (
       FreePool (FvDevice);
       continue;
     }
+
+    FwVolInheritAuthenticationStatus (FvDevice);
 
     if (Reinstall) {
       //

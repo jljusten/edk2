@@ -2,7 +2,7 @@
 # ARM processor package.
 #
 # Copyright (c) 2009 - 2010, Apple Inc. All rights reserved.<BR>
-# Copyright (c) 2011, ARM Limited. All rights reserved.
+# Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 #
 #    This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -65,8 +65,6 @@
   # it has been configured by the CPU DXE
   gArmTokenSpaceGuid.PcdDebuggerExceptionSupport|FALSE|BOOLEAN|0x00000032
   
-  gArmTokenSpaceGuid.PcdEfiUncachedMemoryToStronglyOrdered|FALSE|BOOLEAN|0x00000025
-
 [PcdsFixedAtBuild.common]
   gArmTokenSpaceGuid.PcdTrustzoneSupport|FALSE|BOOLEAN|0x00000006
 
@@ -84,7 +82,7 @@
   #
   gArmTokenSpaceGuid.PcdGicDistributorBase|0|UINT32|0x0000000C
   gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase|0|UINT32|0x0000000D
-  gArmTokenSpaceGuid.PcdGicNumInterrupts|96|UINT32|0x00000023
+  gArmTokenSpaceGuid.PcdGicSgiIntId|0|UINT32|0x00000025
 
   #
   # ARM Secure Firmware PCDs
@@ -101,7 +99,15 @@
   gArmTokenSpaceGuid.PcdFdSize|0|UINT32|0x0000002C
   gArmTokenSpaceGuid.PcdFvBaseAddress|0|UINT32|0x0000002D
   gArmTokenSpaceGuid.PcdFvSize|0|UINT32|0x0000002E
-  
+ 
+  #
+  # ARM Hypervisor Firmware PCDs
+  #  
+  gArmTokenSpaceGuid.PcdHypFdBaseAddress|0|UINT32|0x0000003A
+  gArmTokenSpaceGuid.PcdHypFdSize|0|UINT32|0x0000003B
+  gArmTokenSpaceGuid.PcdHypFvBaseAddress|0|UINT32|0x0000003C
+  gArmTokenSpaceGuid.PcdHypFvSize|0|UINT32|0x0000003D
+ 
   #
   # ARM Security Extension
   #
@@ -140,6 +146,10 @@
   gArmTokenSpaceGuid.PcdArmPrimaryCoreMask|0xF03|UINT32|0x00000031
   # The Primary Core is ClusterId[0] & CoreId[0] 
   gArmTokenSpaceGuid.PcdArmPrimaryCore|0|UINT32|0x00000037
+  # Number of the CPU Interface for the Primary Core (eg: The number for the CPU0 of
+  # Cluster1 might be 4 if the implementer had followed the convention: Cpu Interface
+  # = 4 * Cluster)
+  gArmTokenSpaceGuid.PcdGicPrimaryCoreId|0|UINT32|0x00000043
 
   #
   # ARM L2x0 PCDs

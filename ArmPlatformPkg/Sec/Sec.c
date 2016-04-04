@@ -1,7 +1,7 @@
 /** @file
 *  Main file supporting the SEC Phase on ARM Platforms
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *  
 *  This program and the accompanying materials                          
 *  are licensed and made available under the terms and conditions of the BSD License         
@@ -13,18 +13,16 @@
 *
 **/
 
+#include <Library/ArmTrustedMonitorLib.h>
 #include <Library/DebugAgentLib.h>
 #include <Library/PrintLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/SerialPortLib.h>
 #include <Library/ArmGicLib.h>
-#include <Library/ArmCpuLib.h>
 
 #include "SecInternal.h"
 
 #define SerialPrint(txt)  SerialPortWrite ((UINT8*)txt, AsciiStrLen(txt)+1);
-
-extern VOID *monitor_vector_table;
 
 VOID
 CEntryPoint (
@@ -51,11 +49,16 @@ CEntryPoint (
   if (FixedPcdGet32 (PcdVFPEnabled)) {
     ArmEnableVFP();
   }
-	
+
+  // Initialize peripherals that must be done at the early stage
+  // Example: Some L2 controller, interconnect, clock, DMC, etc
+  ArmPlatformSecInitialize (MpId);
+
   // Primary CPU clears out the SCU tag RAMs, secondaries wait
   if (IS_PRIMARY_CORE(MpId)) {
     if (ArmIsMpCore()) {
-      ArmCpuSynchronizeSignal (ARM_CPU_EVENT_BOOT_MEM_INIT);
+      // Signal for the initial memory is configured (event: BOOT_MEM_INIT)
+      ArmCallSEV ();
     }
 
     // SEC phase needs to run library constructors by hand. This assumes we are linked against the SerialLib
@@ -63,7 +66,13 @@ CEntryPoint (
     SerialPortInitialize ();
 
     // Start talking
-    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"UEFI firmware built at %a on %a\n\r",__TIME__, __DATE__);
+    if (FixedPcdGetBool (PcdTrustzoneSupport)) {
+      CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"Secure firmware (version %s built at %a on %a)\n\r",
+          (CHAR16*)PcdGetPtr(PcdFirmwareVersionString), __TIME__, __DATE__);
+    } else {
+      CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"Boot firmware (version %s built at %a on %a)\n\r",
+          (CHAR16*)PcdGetPtr(PcdFirmwareVersionString), __TIME__, __DATE__);
+    }
     SerialPortWrite ((UINT8 *) Buffer, CharCount);
 
     // Initialize the Debug Agent for Source Level Debugging
@@ -85,61 +94,22 @@ CEntryPoint (
   }
 
   // Enable Full Access to CoProcessors
-  ArmWriteCPACR (CPACR_CP_FULL_ACCESS);
-
-  if (IS_PRIMARY_CORE(MpId)) {
-    // Initialize peripherals that must be done at the early stage
-    // Example: Some L2x0 controllers must be initialized in Secure World
-    ArmPlatformSecInitialize ();
-
-    // If we skip the PEI Core we could want to initialize the DRAM in the SEC phase.
-    // If we are in standalone, we need the initialization to copy the UEFI firmware into DRAM
-    if (FeaturePcdGet (PcdSystemMemoryInitializeInSec)) {
-      // Initialize system memory (DRAM)
-      ArmPlatformInitializeSystemMemory ();
-    }
-  }
+  ArmWriteCpacr (CPACR_CP_FULL_ACCESS);
 
   // Test if Trustzone is supported on this platform
   if (FixedPcdGetBool (PcdTrustzoneSupport)) {
-    // Ensure the Monitor Stack Base & Size have been set
-    ASSERT(PcdGet32(PcdCPUCoresSecMonStackBase) != 0);
-    ASSERT(PcdGet32(PcdCPUCoreSecMonStackSize) != 0);
-
     if (ArmIsMpCore()) {
       // Setup SMP in Non Secure world
       ArmCpuSetupSmpNonSecure (GET_CORE_ID(MpId));
     }
 
+    // Either we use the Secure Stacks for Secure Monitor (in this case (Base == 0) && (Size == 0))
+    // Or we use separate Secure Monitor stacks (but (Base != 0) && (Size != 0))
+    ASSERT (((PcdGet32(PcdCPUCoresSecMonStackBase) == 0) && (PcdGet32(PcdCPUCoreSecMonStackSize) == 0)) ||
+            ((PcdGet32(PcdCPUCoresSecMonStackBase) != 0) && (PcdGet32(PcdCPUCoreSecMonStackSize) != 0)));
+
     // Enter Monitor Mode
-    enter_monitor_mode ((VOID*)(PcdGet32(PcdCPUCoresSecMonStackBase) + (PcdGet32(PcdCPUCoreSecMonStackSize) * GET_CORE_POS(MpId))));
-
-    //Write the monitor mode vector table address
-    ArmWriteVMBar((UINT32) &monitor_vector_table);
-
-    //-------------------- Monitor Mode ---------------------
-    // Setup the Trustzone Chipsets
-    if (IS_PRIMARY_CORE(MpId)) {
-      ArmPlatformTrustzoneInit ();
-
-      // Waiting for the Primary Core to have finished to initialize the Secure World
-      ArmCpuSynchronizeSignal (ARM_CPU_EVENT_SECURE_INIT);
-    } else {
-      // The secondary cores need to wait until the Trustzone chipsets configuration is done
-      // before switching to Non Secure World
-
-      // Waiting for the Primary Core to have finished to initialize the Secure World
-      ArmCpuSynchronizeWait (ARM_CPU_EVENT_SECURE_INIT);
-    }
-
-    // Transfer the interrupt to Non-secure World
-    ArmGicSetupNonSecure (PcdGet32(PcdGicDistributorBase), PcdGet32(PcdGicInterruptInterfaceBase));
-
-    // Write to CP15 Non-secure Access Control Register
-    ArmWriteNsacr (PcdGet32 (PcdArmNsacr));
-
-    // CP15 Secure Configuration Register
-    ArmWriteScr (PcdGet32 (PcdArmScr));
+    enter_monitor_mode ((UINTN)TrustedWorldInitialization, MpId, (VOID*)(PcdGet32(PcdCPUCoresSecMonStackBase) + (PcdGet32(PcdCPUCoreSecMonStackSize) * (GET_CORE_POS(MpId) + 1))));
   } else {
     if (IS_PRIMARY_CORE(MpId)) {
       SerialPrint ("Trust Zone Configuration is disabled\n\r");
@@ -149,11 +119,67 @@ CEntryPoint (
     // If we want to keep this function call we need to ensure the SVC's SPSR point to the same Program
     // Status Register as the the current one (CPSR).
     copy_cpsr_into_spsr ();
+
+    // Call the Platform specific function to execute additional actions if required
+    JumpAddress = PcdGet32 (PcdFvBaseAddress);
+    ArmPlatformSecExtraAction (MpId, &JumpAddress);
+
+    NonTrustedWorldTransition (MpId, JumpAddress);
+  }
+  ASSERT (0); // We must never return from the above function
+}
+
+VOID
+TrustedWorldInitialization (
+  IN  UINTN                     MpId
+  )
+{
+  UINTN   JumpAddress;
+
+  //-------------------- Monitor Mode ---------------------
+
+  // Set up Monitor World (Vector Table, etc)
+  ArmSecureMonitorWorldInitialize ();
+
+  // Transfer the interrupt to Non-secure World
+  ArmGicSetupNonSecure (MpId, PcdGet32(PcdGicDistributorBase), PcdGet32(PcdGicInterruptInterfaceBase));
+
+  // Initialize platform specific security policy
+  ArmPlatformSecTrustzoneInit (MpId);
+
+  // Setup the Trustzone Chipsets
+  if (IS_PRIMARY_CORE(MpId)) {
+    if (ArmIsMpCore()) {
+      // Signal the secondary core the Security settings is done (event: EVENT_SECURE_INIT)
+      ArmCallSEV ();
+    }
+  } else {
+    // The secondary cores need to wait until the Trustzone chipsets configuration is done
+    // before switching to Non Secure World
+
+    // Wait for the Primary Core to finish the initialization of the Secure World (event: EVENT_SECURE_INIT)
+    ArmCallWFE ();
   }
 
+  // Call the Platform specific function to execute additional actions if required
   JumpAddress = PcdGet32 (PcdFvBaseAddress);
   ArmPlatformSecExtraAction (MpId, &JumpAddress);
 
+  // Write to CP15 Non-secure Access Control Register
+  ArmWriteNsacr (PcdGet32 (PcdArmNsacr));
+
+  // CP15 Secure Configuration Register
+  ArmWriteScr (PcdGet32 (PcdArmScr));
+
+  NonTrustedWorldTransition (MpId, JumpAddress);
+}
+
+VOID
+NonTrustedWorldTransition (
+  IN  UINTN                     MpId,
+  IN  UINTN                     JumpAddress
+  )
+{
   // If PcdArmNonSecModeTransition is defined then set this specific mode to CPSR before the transition
   // By not set, the mode for Non Secure World is SVC
   if (PcdGet32 (PcdArmNonSecModeTransition) != 0) {

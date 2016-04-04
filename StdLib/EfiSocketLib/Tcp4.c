@@ -1171,6 +1171,7 @@ EslTcp4LocalAddressSet (
       //  Set the port number
       //
       pAccessPoint->StationPort = SwapBytes16 ( pIpAddress->sin_port );
+      pPort->pSocket->bAddressSet = TRUE;
 
       //
       //  Display the local address
@@ -1307,6 +1308,7 @@ EslTcp4PortAllocate (
     //  pPort->pfnRxCancel = NULL; since the UEFI implementation returns EFI_UNSUPPORTED
     //
     pPort->pfnConfigure = (PFN_NET_CONFIGURE)pPort->pProtocol.TCPv4->Configure;
+    pPort->pfnRxPoll = (PFN_NET_POLL)pPort->pProtocol.TCPv4->Poll;
     pPort->pfnRxStart = (PFN_NET_IO_START)pPort->pProtocol.TCPv4->Receive;
     pPort->pfnTxStart = (PFN_NET_IO_START)pPort->pProtocol.TCPv4->Transmit;
 
@@ -1568,6 +1570,11 @@ EslTcp4Receive (
             pBuffer,
             DataLength ));
   CopyMem ( pBuffer, pPacket->pBuffer, DataLength );
+
+  //
+  //  Set the next buffer address
+  //
+  pBuffer += DataLength;
 
   //
   //  Determine if the data is being read

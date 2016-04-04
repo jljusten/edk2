@@ -30,6 +30,7 @@
   EmuThunkLib|Include/Library/EmuThunkLib.h
   KeyMap|Include/Library/KeyMapLib.h
   PpiListLib|Include/Library/PpiListLib.h
+  SmbiosLib|Include/Library/SmbiosLib.h
 
 [Protocols]
   gEmuThunkProtocolGuid          = { 0x5CF32E0B, 0x8EDF, 0x2E44, { 0x9C, 0xDA, 0x93, 0x20, 0x5E, 0x99, 0xEC, 0x1C } }
@@ -47,6 +48,10 @@
   gEmuSystemConfigGuid       = { 0xF8626165, 0x6CEB, 0x924A, { 0xBA, 0xFC, 0xF1, 0x3A, 0xB9, 0xD6, 0x57, 0x28 } }
   gEmuVirtualDisksGuid       = { 0xf2ba331a, 0x8985, 0x11db, { 0xa4, 0x06, 0x00, 0x40, 0xd0, 0x2b, 0x18, 0x35 } }
   gEmuPhysicalDisksGuid      = { 0xf2bdcc96, 0x8985, 0x11db, { 0x87, 0x19, 0x00, 0x40, 0xd0, 0x2b, 0x18, 0x35 } }
+
+[PcdsFeatureFlag]
+  ## If TRUE, if symbols only load on breakpoints and gdb entry
+  gEmulatorPkgTokenSpaceGuid.PcdEmulatorLazyLoadSymbols|TRUE|BOOLEAN|0x00020000
 
 [PcdsFixedAtBuild]
   gEmulatorPkgTokenSpaceGuid.PcdEmuFlashNvStorageVariableBase|0x0|UINT64|0x00001014

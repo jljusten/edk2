@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *  
 *  This program and the accompanying materials                          
 *  are licensed and made available under the terms and conditions of the BSD License         
@@ -196,6 +196,17 @@ InitializeConsole (
     gST->StdErr = gST->ConOut;
   }
 
+  // Free Memory allocated for reading the UEFI Variables
+  if (ConOutDevicePaths) {
+    FreePool (ConOutDevicePaths);
+  }
+  if (ConInDevicePaths) {
+    FreePool (ConInDevicePaths);
+  }
+  if (ConErrDevicePaths) {
+    FreePool (ConErrDevicePaths);
+  }
+
   return EFI_SUCCESS;
 }
 
@@ -344,6 +355,7 @@ StartDefaultBootOnTimeout (
         }
         // In case of success, we should not return from this call.
       }
+      FreePool (BootOrder);
     }
   }
   return EFI_SUCCESS;
@@ -378,6 +390,9 @@ BdsEntry (
 {
   UINTN               Size;
   EFI_STATUS          Status;
+  UINT16             *BootNext;
+  UINTN               BootNextSize;
+  CHAR16              BootVariableName[9];
 
   PERF_END   (NULL, "DXE", NULL, 0);
 
@@ -392,16 +407,38 @@ BdsEntry (
   }
 
   // If BootNext environment variable is defined then we just load it !
-  Status = BdsStartBootOption (L"BootNext");
-  if (Status != EFI_NOT_FOUND) {
-    // BootNext has not been succeeded launched
-    if (EFI_ERROR(Status)) {
-      Print(L"Fail to start BootNext.\n");
+  BootNextSize = sizeof(UINT16);
+  Status = GetEnvironmentVariable (L"BootNext", NULL, &BootNextSize, (VOID**)&BootNext);
+  if (!EFI_ERROR(Status)) {
+    ASSERT(BootNextSize == sizeof(UINT16));
+
+    // Generate the requested Boot Entry variable name
+    UnicodeSPrint (BootVariableName, 9 * sizeof(CHAR16), L"Boot%04X", *BootNext);
+
+    // Set BootCurrent variable
+    gRT->SetVariable (L"BootCurrent", &gEfiGlobalVariableGuid,
+              EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
+              BootNextSize, BootNext);
+
+    FreePool (BootNext);
+
+    // Start the requested Boot Entry
+    Status = BdsStartBootOption (BootVariableName);
+    if (Status != EFI_NOT_FOUND) {
+      // BootNext has not been succeeded launched
+      if (EFI_ERROR(Status)) {
+        Print(L"Fail to start BootNext.\n");
+      }
+
+      // Delete the BootNext environment variable
+      gRT->SetVariable (L"BootNext", &gEfiGlobalVariableGuid,
+          EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
+          0, NULL);
     }
 
-    // Delete the BootNext environment variable
-    gRT->SetVariable (L"BootNext", &gEfiGlobalVariableGuid,
-        EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
+    // Clear BootCurrent variable
+    gRT->SetVariable (L"BootCurrent", &gEfiGlobalVariableGuid,
+        EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
         0, NULL);
   }
 

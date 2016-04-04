@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -38,7 +38,7 @@ NonSecureWaitForFirmware (
   ArmCallWFI();
 
   // Acknowledge the interrupt and send End of Interrupt signal.
-  ArmGicAcknowledgeSgiFrom (PcdGet32(PcdGicInterruptInterfaceBase), PRIMARY_CORE_ID);
+  ArmGicAcknowledgeInterrupt (PcdGet32(PcdGicDistributorBase), PcdGet32(PcdGicInterruptInterfaceBase), NULL, NULL);
 
   // Jump to secondary core entry point.
   secondary_start ();
@@ -64,6 +64,11 @@ ArmPlatformSecExtraAction (
   UINTN           CharCount;
 
   if (FeaturePcdGet (PcdStandalone) == FALSE) {
+
+    //
+    // Warning: This code assumes the DRAM has already been initialized by ArmPlatformSecLib
+    //
+
     if (IS_PRIMARY_CORE(MpId)) {
       UINTN*   StartAddress = (UINTN*)PcdGet32(PcdFvBaseAddress);
 
@@ -85,9 +90,14 @@ ArmPlatformSecExtraAction (
       *JumpAddress = (UINTN)NonSecureWaitForFirmware;
     }
   } else if (FeaturePcdGet (PcdSystemMemoryInitializeInSec)) {
+
+    //
+    // Warning: This code assumes the DRAM has already been initialized by ArmPlatformSecLib
+    //
+
     if (IS_PRIMARY_CORE(MpId)) {
       // Signal the secondary cores they can jump to PEI phase
-      ArmGicSendSgiTo (PcdGet32(PcdGicDistributorBase), ARM_GIC_ICDSGIR_FILTER_EVERYONEELSE, 0x0E);
+      ArmGicSendSgiTo (PcdGet32(PcdGicDistributorBase), ARM_GIC_ICDSGIR_FILTER_EVERYONEELSE, 0x0E, PcdGet32 (PcdGicSgiIntId));
 
       // To enter into Non Secure state, we need to make a return from exception
       *JumpAddress = PcdGet32(PcdFvBaseAddress);

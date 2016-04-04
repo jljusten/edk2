@@ -1,4 +1,4 @@
-#/** @file
+## @file
 # Build description file to generate Shell DP application.
 #
 # Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
@@ -10,13 +10,13 @@
 # THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 # WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #
-# **/
+##
 
 [Defines]
   DSC_SPECIFICATION              = 0x00010005
   PLATFORM_NAME                  = PerformancePkg
   PLATFORM_GUID                  = 9ffd7bf2-231e-4525-9a42-480545dafd17
-  PLATFORM_VERSION               = 0.1
+  PLATFORM_VERSION               = 0.2
   OUTPUT_DIRECTORY               = Build/PerformancePkg
   SUPPORTED_ARCHITECTURES        = IA32|IPF|X64|EBC
   BUILD_TARGETS                  = DEBUG|RELEASE

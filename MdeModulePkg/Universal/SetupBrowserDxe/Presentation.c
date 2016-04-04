@@ -1,7 +1,7 @@
 /** @file
 Utility functions for UI presentation.
 
-Copyright (c) 2004 - 2011, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2012, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -468,7 +468,6 @@ DisplayForm (
   CHAR16                 *StringPtr;
   UINT16                 MenuItemCount;
   EFI_HII_HANDLE         Handle;
-  BOOLEAN                Suppress;
   EFI_SCREEN_DESCRIPTOR  LocalScreen;
   UINT16                 Width;
   UINTN                  ArrayEntry;
@@ -478,6 +477,7 @@ DisplayForm (
   UINT16                 NumberOfLines;
   EFI_STATUS             Status;
   UI_MENU_OPTION         *MenuOption;
+  UINT16                 GlyphWidth;
 
   Handle        = Selection->Handle;
   MenuItemCount = 0;
@@ -521,17 +521,7 @@ DisplayForm (
   while (!IsNull (&Selection->Form->StatementListHead, Link)) {
     Statement = FORM_BROWSER_STATEMENT_FROM_LINK (Link);
 
-    if (Statement->SuppressExpression != NULL) {
-      Suppress = Statement->SuppressExpression->Result.Value.b;
-    } else {
-      Suppress = FALSE;
-    }
-
-    if (Statement->DisableExpression != NULL) {
-      Suppress = (BOOLEAN) (Suppress || Statement->DisableExpression->Result.Value.b);
-    }
-
-    if (!Suppress) {
+    if (EvaluateExpressionList(Statement->Expression, FALSE, NULL, NULL) <= ExpressGrayOut) {
       StringPtr = GetToken (Statement->Prompt, Handle);
       ASSERT (StringPtr != NULL);
 
@@ -539,7 +529,8 @@ DisplayForm (
 
       NumberOfLines = 1;
       ArrayEntry = 0;
-      for (; GetLineByWidth (StringPtr, Width, &ArrayEntry, &OutputString) != 0x0000;) {
+      GlyphWidth = 1;
+      for (; GetLineByWidth (StringPtr, Width, &GlyphWidth,&ArrayEntry, &OutputString) != 0x0000;) {
         //
         // If there is more string to process print on the next row and increment the Skip value
         //
@@ -1220,11 +1211,8 @@ ProcessCallBackFunction (
     //
     // Check whether Statement is disabled.
     //
-    if (Statement->DisableExpression != NULL) {
-      Status = EvaluateExpression (Selection->FormSet, Selection->Form, Statement->DisableExpression);
-      if (!EFI_ERROR (Status) && 
-          (Statement->DisableExpression->Result.Type == EFI_IFR_TYPE_BOOLEAN) && 
-          (Statement->DisableExpression->Result.Value.b)) {
+    if (Statement->Expression != NULL) {
+      if (EvaluateExpressionList(Statement->Expression, TRUE, Selection->FormSet, Selection->Form) == ExpressDisable) {
         continue;
       }
     }
@@ -1248,45 +1236,50 @@ ProcessCallBackFunction (
                              &ActionRequest
                              );
     if (!EFI_ERROR (Status)) {
-      switch (ActionRequest) {
-      case EFI_BROWSER_ACTION_REQUEST_RESET:
-        gResetRequired = TRUE;
-        Selection->Action = UI_ACTION_EXIT;
-        break;
+      //
+      // Only for EFI_BROWSER_ACTION_CHANGED need to handle this ActionRequest.
+      //
+      if (Action == EFI_BROWSER_ACTION_CHANGED) {
+        switch (ActionRequest) {
+        case EFI_BROWSER_ACTION_REQUEST_RESET:
+          gResetRequired = TRUE;
+          Selection->Action = UI_ACTION_EXIT;
+          break;
 
-      case EFI_BROWSER_ACTION_REQUEST_SUBMIT:
-        SubmitFormIsRequired = TRUE;
-        Selection->Action = UI_ACTION_EXIT;
-        break;
+        case EFI_BROWSER_ACTION_REQUEST_SUBMIT:
+          SubmitFormIsRequired = TRUE;
+          Selection->Action = UI_ACTION_EXIT;
+          break;
 
-      case EFI_BROWSER_ACTION_REQUEST_EXIT:
-        Selection->Action = UI_ACTION_EXIT;
-        break;
+        case EFI_BROWSER_ACTION_REQUEST_EXIT:
+          Selection->Action = UI_ACTION_EXIT;
+          break;
 
-      case EFI_BROWSER_ACTION_REQUEST_FORM_SUBMIT_EXIT:
-        SubmitFormIsRequired  = TRUE;
-        SettingLevel          = FormLevel;
-        NeedExit              = TRUE;
-        break;
+        case EFI_BROWSER_ACTION_REQUEST_FORM_SUBMIT_EXIT:
+          SubmitFormIsRequired  = TRUE;
+          SettingLevel          = FormLevel;
+          NeedExit              = TRUE;
+          break;
 
-      case EFI_BROWSER_ACTION_REQUEST_FORM_DISCARD_EXIT:
-        DiscardFormIsRequired = TRUE;
-        SettingLevel          = FormLevel;      
-        NeedExit              = TRUE;
-        break;
+        case EFI_BROWSER_ACTION_REQUEST_FORM_DISCARD_EXIT:
+          DiscardFormIsRequired = TRUE;
+          SettingLevel          = FormLevel;      
+          NeedExit              = TRUE;
+          break;
 
-      case EFI_BROWSER_ACTION_REQUEST_FORM_APPLY:
-        SubmitFormIsRequired  = TRUE;
-        SettingLevel          = FormLevel;
-        break;
+        case EFI_BROWSER_ACTION_REQUEST_FORM_APPLY:
+          SubmitFormIsRequired  = TRUE;
+          SettingLevel          = FormLevel;
+          break;
 
-      case EFI_BROWSER_ACTION_REQUEST_FORM_DISCARD:
-        DiscardFormIsRequired = TRUE;
-        SettingLevel          = FormLevel;
-        break;
+        case EFI_BROWSER_ACTION_REQUEST_FORM_DISCARD:
+          DiscardFormIsRequired = TRUE;
+          SettingLevel          = FormLevel;
+          break;
 
-      default:
-        break;
+        default:
+          break;
+        }
       }
 
       //
@@ -1419,13 +1412,7 @@ SetupBrowser (
     // Check Form is suppressed.
     //
     if (Selection->Form->SuppressExpression != NULL) {
-      Status = EvaluateExpression (Selection->FormSet, Selection->Form, Selection->Form->SuppressExpression);
-      if (EFI_ERROR (Status) || (Selection->Form->SuppressExpression->Result.Type != EFI_IFR_TYPE_BOOLEAN)) {
-        Status = EFI_INVALID_PARAMETER;
-        goto Done;
-      }
-
-      if (Selection->Form->SuppressExpression->Result.Value.b) {
+      if (EvaluateExpressionList(Selection->Form->SuppressExpression, TRUE, Selection->FormSet, Selection->Form) == ExpressSuppress) {
         //
         // Form is suppressed. 
         //
@@ -1555,7 +1542,7 @@ SetupBrowser (
           }
         }
 
-        if ((Status == EFI_SUCCESS) && (Statement->Operand != EFI_IFR_REF_OP)) {
+        if (!EFI_ERROR (Status) && Statement->Operand != EFI_IFR_REF_OP) {
           ProcessCallBackFunction(Selection, Statement, EFI_BROWSER_ACTION_CHANGED, FALSE);
         }
       }

@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -14,7 +14,6 @@
 
 #include <PiPei.h>
 
-#include <Library/ArmCpuLib.h>
 #include <Library/DebugAgentLib.h>
 #include <Library/PrePiLib.h>
 #include <Library/PrintLib.h>
@@ -99,7 +98,8 @@ PrePiMain (
 
   // Initialize the Serial Port
   SerialPortInitialize ();
-  CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"UEFI firmware built at %a on %a\n\r",__TIME__, __DATE__);
+  CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"UEFI firmware (version %s built at %a on %a)\n\r",
+    (CHAR16*)PcdGetPtr(PcdFirmwareVersionString), __TIME__, __DATE__);
   SerialPortWrite ((UINT8 *) Buffer, CharCount);
 
   // Initialize the Debug Agent for Source Level Debugging
@@ -174,6 +174,9 @@ CEntryPoint (
 {
   UINT64   StartTimeStamp;
  
+  // Initialize the platform specific controllers
+  ArmPlatformInitialize (MpId);
+
   if (IS_PRIMARY_CORE(MpId) && PerformanceMeasurementEnabled ()) {
     // Initialize the Timer Library to setup the Timer HW controller
     TimerConstructor ();
@@ -200,11 +203,12 @@ CEntryPoint (
     if (IS_PRIMARY_CORE(MpId)) {
       mGlobalVariableBase = GlobalVariableBase;
       if (ArmIsMpCore()) {
-        ArmCpuSynchronizeSignal (ARM_CPU_EVENT_DEFAULT);
+        // Signal the Global Variable Region is defined (event: ARM_CPU_EVENT_DEFAULT)
+        ArmCallSEV ();
       }
     } else {
-      // Wait the Primay core has defined the address of the Global Variable region
-      ArmCpuSynchronizeWait (ARM_CPU_EVENT_DEFAULT);
+      // Wait the Primay core has defined the address of the Global Variable region (event: ARM_CPU_EVENT_DEFAULT)
+      ArmCallWFE ();
     }
   }
   

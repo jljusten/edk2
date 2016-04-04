@@ -481,11 +481,27 @@ CONST ESL_SOCKET_BINDING cEslSocketBinding[] = {
     4,    //  RX buffers
     4,    //  TX buffers
     4 },  //  TX Oob buffers
+  { L"Tcp6",
+    &gEfiTcp6ServiceBindingProtocolGuid,
+    &gEfiTcp6ProtocolGuid,
+    &mEslTcp6ServiceGuid,
+    OFFSET_OF ( ESL_LAYER, pTcp6List ),
+    4,    //  RX buffers
+    4,    //  TX buffers
+    4 },  //  TX Oob buffers
   { L"Udp4",
     &gEfiUdp4ServiceBindingProtocolGuid,
     &gEfiUdp4ProtocolGuid,
     &mEslUdp4ServiceGuid,
     OFFSET_OF ( ESL_LAYER, pUdp4List ),
+    4,    //  RX buffers
+    4,    //  TX buffers
+    0 },  //  TX Oob buffers
+  { L"Udp6",
+    &gEfiUdp6ServiceBindingProtocolGuid,
+    &gEfiUdp6ProtocolGuid,
+    &mEslUdp6ServiceGuid,
+    OFFSET_OF ( ESL_LAYER, pUdp6List ),
     4,    //  RX buffers
     4,    //  TX buffers
     0 }   //  TX Oob buffers
@@ -516,11 +532,11 @@ CONST int cEslAfInetApiSize = DIM ( cEslAfInetApi );
 **/
 CONST ESL_PROTOCOL_API * cEslAfInet6Api[] = {
   NULL,             //  0
-  NULL,             //  SOCK_STREAM
-  NULL,             //  SOCK_DGRAM
+  &cEslTcp6Api,     //  SOCK_STREAM
+  &cEslUdp6Api,     //  SOCK_DGRAM
   NULL,             //  SOCK_RAW
   NULL,             //  SOCK_RDM
-  NULL              //  SOCK_SEQPACKET
+  &cEslTcp6Api      //  SOCK_SEQPACKET
 };
 
 /**
@@ -603,6 +619,7 @@ EslSocket (
     //  Validate the domain value
     //
     if (( AF_INET != domain )
+      && ( AF_INET6 != domain )
       && ( AF_LOCAL != domain )) {
       DEBUG (( DEBUG_ERROR | DEBUG_SOCKET,
                 "ERROR - Invalid domain value\r\n" ));
@@ -1242,7 +1259,10 @@ EslSocketBind (
       //
       //  Verify that at least one network connection was found
       //
-      if ( NULL == pSocket->pPortList ) {
+      if ( NULL != pSocket->pPortList ) {
+        Status = EFI_SUCCESS;
+      }
+      else {
         if ( EADDRNOTAVAIL == pSocket->errno ) {
           DEBUG (( DEBUG_BIND | DEBUG_POOL | DEBUG_INIT,
                     "ERROR - Socket address is not available!\r\n" ));
@@ -1789,6 +1809,11 @@ EslSocketConnect (
           if ( EFI_NOT_READY != Status ) {
             if ( !EFI_ERROR ( Status )) {
               pSocket->State = SOCKET_STATE_CONNECTED;
+
+              //
+              //  Start the receive operations
+              //
+              EslSocketRxStart ( pSocket->pPortList );
             }
             else {
               pSocket->State = SOCKET_STATE_BOUND;
@@ -1971,75 +1996,73 @@ EslSocketGetLocalAddress (
     //
     //  Verify the socket state
     //
-    Status = EslSocketIsConfigured ( pSocket );
-    if ( !EFI_ERROR ( Status )) {
+    EslSocketIsConfigured ( pSocket );
+    if ( pSocket->bAddressSet ) {
       //
       //  Verify the address buffer and length address
       //
       if (( NULL != pAddress ) && ( NULL != pAddressLength )) {
         //
-        //  Verify the socket state
+        //  Verify the API
         //
-        if ( SOCKET_STATE_CONNECTED == pSocket->State ) {
-          //
-          //  Verify the API
-          //
-          if ( NULL == pSocket->pApi->pfnLocalAddrGet ) {
-            Status = EFI_UNSUPPORTED;
-            pSocket->errno = ENOTSUP;
-          }
-          else {
-            //
-            //  Synchronize with the socket layer
-            //
-            RAISE_TPL ( TplPrevious, TPL_SOCKETS );
-
-            //
-            //  Verify that there is just a single connection
-            //
-            pPort = pSocket->pPortList;
-            if (( NULL != pPort ) && ( NULL == pPort->pLinkSocket )) {
-              //
-              //  Verify the address length
-              //
-              LengthInBytes = pSocket->pApi->AddressLength;
-              if (( LengthInBytes <= *pAddressLength ) 
-                && ( 255 >= LengthInBytes )) {
-                //
-                //  Return the local address and address length
-                //
-                ZeroMem ( pAddress, LengthInBytes );
-                pAddress->sa_len = (uint8_t)LengthInBytes;
-                *pAddressLength = pAddress->sa_len;
-                pSocket->pApi->pfnLocalAddrGet ( pPort, pAddress );
-                pSocket->errno = 0;
-                Status = EFI_SUCCESS;
-              }
-              else {
-                pSocket->errno = EINVAL;
-                Status = EFI_INVALID_PARAMETER;
-              }
-            }
-            else {
-              pSocket->errno = ENOTCONN;
-              Status = EFI_NOT_STARTED;
-            }
-            
-            //
-            //  Release the socket layer synchronization
-            //
-            RESTORE_TPL ( TplPrevious );
-          }
+        if ( NULL == pSocket->pApi->pfnLocalAddrGet ) {
+          Status = EFI_UNSUPPORTED;
+          pSocket->errno = ENOTSUP;
         }
         else {
-          pSocket->errno = ENOTCONN;
-          Status = EFI_NOT_STARTED;
+          //
+          //  Synchronize with the socket layer
+          //
+          RAISE_TPL ( TplPrevious, TPL_SOCKETS );
+
+          //
+          //  Verify that there is just a single connection
+          //
+          pPort = pSocket->pPortList;
+          if ( NULL != pPort ) {
+            //
+            //  Verify the address length
+            //
+            LengthInBytes = pSocket->pApi->AddressLength;
+            if (( LengthInBytes <= *pAddressLength ) 
+              && ( 255 >= LengthInBytes )) {
+              //
+              //  Return the local address and address length
+              //
+              ZeroMem ( pAddress, LengthInBytes );
+              pAddress->sa_len = (uint8_t)LengthInBytes;
+              *pAddressLength = pAddress->sa_len;
+              pSocket->pApi->pfnLocalAddrGet ( pPort, pAddress );
+              pSocket->errno = 0;
+              Status = EFI_SUCCESS;
+            }
+            else {
+              pSocket->errno = EINVAL;
+              Status = EFI_INVALID_PARAMETER;
+            }
+          }
+          else {
+            pSocket->errno = ENOTCONN;
+            Status = EFI_NOT_STARTED;
+          }
+          
+          //
+          //  Release the socket layer synchronization
+          //
+          RESTORE_TPL ( TplPrevious );
         }
       }
       else {
         pSocket->errno = EINVAL;
         Status = EFI_INVALID_PARAMETER;
       }
+    }
+    else {
+      //
+      //  Address not set
+      //
+      Status = EFI_NOT_STARTED;
+      pSocket->errno = EADDRNOTAVAIL;
     }
   }
   
@@ -2544,7 +2567,7 @@ EslSocketListen (
         //  Create the event for SocketAccept completion
         //
         Status = gBS->CreateEvent ( 0,
-                                    TplPrevious,
+                                    TPL_SOCKETS,
                                     NULL,
                                     NULL,
                                     &pSocket->WaitAccept );
@@ -2785,6 +2808,14 @@ EslSocketOptionGet (
         LengthInBytes = sizeof ( pSocket->MaxRxBuf );
         break;
 
+      case SO_REUSEADDR:
+        //
+        //  Return the address reuse flag
+        //
+        pOptionData = (UINT8 *)&pSocket->bReUseAddr;
+        LengthInBytes = sizeof ( pSocket->bReUseAddr );
+        break;
+      
       case SO_SNDBUF:
         //
         //  Return the maximum transmit buffer size
@@ -3009,6 +3040,14 @@ EslSocketOptionSet (
           LengthInBytes = sizeof ( pSocket->MaxRxBuf );
           break;
 
+        case SO_REUSEADDR:
+          //
+          //  Return the address reuse flag
+          //
+          pOptionData = (UINT8 *)&pSocket->bReUseAddr;
+          LengthInBytes = sizeof ( pSocket->bReUseAddr );
+          break;
+
         case SO_SNDBUF:
           //
           //  Send buffer size
@@ -3096,7 +3135,7 @@ EslSocketPacketAllocate (
                                LengthInBytes,
                                (VOID **)&pPacket );
   if ( !EFI_ERROR ( Status )) {
-    DEBUG (( DebugFlags | DEBUG_POOL | DEBUG_INIT,
+    DEBUG (( DebugFlags | DEBUG_POOL,
               "0x%08x: Allocate pPacket, %d bytes\r\n",
               pPacket,
               LengthInBytes ));
@@ -3210,6 +3249,7 @@ EslSocketPoll (
   short DetectedEvents;
   ESL_SOCKET * pSocket;
   EFI_STATUS Status;
+  EFI_TPL TplPrevious;
   short ValidEvents;
 
   DEBUG (( DEBUG_POLL, "Entering SocketPoll\r\n" ));
@@ -3247,6 +3287,22 @@ EslSocketPoll (
                 Events & ( ~ValidEvents )));
     }
     else {
+      //
+      //  Synchronize with the socket layer
+      //
+      RAISE_TPL ( TplPrevious, TPL_SOCKETS );
+      
+      //
+      //  Increase the network performance by extending the
+      //  polling (idle) loop down into the LAN driver
+      //
+      EslSocketRxPoll ( pSocket );
+      
+      //
+      //  Release the socket layer synchronization
+      //
+      RESTORE_TPL ( TplPrevious );
+
       //
       //  Check for pending connections
       //
@@ -4367,6 +4423,11 @@ EslSocketReceive (
               //
               if ( SOCKET_STATE_CONNECTED == pSocket->State ) {
                 //
+                //  Poll the network to increase performance
+                //
+                EslSocketRxPoll ( pSocket );
+
+                //
                 //  Locate the port
                 //
                 pPort = pSocket->pPortList;
@@ -4848,6 +4909,49 @@ EslSocketRxComplete (
 
 
 /**
+  Poll a socket for pending receive activity.
+
+  This routine is called at elivated TPL and extends the idle
+  loop which polls a socket down into the LAN driver layer to
+  determine if there is any receive activity.
+
+  The ::EslSocketPoll, ::EslSocketReceive and ::EslSocketTransmit
+  routines call this routine when there is nothing to do.
+
+  @param [in] pSocket   Address of an ::EFI_SOCKET structure.
+
+ **/
+VOID
+EslSocketRxPoll (
+  IN ESL_SOCKET * pSocket
+  )
+{
+  ESL_PORT * pPort;
+
+  DEBUG (( DEBUG_POLL, "Entering EslSocketRxPoll\r\n" ));
+
+  //
+  //  Increase the network performance by extending the
+  //  polling (idle) loop down into the LAN driver
+  //
+  pPort = pSocket->pPortList;
+  while ( NULL != pPort ) {
+    //
+    //  Poll the LAN adapter
+    //
+    pPort->pfnRxPoll ( pPort->pProtocol.v );
+
+    //
+    //  Locate the next LAN adapter
+    //
+    pPort = pPort->pLinkSocket;
+  }
+
+  DEBUG (( DEBUG_POLL, "Exiting EslSocketRxPoll\r\n" ));
+}
+
+
+/**
   Start a receive operation
 
   This routine posts a receive buffer to the network adapter.
@@ -5290,6 +5394,11 @@ EslSocketTransmit (
                 //  Synchronize with the socket layer
                 //
                 RAISE_TPL ( TplPrevious, TPL_SOCKETS );
+
+                //
+                //  Poll the network to increase performance
+                //
+                EslSocketRxPoll ( pSocket );
 
                 //
                 //  Attempt to buffer the packet for transmission

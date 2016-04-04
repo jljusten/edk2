@@ -27,7 +27,7 @@
 
   Depex - Dependency Expresion.
 
-  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2012, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials are licensed and made available 
   under the terms and conditions of the BSD License which accompanies this 
   distribution.  The full text of the license may be found at        
@@ -320,6 +320,12 @@ SmmLoadImage (
   EFI_DEVICE_PATH_PROTOCOL       *HandleFilePath;
   EFI_FIRMWARE_VOLUME2_PROTOCOL  *Fv;
   PE_COFF_LOADER_IMAGE_CONTEXT   ImageContext;
+  UINT64                         Tick;
+
+  Tick = 0;
+  PERF_CODE (
+    Tick = GetPerformanceCounter ();
+  );
    
   Buffer               = NULL;
   Size                 = 0;
@@ -406,7 +412,7 @@ SmmLoadImage (
   
   if (EFI_ERROR (Status)) {
     if (Buffer != NULL) {
-      Status = gBS->FreePool (Buffer);
+      gBS->FreePool (Buffer);
     }
     return Status;
   }
@@ -423,7 +429,7 @@ SmmLoadImage (
   Status = PeCoffLoaderGetImageInfo (&ImageContext);
   if (EFI_ERROR (Status)) {
     if (Buffer != NULL) {
-      Status = gBS->FreePool (Buffer);
+      gBS->FreePool (Buffer);
     }
     return Status;
   }
@@ -459,7 +465,7 @@ SmmLoadImage (
                    );
        if (EFI_ERROR (Status)) {
          if (Buffer != NULL) {
-           Status = gBS->FreePool (Buffer);
+           gBS->FreePool (Buffer);
          } 
          return Status;
        }     
@@ -477,7 +483,7 @@ SmmLoadImage (
                   );
      if (EFI_ERROR (Status)) {
        if (Buffer != NULL) {
-         Status = gBS->FreePool (Buffer);
+         gBS->FreePool (Buffer);
        }
        return Status;
      }
@@ -496,7 +502,7 @@ SmmLoadImage (
   Status = PeCoffLoaderLoadImage (&ImageContext);
   if (EFI_ERROR (Status)) {
     if (Buffer != NULL) {
-      Status = gBS->FreePool (Buffer);
+      gBS->FreePool (Buffer);
     }
     SmmFreePages (DstBuffer, PageCount);
     return Status;
@@ -508,7 +514,7 @@ SmmLoadImage (
   Status = PeCoffLoaderRelocateImage (&ImageContext);
   if (EFI_ERROR (Status)) {
     if (Buffer != NULL) {
-      Status = gBS->FreePool (Buffer);
+      gBS->FreePool (Buffer);
     }
     SmmFreePages (DstBuffer, PageCount);
     return Status;
@@ -532,7 +538,7 @@ SmmLoadImage (
   Status = gBS->AllocatePool (EfiBootServicesData, sizeof (EFI_LOADED_IMAGE_PROTOCOL), (VOID **)&DriverEntry->LoadedImage);
   if (EFI_ERROR (Status)) {
     if (Buffer != NULL) {
-      Status = gBS->FreePool (Buffer);
+      gBS->FreePool (Buffer);
     }
     SmmFreePages (DstBuffer, PageCount);
     return Status;
@@ -553,7 +559,7 @@ SmmLoadImage (
   Status = gBS->AllocatePool (EfiBootServicesData, GetDevicePathSize (FilePath), (VOID **)&DriverEntry->LoadedImage->FilePath);
   if (EFI_ERROR (Status)) {
     if (Buffer != NULL) {
-      Status = gBS->FreePool (Buffer);
+      gBS->FreePool (Buffer);
     }
     SmmFreePages (DstBuffer, PageCount);
     return Status;
@@ -574,6 +580,9 @@ SmmLoadImage (
                   &gEfiLoadedImageProtocolGuid, DriverEntry->LoadedImage,
                   NULL
                   );
+
+  PERF_START (DriverEntry->ImageHandle, "LoadImage:", NULL, Tick);
+  PERF_END (DriverEntry->ImageHandle, "LoadImage:", NULL, 0);
 
   //
   // Print the load address and the PDB file name if it is available
@@ -836,7 +845,9 @@ SmmDispatcher (
       //
       // For each SMM driver, pass NULL as ImageHandle
       //
+      PERF_START (DriverEntry->ImageHandle, "StartImage:", NULL, 0);
       Status = ((EFI_IMAGE_ENTRY_POINT)(UINTN)DriverEntry->ImageEntryPoint)(DriverEntry->ImageHandle, gST);
+      PERF_END (DriverEntry->ImageHandle, "StartImage:", NULL, 0);
       if (EFI_ERROR(Status)){
         SmmFreePages(DriverEntry->ImageBuffer, DriverEntry->NumberOfPage);
       }

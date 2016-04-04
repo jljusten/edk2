@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------ 
 #
 # Copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
-# Copyright (c) 2011, ARM Limited. All rights reserved.
+# Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 #
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
@@ -32,14 +32,21 @@ GCC_ASM_EXPORT(ArmSetTTBR0)
 GCC_ASM_EXPORT(ArmSetDomainAccessControl)
 GCC_ASM_EXPORT(CPSRMaskInsert)
 GCC_ASM_EXPORT(CPSRRead)
-GCC_ASM_EXPORT(ArmWriteCPACR)
+GCC_ASM_EXPORT(ArmReadCpacr)
+GCC_ASM_EXPORT(ArmWriteCpacr)
 GCC_ASM_EXPORT(ArmWriteAuxCr)
 GCC_ASM_EXPORT(ArmReadAuxCr)
 GCC_ASM_EXPORT(ArmInvalidateTlb)
 GCC_ASM_EXPORT(ArmUpdateTranslationTableEntry)
+GCC_ASM_EXPORT(ArmReadNsacr)
 GCC_ASM_EXPORT(ArmWriteNsacr)
+GCC_ASM_EXPORT(ArmReadScr)
 GCC_ASM_EXPORT(ArmWriteScr)
-GCC_ASM_EXPORT(ArmWriteVMBar)
+GCC_ASM_EXPORT(ArmReadMVBar)
+GCC_ASM_EXPORT(ArmWriteMVBar)
+GCC_ASM_EXPORT(ArmCallWFE)
+GCC_ASM_EXPORT(ArmCallSEV)
+GCC_ASM_EXPORT(ArmReadSctlr)
 
 #------------------------------------------------------------------------------
 
@@ -86,8 +93,13 @@ ASM_PFX(CPSRRead):
   mrs     r0, cpsr
   bx      lr
 
-ASM_PFX(ArmWriteCPACR):
+ASM_PFX(ArmReadCpacr):
+  mrc     p15, 0, r0, c1, c0, 2
+  bx      lr
+
+ASM_PFX(ArmWriteCpacr):
   mcr     p15, 0, r0, c1, c0, 2
+  isb
   bx      lr
 
 ASM_PFX(ArmWriteAuxCr):
@@ -133,16 +145,40 @@ ASM_PFX(ArmInvalidateTlb):
   isb
   bx      lr
 
+ASM_PFX(ArmReadNsacr):
+  mrc     p15, 0, r0, c1, c1, 2
+  bx      lr
+
 ASM_PFX(ArmWriteNsacr):
   mcr     p15, 0, r0, c1, c1, 2
+  bx      lr
+
+ASM_PFX(ArmReadScr):
+  mrc     p15, 0, r0, c1, c1, 0
   bx      lr
 
 ASM_PFX(ArmWriteScr):
   mcr     p15, 0, r0, c1, c1, 0
   bx      lr
 
-ASM_PFX(ArmWriteVMBar):
+ASM_PFX(ArmReadMVBar):
+  mrc     p15, 0, r0, c12, c0, 1
+  bx      lr
+
+ASM_PFX(ArmWriteMVBar):
   mcr     p15, 0, r0, c12, c0, 1
   bx      lr
+
+ASM_PFX(ArmCallWFE):
+  wfe
+  bx      lr
+
+ASM_PFX(ArmCallSEV):
+  sev
+  bx      lr
+
+ASM_PFX(ArmReadSctlr):
+  mrc     p15, 0, R0, c1, c0, 0      @ Read SCTLR into R0 (Read control register configuration data)
+  bx	  lr
 
 ASM_FUNCTION_REMOVE_IF_UNREFERENCED

@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *  
 *  This program and the accompanying materials                          
 *  are licensed and made available under the terms and conditions of the BSD License         
@@ -55,56 +55,6 @@ BeagleBoardGetRevision (
 }
 
 /**
-  Return if Trustzone is supported by your platform
-
-  A non-zero value must be returned if you want to support a Secure World on your platform.
-  ArmPlatformTrustzoneInit() will later set up the secure regions.
-  This function can return 0 even if Trustzone is supported by your processor. In this case,
-  the platform will continue to run in Secure World.
-
-  @return   A non-zero value if Trustzone supported.
-
-**/
-UINTN
-ArmPlatformTrustzoneSupported (
-  VOID
-  )
-{
-  // The BeagleBoard starts in Normal World (Non Secure World)
-	return FALSE;
-}
-
-/**
-  Initialize the Secure peripherals and memory regions
-
-  If Trustzone is supported by your platform then this function makes the required initialization
-  of the secure peripherals and memory regions.
-
-**/
-VOID
-ArmPlatformTrustzoneInit (
-  VOID
-  )
-{
-	ASSERT(FALSE);
-}
-
-/**
-  Remap the memory at 0x0
-
-  Some platform requires or gives the ability to remap the memory at the address 0x0.
-  This function can do nothing if this feature is not relevant to your platform.
-
-**/
-VOID
-ArmPlatformBootRemapping (
-  VOID
-  )
-{
-  // Do nothing for the BeagleBoard
-}
-
-/**
   Return the current Boot Mode
 
   This function returns the boot reason on the platform
@@ -125,9 +75,9 @@ ArmPlatformGetBootMode (
   For example, some L2x0 requires to be initialized in Secure World
 
 **/
-VOID
-ArmPlatformNormalInitialize (
-  VOID
+RETURN_STATUS
+ArmPlatformInitialize (
+  IN  UINTN                     MpId
   )
 {
   BEAGLEBOARD_REVISION Revision;
@@ -147,6 +97,8 @@ ArmPlatformNormalInitialize (
   // Clear IRQs
   MmioWrite32 (INTCPS_CONTROL, INTCPS_CONTROL_NEWIRQAGR);
   ArmDataSyncronizationBarrier ();
+
+  return RETURN_SUCCESS;
 }
 
 /**

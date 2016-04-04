@@ -1,5 +1,5 @@
 //
-//  Copyright (c) 2011, ARM Limited. All rights reserved.
+//  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 //
 //  This program and the accompanying materials
 //  are licensed and made available under the terms and conditions of the BSD License
@@ -46,12 +46,14 @@ _SetupStackPosition
   // Compute Top of System Memory
   LoadConstantToReg (FixedPcdGet32(PcdSystemMemoryBase), r1)
   LoadConstantToReg (FixedPcdGet32(PcdSystemMemorySize), r2)
+  sub   r2, r2, #1
   add   r1, r1, r2      // r1 = SystemMemoryTop = PcdSystemMemoryBase + PcdSystemMemorySize
 
   // Calculate Top of the Firmware Device
   LoadConstantToReg (FixedPcdGet32(PcdFdBaseAddress), r2)
   LoadConstantToReg (FixedPcdGet32(PcdFdSize), r3)
-  add   r3, r3, r2      // r4 = FdTop = PcdFdBaseAddress + PcdFdSize
+  sub   r3, r3, #1
+  add   r3, r3, r2      // r3 = FdTop = PcdFdBaseAddress + PcdFdSize
 
   // UEFI Memory Size (stacks are allocated in this region)
   LoadConstantToReg (FixedPcdGet32(PcdSystemMemoryUefiRegionSize), r4)
@@ -72,6 +74,24 @@ _SetupStackPosition
 _SetupStack
   // r1 contains the top of the stack (and the UEFI Memory)
 
+  // Because the 'push' instruction is equivalent to 'stmdb' (decrement before), we need to increment
+  // one to the top of the stack. We check if incrementing one does not overflow (case of DRAM at the
+  // top of the memory space)
+  adds  r6, r1, #1
+  bcs   _SetupOverflowStack
+
+_SetupAlignedStack
+  mov   r1, r6
+  b     _GetBaseUefiMemory
+
+_SetupOverflowStack
+  // Case memory at the top of the address space. Ensure the top of the stack is EFI_PAGE_SIZE
+  // aligned (4KB)
+  LoadConstantToReg (EFI_PAGE_MASK, r6)
+  and   r6, r6, r1
+  sub   r1, r1, r6
+
+_GetBaseUefiMemory
   // Calculate the Base of the UEFI Memory
   sub   r6, r1, r4
 
@@ -84,9 +104,11 @@ _GetStackBase
   beq   _SetupUnicoreStack
 
 _GetStackBaseMpCore
+  // r1 = The top of the Mpcore Stacks
   // Stack for the primary core = PrimaryCoreStack
   LoadConstantToReg (FixedPcdGet32(PcdCPUCorePrimaryStackSize), r2)
   sub   r7, r1, r2
+
   // Stack for the secondary core = Number of Cluster * (4 Core per cluster) * SecondaryStackSize
   LoadConstantToReg (FixedPcdGet32(PcdClusterCount), r2)
   lsl   r2, r2, #2
@@ -94,8 +116,12 @@ _GetStackBaseMpCore
   mul   r2, r2, r3
   sub   r7, r7, r2
 
-  // The top of the Mpcore Stacks is in r1
-  // The base of the MpCore Stacks is in r7
+  // The base of the secondary Stacks = Top of Primary stack
+  LoadConstantToReg (FixedPcdGet32(PcdCPUCorePrimaryStackSize), r2)
+  add   r1, r7, r2
+
+  // r7 = The base of the MpCore Stacks (primary stack + cluster_count * 4 * secondary stacks)
+  // r1 = The base of the secondary Stacks = Top of the Primary stack
 
   // Is it the Primary Core ?
   LoadConstantToReg (FixedPcdGet32(PcdArmPrimaryCore), r4)
@@ -103,7 +129,7 @@ _GetStackBaseMpCore
   beq   _SetupPrimaryCoreStack
 
 _SetupSecondaryCoreStack
-  // Base of the stack for the secondary cores is in r7
+  // r1 = The base of the secondary Stacks
 
   // Get the position of the cores (ClusterId * 4) + CoreId
   GetCorePositionInStack(r0, r5, r4)
@@ -111,27 +137,27 @@ _SetupSecondaryCoreStack
   add   r0, r0, #1
   // Get the offset for the Secondary Stack
   mul   r0, r0, r3
-  add   sp, r7, r0
+  add   sp, r1, r0
 
   bne   _PrepareArguments
 
 _SetupPrimaryCoreStack
-  // The top of the Mpcore Stacks is in r1
+  // r1 = Top of the primary stack
   LoadConstantToReg (FixedPcdGet32(PcdPeiGlobalVariableSize), r2)
+  b     _PreparePrimaryStack
 
+_SetupUnicoreStack
+  // The top of the Unicore Stack is in r1
+  LoadConstantToReg (FixedPcdGet32(PcdPeiGlobalVariableSize), r2)
+  LoadConstantToReg (FixedPcdGet32(PcdCPUCorePrimaryStackSize), r3)
+
+  // Calculate the bottom of the primary stack (StackBase)
+  sub   r7, r1, r3
+
+_PreparePrimaryStack
   // The reserved space for global variable must be 8-bytes aligned for pushing
   // 64-bit variable on the stack
   SetPrimaryStack (r1, r2, r3)
-
-_SetGlobals
-  // Set all the PrePi global variables to 0
-  mov   r3, sp
-  mov   r2, #0x0
-_InitGlobals
-  cmp   r3, r1
-  beq   _PrepareArguments
-  str   r2, [r3], #4
-  b     _InitGlobals
 
 _PrepareArguments
   mov   r0, r5
@@ -152,19 +178,5 @@ _PrepareArguments
 
 _NeverReturn
   b _NeverReturn
-
-_SetupUnicoreStack
-  // The top of the Unicore Stack is in r1
-  LoadConstantToReg (FixedPcdGet32(PcdPeiGlobalVariableSize), r2)
-  LoadConstantToReg (FixedPcdGet32(PcdCPUCorePrimaryStackSize), r3)
-
-  // Calculate the bottom of the primary stack (StackBase)
-  sub   r7, r1, r3
-
-  // The reserved space for global variable must be 8-bytes aligned for pushing
-  // 64-bit variable on the stack
-  SetPrimaryStack (r1, r2, r3)
-
-  b _SetGlobals
 
   END

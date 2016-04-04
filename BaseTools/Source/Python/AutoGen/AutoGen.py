@@ -46,6 +46,9 @@ gMakeTypeMap = {"MSFT":"nmake", "GCC":"gmake"}
 ## Build rule configuration file
 gBuildRuleFile = 'Conf/build_rule.txt'
 
+## Build rule default version
+AutoGenReqBuildRuleVerNum = "0.1"
+
 ## default file name for AutoGen
 gAutoGenCodeFileName = "AutoGen.c"
 gAutoGenHeaderFileName = "AutoGen.h"
@@ -173,7 +176,8 @@ class WorkspaceAutoGen(AutoGen):
     #   @param  SkuId                   SKU id from command line
     #
     def _Init(self, WorkspaceDir, ActivePlatform, Target, Toolchain, ArchList, MetaFileDb,
-              BuildConfig, ToolDefinition, FlashDefinitionFile='', Fds=None, Fvs=None, Caps=None, SkuId='', UniFlag=None):
+              BuildConfig, ToolDefinition, FlashDefinitionFile='', Fds=None, Fvs=None, Caps=None, SkuId='', UniFlag=None, 
+              Progress=None, BuildModule=None):
         if Fds is None:
             Fds = []
         if Fvs is None:
@@ -236,8 +240,25 @@ class WorkspaceAutoGen(AutoGen):
         # parse FDF file to get PCDs in it, if any
         if not self.FdfFile:
             self.FdfFile = self.Platform.FlashDefinition
-        EdkLogger.verbose("\nFLASH_DEFINITION = %s" % self.FdfFile)
+        
+        EdkLogger.info("")
+        if self.ArchList:
+            EdkLogger.info('%-16s = %s' % ("Architecture(s)", ' '.join(self.ArchList)))
+        EdkLogger.info('%-16s = %s' % ("Build target", self.BuildTarget))
+        EdkLogger.info('%-16s = %s' % ("Toolchain",self.ToolChain))        
+        
+        EdkLogger.info('\n%-24s = %s' % ("Active Platform", self.Platform))
+        if BuildModule:
+            EdkLogger.info('%-24s = %s' % ("Active Module", BuildModule))
+        
+        if self.FdfFile:
+            EdkLogger.info('%-24s = %s' % ("Flash Image Definition", self.FdfFile))
 
+        EdkLogger.verbose("\nFLASH_DEFINITION = %s" % self.FdfFile)
+        
+        if Progress:
+            Progress.Start("\nProcessing meta-data")
+        
         if self.FdfFile:
             #
             # Mark now build in AutoGen Phase
@@ -270,8 +291,25 @@ class WorkspaceAutoGen(AutoGen):
         # apply SKU and inject PCDs from Flash Definition file
         for Arch in self.ArchList:
             Platform = self.BuildDatabase[self.MetaFile, Arch, Target, Toolchain]
+
+            DecPcds = {}
+            PGen = PlatformAutoGen(self, self.MetaFile, Target, Toolchain, Arch)
+            Pkgs = PGen.PackageList
+            for Pkg in Pkgs:
+                for Pcd in Pkg.Pcds:
+                    DecPcds[Pcd[0], Pcd[1]] = Pkg.Pcds[Pcd]
+            Platform.IsPlatformPcdDeclared(DecPcds)
+
             Platform.SkuName = self.SkuId
             for Name, Guid in PcdSet:
+                if (Name, Guid) not in DecPcds:
+                    EdkLogger.error(
+                        'build',
+                        PARSER_ERROR,
+                        "PCD (%s.%s) used in FDF is not declared in DEC files." % (Guid, Name),
+                        File = self.FdfProfile.PcdFileLineDict[Name, Guid][0],
+                        Line = self.FdfProfile.PcdFileLineDict[Name, Guid][1]
+                    )
                 Platform.AddPcd(Name, Guid, PcdSet[Name, Guid])
 
             Pa = PlatformAutoGen(self, self.MetaFile, Target, Toolchain, Arch)
@@ -316,11 +354,14 @@ class WorkspaceAutoGen(AutoGen):
                     #
                     InfFoundFlag = False                   
                     for Pa in self.AutoGenObjectList:
+                        if InfFoundFlag:
+                            break
                         for Module in Pa.ModuleAutoGenList:
                             if path.normpath(Module.MetaFile.File) == path.normpath(FfsFile.InfFileName):
                                 InfFoundFlag = True
                                 if not Module.Guid.upper() in _GuidDict.keys():
                                     _GuidDict[Module.Guid.upper()] = FfsFile
+                                    break
                                 else:
                                     EdkLogger.error("build", 
                                                     FORMAT_INVALID,
@@ -1212,6 +1253,15 @@ class PlatformAutoGen(AutoGen):
             if BuildRuleFile in [None, '']:
                 BuildRuleFile = gBuildRuleFile
             self._BuildRule = BuildRule(BuildRuleFile)
+            if self._BuildRule._FileVersion == "":
+                self._BuildRule._FileVersion = AutoGenReqBuildRuleVerNum
+            else:
+                if self._BuildRule._FileVersion < AutoGenReqBuildRuleVerNum :
+                    # If Build Rule's version is less than the version number required by the tools, halting the build.
+                    EdkLogger.error("build", AUTOGEN_ERROR, 
+                                    ExtraData="The version number [%s] of build_rule.txt is less than the version number required by the AutoGen.(the minimum required version number is [%s])"\
+                                     % (self._BuildRule._FileVersion, AutoGenReqBuildRuleVerNum))
+              
         return self._BuildRule
 
     ## Summarize the packages used by modules in this platform

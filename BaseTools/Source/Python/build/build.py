@@ -59,6 +59,9 @@ gBuildConfiguration = "Conf/target.txt"
 gBuildCacheDir = "Conf/.cache"
 gToolsDefinition = "Conf/tools_def.txt"
 
+TemporaryTablePattern = re.compile(r'^_\d+_\d+_[a-fA-F0-9]+$')
+TmpTableDict = {}
+
 ## Check environment PATH variable to make sure the specified tool is found
 #
 #   If the tool is found in the PATH, then True is returned
@@ -745,17 +748,8 @@ class Build():
         EdkLogger.quiet("%-16s = %s" % ("EDK_TOOLS_PATH", os.environ["EDK_TOOLS_PATH"]))
 
         EdkLogger.info("")
-        if self.ArchList:
-            EdkLogger.info('%-16s = %s' % ("Architecture(s)", ' '.join(self.ArchList)))
-        EdkLogger.info('%-16s = %s' % ("Build target", ' '.join(self.BuildTargetList)))
-        EdkLogger.info('%-16s = %s' % ("Toolchain", ' '.join(self.ToolChainList)))
-
-        EdkLogger.info('\n%-16s = %s' % ("Active Platform", self.PlatformFile))
-        if self.ModuleFile:
-            EdkLogger.info('%-16s = %s' % ("Active Module", self.ModuleFile))
 
         os.chdir(self.WorkspaceDir)
-        self.Progress.Start("\nProcessing meta-data")
 
     ## Load configuration
     #
@@ -1241,7 +1235,8 @@ class Build():
                         self.FvList,
                         self.CapList,
                         self.SkuId,
-                        self.UniFlag
+                        self.UniFlag,
+                        self.Progress
                         )
                 self.Fdf = Wa.FdfFile
                 self.LoadFixAddress = Wa.Platform.LoadFixAddress
@@ -1316,7 +1311,9 @@ class Build():
                         self.FvList,
                         self.CapList,
                         self.SkuId,
-                        self.UniFlag
+                        self.UniFlag,
+                        self.Progress,
+                        self.ModuleFile
                         )
                 self.Fdf = Wa.FdfFile
                 self.LoadFixAddress = Wa.Platform.LoadFixAddress
@@ -1401,7 +1398,8 @@ class Build():
                         self.FvList,
                         self.CapList,
                         self.SkuId,
-                        self.UniFlag
+                        self.UniFlag,
+                        self.Progress
                         )
                 self.Fdf = Wa.FdfFile
                 self.LoadFixAddress = Wa.Platform.LoadFixAddress
@@ -1453,6 +1451,14 @@ class Build():
                     if BuildTask.HasError():
                         EdkLogger.error("build", BUILD_ERROR, "Failed to build module", ExtraData=GlobalData.gBuildingModule)
 
+                #
+                # Save temp tables to a TmpTableDict.
+                #
+                for Key in Wa.BuildDatabase._CACHE_:
+                    if Wa.BuildDatabase._CACHE_[Key]._RawData and Wa.BuildDatabase._CACHE_[Key]._RawData._Table and Wa.BuildDatabase._CACHE_[Key]._RawData._Table.Table:
+                        if TemporaryTablePattern.match(Wa.BuildDatabase._CACHE_[Key]._RawData._Table.Table):
+                            TmpTableDict[Wa.BuildDatabase._CACHE_[Key]._RawData._Table.Table] = Wa.BuildDatabase._CACHE_[Key]._RawData._Table.Cur
+                #
                 #
                 # All modules have been put in build tasks queue. Tell task scheduler
                 # to exit if all tasks are completed
@@ -1656,8 +1662,8 @@ def MyOptionParser():
         help="Build the platform specified by the DSC file name argument, overriding target.txt's ACTIVE_PLATFORM definition.")
     Parser.add_option("-m", "--module", action="callback", type="string", dest="ModuleFile", callback=SingleCheckCallback,
         help="Build the module specified by the INF file name argument.")
-    Parser.add_option("-b", "--buildtarget", action="append", type="choice", choices=['DEBUG','RELEASE','NOOPT'], dest="BuildTarget",
-        help="BuildTarget is one of list: DEBUG, RELEASE, NOOPT, which overrides target.txt's TARGET definition. To specify more TARGET, please repeat this option.")
+    Parser.add_option("-b", "--buildtarget", type="string", dest="BuildTarget", help="Using the TARGET to build the platform, overriding target.txt's TARGET definition.",
+                      action="append")
     Parser.add_option("-t", "--tagname", action="append", type="string", dest="ToolChain",
         help="Using the Tool Chain Tagname to build the platform, overriding target.txt's TOOL_CHAIN_TAG definition.")
     Parser.add_option("-x", "--sku-id", action="callback", type="string", dest="SkuId", callback=SingleCheckCallback,
@@ -1814,7 +1820,12 @@ def Main():
             EdkLogger.error("build", OPTION_VALUE_INVALID, "UNI flag must be one of -c or -s")
 
         MyBuild = Build(Target, Workspace, Option)
+        GlobalData.gCommandLineDefines['ARCH'] = ' '.join(MyBuild.ArchList)
         MyBuild.Launch()
+        # Drop temp tables to avoid database locked.
+        for TmpTableName in TmpTableDict:
+            SqlCommand = """drop table IF EXISTS %s""" % TmpTableName
+            TmpTableDict[TmpTableName].execute(SqlCommand)
         #MyBuild.DumpBuildData()
     except FatalError, X:
         if MyBuild != None:

@@ -1,7 +1,7 @@
 /** @file
   This is THE shell (application)
 
-  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2012, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -827,6 +827,7 @@ DoStartupScript(
     return (EFI_SUCCESS);
   }
 
+  gST->ConOut->EnableCursor(gST->ConOut, FALSE);
   //
   // print out our warning and see if they press a key
   //
@@ -841,6 +842,7 @@ DoStartupScript(
     }
   }
   ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_SHELL_CRLF), ShellInfoObject.HiiHandle);
+  gST->ConOut->EnableCursor(gST->ConOut, TRUE);
 
   //
   // ESC was pressed
@@ -1224,8 +1226,11 @@ RunSplitCommand(
     SHELL_FREE_NON_NULL(OurCommandLine);
     SHELL_FREE_NON_NULL(NextCommandLine);
     return (EFI_OUT_OF_RESOURCES);
-  }
-  if (NextCommandLine[0] != CHAR_NULL &&
+  } else if (StrStr(OurCommandLine, L"|") != NULL || Size1 == 0 || Size2 == 0) {
+    SHELL_FREE_NON_NULL(OurCommandLine);
+    SHELL_FREE_NON_NULL(NextCommandLine);
+    return (EFI_INVALID_PARAMETER);
+  } else if (NextCommandLine[0] != CHAR_NULL &&
       NextCommandLine[0] == L'a' &&
       NextCommandLine[1] == L' '
      ){
@@ -1246,7 +1251,6 @@ RunSplitCommand(
   ASSERT(Split->SplitStdOut != NULL);
   InsertHeadList(&ShellInfoObject.SplitList.Link, &Split->Link);
 
-  ASSERT(StrStr(OurCommandLine, L"|") == NULL);
   Status = RunCommand(OurCommandLine);
 
   //
@@ -1306,6 +1310,7 @@ RunCommand(
   )
 {
   EFI_STATUS                Status;
+  EFI_STATUS                StatusCode;
   CHAR16                    *CommandName;
   SHELL_STATUS              ShellStatus;
   UINTN                     Argc;
@@ -1432,6 +1437,9 @@ RunCommand(
     } else {
       Status = RunSplitCommand(PostVariableCmdLine, Split->SplitStdIn, Split->SplitStdOut);
     }
+    if (EFI_ERROR(Status)) {
+      ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_SHELL_INVALID_SPLIT), ShellInfoObject.HiiHandle, PostVariableCmdLine);
+    }
   } else {
 
     //
@@ -1550,11 +1558,26 @@ RunCommand(
               DevPath,
               PostVariableCmdLine,
               NULL,
-              NULL
+              &StatusCode
              );
+
+            //
+            // Updatet last error status.
+            //
+            UnicodeSPrint(LeString, sizeof(LeString)*sizeof(LeString[0]), L"0x%08x", StatusCode);
+            DEBUG_CODE(InternalEfiShellSetEnv(L"DebugLasterror", LeString, TRUE););
+            InternalEfiShellSetEnv(L"Lasterror", LeString, TRUE);
           }
         }
       }
+
+      //
+      // Print some error info.
+      //
+      if (EFI_ERROR(Status)) {
+        ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_SHELL_ERROR), ShellInfoObject.HiiHandle, (VOID*)(Status));
+      }
+
       CommandName = StrnCatGrow(&CommandName, NULL, ShellInfoObject.NewShellParametersProtocol->Argv[0], 0);
 
       RestoreArgcArgv(ShellInfoObject.NewShellParametersProtocol, &Argv, &Argc);

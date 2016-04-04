@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-# Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -55,7 +55,8 @@ ASM_PFX(ThunkAttr): .space  4
     orb     $2, %al
     outb    %al, $0x92                  # deactivate A20M#
 2:
-    movw    %ss, %ax
+    xorw    %ax, %ax                    # xor eax, eax
+    movl    %ss, %eax                   # mov ax, ss
     .byte   0x67, 0x66, 0x8d, 0x6c, 0x24, 0x34, 0x66
     mov     %ebp, 0xffffffd8(%esi)
     mov     0xfffffff8(%esi), %ebx
@@ -134,8 +135,8 @@ _16DsDesc:
 GdtEnd:
 
 #
-#   @param  RegSet  Pointer to a IA32_DWORD_REGS structure
-#   @param  Transition  Pointer to the transition code
+#   @param  RegSet  The pointer to a IA32_DWORD_REGS structure
+#   @param  Transition  The pointer to the transition code
 #   @return The address of the 16-bit stack after returning from user code
 #
 ASM_PFX(InternalAsmThunk16):
@@ -160,14 +161,14 @@ ASM_PFX(InternalAsmThunk16):
     movsl                               # copy RegSet
     movl    40(%esp), %eax              # eax <- address of transition code
     movl    %edx, %esi                  # esi <- 16-bit stack segment
-    lea     0x5e(%eax), %edx
+    lea     0x61(%eax), %edx
     movl    %eax, %ecx
     andl    $0xf, %ecx
     shll    $12, %eax
     lea     0x6(%ecx), %ecx
     movw    %cx, %ax
     stosl                               # [edi] <- return address of user code
-    sgdtl   0xffffffa2(%edx)
+    sgdtl   0xffffff9f(%edx)
     sidtl   0x24(%esp)
     movl    %cr0, %eax
     movl    %eax, (%edx)                # save CR0 in SavedCr0
@@ -183,20 +184,20 @@ ASM_PFX(InternalAsmThunk16):
     popfl
     lidtl   0x24(%esp)
     lea     0xffffffcc(%ebp), %eax
-  	pop     %gs
-   	pop     %fs
-   	pop     %es
-  	pop     %ds
-   	pop     %edi
-   	pop     %esi
-   	pop     %ebx
-   	pop     %ebp
+    pop     %gs
+    pop     %fs
+    pop     %es
+    pop     %ds
+    pop     %edi
+    pop     %esi
+    pop     %ebx
+    pop     %ebp
     ret
 
     .const:
 
-ASM_PFX(m16Size):        .word      _InternalAsmThunk16 - ASM_PFX(m16Start)
-ASM_PFX(mThunk16Attr):   .word      _ThunkAttr          - ASM_PFX(m16Start)
+ASM_PFX(m16Size):        .word      ASM_PFX(InternalAsmThunk16)  - ASM_PFX(m16Start)
+ASM_PFX(mThunk16Attr):   .word      ASM_PFX(ThunkAttr)          - ASM_PFX(m16Start)
 ASM_PFX(m16Gdt):         .word      _NullSegDesc        - ASM_PFX(m16Start)
 ASM_PFX(m16GdtrBase):    .word      _16GdtrBase         - ASM_PFX(m16Start)
 ASM_PFX(mTransition):    .word      _EntryPoint         - ASM_PFX(m16Start)

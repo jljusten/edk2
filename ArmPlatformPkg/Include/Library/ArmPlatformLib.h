@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *  
 *  This program and the accompanying materials                          
 *  are licensed and made available under the terms and conditions of the BSD License         
@@ -29,7 +29,7 @@
 #include <Library/ArmLib.h>
 
 /**
-  This structure is used by ArmVExpressGetEfiMemoryMap to describes a region of the EFI memory map
+  This structure is used to describe a region of the EFI memory map
 
   Every EFI regions of the system memory described by their physical start address and their size
   can have different attributes. Some regions can be tested and other untested.
@@ -40,21 +40,6 @@ typedef struct {
   EFI_PHYSICAL_ADDRESS         PhysicalStart;
   UINT64                       NumberOfBytes;
 } ARM_SYSTEM_MEMORY_REGION_DESCRIPTOR;
-
-/**
-  Initialize the memory where the initial stacks will reside
-
-  This memory can contain the initial stacks (Secure and Secure Monitor stacks).
-  In some platform, this region is already initialized and the implementation of this function can
-  do nothing. This memory can also represent the Secure RAM.
-  This function is called before the satck has been set up. Its implementation must ensure the stack
-  pointer is not used (probably required to use assembly language)
-
-**/
-VOID
-ArmPlatformInitializeBootMemory (
-  VOID
-  );
 
 /**
   Return the current Boot Mode
@@ -70,54 +55,15 @@ ArmPlatformGetBootMode (
   );
 
 /**
-  Call at the beginning of the platform boot up
-
-  This function allows the firmware platform to do extra actions at the early
-  stage of the platform power up.
-
-  Note: This function must be implemented in assembler as there is no stack set up yet
-
-**/
-VOID
-ArmPlatformSecBootAction (
-  VOID
-  );
-
-/**
-  Initialize controllers that must setup at the early stage
-
-  Some peripherals must be initialized in Secure World.
-  For example, some L2x0 requires to be initialized in Secure World
-
-**/
-VOID
-ArmPlatformSecInitialize (
-  VOID
-  );
-
-/**
-  Call before jumping to Normal World
-
-  This function allows the firmware platform to do extra actions before
-  jumping to the Normal World
-
-**/
-VOID
-ArmPlatformSecExtraAction (
-  IN  UINTN         MpId,
-  OUT UINTN*        JumpAddress
-  );
-
-/**
   Initialize controllers that must setup in the normal world
 
   This function is called by the ArmPlatformPkg/PrePi or ArmPlatformPkg/PlatformPei
   in the PEI phase.
 
 **/
-VOID
-ArmPlatformNormalInitialize (
-  VOID
+RETURN_STATUS
+ArmPlatformInitialize (
+  IN  UINTN                     MpId
   );
 
 /**
@@ -128,18 +74,6 @@ ArmPlatformNormalInitialize (
 **/
 VOID
 ArmPlatformInitializeSystemMemory (
-  VOID
-  );
-
-/**
-  Initialize the Secure peripherals and memory regions
-
-  If Trustzone is supported by your platform then this function makes the required initialization
-  of the secure peripherals and memory regions.
-
-**/
-VOID
-ArmPlatformTrustzoneInit (
   VOID
   );
 

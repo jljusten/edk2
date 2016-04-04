@@ -1,6 +1,7 @@
 /** @file  ArmPlatformSysConfigLib.h
 
-  Copyright (c) 2011, ARM Ltd. All rights reserved.<BR>
+  Copyright (c) 2011-2012, ARM Ltd. All rights reserved.<BR>
+
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -28,24 +29,31 @@ typedef UINT32  SYS_CONFIG_FUNCTION;
 //
 // Functions
 //
-EFI_STATUS
+RETURN_STATUS
 ArmPlatformSysConfigInitialize (
   VOID
   );
 
-EFI_STATUS
+RETURN_STATUS
 ArmPlatformSysConfigGet (
   IN  SYS_CONFIG_FUNCTION   Function,
   OUT UINT32*               Value
   );
 
-EFI_STATUS
+RETURN_STATUS
+ArmPlatformSysConfigGetValues (
+  IN  SYS_CONFIG_FUNCTION   Function,
+  IN  UINTN                 Size,
+  OUT UINT32*               Values
+  );
+
+RETURN_STATUS
 ArmPlatformSysConfigSet (
   IN  SYS_CONFIG_FUNCTION   Function,
   IN  UINT32                Value
   );
 
-EFI_STATUS
+RETURN_STATUS
 ArmPlatformSysConfigSetDevice (
   IN  SYS_CONFIG_FUNCTION   Function,
   IN  UINT32                Device,

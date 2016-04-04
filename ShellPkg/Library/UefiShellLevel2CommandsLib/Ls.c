@@ -1,7 +1,7 @@
 /** @file
   Main file for ls shell level 2 function.
 
-  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2012, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -66,14 +66,22 @@ PrintLsOutput(
   CorrectedPath = NULL;
 
   CorrectedPath = StrnCatGrow(&CorrectedPath, NULL, Path, 0);
-  ASSERT(CorrectedPath != NULL);
+  if (CorrectedPath == NULL) {
+    return (SHELL_OUT_OF_RESOURCES);
+  }
+
   PathCleanUpDirectories(CorrectedPath);
 
   Status = ShellOpenFileMetaArg((CHAR16*)CorrectedPath, EFI_FILE_MODE_READ, &ListHead);
   if (EFI_ERROR(Status)) {
+    SHELL_FREE_NON_NULL(CorrectedPath);
+    if(Status == EFI_NOT_FOUND){
+      return (SHELL_NOT_FOUND);
+    }
     return (SHELL_DEVICE_ERROR);
   }
   if (ListHead == NULL || IsListEmpty(&ListHead->Link)) {
+    SHELL_FREE_NON_NULL(CorrectedPath);
     //
     // On the first one only we expect to find something...
     // do we find the . and .. directories otherwise?
@@ -354,9 +362,14 @@ PrintLsOutput(
       ShellStatus = SHELL_OUT_OF_RESOURCES;
     } else {
       for ( Node = (EFI_SHELL_FILE_INFO *)GetFirstNode(&ListHead->Link)
-          ; !IsNull(&ListHead->Link, &Node->Link)
+          ; !IsNull(&ListHead->Link, &Node->Link) && ShellStatus == SHELL_SUCCESS
           ; Node = (EFI_SHELL_FILE_INFO *)GetNextNode(&ListHead->Link, &Node->Link)
          ){
+        if (ShellGetExecutionBreakFlag ()) {
+          ShellStatus = SHELL_ABORTED;
+          break;
+        }
+
         //
         // recurse on any directory except the traversing ones...
         //
@@ -366,7 +379,7 @@ PrintLsOutput(
          ){
           StrCpy(DirectoryName, Node->FullName);
           StrCat(DirectoryName, L"\\*");
-          PrintLsOutput(
+          ShellStatus = PrintLsOutput(
             Rec,
             Attribs,
             Sfo,
@@ -558,6 +571,10 @@ ShellCommandRunLs (
             ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_NO_FILES), gShellLevel2HiiHandle);
           } else if (ShellStatus == SHELL_INVALID_PARAMETER) {
             ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_PARAM_INV), gShellLevel2HiiHandle);
+          } else if (ShellStatus == SHELL_ABORTED) {
+            //
+            // Ignore aborting.
+            //
           } else if (ShellStatus != SHELL_SUCCESS) {
             ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_PARAM_INV), gShellLevel2HiiHandle);
           }

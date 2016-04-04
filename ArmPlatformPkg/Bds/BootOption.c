@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -32,6 +32,7 @@ BootOptionStart (
   UINTN                                 CmdLineSize;
   UINTN                                 InitrdSize;
   EFI_DEVICE_PATH*                      Initrd;
+  UINT16                                LoadOptionIndexSize;
 
   if (IS_ARM_BDS_BOOTENTRY (BootOption)) {
     Status = EFI_UNSUPPORTED;
@@ -82,9 +83,23 @@ BootOptionStart (
                                 Initrd, // Initrd
                                 (CHAR8*)(LinuxArguments + 1),
                                 FdtDevicePath);
+
+      FreePool (FdtDevicePath);
     }
   } else {
+    // Set BootCurrent variable
+    LoadOptionIndexSize = sizeof(UINT16);
+    gRT->SetVariable (L"BootCurrent", &gEfiGlobalVariableGuid,
+              EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
+              LoadOptionIndexSize, &(BootOption->LoadOptionIndex));
+
     Status = BdsStartEfiApplication (mImageHandle, BootOption->FilePathList, BootOption->OptionalDataSize, BootOption->OptionalData);
+
+    // Clear BootCurrent variable
+    LoadOptionIndexSize = sizeof(UINT16);
+    gRT->SetVariable (L"BootCurrent", &gEfiGlobalVariableGuid,
+              EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
+              0, NULL);
   }
 
   return Status;
@@ -118,6 +133,8 @@ BootOptionList (
       InsertTailList (BootOptionList,&BdsLoadOptionEntry->Link);
     }
   }
+
+  FreePool (BootOrder);
 
   return EFI_SUCCESS;
 }
@@ -290,6 +307,11 @@ BootOptionCreate (
       BootOrder
       );
 
+  // We only free it if the UEFI Variable 'BootOrder' was already existing
+  if (BootOrderSize > sizeof(UINT16)) {
+    FreePool (BootOrder);
+  }
+
   *BdsLoadOption = BootOption;
   return Status;
 }
@@ -360,6 +382,8 @@ BootOptionDelete (
         BootOrder
         );
   }
+
+  FreePool (BootOrder);
 
   return EFI_SUCCESS;
 }

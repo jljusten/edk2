@@ -1,5 +1,5 @@
 //
-//  Copyright (c) 2011, ARM Limited. All rights reserved.
+//  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 //  
 //  This program and the accompanying materials                          
 //  are licensed and made available under the terms and conditions of the BSD License         
@@ -11,7 +11,6 @@
 //
 //
 
-    EXPORT  monitor_vector_table
     EXPORT  return_from_exception
     EXPORT  enter_monitor_mode
     EXPORT  copy_cpsr_into_spsr
@@ -19,31 +18,28 @@
     
     AREA   Helper, CODE, READONLY
 
-    ALIGN 32
-monitor_vector_table
-    ldr pc, dead
-    ldr pc, dead
-    ldr pc, dead
-    ldr pc, dead
-    ldr pc, dead
-    ldr pc, dead
-    ldr pc, dead
-    ldr pc, dead
-
-// arg0: Secure Monitor mode stack
+// r0: Monitor World EntryPoint
+// r1: MpId
+// r2: Secure Monitor mode stack
 enter_monitor_mode
-    mov     r2, lr                      // Save current lr
+    cmp     r2, #0                      // If a Secure Monitor stack base has not been defined then use the Secure stack
+    moveq   r2, sp
 
-    mrs     r1, cpsr                    // Save current mode (SVC) in r1
-    bic     r3, r1, #0x1f               // Clear all mode bits
+    mrs     r4, cpsr                    // Save current mode (SVC) in r4
+    bic     r3, r4, #0x1f               // Clear all mode bits
     orr     r3, r3, #0x16               // Set bits for Monitor mode
     msr     cpsr_cxsf, r3               // We are now in Monitor Mode
 
-    mov     sp, r0                      // Use the passed sp
-    mov     lr, r2                      // Use the same lr as before
+    mov     sp, r2                      // Set the stack of the Monitor Mode
+
+    mov     lr, r0                      // Use the pass entrypoint as lr
     
-    msr     spsr_cxsf, r1               // Use saved mode for the MOVS jump to the kernel
-    bx      lr
+    msr     spsr_cxsf, r4               // Use saved mode for the MOVS jump to the kernel
+
+    mov     r4, r0                      // Swap EntryPoint and MpId registers
+    mov     r0, r1
+
+    bx      r4
 
 // We cannot use the instruction 'movs pc, lr' because the caller can be written either in ARM or Thumb2 assembler.
 // When we will jump into this function, we will set the CPSR flag to ARM assembler. By copying directly 'lr' into

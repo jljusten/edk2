@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -354,7 +354,8 @@ BootMenuUpdateBootOption (
   ARM_BDS_LOADER_ARGUMENTS*     BootArguments;
   CHAR16                        BootDescription[BOOT_DEVICE_DESCRIPTION_MAX];
   CHAR8                         CmdLine[BOOT_DEVICE_OPTION_MAX];
-  EFI_DEVICE_PATH*              DevicePath;
+  EFI_DEVICE_PATH               *DevicePath;
+  EFI_DEVICE_PATH               *TempInitrdPath;
   ARM_BDS_LOADER_TYPE           BootType;
   ARM_BDS_LOADER_OPTIONAL_DATA* OptionalData;
   ARM_BDS_LINUX_ARGUMENTS*      LinuxArguments;
@@ -406,7 +407,7 @@ BootMenuUpdateBootOption (
     if (InitrdSupport) {
       if (InitrdSize > 0) {
         // Case we update the initrd device path
-        Status = DeviceSupport->UpdateDevicePathNode ((EFI_DEVICE_PATH*)((LinuxArguments + 1) + CmdLineSize), L"initrd", &InitrdPath, NULL, NULL);
+        Status = DeviceSupport->UpdateDevicePathNode ((EFI_DEVICE_PATH*)((UINTN)(LinuxArguments + 1) + CmdLineSize), L"initrd", &InitrdPath, NULL, NULL);
         if (EFI_ERROR(Status) && Status != EFI_NOT_FOUND) {// EFI_NOT_FOUND is returned on empty input string, but we can boot without an initrd
           Status = EFI_ABORTED;
           goto EXIT;
@@ -423,11 +424,13 @@ BootMenuUpdateBootOption (
 
         if (InitrdPathNode != NULL) {
           // Duplicate Linux kernel Device Path
-          DevicePath = DuplicateDevicePath (BootOption->FilePathList);
+          TempInitrdPath = DuplicateDevicePath (BootOption->FilePathList);
           // Replace Linux kernel Node by EndNode
-          SetDevicePathEndNode (GetLastDevicePathNode (DevicePath));
+          SetDevicePathEndNode (GetLastDevicePathNode (TempInitrdPath));
           // Append the Device Path node to the select device path
-          InitrdPath = AppendDevicePathNode (DevicePath, (CONST EFI_DEVICE_PATH_PROTOCOL *)InitrdPathNode);
+          InitrdPath = AppendDevicePathNode (TempInitrdPath, (CONST EFI_DEVICE_PATH_PROTOCOL *)InitrdPathNode);
+          FreePool (TempInitrdPath);
+          InitrdSize = GetDevicePathSize (InitrdPath);
         } else {
           InitrdPath = NULL;
         }
@@ -454,7 +457,7 @@ BootMenuUpdateBootOption (
     BootArguments->LinuxArguments.CmdLineSize = CmdLineSize;
     BootArguments->LinuxArguments.InitrdSize = InitrdSize;
     CopyMem (&BootArguments->LinuxArguments + 1, CmdLine, CmdLineSize);
-    CopyMem ((UINTN)(&BootArguments->LinuxArguments + 1) + CmdLine, InitrdPath, InitrdSize);
+    CopyMem ((VOID*)((UINTN)(&BootArguments->LinuxArguments + 1) + CmdLineSize), InitrdPath, InitrdSize);
   } else {
     BootArguments = NULL;
   }

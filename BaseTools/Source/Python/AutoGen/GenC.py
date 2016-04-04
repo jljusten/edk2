@@ -1,7 +1,7 @@
 ## @file
 # Routines for generating AutoGen.h and AutoGen.c
 #
-# Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2007 - 2012, Intel Corporation. All rights reserved.<BR>
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -103,17 +103,17 @@ typedef struct {
 } SKU_HEAD;
 
 typedef struct {
+  UINT32  StringIndex;        // Offset in String Table in units of UINT32.
+  UINT32  DefaultValueOffset; // Offset of the Default Value
   UINT16  GuidTableIndex;     // Offset in Guid Table in units of GUID.
-  UINT16  StringIndex;        // Offset in String Table in units of UINT16.
   UINT16  Offset;             // Offset in Variable
-  UINT16  DefaultValueOffset; // Offset of the Default Value
 } VARIABLE_HEAD;
 
 typedef  struct {
   UINT32  Offset;
 } VPD_HEAD;
 
-typedef UINT16 STRING_HEAD;
+typedef UINT32 STRING_HEAD;
 
 typedef UINT16 SIZE_INFO;
 
@@ -1346,13 +1346,13 @@ def CreatePcdDatabasePhaseSpecificAutoGen (Platform, Phase):
                 VariableHeadGuidIndex = GuidList.index(VariableGuid)
 
                 if "PCD_TYPE_STRING" in Pcd.TokenTypeList:
-                    VariableHeadValueList.append('%dU, %dU, %sU, offsetof(%s_PCD_DATABASE, Init.%s_%s)' %
-                                                 (VariableHeadGuidIndex, VariableHeadStringIndex, Sku.VariableOffset,
-                                                  Phase, CName, TokenSpaceGuid))
+                    VariableHeadValueList.append('%dU, offsetof(%s_PCD_DATABASE, Init.%s_%s), %dU, %sU' %
+                                                 (VariableHeadStringIndex, Phase, CName, TokenSpaceGuid, 
+												 VariableHeadGuidIndex, Sku.VariableOffset))
                 else:
-                    VariableHeadValueList.append('%dU, %dU, %sU, offsetof(%s_PCD_DATABASE, Init.%s_%s_VariableDefault_%s)' %
-                                                 (VariableHeadGuidIndex, VariableHeadStringIndex, Sku.VariableOffset,
-                                                  Phase, CName, TokenSpaceGuid, SkuIdIndex))
+                    VariableHeadValueList.append('%dU, offsetof(%s_PCD_DATABASE, Init.%s_%s_VariableDefault_%s), %dU, %sU' %
+                                                 (VariableHeadStringIndex, Phase, CName, TokenSpaceGuid, SkuIdIndex, 
+												 VariableHeadGuidIndex, Sku.VariableOffset))
                 Dict['VARDEF_CNAME_'+Pcd.DatumType].append(CName)
                 Dict['VARDEF_GUID_'+Pcd.DatumType].append(TokenSpaceGuid)
                 Dict['VARDEF_SKUID_'+Pcd.DatumType].append(SkuIdIndex)
@@ -1575,6 +1575,35 @@ def CreatePcdDatabasePhaseSpecificAutoGen (Platform, Phase):
     if NumberOfLocalTokens == 0:
         AutoGenC.Append(gEmptyPcdDatabaseAutoGenC.Replace(Dict))
     else:
+        #
+        # Update Size Table to the right order, it should be same with LocalTokenNumberTable
+        #
+        SizeCNameTempList = []
+        SizeGuidTempList = []
+        SizeCurLenTempList = []
+        SizeMaxLenTempList = []
+        ReOrderFlag = True
+  
+        if len(Dict['SIZE_TABLE_CNAME']) == 1:
+            if not (Dict['SIZE_TABLE_CNAME'][0] and Dict['SIZE_TABLE_GUID'][0]):
+                ReOrderFlag = False
+        
+        if ReOrderFlag:
+            for Count in range(len(Dict['TOKEN_CNAME'])):
+                for Count1 in range(len(Dict['SIZE_TABLE_CNAME'])):
+                    if Dict['TOKEN_CNAME'][Count] == Dict['SIZE_TABLE_CNAME'][Count1] and \
+                        Dict['TOKEN_GUID'][Count] == Dict['SIZE_TABLE_GUID'][Count1]:
+                        SizeCNameTempList.append(Dict['SIZE_TABLE_CNAME'][Count1])
+                        SizeGuidTempList.append(Dict['SIZE_TABLE_GUID'][Count1])
+                        SizeCurLenTempList.append(Dict['SIZE_TABLE_CURRENT_LENGTH'][Count1])
+                        SizeMaxLenTempList.append(Dict['SIZE_TABLE_MAXIMUM_LENGTH'][Count1])
+                        
+            for Count in range(len(Dict['SIZE_TABLE_CNAME'])):
+                Dict['SIZE_TABLE_CNAME'][Count] = SizeCNameTempList[Count]
+                Dict['SIZE_TABLE_GUID'][Count] = SizeGuidTempList[Count]
+                Dict['SIZE_TABLE_CURRENT_LENGTH'][Count] = SizeCurLenTempList[Count]
+                Dict['SIZE_TABLE_MAXIMUM_LENGTH'][Count] = SizeMaxLenTempList[Count]
+                
         AutoGenC.Append(gPcdDatabaseAutoGenC.Replace(Dict))
 
     return AutoGenH, AutoGenC

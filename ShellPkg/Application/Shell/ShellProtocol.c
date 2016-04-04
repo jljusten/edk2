@@ -2,7 +2,7 @@
   Member functions of EFI_SHELL_PROTOCOL and functions for creation,
   manipulation, and initialization of EFI_SHELL_PROTOCOL.
 
-  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2012, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -1799,7 +1799,7 @@ CreateAndPopulateShellFileInfo(
   if (ShellFileListItem == NULL) {
     return (NULL);
   }
-  if (Info != NULL) {
+  if (Info != NULL && Info->Size != 0) {
     ShellFileListItem->Info = AllocateZeroPool((UINTN)Info->Size);
     if (ShellFileListItem->Info == NULL) {
       FreePool(ShellFileListItem);
@@ -2893,7 +2893,6 @@ InternalEfiShellGetListAlias(
   UINTN             NameSize;
   CHAR16            *RetVal;
   UINTN             RetSize;
-  CHAR16            *Alias;
 
   Status = gRT->QueryVariableInfo(EFI_VARIABLE_NON_VOLATILE|EFI_VARIABLE_BOOTSERVICE_ACCESS, &MaxStorSize, &RemStorSize, &MaxVarSize);
   ASSERT_EFI_ERROR(Status);
@@ -2919,7 +2918,6 @@ InternalEfiShellGetListAlias(
       break;
     }
     if (CompareGuid(&Guid, &gShellAliasGuid)){
-      Alias = GetVariable(VariableName, &gShellAliasGuid);
       ASSERT((RetVal == NULL && RetSize == 0) || (RetVal != NULL));
       RetVal = StrnCatGrow(&RetVal, &RetSize, VariableName, 0);
       RetVal = StrnCatGrow(&RetVal, &RetSize, L";", 0);
@@ -3336,9 +3334,10 @@ NotificationFunction(
   IN EFI_KEY_DATA *KeyData
   )
 {
-//  ShellPrintEx(-1,-1,L"  <Notify>  ");
-   if ((KeyData->Key.UnicodeChar == L'c' || KeyData->Key.UnicodeChar == 3) &&
-      (KeyData->KeyState.KeyShiftState == (EFI_SHIFT_STATE_VALID|EFI_LEFT_CONTROL_PRESSED) || KeyData->KeyState.KeyShiftState  == (EFI_SHIFT_STATE_VALID|EFI_RIGHT_CONTROL_PRESSED))
+  EFI_INPUT_KEY Key;
+  if ( ((KeyData->Key.UnicodeChar == L'c') &&
+        (KeyData->KeyState.KeyShiftState == (EFI_SHIFT_STATE_VALID|EFI_LEFT_CONTROL_PRESSED) || KeyData->KeyState.KeyShiftState  == (EFI_SHIFT_STATE_VALID|EFI_RIGHT_CONTROL_PRESSED))) ||
+      (KeyData->Key.UnicodeChar == 3)
       ){ 
     if (ShellInfoObject.NewEfiShellProtocol->ExecutionBreak == NULL) {
       return (EFI_UNSUPPORTED);
@@ -3348,6 +3347,12 @@ NotificationFunction(
               (KeyData->KeyState.KeyShiftState  == (EFI_SHIFT_STATE_VALID|EFI_LEFT_CONTROL_PRESSED) || KeyData->KeyState.KeyShiftState  == (EFI_SHIFT_STATE_VALID|EFI_RIGHT_CONTROL_PRESSED))
               ){ 
     ShellInfoObject.HaltOutput = TRUE;
+
+    //
+    // Make sure that there are no pending keystrokes to pervent the pause.
+    //
+    gST->ConIn->Reset(gST->ConIn, FALSE);
+    while (gST->ConIn->ReadKeyStroke (gST->ConIn, &Key)==EFI_SUCCESS);
   }
   return (EFI_SUCCESS);
 }

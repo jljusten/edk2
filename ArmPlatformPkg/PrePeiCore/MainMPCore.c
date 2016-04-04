@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -45,6 +45,7 @@ SecondaryMain (
   UINT32                  CoreId;
   VOID                    (*SecondaryStart)(VOID);
   UINTN                   SecondaryEntryAddr;
+  UINTN                   AcknowledgedCoreId;
 
   ClusterId = GET_CLUSTER_ID(MpId);
   CoreId    = GET_CORE_ID(MpId);
@@ -80,12 +81,15 @@ SecondaryMain (
   // Clear Secondary cores MailBox
   MmioWrite32 (ArmCoreInfoTable[Index].MailboxClearAddress, ArmCoreInfoTable[Index].MailboxClearValue);
 
-  SecondaryEntryAddr = 0;
-  while (SecondaryEntryAddr = MmioRead32 (ArmCoreInfoTable[Index].MailboxGetAddress), SecondaryEntryAddr == 0) {
+  do {
     ArmCallWFI ();
+
+    // Read the Mailbox
+    SecondaryEntryAddr = MmioRead32 (ArmCoreInfoTable[Index].MailboxGetAddress);
+
     // Acknowledge the interrupt and send End of Interrupt signal.
-    ArmGicAcknowledgeSgiFrom (PcdGet32(PcdGicInterruptInterfaceBase), PRIMARY_CORE_ID);
-  }
+    ArmGicAcknowledgeInterrupt (PcdGet32(PcdGicDistributorBase), PcdGet32(PcdGicInterruptInterfaceBase), &AcknowledgedCoreId, NULL);
+  } while ((SecondaryEntryAddr == 0) && (AcknowledgedCoreId != PcdGet32 (PcdGicPrimaryCoreId)));
 
   // Jump to secondary core entry point.
   SecondaryStart = (VOID (*)())SecondaryEntryAddr;
@@ -107,6 +111,13 @@ PrimaryMain (
   UINTN                       TemporaryRamBase;
   UINTN                       TemporaryRamSize;
 
+  // Check PcdGicPrimaryCoreId has been set in case the Primary Core is not the core 0 of Cluster 0
+  DEBUG_CODE_BEGIN();
+  if ((PcdGet32(PcdArmPrimaryCore) != 0) && (PcdGet32 (PcdGicPrimaryCoreId) == 0)) {
+    DEBUG((EFI_D_WARN,"Warning: the PCD PcdGicPrimaryCoreId does not seem to be set up for the configuration.\n"));
+  }
+  DEBUG_CODE_END();
+
   CreatePpiList (&PpiListSize, &PpiList);
 
   // Enable the GIC Distributor
@@ -115,7 +126,7 @@ PrimaryMain (
   // If ArmVe has not been built as Standalone then we need to wake up the secondary cores
   if (FeaturePcdGet (PcdSendSgiToBringUpSecondaryCores)) {
     // Sending SGI to all the Secondary CPU interfaces
-    ArmGicSendSgiTo (PcdGet32(PcdGicDistributorBase), ARM_GIC_ICDSGIR_FILTER_EVERYONEELSE, 0x0E);
+    ArmGicSendSgiTo (PcdGet32(PcdGicDistributorBase), ARM_GIC_ICDSGIR_FILTER_EVERYONEELSE, 0x0E, PcdGet32 (PcdGicSgiIntId));
   }
 
   // Adjust the Temporary Ram as the new Ppi List (Common + Platform Ppi Lists) is created at
@@ -123,6 +134,10 @@ PrimaryMain (
   PpiListSize = ALIGN_VALUE(PpiListSize, 0x4);
   TemporaryRamBase = (UINTN)PcdGet32 (PcdCPUCoresStackBase) + PpiListSize;
   TemporaryRamSize = (UINTN)PcdGet32 (PcdCPUCorePrimaryStackSize) - PpiListSize;
+
+  // Make sure the size is 8-byte aligned. Once divided by 2, the size should be 4-byte aligned
+  // to ensure the stack pointer is 4-byte aligned.
+  TemporaryRamSize = TemporaryRamSize - (TemporaryRamSize & (0x8-1));
 
   //
   // Bind this information into the SEC hand-off state
@@ -136,8 +151,8 @@ PrimaryMain (
   SecCoreData.TemporaryRamSize       = TemporaryRamSize;
   SecCoreData.PeiTemporaryRamBase    = SecCoreData.TemporaryRamBase;
   SecCoreData.PeiTemporaryRamSize    = SecCoreData.TemporaryRamSize / 2;
-  SecCoreData.StackBase              = (VOID *)((UINTN)(SecCoreData.TemporaryRamBase) + (SecCoreData.TemporaryRamSize/2));
-  SecCoreData.StackSize              = SecCoreData.TemporaryRamSize / 2;
+  SecCoreData.StackBase              = (VOID *)ALIGN_VALUE((UINTN)(SecCoreData.TemporaryRamBase) + SecCoreData.PeiTemporaryRamSize, 0x4);
+  SecCoreData.StackSize              = (TemporaryRamBase + TemporaryRamSize) - (UINTN)SecCoreData.StackBase;
 
   // Jump to PEI core entry point
   (PeiCoreEntryPoint)(&SecCoreData, PpiList);

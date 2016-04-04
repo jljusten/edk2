@@ -1,7 +1,7 @@
 /** @file
   Helper functions for configuring or getting the parameters relating to iSCSI.
 
-Copyright (c) 2004 - 2011, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2012, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -1397,6 +1397,7 @@ IScsiConfigDisplayOrderAttempts (
   if (EFI_ERROR (Status)) {
     return Status;
   }
+  ASSERT (StartOpCodeHandle != NULL);
 
   OptionsOpCodeHandle = NULL;
 
@@ -1606,14 +1607,6 @@ IScsiConfigProcessDefault (
   UINTN                       Index;
 
   //
-  // Free any attempt that is previously created but not saved to system.
-  //
-  if (mPrivate->NewAttempt != NULL) {
-    FreePool (mPrivate->NewAttempt);
-    mPrivate->NewAttempt = NULL;
-  }
-
-  //
   // Is User creating a new attempt?
   //
   NewAttempt = FALSE;
@@ -1636,6 +1629,14 @@ IScsiConfigProcessDefault (
     // Don't process anything.
     //
     return EFI_SUCCESS;
+  }
+  
+  //
+  // Free any attempt that is previously created but not saved to system.
+  //
+  if (mPrivate->NewAttempt != NULL) {
+    FreePool (mPrivate->NewAttempt);
+    mPrivate->NewAttempt = NULL;
   }
 
   if (NewAttempt) {
@@ -2103,37 +2104,75 @@ IScsiFormCallback (
     return EFI_SUCCESS;
   }
 
+  if ((Action != EFI_BROWSER_ACTION_CHANGING) && (Action != EFI_BROWSER_ACTION_CHANGED)) {
+    //
+    // All other type return unsupported.
+    //
+    return EFI_UNSUPPORTED;
+  }
+
+  if ((Value == NULL) || (ActionRequest == NULL)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  Private = ISCSI_FORM_CALLBACK_INFO_FROM_FORM_CALLBACK (This);
+  
+  //
+  // Retrieve uncommitted data from Browser
+  //
+  
+  BufferSize = sizeof (ISCSI_CONFIG_IFR_NVDATA);
+  IfrNvData = AllocateZeroPool (BufferSize);
+  if (IfrNvData == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+  
+  IScsiName = (CHAR8 *) AllocateZeroPool (ISCSI_NAME_MAX_SIZE);
+  if (IScsiName == NULL) {
+    FreePool (IfrNvData);
+    return EFI_OUT_OF_RESOURCES;
+  }
+  
+  Status = EFI_SUCCESS;
+  
+  ZeroMem (&OldIfrNvData, BufferSize);
+  
+  HiiGetBrowserData (NULL, NULL, BufferSize, (UINT8 *) IfrNvData);
+  
+  CopyMem (&OldIfrNvData, IfrNvData, BufferSize);
+
   if (Action == EFI_BROWSER_ACTION_CHANGING) {
-    if (This == NULL || Value == NULL || ActionRequest == NULL) {
-      return EFI_INVALID_PARAMETER;
+    switch (QuestionId) {
+    case KEY_ADD_ATTEMPT:
+      Status = IScsiConfigAddAttempt ();
+      break;
+
+    case KEY_DELETE_ATTEMPT:
+      CopyMem (
+        OldIfrNvData.DeleteAttemptList,
+        IfrNvData->DeleteAttemptList,
+        sizeof (IfrNvData->DeleteAttemptList)
+        );
+      Status = IScsiConfigDisplayDeleteAttempts (IfrNvData);
+      break;
+
+    case KEY_ORDER_ATTEMPT_CONFIG:
+      //
+      // Order the attempt according to user input.
+      //
+      CopyMem (
+        OldIfrNvData.DynamicOrderedList,
+        IfrNvData->DynamicOrderedList,
+        sizeof (IfrNvData->DynamicOrderedList)
+        );
+      IScsiConfigDisplayOrderAttempts ();
+      break;
+    
+    default:
+      Status = IScsiConfigProcessDefault (QuestionId, IfrNvData);
+      break;
     }
-
-    Private = ISCSI_FORM_CALLBACK_INFO_FROM_FORM_CALLBACK (This);
-
-    //
-    // Retrieve uncommitted data from Browser
-    //
-
-    BufferSize = sizeof (ISCSI_CONFIG_IFR_NVDATA);
-    IfrNvData = AllocateZeroPool (BufferSize);
-    if (IfrNvData == NULL) {
-      return EFI_OUT_OF_RESOURCES;
-    }
-
-    IScsiName = (CHAR8 *) AllocateZeroPool (ISCSI_NAME_MAX_SIZE);
-    if (IScsiName == NULL) {
-      FreePool (IfrNvData);
-      return EFI_OUT_OF_RESOURCES;
-    }
-
-    Status = EFI_SUCCESS;
-
-    ZeroMem (&OldIfrNvData, BufferSize);
-
-    HiiGetBrowserData (NULL, NULL, BufferSize, (UINT8 *) IfrNvData);
-
-    CopyMem (&OldIfrNvData, IfrNvData, BufferSize);
-
+  } else if (Action == EFI_BROWSER_ACTION_CHANGED) {  
     switch (QuestionId) {
     case KEY_INITIATOR_NAME:
       UnicodeStrToAsciiStr (IfrNvData->InitiatorName, IScsiName);
@@ -2151,76 +2190,6 @@ IScsiFormCallback (
 
       *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_APPLY;
       break;
-
-    case KEY_ADD_ATTEMPT:
-      Status = IScsiConfigAddAttempt ();
-      break;
-
-    case KEY_DELETE_ATTEMPT:
-      CopyMem (
-        OldIfrNvData.DeleteAttemptList,
-        IfrNvData->DeleteAttemptList,
-        sizeof (IfrNvData->DeleteAttemptList)
-        );
-      Status = IScsiConfigDisplayDeleteAttempts (IfrNvData);
-      break;
-
-    case KEY_SAVE_DELETE_ATTEMPT:
-      //
-      // Delete the Attempt Order from NVR
-      //
-      Status = IScsiConfigDeleteAttempts (IfrNvData);
-      if (EFI_ERROR (Status)) {
-        break;
-      }
-
-      IScsiConfigUpdateAttempt ();
-      *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_APPLY;
-      break;
-
-    case KEY_IGNORE_DELETE_ATTEMPT:
-      CopyMem (
-        IfrNvData->DeleteAttemptList,
-        OldIfrNvData.DeleteAttemptList,
-        sizeof (IfrNvData->DeleteAttemptList)
-        );
-      *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_DISCARD;
-      break;
-
-    case KEY_ORDER_ATTEMPT_CONFIG:
-      //
-      // Order the attempt according to user input.
-      //
-      CopyMem (
-        OldIfrNvData.DynamicOrderedList,
-        IfrNvData->DynamicOrderedList,
-        sizeof (IfrNvData->DynamicOrderedList)
-        );
-      IScsiConfigDisplayOrderAttempts ();
-      break;
-
-    case KEY_SAVE_ORDER_CHANGES:
-      //
-      // Sync the Attempt Order to NVR.
-      //
-      Status = IScsiConfigOrderAttempts (IfrNvData);
-      if (EFI_ERROR (Status)) {
-        break;
-      }
-
-      IScsiConfigUpdateAttempt ();
-      *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_APPLY;
-      break;
-
-    case KEY_IGNORE_ORDER_CHANGES:
-      CopyMem (
-        IfrNvData->DynamicOrderedList,
-        OldIfrNvData.DynamicOrderedList,
-        sizeof (IfrNvData->DynamicOrderedList)
-        );
-      *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_DISCARD;
-      break;
-
     case KEY_ATTEMPT_NAME:
       if (StrLen (IfrNvData->AttemptName) > ATTEMPT_NAME_SIZE) {
         CopyMem (AttemptName, IfrNvData->AttemptName, ATTEMPT_NAME_SIZE * sizeof (CHAR16));
@@ -2238,6 +2207,59 @@ IScsiFormCallback (
       IScsiConfigUpdateAttempt ();
 
       *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_APPLY;
+      break;
+      
+    case KEY_SAVE_ATTEMPT_CONFIG:
+      Status = IScsiConvertIfrNvDataToAttemptConfigData (IfrNvData, Private->Current);
+      if (EFI_ERROR (Status)) {
+        break;
+      }
+
+      *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_APPLY;
+      break;
+
+    case KEY_SAVE_ORDER_CHANGES:
+      //
+      // Sync the Attempt Order to NVR.
+      //
+      Status = IScsiConfigOrderAttempts (IfrNvData);
+      if (EFI_ERROR (Status)) {
+        break;
+      }
+
+      IScsiConfigUpdateAttempt ();
+      *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_SUBMIT_EXIT;
+      break;
+
+    case KEY_IGNORE_ORDER_CHANGES:
+      CopyMem (
+        IfrNvData->DynamicOrderedList,
+        OldIfrNvData.DynamicOrderedList,
+        sizeof (IfrNvData->DynamicOrderedList)
+        );
+      *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_DISCARD_EXIT;
+      break;
+
+    case KEY_SAVE_DELETE_ATTEMPT:
+      //
+      // Delete the Attempt Order from NVR
+      //
+      Status = IScsiConfigDeleteAttempts (IfrNvData);
+      if (EFI_ERROR (Status)) {
+        break;
+      }
+
+      IScsiConfigUpdateAttempt ();
+      *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_SUBMIT_EXIT;
+      break;
+
+    case KEY_IGNORE_DELETE_ATTEMPT:
+      CopyMem (
+        IfrNvData->DeleteAttemptList,
+        OldIfrNvData.DeleteAttemptList,
+        sizeof (IfrNvData->DeleteAttemptList)
+        );
+      *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_DISCARD_EXIT;
       break;
 
     case KEY_IP_MODE:
@@ -2409,38 +2431,23 @@ IScsiFormCallback (
 
       break;
 
-    case KEY_SAVE_ATTEMPT_CONFIG:
-      Status = IScsiConvertIfrNvDataToAttemptConfigData (IfrNvData, Private->Current);
-      if (EFI_ERROR (Status)) {
-        break;
-      }
-
-      *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_APPLY;
-      break;
-
     default:
-      Status = IScsiConfigProcessDefault (QuestionId, IfrNvData);
       break;
     }
-
-    if (!EFI_ERROR (Status)) {
-      //
-      // Pass changed uncommitted data back to Form Browser.
-      //
-      BufferSize = sizeof (ISCSI_CONFIG_IFR_NVDATA);
-      HiiSetBrowserData (NULL, NULL, BufferSize, (UINT8 *) IfrNvData, NULL);
-    }
-
-    FreePool (IfrNvData);
-    FreePool (IScsiName);
-
-    return Status;
   }
 
-  //
-  // All other action return unsupported.
-  //
-  return EFI_UNSUPPORTED;
+  if (!EFI_ERROR (Status)) {
+    //
+    // Pass changed uncommitted data back to Form Browser.
+    //
+    BufferSize = sizeof (ISCSI_CONFIG_IFR_NVDATA);
+    HiiSetBrowserData (NULL, NULL, BufferSize, (UINT8 *) IfrNvData, NULL);
+  }
+
+  FreePool (IfrNvData);
+  FreePool (IScsiName);
+
+  return Status;
 }
 
 
