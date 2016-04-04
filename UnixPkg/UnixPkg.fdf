@@ -73,9 +73,13 @@ DATA = {
   # Blockmap[1]: End
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   ## This is the VARIABLE_STORE_HEADER
-  #Signature: "$VSS"      #Size: 0xc000 (gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize) - 0x48 (HeaderLength) = 0xBFB8
-                          # This can speed up the Variable Dispatch a bit.
-  0x24, 0x56, 0x53, 0x53, 0xB8, 0xBF, 0x00, 0x00,
+  #Signature: gEfiVariableGuid =
+  #  { 0xddcf3616, 0x3275, 0x4164, { 0x98, 0xb6, 0xfe, 0x85, 0x70, 0x7f, 0xfe, 0x7d }}
+  0x16, 0x36, 0xcf, 0xdd, 0x75, 0x32, 0x64, 0x41,
+  0x98, 0xb6, 0xfe, 0x85, 0x70, 0x7f, 0xfe, 0x7d,
+  #Size: 0xc000 (gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize) - 0x48 (size of EFI_FIRMWARE_VOLUME_HEADER) = 0xBFB8
+  # This can speed up the Variable Dispatch a bit.
+  0xB8, 0xBF, 0x00, 0x00,
   #FORMATTED: 0x5A #HEALTHY: 0xFE #Reserved: UINT16 #Reserved1: UINT32
   0x5A, 0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 }
@@ -93,9 +97,9 @@ DATA = {
   0x8D, 0x2B, 0xF1, 0xFF, 0x96, 0x76, 0x8B, 0x4C,
   0xA9, 0x85, 0x27, 0x47, 0x07, 0x5B, 0x4F, 0x50,
   # Crc:UINT32            #WorkingBlockValid:1, WorkingBlockInvalid:1, Reserved
-  0x85, 0xae, 0x2d, 0xbf, 0xFE, 0xFF, 0xFF, 0xFF,
-  # WriteQueueSize: UINT32
-  0xE4, 0x1F, 0x00, 0x00
+  0x77, 0x13, 0x9B, 0xD7, 0xFE, 0xFF, 0xFF, 0xFF,
+  # WriteQueueSize: UINT64
+  0xE0, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 }
 
 0x00290000|0x00010000
@@ -161,7 +165,6 @@ INF  MdeModulePkg/Universal/PCD/Pei/Pcd.inf
 INF  IntelFrameworkModulePkg/Universal/StatusCode/Pei/PeiStatusCode.inf
 INF  UnixPkg/BootModePei/BootModePei.inf
 INF  UnixPkg/UnixFlashMapPei/FlashMap.inf
-INF  MdeModulePkg/Universal/MemoryTest/BaseMemoryTestPei/BaseMemoryTestPei.inf
 INF  UnixPkg/UnixAutoScanPei/UnixAutoScan.inf
 INF  UnixPkg/UnixFirmwareVolumePei/UnixFwh.inf
 INF  MdeModulePkg/Universal/Variable/Pei/VariablePei.inf
@@ -185,7 +188,7 @@ INF  MdeModulePkg/Universal/EbcDxe/EbcDxe.inf
 INF  MdeModulePkg/Universal/MemoryTest/NullMemoryTestDxe/NullMemoryTestDxe.inf
 INF  UnixPkg/UnixThunkDxe/UnixThunk.inf
 INF  UnixPkg/CpuRuntimeDxe/Cpu.inf
-INF  MdeModulePkg/Universal/FirmwareVolume/FaultTolerantWriteDxe/FtwLite.inf
+INF  MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
 INF  IntelFrameworkModulePkg/Universal/DataHubStdErrDxe/DataHubStdErrDxe.inf
 INF  UnixPkg/MiscSubClassPlatformDxe/MiscSubClassDriver.inf
 INF  UnixPkg/TimerDxe/Timer.inf
@@ -212,7 +215,8 @@ INF  UnixPkg/UnixSerialIoDxe/UnixSerialIo.inf
 INF  UnixPkg/UnixUgaDxe/UnixUga.inf
 #INF  UnixPkg/UnixConsoleDxe/UnixConsole.inf
 INF  MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
-INF  MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf  
+INF  MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
+INF  MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
 INF  IntelFrameworkModulePkg/Universal/BdsDxe/BdsDxe.inf 
 INF  UnixPkg/UnixSimpleFileSystemDxe/UnixSimpleFileSystem.inf
 INF  MdeModulePkg/Universal/DriverSampleDxe/DriverSampleDxe.inf

@@ -199,8 +199,8 @@ PcRtcInit (
   //
   DataSize = sizeof (UINT32);
   Status = EfiGetVariable (
-             L"TimerVar",
-             &gEfiGenericPlatformVariableGuid,
+             L"RTC",
+             &gEfiCallerIdGuid,
              NULL,
              &DataSize,
              (VOID *) &TimerVar
@@ -429,8 +429,8 @@ PcRtcSetTime (
   TimerVar = Time->Daylight;
   TimerVar = (UINT32) ((TimerVar << 16) | Time->TimeZone);
   Status =  EfiSetVariable (
-              L"TimerVar",
-              &gEfiGenericPlatformVariableGuid,
+              L"RTC",
+              &gEfiCallerIdGuid,
               EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE,
               sizeof (TimerVar),
               &TimerVar
@@ -888,6 +888,11 @@ DayValid (
   DayOfMonth[10] = 30;
   DayOfMonth[11] = 31;
 
+  //
+  // The validity of Time->Month field should be checked before
+  //
+  ASSERT (Time->Month >=1);
+  ASSERT (Time->Month <=12);
   if (Time->Day < 1 ||
       Time->Day > DayOfMonth[Time->Month - 1] ||
       (Time->Month == 2 && (!IsLeapYear (Time) && Time->Day > 28))
@@ -1048,6 +1053,12 @@ IsWithinOneDay (
 
   Adjacent = FALSE;
 
+  //
+  // The validity of From->Month field should be checked before
+  //
+  ASSERT (From->Month >=1);
+  ASSERT (From->Month <=12);
+  
   if (From->Year == To->Year) {
     if (From->Month == To->Month) {
       if ((From->Day + 1) == To->Day) {

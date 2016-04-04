@@ -41,11 +41,13 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   Nt32Pkg/Nt32Pkg.dec
-
+  IntelFrameworkModulePkg/IntelFrameworkModulePkg.dec
+  
 [LibraryClasses]
   BaseLib
   MemoryAllocationLib
   UefiBootServicesTableLib
+  UefiRuntimeServicesTableLib
   BaseMemoryLib
   DebugLib
   PcdLib
@@ -53,3 +55,12 @@
 
 [Guids]
   gEfiDefaultBmpLogoGuid
+  gEfiWinNtSystemConfigGuid
+
+[Pcd.common]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConOutColumn
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdPlatformBootTimeOut
+  
+[Depex]
+  gEfiVariableArchProtocolGuid AND gEfiVariableWriteArchProtocolGuid

@@ -39,7 +39,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/StatusCode.h>
 #include <Protocol/Decompress.h>
 #include <Protocol/LoadPe32Image.h>
-#include <Protocol/FirmwareVolumeDispatch.h>
 #include <Protocol/Security.h>
 #include <Protocol/Ebc.h>
 #include <Protocol/Reset.h>
@@ -48,9 +47,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/FirmwareVolumeBlock.h>
 #include <Protocol/Capsule.h>
 #include <Protocol/BusSpecificDriverOverride.h>
-#include <Protocol/Performance.h>
 #include <Protocol/TcgService.h>
-#include <Protocol/TcgPlatform.h>
 #include <Guid/MemoryTypeInformation.h>
 #include <Guid/FirmwareFileSystem2.h>
 #include <Guid/HobList.h>

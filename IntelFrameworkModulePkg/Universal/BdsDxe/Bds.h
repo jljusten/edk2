@@ -16,11 +16,10 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define _BDS_MODULE_H_
 
 #include <PiDxe.h>
-#include <MdeModuleHii.h>
 
+#include <Guid/MdeModuleHii.h>
 #include <Guid/FileSystemVolumeLabelInfo.h>
 #include <Protocol/DevicePath.h>
-#include <Guid/BootState.h>
 #include <Guid/DataHubRecords.h>
 #include <Protocol/LoadFile.h>
 #include <Protocol/CpuIo.h>
@@ -31,9 +30,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/UgaDraw.h>
 #include <Protocol/BlockIo.h>
 #include <Guid/GlobalVariable.h>
-#include <Guid/GenericPlatformVariable.h>
 #include <Guid/CapsuleVendor.h>
-#include <Protocol/ConsoleControl.h>
 #include <Protocol/GenericMemoryTest.h>
 #include <Protocol/FormBrowser2.h>
 #include <Protocol/HiiConfigAccess.h>
@@ -44,7 +41,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/SerialIo.h>
 #include <Protocol/LegacyBios.h>
 #include <Protocol/SimpleTextInEx.h>
-#include <Protocol/Performance.h>
 
 #include <Library/UefiDriverEntryPoint.h>
 #include <Library/PrintLib.h>
@@ -65,7 +61,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/CapsuleLib.h>
 #include <Library/HiiLib.h>
 #include <Library/ExtendedHiiLib.h>
-
+#include <Library/PcdLib.h>
 
 #include <Library/GenericBdsLib.h>
 #include <Library/PlatformBdsLib.h>

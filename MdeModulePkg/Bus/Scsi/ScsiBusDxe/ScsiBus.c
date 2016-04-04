@@ -531,9 +531,23 @@ SCSIBusDriverBindingStop (
     // Close the bus driver
     //
     if (ScsiBusDev->ExtScsiSupport) {
+      //
+      // Close ExtPassThru Protocol from this controller handle
+      //
       gBS->CloseProtocol (
              Controller,
              &gEfiExtScsiPassThruProtocolGuid,
+             This->DriverBindingHandle,
+             Controller
+             );
+      //
+      // When Start() succeeds to open ExtPassThru, it always tries to open PassThru BY_DRIVER.
+      // Its intent is to prevent another SCSI Bus Driver from woking on the same host handle. 
+      // So Stop() needs to try to close PassThru if present here.
+      //
+      gBS->CloseProtocol (
+             Controller,
+             &gEfiScsiPassThruProtocolGuid,
              This->DriverBindingHandle,
              Controller
              );
@@ -1134,7 +1148,7 @@ DiscoverScsiDevice (
   // valid device type and peripheral qualifier combination.
   //
   ScsiIoDevice->ScsiDeviceType  = InquiryData.Peripheral_Type;
-  ScsiIoDevice->RemovableDevice = InquiryData.RMB;
+  ScsiIoDevice->RemovableDevice = InquiryData.Rmb;
   if (InquiryData.Version == 0) {
     ScsiIoDevice->ScsiVersion = 0;
   } else {

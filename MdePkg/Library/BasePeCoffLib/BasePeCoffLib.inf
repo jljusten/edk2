@@ -41,5 +41,6 @@
 
 [LibraryClasses]
   DebugLib
+  PeCoffExtraActionLib
   BaseMemoryLib
 

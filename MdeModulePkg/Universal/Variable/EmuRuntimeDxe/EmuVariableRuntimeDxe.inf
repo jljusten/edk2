@@ -51,16 +51,18 @@
 
 
 [Protocols]
-  gEfiVariableArchProtocolGuid                  ## ALWAYS_PRODUCES
-  gEfiVariableWriteArchProtocolGuid             ## ALWAYS_PRODUCES
+  gEfiVariableArchProtocolGuid                  ## PRODUCES
+  gEfiVariableWriteArchProtocolGuid             ## PRODUCES
 
 [Guids]
-  gEfiEventVirtualAddressChangeGuid
+  gEfiEventVirtualAddressChangeGuid             ## PRODUCES ## Event
+  gEfiVariableGuid
 
 [Pcd.common]
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxHardwareErrorVariableSize
   gEfiMdeModulePkgTokenSpaceGuid.PcdVariableStoreSize
+  gEfiMdeModulePkgTokenSpaceGuid.PcdVariableCollectStatistics
 
 [Depex]
   TRUE

@@ -52,13 +52,12 @@ GetPcdPpiPointer (
   This function provides a means by which SKU support can be established in the PCD infrastructure.
 
   Sets the current SKU in the PCD database to the value specified by SkuId.  SkuId is returned.
+  If SkuId >= PCD_MAX_SKU_ID, then ASSERT(). 
 
-  @param[in]  SkuId The SKU value that will be used when the PCD service will retrieve and 
-                    set values associated with a PCD token.
-                    
-  If SkuId >= 0x100, then ASSERT().                  
+  @param  SkuId   The SKU value that will be used when the PCD service retrieves and sets values
+                  associated with a PCD token.
 
-  @return Return the SKU ID that just be set.
+  @return  Return the SKU ID that just be set.
 
 **/
 UINTN
@@ -229,9 +228,9 @@ LibPcdGetSize (
   
   If Guid is NULL, then ASSERT(). 
 
-  @param[in]  Guid Pointer to a 128-bit unique value that designates 
-              which namespace to retrieve a value from.
-  @param[in]  TokenNumber The PCD token number to retrieve a current value for.
+  @param[in]  Guid         Pointer to a 128-bit unique value that designates 
+                           which namespace to retrieve a value from.
+  @param[in]  TokenNumber  The PCD token number to retrieve a current value for.
 
   @return Return the UINT8.
 
@@ -257,9 +256,9 @@ LibPcdGetEx8 (
   
   If Guid is NULL, then ASSERT(). 
 
-  @param[in]  Guid Pointer to a 128-bit unique value that designates 
-              which namespace to retrieve a value from.
-  @param[in]  TokenNumber The PCD token number to retrieve a current value for.
+  @param[in]  Guid         Pointer to a 128-bit unique value that designates 
+                           which namespace to retrieve a value from.
+  @param[in]  TokenNumber  The PCD token number to retrieve a current value for.
 
   @return Return the UINT16.
 
@@ -283,9 +282,9 @@ LibPcdGetEx16 (
   Returns the 32-bit value for the token specified by TokenNumber and Guid.
   If Guid is NULL, then ASSERT(). 
 
-  @param[in]  Guid Pointer to a 128-bit unique value that designates 
-              which namespace to retrieve a value from.
-  @param[in]  TokenNumber The PCD token number to retrieve a current value for.
+  @param[in]  Guid         Pointer to a 128-bit unique value that designates 
+                           which namespace to retrieve a value from.
+  @param[in]  TokenNumber  The PCD token number to retrieve a current value for.
 
   @return Return the UINT32.
 
@@ -847,14 +846,13 @@ LibPcdSetExBool (
   
   When the token specified by TokenNumber and Guid is set, 
   then notification function specified by NotificationFunction is called.  
-  If Guid is NULL, then the default token space is used. 
-  
+  If Guid is NULL, then the default token space is used.
   If NotificationFunction is NULL, then ASSERT().
 
-  @param[in]  Guid      Pointer to a 128-bit unique value that designates which 
-                        namespace to set a value from.  If NULL, then the default 
-                        token space is used.
-  @param[in]  TokenNumber   The PCD token number to monitor.
+  @param[in]  Guid                  Pointer to a 128-bit unique value that designates which 
+                                    namespace to set a value from.  If NULL, then the default 
+                                    token space is used.
+  @param[in]  TokenNumber           The PCD token number to monitor.
   @param[in]  NotificationFunction  The function to call when the token 
                                     specified by Guid and TokenNumber is set.
 
@@ -883,14 +881,13 @@ LibPcdCallbackOnSet (
 /**
   Disable a notification function that was established with LibPcdCallbackonSet().
   
-  Disable a notification function that was previously established with LibPcdCallbackOnSet(). 
-  
+  Disable a notification function that was previously established with LibPcdCallbackOnSet().
   If NotificationFunction is NULL, then ASSERT().
   If LibPcdCallbackOnSet() was not previously called with Guid, TokenNumber, 
   and NotificationFunction, then ASSERT().
   
-  @param[in]  Guid          Specify the GUID token space.
-  @param[in]  TokenNumber   Specify the token number.
+  @param[in]  Guid                 Specify the GUID token space.
+  @param[in]  TokenNumber          Specify the token number.
   @param[in]  NotificationFunction The callback function to be unregistered.
 
 **/
@@ -954,23 +951,17 @@ LibPcdGetNextToken (
 /**
   Used to retrieve the list of available PCD token space GUIDs.
   
-  Retrieves the next PCD token space from a token space specified by Guid.
-  Guid of NULL is reserved to mark the default local token namespace on the current
-  platform. If Guid is NULL, then the GUID of the first non-local token space of the 
-  current platform is returned. If Guid is the last non-local token space, 
-  then NULL is returned. 
-
-  If Guid is not NULL and is not a valid token space in the current platform, then ASSERT().
-
-
+  Returns the PCD token space GUID that follows TokenSpaceGuid in the list of token spaces
+  in the platform.
+  If TokenSpaceGuid is NULL, then a pointer to the first PCD token spaces returned.
+  If TokenSpaceGuid is the last PCD token space GUID in the list, then NULL is returned.
   
-  @param[in]  Guid  Pointer to a 128-bit unique value that designates from which namespace 
-                    to start the search.
+  @param  TokenSpaceGuid  Pointer to the a PCD token space GUID
 
   @return The next valid token namespace.
 
 **/
-GUID *           
+GUID *
 EFIAPI
 LibPcdGetNextTokenSpace (
   IN CONST GUID  *TokenSpaceGuid

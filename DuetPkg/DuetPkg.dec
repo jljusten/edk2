@@ -1,3 +1,21 @@
+##  @file 
+#
+# This Package provides all definitions(including functions, MACROs, structures and library classes)
+# and libraries instances, which are only used by Duet platform.
+#
+# Copyright (c) 2007 - 2008, Intel Corporation.
+#
+# All rights reserved.
+# This program and the accompanying materials are licensed and made available under
+# the terms and conditions of the BSD License which accompanies this distribution.
+# The full text of the license may be found at
+# http://opensource.org/licenses/bsd-license.php
+#
+# THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+# WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#
+##
+
 [Defines]
   DEC_SPECIFICATION              = 0x00010005
   PACKAGE_NAME                   = DuetPkg
@@ -12,5 +30,4 @@
   gEfiAcpiDescriptionGuid       = {0x3c699197, 0x093c, 0x4c69, {0xb0, 0x6b, 0x12, 0x8a, 0xe3, 0x48, 0x1d, 0xc9 }}
   gEfiFlashMapHobGuid           = { 0xb091e7d2, 0x5a0, 0x4198, {0x94, 0xf0, 0x74, 0xb7, 0xb8, 0xc5, 0x54, 0x59 }}
   
-[Protocols.common]  
-  gEfiLegacyBiosThunkProtocolGuid = {0x4c51a7ba, 0x7195, 0x442d, {0x87, 0x92, 0xbe, 0xea, 0x6e, 0x2f, 0xf6, 0xec}}
+  

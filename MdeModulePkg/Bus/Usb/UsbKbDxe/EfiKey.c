@@ -293,9 +293,8 @@ USBKeyboardDriverBindingStart (
   // Install Simple Text Input Protocol and Simple Text Input Ex Protocol
   // for the USB keyboard device.
   // USB keyboard is a hot plug device, and expected to work immediately
-  // when plugging into system, so a HotPlugDeviceGuid is installed onto
-  // the usb keyboard device handle, to distinguish it from other conventional
-  // console devices.
+  // when plugging into system, other conventional console devices could
+  // distinguish it by its device path.
   //
   Status = gBS->InstallMultipleProtocolInterfaces (
                   &Controller,
@@ -303,8 +302,6 @@ USBKeyboardDriverBindingStart (
                   &UsbKeyboardDevice->SimpleInput,
                   &gEfiSimpleTextInputExProtocolGuid,
                   &UsbKeyboardDevice->SimpleInputEx,
-                  &gEfiHotPlugDeviceGuid,
-                  NULL,
                   NULL
                   );
   if (EFI_ERROR (Status)) {
@@ -325,8 +322,6 @@ USBKeyboardDriverBindingStart (
            &UsbKeyboardDevice->SimpleInput,
            &gEfiSimpleTextInputExProtocolGuid,
            &UsbKeyboardDevice->SimpleInputEx,
-           &gEfiHotPlugDeviceGuid,
-           NULL,
            NULL
            );
     goto ErrorExit;
@@ -356,8 +351,6 @@ USBKeyboardDriverBindingStart (
            &UsbKeyboardDevice->SimpleInput,
            &gEfiSimpleTextInputExProtocolGuid,
            &UsbKeyboardDevice->SimpleInputEx,
-           &gEfiHotPlugDeviceGuid,
-           NULL,
            NULL
            );
     goto ErrorExit;
@@ -495,8 +488,6 @@ USBKeyboardDriverBindingStop (
                   &UsbKeyboardDevice->SimpleInput,
                   &gEfiSimpleTextInputExProtocolGuid,
                   &UsbKeyboardDevice->SimpleInputEx,
-                  &gEfiHotPlugDeviceGuid,
-                  NULL,
                   NULL
                   );
   //
@@ -1031,7 +1022,6 @@ USBKeyboardRegisterKeyNotify (
   )
 {
   USB_KB_DEV                        *UsbKeyboardDevice;
-  EFI_STATUS                        Status;
   KEYBOARD_CONSOLE_IN_EX_NOTIFY     *NewNotify;
   LIST_ENTRY                        *Link;
   LIST_ENTRY                        *NotifyList;
@@ -1075,20 +1065,11 @@ USBKeyboardRegisterKeyNotify (
 
   NewNotify->Signature         = USB_KB_CONSOLE_IN_EX_NOTIFY_SIGNATURE;     
   NewNotify->KeyNotificationFn = KeyNotificationFunction;
+  NewNotify->NotifyHandle      = (EFI_HANDLE) NewNotify;
   CopyMem (&NewNotify->KeyData, KeyData, sizeof (EFI_KEY_DATA));
   InsertTailList (&UsbKeyboardDevice->NotifyList, &NewNotify->NotifyEntry);
 
-  //
-  // Use gSimpleTextInExNotifyGuid to get a valid EFI_HANDLE
-  //  
-  Status = gBS->InstallMultipleProtocolInterfaces (
-                  &NewNotify->NotifyHandle,
-                  &gSimpleTextInExNotifyGuid,
-                  NULL,
-                  NULL
-                  );
-  ASSERT_EFI_ERROR (Status);
-  
+
   *NotifyHandle = NewNotify->NotifyHandle;  
   
   return EFI_SUCCESS;
@@ -1114,7 +1095,6 @@ USBKeyboardUnregisterKeyNotify (
   )
 {
   USB_KB_DEV                        *UsbKeyboardDevice;
-  EFI_STATUS                        Status;
   KEYBOARD_CONSOLE_IN_EX_NOTIFY     *CurrentNotify;
   LIST_ENTRY                        *Link;
   LIST_ENTRY                        *NotifyList;
@@ -1122,24 +1102,13 @@ USBKeyboardUnregisterKeyNotify (
   if (NotificationHandle == NULL) {
     return EFI_INVALID_PARAMETER;
   }  
+
+  if (((KEYBOARD_CONSOLE_IN_EX_NOTIFY *) NotificationHandle)->Signature != USB_KB_CONSOLE_IN_EX_NOTIFY_SIGNATURE) {
+    return EFI_INVALID_PARAMETER;
+  } 
   
   UsbKeyboardDevice = TEXT_INPUT_EX_USB_KB_DEV_FROM_THIS (This);
   
-  //
-  // Check if NotificationHandle is returned from RegisterKeyNotify().
-  //
-  Status = gBS->OpenProtocol (
-                  NotificationHandle,
-                  &gSimpleTextInExNotifyGuid,
-                  NULL,
-                  NULL,
-                  NULL,
-                  EFI_OPEN_PROTOCOL_TEST_PROTOCOL
-                  );
-  if (EFI_ERROR (Status)) {
-    return EFI_INVALID_PARAMETER;
-  }
-
   //
   // Traverse notify list of USB keyboard and remove the entry of NotificationHandle.
   //
@@ -1158,13 +1127,7 @@ USBKeyboardUnregisterKeyNotify (
       // Remove the notification function from NotifyList and free resources
       //
       RemoveEntryList (&CurrentNotify->NotifyEntry);      
-      Status = gBS->UninstallMultipleProtocolInterfaces (
-                      CurrentNotify->NotifyHandle,
-                      &gSimpleTextInExNotifyGuid,
-                      NULL,
-                      NULL
-                      );
-      ASSERT_EFI_ERROR (Status);
+
       FreePool (CurrentNotify);            
       return EFI_SUCCESS;
     }

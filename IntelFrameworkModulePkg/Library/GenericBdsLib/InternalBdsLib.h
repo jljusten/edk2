@@ -1,7 +1,7 @@
 /** @file
   BDS library definition, include the file and data structure
 
-Copyright (c) 2004 - 2008, Intel Corporation. <BR>
+Copyright (c) 2004 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -33,23 +33,19 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/FirmwareVolume2.h>
 #include <Protocol/PciIo.h>
 #include <Protocol/AcpiS3Save.h>
-#include <Protocol/Performance.h>
-#include <Protocol/FirmwareVolumeDispatch.h>
 #include <Protocol/OEMBadging.h>
-#include <Protocol/ConsoleControl.h>
 #include <Protocol/GraphicsOutput.h>
 #include <Protocol/UgaDraw.h>
 #include <Protocol/HiiFont.h>
 #include <Protocol/HiiImage.h>
-
+#include <Protocol/Security.h>
 
 #include <Guid/MemoryTypeInformation.h>
 #include <Guid/FileInfo.h>
 #include <Guid/GlobalVariable.h>
 #include <Guid/PcAnsi.h>
 #include <Guid/ShellFile.h>
-#include <Guid/GenericPlatformVariable.h>
-#include <Guid/Bmp.h>
+#include <Guid/Performance.h>
 
 #include <Library/PrintLib.h>
 #include <Library/DebugLib.h>
@@ -71,26 +67,17 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/PcdLib.h>
 #include <Library/DxeServicesLib.h>
 
-#define PERFORMANCE_SIGNATURE   SIGNATURE_32 ('P', 'e', 'r', 'f')
-#define PERF_TOKEN_SIZE         28
-#define PERF_TOKEN_LENGTH       (PERF_TOKEN_SIZE - 1)
-#define PERF_PEI_ENTRY_MAX_NUM  50
-
-typedef struct {
-  CHAR8   Token[PERF_TOKEN_SIZE];
-  UINT32  Duration;
-} PERF_DATA;
-
-typedef struct {
-  UINT64        BootToOs;
-  UINT64        S3Resume;
-  UINT32        S3EntryNum;
-  PERF_DATA     S3Entry[PERF_PEI_ENTRY_MAX_NUM];
-  UINT64        CpuFreq;
-  UINT64        BDSRaw;
-  UINT32        Count;
-  UINT32        Signiture;
-} PERF_HEADER;
+#if !defined (EFI_REMOVABLE_MEDIA_FILE_NAME)
+    #if defined (MDE_CPU_EBC)
+        //
+        // Uefi specification only defines the default boot file name for IA32, X64
+        // and IPF processor, so need define boot file name for EBC architecture here.
+        //
+        #define EFI_REMOVABLE_MEDIA_FILE_NAME L"\\EFI\\BOOT\\BOOTEBC.EFI"
+    #else
+        #error "Can not determine the default boot file name for unknown processor type!"
+    #endif
+#endif
 
 /**
 

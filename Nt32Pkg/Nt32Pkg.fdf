@@ -73,9 +73,13 @@ DATA = {
   #Blockmap[1]: End
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   ## This is the VARIABLE_STORE_HEADER
-  #Signature: "$VSS"      #Size: 0xc000 (gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize) - 0x48 (HeaderLength) = 0xBFB8
-                                # This can speed up the Variable Dispatch a bit.
-  0x24, 0x56, 0x53, 0x53, 0xB8, 0xBF, 0x00, 0x00,
+  #Signature: gEfiVariableGuid =
+  #  { 0xddcf3616, 0x3275, 0x4164, { 0x98, 0xb6, 0xfe, 0x85, 0x70, 0x7f, 0xfe, 0x7d }}
+  0x16, 0x36, 0xcf, 0xdd, 0x75, 0x32, 0x64, 0x41,
+  0x98, 0xb6, 0xfe, 0x85, 0x70, 0x7f, 0xfe, 0x7d,
+  #Size: 0xc000 (gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize) - 0x48 (size of EFI_FIRMWARE_VOLUME_HEADER) = 0xBFB8
+  # This can speed up the Variable Dispatch a bit.
+  0xB8, 0xBF, 0x00, 0x00,
   #FORMATTED: 0x5A #HEALTHY: 0xFE #Reserved: UINT16 #Reserved1: UINT32
   0x5A, 0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 }
@@ -129,6 +133,7 @@ READ_ENABLED_CAP   = TRUE
 READ_STATUS        = TRUE
 READ_LOCK_CAP      = TRUE
 READ_LOCK_STATUS   = TRUE
+FvNameGuid         = 6D99E806-3D38-42c2-A095-5F4300BFD7DC
 
 ################################################################################
 #
@@ -161,7 +166,6 @@ INF  MdeModulePkg/Universal/PCD/Pei/Pcd.inf
 INF  IntelFrameworkModulePkg/Universal/StatusCode/Pei/PeiStatusCode.inf
 INF  Nt32Pkg/BootModePei/BootModePei.inf
 INF  Nt32Pkg/WinNtFlashMapPei/WinNtFlashMapPei.inf
-INF  MdeModulePkg/Universal/MemoryTest/BaseMemoryTestPei/BaseMemoryTestPei.inf
 INF  Nt32Pkg/WinNtAutoScanPei/WinNtAutoScanPei.inf
 INF  Nt32Pkg/WinNtFirmwareVolumePei/WinNtFirmwareVolumePei.inf
 INF  MdeModulePkg/Universal/Variable/Pei/VariablePei.inf
@@ -186,13 +190,13 @@ INF  MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
 INF  Nt32Pkg/WinNtThunkDxe/WinNtThunkDxe.inf
 INF  Nt32Pkg/CpuRuntimeDxe/CpuRuntimeDxe.inf
 INF  IntelFrameworkModulePkg/Universal/BdsDxe/BdsDxe.inf
-INF  MdeModulePkg/Universal/FirmwareVolume/FaultTolerantWriteDxe/FtwLite.inf
+INF  MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
 INF  IntelFrameworkModulePkg/Universal/DataHubStdErrDxe/DataHubStdErrDxe.inf
 INF  Nt32Pkg/MiscSubClassPlatformDxe/MiscSubClassPlatformDxe.inf
 INF  Nt32Pkg/TimerDxe/TimerDxe.inf
 INF  IntelFrameworkModulePkg/Universal/StatusCode/Dxe/DxeStatusCode.inf
 INF  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
-INF  MdeModulePkg/Universal/WatchDogTimerDxe/WatchDogTimer.inf
+INF  MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
 INF  MdeModulePkg/Universal/MonotonicCounterRuntimeDxe/MonotonicCounterRuntimeDxe.inf
 INF  MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
 INF  MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
@@ -203,7 +207,8 @@ INF  MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
 INF  MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
 INF  MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
 INF  MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
-INF  MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
+INF  MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
+INF  RuleOverride = TIANOCOMPRESSED MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
 INF  IntelFrameworkModulePkg/Bus/Pci/PciBusDxe/PciBusDxe.inf
 INF  MdeModulePkg/Bus/Scsi/ScsiBusDxe/ScsiBusDxe.inf     ##This driver follows UEFI specification definition
 INF  MdeModulePkg/Bus/Scsi/ScsiDiskDxe/ScsiDiskDxe.inf    ##This driver follows UEFI specification definition
@@ -214,8 +219,19 @@ INF  Nt32Pkg/WinNtSerialIoDxe/WinNtSerialIoDxe.inf
 INF  Nt32Pkg/WinNtGopDxe/WinNtGopDxe.inf
 INF  Nt32Pkg/WinNtSimpleFileSystemDxe/WinNtSimpleFileSystemDxe.inf
 INF  MdeModulePkg/Universal/DriverSampleDxe/DriverSampleDxe.inf
-INF  MdeModulePkg/Application/HelloWorld/HelloWorld.inf
+INF  MdeModulePkg/Universal/PlatformDriOverrideDxe/PlatformDriOverrideDxe.inf
 
+INF  MdeModulePkg/Universal/Network/DpcDxe/DpcDxe.inf
+INF  MdeModulePkg/Universal/Network/ArpDxe/ArpDxe.inf
+INF  MdeModulePkg/Universal/Network/Dhcp4Dxe/Dhcp4Dxe.inf
+INF  MdeModulePkg/Universal/Network/Ip4ConfigDxe/Ip4ConfigDxe.inf
+INF  MdeModulePkg/Universal/Network/Ip4Dxe/Ip4Dxe.inf
+INF  MdeModulePkg/Universal/Network/MnpDxe/MnpDxe.inf
+INF  MdeModulePkg/Universal/Network/Mtftp4Dxe/Mtftp4Dxe.inf
+INF  MdeModulePkg/Universal/Network/Tcp4Dxe/Tcp4Dxe.inf
+INF  MdeModulePkg/Universal/Network/Udp4Dxe/Udp4Dxe.inf
+INF  Nt32Pkg/SnpNt32Dxe/SnpNt32Dxe.inf
+INF  MdeModulePkg/Universal/Network/IScsiDxe/IScsiDxe.inf
 ################################################################################
 #
 # FILE statements are provided so that a platform integrator can include
@@ -284,16 +300,6 @@ FILE FREEFORM = 7BB28B99-61BB-11D5-9A5D-0090273FC14D {
      VERSION  STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)   
   }
 
-[Rule.Common.PEIM.TIANOCOMPRESSED]
-  FILE PEIM = $(NAMED_GUID) {
-    PEI_DEPEX PEI_DEPEX Optional         |.depex
-    GUIDED A31280AD-481E-41B6-95E8-127F4C984779 PROCESSING_REQUIRED = TRUE {
-      PE32      PE32                     |.efi
-      UI        STRING="$(MODULE_NAME)" Optional
-      VERSION   STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
-    }
-  }
-
 [Rule.Common.DXE_CORE]
   FILE DXE_CORE = $(NAMED_GUID) {
     COMPRESS PI_STD {
@@ -312,6 +318,16 @@ FILE FREEFORM = 7BB28B99-61BB-11D5-9A5D-0090273FC14D {
         UI       STRING="$(MODULE_NAME)" Optional
         VERSION  STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
       }
+    }
+  }
+
+[Rule.Common.UEFI_DRIVER.TIANOCOMPRESSED]
+  FILE DRIVER = $(NAMED_GUID) {
+    DXE_DEPEX    DXE_DEPEX Optional      |.depex
+    GUIDED A31280AD-481E-41B6-95E8-127F4C984779 PROCESSING_REQUIRED = TRUE {
+      PE32     PE32                    |.efi
+      UI       STRING="$(MODULE_NAME)" Optional
+      VERSION  STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
     }
   }
 

@@ -258,8 +258,8 @@ DxeMain (
   // Call constructor for all libraries
   //
   ProcessLibraryConstructorList (gDxeCoreImageHandle, gDxeCoreST);
-  PERF_END   (0,PEI_TOK, NULL, 0) ;
-  PERF_START (0,DXE_TOK, NULL, 0) ;
+  PERF_END   (0,"PEI", NULL, 0) ;
+  PERF_START (0,"DXE", NULL, 0) ;
 
   //
   // Initialize the Global Coherency Domain Services
@@ -621,37 +621,12 @@ CoreExitBootServices (
   )
 {
   EFI_STATUS                Status;
-  EFI_STATUS                StatusTemp;
-  EFI_TCG_PLATFORM_PROTOCOL *TcgPlatformProtocol;
-
-  //
-  // Measure invocation of ExitBootServices,
-  // which is defined by TCG_EFI_Platform_1_20_Final Specification
-  //
-  TcgPlatformProtocol = NULL;
-  Status = CoreLocateProtocol (
-             &gEfiTcgPlatformProtocolGuid,
-             NULL,
-             (VOID **) &TcgPlatformProtocol
-             );
-  if (!EFI_ERROR (Status)) {
-    Status = TcgPlatformProtocol->MeasureAction (EFI_EXIT_BOOT_SERVICES_INVOCATION);
-    ASSERT_EFI_ERROR (Status);
-  }
 
   //
   // Terminate memory services if the MapKey matches
   //
   Status = CoreTerminateMemoryMap (MapKey);
   if (EFI_ERROR (Status)) {
-    //
-    // Measure failure of ExitBootServices
-    //
-    if (TcgPlatformProtocol != NULL) {
-      StatusTemp = TcgPlatformProtocol->MeasureAction (EFI_EXIT_BOOT_SERVICES_FAILED);
-      ASSERT_EFI_ERROR (StatusTemp);
-    }
-
     return Status;
   }
 
@@ -704,14 +679,6 @@ CoreExitBootServices (
   // Update the AtRuntime field in Runtiem AP.
   //
   gRuntime->AtRuntime = TRUE;
-
-  //
-  // Measure success of ExitBootServices
-  //
-  if (TcgPlatformProtocol != NULL) {
-    StatusTemp = TcgPlatformProtocol->MeasureAction (EFI_EXIT_BOOT_SERVICES_SUCCEEDED);
-    ASSERT_EFI_ERROR (StatusTemp);
-  }
 
   return Status;
 }

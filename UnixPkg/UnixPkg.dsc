@@ -3,7 +3,7 @@
 # EFI/Framework Emulation Platform with UEFI HII interface supported.
 #
 # The Emulation Platform can be used to debug individual modules, prior to creating
-#       a real platform. This also provides an example for how an FPD is created.
+#       a real platform. This also provides an example for how an DSC is created.
 # Copyright (c) 2006 - 2008, Intel Corporation
 #
 #  All rights reserved. This program and the accompanying materials
@@ -58,7 +58,6 @@
   PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
   PciIncompatibleDeviceSupportLib|IntelFrameworkModulePkg/Library/PciIncompatibleDeviceSupportLib/PciIncompatibleDeviceSupportLib.inf
   CacheMaintenanceLib|MdePkg/Library/BaseCacheMaintenanceLib/BaseCacheMaintenanceLib.inf
-  FvbServiceLib|MdeModulePkg/Library/EdkFvbServiceLib/EdkFvbServiceLib.inf
   IoLib|MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
   UefiDecompressLib|IntelFrameworkModulePkg/Library/BaseUefiTianoCustomDecompressLib/BaseUefiTianoCustomDecompressLib.inf
   HiiLib|MdeModulePkg/Library/UefiHiiLib/UefiHiiLib.inf
@@ -73,19 +72,14 @@
   DxeServicesLib|MdePkg/Library/DxeServicesLib/DxeServicesLib.inf
   PeCoffGetEntryPointLib|MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
 
-[LibraryClasses.common.BASE]
-  DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
-  ReportStatusCodeLib|IntelFrameworkModulePkg/Library/BaseReportStatusCodeLib/BaseReportStatusCodeLib.inf
-
 [LibraryClasses.common.USER_DEFINED]
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
-  ReportStatusCodeLib|IntelFrameworkModulePkg/Library/BaseReportStatusCodeLib/BaseReportStatusCodeLib.inf
-
-[LibraryClasses.common.SEC]
-  BaseMemoryLib|MdePkg/Library/BaseMemoryLib/BaseMemoryLib.inf
-  DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
-  ReportStatusCodeLib|IntelFrameworkModulePkg/Library/BaseReportStatusCodeLib/BaseReportStatusCodeLib.inf
-  PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
+  PeCoffExtraActionLib|MdePkg/Library/BasePeCoffExtraActionLibNull/BasePeCoffExtraActionLibNull.inf
+  ReportStatusCodeLib|IntelFrameworkModulePkg/Library/PeiReportStatusCodeLib/PeiReportStatusCodeLib.inf
+  PeiServicesTablePointerLib|MdePkg/Library/PeiServicesTablePointerLib/PeiServicesTablePointerLib.inf
+  OemHookStatusCodeLib|UnixPkg/Library/PeiUnixOemHookStatusCodeLib/PeiUnixOemHookStatusCodeLib.inf
+  PeiServicesLib|MdePkg/Library/PeiServicesLib/PeiServicesLib.inf
+  MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
 
 [LibraryClasses.common.DXE_CORE]
   DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
@@ -98,7 +92,7 @@
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
   DebugLib|IntelFrameworkModulePkg/Library/PeiDxeDebugLibReportStatusCode/PeiDxeDebugLibReportStatusCode.inf
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
-  PeCoffLib|UnixPkg/Library/DxeUnixPeCoffLib/DxeUnixPeCoffLib.inf
+  PeCoffExtraActionLib|UnixPkg/Library/DxeUnixPeCoffExtraActionLib/DxeUnixPeCoffExtraActionLib.inf
   ExtractGuidedSectionLib|MdePkg/Library/DxeExtractGuidedSectionLib/DxeExtractGuidedSectionLib.inf
 
 [LibraryClasses.common.DXE_SMM_DRIVER]
@@ -129,7 +123,7 @@
   OemHookStatusCodeLib|UnixPkg/Library/PeiUnixOemHookStatusCodeLib/PeiUnixOemHookStatusCodeLib.inf
   PeCoffGetEntryPointLib|UnixPkg/Library/EdkUnixPeiPeCoffGetEntryPointLib/EdkUnixPeiPeCoffGetEntryPointLib.inf
   DebugLib|IntelFrameworkModulePkg/Library/PeiDxeDebugLibReportStatusCode/PeiDxeDebugLibReportStatusCode.inf
-  PeCoffLib|UnixPkg/Library/PeiUnixPeCoffLib/PeiUnixPeCoffLib.inf
+  PeCoffExtraActionLib|UnixPkg/Library/PeiUnixPeCoffExtraActionLib/PeiUnixPeCoffExtraActionLib.inf
   ExtractGuidedSectionLib|MdePkg/Library/PeiExtractGuidedSectionLib/PeiExtractGuidedSectionLib.inf
 
 [LibraryClasses.common.PEI_CORE]
@@ -145,7 +139,7 @@
   PeCoffGetEntryPointLib|UnixPkg/Library/EdkUnixPeiPeCoffGetEntryPointLib/EdkUnixPeiPeCoffGetEntryPointLib.inf
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   DebugLib|IntelFrameworkModulePkg/Library/PeiDxeDebugLibReportStatusCode/PeiDxeDebugLibReportStatusCode.inf
-  PeCoffLib|UnixPkg/Library/PeiCoreUnixPeCoffLib/PeiCoreUnixPeCoffLib.inf
+  PeCoffExtraActionLib|UnixPkg/Library/PeiUnixPeCoffExtraActionLib/PeiUnixPeCoffExtraActionLib.inf
 
 [LibraryClasses.common.DXE_RUNTIME_DRIVER]
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
@@ -163,6 +157,7 @@
   UnixLib|UnixPkg/Library/DxeUnixLib/DxeUnixLib.inf
   OemHookStatusCodeLib|UnixPkg/Library/DxeUnixOemHookStatusCodeLib/DxeUnixOemHookStatusCodeLib.inf
   DebugLib|IntelFrameworkModulePkg/Library/PeiDxeDebugLibReportStatusCode/PeiDxeDebugLibReportStatusCode.inf
+  PeCoffExtraActionLib|UnixPkg/Library/DxeUnixPeCoffExtraActionLib/DxeUnixPeCoffExtraActionLib.inf
 
 [LibraryClasses.common.UEFI_DRIVER]
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
@@ -183,6 +178,7 @@
   UdpIoLib|MdeModulePkg/Library/DxeUdpIoLib/DxeUdpIoLib.inf
   IpIoLib|MdeModulePkg/Library/DxeIpIoLib/DxeIpIoLib.inf
   DpcLib|MdeModulePkg/Library/DxeDpcLib/DxeDpcLib.inf
+  PeCoffExtraActionLib|UnixPkg/Library/DxeUnixPeCoffExtraActionLib/DxeUnixPeCoffExtraActionLib.inf
 
 [LibraryClasses.common.DXE_DRIVER]
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
@@ -219,7 +215,7 @@
   UnixLib|UnixPkg/Library/DxeUnixLib/DxeUnixLib.inf
   OemHookStatusCodeLib|UnixPkg/Library/DxeUnixOemHookStatusCodeLib/DxeUnixOemHookStatusCodeLib.inf
   DebugLib|IntelFrameworkModulePkg/Library/PeiDxeDebugLibReportStatusCode/PeiDxeDebugLibReportStatusCode.inf
-  PrintLib|MdeModulePkg/Library/EdkDxePrintLib/EdkDxePrintLib.inf
+  PrintLib|MdeModulePkg/Library/DxePrintLibPrint2Protocol/DxePrintLibPrint2Protocol.inf
 
 ################################################################################
 #
@@ -290,20 +286,10 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdVariableStoreSize|0x10000
 
 [PcdsFeatureFlag.common]
-  gEfiEdkModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseTraverseEnabled|TRUE
-  gEfiEdkModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseCallbackOnSetEnabled|TRUE
-  gEfiEdkModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseExEnabled|TRUE
-  gEfiEdkModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseGetSizeEnabled|TRUE
-  gEfiEdkModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseSetEnabled|TRUE
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseSerial|FALSE
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseMemory|FALSE
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseOEM|TRUE
   gEfiEdkModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|FALSE
-  gEfiEdkModulePkgTokenSpaceGuid.PcdDxeIplSupportEfiDecompress|TRUE
-  gEfiEdkModulePkgTokenSpaceGuid.PcdDxeIplSupportTianoDecompress|TRUE
-  gEfiEdkModulePkgTokenSpaceGuid.PcdDxeIplSupportCustomDecompress|TRUE
-  gEfiEdkModulePkgTokenSpaceGuid.PcdDxeIplBuildShareCodeHobs|TRUE
-  gEfiEdkModulePkgTokenSpaceGuid.PcdDxePcdDatabaseTraverseEnabled|TRUE
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseHardSerial|FALSE
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseEfiSerial|FALSE
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseRuntimeMemory|FALSE
@@ -315,7 +301,6 @@
   gEfiEdkModulePkgTokenSpaceGuid.PcdSupportUpdateCapsuleReset|FALSE
   gEfiMdePkgTokenSpaceGuid.PcdComponentNameDisable|FALSE
   gEfiMdePkgTokenSpaceGuid.PcdDriverDiagnosticsDisable|FALSE
-  gEfiEdkModulePkgTokenSpaceGuid.PcdNtEmulatorEnable|FALSE
   gEfiEdkModulePkgTokenSpaceGuid.PcdDevicePathSupportDevicePathToText|TRUE
   gEfiEdkModulePkgTokenSpaceGuid.PcdDevicePathSupportDevicePathFromText|TRUE
   gEfiGenericPlatformTokenSpaceGuid.PcdPciIsaEnable|FALSE
@@ -334,7 +319,6 @@
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdStatusCodeUseMemory|FALSE
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdStatusCodeUseOEM|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|FALSE
-  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplEnableIdt|FALSE
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSupportEfiDecompress|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSupportTianoDecompress|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSupportCustomDecompress|TRUE
@@ -352,7 +336,6 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdSupportUpdateCapsuleReset|FALSE
   gEfiMdePkgTokenSpaceGuid.PcdComponentNameDisable|FALSE
   gEfiMdePkgTokenSpaceGuid.PcdDriverDiagnosticsDisable|FALSE
-  gEfiMdeModulePkgTokenSpaceGuid.PcdNtEmulatorEnable|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdDevicePathSupportDevicePathToText|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdDevicePathSupportDevicePathFromText|TRUE
   gEfiMdePkgTokenSpaceGuid.PcdComponentName2Disable|FALSE
@@ -389,11 +372,28 @@
   gEfiUnixPkgTokenSpaceGuid.PcdUnixMemorySize|L"64!64"|VOID*|10
   gEfiUnixPkgTokenSpaceGuid.PcdUnixSerialPort|L"/dev/ttyS0!/dev/ttyS1"|VOID*|20
 
-################################################################################
+[PcdsDynamicHii.common.DEFAULT]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConOutColumn|L"Setup"|gEfiUnixSystemConfigGuid|0x0|80
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow|L"Setup"|gEfiUnixSystemConfigGuid|0x4|25
+
+###################################################################################################
 #
-# Components Section - list of all EDK II Modules needed by this Platform.
+# Components Section - list of the modules and components that will be processed by compilation
+#                      tools and the EDK II tools to generate PE32/PE32+/Coff image files.
 #
-################################################################################
+# Note: The EDK II DSC file is not used to specify how compiled binary images get placed
+#       into firmware volume images. This section is just a list of modules to compile from
+#       source into UEFI-compliant binaries.
+#       It is the FDF file that contains information on combining binary files into firmware
+#       volume images, whose concept is beyond UEFI and is described in PI specification.
+#       Binary modules do not need to be listed in this section, as they should be
+#       specified in the FDF file. For example: Shell binary (Shell_Full.efi), FAT binary (Fat.efi),
+#       Logo (Logo.bmp), and etc.
+#       There may also be modules listed in this section that are not required in the FDF file,
+#       When a module listed here is excluded from FDF file, then UEFI-compliant binary will be
+#       generated for it, but the binary will not be put into any firmware volume.
+#
+###################################################################################################
 [Components.IA32]
   ##
   #  SEC Phase modules
@@ -411,7 +411,6 @@
   IntelFrameworkModulePkg/Universal/StatusCode/Pei/PeiStatusCode.inf
   UnixPkg/BootModePei/BootModePei.inf
   UnixPkg/UnixFlashMapPei/FlashMap.inf
-  MdeModulePkg/Universal/MemoryTest/BaseMemoryTestPei/BaseMemoryTestPei.inf
   MdeModulePkg/Universal/Variable/Pei/VariablePei.inf
   UnixPkg/UnixAutoScanPei/UnixAutoScan.inf
   UnixPkg/UnixFirmwareVolumePei/UnixFwh.inf
@@ -441,7 +440,7 @@
   MdeModulePkg/Universal/MemoryTest/NullMemoryTestDxe/NullMemoryTestDxe.inf
   UnixPkg/UnixThunkDxe/UnixThunk.inf
   UnixPkg/CpuRuntimeDxe/Cpu.inf
-  MdeModulePkg/Universal/FirmwareVolume/FaultTolerantWriteDxe/FtwLite.inf
+  MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
   IntelFrameworkModulePkg/Universal/DataHubStdErrDxe/DataHubStdErrDxe.inf
   UnixPkg/MiscSubClassPlatformDxe/MiscSubClassDriver.inf
   UnixPkg/TimerDxe/Timer.inf
@@ -488,19 +487,9 @@
 
   MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
   MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
+  MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
   MdeModulePkg/Universal/DriverSampleDxe/DriverSampleDxe.inf {
     <LibraryClasses>
       PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   }
 
-######################################################################################
-#
-# Following binaries are specified in FDF file and built in Firmware Volumes.
-# The are not included in DSC file because DSC only specifies modules to build.
-#
-######################################################################################
-##
-## EdkShellBinPkg/FullShell/Ia32/Shell_Full.efi
-## FatBinPkg/EnhancedFatDxe/Ia32/Fat.efi
-## MdeModulePkg/Logo/Logo.bmp
-##

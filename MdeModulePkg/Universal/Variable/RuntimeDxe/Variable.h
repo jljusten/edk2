@@ -19,7 +19,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <PiDxe.h>
 #include <Protocol/VariableWrite.h>
-#include <Protocol/FaultTolerantWriteLite.h>
+#include <Protocol/FaultTolerantWrite.h>
 #include <Protocol/FirmwareVolumeBlock.h>
 #include <Protocol/Variable.h>
 #include <Library/PcdLib.h>
@@ -28,16 +28,14 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/UefiRuntimeLib.h>
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
-#include <Library/FvbServiceLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiLib.h>
 #include <Library/BaseLib.h>
 #include <Library/SynchronizationLib.h>
 #include <Library/MemoryAllocationLib.h>
-#include <Guid/VariableInfo.h>
 #include <Guid/GlobalVariable.h>
 #include <Guid/EventGroup.h>
-#include <VariableFormat.h>
+#include <Guid/VariableFormat.h>
 
 #define VARIABLE_RECLAIM_THRESHOLD (1024)
 
@@ -59,7 +57,7 @@ typedef struct {
   VARIABLE_GLOBAL VariableGlobal;
   UINTN           VolatileLastVariableOffset;
   UINTN           NonVolatileLastVariableOffset;
-  UINT32          FvbInstance;
+  EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL *FvbInstance;
 } VARIABLE_MODULE_GLOBAL;
 
 typedef struct {

@@ -6,7 +6,7 @@
 #  interface of protocol gEfiBdsArchProtocolGuid, then BDS phase is entered.
 #
 #  Generally, this module take reposiblity to connect all necessary devices for platform boot, 
-#  these boot device path  are hold in PlatformBdsLib library instance produced by platform.
+#  these boot device path are hold in PlatformBdsLib library instance produced by platform.
 #  For legacy boot, BDS will transfer control to legacy BIOS after legacy boot device is select.
 #  For EFI boot, BDS will load boot loader file EFI\BOOT\BOOTIA32.EFI, EFI\BOOT\BOOTX64.EFI, 
 #  EFI\BOOT\BOOTIA64.EFI file from selected boot device and transfer control to boot loader.
@@ -14,7 +14,7 @@
 #  BDSDxe also maintain the UI for "Boot Manager, Boot Maintaince Manager, Device Manager" which
 #  is used for user to configure boot option or maintain hardware device.
 #  
-#  Copyright (c) 2008, Intel Corporation. <BR>
+#  Copyright (c) 2008 - 2009, Intel Corporation. <BR>
 #  All rights reserved. This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution.  The full text of the license may be found at
@@ -88,7 +88,8 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   IntelFrameworkPkg/IntelFrameworkPkg.dec
-
+  IntelFrameworkModulePkg/IntelFrameworkModulePkg.dec
+  
 [LibraryClasses]
   DevicePathLib
   BaseLib
@@ -110,7 +111,8 @@
   UefiDriverEntryPoint
   PlatformBdsLib
   CapsuleLib
-
+  PcdLib
+  
 [Guids]
   gEfiGlobalVariableGuid                        ## SOMETIMES_PRODUCES ## Variable:L"BootNext" (The number of next boot option)
                                                 ## SOMETIMES_PRODUCES ## Variable:L"BootXX" (Boot option variable)
@@ -128,15 +130,12 @@
                                                 ## SOMETIMES_CONSUMES ## Variable:L"ConIn" (The device path of console in device)
                                                 ## SOMETIMES_CONSUMES ## Variable:L"ConOut" (The device path of console out device)
                                                 ## SOMETIMES_CONSUMES ## Variable:L"ErrOut" (The device path of error out device)
-  gEfiBootStateGuid                             ## SOMETIMES_PRODUCES (Produce when status has not been set yet) ## Variable:L"BootState" (Indicate the state of last boot)
   gEfiFileSystemVolumeLabelInfoIdGuid           ## CONSUMES ## GUID (Indicate the information type is volume)
   gEfiFileInfoGuid                              ## CONSUMES ## GUID (Indicate the information type is file)
-  gEfiGenericPlatformVariableGuid               ## PRODUCES ## Variable:L"ConOutMode" (The mode of console out device)
-                                                ## PRODUCES ## Variable:L"VBIOS" (The option of video BIOS)
   gEfiMiscSubClassGuid                          ## CONSUMES ## GUID (Indicate the datahub for holding misc sub class record)
   gEfiMemorySubClassGuid                        ## CONSUMES ## GUID (Indicate the datahub for holding memory record)
   gEfiProcessorSubClassGuid                     ## CONSUMES ## GUID (Indicate the datahub for holding processor record)
-  gEfiCapsuleVendorGuid                         ## CONSUMES ## GUID (Indicate the hob for holding capsure vendor)
+  gEfiCapsuleVendorGuid                         ## CONSUMES ## GUID (Indicate the hob for holding capsule update image)
 
 [Protocols]
   gEfiHiiStringProtocolGuid                     # PROTOCOL ALWAYS_CONSUMES
@@ -146,11 +145,10 @@
   gEfiDataHubProtocolGuid                       # PROTOCOL ALWAYS_CONSUMES
   gEfiGenericMemTestProtocolGuid                # PROTOCOL ALWAYS_CONSUMES
   gEfiLegacyBiosProtocolGuid                    # PROTOCOL ALWAYS_CONSUMES
-  gEfiConsoleControlProtocolGuid                # PROTOCOL ALWAYS_CONSUMES
   gEfiHiiDatabaseProtocolGuid                   # PROTOCOL ALWAYS_CONSUMES
-  gEfiUgaDrawProtocolGuid                       # PROTOCOL ALWAYS_CONSUMES
+  gEfiUgaDrawProtocolGuid |PcdUgaConsumeSupport # PROTOCOL SOMETIMES_CONSUMES
   gEfiBlockIoProtocolGuid                       # PROTOCOL ALWAYS_CONSUMES
-  gEfiGraphicsOutputProtocolGuid                # PROTOCOL ALWAYS_CONSUMES
+  gEfiGraphicsOutputProtocolGuid                # PROTOCOL SOMETIMES_CONSUMES
   gEfiSimpleTextInputExProtocolGuid             # PROTOCOL ALWAYS_CONSUMES
   gEfiHiiConfigRoutingProtocolGuid              # PROTOCOL ALWAYS_CONSUMES
   gEfiHiiConfigAccessProtocolGuid               # PROTOCOL ALWAYS_CONSUMES
@@ -160,7 +158,6 @@
 
 [FeaturePcd.common]
   gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultLangDeprecate
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSupportHardwareErrorRecord
   gEfiMdePkgTokenSpaceGuid.PcdUgaConsumeSupport
 
 [Pcd.common]
@@ -168,17 +165,21 @@
   gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultLang
   gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultPlatformLangCodes
   gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultPlatformLang
-  gEfiMdeModulePkgTokenSpaceGuid.PcdHardwareErrorRecordLevel
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdHardwareErrorRecordLevel
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConOutColumn
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdPlatformBootTimeOut
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdBootState
 
 [Depex]
-  gEfiHiiDatabaseProtocolGuid
+  TRUE
 
 #
 # [BootMode] 
-#   BOOT_ON_FLASH_UPDATE            ## SOMETIMES_CONSUMES
+#   BOOT_ON_FLASH_UPDATE    ## SOMETIMES_CONSUMES (Update Capsule Image)
 #
 #  
 # [Hob]
-#   CAPSULE_HOB                     ## SOMETIMES_CONSUMES
+#   HOB                     ## SOMETIMES_CONSUMES  ## GUID EXTENSION Capsule Data Hob
 #
 # 

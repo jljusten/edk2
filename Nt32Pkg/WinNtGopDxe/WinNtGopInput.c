@@ -719,7 +719,6 @@ WinNtGopSimpleTextInExRegisterKeyNotify (
                               
 --*/   
 {
-  EFI_STATUS                         Status;
   GOP_PRIVATE_DATA                   *Private;
   WIN_NT_GOP_SIMPLE_TEXTIN_EX_NOTIFY *CurrentNotify;
   LIST_ENTRY                         *Link;
@@ -759,20 +758,10 @@ WinNtGopSimpleTextInExRegisterKeyNotify (
 
   NewNotify->Signature         = WIN_NT_GOP_SIMPLE_TEXTIN_EX_NOTIFY_SIGNATURE;     
   NewNotify->KeyNotificationFn = KeyNotificationFunction;
+  NewNotify->NotifyHandle      = (EFI_HANDLE) NewNotify;
   CopyMem (&NewNotify->KeyData, KeyData, sizeof (KeyData));
   InsertTailList (&Private->NotifyList, &NewNotify->NotifyEntry);
 
-  //
-  // Use gSimpleTextInExNotifyGuid to get a valid EFI_HANDLE
-  //  
-  Status = gBS->InstallMultipleProtocolInterfaces (
-                  &NewNotify->NotifyHandle,
-                  &gSimpleTextInExNotifyGuid,
-                  NULL,
-                  NULL
-                  );
-  ASSERT_EFI_ERROR (Status);
-  
   *NotifyHandle = NewNotify->NotifyHandle;  
   
   return EFI_SUCCESS;
@@ -801,7 +790,6 @@ WinNtGopSimpleTextInExUnregisterKeyNotify (
                               
 --*/   
 {
-  EFI_STATUS                         Status;
   GOP_PRIVATE_DATA                   *Private;
   LIST_ENTRY                         *Link;
   WIN_NT_GOP_SIMPLE_TEXTIN_EX_NOTIFY *CurrentNotify;
@@ -809,18 +797,10 @@ WinNtGopSimpleTextInExUnregisterKeyNotify (
   if (NotificationHandle == NULL) {
     return EFI_INVALID_PARAMETER;
   } 
-  
-  Status = gBS->OpenProtocol (
-                  NotificationHandle,
-                  &gSimpleTextInExNotifyGuid,
-                  (VOID **) NULL,
-                  NULL,
-                  NULL,
-                  EFI_OPEN_PROTOCOL_TEST_PROTOCOL
-                  );
-  if (EFI_ERROR (Status)) {
+
+  if (((WIN_NT_GOP_SIMPLE_TEXTIN_EX_NOTIFY *) NotificationHandle)->Signature != WIN_NT_GOP_SIMPLE_TEXTIN_EX_NOTIFY_SIGNATURE) {
     return EFI_INVALID_PARAMETER;
-  }
+  } 
 
   Private = GOP_PRIVATE_DATA_FROM_TEXT_IN_EX_THIS (This);
 
@@ -836,13 +816,7 @@ WinNtGopSimpleTextInExUnregisterKeyNotify (
       // Remove the notification function from NotifyList and free resources
       //
       RemoveEntryList (&CurrentNotify->NotifyEntry);      
-      Status = gBS->UninstallMultipleProtocolInterfaces (
-                      CurrentNotify->NotifyHandle,
-                      &gSimpleTextInExNotifyGuid,
-                      NULL,
-                      NULL
-                      );
-      ASSERT_EFI_ERROR (Status);
+
       gBS->FreePool (CurrentNotify);            
       return EFI_SUCCESS;
     }

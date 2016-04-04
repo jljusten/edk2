@@ -271,7 +271,7 @@ HOB_TEMPLATE  gHobTemplate = {
         sizeof (TABLE_HOB),                // Hob size
         0                                  // reserved
       },
-      EFI_SMBIOS_TABLE_GUID
+      SMBIOS_TABLE_GUID
     },
     0
   },
@@ -405,7 +405,7 @@ HOB_TEMPLATE  gHobTemplate = {
     {
       {0, 0, 0},                       // Reserved[3]
       EFI_FLASH_AREA_GUID_DEFINED,     // AreaType
-      EFI_SYSTEM_NV_DATA_HOB_GUID,     // AreaTypeGuid
+      EFI_SYSTEM_NV_DATA_FV_GUID ,     // AreaTypeGuid
       1,
       {
         {
@@ -465,7 +465,7 @@ HOB_TEMPLATE  gHobTemplate = {
     {
       {0, 0, 0},                       // Reserved[3]
       EFI_FLASH_AREA_GUID_DEFINED,     // AreaType
-      EFI_SYSTEM_NV_DATA_HOB_GUID,     // AreaTypeGuid
+      EFI_SYSTEM_NV_DATA_FV_GUID,      // AreaTypeGuid
       1,
       {
         {

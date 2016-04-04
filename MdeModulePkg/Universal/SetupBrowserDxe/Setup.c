@@ -22,14 +22,6 @@ SETUP_DRIVER_PRIVATE_DATA  mPrivateData = {
   {
     SendForm,
     BrowserCallback
-  },
-  {
-    UnicodeVSPrint,
-    UnicodeVSPrintAsciiFormat,
-    UnicodeValueToString,                         
-    AsciiVSPrint,          
-    AsciiVSPrintUnicodeFormat,
-    AsciiValueToString
   }
 };
 
@@ -221,7 +213,6 @@ SendForm (
   UI_MENU_SELECTION             *Selection;
   UINTN                         Index;
   FORM_BROWSER_FORMSET          *FormSet;
-  EFI_CONSOLE_CONTROL_PROTOCOL  *ConsoleControl;
 
   Status = EFI_SUCCESS;
   ZeroMem (&gScreenDimensions, sizeof (EFI_SCREEN_DESCRIPTOR));
@@ -283,15 +274,6 @@ SendForm (
   // Ensure we are in Text mode
   //
   gST->ConOut->SetAttribute (gST->ConOut, EFI_TEXT_ATTR (EFI_LIGHTGRAY, EFI_BLACK));
-
-  Status = gBS->LocateProtocol (&gEfiConsoleControlProtocolGuid, NULL, (VOID **) &ConsoleControl);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-  //
-  // Set console control to text mode.
-  //
-  ConsoleControl->SetMode (ConsoleControl, EfiConsoleControlScreenText);
 
   for (Index = 0; Index < HandleCount; Index++) {
     Selection = AllocateZeroPool (sizeof (UI_MENU_SELECTION));
@@ -603,29 +585,6 @@ InitializeSetup (
                   &mPrivateData.FormBrowser2
                   );
   ASSERT_EFI_ERROR (Status);
-
-  //
-  // Install Print protocol
-  //
-  Status = gBS->InstallProtocolInterface (
-                  &mPrivateData.Handle,
-                  &gEfiPrint2ProtocolGuid,
-                  EFI_NATIVE_INTERFACE,
-                  &mPrivateData.Print
-                  );
-
-  //
-  // Install Ecp Print protocol, which is defined in
-  // Edk\Foundation\Protocol\Print\Print.h with protocol
-  // GUID of { 0xdf2d868e, 0x32fc, 0x4cf0, {0x8e, 0x6b, 0xff, 0xd9, 0x5d, 0x13, 0x43, 0xd0 }}
-  // This is support previous module that written to consume this protocol.
-  // 
-  Status = gBS->InstallProtocolInterface (
-                  &mPrivateData.Handle,
-                  &gEfiPrintProtocolGuid,
-                  EFI_NATIVE_INTERFACE,
-                  &mPrivateData.Print
-                  );
 
   return Status;
 }
@@ -2166,7 +2125,8 @@ GetIfrBinaryData (
   if (EFI_ERROR (Status)) {
     return Status;
   }
-
+  ASSERT (HiiPackageList != NULL);
+  
   //
   // Get Form package from this HII package List
   //

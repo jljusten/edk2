@@ -49,16 +49,20 @@ typedef struct {
 #define FVB_DEVICE_SIGNATURE            SIGNATURE_32 ('F', 'V', 'B', 'N')
 
 typedef struct {
-  MEMMAP_DEVICE_PATH        MemMapDevPath;
+  MEDIA_FW_VOL_DEVICE_PATH  FvDevPath;
   EFI_DEVICE_PATH_PROTOCOL  EndDevPath;
-} FV_DEVICE_PATH;
+} FV_PIWG_DEVICE_PATH;
+
+typedef struct {
+  MEMMAP_DEVICE_PATH          MemMapDevPath;
+  EFI_DEVICE_PATH_PROTOCOL    EndDevPath;
+} FV_MEMMAP_DEVICE_PATH;
 
 typedef struct {
   UINTN                               Signature;
-  FV_DEVICE_PATH                      DevicePath;
+  EFI_DEVICE_PATH_PROTOCOL            *DevicePath;
   UINTN                               Instance;
   EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL  FwVolBlockInstance;
-  EFI_FVB_EXTENSION_PROTOCOL          FvbExtension;
 } EFI_FW_VOL_BLOCK_DEVICE;
 
 EFI_STATUS
@@ -205,16 +209,6 @@ EFIAPI
 FvbProtocolEraseBlocks (
   IN CONST EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL    *This,
   ...
-  );
-
-EFI_STATUS
-EFIAPI
-FvbExtendProtocolEraseCustomBlockRange (
-  IN EFI_FVB_EXTENSION_PROTOCOL           *This,
-  IN EFI_LBA                              StartLba,
-  IN UINTN                                OffsetStartLba,
-  IN EFI_LBA                              LastLba,
-  IN UINTN                                OffsetLastLba
   );
 
 #endif

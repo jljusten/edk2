@@ -49,8 +49,8 @@
   PeiMain.h
 
 [Packages]
-  MdeModulePkg/MdeModulePkg.dec
   MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
 
 [LibraryClasses]
   TimerLib
@@ -70,29 +70,29 @@
   
 
 [Guids]
-  gPeiAprioriFileNameGuid
-  gEfiFirmwareFileSystem2Guid
+  gPeiAprioriFileNameGuid     ## CONSUMES ## GUID
+  gEfiFirmwareFileSystem2Guid ## CONSUMES ## FV
 
 [Ppis]
-  gEfiPeiStatusCodePpiGuid                      # PPI SOMETIMES_CONSUMED
-  gEfiPeiResetPpiGuid                           # PPI SOMETIMES_CONSUMED
-  gEfiDxeIplPpiGuid                             # PPI ALWAYS_CONSUMED
-  gEfiPeiMemoryDiscoveredPpiGuid                # PPI ALWAYS_CONSUMED
-  gEfiPeiDecompressPpiGuid                      # PPI ALWAYS_CONSUMED
-  gEfiPeiFirmwareVolumeInfoPpiGuid              # PPI ALWAYS_CONSUMED
-  gEfiPeiLoadFilePpiGuid                        # PPI ALWAYS_CONSUMED
-  gEfiPeiSecurity2PpiGuid                       # PPI ALWAYS_CONSUMED
-  gEfiTemporaryRamSupportPpiGuid                # PPI ALWAYS_CONSUMED
+  gEfiPeiStatusCodePpiGuid                      ## SOMETIMES_CONSUMES (PeiReportStatusService is not ready if this PPI doesn't exist)
+  gEfiPeiResetPpiGuid                           ## SOMETIMES_CONSUMES (PeiResetService is not ready if this PPI doesn't exist) 
+  gEfiDxeIplPpiGuid                             ## CONSUMES
+  gEfiPeiMemoryDiscoveredPpiGuid                ## PRODUCES
+  gEfiPeiDecompressPpiGuid                      ## CONSUMES
+  gEfiPeiFirmwareVolumeInfoPpiGuid              ## NOTIFY   ## SOMETIMES_PRODUCES (Produce FvInfoPpi if the encapsulated FvImage is found) 
+  gEfiPeiLoadFilePpiGuid                        ## PRODUCES ## SOMETIMES_CONSUMES (The default load PeImage logic will be used when this PPI doesn't exist)
+  gEfiPeiSecurity2PpiGuid                       ## NOTIFY
+  gEfiTemporaryRamSupportPpiGuid                ## CONSUMES
 
 [FixedPcd.common]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxFvSupported
-  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxPeimPerFv
-  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxPpiSupported
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValuePeimDispatch
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValuePeiCoreEntry
-  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxPeiStackSize
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxFvSupported       ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxPeimPerFv         ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxPpiSupported      ## CONSUMES
+  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValuePeimDispatch	      ## CONSUMES
+  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValuePeiCoreEntry       ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxPeiStackSize      ## CONSUMES
 
 [FeaturePcd.common]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreImageLoaderSearchTeSectionFirst
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFrameworkFvHobCompatibilitySupport
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreImageLoaderSearchTeSectionFirst   ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFrameworkCompatibilitySupport	         ## CONSUMES
   

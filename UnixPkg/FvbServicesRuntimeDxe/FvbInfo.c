@@ -21,9 +21,7 @@ Abstract:
 --*/
 #include "PiDxe.h"
 #include <Guid/EventGroup.h>
-#include <Protocol/FvbExtension.h>
 #include <Protocol/FirmwareVolumeBlock.h>
-#include <Guid/AlternateFvBlock.h>
 #include <Protocol/DevicePath.h>
 
 #include <Library/UefiLib.h>
@@ -75,7 +73,7 @@ EFI_FVB_MEDIA_INFO  mPlatformFvbMediaInfo[] = {
       {
         0,
       },  // Reserved[1]
-      1,  // Revision
+      2,  // Revision
       {
         {
           FixedPcdGet32 (PcdUnixFlashFvRecoverySize)/FixedPcdGet32 (PcdUnixFirmwareBlockSize),
@@ -102,7 +100,7 @@ EFI_FVB_MEDIA_INFO  mPlatformFvbMediaInfo[] = {
       {
         0,
       },  // ZeroVector[16]
-      EFI_SYSTEM_NV_DATA_HOB_GUID,
+      EFI_SYSTEM_NV_DATA_FV_GUID,
       FixedPcdGet32 (PcdFlashNvStorageVariableSize) + \
       FixedPcdGet32 (PcdFlashNvStorageFtwWorkingSize) + \
       FixedPcdGet32 (PcdFlashNvStorageFtwSpareSize) + \
@@ -119,7 +117,7 @@ EFI_FVB_MEDIA_INFO  mPlatformFvbMediaInfo[] = {
       {
         0,
       },  // Reserved[1]
-      1,  // Revision
+      2,  // Revision
       {
         {
           (FixedPcdGet32 (PcdFlashNvStorageVariableSize) + \

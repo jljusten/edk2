@@ -106,8 +106,13 @@ GetWorker (
   }
 
   PcdDb = IsPeiDb ? ((UINT8 *) &mPcdDatabase->PeiDb) : ((UINT8 *) &mPcdDatabase->DxeDb);
-  StringTable = IsPeiDb ? mPcdDatabase->PeiDb.Init.StringTable :
-                          mPcdDatabase->DxeDb.Init.StringTable;
+                                    
+  if (IsPeiDb) {
+    StringTable = (UINT16 *) (&mPcdDatabase->PeiDb.Init.StringTable[0]);
+  } else {
+    StringTable = (UINT16 *) (&mPcdDatabase->DxeDb.Init.StringTable[0]);
+  }
+                                      
   
   Offset     = LocalTokenNumber & PCD_DATABASE_OFFSET_MASK;
   
@@ -118,13 +123,16 @@ GetWorker (
       break;
       
     case PCD_TYPE_HII:
-      GuidTable   = IsPeiDb ? mPcdDatabase->PeiDb.Init.GuidTable :
-                              mPcdDatabase->DxeDb.Init.GuidTable;
+      if (IsPeiDb) {
+        GuidTable = (EFI_GUID *) (&mPcdDatabase->PeiDb.Init.GuidTable[0]);
+      } else {
+        GuidTable = (EFI_GUID *) (&mPcdDatabase->DxeDb.Init.GuidTable[0]);
+      }
                               
       VariableHead = (VARIABLE_HEAD *) (PcdDb + Offset);
       
-      Guid = &(GuidTable[VariableHead->GuidTableIndex]);
-      Name = &(StringTable[VariableHead->StringIndex]);
+      Guid = GuidTable + VariableHead->GuidTableIndex;
+      Name = StringTable + VariableHead->StringIndex;
       VaraiableDefaultBuffer = (UINT8 *) PcdDb + VariableHead->DefaultValueOffset;
 
       Status = GetHiiVariable (Guid, Name, &Data, &DataSize);
@@ -154,7 +162,7 @@ GetWorker (
 
     case PCD_TYPE_STRING:
       StringTableIdx = (UINT16) *((UINT8 *) PcdDb + Offset);
-      RetPtr = (VOID *) &StringTable[StringTableIdx];
+      RetPtr = (VOID *) (StringTable + StringTableIdx);
       break;
 
     case PCD_TYPE_DATA:
@@ -761,8 +769,12 @@ SetWorker (
 
   PcdDb = IsPeiDb ? ((UINT8 *) &mPcdDatabase->PeiDb) : ((UINT8 *) &mPcdDatabase->DxeDb);
 
-  StringTable = IsPeiDb ? mPcdDatabase->PeiDb.Init.StringTable :
-                          mPcdDatabase->DxeDb.Init.StringTable;
+  if (IsPeiDb) {
+    StringTable = (UINT16 *) (&mPcdDatabase->PeiDb.Init.StringTable[0]);
+  } else {
+    StringTable = (UINT16 *) (&mPcdDatabase->DxeDb.Init.StringTable[0]);
+  }
+
   
   InternalData = PcdDb + Offset;
 
@@ -774,7 +786,7 @@ SetWorker (
     
     case PCD_TYPE_STRING:
       if (SetPtrTypeSize (TmpTokenNumber, Size)) {
-        CopyMem (&StringTable[*((UINT16 *)InternalData)], Data, *Size);
+        CopyMem (StringTable + *((UINT16 *)InternalData), Data, *Size);
         Status = EFI_SUCCESS;
       } else {
         Status = EFI_INVALID_PARAMETER;
@@ -789,13 +801,16 @@ SetWorker (
         }
       }
       
-      GuidTable   = IsPeiDb ? mPcdDatabase->PeiDb.Init.GuidTable :
-                              mPcdDatabase->DxeDb.Init.GuidTable;
+      if (IsPeiDb) {
+        GuidTable = (EFI_GUID *) (&mPcdDatabase->PeiDb.Init.GuidTable[0]);
+      } else {
+        GuidTable = (EFI_GUID *) (&mPcdDatabase->DxeDb.Init.GuidTable[0]);
+      }
                               
       VariableHead = (VARIABLE_HEAD *) (PcdDb + Offset);
       
-      Guid = &(GuidTable[VariableHead->GuidTableIndex]);
-      Name = &(StringTable[VariableHead->StringIndex]);
+      Guid = GuidTable + VariableHead->GuidTableIndex;
+      Name = StringTable + VariableHead->StringIndex;
       VariableOffset = VariableHead->Offset;
 
       Status = SetHiiVariable (Guid, Name, Data, *Size, VariableOffset);
@@ -963,6 +978,9 @@ SetHiiVariable (
 
   Size = 0;
 
+  //
+  // Try to get original variable size information.
+  //
   Status = gRT->GetVariable (
     (UINT16 *)VariableName,
     VariableGuid,
@@ -972,7 +990,10 @@ SetHiiVariable (
     );
 
   if (Status == EFI_BUFFER_TOO_SMALL) {
-
+    //
+    // Patch new PCD's value to offset in given HII variable.
+    //
+    
     Buffer = AllocatePool (Size);
 
     ASSERT (Buffer != NULL);
@@ -1000,12 +1021,33 @@ SetHiiVariable (
     FreePool (Buffer);
     return Status;
 
-  } 
+  } else if (Status == EFI_NOT_FOUND) {
+    //
+    // If variable does not exist, a new variable need to be created.
+    //
+    
+    Size = Offset + DataSize;
+    
+    Buffer = AllocateZeroPool (Size);
+    ASSERT (Buffer != NULL);
+    
+    CopyMem ((UINT8 *)Buffer + Offset, Data, DataSize);
+    
+    Status = gRT->SetVariable (
+              VariableName,
+              VariableGuid,
+              EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE,
+              Size,
+              Buffer
+              );
+
+    FreePool (Buffer);
+    return Status;    
+  }
   
   //
-  // If we drop to here, we don't have a Variable entry in
-  // the variable service yet. So, we will save the data
-  // in the PCD Database's volatile area.
+  // If we drop to here, the value is failed to be written in to variable area
+  // So, we will save the data in the PCD Database's volatile area.
   //
   return Status;
 }
@@ -1018,7 +1060,7 @@ SetHiiVariable (
   space guid: token number} to local token number.
   
   @param Guid            Token space guid for dynamic-ex PCD entry.
-  @param ExTokenNumber   EDES_TODO: Add parameter description
+  @param ExTokenNumber   Dynamic-ex PCD token number.
 
   @return local token number for dynamic-ex PCD.
 
@@ -1049,7 +1091,6 @@ GetExPcdTokenNumber (
         if ((ExTokenNumber == ExMap[Index].ExTokenNumber) &&
             (MatchGuidIdx == ExMap[Index].ExGuidIndex)) {
             return ExMap[Index].LocalTokenNumber;
-
         }
       }
     }
@@ -1114,33 +1155,36 @@ GetSkuIdArray (
   
 }
 
-
 /**
-  Get index of PCD entry in size table.
-
+  Wrapper function of getting index of PCD entry in size table.
+  
   @param LocalTokenNumberTableIdx Index of this PCD in local token number table.
-  @param LocalTokenNumberTable    Pointer to local token number table in PCD database.
   @param IsPeiDb                  If TRUE, the pcd entry is initialized in PEI phase,
                                   If FALSE, the pcd entry is initialized in DXE phase.
 
   @return index of PCD entry in size table.
-
 **/
 UINTN
-GetSizeTableIndexA (
-  IN UINTN        LocalTokenNumberTableIdx,
-  IN UINT32       *LocalTokenNumberTable,
-  IN BOOLEAN      IsPeiDb
+GetSizeTableIndex (
+  IN    UINTN             LocalTokenNumberTableIdx,
+  IN    BOOLEAN           IsPeiDb
   )
 {
-  UINTN       Index;
-  UINTN       SizeTableIdx;
-  UINTN       LocalTokenNumber;
-  SKU_ID      *SkuIdTable;
+  UINT32 *LocalTokenNumberTable;
+  UINTN  LocalTokenNumber;
+  UINTN  Index;
+  UINTN  SizeTableIdx;
+  SKU_ID *SkuIdTable;
   
+  if (IsPeiDb) {
+    LocalTokenNumberTable = mPcdDatabase->PeiDb.Init.LocalTokenNumberTable;
+  } else {
+    LocalTokenNumberTable = mPcdDatabase->DxeDb.Init.LocalTokenNumberTable;
+  }
+
   SizeTableIdx = 0;
 
-  for (Index=0; Index<LocalTokenNumberTableIdx; Index++) {
+  for (Index = 0; Index < LocalTokenNumberTableIdx; Index ++) {
     LocalTokenNumber = LocalTokenNumberTable[Index];
 
     if ((LocalTokenNumber & PCD_DATUM_TYPE_ALL_SET) == PCD_DATUM_TYPE_POINTER) {
@@ -1177,36 +1221,7 @@ GetSizeTableIndexA (
 
   }
 
-  return SizeTableIdx;
-}
-
-
-
-/**
-  Wrapper function of getting index of PCD entry in size table.
-  
-  @param LocalTokenNumberTableIdx Index of this PCD in local token number table.
-  @param IsPeiDb                  If TRUE, the pcd entry is initialized in PEI phase,
-                                  If FALSE, the pcd entry is initialized in DXE phase.
-
-  @return index of PCD entry in size table.
-**/
-UINTN
-GetSizeTableIndex (
-  IN    UINTN             LocalTokenNumberTableIdx,
-  IN    BOOLEAN           IsPeiDb
-  )
-{
-  UINT32 *LocalTokenNumberTable;
-  
-  if (IsPeiDb) {
-    LocalTokenNumberTable = mPcdDatabase->PeiDb.Init.LocalTokenNumberTable;
-  } else {
-    LocalTokenNumberTable = mPcdDatabase->DxeDb.Init.LocalTokenNumberTable;
-  }
-  return GetSizeTableIndexA (LocalTokenNumberTableIdx, 
-                             LocalTokenNumberTable,
-                             IsPeiDb);
+  return SizeTableIdx;  
 }
 
 /**

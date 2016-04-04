@@ -63,9 +63,11 @@
   HiiLib
   ExtendedHiiLib
 
+[Guids]
+  gEfiIfrTianoGuid                              ## CONSUMES  ## GUID
+  gEfiIfrFrameworkGuid                          ## CONSUMES  ## GUID
+
 [Protocols]
-  gEfiPrintProtocolGuid                         ## PRODUCES
-  gEfiPrint2ProtocolGuid                        ## PRODUCES
   gEfiHiiConfigAccessProtocolGuid               ## CONSUMES
   gEfiHiiStringProtocolGuid                     ## CONSUMES
   gEfiFormBrowser2ProtocolGuid                  ## PRODUCES
@@ -75,7 +77,7 @@
   gEfiConsoleControlProtocolGuid                ## CONSUMES
 
 [FeaturePcd.common]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFrameworkHiiCompatibilitySupport
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFrameworkCompatibilitySupport
 
 [Depex]
   gEfiHiiDatabaseProtocolGuid AND gEfiHiiConfigRoutingProtocolGuid

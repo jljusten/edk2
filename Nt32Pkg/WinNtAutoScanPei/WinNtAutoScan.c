@@ -27,7 +27,6 @@ Revision History
 //
 // The protocols, PPI and GUID defintions for this module
 //
-#include <Ppi/BaseMemoryTest.h>
 #include <Ppi/NtAutoscan.h>
 //
 // The Library classes this module consumes
@@ -35,12 +34,13 @@ Revision History
 #include <Library/DebugLib.h>
 #include <Library/PeimEntryPoint.h>
 #include <Library/HobLib.h>
+#include <Library/PeiServicesLib.h>
 
 EFI_STATUS
 EFIAPI
 PeimInitializeWinNtAutoScan (
-  IN EFI_FFS_FILE_HEADER       *FfsHeader,
-  IN EFI_PEI_SERVICES          **PeiServices
+  IN       EFI_PEI_FILE_HANDLE       FileHandle,
+  IN CONST EFI_PEI_SERVICES          **PeiServices
   )
 /*++
 
@@ -61,8 +61,6 @@ Returns:
   PEI_NT_AUTOSCAN_PPI         *PeiNtService;
   UINT64                      MemorySize;
   EFI_PHYSICAL_ADDRESS        MemoryBase;
-  PEI_BASE_MEMORY_TEST_PPI    *MemoryTestPpi;
-  EFI_PHYSICAL_ADDRESS        ErrorAddress;
   UINTN                       Index;
   EFI_RESOURCE_ATTRIBUTE_TYPE Attributes;
 
@@ -72,25 +70,12 @@ Returns:
   //
   // Get the PEI NT Autoscan PPI
   //
-  Status = (**PeiServices).LocatePpi (
-                            (const EFI_PEI_SERVICES **)PeiServices,
-                            &gPeiNtAutoScanPpiGuid, // GUID
-                            0,                      // INSTANCE
-                            &PpiDescriptor,         // EFI_PEI_PPI_DESCRIPTOR
-                            (VOID**)&PeiNtService           // PPI
-                            );
-  ASSERT_EFI_ERROR (Status);
-
-  //
-  // Get the Memory Test PPI
-  //
-  Status = (**PeiServices).LocatePpi (
-                            (const EFI_PEI_SERVICES **)PeiServices,
-                            &gPeiBaseMemoryTestPpiGuid,
-                            0,
-                            NULL,
-                            (VOID**)&MemoryTestPpi
-                            );
+  Status = PeiServicesLocatePpi (
+             &gPeiNtAutoScanPpiGuid, // GUID
+             0,                      // INSTANCE
+             &PpiDescriptor,         // EFI_PEI_PPI_DESCRIPTOR
+             (VOID**)&PeiNtService           // PPI
+             );
   ASSERT_EFI_ERROR (Status);
 
   Index = 0;
@@ -109,22 +94,9 @@ Returns:
 
       if (Index == 0) {
         //
-        // For the first area register it as PEI tested memory
+        // Register the memory with the PEI Core
         //
-        Status = MemoryTestPpi->BaseMemoryTest (
-                                  PeiServices,
-                                  MemoryTestPpi,
-                                  MemoryBase,
-                                  MemorySize,
-                                  Quick,
-                                  &ErrorAddress
-                                  );
-        ASSERT_EFI_ERROR (Status);
-
-        //
-        // Register the "tested" memory with the PEI Core
-        //
-        Status = (**PeiServices).InstallPeiMemory ((const EFI_PEI_SERVICES **)PeiServices, MemoryBase, MemorySize);
+        Status = PeiServicesInstallPeiMemory (MemoryBase, MemorySize);
         ASSERT_EFI_ERROR (Status);
 
         Attributes |= EFI_RESOURCE_ATTRIBUTE_TESTED;

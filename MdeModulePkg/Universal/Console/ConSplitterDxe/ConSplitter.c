@@ -429,8 +429,6 @@ ConSplitterDriverEntry(
                     &mStdErr.VirtualHandle,
                     &gEfiSimpleTextOutProtocolGuid,
                     &mStdErr.TextOut,
-                    &gEfiPrimaryStandardErrorDeviceGuid,
-                    NULL,
                     NULL
                     );
   }
@@ -449,8 +447,6 @@ ConSplitterDriverEntry(
                     &mConIn.SimplePointer,
                     &gEfiAbsolutePointerProtocolGuid,
                     &mConIn.AbsolutePointer,
-                    &gEfiPrimaryConsoleInDeviceGuid,
-                    NULL,
                     NULL
                     );
     if (!EFI_ERROR (Status)) {
@@ -480,8 +476,6 @@ ConSplitterDriverEntry(
                       &mConOut.UgaDraw,
                       &gEfiConsoleControlProtocolGuid,
                       &mConOut.ConsoleControl,
-                      &gEfiPrimaryConsoleOutDeviceGuid,
-                      NULL,
                       NULL
                       );
     } else if (!FeaturePcdGet (PcdConOutUgaSupport)) {
@@ -497,8 +491,6 @@ ConSplitterDriverEntry(
                       &mConOut.GraphicsOutput,
                       &gEfiConsoleControlProtocolGuid,
                       &mConOut.ConsoleControl,
-                      &gEfiPrimaryConsoleOutDeviceGuid,
-                      NULL,
                       NULL
                       );
     } else {
@@ -516,8 +508,6 @@ ConSplitterDriverEntry(
                       &mConOut.UgaDraw,
                       &gEfiConsoleControlProtocolGuid,
                       &mConOut.ConsoleControl,
-                      &gEfiPrimaryConsoleOutDeviceGuid,
-                      NULL,
                       NULL
                       );
     }
@@ -2918,7 +2908,6 @@ ConsplitterSetConsoleOutMode (
   UINTN                            MaxMode;
   EFI_STATUS                       Status;
   CONSOLE_OUT_MODE                 ModeInfo;
-  UINTN                            ModeInfoSize;
   EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  *TextOut;
 
   PreferMode   = 0xFF;
@@ -2926,31 +2915,8 @@ ConsplitterSetConsoleOutMode (
   TextOut      = &Private->TextOut;
   MaxMode      = (UINTN) (TextOut->Mode->MaxMode);
 
-  ModeInfoSize = sizeof (CONSOLE_OUT_MODE);
-  Status = gRT->GetVariable (
-                   VARCONOUTMODE,
-                   &gEfiGenericPlatformVariableGuid,
-                   NULL,
-                   &ModeInfoSize,
-                   &ModeInfo
-                   );
-
-  if (EFI_ERROR(Status)) {
-    //
-    // If fail to get variable, set variable to the default mode 80 x 25
-    // required by UEFI spec;
-    //
-    ModeInfo.Column = 80;
-    ModeInfo.Row    = 25;
-
-    gRT->SetVariable (
-           VARCONOUTMODE,
-           &gEfiGenericPlatformVariableGuid,
-           EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_NON_VOLATILE,
-           sizeof (CONSOLE_OUT_MODE),
-           &ModeInfo
-           );
-  }
+  ModeInfo.Column = PcdGet32 (PcdConOutColumn);
+  ModeInfo.Row    = PcdGet32 (PcdConOutRow);
 
   //
   // To find the prefer mode and basic mode from Text Out mode list
@@ -2968,7 +2934,7 @@ ConsplitterSetConsoleOutMode (
   }
 
   //
-  // Set perfer mode to Text Out devices.
+  // Set prefer mode to Text Out devices.
   //
   Status = TextOut->SetMode (TextOut, PreferMode);
   if (EFI_ERROR(Status)) {
@@ -2977,20 +2943,9 @@ ConsplitterSetConsoleOutMode (
     //
     Status = TextOut->SetMode (TextOut, BaseMode);
     ASSERT(!EFI_ERROR(Status));
-
-    ModeInfo.Column = 80;
-    ModeInfo.Row    = 25;
-
-    //
-    // Update ConOutMode variable
-    //
-    gRT->SetVariable (
-           VARCONOUTMODE,
-           &gEfiGenericPlatformVariableGuid,
-           EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_NON_VOLATILE,
-           sizeof (CONSOLE_OUT_MODE),
-           &ModeInfo
-           );
+    
+    PcdSet32 (PcdConOutColumn, 80);
+    PcdSet32 (PcdConOutRow, 25);
   }
 
   return ;
@@ -3896,6 +3851,7 @@ ConSplitterTextInRegisterKeyNotify (
   }
   NewNotify->Signature         = TEXT_IN_EX_SPLITTER_NOTIFY_SIGNATURE;
   NewNotify->KeyNotificationFn = KeyNotificationFunction;
+  NewNotify->NotifyHandle      = (EFI_HANDLE) NewNotify;
   CopyMem (&NewNotify->KeyData, KeyData, sizeof (KeyData));
 
   //
@@ -3915,17 +3871,6 @@ ConSplitterTextInRegisterKeyNotify (
       return Status;
     }
   }
-
-  //
-  // Use gSimpleTextInExNotifyGuid to get a valid EFI_HANDLE
-  //
-  Status = gBS->InstallMultipleProtocolInterfaces (
-                  &NewNotify->NotifyHandle,
-                  &gSimpleTextInExNotifyGuid,
-                  NULL,
-                  NULL
-                  );
-  ASSERT_EFI_ERROR (Status);
 
   InsertTailList (&mConIn.NotifyList, &NewNotify->NotifyEntry);
 
@@ -3966,18 +3911,10 @@ ConSplitterTextInUnregisterKeyNotify (
     return EFI_INVALID_PARAMETER;
   }
 
-  Status = gBS->OpenProtocol (
-                  NotificationHandle,
-                  &gSimpleTextInExNotifyGuid,
-                  NULL,
-                  NULL,
-                  NULL,
-                  EFI_OPEN_PROTOCOL_TEST_PROTOCOL
-                  );
-  if (EFI_ERROR (Status)) {
+  if (((TEXT_IN_EX_SPLITTER_NOTIFY *) NotificationHandle)->Signature != TEXT_IN_EX_SPLITTER_NOTIFY_SIGNATURE) {
     return EFI_INVALID_PARAMETER;
-  }
-
+  } 
+  
   Private = TEXT_IN_EX_SPLITTER_PRIVATE_DATA_FROM_THIS (This);
 
   //
@@ -4001,13 +3938,7 @@ ConSplitterTextInUnregisterKeyNotify (
         }
       }
       RemoveEntryList (&CurrentNotify->NotifyEntry);
-      Status = gBS->UninstallMultipleProtocolInterfaces (
-                      CurrentNotify->NotifyHandle,
-                      &gSimpleTextInExNotifyGuid,
-                      NULL,
-                      NULL
-                      );
-      ASSERT_EFI_ERROR (Status);
+
       gBS->FreePool (CurrentNotify->NotifyHandleList);
       gBS->FreePool (CurrentNotify);
       return EFI_SUCCESS;

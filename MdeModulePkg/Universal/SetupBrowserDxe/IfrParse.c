@@ -24,10 +24,6 @@ BOOLEAN          mInScopeGrayOut;
 FORM_EXPRESSION  *mSuppressExpression;
 FORM_EXPRESSION  *mGrayOutExpression;
 
-EFI_GUID  gTianoHiiIfrGuid = EFI_IFR_TIANO_GUID;
-GLOBAL_REMOVE_IF_UNREFERENCED EFI_GUID  mFrameworkHiiCompatibilityGuid = EFI_IFR_FRAMEWORK_GUID;
-
-
 /**
   Initialize Statement header members.
 
@@ -148,7 +144,7 @@ IsNextOpCodeGuidedVarEqName (
   //
   OpCodeData += ((EFI_IFR_OP_HEADER *) OpCodeData)->Length;
   if (*OpCodeData == EFI_IFR_GUID_OP) {
-    if (CompareGuid (&mFrameworkHiiCompatibilityGuid, (EFI_GUID *)(OpCodeData + sizeof (EFI_IFR_OP_HEADER)))) {
+    if (CompareGuid (&gEfiIfrFrameworkGuid, (EFI_GUID *)(OpCodeData + sizeof (EFI_IFR_OP_HEADER)))) {
       //
       // Specific GUIDed opcodes to support IFR generated from Framework HII VFR 
       //
@@ -208,7 +204,7 @@ CreateQuestion (
   // Take a look at next OpCode to see whether it is a GUIDed opcode to support
   // Framework Compatibility
   //
-  if (FeaturePcdGet (PcdFrameworkHiiCompatibilitySupport)) {
+  if (FeaturePcdGet (PcdFrameworkCompatibilitySupport)) {
     if ((*OpCodeData == EFI_IFR_NUMERIC_OP) && IsNextOpCodeGuidedVarEqName (OpCodeData)) {
       Status = UpdateCheckBoxStringToken (FormSet, Statement);
       if (EFI_ERROR (Status)) {
@@ -1623,7 +1619,7 @@ ParseOpCodes (
     // Vendor specific
     //
     case EFI_IFR_GUID_OP:
-      if (CompareGuid (&gTianoHiiIfrGuid, (EFI_GUID *)(OpCodeData + sizeof (EFI_IFR_OP_HEADER)))) {
+      if (CompareGuid (&gEfiIfrTianoGuid, (EFI_GUID *)(OpCodeData + sizeof (EFI_IFR_OP_HEADER)))) {
         //
         // Tiano specific GUIDed opcodes
         //
@@ -1740,6 +1736,8 @@ ParseOpCodes (
             if (EFI_ERROR (Status)) {
               return Status;
             }
+
+            ASSERT (CurrentExpression != NULL);
             if (CurrentExpression->Result.Type != EFI_IFR_TYPE_BOOLEAN) {
               return EFI_INVALID_PARAMETER;
             }

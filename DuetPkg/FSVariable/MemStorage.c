@@ -59,7 +59,7 @@ MemStorageConstructor (
 
   ZeroMem (Dev, sizeof(VS_DEV));
 
-  Dev->Signature   = VARIABLE_STORE_SIGNATURE;
+  Dev->Signature   = VS_DEV_SIGNATURE;
   Dev->Size        = Size;
 
   Dev->VarStore.Erase    = MemEraseStore;

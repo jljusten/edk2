@@ -146,11 +146,12 @@ BdsLibBootViaBootOption (
   EFI_DEVICE_PATH_PROTOCOL  *WorkingDevicePath;
   EFI_ACPI_S3_SAVE_PROTOCOL *AcpiS3Save;
   LIST_ENTRY                TempBootLists;
+  EFI_SECURITY_ARCH_PROTOCOL *SecurityProtocol;
 
   //
   // Record the performance data for End of BDS
   //
-  PERF_END (0, BDS_TOK, NULL, 0);
+  PERF_END (0, "BDS", NULL, 0);
 
   *ExitDataSize = 0;
   *ExitData     = NULL;
@@ -241,6 +242,18 @@ BdsLibBootViaBootOption (
     DevicePath = Option->DevicePath;
   }
 
+  //
+  // Measure GPT Table by SAP protocol.
+  //
+  Status = gBS->LocateProtocol (
+                  &gEfiSecurityArchProtocolGuid,
+                  NULL,
+                  (VOID**) &SecurityProtocol
+                  );
+  if (!EFI_ERROR (Status)) {
+    Status = SecurityProtocol->FileAuthenticationState (SecurityProtocol, 0, DevicePath);
+  }
+
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Booting %S\n", Option->Description));
 
   Status = gBS->LoadImage (
@@ -269,7 +282,7 @@ BdsLibBootViaBootOption (
     // Load the default boot file \EFI\BOOT\boot{machinename}.EFI from removable Media
     //  machinename is ia32, ia64, x64, ...
     //
-    FilePath = FileDevicePath (Handle, (CONST CHAR16*)PcdGetPtr(PcdDefaultBootFileName));
+    FilePath = FileDevicePath (Handle, EFI_REMOVABLE_MEDIA_FILE_NAME);
     if (FilePath != NULL) {
       Status = gBS->LoadImage (
                       TRUE,
@@ -1050,7 +1063,7 @@ BdsLibEnumerateAllBootOption (
     NeedDelete = TRUE;
     Status     = BdsLibGetImageHeader (
                    FileSystemHandles[Index],
-                   (CHAR16*)PcdGetPtr (PcdDefaultBootFileName),
+                   EFI_REMOVABLE_MEDIA_FILE_NAME,
                    &DosHeader,
                    Hdr
                    );
@@ -1114,18 +1127,6 @@ BdsLibEnumerateAllBootOption (
         &FvHandleBuffer
         );
   for (Index = 0; Index < FvHandleCount; Index++) {
-    //
-    // Only care the dispatched FV. If no dispatch protocol on the FV, it is not dispatched, then skip it.
-    //
-    Status = gBS->HandleProtocol (
-                    FvHandleBuffer[Index],
-                    &gEfiFirmwareVolumeDispatchProtocolGuid,
-                    (VOID **) &Fv
-                    );
-    if (EFI_ERROR (Status)) {
-      continue;
-    }
-    
     gBS->HandleProtocol (
           FvHandleBuffer[Index],
           &gEfiFirmwareVolume2ProtocolGuid,
@@ -1420,7 +1421,7 @@ BdsLibGetBootableHandle (
       Hdr.Union = &HdrData;
       Status = BdsLibGetImageHeader (
                  SimpleFileSystemHandles[Index],
-                 (CHAR16*)PcdGetPtr(PcdDefaultBootFileName),
+                 EFI_REMOVABLE_MEDIA_FILE_NAME,
                  &DosHeader,
                  Hdr
                  );

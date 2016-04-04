@@ -28,9 +28,7 @@ Revision History
 // The protocols, PPI and GUID defintions for this module
 //
 #include <Guid/EventGroup.h>
-#include <Protocol/FvbExtension.h>
 #include <Protocol/FirmwareVolumeBlock.h>
-#include <Guid/AlternateFvBlock.h>
 #include <Protocol/DevicePath.h>
 //
 // The Library classes this module consumes
@@ -53,31 +51,55 @@ Revision History
 
 ESAL_FWB_GLOBAL         *mFvbModuleGlobal;
 
-EFI_FW_VOL_BLOCK_DEVICE mFvbDeviceTemplate = {
-  FVB_DEVICE_SIGNATURE,
+FV_MEMMAP_DEVICE_PATH mFvMemmapDevicePathTemplate = {
   {
     {
+      HARDWARE_DEVICE_PATH,
+      HW_MEMMAP_DP,
       {
-        HARDWARE_DEVICE_PATH,
-        HW_MEMMAP_DP,
-        {
-          sizeof (MEMMAP_DEVICE_PATH),
-          0
-        }
-      },
-      EfiMemoryMappedIO,
-      0,
-      0,
-    },
-    {
-      END_DEVICE_PATH_TYPE,
-      END_ENTIRE_DEVICE_PATH_SUBTYPE,
-      {
-        sizeof (EFI_DEVICE_PATH_PROTOCOL),
-        0
+        (UINT8)(sizeof (MEMMAP_DEVICE_PATH)),
+        (UINT8)(sizeof (MEMMAP_DEVICE_PATH) >> 8)
       }
-    }
+    },
+    EfiMemoryMappedIO,
+    (EFI_PHYSICAL_ADDRESS) 0,
+    (EFI_PHYSICAL_ADDRESS) 0,
   },
+  {
+    END_DEVICE_PATH_TYPE,
+    END_ENTIRE_DEVICE_PATH_SUBTYPE,
+    {
+      END_DEVICE_PATH_LENGTH,
+      0
+    }
+  }
+};
+
+FV_PIWG_DEVICE_PATH mFvPIWGDevicePathTemplate = {
+  {
+    {
+      MEDIA_DEVICE_PATH,
+      MEDIA_PIWG_FW_VOL_DP,
+      {
+        (UINT8)(sizeof (MEDIA_FW_VOL_DEVICE_PATH)),
+        (UINT8)(sizeof (MEDIA_FW_VOL_DEVICE_PATH) >> 8)
+      }
+    },
+    { 0 }
+  },
+  {
+    END_DEVICE_PATH_TYPE,
+    END_ENTIRE_DEVICE_PATH_SUBTYPE,
+    {
+      END_DEVICE_PATH_LENGTH,
+      0
+    }
+  }
+};
+
+EFI_FW_VOL_BLOCK_DEVICE mFvbDeviceTemplate = {
+  FVB_DEVICE_SIGNATURE,
+  NULL,
   0,
   {
     FvbProtocolGetAttributes,
@@ -88,9 +110,6 @@ EFI_FW_VOL_BLOCK_DEVICE mFvbDeviceTemplate = {
     FvbProtocolWrite,
     FvbProtocolEraseBlocks,
     NULL
-  },
-  {
-    FvbExtendProtocolEraseCustomBlockRange
   }
 };
 
@@ -609,113 +628,6 @@ Returns:
 }
 
 EFI_STATUS
-FvbEraseCustomBlockRange (
-  IN UINTN                                Instance,
-  IN EFI_LBA                              StartLba,
-  IN UINTN                                OffsetStartLba,
-  IN EFI_LBA                              LastLba,
-  IN UINTN                                OffsetLastLba,
-  IN ESAL_FWB_GLOBAL                      *Global,
-  IN BOOLEAN                              Virtual
-  )
-/*++
-
-Routine Description:
-  Erases and initializes a specified range of a firmware volume
-
-Arguments:
-  Instance              - The FV instance to be erased
-  StartLba              - The starting logical block index to be erased
-  OffsetStartLba        - Offset into the starting block at which to
-                          begin erasing
-  LastLba               - The last logical block index to be erased
-  OffsetStartLba        - Offset into the last block at which to end erasing
-  Global                - Pointer to ESAL_FWB_GLOBAL that contains all
-                          instance data
-  Virtual               - Whether CPU is in virtual or physical mode
-
-Returns:
-  EFI_SUCCESS           - The firmware volume was erased successfully
-  EFI_ACCESS_DENIED     - The firmware volume is in the WriteDisabled state
-  EFI_DEVICE_ERROR      - The block device is not functioning correctly and
-                          could not be written. Firmware device may have been
-                          partially erased
-  EFI_INVALID_PARAMETER - Instance not found
-
---*/
-{
-  EFI_LBA Index;
-  UINTN   LbaSize;
-  UINTN   ScratchLbaSizeData;
-  EFI_STATUS Status;
-
-  //
-  // First LBA
-  //
-  Status = FvbGetLbaAddress (Instance, StartLba, NULL, &LbaSize, NULL, Global, Virtual);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  //
-  // Use the scratch space as the intermediate buffer to transfer data
-  // Back up the first LBA in scratch space.
-  //
-  FvbReadBlock (Instance, StartLba, 0, &LbaSize, Global->FvbScratchSpace[Virtual], Global, Virtual);
-
-  //
-  // erase now
-  //
-  FvbEraseBlock (Instance, StartLba, Global, Virtual);
-  ScratchLbaSizeData = OffsetStartLba;
-
-  //
-  // write the data back to the first block
-  //
-  if (ScratchLbaSizeData > 0) {
-    Status = FvbWriteBlock (Instance, StartLba, 0, &ScratchLbaSizeData, Global->FvbScratchSpace[Virtual], Global, Virtual);
-    if (EFI_ERROR (Status)) {
-      return Status;
-    }
-  }
-  //
-  // Middle LBAs
-  //
-  if (LastLba > (StartLba + 1)) {
-    for (Index = (StartLba + 1); Index <= (LastLba - 1); Index++) {
-      FvbEraseBlock (Instance, Index, Global, Virtual);
-    }
-  }
-  //
-  // Last LBAs, the same as first LBAs
-  //
-  if (LastLba > StartLba) {
-    Status = FvbGetLbaAddress (Instance, LastLba, NULL, &LbaSize, NULL, Global, Virtual);
-    if (EFI_ERROR (Status)) {
-      return Status;
-    }
-    FvbReadBlock (Instance, LastLba, 0, &LbaSize, Global->FvbScratchSpace[Virtual], Global, Virtual);
-    FvbEraseBlock (Instance, LastLba, Global, Virtual);
-  }
-
-  ScratchLbaSizeData = LbaSize - (OffsetLastLba + 1);
-  
-  if (ScratchLbaSizeData > 0) {
-    Status = FvbWriteBlock (
-              Instance,
-              LastLba,
-              (OffsetLastLba + 1),
-              &ScratchLbaSizeData,
-              Global->FvbScratchSpace[Virtual] + OffsetLastLba + 1,
-              Global,
-              Virtual
-              );
-  }
-
-  return Status;
-}
-
-EFI_STATUS
 FvbSetVolumeAttributes (
   IN UINTN                                  Instance,
   IN OUT EFI_FVB_ATTRIBUTES_2               *Attributes,
@@ -1173,54 +1085,6 @@ Returns:
 
   return FvbReadBlock (FvbDevice->Instance, Lba, Offset, NumBytes, Buffer, mFvbModuleGlobal, EfiGoneVirtual ());
 }
-//
-// FVB Extension Protocols
-//
-EFI_STATUS
-EFIAPI
-FvbExtendProtocolEraseCustomBlockRange (
-  IN EFI_FVB_EXTENSION_PROTOCOL           *This,
-  IN EFI_LBA                              StartLba,
-  IN UINTN                                OffsetStartLba,
-  IN EFI_LBA                              LastLba,
-  IN UINTN                                OffsetLastLba
-  )
-/*++
-
-Routine Description:
-  Erases and initializes a specified range of a firmware volume
-
-Arguments:
-  This                  - Calling context
-  StartLba              - The starting logical block index to be erased
-  OffsetStartLba        - Offset into the starting block at which to
-                          begin erasing
-  LastLba               - The last logical block index to be erased
-  OffsetStartLba        - Offset into the last block at which to end erasing
-
-Returns:
-  EFI_SUCCESS           - The firmware volume was erased successfully
-  EFI_ACCESS_DENIED     - The firmware volume is in the WriteDisabled state
-  EFI_DEVICE_ERROR      - The block device is not functioning correctly and
-                          could not be written. Firmware device may have been
-                          partially erased
-
---*/
-{
-  EFI_FW_VOL_BLOCK_DEVICE *FvbDevice;
-
-  FvbDevice = FVB_EXTEND_DEVICE_FROM_THIS (This);
-
-  return FvbEraseCustomBlockRange (
-          FvbDevice->Instance,
-          StartLba,
-          OffsetStartLba,
-          LastLba,
-          OffsetLastLba,
-          mFvbModuleGlobal,
-          EfiGoneVirtual ()
-          );
-}
 
 EFI_STATUS
 ValidateFvHeader (
@@ -1240,10 +1104,6 @@ Returns:
 
 --*/
 {
-  UINT16  *Ptr;
-  UINT16  HeaderLength;
-  UINT16  Checksum;
-
   //
   // Verify the header revision, header signature, length
   // Length of FvBlock cannot be 2**64-1
@@ -1256,19 +1116,11 @@ Returns:
       ) {
     return EFI_NOT_FOUND;
   }
+  
   //
   // Verify the header checksum
   //
-  HeaderLength  = (UINT16) (FwVolHeader->HeaderLength / 2);
-  Ptr           = (UINT16 *) FwVolHeader;
-  Checksum      = 0;
-  while (HeaderLength > 0) {
-    Checksum = (UINT16)(Checksum + (*Ptr));
-    HeaderLength--;
-    Ptr++;
-  }
-
-  if (Checksum != 0) {
+  if (CalculateCheckSum16 ((UINT16 *) FwVolHeader, FwVolHeader->HeaderLength) != 0) {
     return EFI_NOT_FOUND;
   }
 
@@ -1302,15 +1154,13 @@ Returns:
   EFI_HANDLE                          FwbHandle;
   EFI_FW_VOL_BLOCK_DEVICE             *FvbDevice;
   EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL  *OldFwbInterface;
-  EFI_DEVICE_PATH_PROTOCOL            *TempFwbDevicePath;
-  FV_DEVICE_PATH                      TempFvbDevicePathData;
   UINT32                              MaxLbaSize;
   EFI_PHYSICAL_ADDRESS                BaseAddress;
   UINT64                              Length;
   UINTN                               NumOfBlocks;
   EFI_PEI_HOB_POINTERS                FvHob;
 
-   //
+  //
   // Get the DXE services table
   //
   DxeServices = gDS;
@@ -1421,7 +1271,7 @@ Returns:
         FwVolHeader->HeaderLength
         );
     }
-
+    
     FwhInstance->FvBase[FVB_PHYSICAL] = (UINTN) BaseAddress;
     FwhInstance->FvBase[FVB_VIRTUAL]  = (UINTN) BaseAddress;
 
@@ -1433,9 +1283,7 @@ Returns:
 
     for (PtrBlockMapEntry = FwVolHeader->BlockMap; PtrBlockMapEntry->NumBlocks != 0; PtrBlockMapEntry++) {
       //
-      // Get the maximum size of a block. The size will be used to allocate
-      // buffer for Scratch space, the intermediate buffer for FVB extension
-      // protocol
+      // Get the maximum size of a block.
       //
       if (MaxLbaSize < PtrBlockMapEntry->Length) {
         MaxLbaSize = PtrBlockMapEntry->Length;
@@ -1458,19 +1306,29 @@ Returns:
 
     FvbDevice->Instance = mFvbModuleGlobal->NumFv;
     mFvbModuleGlobal->NumFv++;
-
+    
+    
     //
     // Set up the devicepath
     //
-    FvbDevice->DevicePath.MemMapDevPath.StartingAddress = BaseAddress;
-    FvbDevice->DevicePath.MemMapDevPath.EndingAddress   = BaseAddress + (FwVolHeader->FvLength - 1);
-
+    if (FwVolHeader->ExtHeaderOffset == 0) {
+        //
+        // FV does not contains extension header, then produce MEMMAP_DEVICE_PATH
+        //
+      FvbDevice->DevicePath = (EFI_DEVICE_PATH_PROTOCOL *) AllocateCopyPool (sizeof (FV_MEMMAP_DEVICE_PATH), &mFvMemmapDevicePathTemplate);
+      ((FV_MEMMAP_DEVICE_PATH *) FvbDevice->DevicePath)->MemMapDevPath.StartingAddress = BaseAddress;
+      ((FV_MEMMAP_DEVICE_PATH *) FvbDevice->DevicePath)->MemMapDevPath.EndingAddress   = BaseAddress + FwVolHeader->FvLength - 1;
+    } else {
+      FvbDevice->DevicePath = (EFI_DEVICE_PATH_PROTOCOL *) AllocateCopyPool (sizeof (FV_PIWG_DEVICE_PATH), &mFvPIWGDevicePathTemplate);
+      CopyGuid (
+        &((FV_PIWG_DEVICE_PATH *)FvbDevice->DevicePath)->FvDevPath.FvName, 
+        (GUID *)(UINTN)(BaseAddress + FwVolHeader->ExtHeaderOffset)
+        );
+    }
     //
     // Find a handle with a matching device path that has supports FW Block protocol
     //
-    TempFwbDevicePath = (EFI_DEVICE_PATH_PROTOCOL *) &TempFvbDevicePathData;
-    CopyMem (TempFwbDevicePath, &FvbDevice->DevicePath, sizeof (FV_DEVICE_PATH));
-    Status = gBS->LocateDevicePath (&gEfiFirmwareVolumeBlockProtocolGuid, &TempFwbDevicePath, &FwbHandle);
+    Status = gBS->LocateDevicePath (&gEfiFirmwareVolumeBlockProtocolGuid, &FvbDevice->DevicePath, &FwbHandle);
     if (EFI_ERROR (Status)) {
       //
       // LocateDevicePath fails so install a new interface and device path
@@ -1485,7 +1343,7 @@ Returns:
                       NULL
                       );
       ASSERT_EFI_ERROR (Status);
-    } else if (IsDevicePathEnd (TempFwbDevicePath)) {
+    } else if (IsDevicePathEnd (FvbDevice->DevicePath)) {
       //
       // Device allready exists, so reinstall the FVB protocol
       //
@@ -1510,19 +1368,6 @@ Returns:
       //
       ASSERT (FALSE);
     }
-    //
-    // Install FVB Extension Protocol on the same handle
-    //
-    Status = gBS->InstallMultipleProtocolInterfaces (
-                    &FwbHandle,
-                    &gEfiFvbExtensionProtocolGuid,
-                    &FvbDevice->FvbExtension,
-                    &gEfiAlternateFvBlockGuid,
-                    NULL,
-                    NULL
-                    );
-
-    ASSERT_EFI_ERROR (Status);
 
     FwhInstance = (EFI_FW_VOL_INSTANCE *)
       (
@@ -1532,14 +1377,6 @@ Returns:
 
     FvHob.Raw = GET_NEXT_HOB (FvHob);
   }
-
-  //
-  // Allocate for scratch space, an intermediate buffer for FVB extention
-  //
-  mFvbModuleGlobal->FvbScratchSpace[FVB_PHYSICAL] = AllocateRuntimePool (MaxLbaSize);
-  ASSERT (mFvbModuleGlobal->FvbScratchSpace[FVB_PHYSICAL] != NULL);
-
-  mFvbModuleGlobal->FvbScratchSpace[FVB_VIRTUAL] = mFvbModuleGlobal->FvbScratchSpace[FVB_PHYSICAL];
 
   return EFI_SUCCESS;
 }

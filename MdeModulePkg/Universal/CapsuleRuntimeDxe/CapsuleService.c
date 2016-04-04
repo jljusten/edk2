@@ -1,7 +1,7 @@
 /** @file
-  Capsule Runtime Drivers produces two UEFI capsule runtime services.
+  Capsule Runtime Driver produces two UEFI capsule runtime services.
   (UpdateCapsule, QueryCapsuleCapabilities)
-  It installs the Capsule Architectural Protocol (EDKII definition) to signify 
+  It installs the Capsule Architectural Protocol defined in PI1.0a to signify 
   the capsule runtime services are ready.
 
 Copyright (c) 2006 - 2008, Intel Corporation. <BR>
@@ -235,15 +235,23 @@ QueryCapsuleCapabilities (
     if (!FeaturePcdGet(PcdSupportUpdateCapsuleReset)) {
       return EFI_UNSUPPORTED;
     }
-    *ResetType = EfiResetWarm;
-    *MaxiumCapsuleSize = FixedPcdGet32(PcdMaxSizePopulateCapsule);
+    *ResetType = EfiResetWarm;   
   } else {
     //
     // For non-reset capsule image.
     //
     *ResetType = EfiResetCold;
-    *MaxiumCapsuleSize = FixedPcdGet32(PcdMaxSizeNonPopulateCapsule);
   }
+  
+  //
+  // The support max capsule image size
+  //
+  if ((CapsuleHeader->Flags & CAPSULE_FLAGS_POPULATE_SYSTEM_TABLE) != 0) {
+    *MaxiumCapsuleSize = PcdGet32(PcdMaxSizePopulateCapsule);
+  } else {
+    *MaxiumCapsuleSize = PcdGet32(PcdMaxSizeNonPopulateCapsule);
+  }
+
   return EFI_SUCCESS;
 }
 

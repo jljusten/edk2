@@ -1,7 +1,7 @@
 /** @file
   BDS Lib functions which contain all the code to connect console device
 
-Copyright (c) 2004 - 2008, Intel Corporation. <BR>
+Copyright (c) 2004 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 #include "InternalBdsLib.h"
+#include "Bmp.h"
 
 /**
   Check if we need to save the EFI variable with "ConVarName" as name
@@ -45,6 +46,117 @@ IsNvNeed (
   } else {
     return TRUE;
   }
+}
+
+/**
+  Fill console handle in System Table if there are no valid console handle in.
+
+  Firstly, check the validation of console handle in System Table. If it is invalid,
+  update it by the first console device handle from EFI console variable. 
+
+  @param  VarName            The name of the EFI console variable.
+  @param  ConsoleGuid        Specified Console protocol GUID.
+  @param  ConsoleHandle      On IN,  console handle in System Table to be checked. 
+                             On OUT, new console hanlde in system table.
+  @param  ProtocolInterface  On IN,  console protocol on console handle in System Table to be checked. 
+                             On OUT, new console protocol on new console hanlde in system table.
+**/
+VOID 
+UpdateSystemTableConsole (
+  IN     CHAR16                          *VarName,
+  IN     EFI_GUID                        *ConsoleGuid,
+  IN OUT EFI_HANDLE                      *ConsoleHandle,
+  IN OUT VOID                            **ProtocolInterface
+  )
+{
+  EFI_STATUS                Status;
+  UINTN                     DevicePathSize;
+  EFI_DEVICE_PATH_PROTOCOL  *FullDevicePath;
+  EFI_DEVICE_PATH_PROTOCOL  *VarConsole;
+  EFI_DEVICE_PATH_PROTOCOL  *Instance;
+  VOID                      *Interface;
+  EFI_HANDLE                NewHandle;
+
+  ASSERT (VarName != NULL);
+  ASSERT (ConsoleHandle != NULL);
+  ASSERT (ConsoleGuid != NULL);
+  ASSERT (ProtocolInterface != NULL);
+
+  if (*ConsoleHandle != NULL) {
+    Status = gBS->HandleProtocol (
+                   *ConsoleHandle,
+                   ConsoleGuid,
+                   &Interface
+                   );
+    if (Status == EFI_SUCCESS && Interface == *ProtocolInterface) {
+      //
+      // If ConsoleHandle is valid and console protocol on this handle also
+      // also matched, just return.
+      //
+      return;
+    }
+  }
+  
+  //
+  // Get all possible consoles device path from EFI variable
+  //
+  VarConsole = BdsLibGetVariableAndSize (
+                VarName,
+                &gEfiGlobalVariableGuid,
+                &DevicePathSize
+                );
+  if (VarConsole == NULL) {
+    //
+    // If there is no any console device, just return.
+    //
+    return ;
+  }
+
+  FullDevicePath = VarConsole;
+
+  do {
+    //
+    // Check every instance of the console variable
+    //
+    Instance  = GetNextDevicePathInstance (&VarConsole, &DevicePathSize);
+    if (Instance == NULL) {
+      FreePool (FullDevicePath);
+      ASSERT (FALSE);
+    }
+    
+    //
+    // Find console device handle by device path instance
+    //
+    Status = gBS->LocateDevicePath (
+                   ConsoleGuid,
+                   &Instance,
+                   &NewHandle
+                   );
+    if (!EFI_ERROR (Status)) {
+      //
+      // Get the console protocol on this console device handle
+      //
+      Status = gBS->HandleProtocol (
+                     NewHandle,
+                     ConsoleGuid,
+                     &Interface
+                     );
+      if (!EFI_ERROR (Status)) {
+        //
+        // Update new console handle in System Table.
+        //
+        *ConsoleHandle     = NewHandle;
+        *ProtocolInterface = Interface;
+        return ;
+      }
+    }
+
+  } while (Instance != NULL);
+
+  //
+  // No any available console devcie found.
+  //
+  ASSERT (FALSE);  
 }
 
 /**
@@ -405,6 +517,13 @@ BdsLibConnectAllDefaultConsoles (
   //
   BdsLibConnectConsoleVariable (L"ErrOut");
 
+  //
+  // Fill console handles in System Table if no console device assignd.
+  //
+  UpdateSystemTableConsole (L"ConIn", &gEfiSimpleTextInProtocolGuid, &gST->ConsoleInHandle, (VOID **) &gST->ConIn);
+  UpdateSystemTableConsole (L"ConOut", &gEfiSimpleTextOutProtocolGuid, &gST->ConsoleOutHandle, (VOID **) &gST->ConOut);
+  UpdateSystemTableConsole (L"ErrOut", &gEfiSimpleTextOutProtocolGuid, &gST->StandardErrorHandle, (VOID **) &gST->StdErr);
+
   return EFI_SUCCESS;
 
 }
@@ -609,16 +728,7 @@ LockKeyboards (
   IN  CHAR16    *Password
   )
 {
-  EFI_STATUS                    Status;
-  EFI_CONSOLE_CONTROL_PROTOCOL  *ConsoleControl;
-
-  Status = gBS->LocateProtocol (&gEfiConsoleControlProtocolGuid, NULL, (VOID **) &ConsoleControl);
-  if (EFI_ERROR (Status)) {
     return EFI_UNSUPPORTED;
-  }
-
-  Status = ConsoleControl->LockStdIn (ConsoleControl, Password);
-  return Status;
 }
 
 
@@ -639,7 +749,6 @@ EnableQuietBoot (
   )
 {
   EFI_STATUS                    Status;
-  EFI_CONSOLE_CONTROL_PROTOCOL  *ConsoleControl;
   EFI_OEM_BADGING_PROTOCOL      *Badging;
   UINT32                        SizeOfX;
   UINT32                        SizeOfY;
@@ -661,11 +770,6 @@ EnableQuietBoot (
   UINT32                        RefreshRate;
   EFI_GRAPHICS_OUTPUT_PROTOCOL  *GraphicsOutput;
 
-  Status = gBS->LocateProtocol (&gEfiConsoleControlProtocolGuid, NULL, (VOID **) &ConsoleControl);
-  if (EFI_ERROR (Status)) {
-    return EFI_UNSUPPORTED;
-  }
-
   UgaDraw = NULL;
   //
   // Try to open GOP first
@@ -682,16 +786,13 @@ EnableQuietBoot (
     return EFI_UNSUPPORTED;
   }
 
+  //
+  // Erase Cursor from screen
+  //
+  gST->ConOut->EnableCursor (gST->ConOut, FALSE);
+
   Badging = NULL;
   Status  = gBS->LocateProtocol (&gEfiOEMBadgingProtocolGuid, NULL, (VOID **) &Badging);
-
-  //
-  // Set console control to graphics mode.
-  //
-  Status = ConsoleControl->SetMode (ConsoleControl, EfiConsoleControlScreenGraphics);
-  if (EFI_ERROR (Status)) {
-    return EFI_UNSUPPORTED;
-  }
 
   if (GraphicsOutput != NULL) {
     SizeOfX = GraphicsOutput->Mode->Info->HorizontalResolution;
@@ -885,17 +986,11 @@ DisableQuietBoot (
   VOID
   )
 {
-  EFI_STATUS                    Status;
-  EFI_CONSOLE_CONTROL_PROTOCOL  *ConsoleControl;
-
-  Status = gBS->LocateProtocol (&gEfiConsoleControlProtocolGuid, NULL, (VOID **) &ConsoleControl);
-  if (EFI_ERROR (Status)) {
-    return EFI_UNSUPPORTED;
-  }
 
   //
-  // Set console control to text mode.
+  // Enable Cursor on Screen
   //
-  return ConsoleControl->SetMode (ConsoleControl, EfiConsoleControlScreenText);
+  gST->ConOut->EnableCursor (gST->ConOut, TRUE);
+  return EFI_SUCCESS;
 }
 

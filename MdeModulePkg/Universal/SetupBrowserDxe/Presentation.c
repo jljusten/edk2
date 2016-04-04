@@ -188,8 +188,8 @@ DisplayPageFrame (
   CHAR16                 *StrFrontPageBanner;
   UINTN                  Row;
   EFI_SCREEN_DESCRIPTOR  LocalScreen;
-  UINTN                  RowIdx;
-  UINTN                  ColumnIdx;
+  UINT8                  RowIdx;
+  UINT8                  ColumnIdx;
 
   ZeroMem (&LocalScreen, sizeof (EFI_SCREEN_DESCRIPTOR));
   gST->ConOut->QueryMode (gST->ConOut, gST->ConOut->Mode->Mode, &LocalScreen.RightColumn, &LocalScreen.BottomRow);
@@ -231,8 +231,8 @@ DisplayPageFrame (
            Alignment < BANNER_COLUMNS + (UINT8) LocalScreen.LeftColumn;
            Alignment++
           ) {
-        RowIdx = Line - (UINT8) LocalScreen.TopRow;
-        ColumnIdx = Alignment - (UINT8) LocalScreen.LeftColumn;
+        RowIdx = (UINT8) (Line - (UINT8) LocalScreen.TopRow);
+        ColumnIdx = (UINT8) (Alignment - (UINT8) LocalScreen.LeftColumn);
 
         ASSERT (RowIdx < BANNER_HEIGHT);
         ASSERT (ColumnIdx < BANNER_COLUMNS);

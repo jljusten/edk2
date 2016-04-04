@@ -22,8 +22,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/HiiDatabase.h>
 #include <Protocol/UsbIo.h>
 #include <Protocol/DevicePath.h>
-#include <Protocol/SimpleTextInExNotify.h>
-#include <Protocol/HotPlugDevice.h>
 
 #include <Guid/HiiKeyBoardLayout.h>
 

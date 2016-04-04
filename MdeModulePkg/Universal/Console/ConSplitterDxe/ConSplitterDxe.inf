@@ -61,7 +61,6 @@
 
 [LibraryClasses]
   UefiBootServicesTableLib
-  UefiRuntimeServicesTableLib
   MemoryAllocationLib
   BaseMemoryLib
   BaseLib
@@ -74,10 +73,7 @@
   gEfiConsoleInDeviceGuid                       ## SOMETIMES_CONSUMES
   gEfiStandardErrorDeviceGuid                   ## SOMETIMES_CONSUMES
   gEfiConsoleOutDeviceGuid                      ## SOMETIMES_CONSUMES
-  gEfiPrimaryConsoleOutDeviceGuid               ## PRODUCES
-  gEfiPrimaryConsoleInDeviceGuid                ## PRODUCES
-  gEfiPrimaryStandardErrorDeviceGuid            ## PRODUCES
-  gEfiGenericPlatformVariableGuid               ## SOMETIMES_CONSUMES ## Variable:L"ConOutMode"
+
 
 [Protocols]
   gEfiConsoleControlProtocolGuid                ## PRODUCES
@@ -88,13 +84,16 @@
   gEfiSimpleTextOutProtocolGuid                 ## BY_START
   gEfiGraphicsOutputProtocolGuid                ## BY_START
   gEfiUgaDrawProtocolGuid                       ## BY_START
-  gSimpleTextInExNotifyGuid                     ## PRODUCES
 
 
 [FeaturePcd.common]
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutGopSupport
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutUgaSupport
   gEfiMdePkgTokenSpaceGuid.PcdUgaConsumeSupport
+
+[Pcd.common]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConOutColumn
 
 # [Event]
 #   ##

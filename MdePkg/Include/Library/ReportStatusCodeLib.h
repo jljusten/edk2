@@ -15,6 +15,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #ifndef __REPORT_STATUS_CODE_LIB_H__
 #define __REPORT_STATUS_CODE_LIB_H__
 
+#include <Uefi/UefiBaseType.h>
 #include <Pi/PiMultiPhase.h>
 #include <Protocol/DevicePath.h>
 
@@ -24,10 +25,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define REPORT_STATUS_CODE_PROPERTY_PROGRESS_CODE_ENABLED          0x00000001
 #define REPORT_STATUS_CODE_PROPERTY_ERROR_CODE_ENABLED             0x00000002
 #define REPORT_STATUS_CODE_PROPERTY_DEBUG_CODE_ENABLED             0x00000004
-
-//
-// Extended Data structure definitions with EFI_STATUS_CODE_DATA headers removed
-//
 
 /**
   Converts a status code to an 8-bit POST code value.
@@ -151,7 +148,7 @@ ReportStatusCodeExtractDebugInfo (
   passed in a zero instance, NULL extended data, and a caller ID of 
   gEfiCallerIdGuid, which is the GUID for the module.  
   
-  ReportStatusCode()must actively prevent recusrsion.  If ReportStatusCode() 
+  ReportStatusCode()must actively prevent recursion.  If ReportStatusCode() 
   is called while processing another any other Report Status Code Library function,
   then ReportStatusCode() must return immediately.
 
@@ -366,21 +363,7 @@ ReportDebugCodeEnabled (
   VOID
   );
 
-#ifndef NDEBUG
-#if 0
-//#if __INTEL_COMPILER  
-#define REPORT_STATUS_CODE(Type,Value) ReportStatusCode(Type,Value)
 
-#define REPORT_STATUS_CODE_WITH_DEVICE_PATH(Type,Value,DevicePathParameter)                     \
-  ReportStatusCodeWithDevicePath(Type,Value,DevicePathParameter)
-
-#define REPORT_STATUS_CODE_WITH_EXTENDED_DATA(Type,Value,ExtendedData,ExtendedDataSize)         \
-  ReportStatusCodeWithExtendedData(Type,Value,ExtendedData,ExtendedDataSize) 
-
-#define REPORT_STATUS_CODE_EX(Type,Value,Instance,CallerId,ExtendedDataGuid,ExtendedData,ExtendedDataSize)  \
-  ReportStatusCodeEx(Type,Value,Instance,CallerId,ExtendedDataGuid,ExtendedData,ExtendedDataSize)
-
-#else
 /**
   Reports a status code with minimal parameters if the status code type is enabled.
 
@@ -505,13 +488,5 @@ ReportDebugCodeEnabled (
   (ReportDebugCodeEnabled() && ((Type) & EFI_STATUS_CODE_TYPE_MASK) == EFI_DEBUG_CODE)                   ?  \
   ReportStatusCodeEx(Type,Value,Instance,CallerId,ExtendedDataGuid,ExtendedData,ExtendedDataSize)        :  \
   EFI_UNSUPPORTED
-#endif
-
-#else
-#define REPORT_STATUS_CODE(Type,Value)                                                                   EFI_UNSUPPORTED
-#define REPORT_STATUS_CODE_WITH_DEVICE_PATH(Type,Value,DevicePathParameter)                              EFI_UNSUPPORTED
-#define REPORT_STATUS_CODE_WITH_EXTENDED_DATA(Type,Value,ExtendedData,ExtendedDataSize)                  EFI_UNSUPPORTED
-#define REPORT_STATUS_CODE_EX(Type,Value,Instance,CallerId,ExtendedDataGuid,ExtendedData,ExtendedDataSize) EFI_UNSUPPORTED
-#endif
 
 #endif

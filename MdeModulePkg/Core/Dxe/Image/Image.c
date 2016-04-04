@@ -190,11 +190,7 @@ CoreLoadPeImage (
   EFI_STATUS                Status;
   BOOLEAN                   DstBufAlocated;
   UINTN                     Size;
-  UINTN                     LinkTimeBase;
-  EFI_TCG_PLATFORM_PROTOCOL *TcgPlatformProtocol;
-  IMAGE_FILE_HANDLE         *FHandle;
 
-  FHandle = NULL;
   ZeroMem (&Image->ImageContext, sizeof (Image->ImageContext));
 
   Image->ImageContext.Handle    = Pe32Handle;
@@ -239,10 +235,6 @@ CoreLoadPeImage (
     Image->ImageContext.ImageError = IMAGE_ERROR_INVALID_SUBSYSTEM;
     return EFI_UNSUPPORTED;
   }
-  //
-  // Get the image base address in the original PeImage.
-  //
-  LinkTimeBase = (UINTN) Image->ImageContext.ImageAddress;
 
   //
   // Allocate memory of the correct memory type aligned on the required image boundry
@@ -342,29 +334,6 @@ CoreLoadPeImage (
         goto Done;
       }
     }
-  }
-
-  //
-  // Measure the image before applying fixup
-  //
-  Status = CoreLocateProtocol (
-             &gEfiTcgPlatformProtocolGuid,
-             NULL,
-             (VOID **) &TcgPlatformProtocol
-             );
-  if (!EFI_ERROR (Status)) {
-    FHandle = (IMAGE_FILE_HANDLE *) Image->ImageContext.Handle;
-    Status = TcgPlatformProtocol->MeasurePeImage (
-                                    BootPolicy,
-                                    (EFI_PHYSICAL_ADDRESS) (UINTN) FHandle->Source,
-                                    FHandle->SourceSize,
-                                    LinkTimeBase,
-                                    Image->ImageContext.ImageType,
-                                    Image->Info.DeviceHandle,
-                                    Image->Info.FilePath
-                                    );
-
-    ASSERT_EFI_ERROR (Status);
   }
 
   //
@@ -1024,8 +993,8 @@ CoreLoadImage (
              EFI_LOAD_PE_IMAGE_ATTRIBUTE_RUNTIME_REGISTRATION | EFI_LOAD_PE_IMAGE_ATTRIBUTE_DEBUG_IMAGE_INFO_TABLE_REGISTRATION
              );
 
-  PERF_START (*ImageHandle, LOAD_IMAGE_TOK, NULL, Tick);
-  PERF_END (*ImageHandle, LOAD_IMAGE_TOK, NULL, 0);
+  PERF_START (*ImageHandle, "LoadImage:", NULL, Tick);
+  PERF_END (*ImageHandle, "LoadImage:", NULL, 0);
 
   return Status;
 }
@@ -1131,7 +1100,7 @@ CoreStartImage (
   //
   // Don't profile Objects or invalid start requests
   //
-  PERF_START (ImageHandle, START_IMAGE_TOK, NULL, 0);
+  PERF_START (ImageHandle, "StartImage:", NULL, 0);
 
 
   //
@@ -1151,7 +1120,7 @@ CoreStartImage (
   //
   Image->JumpBuffer = AllocatePool (sizeof (BASE_LIBRARY_JUMP_BUFFER) + BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT);
   if (Image->JumpBuffer == NULL) {
-    PERF_END (ImageHandle, START_IMAGE_TOK, NULL, 0);
+    PERF_END (ImageHandle, "StartImage:", NULL, 0);
     return EFI_OUT_OF_RESOURCES;
   }
   Image->JumpContext = ALIGN_POINTER (Image->JumpBuffer, BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT);
@@ -1247,7 +1216,7 @@ CoreStartImage (
   //
   // Done
   //
-  PERF_END (ImageHandle, START_IMAGE_TOK, NULL, 0);
+  PERF_END (ImageHandle, "StartImage:", NULL, 0);
   return Status;
 }
 

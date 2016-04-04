@@ -54,7 +54,6 @@
   ReportStatusCodeLib
   PrintLib
   DebugLib
-  BaseMemoryLib
   BaseLib
 
 
@@ -70,7 +69,6 @@
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdStatusCodeUseOEM
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdStatusCodeUseMemory
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdStatusCodeUseSerial
-  gEfiMdeModulePkgTokenSpaceGuid.PcdNtEmulatorEnable
 
 
 [Pcd.common]

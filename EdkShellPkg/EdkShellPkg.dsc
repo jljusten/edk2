@@ -27,8 +27,12 @@
 # 
 # Change the macro to the directory containing the source code from EDK Shell Project.  
 # This is a workspace relative directory
-#  
-DEFINE EDK_SHELL_DIR             = Shell
+#
+# DEFINE EDK_SHELL_DIR           = EdkShellPkg/Shell  # when "Shell" directory is under $(WORKSPACE)/EdkShellPkg 
+#
+DEFINE EDK_SHELL_DIR             = Shell  # when "Shell" directory is directly under $(WORKSPACE) 
+
+
 
 [Libraries]
   #
@@ -39,7 +43,7 @@ DEFINE EDK_SHELL_DIR             = Shell
   EdkCompatibilityPkg/Foundation/Guid/EdkGuidLib.inf
   EdkCompatibilityPkg/Foundation/Library/EfiCommonLib/EfiCommonLib.inf
   EdkCompatibilityPkg/Foundation/Cpu/Pentium/CpuIA32Lib/CpuIA32Lib.inf
-  EdkCompatibilityPkg/Foundation/Cpu/Itanium/CpuIA64Lib/CpuIA64Lib.inf
+  EdkCompatibilityPkg/Foundation/Cpu/Itanium/CpuIa64Lib/CpuIA64Lib.inf
   EdkCompatibilityPkg/Foundation/Library/CustomizedDecompress/CustomizedDecompress.inf
   EdkCompatibilityPkg/Foundation/Library/Dxe/Hob/HobLib.inf
   #
@@ -76,6 +80,25 @@ DEFINE EDK_SHELL_DIR             = Shell
 
 [Libraries.IA32, Libraries.X64]
   EdkCompatibilityPkg/Foundation/Library/CompilerStub/CompilerStubLib.inf
+
+###################################################################################################
+#
+# Components Section - list of the modules and components that will be processed by compilation
+#                      tools and the EDK II tools to generate PE32/PE32+/Coff image files.
+#
+# Note: The EDK II DSC file is not used to specify how compiled binary images get placed
+#       into firmware volume images. This section is just a list of modules to compile from
+#       source into UEFI-compliant binaries.
+#       It is the FDF file that contains information on combining binary files into firmware
+#       volume images, whose concept is beyond UEFI and is described in PI specification.
+#       Binary modules do not need to be listed in this section, as they should be
+#       specified in the FDF file. For example: Shell binary (Shell_Full.efi), FAT binary (Fat.efi),
+#       Logo (Logo.bmp), and etc.
+#       There may also be modules listed in this section that are not required in the FDF file,
+#       When a module listed here is excluded from FDF file, then UEFI-compliant binary will be
+#       generated for it, but the binary will not be put into any firmware volume.
+#
+###################################################################################################
 
 [Components]
   $(EDK_SHELL_DIR)/Shell.inf

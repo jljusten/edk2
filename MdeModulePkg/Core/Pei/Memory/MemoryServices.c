@@ -89,6 +89,17 @@ PeiInstallPeiMemory (
   DEBUG ((EFI_D_INFO, "PeiInstallPeiMemory MemoryBegin 0x%LX, MemoryLength 0x%LX\n", MemoryBegin, MemoryLength));
   PrivateData = PEI_CORE_INSTANCE_FROM_PS_THIS (PeiServices);
 
+  //
+  // PEI_SERVICE.InstallPeiMemory should only be called one time during whole PEI phase.
+  // If it is invoked more than one time, ASSERT information is given for developer debugging in debug tip and
+  // simply return EFI_SUCESS in release tip to ignore it.
+  // 
+  if (PrivateData->PeiMemoryInstalled) {
+    DEBUG ((EFI_D_ERROR, "ERROR: PeiInstallPeiMemory is called more than once!\n"));
+    ASSERT (PrivateData->PeiMemoryInstalled);
+    return EFI_SUCCESS;
+  }
+  
   PrivateData->PhysicalMemoryBegin   = MemoryBegin;
   PrivateData->PhysicalMemoryLength  = MemoryLength;
   PrivateData->FreePhysicalMemoryTop = MemoryBegin + MemoryLength;
@@ -128,6 +139,7 @@ PeiAllocatePages (
   EFI_PEI_HOB_POINTERS                    Hob;
   EFI_PHYSICAL_ADDRESS                    *FreeMemoryTop;
   EFI_PHYSICAL_ADDRESS                    *FreeMemoryBottom;
+  UINTN                                   RemainingPages;
 
   PrivateData = PEI_CORE_INSTANCE_FROM_PS_THIS (PeiServices);
   Hob.Raw     = PrivateData->HobList.Raw;
@@ -159,11 +171,14 @@ PeiAllocatePages (
   //
   // Verify that there is sufficient memory to satisfy the allocation
   //
-  if (*(FreeMemoryTop) - ((Pages * EFI_PAGE_SIZE) + sizeof (EFI_HOB_MEMORY_ALLOCATION)) < 
-      *(FreeMemoryBottom)) {
-    DEBUG ((EFI_D_ERROR, "AllocatePages failed: No 0x%x Pages is available.\n", Pages));
-    DEBUG ((EFI_D_ERROR, "There is only left 0x%x pages memory resource to be allocated.\n", \
-    EFI_SIZE_TO_PAGES ((UINTN) (*(FreeMemoryTop) - *(FreeMemoryBottom)))));
+  RemainingPages = EFI_SIZE_TO_PAGES ((UINTN) (*FreeMemoryTop - *FreeMemoryBottom));
+  //
+  // For page allocation, the overhead sizeof (EFI_HOB_MEMORY_ALLOCATION) needs one extra page.
+  // So the number of remaining pages needs to be greater than that of the request pages.
+  //
+  if (RemainingPages <= Pages) {
+    DEBUG ((EFI_D_ERROR, "AllocatePages failed: No 0x%lx Pages is available.\n", (UINT64) Pages));
+    DEBUG ((EFI_D_ERROR, "There is only left 0x%lx pages memory resource to be allocated.\n", (UINT64) RemainingPages));
     return  EFI_OUT_OF_RESOURCES;
   } else {
     //

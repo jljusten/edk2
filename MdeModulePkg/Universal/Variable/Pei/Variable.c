@@ -268,7 +268,8 @@ GetVariableStoreStatus (
   IN VARIABLE_STORE_HEADER *VarStoreHeader
   )
 {
-  if (VarStoreHeader->Signature == VARIABLE_STORE_SIGNATURE &&
+	
+  if (CompareGuid (&VarStoreHeader->Signature, &gEfiVariableGuid) &&
       VarStoreHeader->Format == VARIABLE_STORE_FORMATTED &&
       VarStoreHeader->State == VARIABLE_STORE_HEALTHY
       ) {
@@ -276,7 +277,10 @@ GetVariableStoreStatus (
     return EfiValid;
   }
 
-  if (VarStoreHeader->Signature == 0xffffffff &&
+  if (((UINT32 *)(&VarStoreHeader->Signature))[0] == 0xffffffff &&
+      ((UINT32 *)(&VarStoreHeader->Signature))[1] == 0xffffffff &&
+      ((UINT32 *)(&VarStoreHeader->Signature))[2] == 0xffffffff &&
+      ((UINT32 *)(&VarStoreHeader->Signature))[3] == 0xffffffff &&
       VarStoreHeader->Size == 0xffffffff &&
       VarStoreHeader->Format == 0xff &&
       VarStoreHeader->State == 0xff
@@ -438,15 +442,13 @@ FindVariable (
   PtrTrack->StartPtr  = IndexTable->StartPtr;
   PtrTrack->EndPtr    = IndexTable->EndPtr;
 
-  while (IsValidVariableHeader (Variable) && (Variable <= IndexTable->EndPtr)) {
+  while ((Variable < IndexTable->EndPtr) && IsValidVariableHeader (Variable)) {
     if (Variable->State == VAR_ADDED) {
       //
       // Record Variable in VariableIndex HOB
       //
-      if (IndexTable->Length < VARIABLE_INDEX_TABLE_VOLUME) {
-        VariableIndexTableUpdate (IndexTable, Variable);
-      }
-
+      VariableIndexTableUpdate (IndexTable, Variable);
+      
       if (CompareWithValidVariable (Variable, VariableName, VendorGuid, PtrTrack) == EFI_SUCCESS) {
         return EFI_SUCCESS;
       }

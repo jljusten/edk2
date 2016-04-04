@@ -47,24 +47,19 @@
   DebugLib
 
 [Guids]
-  gPcdPeiCallbackFnTableHobGuid                 ## RPIVATE   ## Hob
-  gPcdDataBaseHobGuid                           ## PRODUCED  ## Hob
-  gPcdDataBaseHobGuid                           ## CONSUMED  ## Hob
+  gPcdDataBaseHobGuid                           ## PRODUCES  ## Hob
+  gPcdDataBaseHobGuid                           ## CONSUMES  ## Hob
 
 [Ppis]
-  gEfiPeiReadOnlyVariable2PpiGuid               ## CONSUMED
-  gPcdPpiGuid                                   ## PRODUCED
+  gEfiPeiReadOnlyVariable2PpiGuid               ## CONSUMES
+  gPcdPpiGuid                                   ## PRODUCES
 
-[FeaturePcd.common]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseSetEnabled
-  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseGetSizeEnabled
-  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseExEnabled
-  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseCallbackOnSetEnabled
-  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseTraverseEnabled
+[FeaturePcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiFullPcdDatabaseEnable
 
-[FixedPcd.common]
+[FixedPcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdVpdBaseAddress
-  gEfiMdeModulePkgTokenSpaceGuid.PcdMaxPeiPcdCallBackNumberPerPcdEntry
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMaxPeiPcdCallBackNumberPerPcdEntry || PcdPeiFullPcdDatabaseEnable
 
 [Depex]
   TRUE

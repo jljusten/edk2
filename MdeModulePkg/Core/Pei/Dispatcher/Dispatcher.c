@@ -85,6 +85,12 @@ DiscoverPeimsAndOrderWithApriori (
 
     Private->CurrentFvFileHandles[PeimCount] = FileHandle;
   }
+  
+  //
+  // Check whether the count of Peims exceeds the max support PEIMs in a FV image
+  // If more Peims are required in a FV image, PcdPeiCoreMaxPeimPerFv can be set to a larger value in DSC file.
+  //
+  ASSERT (PeimCount < FixedPcdGet32 (PcdPeiCoreMaxPeimPerFv));
 
   Private->AprioriCount = 0;
   if (AprioriFileHandle != NULL) {
@@ -377,7 +383,7 @@ PeiDispatcher (
               //
               // For Fv type file, Produce new FV PPI and FV hob
               //
-              Status = ProcessFvFile (PeiServices, PeimFileHandle, &AuthenticationState);
+              Status = ProcessFvFile (PeiServices, VolumeHandle, PeimFileHandle, &AuthenticationState);
             } else {
               //
               // For PEIM driver, Load its entry point
@@ -632,6 +638,7 @@ PeiDispatcher (
               // We call the entry point a 2nd time so the module knows it's shadowed.
               //
               //PERF_START (PeiServices, L"PEIM", PeimFileHandle, 0);
+              ASSERT (PeimEntryPoint != NULL);
               PeimEntryPoint (PeimFileHandle, (const EFI_PEI_SERVICES **) PeiServices);
               //PERF_END (PeiServices, L"PEIM", PeimFileHandle, 0);
 

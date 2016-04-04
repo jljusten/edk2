@@ -19,8 +19,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <PiDxe.h>
 
-#include <Protocol/Print.h>
-#include <Protocol/Print2.h>
 #include <Protocol/SimpleTextOut.h>
 #include <Protocol/SimpleTextIn.h>
 #include <Protocol/FormBrowser2.h>
@@ -32,7 +30,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/HiiString.h>
 #include <Protocol/ConsoleControl.h>
 
-#include <MdeModuleHii.h>
+#include <Guid/MdeModuleHii.h>
 
 #include <Library/PrintLib.h>
 #include <Library/DebugLib.h>
@@ -173,7 +171,6 @@ typedef struct {
   // Produced protocol
   //
   EFI_FORM_BROWSER2_PROTOCOL         FormBrowser2;
-  EFI_PRINT2_PROTOCOL                Print;
 
 } SETUP_DRIVER_PRIVATE_DATA;
 
