@@ -28,7 +28,7 @@ Revision History
 // Global ID for the PCI Hot Plug Protocol
 //
 #define EFI_PCI_HOT_PLUG_INIT_PROTOCOL_GUID \
-  { 0xaa0e8bc1, 0xdabc, 0x46b0, 0xa8, 0x44, 0x37, 0xb8, 0x16, 0x9b, 0x2b, 0xea }
+  { 0xaa0e8bc1, 0xdabc, 0x46b0, {0xa8, 0x44, 0x37, 0xb8, 0x16, 0x9b, 0x2b, 0xea} }
 
   
 EFI_FORWARD_DECLARATION (EFI_PCI_HOT_PLUG_INIT_PROTOCOL);
@@ -85,11 +85,11 @@ EFI_STATUS
 //
 
 
-typedef struct _EFI_PCI_HOT_PLUG_INIT_PROTOCOL {
+struct _EFI_PCI_HOT_PLUG_INIT_PROTOCOL {
   EFI_GET_ROOT_HPC_LIST                                  GetRootHpcList;
   EFI_INITIALIZE_ROOT_HPC                                InitializeRootHpc;
   EFI_GET_PCI_HOT_PLUG_PADDING                           GetResourcePadding;
-} EFI_PCI_HOT_PLUG_INIT_PROTOCOL;
+};
 
 
 extern EFI_GUID gEfiPciHotPlugInitProtocolGuid;

@@ -133,6 +133,8 @@
   gEfiDevicePathProtocolGuid                    # PROTOCOL ALWAYS_CONSUMED
   gEfiLoadedImageProtocolGuid                   # PROTOCOL ALWAYS_PRODUCED
   gEfiEbcProtocolGuid                           # PROTOCOL SOMETIMES_CONSUMED
+  gEfiTcgPlatformProtocolGuid
+  gEfiLoadedImageDevicePathProtocolGuid         # PROTOCOL ALWAYS_PRODUCED
 
 [FixedPcd.common]
   gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueDxeCoreEntry | 0x3041000          # EFI_SOFTWARE_DXE_CORE | EFI_SW_DXE_CORE_PC_ENTRY_POINT
@@ -140,3 +142,7 @@
   gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueBootServiceExit | 0x3100019       # EFI_SOFTWARE_EFI_BOOT_SERVICE | EFI_SW_BS_PC_EXIT_BOOT_SERVICES
   gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueDxeDriverBegin | 0x3040002        # EFI_SOFTWARE_DXE_CORE | EFI_SW_PC_INIT_BEGIN
   gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueDxeDriverEnd | 0x3040003          # EFI_SOFTWARE_DXE_CORE | EFI_SW_PC_INIT_END
+
+[BuildOptions]
+  MSFT:*_*_*_CC_FLAGS     = /FAcs
+

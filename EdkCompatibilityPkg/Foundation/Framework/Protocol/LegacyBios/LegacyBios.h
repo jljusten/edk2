@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2004 - 2006, Intel Corporation                                                         
+Copyright (c) 2004 - 2007, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -44,7 +44,7 @@ Revision History
 
 #define EFI_LEGACY_BIOS_PROTOCOL_GUID \
   { \
-    0xdb9a1e3d, 0x45cb, 0x4abb, 0x85, 0x3b, 0xe5, 0x38, 0x7f, 0xdb, 0x2e, 0x2d \
+    0xdb9a1e3d, 0x45cb, 0x4abb, {0x85, 0x3b, 0xe5, 0x38, 0x7f, 0xdb, 0x2e, 0x2d} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_LEGACY_BIOS_PROTOCOL);
@@ -208,6 +208,19 @@ typedef struct {
   UINT8   LastPciBus;
 
 } EFI_COMPATIBILITY16_TABLE;
+
+typedef enum {
+  Compatibility16InitializeYourself     = 0x0000,
+  Compatibility16UpdateBbs              = 0x0001,
+  Compatibility16PrepareToBoot          = 0x0002,
+  Compatibility16Boot                   = 0x0003,
+  Compatibility16RetrieveLastBootDevice = 0x0004,
+  Compatibility16DispatchOprom          = 0x0005,
+  Compatibility16GetTableAddress        = 0x0006,
+  Compatibility16SetKeyboardLeds        = 0x0007,
+  Compatibility16InstallPciHandler      = 0x0008
+} EFI_COMPATIBILITY_FUNCTIONS;
+
 //
 // define maximum number of HDD system supports
 //
@@ -681,7 +694,7 @@ Returns:
 --*/
 ;
 
-typedef struct _EFI_LEGACY_BIOS_PROTOCOL {
+struct _EFI_LEGACY_BIOS_PROTOCOL {
   EFI_LEGACY_BIOS_INT86                       Int86;
   EFI_LEGACY_BIOS_FARCALL86                   FarCall86;
   EFI_LEGACY_BIOS_CHECK_ROM                   CheckPciRom;
@@ -694,7 +707,7 @@ typedef struct _EFI_LEGACY_BIOS_PROTOCOL {
   EFI_LEGACY_BIOS_GET_LEGACY_REGION           GetLegacyRegion;
   EFI_LEGACY_BIOS_COPY_LEGACY_REGION          CopyLegacyRegion;
   EFI_LEGACY_BIOS_BOOT_UNCONVENTIONAL_DEVICE  BootUnconventionalDevice;
-} EFI_LEGACY_BIOS_PROTOCOL;
+};
 
 extern EFI_GUID gEfiLegacyBiosProtocolGuid;
 

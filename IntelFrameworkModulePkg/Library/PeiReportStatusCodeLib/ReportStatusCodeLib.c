@@ -1,5 +1,5 @@
 /** @file
-  Report Status Code Library for DXE Phase.
+  Report Status Code Library for PEI Phase.
 
   Copyright (c) 2006, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
@@ -22,6 +22,7 @@
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/PeiServicesTablePointerLib.h>
+#include <Library/OemHookStatusCodeLib.h>
 #include <Library/PcdLib.h>
 
 #include <DebugInfo.h>
@@ -65,16 +66,24 @@ InternalReportStatusCode (
   )
 {
   CONST EFI_PEI_SERVICES  **PeiServices;
+  EFI_STATUS              Status;
 
   PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
-  return (*PeiServices)->ReportStatusCode (
-                           PeiServices,
-                           Type,
-                           Value,
-                           Instance,
-                           (EFI_GUID *)CallerId,
-                           Data
-                           );
+  Status =  (*PeiServices)->ReportStatusCode (
+                             PeiServices,
+                             Type,
+                             Value,
+                             Instance,
+                             (EFI_GUID *)CallerId,
+                             Data
+                             );
+  if (Status == EFI_NOT_AVAILABLE_YET) {
+    Status = OemHookStatusCodeInitialize ();
+    if (!EFI_ERROR (Status)) {
+      return OemHookStatusCodeReport (Type, Value, Instance, (EFI_GUID *) CallerId, Data);
+    }
+  }
+  return Status;
 }
 
 

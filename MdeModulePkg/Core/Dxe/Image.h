@@ -1,6 +1,8 @@
-/*++
-
-Copyright (c) 2006, Intel Corporation
+/** @file 
+  
+  Data structure and functions to load and unload PeImage.
+  
+Copyright (c) 2006 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,15 +11,7 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-  Image.h
-
-Abstract:
-
-Revision History
-
---*/
+**/
 
 
 #ifndef _IMAGE_H_
@@ -55,7 +49,7 @@ typedef struct {
 
     EFI_RUNTIME_IMAGE_ENTRY     *RuntimeData;   // Runtime image list
 
-    EFI_DEVICE_PATH_PROTOCOL      *DeviceHandleDevicePath;
+    EFI_DEVICE_PATH_PROTOCOL    *LoadedImageDevicePath;  // Pointer to Loaded Image Device Path Protocl
 
     PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext; // PeCoffLoader ImageContext
 
@@ -223,6 +217,7 @@ Returns:
 
 EFI_STATUS
 CoreLoadPeImage (
+  IN  BOOLEAN                    BootPolicy,
   IN  VOID                       *Pe32Handle,
   IN  LOADED_IMAGE_PRIVATE_DATA  *Image,
   IN  EFI_PHYSICAL_ADDRESS       DstBuffer   OPTIONAL,
@@ -237,6 +232,7 @@ Routine Description:
 
 Arguments:
 
+  BootPolicy       - Policy for Open Image File.
   Pe32Handle       - The handle of PE32 image
   Image            - PE image to be loaded
   DstBuffer        - The buffer to store the image

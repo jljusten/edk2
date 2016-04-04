@@ -27,7 +27,7 @@ Abstract:
 //
 #define EFI_DEBUGPORT_PROTOCOL_GUID \
   { \
-    0xEBA4E8D2, 0x3858, 0x41EC, 0xA2, 0x81, 0x26, 0x47, 0xBA, 0x96, 0x60, 0xD0 \
+    0xEBA4E8D2, 0x3858, 0x41EC, {0xA2, 0x81, 0x26, 0x47, 0xBA, 0x96, 0x60, 0xD0} \
   }
 
 extern EFI_GUID gEfiDebugPortProtocolGuid;
@@ -70,12 +70,12 @@ EFI_STATUS
 //
 // DebugPort protocol definition
 //
-typedef struct _EFI_DEBUGPORT_PROTOCOL {
+struct _EFI_DEBUGPORT_PROTOCOL {
   EFI_DEBUGPORT_RESET Reset;
   EFI_DEBUGPORT_WRITE Write;
   EFI_DEBUGPORT_READ  Read;
   EFI_DEBUGPORT_POLL  Poll;
-} EFI_DEBUGPORT_PROTOCOL;
+};
 
 //
 // DEBUGPORT variable definitions...

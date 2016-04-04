@@ -30,7 +30,7 @@ Revision History
 
 #define EFI_LEGACY_8259_PROTOCOL_GUID \
   { \
-    0x38321dba, 0x4fe0, 0x4e17, 0x8a, 0xec, 0x41, 0x30, 0x55, 0xea, 0xed, 0xc1 \
+    0x38321dba, 0x4fe0, 0x4e17, {0x8a, 0xec, 0x41, 0x30, 0x55, 0xea, 0xed, 0xc1} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_LEGACY_8259_PROTOCOL);
@@ -300,7 +300,7 @@ EFI_STATUS
 --*/
 ;
 
-typedef struct _EFI_LEGACY_8259_PROTOCOL {
+struct _EFI_LEGACY_8259_PROTOCOL {
   EFI_LEGACY_8259_SET_VECTOR_BASE     SetVectorBase;
   EFI_LEGACY_8259_GET_MASK            GetMask;
   EFI_LEGACY_8259_SET_MASK            SetMask;
@@ -310,7 +310,7 @@ typedef struct _EFI_LEGACY_8259_PROTOCOL {
   EFI_LEGACY_8259_DISABLE_IRQ         DisableIrq;
   EFI_LEGACY_8259_GET_INTERRUPT_LINE  GetInterruptLine;
   EFI_LEGACY_8259_END_OF_INTERRUPT    EndOfInterrupt;
-} EFI_LEGACY_8259_PROTOCOL;
+};
 
 extern EFI_GUID gEfiLegacy8259ProtocolGuid;
 

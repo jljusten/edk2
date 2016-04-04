@@ -26,7 +26,7 @@ Abstract:
 
 #define EFI_UGA_DRAW_PROTOCOL_GUID \
   { \
-    0x982c298b, 0xf4fa, 0x41cb, 0xb8, 0x38, 0x77, 0xaa, 0x68, 0x8f, 0xb8, 0x39 \
+    0x982c298b, 0xf4fa, 0x41cb, {0xb8, 0x38, 0x77, 0xaa, 0x68, 0x8f, 0xb8, 0x39} \
   }
 
 typedef struct _EFI_UGA_DRAW_PROTOCOL EFI_UGA_DRAW_PROTOCOL;
@@ -170,11 +170,11 @@ EFI_STATUS
 --*/
 ;
 
-typedef struct _EFI_UGA_DRAW_PROTOCOL {
+struct _EFI_UGA_DRAW_PROTOCOL {
   EFI_UGA_DRAW_PROTOCOL_GET_MODE  GetMode;
   EFI_UGA_DRAW_PROTOCOL_SET_MODE  SetMode;
   EFI_UGA_DRAW_PROTOCOL_BLT       Blt;
-} EFI_UGA_DRAW_PROTOCOL;
+};
 
 extern EFI_GUID gEfiUgaDrawProtocolGuid;
 

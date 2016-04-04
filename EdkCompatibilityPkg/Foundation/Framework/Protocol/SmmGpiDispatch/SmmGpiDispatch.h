@@ -30,7 +30,7 @@ Revision History
 //
 #define EFI_SMM_GPI_DISPATCH_PROTOCOL_GUID \
   { \
-    0xe0744b81, 0x9513, 0x49cd, 0x8c, 0xea, 0xe9, 0x24, 0x5e, 0x70, 0x39, 0xda \
+    0xe0744b81, 0x9513, 0x49cd, {0x8c, 0xea, 0xe9, 0x24, 0x5e, 0x70, 0x39, 0xda} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_SMM_GPI_DISPATCH_PROTOCOL);
@@ -141,11 +141,11 @@ EFI_STATUS
 //
 // Interface structure for the SMM GPI SMI Dispatch Protocol
 //
-typedef struct _EFI_SMM_GPI_DISPATCH_PROTOCOL {
+struct _EFI_SMM_GPI_DISPATCH_PROTOCOL {
   EFI_SMM_GPI_REGISTER    Register;
   EFI_SMM_GPI_UNREGISTER  UnRegister;
   UINTN                   NumSupportedGpis;
-} EFI_SMM_GPI_DISPATCH_PROTOCOL;
+};
 
 extern EFI_GUID gEfiSmmGpiDispatchProtocolGuid;
 

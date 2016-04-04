@@ -29,16 +29,16 @@ Abstract:
 
 
 #define EFI_UGA_SPLASH_PROTOCOL_GUID \
-  { 0xa45b3a0d, 0x2e55, 0x4c03, 0xad, 0x9c, 0x27, 0xd4, 0x82, 0xb, 0x50, 0x7e }
+  { 0xa45b3a0d, 0x2e55, 0x4c03, {0xad, 0x9c, 0x27, 0xd4, 0x82, 0xb, 0x50, 0x7e} }
 
 typedef struct _EFI_UGA_SPLASH_PROTOCOL   EFI_UGA_SPLASH_PROTOCOL;
 
 
-typedef struct _EFI_UGA_SPLASH_PROTOCOL {
+struct _EFI_UGA_SPLASH_PROTOCOL {
   UINT32                        PixelWidth;
   UINT32                        PixelHeight;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL *Image;
-} EFI_UGA_SPLASH_PROTOCOL;
+};
 
 extern EFI_GUID gEfiUgaSplashProtocolGuid;
 

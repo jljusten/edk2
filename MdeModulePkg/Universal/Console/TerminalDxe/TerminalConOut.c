@@ -1,23 +1,16 @@
-/*++
+/** @file
+  Implementation for EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL protocol.
 
-Copyright (c) 2006, Intel Corporation                                                         
-All rights reserved. This program and the accompanying materials                          
-are licensed and made available under the terms and conditions of the BSD License         
-which accompanies this distribution.  The full text of the license may be found at        
-http://opensource.org/licenses/bsd-license.php                                            
-                                                                                          
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-Module Name:
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-    TerminalConOut.c
-    
-Abstract: 
-    
-
-Revision History
---*/
+**/
 
 #include "Terminal.h"
 
@@ -28,7 +21,7 @@ Revision History
 //
 //
 STATIC UNICODE_TO_CHAR  UnicodeToPcAnsiOrAscii[] = {
-  { BOXDRAW_HORIZONTAL,                 0xc4, L'-' }, 
+  { BOXDRAW_HORIZONTAL,                 0xc4, L'-' },
   { BOXDRAW_VERTICAL,                   0xb3, L'|' },
   { BOXDRAW_DOWN_RIGHT,                 0xda, L'/' },
   { BOXDRAW_DOWN_LEFT,                  0xbf, L'\\' },
@@ -101,27 +94,27 @@ TerminalConOutReset (
   )
 /*++
   Routine Description:
-  
+
     Implements EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.Reset().
     If ExtendeVerification is TRUE, then perform dependent serial device reset,
     and set display mode to mode 0.
     If ExtendedVerification is FALSE, only set display mode to mode 0.
-  
+
   Arguments:
-  
+
     This - Indicates the calling context.
-    
+
     ExtendedVerification - Indicates that the driver may perform a more exhaustive
                            verification operation of the device during reset.
-        
+
   Returns:
-  
+
     EFI_SUCCESS
-       The reset operation succeeds.   
-    
+       The reset operation succeeds.
+
     EFI_DEVICE_ERROR
       The terminal is not functioning correctly or the serial port reset fails.
-                
+
 --*/
 {
   EFI_STATUS    Status;
@@ -157,7 +150,7 @@ TerminalConOutReset (
     }
   }
 
-  This->SetAttribute (This, EFI_TEXT_ATTR (This->Mode->Attribute & 0x0F, EFI_BACKGROUND_BLACK));
+  This->SetAttribute (This, EFI_TEXT_ATTR (This->Mode->Attribute & 0x0F, EFI_BLACK));
 
   Status = This->SetMode (This, 0);
 
@@ -172,33 +165,33 @@ TerminalConOutOutputString (
   )
 /*++
   Routine Description:
-  
+
     Implements EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.OutputString().
     The Unicode string will be converted to terminal expressible data stream
     and send to terminal via serial port.
-    
-  
+
+
   Arguments:
-  
+
     This - Indicates the calling context.
-    
-    WString - The Null-terminated Unicode string to be displayed on 
+
+    WString - The Null-terminated Unicode string to be displayed on
               the terminal screen.
-        
+
   Returns:
-  
+
     EFI_SUCCESS
-       The string is output successfully.   
-    
+       The string is output successfully.
+
     EFI_DEVICE_ERROR
       The serial port fails to send the string out.
-      
+
     EFI_WARN_UNKNOWN_GLYPH
-      Indicates that some of the characters in the Unicode string could not 
-      be rendered and are skipped.          
-      
+      Indicates that some of the characters in the Unicode string could not
+      be rendered and are skipped.
+
     EFI_UNSUPPORTED
-                
+
 --*/
 {
   TERMINAL_DEV                *TerminalDevice;
@@ -226,11 +219,11 @@ TerminalConOutOutputString (
   TerminalDevice = TERMINAL_CON_OUT_DEV_FROM_THIS (This);
 
   //
-  //  get current display mode
-  //  Terminal driver only support mode 0
+  //  Get current display mode
   //
   Mode = This->Mode;
-  if (Mode->Mode != 0) {
+
+  if (Mode->Mode > 2) {
     return EFI_UNSUPPORTED;
   }
 
@@ -368,28 +361,28 @@ TerminalConOutTestString (
   )
 /*++
   Routine Description:
-  
+
     Implements EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.TestString().
     If one of the characters in the *Wstring is
     neither valid Unicode drawing characters,
     not ASCII code, then this function will return
     EFI_UNSUPPORTED.
-        
-  
+
+
   Arguments:
-  
+
     This - Indicates the calling context.
-    
+
     WString - The Null-terminated Unicode string to be tested.
-        
+
   Returns:
-  
+
     EFI_SUCCESS
-       The terminal is capable of rendering the output string. 
-    
+       The terminal is capable of rendering the output string.
+
     EFI_UNSUPPORTED
-      Some of the characters in the Unicode string cannot be rendered.      
-                
+      Some of the characters in the Unicode string cannot be rendered.
+
 --*/
 {
   TERMINAL_DEV  *TerminalDevice;
@@ -430,49 +423,55 @@ TerminalConOutQueryMode (
   )
 /*++
   Routine Description:
-  
-    Implements EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.QueryMode().
+
+    Implements EFI_SIMPLE_TEXT_OUT_PROTOCOL.QueryMode().
     It returns information for an available text mode
     that the terminal supports.
-    In this driver, we only support text mode 80x25, which is
-    defined as mode 0.
-        
-  
+    In this driver, we support text mode 80x25 (mode 0),
+    80x50 (mode 1), 100x31 (mode 2).
+
+
   Arguments:
-  
+
     *This
         Indicates the calling context.
-    
+
     ModeNumber
         The mode number to return information on.
-        
+
     Columns
         The returned columns of the requested mode.
-        
+
     Rows
-        The returned rows of the requested mode.                
-        
+        The returned rows of the requested mode.
+
   Returns:
-  
+
     EFI_SUCCESS
-      The requested mode information is returned. 
-    
+      The requested mode information is returned.
+
     EFI_UNSUPPORTED
-      The mode number is not valid.   
-      
+      The mode number is not valid.
+
     EFI_DEVICE_ERROR
-                
+
 --*/
 {
-  if (This->Mode->MaxMode > 1) {
+  if (This->Mode->MaxMode > 3) {
     return EFI_DEVICE_ERROR;
   }
 
   if (ModeNumber == 0) {
-
     *Columns  = MODE0_COLUMN_COUNT;
     *Rows     = MODE0_ROW_COUNT;
-
+    return EFI_SUCCESS;
+  } else if (ModeNumber == 1) {
+    *Columns  = MODE1_COLUMN_COUNT;
+    *Rows     = MODE1_ROW_COUNT;
+    return EFI_SUCCESS;
+  } else if (ModeNumber == 2) {
+    *Columns  = MODE2_COLUMN_COUNT;
+    *Rows     = MODE2_ROW_COUNT;
     return EFI_SUCCESS;
   }
 
@@ -487,30 +486,30 @@ TerminalConOutSetMode (
   )
 /*++
   Routine Description:
-  
+
     Implements EFI_SIMPLE_TEXT_OUT.SetMode().
     Set the terminal to a specified display mode.
-    In this driver, we only support mode 0.        
-  
+    In this driver, we only support mode 0.
+
   Arguments:
-  
+
     This
         Indicates the calling context.
-    
+
     ModeNumber
         The text mode to set.
-        
+
   Returns:
-  
+
     EFI_SUCCESS
        The requested text mode is set.
-       
+
     EFI_DEVICE_ERROR
       The requested text mode cannot be set because of serial device error.
-    
+
     EFI_UNSUPPORTED
-      The text mode number is not valid.       
-                
+      The text mode number is not valid.
+
 --*/
 {
   EFI_STATUS    Status;
@@ -521,11 +520,14 @@ TerminalConOutSetMode (
   //
   TerminalDevice = TERMINAL_CON_OUT_DEV_FROM_THIS (This);
 
-  if (ModeNumber != 0) {
+  if (ModeNumber > 2) {
     return EFI_UNSUPPORTED;
   }
 
-  This->Mode->Mode = 0;
+  //
+  // Set the current mode
+  //
+  This->Mode->Mode = (INT32) ModeNumber;
 
   This->ClearScreen (This);
 
@@ -537,7 +539,7 @@ TerminalConOutSetMode (
     return EFI_DEVICE_ERROR;
   }
 
-  This->Mode->Mode  = 0;
+  This->Mode->Mode  = (INT32) ModeNumber;
 
   Status            = This->ClearScreen (This);
   if (EFI_ERROR (Status)) {
@@ -556,29 +558,29 @@ TerminalConOutSetAttribute (
   )
 /*++
   Routine Description:
-  
-    Implements EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.SetAttribute().       
-  
+
+    Implements EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.SetAttribute().
+
   Arguments:
-  
+
     This
         Indicates the calling context.
-    
+
     Attribute
         The attribute to set. Only bit0..6 are valid, all other bits
         are undefined and must be zero.
-        
+
   Returns:
-  
+
     EFI_SUCCESS
-      The requested attribute is set. 
-       
+      The requested attribute is set.
+
     EFI_DEVICE_ERROR
       The requested attribute cannot be set due to serial port error.
-          
+
     EFI_UNSUPPORTED
-      The attribute requested is not defined by EFI spec.   
-                
+      The attribute requested is not defined by EFI spec.
+
 --*/
 {
   UINT8         ForegroundControl;
@@ -603,6 +605,15 @@ TerminalConOutSetAttribute (
   if ((Attribute | 0x7f) != 0x7f) {
     return EFI_UNSUPPORTED;
   }
+
+  //
+  // Skip outputting the command string for the same attribute
+  // It improves the terminal performance siginificantly
+  //
+  if (This->Mode->Attribute == (INT32) Attribute) {
+    return EFI_SUCCESS;
+  }
+
   //
   //  convert Attribute value to terminal emulator
   //  understandable foreground color
@@ -732,28 +743,28 @@ TerminalConOutClearScreen (
   )
 /*++
   Routine Description:
-  
+
     Implements EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.ClearScreen().
-    It clears the ANSI terminal's display to the 
+    It clears the ANSI terminal's display to the
     currently selected background color.
-        
-  
+
+
   Arguments:
-  
+
     This
         Indicates the calling context.
 
   Returns:
-  
+
     EFI_SUCCESS
       The operation completed successfully.
-       
+
     EFI_DEVICE_ERROR
-      The terminal screen cannot be cleared due to serial port error.        
-    
+      The terminal screen cannot be cleared due to serial port error.
+
     EFI_UNSUPPORTED
-      The terminal is not in a valid display mode.       
-                
+      The terminal is not in a valid display mode.
+
 --*/
 {
   EFI_STATUS    Status;
@@ -786,32 +797,32 @@ TerminalConOutSetCursorPosition (
   )
 /*++
   Routine Description:
-  
-    Implements EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.SetCursorPosition().          
-  
+
+    Implements EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.SetCursorPosition().
+
   Arguments:
-  
+
     This
         Indicates the calling context.
-        
+
     Column
         The row to set cursor to.
-        
+
     Row
-        The column to set cursor to.                
+        The column to set cursor to.
 
   Returns:
-  
+
     EFI_SUCCESS
       The operation completed successfully.
-       
+
     EFI_DEVICE_ERROR
-      The request fails due to serial port error.        
-    
+      The request fails due to serial port error.
+
     EFI_UNSUPPORTED
       The terminal is not in a valid text mode, or the cursor position
-      is invalid for current mode.     
-                
+      is invalid for current mode.
+
 --*/
 {
   EFI_SIMPLE_TEXT_OUTPUT_MODE *Mode;
@@ -876,27 +887,27 @@ TerminalConOutEnableCursor (
   )
 /*++
   Routine Description:
-  
+
     Implements SIMPLE_TEXT_OUTPUT.EnableCursor().
-    In this driver, the cursor cannot be hidden.        
-  
+    In this driver, the cursor cannot be hidden.
+
   Arguments:
-  
+
     This
         Indicates the calling context.
-        
+
     Visible
         If TRUE, the cursor is set to be visible,
-        If FALSE, the cursor is set to be invisible.        
+        If FALSE, the cursor is set to be invisible.
 
   Returns:
-  
+
     EFI_SUCCESS
       The request is valid.
-       
+
     EFI_UNSUPPORTED
-      The terminal does not support cursor hidden.   
-                
+      The terminal does not support cursor hidden.
+
 --*/
 {
   if (!Visible) {

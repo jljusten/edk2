@@ -1,8 +1,8 @@
 /** 
-	@file   
-	ACPI 3.0 definitions from the ACPI Specification Revision 3.0 September 2, 2004
+    @file   
+    ACPI 3.0 definitions from the ACPI Specification Revision 3.0 September 2, 2004
 
-  Copyright (c) 2006 - 2007, Intel Corporation
+  Copyright (c) 2006 - 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -186,10 +186,12 @@ typedef struct {
 // Fixed ACPI Description Table Boot Architecture Flags
 // All other bits are reserved and must be set to 0.
 //
-#define EFI_ACPI_3_0_LEGACY_DEVICES    (1 << 0)
-#define EFI_ACPI_3_0_8042              (1 << 1)
-#define EFI_ACPI_3_0_VGA_NOT_PRESENT   (1 << 2)
-#define EFI_ACPI_3_0_MSI_NOT_SUPPORTED (1 << 3)
+#define EFI_ACPI_3_0_LEGACY_DEVICES     (1 << 0)
+#define EFI_ACPI_3_0_8042               (1 << 1)
+#define EFI_ACPI_3_0_VGA_NOT_PRESENT    (1 << 2)
+#define EFI_ACPI_3_0_MSI_NOT_SUPPORTED  (1 << 3)
+#define EFI_ACPI_3_0_PCIE_ASPM_CONTROLS (1 << 4)
+
 //
 // Fixed ACPI Description Table Fixed Feature Flags
 // All other bits are reserved and must be set to 0.
@@ -664,6 +666,16 @@ typedef struct {
 // "WDRT" Watchdog Resource Table
 //
 #define EFI_ACPI_3_0_WATCHDOG_RESOURCE_TABLE_SIGNATURE 0x54524457
+
+//
+// "WDAT" Watchdog Action Table
+//
+#define EFI_ACPI_3_0_WATCHDOG_ACTION_TABLE_SIGNATURE 0x54414457
+
+//
+// "iBFT" iSCSI Boot Firmware Table
+//
+#define EFI_ACPI_3_0_ISCSI_BOOT_FIRMWARE_TABLE_SIGNATURE 0x54464269
 
 #pragma pack()
 

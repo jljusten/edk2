@@ -1,5 +1,9 @@
-/*++
+/** @file
+  Library class name: FrameworkIfrSupportLib
 
+  FrameworkIfrSupportLib is designed for produce IFR operation interface .
+  The IFR format follows framework specification.
+  
 Copyright (c) 2006, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
@@ -9,15 +13,7 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
-Module Name:
-
-  IfrSupportLib.h
-
-Abstract:
-
-  The file contain all library function for Ifr Operations.
-
---*/
+**/
 
 #ifndef _IFRSUPPORTLIBRARY_H
 #define _IFRSUPPORTLIBRARY_H
@@ -513,7 +509,7 @@ Returns:
 
 EFI_STATUS
 ExtractDataFromHiiHandle (
-  IN      EFI_HII_HANDLE      HiiHandle,
+  IN      FRAMEWORK_EFI_HII_HANDLE       HiiHandle,
   IN OUT  UINT16              *ImageLength,
   OUT     UINT8               *DefaultImage,
   OUT     EFI_GUID            *Guid
@@ -547,7 +543,7 @@ Returns:
 --*/
 ;
 
-EFI_HII_HANDLE
+FRAMEWORK_EFI_HII_HANDLE 
 FindHiiHandle (
   IN OUT EFI_HII_PROTOCOL    **HiiProtocol, OPTIONAL
   IN     EFI_GUID            *Guid
@@ -917,7 +913,7 @@ Returns:
 
 EFI_STATUS
 ValidateDataFromHiiHandle (
-  IN      EFI_HII_HANDLE      HiiHandle,
+  IN      FRAMEWORK_EFI_HII_HANDLE       HiiHandle,
   OUT     BOOLEAN             *Results
   )
 /*++

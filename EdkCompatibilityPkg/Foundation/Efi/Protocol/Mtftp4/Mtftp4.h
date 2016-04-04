@@ -25,10 +25,10 @@ Abstract:
 #include EFI_PROTOCOL_DEFINITION(ServiceBinding)
 
 #define EFI_MTFTP4_SERVICE_BINDING_PROTOCOL_GUID \
-    { 0x2FE800BE, 0x8F01, 0x4aa6, 0x94, 0x6B, 0xD7, 0x13, 0x88, 0xE1, 0x83, 0x3F }
+    { 0x2FE800BE, 0x8F01, 0x4aa6, {0x94, 0x6B, 0xD7, 0x13, 0x88, 0xE1, 0x83, 0x3F} }
 
 #define EFI_MTFTP4_PROTOCOL_GUID \
-    { 0x78247c57, 0x63db, 0x4708, 0x99, 0xc2, 0xa8, 0xb4, 0xa9, 0xa6, 0x1f, 0x6b }
+    { 0x78247c57, 0x63db, 0x4708, {0x99, 0xc2, 0xa8, 0xb4, 0xa9, 0xa6, 0x1f, 0x6b} }
 
 EFI_FORWARD_DECLARATION (EFI_MTFTP4_PROTOCOL);
 EFI_FORWARD_DECLARATION (EFI_MTFTP4_TOKEN);
@@ -274,7 +274,7 @@ EFI_STATUS
 );
 
 
-typedef struct _EFI_MTFTP4_PROTOCOL {
+struct _EFI_MTFTP4_PROTOCOL {
   EFI_MTFTP4_GET_MODE_DATA        GetModeData;
   EFI_MTFTP4_CONFIGURE            Configure;
   EFI_MTFTP4_GET_INFO             GetInfo;
@@ -283,12 +283,12 @@ typedef struct _EFI_MTFTP4_PROTOCOL {
   EFI_MTFTP4_WRITE_FILE           WriteFile;
   EFI_MTFTP4_READ_DIRECTORY       ReadDirectory;
   EFI_MTFTP4_POLL                 Poll;
-} EFI_MTFTP4_PROTOCOL;
+};
 
 //
 //MTFTP4 token data
 //
-typedef struct _EFI_MTFTP4_TOKEN{
+struct _EFI_MTFTP4_TOKEN{
   IN OUT EFI_STATUS               Status;
   IN EFI_EVENT                    Event;
   IN EFI_MTFTP4_OVERRIDE_DATA     *OverrideData;
@@ -302,7 +302,7 @@ typedef struct _EFI_MTFTP4_TOKEN{
   IN EFI_MTFTP4_CHECK_PACKET      CheckPacket;
   IN EFI_MTFTP4_TIMEOUT_CALLBACK  TimeoutCallback;
   IN EFI_MTFTP4_PACKET_NEEDED     PacketNeeded;
-} EFI_MTFTP4_TOKEN;
+};
 
 #endif
 

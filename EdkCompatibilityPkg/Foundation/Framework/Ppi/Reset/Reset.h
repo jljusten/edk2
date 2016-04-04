@@ -26,7 +26,7 @@ Abstract:
 
 #define PEI_RESET_PPI_GUID \
   { \
-    0xef398d58, 0x9dfd, 0x4103, 0xbf, 0x94, 0x78, 0xc6, 0xf4, 0xfe, 0x71, 0x2f \
+    0xef398d58, 0x9dfd, 0x4103, {0xbf, 0x94, 0x78, 0xc6, 0xf4, 0xfe, 0x71, 0x2f} \
   }
 
 //
@@ -36,17 +36,17 @@ Abstract:
 //
 typedef enum {
   PeiResetCold,
-  PeiResetWarm,
+  PeiResetWarm
 } PEI_RESET_TYPE;
 
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PEI_RESET_SYSTEM) (
+(EFIAPI *PEI_RESET_PPI_RESET_SYSTEM) (
   IN EFI_PEI_SERVICES   **PeiServices
   );
 
 typedef struct {
-  EFI_PEI_RESET_SYSTEM  ResetSystem;
+  PEI_RESET_PPI_RESET_SYSTEM  ResetSystem;
 } PEI_RESET_PPI;
 
 extern EFI_GUID gPeiResetPpiGuid;

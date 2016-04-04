@@ -434,8 +434,8 @@ StrnCat (
   or String contains more than PcdMaximumUnicodeStringLength Unicode 
   characters not including the Null-terminator, then ASSERT().
 
-  @param  String				  Pointer to a Null-terminated Unicode string.
-  @param  SearchString	Pointer to a Null-terminated Unicode string to search for.
+  @param  String                  Pointer to a Null-terminated Unicode string.
+  @param  SearchString  Pointer to a Null-terminated Unicode string to search for.
 
   @retval NULL            If the SearchString does not appear in String.
   @retval !NULL           If there is a match.
@@ -444,33 +444,19 @@ StrnCat (
 CHAR16 *
 EFIAPI
 StrStr (
-  IN      CONST CHAR16      	      *String,
-  IN      CONST CHAR16      	      *SearchString
+  IN      CONST CHAR16                *String,
+  IN      CONST CHAR16                *SearchString
   )
 {
   CONST CHAR16 *FirstMatch;
   CONST CHAR16 *SearchStringTmp;
 
-  ASSERT (String != NULL);
-  ASSERT (((UINTN) String & 0x01) == 0);
-  ASSERT (SearchString != NULL);
-  ASSERT (((UINTN) SearchString & 0x01) == 0);
-
   //
-  // If PcdMaximumUnicodeStringLength is not zero,
-  // length of String should not more than PcdMaximumUnicodeStringLength
+  // ASSERT both strings are less long than PcdMaximumUnicodeStringLength.
+  // Length tests are performed inside StrLen().
   //
-  if (PcdGet32 (PcdMaximumUnicodeStringLength) != 0) {
-    ASSERT (StrLen (String) < PcdGet32 (PcdMaximumUnicodeStringLength));
-  }
-
-  //
-  // If PcdMaximumUnicodeStringLength is not zero,
-  // length of SearchString should not more than PcdMaximumUnicodeStringLength
-  //
-  if (PcdGet32 (PcdMaximumUnicodeStringLength) != 0) {
-    ASSERT (StrLen (SearchString) < PcdGet32 (PcdMaximumAsciiStringLength));
-  }
+  ASSERT (StrSize (String) != 0);
+  ASSERT (StrSize (SearchString) != 0);
 
   while (*String != '\0') {
     SearchStringTmp = SearchString;
@@ -633,7 +619,7 @@ InternalIsHexaDecimalDigitCharacter (
   more than PcdMaximumUnicodeStringLength Unicode characters not including 
   the Null-terminator, then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated Unicode string.
+  @param  String                Pointer to a Null-terminated Unicode string.
 
   @retval UINTN           
 
@@ -641,14 +627,16 @@ InternalIsHexaDecimalDigitCharacter (
 UINTN
 EFIAPI
 StrDecimalToUintn (
-  IN      CONST CHAR16      	      *String
+  IN      CONST CHAR16                *String
   )
 {
   UINTN     Result;
   
-  ASSERT (String != NULL);
-  ASSERT (((UINTN) String & 0x01) == 0);
-  ASSERT (StrLen (String) < PcdGet32 (PcdMaximumUnicodeStringLength));
+  //
+  // ASSERT String is less long than PcdMaximumUnicodeStringLength.
+  // Length tests are performed inside StrLen().
+  //
+  ASSERT (StrSize (String) != 0);
 
   //
   // Ignore the pad spaces (space or tab)
@@ -713,7 +701,7 @@ StrDecimalToUintn (
   more than PcdMaximumUnicodeStringLength Unicode characters not including 
   the Null-terminator, then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated Unicode string.
+  @param  String                Pointer to a Null-terminated Unicode string.
 
   @retval UINT64           
 
@@ -721,14 +709,16 @@ StrDecimalToUintn (
 UINT64
 EFIAPI
 StrDecimalToUint64 (
-  IN      CONST CHAR16      	      *String
+  IN      CONST CHAR16                *String
   )
 {
   UINT64     Result;
   
-  ASSERT (String != NULL);
-  ASSERT (((UINTN) String & 0x01) == 0);
-  ASSERT (StrLen (String) < PcdGet32 (PcdMaximumUnicodeStringLength));
+  //
+  // ASSERT String is less long than PcdMaximumUnicodeStringLength.
+  // Length tests are performed inside StrLen().
+  //
+  ASSERT (StrSize (String) != 0);
 
   //
   // Ignore the pad spaces (space or tab)
@@ -793,7 +783,7 @@ StrDecimalToUint64 (
   PcdMaximumUnicodeStringLength Unicode characters not including the Null-terminator, 
   then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated Unicode string.
+  @param  String                Pointer to a Null-terminated Unicode string.
 
   @retval UINTN
 
@@ -801,14 +791,16 @@ StrDecimalToUint64 (
 UINTN
 EFIAPI
 StrHexToUintn (
-  IN      CONST CHAR16      	      *String
+  IN      CONST CHAR16                *String
   )
 {
   UINTN     Result;
 
-  ASSERT (String != NULL);
-  ASSERT (((UINTN) String & 0x01) == 0);
-  ASSERT (StrLen (String) < PcdGet32 (PcdMaximumUnicodeStringLength));
+  //
+  // ASSERT String is less long than PcdMaximumUnicodeStringLength.
+  // Length tests are performed inside StrLen().
+  //
+  ASSERT (StrSize (String) != 0);
   
   //
   // Ignore the pad spaces (space or tab) 
@@ -885,7 +877,7 @@ StrHexToUintn (
   PcdMaximumUnicodeStringLength Unicode characters not including the Null-terminator, 
   then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated Unicode string.
+  @param  String                Pointer to a Null-terminated Unicode string.
 
   @retval UINT64
 
@@ -893,14 +885,16 @@ StrHexToUintn (
 UINT64
 EFIAPI
 StrHexToUint64 (
-  IN      CONST CHAR16      	      *String
+  IN      CONST CHAR16                *String
   )
 {
   UINT64    Result;
 
-  ASSERT (String != NULL);
-  ASSERT (((UINTN) String & 0x01) == 0);
-  ASSERT (StrLen (String) < PcdGet32 (PcdMaximumUnicodeStringLength));
+  //
+  // ASSERT String is less long than PcdMaximumUnicodeStringLength.
+  // Length tests are performed inside StrLen().
+  //
+  ASSERT (StrSize (String) != 0);
   
   //
   // Ignore the pad spaces (space or tab) 
@@ -1025,19 +1019,25 @@ InternalAsciiIsHexaDecimalDigitCharacter (
   @param  Source        Pointer to a Null-terminated Unicode string.
   @param  Destination   Pointer to a Null-terminated ASCII string.
 
-  @reture Destination
+  @return Destination
 
 **/
 CHAR8 *
 EFIAPI
 UnicodeStrToAsciiStr (
-  IN      CONST CHAR16      	      *Source,
-  OUT 	  CHAR8  	                  *Destination
+  IN      CONST CHAR16                *Source,
+  OUT     CHAR8                       *Destination
   )
 {
+  CHAR8                               *ReturnValue;
+
   ASSERT (Destination != NULL);
-  ASSERT (Source != NULL);
-  ASSERT (((UINTN) Source & 0x01) == 0);
+
+  //
+  // ASSERT if Source is long than PcdMaximumUnicodeStringLength.
+  // Length tests are performed inside StrLen().
+  //
+  ASSERT (StrSize (Source) != 0);
 
   //
   // Source and Destination should not overlap
@@ -1045,14 +1045,8 @@ UnicodeStrToAsciiStr (
   ASSERT ((UINTN) ((CHAR16 *) Destination -  Source) > StrLen (Source));
   ASSERT ((UINTN) ((CHAR8 *) Source - Destination) > StrLen (Source));
 
-  //
-  // If PcdMaximumUnicodeStringLength is not zero,
-  // length of Source should not more than PcdMaximumUnicodeStringLength
-  //
-  if (PcdGet32 (PcdMaximumUnicodeStringLength) != 0) {
-    ASSERT (StrLen (Source) < PcdGet32 (PcdMaximumUnicodeStringLength));
-  }
 
+  ReturnValue = Destination;
   while (*Source != '\0') {
     //
     // If any Unicode characters in Source contain 
@@ -1063,8 +1057,14 @@ UnicodeStrToAsciiStr (
   }
 
   *Destination = '\0';
-  
-  return Destination;
+
+  //
+  // ASSERT Original Destination is less long than PcdMaximumAsciiStringLength.
+  // Length tests are performed inside AsciiStrLen().
+  //
+  ASSERT (AsciiStrSize (ReturnValue) != 0);
+
+  return ReturnValue;
 }
 
 
@@ -1418,7 +1418,8 @@ AsciiStriCmp (
 
   @param  FirstString   Pointer to a Null-terminated ASCII string.
   @param  SecondString  Pointer to a Null-terminated ASCII string.
-
+  @param  Length        Maximum number of ASCII characters to compare.
+                        
   @retval 0   FirstString is identical to SecondString.
   @retval !=0 FirstString is not identical to SecondString.
 
@@ -1563,8 +1564,8 @@ AsciiStrnCat (
   String contains more than PcdMaximumAsciiStringLength Unicode characters 
   not including the Null-terminator, then ASSERT().
 
-  @param  String				  Pointer to a Null-terminated ASCII string.
-  @param  SearchString	  Pointer to a Null-terminated ASCII string to search for.
+  @param  String          Pointer to a Null-terminated ASCII string.
+  @param  SearchString    Pointer to a Null-terminated ASCII string to search for.
 
   @retval NULL            If the SearchString does not appear in String.
   @retval !NULL           If there is a match.
@@ -1573,31 +1574,18 @@ AsciiStrnCat (
 CHAR8 *
 EFIAPI
 AsciiStrStr (
-  IN      CONST CHAR8      	      *String,
+  IN      CONST CHAR8             *String,
   IN      CONST CHAR8             *SearchString
   )
 {
   CONST CHAR8 *FirstMatch;
   CONST CHAR8 *SearchStringTmp;
 
-  ASSERT (String != NULL);
-  ASSERT (SearchString != NULL);
-
   //
-  // If PcdMaximumUnicodeStringLength is not zero,
-  // length of String should not more than PcdMaximumUnicodeStringLength
+  // ASSERT both strings are less long than PcdMaximumAsciiStringLength
   //
-  if (PcdGet32 (PcdMaximumAsciiStringLength) != 0) {
-    ASSERT (AsciiStrLen (String) < PcdGet32 (PcdMaximumAsciiStringLength));
-  }
-
-  //
-  // If PcdMaximumUnicodeStringLength is not zero,
-  // length of SearchString should not more than PcdMaximumUnicodeStringLength
-  //
-  if (PcdGet32 (PcdMaximumAsciiStringLength) != 0) {
-    ASSERT (AsciiStrLen (SearchString) < PcdGet32 (PcdMaximumAsciiStringLength));
-  }
+  ASSERT (AsciiStrSize (String) != 0);
+  ASSERT (AsciiStrSize (SearchString) != 0);
 
   while (*String != '\0') {
     SearchStringTmp = SearchString;
@@ -1653,7 +1641,7 @@ AsciiStrStr (
   PcdMaximumAsciiStringLength ASCII characters not including the Null-terminator, 
   then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated ASCII string.
+  @param  String                Pointer to a Null-terminated ASCII string.
 
   @retval UINTN           
 
@@ -1661,13 +1649,15 @@ AsciiStrStr (
 UINTN
 EFIAPI
 AsciiStrDecimalToUintn (
-  IN      CONST CHAR8      	        *String
+  IN      CONST CHAR8               *String
   )
 {
   UINTN     Result;
   
-  ASSERT (String != NULL);
-  ASSERT (AsciiStrLen (String) < PcdGet32 (PcdMaximumAsciiStringLength));
+  //
+  // ASSERT Strings is less long than PcdMaximumAsciiStringLength
+  //
+  ASSERT (AsciiStrSize (String) != 0);
 
   //
   // Ignore the pad spaces (space or tab)
@@ -1728,7 +1718,7 @@ AsciiStrDecimalToUintn (
   PcdMaximumAsciiStringLength ASCII characters not including the Null-terminator, 
   then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated ASCII string.
+  @param  String                Pointer to a Null-terminated ASCII string.
 
   @retval UINT64           
 
@@ -1736,13 +1726,15 @@ AsciiStrDecimalToUintn (
 UINT64
 EFIAPI
 AsciiStrDecimalToUint64 (
-  IN      CONST CHAR8      	      *String
+  IN      CONST CHAR8             *String
   )
 {
   UINT64     Result;
   
-  ASSERT (String != NULL);
-  ASSERT (AsciiStrLen (String) < PcdGet32 (PcdMaximumAsciiStringLength));
+  //
+  // ASSERT Strings is less long than PcdMaximumAsciiStringLength
+  //
+  ASSERT (AsciiStrSize (String) != 0);
 
   //
   // Ignore the pad spaces (space or tab)
@@ -1806,7 +1798,7 @@ AsciiStrDecimalToUint64 (
   and String contains more than PcdMaximumAsciiStringLength ASCII characters not including 
   the Null-terminator, then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated ASCII string.
+  @param  String                Pointer to a Null-terminated ASCII string.
 
   @retval UINTN
 
@@ -1814,13 +1806,15 @@ AsciiStrDecimalToUint64 (
 UINTN
 EFIAPI
 AsciiStrHexToUintn (
-  IN      CONST CHAR8      	      *String
+  IN      CONST CHAR8             *String
   )
 {
   UINTN     Result;
 
-  ASSERT (String != NULL);
-  ASSERT (AsciiStrLen (String) < PcdGet32 (PcdMaximumAsciiStringLength));
+  //
+  // ASSERT Strings is less long than PcdMaximumAsciiStringLength
+  //
+  ASSERT (AsciiStrSize (String) != 0);
   
   //
   // Ignore the pad spaces (space or tab) 
@@ -1896,7 +1890,7 @@ AsciiStrHexToUintn (
   and String contains more than PcdMaximumAsciiStringLength ASCII characters not including 
   the Null-terminator, then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated ASCII string.
+  @param  String                Pointer to a Null-terminated ASCII string.
 
   @retval UINT64
 
@@ -1904,13 +1898,15 @@ AsciiStrHexToUintn (
 UINT64
 EFIAPI
 AsciiStrHexToUint64 (
-  IN      CONST CHAR8      	      *String
+  IN      CONST CHAR8             *String
   )
 {
   UINT64    Result;
 
-  ASSERT (String != NULL);
-  ASSERT (AsciiStrLen (String) < PcdGet32 (PcdMaximumUnicodeStringLength));
+  //
+  // ASSERT Strings is less long than PcdMaximumAsciiStringLength
+  //
+  ASSERT (AsciiStrSize (String) != 0);
   
   //
   // Ignore the pad spaces (space or tab) and leading Zeros
@@ -1985,18 +1981,24 @@ AsciiStrHexToUint64 (
   @param  Source        Pointer to a Null-terminated ASCII string.
   @param  Destination   Pointer to a Null-terminated Unicode string.
 
-  @reture Destination
+  @return Destination
 
 **/
 CHAR16 *
 EFIAPI
 AsciiStrToUnicodeStr (
-  IN      CONST CHAR8       	      *Source,
-  OUT 	  CHAR16  	                *Destination
+  IN      CONST CHAR8               *Source,
+  OUT     CHAR16                    *Destination
   )
 {
+  CHAR16                            *ReturnValue;
+
   ASSERT (Destination != NULL);
-  ASSERT (Source != NULL);
+
+  //
+  // ASSERT Source is less long than PcdMaximumAsciiStringLength
+  //
+  ASSERT (AsciiStrSize (Source) != 0);
 
   //
   // Source and Destination should not overlap
@@ -2004,14 +2006,8 @@ AsciiStrToUnicodeStr (
   ASSERT ((UINTN) ((CHAR8 *) Destination - Source) > AsciiStrLen (Source));
   ASSERT ((UINTN) (Source - (CHAR8 *) Destination) > (AsciiStrLen (Source) * sizeof (CHAR16)));
 
-  //
-  // If PcdMaximumAsciiStringLength is not zero,
-  // length of Source should not more than PcdMaximumUnicodeStringLength
-  //
-  if (PcdGet32 (PcdMaximumAsciiStringLength) != 0) {
-    ASSERT (AsciiStrLen (Source) < PcdGet32 (PcdMaximumAsciiStringLength));
-  }
-
+ 
+  ReturnValue = Destination;
   while (*Source != '\0') {
     *(Destination++) = (CHAR16) *(Source++);
   }
@@ -2020,7 +2016,12 @@ AsciiStrToUnicodeStr (
   //
   *Destination = '\0';
 
-  return Destination;
+  //
+  // ASSERT Original Destination is less long than PcdMaximumUnicodeStringLength
+  //
+  ASSERT (StrSize (ReturnValue) != 0);
+
+  return ReturnValue;
 }
 
 /**

@@ -27,10 +27,10 @@ Abstract:
 //GUID definitions
 //
 #define EFI_UDP4_SERVICE_BINDING_PROTOCOL_GUID \
-  { 0x83f01464, 0x99bd, 0x45e5, 0xb3, 0x83, 0xaf, 0x63, 0x05, 0xd8, 0xe9, 0xe6 }
+  { 0x83f01464, 0x99bd, 0x45e5, {0xb3, 0x83, 0xaf, 0x63, 0x05, 0xd8, 0xe9, 0xe6} }
 
 #define EFI_UDP4_PROTOCOL_GUID \
-  { 0x3ad9df29, 0x4501, 0x478d, 0xb1, 0xf8, 0x7f, 0x7f, 0xe7, 0x0e, 0x50, 0xf3 }
+  { 0x3ad9df29, 0x4501, 0x478d, {0xb1, 0xf8, 0x7f, 0x7f, 0xe7, 0x0e, 0x50, 0xf3} }
 
 typedef struct {
   EFI_HANDLE          InstanceHandle;
@@ -196,7 +196,7 @@ EFI_STATUS
   IN EFI_UDP4_PROTOCOL  *This
 );
 
-typedef struct _EFI_UDP4_PROTOCOL {
+struct _EFI_UDP4_PROTOCOL {
   EFI_UDP4_GET_MODE_DATA  GetModeData;
   EFI_UDP4_CONFIGURE      Configure;
   EFI_UDP4_GROUPS         Groups;
@@ -205,7 +205,7 @@ typedef struct _EFI_UDP4_PROTOCOL {
   EFI_UDP4_RECEIVE        Receive;
   EFI_UDP4_CANCEL         Cancel;
   EFI_UDP4_POLL           Poll;
-} EFI_UDP4_PROTOCOL;
+};
 
 extern EFI_GUID gEfiUdp4ServiceBindingProtocolGuid;
 extern EFI_GUID gEfiUdp4ProtocolGuid;

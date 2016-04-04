@@ -41,7 +41,7 @@ typedef struct _TCP4_SERVICE_DATA {
   EFI_SERVICE_BINDING_PROTOCOL  Tcp4ServiceBinding;
   EFI_HANDLE                    DriverBindingHandle;
   CHAR16                        *MacString;
-  NET_LIST_ENTRY                SocketList;
+  LIST_ENTRY                    SocketList;
 } TCP4_SERVICE_DATA;
 
 //
@@ -120,6 +120,18 @@ Tcp4DriverBindingStop (
   IN  EFI_HANDLE                   ControllerHandle,
   IN  UINTN                        NumberOfChildren,
   IN  EFI_HANDLE                   *ChildHandleBuffer
+  );
+
+EFI_STATUS
+Tcp4CreateSocketCallback (
+  IN SOCKET  *This,
+  IN VOID    *Context
+  );
+
+VOID
+Tcp4DestroySocketCallback (
+  IN SOCKET  *This,
+  IN VOID    *Context
   );
 
 //

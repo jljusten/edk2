@@ -30,7 +30,7 @@ Revision History
 
 #define EFI_COMPONENT_NAME2_PROTOCOL_GUID \
   { \
-    0x6a7a5cff, 0xe8d9, 0x4f70, 0xba, 0xda, 0x75, 0xab, 0x30, 0x25, 0xce, 0x14 \
+    0x6a7a5cff, 0xe8d9, 0x4f70, {0xba, 0xda, 0x75, 0xab, 0x30, 0x25, 0xce, 0x14} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_COMPONENT_NAME2_PROTOCOL);
@@ -125,11 +125,11 @@ EFI_STATUS
 //
 // Interface structure for the Component Name Protocol
 //
-typedef struct _EFI_COMPONENT_NAME2_PROTOCOL {
+struct _EFI_COMPONENT_NAME2_PROTOCOL {
   EFI_COMPONENT_NAME2_GET_DRIVER_NAME      GetDriverName;
   EFI_COMPONENT_NAME2_GET_CONTROLLER_NAME  GetControllerName;
   CHAR8                                    *SupportedLanguages;
-} EFI_COMPONENT_NAME2_PROTOCOL;
+};
 
 extern EFI_GUID gEfiComponentName2ProtocolGuid;
 

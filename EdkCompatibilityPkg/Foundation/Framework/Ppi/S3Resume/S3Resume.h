@@ -24,7 +24,7 @@ Abstract:
 
 #define PEI_S3_RESUME_PPI_GUID \
   { \
-    0x4426CCB2, 0xE684, 0x4a8a, 0xAE, 0x40, 0x20, 0xD4, 0xB0, 0x25, 0xB7, 0x10 \
+    0x4426CCB2, 0xE684, 0x4a8a, {0xAE, 0x40, 0x20, 0xD4, 0xB0, 0x25, 0xB7, 0x10} \
   }
 
 EFI_FORWARD_DECLARATION (PEI_S3_RESUME_PPI);
@@ -35,9 +35,9 @@ EFI_STATUS
   IN EFI_PEI_SERVICES   **PeiServices
   );
 
-typedef struct _PEI_S3_RESUME_PPI {
+struct _PEI_S3_RESUME_PPI {
   PEI_S3_RESUME_PPI_RESTORE_CONFIG  S3RestoreConfig;
-} PEI_S3_RESUME_PPI;
+};
 
 extern EFI_GUID gPeiS3ResumePpiGuid;
 

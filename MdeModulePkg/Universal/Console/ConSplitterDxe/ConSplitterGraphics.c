@@ -1,6 +1,10 @@
-/*++
+/** @file
+  Support for ConsoleControl protocol. Support for Graphics output spliter.
+  Support for DevNull Console Out. This console uses memory buffers
+  to represnt the console. It allows a console to start very early and
+  when a new console is added it is synced up with the current console.
 
-Copyright (c) 2006 - 2007, Intel Corporation
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,18 +13,8 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
+**/
 
-  ConSplitterGraphics.c
-
-Abstract:
-
-  Support for ConsoleControl protocol. Support for UGA Draw spliter.
-  Support for DevNull Console Out. This console uses memory buffers
-  to represnt the console. It allows a console to start very early and
-  when a new console is added it is synced up with the current console
-
---*/
 
 #include "ConSplitter.h"
 
@@ -39,13 +33,13 @@ ConSpliterConsoleControlGetMode (
 
   Routine Description:
     Return the current video mode information. Also returns info about existence
-    of UGA Draw devices in system, and if the Std In device is locked. All the
+    of Graphics Output devices or UGA Draw devices in system, and if the Std In device is locked. All the
     arguments are optional and only returned if a non NULL pointer is passed in.
 
   Arguments:
     This - Protocol instance pointer.
     Mode        - Are we in text of grahics mode.
-    UgaExists   - TRUE if UGA Spliter has found a UGA device
+    GopExists   - TRUE if GOP Spliter has found a GOP/UGA device
     StdInLocked - TRUE if StdIn device is keyboard locked
 
   Returns:
@@ -155,7 +149,7 @@ ConSpliterConsoleControlSetMode (
     }
   }
   if (Mode == EfiConsoleControlScreenText) {
-    DevNullSyncGopStdOut (Private);
+    DevNullSyncStdOut (Private);
   }
   return EFI_SUCCESS;
 }
@@ -189,7 +183,6 @@ ConSpliterGraphicsOutputQueryMode (
 --*/
 {
   TEXT_OUT_SPLITTER_PRIVATE_DATA  *Private;
-  TEXT_OUT_GOP_MODE               *Mode;
 
   if (This == NULL || Info == NULL || SizeOfInfo == NULL || ModeNumber >= This->Mode->MaxMode) {
     return EFI_INVALID_PARAMETER;
@@ -212,11 +205,7 @@ ConSpliterGraphicsOutputQueryMode (
 
   *SizeOfInfo = sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION);
 
-  CopyMem (*Info, Private->GraphicsOutput.Mode->Info, *SizeOfInfo);
-  Mode = &Private->GraphicsOutputModeBuffer[ModeNumber];
-  (*Info)->HorizontalResolution = Mode->HorizontalResolution;
-  (*Info)->VerticalResolution = Mode->VerticalResolution;
-  (*Info)->PixelsPerScanLine = Mode->HorizontalResolution;
+  CopyMem (*Info, &Private->GraphicsOutputModeBuffer[ModeNumber], *SizeOfInfo);
 
   return EFI_SUCCESS;
 }
@@ -248,7 +237,7 @@ Routine Description:
   TEXT_OUT_SPLITTER_PRIVATE_DATA         *Private;
   UINTN                                  Index;
   EFI_STATUS                             ReturnStatus;
-  TEXT_OUT_GOP_MODE                      *Mode;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION   *Mode;
   UINTN                                  Size;
   EFI_GRAPHICS_OUTPUT_PROTOCOL           *GraphicsOutput;
   UINTN                                  NumberIndex;
@@ -316,7 +305,7 @@ Routine Description:
       }
     }
 
-    if (EFI_ERROR (ReturnStatus)) {
+    if (EFI_ERROR (ReturnStatus) && FeaturePcdGet (PcdUgaConsumeSupport)) {
       UgaDraw = Private->TextOutList[Index].UgaDraw;
       if (UgaDraw != NULL) {
         Status = UgaDraw->SetMode (
@@ -335,10 +324,7 @@ Routine Description:
 
   This->Mode->Mode = ModeNumber;
 
-  Info = This->Mode->Info;
-  Info->HorizontalResolution = Mode->HorizontalResolution;
-  Info->VerticalResolution   = Mode->VerticalResolution;
-  Info->PixelsPerScanLine    = Mode->HorizontalResolution;
+  CopyMem (This->Mode->Info, &Private->GraphicsOutputModeBuffer[ModeNumber], This->Mode->SizeOfInfo);
 
   //
   // Information is not enough here, so the following items remain unchanged:
@@ -589,7 +575,7 @@ ConSpliterGraphicsOutputBlt (
     }
 
     UgaDraw = Private->TextOutList[Index].UgaDraw;
-    if (UgaDraw != NULL) {
+    if (UgaDraw != NULL && FeaturePcdGet (PcdUgaConsumeSupport)) {
       Status = UgaDraw->Blt (
                               UgaDraw,
                               (EFI_UGA_PIXEL *) BltBuffer,
@@ -636,7 +622,7 @@ DevNullGopSync (
                       Private->GraphicsOutput.Mode->Info->VerticalResolution,
                       0
                       );
-  } else {
+  } else if (FeaturePcdGet (PcdUgaConsumeSupport)) {
     return UgaDraw->Blt (
                       UgaDraw,
                       (EFI_UGA_PIXEL *) Private->GraphicsOutputBlt,
@@ -649,6 +635,8 @@ DevNullGopSync (
                       Private->GraphicsOutput.Mode->Info->VerticalResolution,
                       0
                       );
+  } else {
+    return EFI_UNSUPPORTED;
   }
 }
 
@@ -775,17 +763,22 @@ ConSpliterUgaDrawSetMode (
   // return the worst status met
   //
   for (Index = 0; Index < Private->CurrentNumberOfConsoles; Index++) {
-    UgaDraw = Private->TextOutList[Index].UgaDraw;
-    if (UgaDraw != NULL) {
-      Status = UgaDraw->SetMode (
-                          UgaDraw,
-                          HorizontalResolution,
-                          VerticalResolution,
-                          ColorDepth,
-                          RefreshRate
-                          );
-      if (EFI_ERROR (Status)) {
-        ReturnStatus = Status;
+
+    ReturnStatus = EFI_UNSUPPORTED;
+
+    if (FeaturePcdGet (PcdUgaConsumeSupport)) {
+      UgaDraw = Private->TextOutList[Index].UgaDraw;
+      if (UgaDraw != NULL && FeaturePcdGet (PcdUgaConsumeSupport)) {
+        Status = UgaDraw->SetMode (
+                            UgaDraw,
+                            HorizontalResolution,
+                            VerticalResolution,
+                            ColorDepth,
+                            RefreshRate
+                            );
+        if (EFI_ERROR (Status)) {
+          ReturnStatus = Status;
+        }
       }
     }
 
@@ -1051,7 +1044,7 @@ ConSpliterUgaDrawBlt (
       }
     }
 
-    if (Private->TextOutList[Index].UgaDraw != NULL) {
+    if (Private->TextOutList[Index].UgaDraw != NULL && FeaturePcdGet (PcdUgaConsumeSupport)) {
       Status = Private->TextOutList[Index].UgaDraw->Blt (
                                                       Private->TextOutList[Index].UgaDraw,
                                                       BltBuffer,
@@ -1085,7 +1078,7 @@ DevNullUgaSync (
   IN  EFI_UGA_DRAW_PROTOCOL           *UgaDraw
   )
 {
-  if (UgaDraw != NULL) {
+  if (UgaDraw != NULL && FeaturePcdGet (PcdUgaConsumeSupport)) {
     return UgaDraw->Blt (
                       UgaDraw,
                       Private->UgaBlt,
@@ -1098,7 +1091,7 @@ DevNullUgaSync (
                       Private->UgaVerticalResolution,
                       Private->UgaHorizontalResolution * sizeof (EFI_UGA_PIXEL)
                       );
-  } else {
+  } else if (GraphicsOutput != NULL) {
     return GraphicsOutput->Blt (
                       GraphicsOutput,
                       (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *) Private->UgaBlt,
@@ -1111,6 +1104,8 @@ DevNullUgaSync (
                       Private->UgaVerticalResolution,
                       0
                       );
+  } else {
+    return EFI_UNSUPPORTED;
   }
 }
 
@@ -1358,6 +1353,7 @@ DevNullTextOutSetMode (
 --*/
 {
   UINTN                         Size;
+  INT32                         CurrentMode;
   UINTN                         Row;
   UINTN                         Column;
   TEXT_OUT_SPLITTER_QUERY_DATA  *Mode;
@@ -1365,8 +1361,14 @@ DevNullTextOutSetMode (
   //
   // No extra check for ModeNumber here, as it has been checked in
   // ConSplitterTextOutSetMode. And mode 0 should always be supported.
+  // Row and Column should be fetched from intersection map.
   //
-  Mode    = &(Private->TextOutQueryData[ModeNumber]);
+  if (Private->TextOutModeMap != NULL) {
+    CurrentMode = *(Private->TextOutModeMap + Private->TextOutListCount * ModeNumber);
+  } else {
+    CurrentMode = (INT32)(ModeNumber);
+  }
+  Mode    = &(Private->TextOutQueryData[CurrentMode]);
   Row     = Mode->Rows;
   Column  = Mode->Columns;
 
@@ -1374,7 +1376,7 @@ DevNullTextOutSetMode (
     return EFI_UNSUPPORTED;
   }
 
-  if (Private->DevNullColumns != Column || Private->DevNullRows != Row) {
+  if (Private->TextOutMode.Mode != (INT32) ModeNumber) {
 
     Private->TextOutMode.Mode = (INT32) ModeNumber;
     Private->DevNullColumns   = Column;
@@ -1526,7 +1528,7 @@ DevNullTextOutEnableCursor (
 }
 
 EFI_STATUS
-DevNullSyncGopStdOut (
+DevNullSyncStdOut (
   IN  TEXT_OUT_SPLITTER_PRIVATE_DATA  *Private
   )
 /*++

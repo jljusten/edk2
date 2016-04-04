@@ -1,0 +1,24 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = BootSector
+  FILE_GUID                      = A36495C1-C205-414e-B71F-4BE3476D699C
+  MODULE_TYPE                    = USER_DEFINED
+  VERSION_STRING                 = 1.0
+  EDK_RELEASE_VERSION            = 0x00020000
+  EFI_SPECIFICATION_VERSION      = 0x00020000
+  CUSTOM_MAKEFILE                = Makefile
+[Packages]
+  MdePkg/MdePkg.dec
+  DuetPkg/DuetPkg.dec
+
+[Sources]
+  bootsect.asm
+  bs16.asm
+  bs32.asm
+  Gpt.asm
+  Mbr.asm
+  Start.asm
+  Start16.asm
+  Start32.asm
+  Efi32.asm
+

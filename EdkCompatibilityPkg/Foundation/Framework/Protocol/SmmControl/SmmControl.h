@@ -28,7 +28,7 @@ EFI_FORWARD_DECLARATION (EFI_SMM_CONTROL_PROTOCOL);
 
 #define EFI_SMM_CONTROL_PROTOCOL_GUID \
   { \
-    0x8d12e231, 0xc667, 0x4fd1, 0x98, 0xf2, 0x24, 0x49, 0xa7, 0xe7, 0xb2, 0xe5 \
+    0x8d12e231, 0xc667, 0x4fd1, {0x98, 0xf2, 0x24, 0x49, 0xa7, 0xe7, 0xb2, 0xe5} \
   }
 
 //
@@ -67,12 +67,12 @@ EFI_STATUS
   IN OUT EFI_SMM_CONTROL_REGISTER       * SmiRegister
   );
 
-typedef struct _EFI_SMM_CONTROL_PROTOCOL {
+struct _EFI_SMM_CONTROL_PROTOCOL {
   EFI_SMM_ACTIVATE          Trigger;
   EFI_SMM_DEACTIVATE        Clear;
   EFI_SMM_GET_REGISTER_INFO GetRegisterInfo;
   UINTN                     MinimumTriggerPeriod;
-} EFI_SMM_CONTROL_PROTOCOL;
+};
 
 extern EFI_GUID gEfiSmmControlProtocolGuid;
 

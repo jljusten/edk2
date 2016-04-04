@@ -23,7 +23,7 @@ Abstract:
 #define _TIANO_DECOMPRESS_H_
 
 #define EFI_TIANO_DECOMPRESS_PROTOCOL_GUID  \
-  { 0xe84cf29c, 0x191f, 0x4eae, 0x96, 0xe1, 0xf4, 0x6a, 0xec, 0xea, 0xea, 0x0b }
+  { 0xe84cf29c, 0x191f, 0x4eae, {0x96, 0xe1, 0xf4, 0x6a, 0xec, 0xea, 0xea, 0x0b} }
 
 EFI_FORWARD_DECLARATION (EFI_TIANO_DECOMPRESS_PROTOCOL);
 
@@ -129,10 +129,10 @@ Returns:
 
 --*/
 
-typedef struct _EFI_TIANO_DECOMPRESS_PROTOCOL {
+struct _EFI_TIANO_DECOMPRESS_PROTOCOL {
   EFI_TIANO_DECOMPRESS_GET_INFO    GetInfo;
   EFI_TIANO_DECOMPRESS_DECOMPRESS  Decompress;
-} EFI_TIANO_DECOMPRESS_PROTOCOL;
+};
 
 extern EFI_GUID gEfiTianoDecompressProtocolGuid;
 

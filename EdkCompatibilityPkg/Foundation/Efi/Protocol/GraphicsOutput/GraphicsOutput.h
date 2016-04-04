@@ -28,7 +28,7 @@ Abstract:
 
 #define EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID \
   { \
-    0x9042a9de, 0x23dc, 0x4a38, 0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a \
+    0x9042a9de, 0x23dc, 0x4a38, {0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a} \
   }
 
 typedef struct _EFI_GRAPHICS_OUTPUT_PROTOCOL EFI_GRAPHICS_OUTPUT_PROTOCOL;
@@ -194,12 +194,12 @@ typedef struct {
   UINTN                                  FrameBufferSize;
 } EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE;
 
-typedef struct _EFI_GRAPHICS_OUTPUT_PROTOCOL {
+struct _EFI_GRAPHICS_OUTPUT_PROTOCOL {
   EFI_GRAPHICS_OUTPUT_PROTOCOL_QUERY_MODE  QueryMode;
   EFI_GRAPHICS_OUTPUT_PROTOCOL_SET_MODE    SetMode;
   EFI_GRAPHICS_OUTPUT_PROTOCOL_BLT         Blt;
   EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE        *Mode;
-} EFI_GRAPHICS_OUTPUT_PROTOCOL;
+};
 
 extern EFI_GUID gEfiGraphicsOutputProtocolGuid;
 

@@ -30,7 +30,7 @@ Abstract:
 
 #define EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID \
   { \
-    0x964e5b22, 0x6459, 0x11d2, 0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b \
+    0x964e5b22, 0x6459, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_SIMPLE_FILE_SYSTEM_PROTOCOL);
@@ -65,10 +65,10 @@ EFI_STATUS
 
 #define EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_REVISION  0x00010000
 
-typedef struct _EFI_SIMPLE_FILE_SYSTEM_PROTOCOL {
+struct _EFI_SIMPLE_FILE_SYSTEM_PROTOCOL {
   UINT64          Revision;
   EFI_VOLUME_OPEN OpenVolume;
-} EFI_SIMPLE_FILE_SYSTEM_PROTOCOL;
+};
 
 typedef
 EFI_STATUS
@@ -368,8 +368,7 @@ typedef struct _EFI_FILE {
   EFI_FILE_GET_INFO     GetInfo;
   EFI_FILE_SET_INFO     SetInfo;
   EFI_FILE_FLUSH        Flush;
-}
-EFI_FILE, *EFI_FILE_HANDLE;
+} *EFI_FILE_HANDLE;
 
 extern EFI_GUID gEfiSimpleFileSystemProtocolGuid;
 

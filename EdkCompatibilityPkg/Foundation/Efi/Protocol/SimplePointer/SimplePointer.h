@@ -26,7 +26,7 @@ Abstract:
 
 #define EFI_SIMPLE_POINTER_PROTOCOL_GUID \
   { \
-    0x31878c87, 0xb75, 0x11d5, 0x9a, 0x4f, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d \
+    0x31878c87, 0xb75, 0x11d5, {0x9a, 0x4f, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_SIMPLE_POINTER_PROTOCOL);
@@ -64,12 +64,12 @@ EFI_STATUS
   IN OUT EFI_SIMPLE_POINTER_STATE         * State
   );
 
-typedef struct _EFI_SIMPLE_POINTER_PROTOCOL {
+struct _EFI_SIMPLE_POINTER_PROTOCOL {
   EFI_SIMPLE_POINTER_RESET      Reset;
   EFI_SIMPLE_POINTER_GET_STATE  GetState;
   EFI_EVENT                     WaitForInput;
   EFI_SIMPLE_POINTER_MODE       *Mode;
-} EFI_SIMPLE_POINTER_PROTOCOL;
+};
 
 extern EFI_GUID gEfiSimplePointerProtocolGuid;
 

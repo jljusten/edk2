@@ -23,17 +23,17 @@ Abstract:
 #include EFI_PROTOCOL_DEFINITION (Ip4Config)
 
 #define EFI_NIC_IP4_CONFIG_PROTOCOL_GUID \
-  {0xdca3d4d, 0x12da, 0x4728, 0xbf, 0x7e, 0x86, 0xce, 0xb9, 0x28, 0xd0, 0x67}
+  {0xdca3d4d, 0x12da, 0x4728, {0xbf, 0x7e, 0x86, 0xce, 0xb9, 0x28, 0xd0, 0x67}}
 
 #define EFI_NIC_IP4_CONFIG_VARIABLE_GUID  \
-  {0xd8944553, 0xc4dd, 0x41f4, 0x9b, 0x30, 0xe1, 0x39, 0x7c, 0xfb, 0x26, 0x7b}
+  {0xd8944553, 0xc4dd, 0x41f4, {0x9b, 0x30, 0xe1, 0x39, 0x7c, 0xfb, 0x26, 0x7b}}
 
 #define EFI_NIC_IP4_CONFIG_VARIABLE          L"EfiNicIp4ConfigVariable"
 
 
 typedef struct _EFI_NIC_IP4_CONFIG_PROTOCOL EFI_NIC_IP4_CONFIG_PROTOCOL;
 
-typedef enum {
+enum {
   //
   // Config source: dhcp or static
   //
@@ -106,7 +106,6 @@ EFI_STATUS
   IN  NIC_ADDR                    *NicAddr       OPTIONAL 
   );
 
-typedef 
 struct _EFI_NIC_IP4_CONFIG_PROTOCOL {
   EFI_NIC_IP4_CONFIG_GET_NAME     GetName;
   EFI_NIC_IP4_CONFIG_GET_INFO     GetInfo;

@@ -24,7 +24,7 @@ Abstract:
 #define __SECURITY2_PPI_H__
 
 #define EFI_PEI_SECURITY2_PPI_GUID \
-  { 0xdcd0be23, 0x9586, 0x40f4, 0xb6, 0x43, 0x6, 0x52, 0x2c, 0xed, 0x4e, 0xde}
+  { 0xdcd0be23, 0x9586, 0x40f4, {0xb6, 0x43, 0x6, 0x52, 0x2c, 0xed, 0x4e, 0xde}}
 
 
 EFI_FORWARD_DECLARATION (EFI_PEI_SECURITY2_PPI);
@@ -40,9 +40,9 @@ EFI_STATUS
   IN OUT BOOLEAN                  *DeferExection
   );
 
-typedef struct _EFI_PEI_SECURITY2_PPI {
+struct _EFI_PEI_SECURITY2_PPI {
   EFI_PEI_SECURITY_AUTHENTICATION_STATE  AuthenticationState;
-} EFI_PEI_SECURITY2_PPI;
+};
 
 
 extern EFI_GUID gEfiPeiSecurity2PpiGuid;

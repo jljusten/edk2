@@ -207,9 +207,9 @@ typedef struct {
 #define MSG_SATA_DP               0x12
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
-  UINT16                          HbaPortNumber;
-  UINT16                          PortMultiplierPort;
-  UINT16                          LogicalUnitNumber;
+  UINT16                          HBAPortNumber;
+  UINT16                          PortMultiplierPortNumber;
+  UINT16                          Lun;
 } SATA_DEVICE_PATH;
 
 #define MSG_I2O_DP                0x06
@@ -373,14 +373,14 @@ typedef struct {
 } MEDIA_PROTOCOL_DEVICE_PATH;
 
 
-#define MEDIA_PIWG_FW_VOL_DP      0x6
+#define MEDIA_PIWG_FW_VOL_DP      0x7
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
   EFI_GUID                        FvName;
 } MEDIA_FW_VOL_DEVICE_PATH;
 
 
-#define MEDIA_PIWG_FW_FILE_DP     0x7
+#define MEDIA_PIWG_FW_FILE_DP     0x6
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
   EFI_GUID                        FvFileName;
@@ -427,6 +427,7 @@ typedef union {
 
   ATAPI_DEVICE_PATH                    Atapi;
   SCSI_DEVICE_PATH                     Scsi;
+  ISCSI_DEVICE_PATH                    Iscsi;
   FIBRECHANNEL_DEVICE_PATH             FibreChannel;
 
   F1394_DEVICE_PATH                    F1394;

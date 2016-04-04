@@ -308,19 +308,19 @@ typedef struct {
 #define MSG_VENDOR_DP             0x0a
 
 #define DEVICE_PATH_MESSAGING_PC_ANSI \
-    { 0xe0c14753, 0xf9be, 0x11d2,  0x9a, 0x0c, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0x4d  }
+    { 0xe0c14753, 0xf9be, 0x11d2,  {0x9a, 0x0c, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0x4d}  }
 
 #define DEVICE_PATH_MESSAGING_VT_100 \
-    { 0xdfa66065, 0xb419, 0x11d3,  0x9a, 0x2d, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0x4d  }
+    { 0xdfa66065, 0xb419, 0x11d3,  {0x9a, 0x2d, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0x4d}  }
 
 #define DEVICE_PATH_MESSAGING_VT_100_PLUS \
-    { 0x7baec70b, 0x57e0, 0x4c76, 0x8e, 0x87, 0x2f, 0x9e, 0x28, 0x08, 0x83, 0x43  }
+    { 0x7baec70b, 0x57e0, 0x4c76, {0x8e, 0x87, 0x2f, 0x9e, 0x28, 0x08, 0x83, 0x43}  }
 
 #define DEVICE_PATH_MESSAGING_VT_UTF8 \
-    { 0xad15a0d6, 0x8bec, 0x4acf, 0xa0, 0x73, 0xd0, 0x1d, 0xe7, 0x7e, 0x2d, 0x88 }
+    { 0xad15a0d6, 0x8bec, 0x4acf, {0xa0, 0x73, 0xd0, 0x1d, 0xe7, 0x7e, 0x2d, 0x88} }
 
 #define DEVICE_PATH_MESSAGING_UART_FLOW_CONTROL \
-    { 0x37499a9d, 0x542f, 0x4c89, 0xa0, 0x26, 0x35, 0xda, 0x14, 0x20, 0x94, 0xe4 }
+    { 0x37499a9d, 0x542f, 0x4c89, {0xa0, 0x26, 0x35, 0xda, 0x14, 0x20, 0x94, 0xe4} }
 
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
@@ -331,7 +331,7 @@ typedef struct {
 #if (EFI_SPECIFICATION_VERSION >= 0x00020000)
 
 #define DEVICE_PATH_MESSAGING_SAS \
-    { 0xd487ddb4, 0x008b, 0x11d9, 0xaf, 0xdc, 0x00, 0x10, 0x83, 0xff, 0xca, 0x4d }
+    { 0xd487ddb4, 0x008b, 0x11d9, {0xaf, 0xdc, 0x00, 0x10, 0x83, 0xff, 0xca, 0x4d} }
 
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
@@ -342,6 +342,8 @@ typedef struct {
   UINT16                          DeviceTopology;
   UINT16                          RelativeTargetPort;
 } SAS_DEVICE_PATH;
+
+#endif
 
 #define MSG_ISCSI_DP              0x13
 typedef struct {
@@ -361,8 +363,6 @@ typedef struct {
 #define ISCSI_LOGIN_OPTION_AUTHMETHOD_NON               0x1000
 #define ISCSI_LOGIN_OPTION_CHAP_BI                      0x0000
 #define ISCSI_LOGIN_OPTION_CHAP_UNI                     0x2000
-
-#endif
 
 //
 // Media Device Path
@@ -415,13 +415,13 @@ typedef struct {
 
 #if (EFI_SPECIFICATION_VERSION >= 0x0002000A)
 
-#define MEDIA_FV_DP  0x06
+#define MEDIA_FV_DP  0x07
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL  Header;
   EFI_GUID                  NameGuid;
 } MEDIA_FW_VOL_DEVICE_PATH;
 
-#define MEDIA_FV_FILEPATH_DP  0x07
+#define MEDIA_FV_FILEPATH_DP  0x06
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL  Header;
   EFI_GUID                  NameGuid;
@@ -454,7 +454,7 @@ typedef struct {
 #define BBS_TYPE_UNKNOWN          0xFF
 
 #define UNKNOWN_DEVICE_GUID \
-  { 0xcf31fac5, 0xc24e, 0x11d2,  0x85, 0xf3, 0x0, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b  }
+  { 0xcf31fac5, 0xc24e, 0x11d2,  {0x85, 0xf3, 0x0, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b}  }
 
 typedef struct {
   VENDOR_DEVICE_PATH              DevicePath;
@@ -477,6 +477,7 @@ typedef union {
 
   CONTROLLER_DEVICE_PATH               Controller;
   ACPI_HID_DEVICE_PATH                 Acpi;
+  ACPI_EXTENDED_HID_DEVICE_PATH        ExtendedAcpi;
 
   ATAPI_DEVICE_PATH                    Atapi;
   SCSI_DEVICE_PATH                     Scsi;
@@ -488,6 +489,7 @@ typedef union {
   USB_CLASS_DEVICE_PATH                UsbClass;
   #if (EFI_SPECIFICATION_VERSION >= 0x00020000)
   USB_WWID_DEVICE_PATH                 UsbWwid;
+  DEVICE_LOGICAL_UNIT_DEVICE_PATH      LogicUnit;
   #endif
   I2O_DEVICE_PATH                      I2O;
   MAC_ADDR_DEVICE_PATH                 MacAddr;
@@ -498,13 +500,18 @@ typedef union {
   UART_FLOW_CONTROL_DEVICE_PATH        UartFlowControl;
   #if (EFI_SPECIFICATION_VERSION >= 0x00020000)
   SAS_DEVICE_PATH                      Sas;
-  ISCSI_DEVICE_PATH                    Iscsi;
   #endif
+  ISCSI_DEVICE_PATH                    Iscsi;
   HARDDRIVE_DEVICE_PATH                HardDrive;
   CDROM_DEVICE_PATH                    CD;
 
   FILEPATH_DEVICE_PATH                 FilePath;
   MEDIA_PROTOCOL_DEVICE_PATH           MediaProtocol;
+
+  #if (EFI_SPECIFICATION_VERSION >= 0x0002000A)
+  MEDIA_FW_VOL_DEVICE_PATH             PiwgFirmwareVolume;
+  MEDIA_FW_VOL_FILEPATH_DEVICE_PATH    PiwgFirmwareFile;
+  #endif
 
   BBS_BBS_DEVICE_PATH                  Bbs;
 } EFI_DEV_PATH;
@@ -532,18 +539,33 @@ typedef union {
   F1394_DEVICE_PATH                    *F1394;
   USB_DEVICE_PATH                      *Usb;
   USB_CLASS_DEVICE_PATH                *UsbClass;
+  #if (EFI_SPECIFICATION_VERSION >= 0x00020000)
+  USB_WWID_DEVICE_PATH                 *UsbWwid;
+  DEVICE_LOGICAL_UNIT_DEVICE_PATH      *LogicUnit;
+  #endif
   I2O_DEVICE_PATH                      *I2O;
   MAC_ADDR_DEVICE_PATH                 *MacAddr;
   IPv4_DEVICE_PATH                     *Ipv4;
   IPv6_DEVICE_PATH                     *Ipv6;
   INFINIBAND_DEVICE_PATH               *InfiniBand;
   UART_DEVICE_PATH                     *Uart;
+  UART_FLOW_CONTROL_DEVICE_PATH        *UartFlowControl;
+
+  #if (EFI_SPECIFICATION_VERSION >= 0x00020000)
+  SAS_DEVICE_PATH                      *Sas;
+  #endif
+  ISCSI_DEVICE_PATH                    *Iscsi;
 
   HARDDRIVE_DEVICE_PATH                *HardDrive;
   CDROM_DEVICE_PATH                    *CD;
 
   FILEPATH_DEVICE_PATH                 *FilePath;
   MEDIA_PROTOCOL_DEVICE_PATH           *MediaProtocol;
+
+  #if (EFI_SPECIFICATION_VERSION >= 0x0002000A)
+  MEDIA_FW_VOL_DEVICE_PATH             *PiwgFirmwareVolume;
+  MEDIA_FW_VOL_FILEPATH_DEVICE_PATH    *PiwgFirmwareFile;
+  #endif
 
   BBS_BBS_DEVICE_PATH                  *Bbs;
   UINT8                                *Raw;

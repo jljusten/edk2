@@ -27,7 +27,7 @@ Abstract:
 //4C8A2451-C207-405b-9694-99EA13251341
 //
 #define EFI_DEBUG_MASK_PROTOCOL_GUID \
-  { 0x4c8a2451, 0xc207, 0x405b, 0x96, 0x94, 0x99, 0xea, 0x13, 0x25, 0x13, 0x41 }
+  { 0x4c8a2451, 0xc207, 0x405b, {0x96, 0x94, 0x99, 0xea, 0x13, 0x25, 0x13, 0x41} }
 
 
 #define EFI_DEBUG_MASK_REVISION        0x00010000
@@ -57,11 +57,11 @@ EFI_STATUS
 //
 // DebugMask protocol definition
 //
-typedef struct _EFI_DEBUG_MASK_PROTOCOL {
+struct _EFI_DEBUG_MASK_PROTOCOL {
   INT64                               Revision;
   EFI_GET_DEBUG_MASK                  GetDebugMask;
   EFI_SET_DEBUG_MASK                  SetDebugMask;
-} EFI_DEBUG_MASK_PROTOCOL;
+};
 
 extern EFI_GUID gEfiDebugMaskProtocolGuid;
 

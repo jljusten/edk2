@@ -1,4 +1,4 @@
-/*++
+/** @file
 
 Copyright (c) 2006 - 2007, Intel Corporation
 All rights reserved. This program and the accompanying materials
@@ -19,7 +19,7 @@ Abstract:
 
 Revision History
 
---*/
+**/
 
 #ifndef _PEI_MAIN_H_
 #define _PEI_MAIN_H_
@@ -35,6 +35,7 @@ Revision History
 #include <Ppi/GuidedSectionExtraction.h>
 #include <Ppi/LoadFile.h>
 #include <Ppi/Security2.h>
+#include <Ppi/TemporaryRamSupport.h>
 #include <Library/DebugLib.h>
 #include <Library/PeiCoreEntryPoint.h>
 #include <Library/BaseLib.h>
@@ -66,17 +67,13 @@ typedef union {
   VOID                        *Raw;
 } PEI_PPI_LIST_POINTERS;
 
-#define PEI_STACK_SIZE 0x20000
-
-#define MAX_PPI_DESCRIPTORS 64
-
 typedef struct {
   INTN                    PpiListEnd;
   INTN                    NotifyListEnd;
   INTN                    DispatchListEnd;
   INTN                    LastDispatchedInstall;
   INTN                    LastDispatchedNotify;
-  PEI_PPI_LIST_POINTERS   PpiListPtrs[MAX_PPI_DESCRIPTORS];
+  PEI_PPI_LIST_POINTERS   PpiListPtrs[FixedPcdGet32 (PcdPeiCoreMaxPpiSupported)];
 } PEI_PPI_DATABASE;
 
 
@@ -92,7 +89,7 @@ typedef struct {
 
 typedef struct {
   EFI_FIRMWARE_VOLUME_HEADER          *FvHeader;
-  UINT8                               PeimState[FixedPcdGet32 (PcdPeiCoreMaxPeimPerFv)];   
+  UINT8                               PeimState[FixedPcdGet32 (PcdPeiCoreMaxPeimPerFv)];
   EFI_PEI_FILE_HANDLE                 FvFileHandles[FixedPcdGet32 (PcdPeiCoreMaxPeimPerFv)];
   BOOLEAN                             ScanFv;
 } PEI_CORE_FV_HANDLE;
@@ -120,7 +117,7 @@ typedef struct{
   PEI_CORE_FV_HANDLE                 Fv[FixedPcdGet32 (PcdPeiCoreMaxFvSupported)];
   EFI_PEI_FILE_HANDLE                CurrentFvFileHandles[FixedPcdGet32 (PcdPeiCoreMaxPeimPerFv)];
   UINTN                              AprioriCount;
-  UINTN                              CurrentPeimFvCount; 
+  UINTN                              CurrentPeimFvCount;
   UINTN                              CurrentPeimCount;
   EFI_PEI_FILE_HANDLE                CurrentFileHandle;
   UINTN                              AllFvCount;
@@ -135,9 +132,14 @@ typedef struct{
   VOID                               *CpuIo;
   EFI_PEI_SECURITY2_PPI              *PrivateSecurityPpi;
   EFI_PEI_SERVICES                   ServiceTableShadow;
+  UINTN                              SizeOfTemporaryMemory;
   UINTN                              SizeOfCacheAsRam;
   VOID                               *MaxTopOfCarHeap;
   EFI_PEI_PPI_DESCRIPTOR             *XipLoadFile;
+  EFI_PHYSICAL_ADDRESS               PhysicalMemoryBegin;
+  UINT64                             PhysicalMemoryLength;
+  EFI_PHYSICAL_ADDRESS               FreePhysicalMemoryTop;
+  VOID*                              ShadowedPeiCore;
   CACHE_SECTION_DATA                 CacheSection;
 } PEI_CORE_INSTANCE;
 
@@ -307,6 +309,35 @@ Returns:
 ;
 
 
+EFI_STATUS
+FindNextPeim (
+  IN EFI_PEI_SERVICES            **PeiServices,
+  IN EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader,
+  IN OUT EFI_FFS_FILE_HEADER     **PeimFileHeader
+  )
+/*++
+
+Routine Description:
+    Given the input file pointer, search for the next matching file in the
+    FFS volume. The search starts from FileHeader inside
+    the Firmware Volume defined by FwVolHeader.
+
+Arguments:
+    PeiServices - Pointer to the PEI Core Services Table.
+
+    FwVolHeader - Pointer to the FV header of the volume to search.
+                     This parameter must point to a valid FFS volume.
+
+    PeimFileHeader  - Pointer to the current file from which to begin searching.
+                  This pointer will be updated upon return to reflect the file found.
+
+Returns:
+    EFI_NOT_FOUND - No files matching the search criteria were found
+    EFI_SUCCESS
+
+--*/
+;
+
 BOOLEAN
 Dispatched (
   IN UINT8  CurrentPeim,
@@ -379,38 +410,6 @@ Returns:
 --*/
 ;
 
-#if   defined (MDE_CPU_IPF)
-  //
-  // In Ipf we should make special changes for the PHIT pointers to support
-  // recovery boot in cache mode.
-  //
-#define  SWITCH_TO_CACHE_MODE(CoreData)  SwitchToCacheMode(CoreData)
-#define  CACHE_MODE_ADDRESS_MASK         0x7FFFFFFFFFFFFFFFULL
-VOID
-SwitchToCacheMode (
-  IN PEI_CORE_INSTANCE           *CoreData
-)
-/*++
-
-Routine Description:
-
- Switch the PHIT pointers to cache mode after InstallPeiMemory in CAR.
-
-Arguments:
-
-  CoreData   - The PEI core Private Data
-
-Returns:
-
---*/
-;
-
-#else
-
-#define  SWITCH_TO_CACHE_MODE(CoreData)
-
-#endif
-
 //
 // PPI support functions
 //
@@ -439,8 +438,9 @@ Returns:
 
 VOID
 ConvertPpiPointers (
-  IN CONST EFI_PEI_SERVICES              **PeiServices,
-  IN EFI_HOB_HANDOFF_INFO_TABLE    *OldHandOffHob,
+  IN CONST EFI_PEI_SERVICES                     **PeiServices,
+  IN UINTN                         OldCheckingBottom,
+  IN UINTN                         OldCheckingTop,
   IN EFI_HOB_HANDOFF_INFO_TABLE    *NewHandOffHob
   )
 /*++
@@ -451,9 +451,10 @@ Routine Description:
 
 Arguments:
 
-  PeiServices   - The PEI core services table.
-  OldHandOffHob - The old handoff HOB list.
-  NewHandOffHob - The new handoff HOB list.
+  PeiServices       - The PEI core services table.
+  OldCheckingBottom - The old checking bottom.
+  OldCheckingTop    - The old checking top.
+  NewHandOffHob     - The new handoff HOB list.
 
 Returns:
 
@@ -1141,7 +1142,7 @@ Returns:
 --*/
 ;
 
-VOID 
+VOID
 PeiInitializeFv (
   IN  PEI_CORE_INSTANCE           *PrivateData,
   IN CONST EFI_SEC_PEI_HAND_OFF   *SecCoreData
@@ -1157,9 +1158,9 @@ Arguments:
   SecCoreData     - Pointer to EFI_SEC_PEI_HAND_OFF.
 
 Returns:
-  NONE  
-  
---*/  
+  NONE
+
+--*/
 ;
 
 EFI_STATUS
@@ -1178,7 +1179,7 @@ Routine Description:
 Arguments:
 
   PeiServices - General purpose services available to every PEIM.
-    
+
 Returns:
 
   Status -  EFI_SUCCESS if the interface could be successfully
@@ -1189,7 +1190,7 @@ Returns:
 
 
 EFI_STATUS
-EFIAPI 
+EFIAPI
 PeiFfsFindFileByName (
   IN  CONST EFI_GUID        *FileName,
   IN  EFI_PEI_FV_HANDLE     VolumeHandle,
@@ -1209,13 +1210,13 @@ Arguments:
                 - NULL if file not found
 Returns:
   EFI_STATUS
-  
---*/  
+
+--*/
 ;
 
 
 EFI_STATUS
-EFIAPI 
+EFIAPI
 PeiFfsGetFileInfo (
   IN EFI_PEI_FILE_HANDLE  FileHandle,
   OUT EFI_FV_FILE_INFO    *FileInfo
@@ -1232,12 +1233,12 @@ Arguments:
 
 Returns:
   EFI_STATUS
-  
---*/    
+
+--*/
 ;
 
 EFI_STATUS
-EFIAPI 
+EFIAPI
 PeiFfsGetVolumeInfo (
   IN EFI_PEI_FV_HANDLE  VolumeHandle,
   OUT EFI_FV_INFO       *VolumeInfo
@@ -1251,11 +1252,11 @@ Routine Description:
 Arguments:
   VolumeHandle    - The handle to Fv Volume.
   VolumeInfo      - The pointer to volume information.
-  
+
 Returns:
   EFI_STATUS
-  
---*/    
+
+--*/
 ;
 
 
@@ -1273,13 +1274,13 @@ Routine Description:
 
 Arguments:
   FileHandle  - File handle of a PEIM.
-  
+
 Returns:
   EFI_NOT_FOUND        - The file handle doesn't point to PEIM itself.
   EFI_ALREADY_STARTED  - Indicate that the PEIM has been registered itself.
   EFI_SUCCESS          - Successfully to register itself.
 
---*/  
+--*/
 ;
 
 
@@ -1288,50 +1289,18 @@ Returns:
   discovery permanent memory.
 
 	@param FileHandle  	File handle of a PEIM.
-  
+
   @retval EFI_NOT_FOUND  				The file handle doesn't point to PEIM itself.
   @retval EFI_ALREADY_STARTED		Indicate that the PEIM has been registered itself.
   @retval EFI_SUCCESS						Successfully to register itself.
 
-**/  
+**/
 EFI_STATUS
 EFIAPI
 PeiRegisterForShadow (
   IN EFI_PEI_FILE_HANDLE       FileHandle
   )
 ;
-
-/**
-  Transfers control to a function starting with a new stack.
-
-  Transfers control to the function specified by EntryPoint using the new stack
-  specified by NewStack and passing in the parameters specified by Context1 and
-  Context2. Context1 and Context2 are optional and may be NULL. The function
-  EntryPoint must never return.
-
-  If EntryPoint is NULL, then ASSERT().
-  If NewStack is NULL, then ASSERT().
-
-  @param  EntryPoint  A pointer to function to call with the new stack.
-  @param  Context1    A pointer to the context to pass into the EntryPoint
-                      function.
-  @param  Context2    A pointer to the context to pass into the EntryPoint
-                      function.
-  @param  NewStack    A pointer to the new stack to use for the EntryPoint
-                      function.
-  @param  NewBsp      A pointer to the new BSP for the EntryPoint on IPF. It's
-                      Reserved on other architectures.
-
-**/
-VOID
-EFIAPI
-PeiSwitchStacks (
-  IN      SWITCH_STACK_ENTRY_POINT  EntryPoint,
-  IN      VOID                      *Context1,  OPTIONAL
-  IN      VOID                      *Context2,  OPTIONAL
-  IN      VOID                      *NewStack,
-  IN      VOID                      *NewBsp
-  );
 
 EFI_STATUS
 PeiFindFileEx (
@@ -1356,8 +1325,8 @@ Arguments:
       This parameter must point to a valid FFS volume.
     FileHeader  - Pointer to the current file from which to begin searching.
       This pointer will be updated upon return to reflect the file found.
-    Flag        - Indicator for if this is for PEI Dispath search 
-    
+    Flag        - Indicator for if this is for PEI Dispath search
+
 Returns:
     EFI_NOT_FOUND - No files matching the search criteria were found
     EFI_SUCCESS
@@ -1384,8 +1353,8 @@ Arguments:
 Returns:
 
   NONE.
-  
---*/      
+
+--*/
 ;
 
 /**
@@ -1395,7 +1364,7 @@ Returns:
 	@param FileHandle  	        File handle of a Fv type file.
   @param AuthenticationState  Pointer to attestation authentication state of image.
 
-  
+
   @retval EFI_NOT_FOUND  				FV image can't be found.
   @retval EFI_SUCCESS						Successfully to process it.
 

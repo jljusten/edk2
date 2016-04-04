@@ -30,7 +30,7 @@ Revision History
 //
 #define EFI_SMM_SW_DISPATCH_PROTOCOL_GUID \
   { \
-    0xe541b773, 0xdd11, 0x420c, 0xb0, 0x26, 0xdf, 0x99, 0x36, 0x53, 0xf8, 0xbf \
+    0xe541b773, 0xdd11, 0x420c, {0xb0, 0x26, 0xdf, 0x99, 0x36, 0x53, 0xf8, 0xbf} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_SMM_SW_DISPATCH_PROTOCOL);
@@ -140,11 +140,11 @@ EFI_STATUS
 //
 // Interface structure for the SMM Software SMI Dispatch Protocol
 //
-typedef struct _EFI_SMM_SW_DISPATCH_PROTOCOL {
+struct _EFI_SMM_SW_DISPATCH_PROTOCOL {
   EFI_SMM_SW_REGISTER   Register;
   EFI_SMM_SW_UNREGISTER UnRegister;
   UINTN                 MaximumSwiValue;
-} EFI_SMM_SW_DISPATCH_PROTOCOL;
+};
 
 extern EFI_GUID gEfiSmmSwDispatchProtocolGuid;
 

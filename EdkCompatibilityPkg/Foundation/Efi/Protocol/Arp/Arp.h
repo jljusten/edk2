@@ -25,10 +25,10 @@ Abstract:
 #include EFI_PROTOCOL_DEFINITION (ServiceBinding)
 
 #define EFI_ARP_SERVICE_BINDING_PROTOCOL_GUID \
-  { 0xf44c00ee, 0x1f2c, 0x4a00, 0xaa, 0x9, 0x1c, 0x9f, 0x3e, 0x8, 0x0, 0xa3 }
+  { 0xf44c00ee, 0x1f2c, 0x4a00, {0xaa, 0x9, 0x1c, 0x9f, 0x3e, 0x8, 0x0, 0xa3} }
 
 #define EFI_ARP_PROTOCOL_GUID \
-  { 0xf4b427bb, 0xba21, 0x4f16, 0xbc, 0x4e, 0x43, 0xe4, 0x16, 0xab, 0x61, 0x9c }
+  { 0xf4b427bb, 0xba21, 0x4f16, {0xbc, 0x4e, 0x43, 0xe4, 0x16, 0xab, 0x61, 0x9c} }
 
 EFI_FORWARD_DECLARATION (EFI_ARP_PROTOCOL);
 
@@ -119,7 +119,7 @@ IN VOID              *TargetSwAddress  OPTIONAL,
 IN EFI_EVENT         ResolvedEvent     OPTIONAL
 );
 
-typedef struct _EFI_ARP_PROTOCOL {
+struct _EFI_ARP_PROTOCOL {
   EFI_ARP_CONFIGURE         Configure;
   EFI_ARP_ADD               Add;
   EFI_ARP_FIND              Find;
@@ -127,7 +127,7 @@ typedef struct _EFI_ARP_PROTOCOL {
   EFI_ARP_FLUSH             Flush;
   EFI_ARP_REQUEST           Request;
   EFI_ARP_CANCEL            Cancel;
-} EFI_ARP_PROTOCOL;
+};
 
 
 extern EFI_GUID gEfiArpServiceBindingProtocolGuid;

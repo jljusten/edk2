@@ -38,10 +38,12 @@
 // 8 is for IPF archtecture.
 //
 #if defined (MDE_CPU_IPF)
-#define ALIGNMENT  8
+#define ALIGNMENT         8
 #else
-#define ALIGNMENT  1
+#define ALIGNMENT         1
 #endif
+
+#define HEADER_ALIGNMENT  4
 
 //
 // Variable Store Status
@@ -58,11 +60,16 @@ typedef enum {
 //
 #define VAR_IN_DELETED_TRANSITION     0xfe  // Variable is in obsolete transistion
 #define VAR_DELETED                   0xfd  // Variable is obsolete
-#define VAR_ADDED                     0x7f  // Variable has been completely added
+#define VAR_HEADER_VALID_ONLY         0x7f  // Variable header has been valid
+#define VAR_ADDED                     0x3f  // Variable has been completely added
+                                            // 
 #define IS_VARIABLE_STATE(_c, _Mask)  (BOOLEAN) (((~_c) & (~_Mask)) != 0)
 
 #pragma pack(1)
 
+//
+// Variable Store region header
+//
 typedef struct {
   UINT32  Signature;
   UINT32  Size;
@@ -72,6 +79,9 @@ typedef struct {
   UINT32  Reserved1;
 } VARIABLE_STORE_HEADER;
 
+//
+// Variable header structure
+//
 typedef struct {
   UINT16      StartId;
   UINT8       State;

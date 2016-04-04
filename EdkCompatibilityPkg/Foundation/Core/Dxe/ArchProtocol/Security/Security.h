@@ -39,7 +39,7 @@ Abstract:
 // Global ID for the Security Code Architectural Protocol
 //
 #define EFI_SECURITY_ARCH_PROTOCOL_GUID  \
-  { 0xA46423E3, 0x4617, 0x49f1, 0xB9, 0xFF, 0xD1, 0xBF, 0xA9, 0x11, 0x58, 0x39 }
+  { 0xA46423E3, 0x4617, 0x49f1, {0xB9, 0xFF, 0xD1, 0xBF, 0xA9, 0x11, 0x58, 0x39} }
 
 EFI_FORWARD_DECLARATION (EFI_SECURITY_ARCH_PROTOCOL);
 
@@ -111,9 +111,9 @@ Returns:
 //
 // Interface stucture for the Timer Architectural Protocol
 //
-typedef struct _EFI_SECURITY_ARCH_PROTOCOL {
+struct _EFI_SECURITY_ARCH_PROTOCOL {
   EFI_SECURITY_FILE_AUTHENTICATION_STATE  FileAuthenticationState;
-} EFI_SECURITY_ARCH_PROTOCOL;
+};
 /*++
 
   Protocol Description:

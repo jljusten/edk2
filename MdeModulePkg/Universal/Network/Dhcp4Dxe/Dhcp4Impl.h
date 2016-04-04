@@ -67,7 +67,7 @@ enum {
 struct _DHCP_PROTOCOL {
   UINT32                            Signature;
   EFI_DHCP4_PROTOCOL                Dhcp4Protocol;
-  NET_LIST_ENTRY                    Link;
+  LIST_ENTRY                        Link;
   EFI_HANDLE                        Handle;
   DHCP_SERVICE                      *Service;
 
@@ -96,7 +96,7 @@ struct _DHCP_SERVICE {
   EFI_HANDLE                    Controller;
   EFI_HANDLE                    Image;
 
-  NET_LIST_ENTRY                Children;
+  LIST_ENTRY                    Children;
   UINTN                         NumChildren;
 
   INTN                          DhcpState;
@@ -122,6 +122,7 @@ struct _DHCP_SERVICE {
   EFI_MAC_ADDRESS               Mac;
   UINT8                         HwType;
   UINT8                         HwLen;
+  UINT8                         ClientAddressSendOut[16];
 
   DHCP_PROTOCOL                 *ActiveChild;
   EFI_DHCP4_CONFIG_DATA         ActiveConfig;

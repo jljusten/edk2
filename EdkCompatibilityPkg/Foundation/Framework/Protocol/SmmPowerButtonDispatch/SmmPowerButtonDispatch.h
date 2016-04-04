@@ -30,7 +30,7 @@ Revision History
 //
 #define EFI_SMM_POWER_BUTTON_DISPATCH_PROTOCOL_GUID \
   { \
-    0xb709efa0, 0x47a6, 0x4b41, 0xb9, 0x31, 0x12, 0xec, 0xe7, 0xa8, 0xee, 0x56 \
+    0xb709efa0, 0x47a6, 0x4b41, {0xb9, 0x31, 0x12, 0xec, 0xe7, 0xa8, 0xee, 0x56} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_SMM_POWER_BUTTON_DISPATCH_PROTOCOL);
@@ -143,10 +143,10 @@ EFI_STATUS
 //
 // Interface structure for the SMM Power Button SMI Dispatch Protocol
 //
-typedef struct _EFI_SMM_POWER_BUTTON_DISPATCH_PROTOCOL {
+struct _EFI_SMM_POWER_BUTTON_DISPATCH_PROTOCOL {
   EFI_SMM_POWER_BUTTON_REGISTER   Register;
   EFI_SMM_POWER_BUTTON_UNREGISTER UnRegister;
-} EFI_SMM_POWER_BUTTON_DISPATCH_PROTOCOL;
+};
 
 extern EFI_GUID gEfiSmmPowerButtonDispatchProtocolGuid;
 

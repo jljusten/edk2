@@ -23,7 +23,7 @@ Abstract:
 #define _FVB_EXTENSION_H_
 
 #define EFI_FVB_EXTENSION_PROTOCOL_GUID  \
-  {0x53a4c71b, 0xb581, 0x4170, 0x91, 0xb3, 0x8d, 0xb8, 0x7a, 0x4b, 0x5c, 0x46 }
+  {0x53a4c71b, 0xb581, 0x4170, {0x91, 0xb3, 0x8d, 0xb8, 0x7a, 0x4b, 0x5c, 0x46} }
 
 EFI_FORWARD_DECLARATION (EFI_FVB_EXTENSION_PROTOCOL);
 
@@ -43,9 +43,9 @@ EFI_STATUS
 //
 // IPMI TRANSPORT PROTOCOL
 //
-typedef struct _EFI_FVB_EXTENSION_PROTOCOL {
+struct _EFI_FVB_EXTENSION_PROTOCOL {
   EFI_FV_ERASE_CUSTOM_BLOCK               EraseFvbCustomBlock;
- } EFI_FVB_EXTENSION_PROTOCOL;
+ };
 
 extern EFI_GUID                           gEfiFvbExtensionProtocolGuid;
 

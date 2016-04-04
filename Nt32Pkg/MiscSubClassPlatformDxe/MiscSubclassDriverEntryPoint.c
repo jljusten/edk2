@@ -1,4 +1,4 @@
-/*++
+/**@file
 
 Copyright (c) 2006 - 2007, Intel Corporation
 All rights reserved. This program and the accompanying materials
@@ -18,7 +18,7 @@ Abstract:
   This driver parses the mMiscSubclassDataTable structure and reports
   any generated data to the DataHub.
 
---*/
+**/
 
 #include "MiscSubclassDriver.h"
 
@@ -148,8 +148,6 @@ Returns:
 {
   EFI_MISC_SUBCLASS_DRIVER_DATA     RecordData;
   EFI_DATA_HUB_PROTOCOL             *DataHub;
-  EFI_HII_PROTOCOL                  *Hii;
-  EFI_HII_PACKAGES                  *PackageList;
   EFI_HII_HANDLE                    HiiHandle;
   EFI_STATUS                        Status;
   UINTN                             Index;
@@ -180,23 +178,9 @@ Returns:
     return EFI_DEVICE_ERROR;
   }
   //
-  // Locate hii protocol.
-  //
-  Status = gBS->LocateProtocol (&gEfiHiiProtocolGuid, NULL, &Hii);
-
-  if (EFI_ERROR (Status)) {
-    DEBUG ((EFI_D_ERROR, "Could not locate Hii protocol.  %r\n", Status));
-    return Status;
-  } else if (Hii == NULL) {
-    DEBUG ((EFI_D_ERROR, "LocateProtocol(Hii) returned NULL pointer!\n"));
-    return EFI_DEVICE_ERROR;
-  }
-  //
   // Add our default strings to the HII database. They will be modified later.
   //
-  PackageList = PreparePackages (1, &gEfiMiscSubClassGuid, MiscSubclassStrings);
-  Status   = Hii->NewPack (Hii, PackageList, &HiiHandle);
-  FreePool (PackageList);
+  HiiLibAddPackages (1, &gEfiMiscSubClassGuid, NULL, &HiiHandle, MiscSubclassStrings);
 
   if (EFI_ERROR (Status)) {
     DEBUG ((EFI_D_ERROR, "Could not log default strings to Hii.  %r\n", Status));

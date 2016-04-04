@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2004 - 2006, Intel Corporation                                                         
+Copyright (c) 2004 - 2007, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -28,7 +28,7 @@ Revision History
 
 
 #define EFI_MEMORY_SUBCLASS_GUID \
-  {0x4E8F4EBB, 0x64B9, 0x4e05, 0x9B, 0x18, 0x4C, 0xFE, 0x49, 0x23, 0x50, 0x97}
+  {0x4E8F4EBB, 0x64B9, 0x4e05, {0x9B, 0x18, 0x4C, 0xFE, 0x49, 0x23, 0x50, 0x97}}
   
 #define EFI_MEMORY_SUBCLASS_VERSION     0x0100
 
@@ -78,7 +78,7 @@ typedef enum _EFI_MEMORY_ARRAY_USE {
   EfiMemoryArrayUseVideoMemory                = 0x04,
   EfiMemoryArrayUseFlashMemory                = 0x05,
   EfiMemoryArrayUseNonVolatileRam             = 0x06,
-  EfiMemoryArrayUseCacheMemory                = 0x07,
+  EfiMemoryArrayUseCacheMemory                = 0x07
 } EFI_MEMORY_ARRAY_USE;
 
 typedef enum _EFI_MEMORY_ERROR_CORRECTION {
@@ -88,7 +88,7 @@ typedef enum _EFI_MEMORY_ERROR_CORRECTION {
   EfiMemoryErrorCorrectionParity              = 0x04,
   EfiMemoryErrorCorrectionSingleBitEcc        = 0x05,
   EfiMemoryErrorCorrectionMultiBitEcc         = 0x06,
-  EfiMemoryErrorCorrectionCrc                 = 0x07,
+  EfiMemoryErrorCorrectionCrc                 = 0x07
 } EFI_MEMORY_ERROR_CORRECTION;
 
 typedef struct {
@@ -188,6 +188,7 @@ typedef struct {
   EFI_MEMORY_TYPE_DETAIL      MemoryTypeDetail;
   UINT16                      MemorySpeed;
   EFI_MEMORY_STATE            MemoryState;
+  UINT8                       MemoryAttributes;
 } EFI_MEMORY_ARRAY_LINK;
 
 

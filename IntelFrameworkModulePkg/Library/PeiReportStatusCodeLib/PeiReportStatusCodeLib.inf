@@ -46,6 +46,7 @@
   BaseMemoryLib
   BaseLib
   DebugLib
+  OemHookStatusCodeLib
 
 
 [Guids]

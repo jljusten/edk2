@@ -122,7 +122,7 @@ typedef struct _EFI_BIS_SIGNATURE_INFO {
 //
 #define EFI_BIS_PROTOCOL_GUID \
   { \
-    0x0b64aab0, 0x5429, 0x11d4, 0x98, 0x16, 0x00, 0xa0, 0xc9, 0x1f, 0xad, 0xcf \
+    0x0b64aab0, 0x5429, 0x11d4, {0x98, 0x16, 0x00, 0xa0, 0xc9, 0x1f, 0xad, 0xcf} \
   }
 
 typedef struct _EFI_BIS_PROTOCOL  EFI_BIS_PROTOCOL;
@@ -207,7 +207,7 @@ EFI_STATUS
 
 #define EFI_BIS_PROTOCOL_REVISION 0x00010000
 
-typedef struct _EFI_BIS_PROTOCOL {
+struct _EFI_BIS_PROTOCOL {
   //
   // member vars
   //
@@ -226,7 +226,7 @@ typedef struct _EFI_BIS_PROTOCOL {
   EFI_BIS_UPDATE_BOOT_OBJECT_AUTHORIZATION            UpdateBootObjectAuthorization;
   EFI_BIS_VERIFY_BOOT_OBJECT                          VerifyBootObject;
   EFI_BIS_VERIFY_OBJECT_WITH_CREDENTIAL               VerifyObjectWithCredential;
-} EFI_BIS_PROTOCOL;
+};
 
 extern EFI_GUID gEfiBisProtocolGuid;
 

@@ -38,7 +38,7 @@ typedef struct {
   UINT32                            Eip;
 } BASE_LIBRARY_JUMP_BUFFER;
 
-#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 8
+#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 4
 
 #elif defined (MDE_CPU_IPF)
 
@@ -632,7 +632,7 @@ StrHexToUint64 (
   @param  Source        Pointer to a Null-terminated Unicode string.
   @param  Destination   Pointer to a Null-terminated ASCII string.
 
-  @reture Destination
+  @return Destination
 
 **/
 CHAR8 *
@@ -848,7 +848,8 @@ AsciiStriCmp (
 
   @param  FirstString   Pointer to a Null-terminated ASCII string.
   @param  SecondString  Pointer to a Null-terminated ASCII string.
-
+  @param  Length        Maximum number of ASCII characters for compare.
+  
   @retval 0   FirstString is identical to SecondString.
   @retval !=0 FirstString is not identical to SecondString.
 
@@ -1151,7 +1152,7 @@ AsciiStrHexToUint64 (
   @param  Source        Pointer to a Null-terminated ASCII string.
   @param  Destination   Pointer to a Null-terminated Unicode string.
 
-  @reture Destination
+  @return Destination
 
 **/
 CHAR16 *
@@ -1801,7 +1802,7 @@ GetPowerOfTwo64 (
   from little endian to big endian or vice versa. The byte swapped value is
   returned.
 
-  @param  Operand A 16-bit unsigned value.
+  @param  Value Operand A 16-bit unsigned value.
 
   @return The byte swaped Operand.
 
@@ -1820,7 +1821,7 @@ SwapBytes16 (
   from little endian to big endian or vice versa. The byte swapped value is
   returned.
 
-  @param  Operand A 32-bit unsigned value.
+  @param  Value Operand A 32-bit unsigned value.
 
   @return The byte swaped Operand.
 
@@ -1839,7 +1840,7 @@ SwapBytes32 (
   from little endian to big endian or vice versa. The byte swapped value is
   returned.
 
-  @param  Operand A 64-bit unsigned value.
+  @param  Value Operand A 64-bit unsigned value.
 
   @return The byte swaped Operand.
 
@@ -2063,7 +2064,7 @@ DivS64x64Remainder (
 
   If the Buffer is NULL, then ASSERT().
 
-  @param  Buffer  Pointer to a 16-bit value that may be unaligned.
+  @param  Uint16  Pointer to a 16-bit value that may be unaligned.
 
   @return *Uint16
 
@@ -2084,7 +2085,7 @@ ReadUnaligned16 (
 
   If the Buffer is NULL, then ASSERT().
 
-  @param  Buffer  Pointer to a 16-bit value that may be unaligned.
+  @param  Uint16  Pointer to a 16-bit value that may be unaligned.
   @param  Value   16-bit value to write to Buffer.
 
   @return Value
@@ -2149,7 +2150,7 @@ WriteUnaligned24 (
 
   If the Buffer is NULL, then ASSERT().
 
-  @param  Buffer  Pointer to a 32-bit value that may be unaligned.
+  @param  Uint32  Pointer to a 32-bit value that may be unaligned.
 
   @return *Uint32
 
@@ -2170,7 +2171,7 @@ ReadUnaligned32 (
 
   If the Buffer is NULL, then ASSERT().
 
-  @param  Buffer  Pointer to a 32-bit value that may be unaligned.
+  @param  Uint32  Pointer to a 32-bit value that may be unaligned.
   @param  Value   32-bit value to write to Buffer.
 
   @return Value
@@ -2192,7 +2193,7 @@ WriteUnaligned32 (
 
   If the Buffer is NULL, then ASSERT().
 
-  @param  Buffer  Pointer to a 64-bit value that may be unaligned.
+  @param  Uint64  Pointer to a 64-bit value that may be unaligned.
 
   @return *Uint64
 
@@ -2213,7 +2214,7 @@ ReadUnaligned64 (
 
   If the Buffer is NULL, then ASSERT().
 
-  @param  Buffer  Pointer to a 64-bit value that may be unaligned.
+  @param  Uint64  Pointer to a 64-bit value that may be unaligned.
   @param  Value   64-bit value to write to Buffer.
 
   @return Value

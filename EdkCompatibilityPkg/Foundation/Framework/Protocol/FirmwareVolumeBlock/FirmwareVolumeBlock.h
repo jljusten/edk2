@@ -30,7 +30,7 @@ Abstract:
 
 #define EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL_GUID \
   { \
-    0xDE28BC59, 0x6228, 0x41BD, 0xBD, 0xF6, 0xA3, 0xB9, 0xAD, 0xB5, 0x8D, 0xA1 \
+    0xDE28BC59, 0x6228, 0x41BD, {0xBD, 0xF6, 0xA3, 0xB9, 0xAD, 0xB5, 0x8D, 0xA1} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL);
@@ -235,7 +235,7 @@ Returns:
 --*/
 ;
 
-typedef struct _EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL {
+struct _EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL {
   EFI_FVB_GET_ATTRIBUTES        GetVolumeAttributes;
   EFI_FVB_SET_ATTRIBUTES        SetVolumeAttributes;
   EFI_FVB_GET_PHYSICAL_ADDRESS  GetPhysicalAddress;
@@ -244,7 +244,7 @@ typedef struct _EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL {
   EFI_FVB_WRITE                 Write;
   EFI_FVB_ERASE_BLOCKS          EraseBlocks;
   EFI_HANDLE                    ParentHandle;
-} EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL;
+};
 
 extern EFI_GUID gEfiFirmwareVolumeBlockProtocolGuid;
 

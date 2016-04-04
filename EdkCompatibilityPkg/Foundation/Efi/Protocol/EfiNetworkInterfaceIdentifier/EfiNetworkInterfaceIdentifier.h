@@ -27,11 +27,11 @@ Revision history:
 
 #define EFI_NETWORK_INTERFACE_IDENTIFIER_PROTOCOL_GUID \
   { \
-    0xE18541CD, 0xF755, 0x4f73, 0x92, 0x8D, 0x64, 0x3C, 0x8A, 0x79, 0xB2, 0x29 \
+    0xE18541CD, 0xF755, 0x4f73, {0x92, 0x8D, 0x64, 0x3C, 0x8A, 0x79, 0xB2, 0x29} \
   }
 #define EFI_NETWORK_INTERFACE_IDENTIFIER_PROTOCOL_GUID_31 \
   { \
-    0x1ACED566, 0x76ED, 0x4218, 0xBC, 0x81, 0x76, 0x7F, 0x1F, 0x97, 0x7A, 0x89 \
+    0x1ACED566, 0x76ED, 0x4218, {0xBC, 0x81, 0x76, 0x7F, 0x1F, 0x97, 0x7A, 0x89} \
   }
 
 #define EFI_NETWORK_INTERFACE_IDENTIFIER_PROTOCOL_REVISION    0x00010000
@@ -46,7 +46,7 @@ typedef enum {
   EfiNetworkInterfaceUndi = 1
 } EFI_NETWORK_PROTOCOL_TYPE;
 
-typedef struct _EFI_NETWORK_INTERFACE_IDENTIFIER_PROTOCOL {
+struct _EFI_NETWORK_INTERFACE_IDENTIFIER_PROTOCOL {
 
   UINT64  Revision;
   //
@@ -94,7 +94,7 @@ typedef struct _EFI_NETWORK_INTERFACE_IDENTIFIER_PROTOCOL {
   //
   BOOLEAN Ipv6Supported;
   UINT8   IfNum;  // interface number to be used with pxeid structure
-} EFI_NETWORK_INTERFACE_IDENTIFIER_PROTOCOL;
+};
 
 extern EFI_GUID gEfiNetworkInterfaceIdentifierProtocolGuid;
 extern EFI_GUID gEfiNetworkInterfaceIdentifierProtocolGuid_31;

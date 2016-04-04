@@ -27,7 +27,7 @@ Abstract:
 //
 
 #define EFI_PXE_DHCP4_PROTOCOL_GUID \
-  { 0x03c4e624, 0xac28, 0x11d3, 0x9a, 0x2d, 0x00, 0x90, 0x29, 0x3f, 0xc1, 0x4d }
+  { 0x03c4e624, 0xac28, 0x11d3, {0x9a, 0x2d, 0x00, 0x90, 0x29, 0x3f, 0xc1, 0x4d} }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 //
@@ -328,7 +328,7 @@ EFI_STATUS
 
 #define EFI_PXE_DHCP4_PROTOCOL_REVISION    0x00010000
 
-typedef struct _EFI_PXE_DHCP4_PROTOCOL {
+struct _EFI_PXE_DHCP4_PROTOCOL {
   UINT64 Revision;
   EFI_PXE_DHCP4_RUN Run;
   EFI_PXE_DHCP4_SETUP Setup;
@@ -338,7 +338,7 @@ typedef struct _EFI_PXE_DHCP4_PROTOCOL {
   EFI_PXE_DHCP4_REBIND Rebind;
   EFI_PXE_DHCP4_RELEASE Release;
   EFI_PXE_DHCP4_DATA *Data;
-} EFI_PXE_DHCP4_PROTOCOL;
+};
 
 //
 //

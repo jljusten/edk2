@@ -147,7 +147,6 @@ Tcp4Configure (
   IP4_ADDR         Ip;
   IP4_ADDR         SubnetMask;
 
-//  CpuBreakpoint ();
   if (NULL == This) {
     return EFI_INVALID_PARAMETER;
   }
@@ -157,7 +156,7 @@ Tcp4Configure (
   //
   if (NULL != TcpConfigData) {
 
-    NetCopyMem (&Ip, &TcpConfigData->AccessPoint.RemoteAddress, sizeof (IP4_ADDR));
+    CopyMem (&Ip, &TcpConfigData->AccessPoint.RemoteAddress, sizeof (IP4_ADDR));
     if ((Ip != 0) && !Ip4IsUnicast (NTOHL (Ip), 0)) {
       return EFI_INVALID_PARAMETER;
     }
@@ -169,8 +168,8 @@ Tcp4Configure (
 
     if (!TcpConfigData->AccessPoint.UseDefaultAddress) {
 
-      NetCopyMem (&Ip, &TcpConfigData->AccessPoint.StationAddress, sizeof (IP4_ADDR));
-      NetCopyMem (&SubnetMask, &TcpConfigData->AccessPoint.SubnetMask, sizeof (IP4_ADDR));
+      CopyMem (&Ip, &TcpConfigData->AccessPoint.StationAddress, sizeof (IP4_ADDR));
+      CopyMem (&SubnetMask, &TcpConfigData->AccessPoint.SubnetMask, sizeof (IP4_ADDR));
       if (!Ip4IsUnicast (NTOHL (Ip), 0) || !IP4_IS_VALID_NETMASK (NTOHL (SubnetMask))) {
         return EFI_INVALID_PARAMETER;
       }

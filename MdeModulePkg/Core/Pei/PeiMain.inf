@@ -47,25 +47,10 @@
   BootMode/BootMode.c
   PeiMain.h
 
-[Sources.Ia32]
-  Dispatcher/Stack.c
-
-[Sources.X64]
-  Dispatcher/Stack.c
-
-[Sources.IPF]
-  Ipf/Stack.c
-  Ipf/IpfPeiMain.h
-  Ipf/IpfCpuCore.s
-  Ipf/SwitchToCacheMode.c
-
-[Sources.EBC]
-  Dispatcher/Stack.c
-
 [Packages]
   MdeModulePkg/MdeModulePkg.dec
   MdePkg/MdePkg.dec
-  
+
 [LibraryClasses]
   TimerLib
   BaseMemoryLib
@@ -87,7 +72,6 @@
   gEfiFirmwareFileSystem2Guid
 
 [Ppis]
-  gEfiPeiSecurityPpiGuid                        # PPI_NOTIFY SOMETIMES_CONSUMED
   gEfiPeiStatusCodePpiGuid                      # PPI SOMETIMES_CONSUMED
   gEfiPeiResetPpiGuid                           # PPI SOMETIMES_CONSUMED
   gEfiDxeIplPpiGuid                             # PPI ALWAYS_CONSUMED
@@ -96,12 +80,19 @@
   gEfiPeiFirmwareVolumeInfoPpiGuid
   gEfiPeiLoadFilePpiGuid
   gEfiPeiSecurity2PpiGuid
+  gEfiTemporaryRamSupportPpiGuid
 
 [FixedPcd.common]
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxFvSupported
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxPeimPerFv
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxPpiSupported
   gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValuePeimDispatch
   gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValuePeiCoreEntry
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxPeiStackSize
+
 
 [FeaturePcd.common]
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreImageLoaderSearchTeSectionFirst
+
+[BuildOptions.common]
+  MSFT:*_*_*_CC_FLAGS = /Fa$* /FAsc /FR$(@R).SBR

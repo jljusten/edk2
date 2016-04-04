@@ -33,6 +33,7 @@
 
 [Sources.common]
   ReportStatusCodeLib.c
+  DxeSupport.c
 
 
 

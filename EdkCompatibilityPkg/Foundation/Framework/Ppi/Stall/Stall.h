@@ -24,7 +24,7 @@ Abstract:
 
 #define PEI_STALL_PPI_GUID \
   { \
-    0x1f4c6f90, 0xb06b, 0x48d8, 0xa2, 0x01, 0xba, 0xe5, 0xf1, 0xcd, 0x7d, 0x56 \
+    0x1f4c6f90, 0xb06b, 0x48d8, {0xa2, 0x01, 0xba, 0xe5, 0xf1, 0xcd, 0x7d, 0x56} \
   }
 
 EFI_FORWARD_DECLARATION (PEI_STALL_PPI);
@@ -37,10 +37,10 @@ EFI_STATUS
   IN UINTN                      Microseconds
   );
 
-typedef struct _PEI_STALL_PPI {
+struct _PEI_STALL_PPI {
   UINTN     Resolution;
   PEI_STALL Stall;
-} PEI_STALL_PPI;
+};
 
 extern EFI_GUID gPeiStallPpiGuid;
 

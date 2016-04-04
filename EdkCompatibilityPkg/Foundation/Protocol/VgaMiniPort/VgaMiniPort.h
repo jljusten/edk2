@@ -25,7 +25,7 @@ Abstract:
 
 #define EFI_VGA_MINI_PORT_PROTOCOL_GUID \
   { \
-    0xc7735a2f, 0x88f5, 0x4882, 0xae, 0x63, 0xfa, 0xac, 0x8c, 0x8b, 0x86, 0xb3 \
+    0xc7735a2f, 0x88f5, 0x4882, {0xae, 0x63, 0xfa, 0xac, 0x8c, 0x8b, 0x86, 0xb3} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_VGA_MINI_PORT_PROTOCOL);
@@ -51,7 +51,7 @@ EFI_STATUS
     EFI_DEVICE_ERROR      - The device is not functioning properly.
 
 --*/
-typedef struct _EFI_VGA_MINI_PORT_PROTOCOL {
+struct _EFI_VGA_MINI_PORT_PROTOCOL {
   EFI_VGA_MINI_PORT_SET_MODE  SetMode;
 
   UINT64                      VgaMemoryOffset;
@@ -63,7 +63,7 @@ typedef struct _EFI_VGA_MINI_PORT_PROTOCOL {
   UINT8                       CrtcDataRegisterBar;
 
   UINT8                       MaxMode;
-} EFI_VGA_MINI_PORT_PROTOCOL;
+};
 
 extern EFI_GUID gEfiVgaMiniPortProtocolGuid;
 

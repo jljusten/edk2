@@ -27,7 +27,7 @@ Abstract:
 //
 #define EFI_PLATFORM_DRIVER_OVERRIDE_PROTOCOL_GUID \
   { \
-    0x6b30c738, 0xa391, 0x11d4, 0x9a, 0x3b, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0x4d \
+    0x6b30c738, 0xa391, 0x11d4, {0x9a, 0x3b, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0x4d} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_PLATFORM_DRIVER_OVERRIDE_PROTOCOL);
@@ -63,11 +63,11 @@ EFI_STATUS
 //
 // Interface structure for the Platform Driver Override Protocol
 //
-typedef struct _EFI_PLATFORM_DRIVER_OVERRIDE_PROTOCOL {
+struct _EFI_PLATFORM_DRIVER_OVERRIDE_PROTOCOL {
   EFI_PLATFORM_DRIVER_OVERRIDE_GET_DRIVER       GetDriver;
   EFI_PLATFORM_DRIVER_OVERRIDE_GET_DRIVER_PATH  GetDriverPath;
   EFI_PLATFORM_DRIVER_OVERRIDE_DRIVER_LOADED    DriverLoaded;
-} EFI_PLATFORM_DRIVER_OVERRIDE_PROTOCOL;
+};
 
 extern EFI_GUID gEfiPlatformDriverOverrideProtocolGuid;
 

@@ -30,7 +30,7 @@ Revision History
 //
 #define EFI_SMM_USB_DISPATCH_PROTOCOL_GUID \
   { \
-    0xa05b6ffd, 0x87af, 0x4e42, 0x95, 0xc9, 0x62, 0x28, 0xb6, 0x3c, 0xf3, 0xf3 \
+    0xa05b6ffd, 0x87af, 0x4e42, {0x95, 0xc9, 0x62, 0x28, 0xb6, 0x3c, 0xf3, 0xf3} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_SMM_USB_DISPATCH_PROTOCOL);
@@ -139,10 +139,10 @@ EFI_STATUS
 //
 // Interface structure for the SMM USB SMI Dispatch Protocol
 //
-typedef struct _EFI_SMM_USB_DISPATCH_PROTOCOL {
+struct _EFI_SMM_USB_DISPATCH_PROTOCOL {
   EFI_SMM_USB_REGISTER    Register;
   EFI_SMM_USB_UNREGISTER  UnRegister;
-} EFI_SMM_USB_DISPATCH_PROTOCOL;
+};
 
 extern EFI_GUID gEfiSmmUsbDispatchProtocolGuid;
 

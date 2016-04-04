@@ -1,7 +1,9 @@
 /** @file
-  This file declares EFI Smm ICH [N] Specific Smi Child Protocol
+  Provides the parent dispatch service for a given SMI source generator.
+  The EFI_SMM_ICHN_DISPATCH_PROTOCOL provides the ability to install child handlers for
+  the given event types.
 
-  Copyright (c) 2007, Intel Corporation
+  Copyright (c) 2008, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -86,6 +88,11 @@ typedef enum {
   IchnIoTrap2,
   IchnIoTrap1,
   IchnIoTrap0,
+  IchnPciExpress,
+  IchnMonitor,
+  IchnSpi,
+  IchnQRT,
+  IchnGpioUnlock,
   //
   // INSERT NEW ITEMS JUST BEFORE THIS LINE
   //

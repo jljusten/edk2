@@ -4,14 +4,14 @@
   It abstracts some functions that can be different
   between light PCI bus driver and full PCI bus driver
 
-Copyright (c) 2006, Intel Corporation                                                         
-All rights reserved. This program and the accompanying materials                          
-are licensed and made available under the terms and conditions of the BSD License         
-which accompanies this distribution.  The full text of the license may be found at        
-http://opensource.org/licenses/bsd-license.php                                            
-                                                                                          
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+Copyright (c) 2006 - 2008, Intel Corporation
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
+
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -21,23 +21,14 @@ GLOBAL_REMOVE_IF_UNREFERENCED EFI_PCI_HOTPLUG_REQUEST_PROTOCOL gPciHotPlugReques
   PciHotPlugRequestNotify
 };
 
-
+/**
+  Install protocol gEfiPciHotPlugRequestProtocolGuid
+  @param Status    return status of protocol installation.
+**/
 VOID
 InstallHotPlugRequestProtocol (
   IN EFI_STATUS *Status
   )
-/*++
-
-Routine Description:
-
-Arguments:
-  Status   - A pointer to the status.
-
-Returns:
-
-  None
-
---*/
 {
   EFI_HANDLE  Handle;
 
@@ -54,23 +45,17 @@ Returns:
                   );
 }
 
+/**
+  Install protocol gEfiPciHotplugDeviceGuid into hotplug device
+  instance
+  
+  @param PciIoDevice  hotplug device instance
+  
+**/
 VOID
 InstallPciHotplugGuid (
   IN  PCI_IO_DEVICE                  *PciIoDevice
   )
-/*++
-
-Routine Description:
-
-Arguments:
-
-  PciIoDevice    -  A pointer to the PCI_IO_DEVICE.
-
-Returns:
-
-  None
-
---*/
 {
   EFI_STATUS  Status;
 
@@ -90,23 +75,17 @@ Returns:
   }
 }
 
+/**
+  UnInstall protocol gEfiPciHotplugDeviceGuid into hotplug device
+  instance
+  
+  @param PciIoDevice  hotplug device instance
+  
+**/
 VOID
 UninstallPciHotplugGuid (
   IN  PCI_IO_DEVICE                  *PciIoDevice
   )
-/*++
-
-Routine Description:
-
-Arguments:
-
-  PciIoDevice    - A pointer to the PCI_IO_DEVICE.
-
-Returns:
-
-  None
-
---*/
 {
   EFI_STATUS  Status;
 
@@ -136,24 +115,15 @@ Returns:
   }
 }
 
+/**
+  Retrieve the BAR information via PciIo interface
+  
+  @param PciIoDevice Pci device instance
+**/
 VOID
 GetBackPcCardBar (
   IN  PCI_IO_DEVICE                  *PciIoDevice
   )
-/*++
-
-Routine Description:
-
-
-Arguments:
-
-  PciIoDevice      - A pointer to the PCI_IO_DEVICE.
-
-Returns:
-
-  None
-
---*/
 {
   UINT32  Address;
 
@@ -222,27 +192,20 @@ Returns:
   }
 }
 
+/**
+  Remove rejected pci device from specific root bridge
+  handle.
+  
+  @param RootBridgeHandle  specific parent root bridge handle
+  @param Bridge            Bridge device instance
+  
+  @retval EFI_SUCCESS  Success operation.
+**/
 EFI_STATUS
 RemoveRejectedPciDevices (
   EFI_HANDLE        RootBridgeHandle,
   IN PCI_IO_DEVICE  *Bridge
   )
-/*++
-
-Routine Description:
-
-
-Arguments:
-
-  RootBridgeHandle   - An efi handle.
-  Bridge             - An pointer to the PCI_IO_DEVICE.
-
-Returns:
-
-  None
-
---*/
-// TODO:    EFI_SUCCESS - add return value to function comment
 {
   PCI_IO_DEVICE   *Temp;
   LIST_ENTRY      *CurrentLink;
@@ -295,6 +258,12 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Wrapper function for allocating resource for pci host bridge.
+  
+  @param PciResAlloc Point to protocol instance EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL
+  
+**/
 EFI_STATUS
 PciHostBridgeResourceAllocator (
   IN EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL *PciResAlloc
@@ -311,27 +280,17 @@ PciHostBridgeResourceAllocator (
   }
 }
 
+/**
+  Submits the I/O and memory resource requirements for the specified PCI Root Bridge
 
+  @param PciResAlloc  Point to protocol instance of EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL
+
+  @retval EFI_SUCCESS           Success
+**/
 EFI_STATUS
 PciHostBridgeResourceAllocator_WithoutHotPlugDeviceSupport (
   IN EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL *PciResAlloc
   )
-/*++
-
-Routine Description:
-
-Arguments:
-
-Returns:
-
-  None
-
---*/
-// TODO:    PciResAlloc - add argument and description to function comment
-// TODO:    EFI_NOT_FOUND - add return value to function comment
-// TODO:    EFI_OUT_OF_RESOURCES - add return value to function comment
-// TODO:    EFI_NOT_FOUND - add return value to function comment
-// TODO:    EFI_SUCCESS - add return value to function comment
 {
   PCI_IO_DEVICE                   *RootBridgeDev;
   EFI_HANDLE                      RootBridgeHandle;
@@ -684,30 +643,18 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Submits the I/O and memory resource requirements for the specified PCI Root Bridge
+
+  @param PciResAlloc  Point to protocol instance of EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL
+
+  @retval EFI_SUCCESS           Success
+**/
 
 EFI_STATUS
 PciHostBridgeResourceAllocator_WithHotPlugDeviceSupport (
   IN EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL *PciResAlloc
   )
-/*++
-
-Routine Description:
-
-  Host brige resource allocator.
-
-Arguments:
-
-  PciResAlloc  - A pointer to the EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL.
-
-Returns:
-
-  EFI Status.
-
---*/
-// TODO:    EFI_NOT_FOUND - add return value to function comment
-// TODO:    EFI_NOT_FOUND - add return value to function comment
-// TODO:    EFI_NOT_FOUND - add return value to function comment
-// TODO:    EFI_SUCCESS - add return value to function comment
 {
   PCI_IO_DEVICE                         *RootBridgeDev;
   EFI_HANDLE                            RootBridgeHandle;
@@ -1190,7 +1137,18 @@ Returns:
   return EFI_SUCCESS;
 }
 
-
+/**
+  Wapper function of scanning pci bus and assign bus number to the given PCI bus system
+  Feature flag PcdPciBusHotplugDeviceSupport determine whether need support hotplug  
+  
+  @param  Bridge          Bridge device instance
+  @param  StartBusNumber  start point
+  @param  SubBusNumber    Point to sub bus number
+  @param  PaddedBusRange  Customized bus number
+  
+  @retval EFI_SUCCESS     Success
+  @retval EFI_DEVICE_ERROR Fail to scan bus
+**/
 EFI_STATUS
 PciScanBus (
   IN PCI_IO_DEVICE                      *Bridge,
@@ -1216,7 +1174,18 @@ PciScanBus (
   }
 }
 
-
+/**
+  Wapper function of scanning pci bus and assign bus number to the given PCI bus system
+  Feature flag PcdPciBusHotplugDeviceSupport determine whether need support hotplug  
+  
+  @param  Bridge          Bridge device instance
+  @param  StartBusNumber  start point
+  @param  SubBusNumber    Point to sub bus number
+  @param  PaddedBusRange  Customized bus number
+  
+  @retval EFI_SUCCESS     Success
+  @retval EFI_DEVICE_ERROR Fail to scan bus
+**/
 EFI_STATUS
 PciScanBus_WithoutHotPlugDeviceSupport (
   IN PCI_IO_DEVICE                      *Bridge,
@@ -1224,25 +1193,6 @@ PciScanBus_WithoutHotPlugDeviceSupport (
   OUT UINT8                             *SubBusNumber,
   OUT UINT8                             *PaddedBusRange
   )
-/*++
-
-Routine Description:
-
-  This routine is used to assign bus number to the given PCI bus system
-
-Arguments:
-
-Returns:
-
-  None
-
---*/
-// TODO:    Bridge - add argument and description to function comment
-// TODO:    StartBusNumber - add argument and description to function comment
-// TODO:    SubBusNumber - add argument and description to function comment
-// TODO:    PaddedBusRange - add argument and description to function comment
-// TODO:    EFI_DEVICE_ERROR - add return value to function comment
-// TODO:    EFI_SUCCESS - add return value to function comment
 {
   EFI_STATUS                      Status;
   PCI_TYPE00                      Pci;
@@ -1297,7 +1247,7 @@ Returns:
         //
         // Add feature to support customized secondary bus number
         //
-       	if (*SubBusNumber == 0) {        
+        if (*SubBusNumber == 0) {
           *SubBusNumber   = *PaddedBusRange;
           *PaddedBusRange = 0;
         }
@@ -1402,6 +1352,18 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Wapper function of scanning pci bus and assign bus number to the given PCI bus system
+  Feature flag PcdPciBusHotplugDeviceSupport determine whether need support hotplug  
+  
+  @param  Bridge          Bridge device instance
+  @param  StartBusNumber  start point
+  @param  SubBusNumber    Point to sub bus number
+  @param  PaddedBusRange  Customized bus number
+  
+  @retval EFI_SUCCESS     Success
+  @retval EFI_DEVICE_ERROR Fail to scan bus
+**/
 EFI_STATUS
 PciScanBus_WithHotPlugDeviceSupport (
   IN PCI_IO_DEVICE                      *Bridge,
@@ -1409,26 +1371,6 @@ PciScanBus_WithHotPlugDeviceSupport (
   OUT UINT8                             *SubBusNumber,
   OUT UINT8                             *PaddedBusRange
   )
-/*++
-
-Routine Description:
-
-  This routine is used to assign bus number to the given PCI bus system
-
-Arguments:
-
-  Bridge         - A pointer to the PCI_IO_DEVICE structure.
-  StartBusNumber - The start bus number.
-  SubBusNumber   - A pointer to the sub bus number.
-  PaddedBusRange - A pointer to the padded bus range.
-
-Returns:
-
-  None
-
---*/
-// TODO:    EFI_DEVICE_ERROR - add return value to function comment
-// TODO:    EFI_SUCCESS - add return value to function comment
 {
   EFI_STATUS                        Status;
   PCI_TYPE00                        Pci;
@@ -1481,7 +1423,7 @@ Returns:
       }
 
       DEBUG((EFI_D_ERROR, "Found DEV(%02d,%02d,%02d)\n", StartBusNumber, Device, Func ));
-      
+
       //
       // Get the PCI device information
       //
@@ -1594,7 +1536,7 @@ Returns:
         //
         // Add feature to support customized secondary bus number
         //
-       	if (*SubBusNumber == 0) {        
+        if (*SubBusNumber == 0) {
           *SubBusNumber   = *PaddedBusRange;
           *PaddedBusRange = 0;
         }
@@ -1700,25 +1642,17 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Process Option Rom on this host bridge
+  
+  @param Bridge  Pci bridge device instance
+  
+  @retval EFI_SUCCESS Success
+**/
 EFI_STATUS
 PciRootBridgeP2CProcess (
   IN PCI_IO_DEVICE *Bridge
   )
-/*++
-
-Routine Description:
-
-    Process Option Rom on this host bridge
-
-Arguments:
-
-Returns:
-
-  None
-
---*/
-// TODO:    Bridge - add argument and description to function comment
-// TODO:    EFI_SUCCESS - add return value to function comment
 {
   LIST_ENTRY      *CurrentLink;
   PCI_IO_DEVICE   *Temp;
@@ -1778,24 +1712,18 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Process Option Rom on this host bridge
+  
+  @param PciResAlloc Pointer to instance of EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL
+  
+  @retval EFI_NOT_FOUND Can not find the root bridge instance
+  @retval EFI_SUCCESS   Success process
+**/
 EFI_STATUS
 PciHostBridgeP2CProcess (
   IN EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL *PciResAlloc
   )
-/*++
-
-Routine Description:
-
-Arguments:
-
-Returns:
-
-  None
-
---*/
-// TODO:    PciResAlloc - add argument and description to function comment
-// TODO:    EFI_NOT_FOUND - add return value to function comment
-// TODO:    EFI_SUCCESS - add return value to function comment
 {
   EFI_HANDLE    RootBridgeHandle;
   PCI_IO_DEVICE *RootBridgeDev;
@@ -1829,30 +1757,20 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  This function is used to enumerate the entire host bridge
+  in a given platform
+
+  @param PciResAlloc   A pointer to the resource allocate protocol.
+
+  @retval EFI_OUT_OF_RESOURCES no enough resource
+  @retval EFI_SUCCESS Success
+
+**/
 EFI_STATUS
 PciHostBridgeEnumerator (
   EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL  *PciResAlloc
   )
-/*++
-
-Routine Description:
-
-  This function is used to enumerate the entire host bridge
-  in a given platform
-
-Arguments:
-
-  PciResAlloc   - A pointer to the resource allocate protocol.
-
-Returns:
-
-  None
-
---*/
-// TODO:    EFI_OUT_OF_RESOURCES - add return value to function comment
-// TODO:    EFI_OUT_OF_RESOURCES - add return value to function comment
-// TODO:    EFI_OUT_OF_RESOURCES - add return value to function comment
-// TODO:    EFI_SUCCESS - add return value to function comment
 {
   EFI_HANDLE                        RootBridgeHandle;
   PCI_IO_DEVICE                     *RootBridgeDev;
@@ -1860,8 +1778,14 @@ Returns:
   EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL   *PciRootBridgeIo;
   UINT16                            MinBus;
   EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *Descriptors;
+  EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *pConfiguration;
+  UINT8                             StartBusNumber;
+  LIST_ENTRY                        RootBridgeList;
+  LIST_ENTRY                        *Link;
 
   InitializeHotPlugSupport ();
+
+  InitializeListHead (&RootBridgeList);
 
   //
   // Notify the bus allocation phase is about to start
@@ -1891,7 +1815,11 @@ Returns:
               RootBridgeDev
               );
 
-    DestroyRootBridge (RootBridgeDev);
+    if (gPciHotPlugInit != NULL) {
+      InsertTailList (&RootBridgeList, &(RootBridgeDev->Link));
+    } else {
+      DestroyRootBridge (RootBridgeDev);
+    }
     if (EFI_ERROR (Status)) {
       return Status;
     }
@@ -1906,8 +1834,43 @@ Returns:
 
     if (gPciHotPlugInit != NULL) {
       //
-      // Wait for all HPC initialized
+      // Reset all assigned PCI bus number in all PPB
       //
+      RootBridgeHandle = NULL;
+      Link = GetFirstNode (&RootBridgeList);
+      while ((PciResAlloc->GetNextRootBridge (PciResAlloc, &RootBridgeHandle) == EFI_SUCCESS) &&
+        (!IsNull (&RootBridgeList, Link))) {
+        RootBridgeDev = PCI_IO_DEVICE_FROM_LINK (Link);
+        //
+        // Get the Bus information
+        //
+        Status = PciResAlloc->StartBusEnumeration (
+                                PciResAlloc,
+                                RootBridgeHandle,
+                                (VOID **) &pConfiguration
+                                );
+        if (EFI_ERROR (Status)) {
+          return Status;
+        }
+
+        //
+        // Get the bus number to start with
+        //
+        StartBusNumber  = (UINT8) (pConfiguration->AddrRangeMin);
+
+        ResetAllPpbBusNumber (
+          RootBridgeDev,
+          StartBusNumber
+        );
+
+        gBS->FreePool (pConfiguration);
+        Link = GetNextNode (&RootBridgeList, Link);
+        DestroyRootBridge (RootBridgeDev);
+      }
+
+      //
+      // Wait for all HPC initialized
+     //
       Status = AllRootHPCInitialized (STALL_1_SECOND * 15);
 
       if (EFI_ERROR (Status)) {
@@ -1919,7 +1882,7 @@ Returns:
       //
       NotifyPhase (PciResAlloc, EfiPciHostBridgeBeginBusAllocation);
 
-      DEBUG((EFI_D_ERROR, "PCI Bus Second Scanning\n"));  
+      DEBUG((EFI_D_ERROR, "PCI Bus Second Scanning\n"));
       RootBridgeHandle = NULL;
       while (PciResAlloc->GetNextRootBridge (PciResAlloc, &RootBridgeHandle) == EFI_SUCCESS) {
 
@@ -2894,3 +2857,4 @@ PciIoWrite (
                    );
   }
 }
+

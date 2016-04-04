@@ -23,7 +23,7 @@ Abstract:
 
 #include <PiDxe.h>
 
-#include <Protocol/IP4.h>
+#include <Protocol/Ip4.h>
 #include <Protocol/Tcp4.h>
 #include <Protocol/Udp4.h>
 
@@ -211,24 +211,6 @@ typedef struct _SOCK_BUFFER {
   NET_BUF_QUEUE *DataQueue; // the queue to buffer data
 } SOCK_BUFFER;
 
-//
-// the initialize data for create a new socket
-//
-typedef struct _SOCK_INIT_DATA {
-  SOCK_TYPE   Type;
-  SOCK_STATE  State;
-
-  SOCKET      *Parent;        // the parent of this socket
-  UINT32      BackLog;        // the connection limit for listening socket
-  UINT32      SndBufferSize;  // the high warter mark of send buffer
-  UINT32      RcvBufferSize;  // the high warter mark of receive buffer
-  VOID        *Protocol;      // the pointer to protocol function template
-                              // wanted to install on socket
-
-  SOCK_PROTO_HANDLER  ProtoHandler;
-
-  EFI_HANDLE   DriverBinding; // the driver binding handle
-} SOCK_INIT_DATA;
 
 //
 // socket provided oprerations for low layer protocol
@@ -317,6 +299,51 @@ SockRcvdErr (
   IN EFI_STATUS   Error
   );
 
+typedef
+EFI_STATUS
+(*SOCK_CREATE_CALLBACK) (
+  IN SOCKET  *This,
+  IN VOID    *Context
+  );
+
+typedef
+VOID
+(*SOCK_DESTROY_CALLBACK) (
+  IN SOCKET  *This,
+  IN VOID    *Context
+  );
+
+//
+// the initialize data for create a new socket
+//
+typedef struct _SOCK_INIT_DATA {
+  SOCK_TYPE   Type;
+  SOCK_STATE  State;
+
+  SOCKET      *Parent;        // the parent of this socket
+  UINT32      BackLog;        // the connection limit for listening socket
+  UINT32      SndBufferSize;  // the high warter mark of send buffer
+  UINT32      RcvBufferSize;  // the high warter mark of receive buffer
+  VOID        *Protocol;      // the pointer to protocol function template
+                              // wanted to install on socket
+
+  //
+  // Callbacks after socket is created and before socket is to be destroyed.
+  //
+  SOCK_CREATE_CALLBACK   CreateCallback;
+  SOCK_DESTROY_CALLBACK  DestroyCallback;
+  VOID                   *Context;
+
+  //
+  // Opaque protocol data.
+  //
+  VOID                   *ProtoData;
+  UINT32                 DataSize;
+
+  SOCK_PROTO_HANDLER     ProtoHandler;
+
+  EFI_HANDLE   DriverBinding; // the driver binding handle
+} SOCK_INIT_DATA;
 //
 // the socket structure representing a network service access point
 //
@@ -330,12 +357,12 @@ struct _SOCKET {
   EFI_HANDLE            DriverBinding;  // socket't driver binding protocol
   EFI_DEVICE_PATH_PROTOCOL  *ParentDevicePath;
   EFI_DEVICE_PATH_PROTOCOL  *DevicePath;
-  NET_LIST_ENTRY            Link;  
+  LIST_ENTRY                Link;  
   SOCK_CONFIGURE_STATE  ConfigureState;
   SOCK_TYPE             Type;
   SOCK_STATE            State;
   UINT16                Flag;
-  NET_LOCK              Lock;       // the lock of socket
+  EFI_LOCK              Lock;       // the lock of socket
   SOCK_BUFFER           SndBuffer;  // send buffer of application's data
   SOCK_BUFFER           RcvBuffer;  // receive buffer of received data
   EFI_STATUS            SockError;  // the error returned by low layer protocol
@@ -347,14 +374,14 @@ struct _SOCKET {
   UINT32          BackLog;        // the limit of connection to this socket
   UINT32          ConnCnt;        // the current count of connections to it
   SOCKET          *Parent;        // listening parent that accept the connection
-  NET_LIST_ENTRY  ConnectionList; // the connections maintained by this socket
+  LIST_ENTRY      ConnectionList; // the connections maintained by this socket
   //
   // the queue to buffer application's asynchronous token
   //
-  NET_LIST_ENTRY  ListenTokenList;
-  NET_LIST_ENTRY  RcvTokenList;
-  NET_LIST_ENTRY  SndTokenList;
-  NET_LIST_ENTRY  ProcessingSndTokenList;
+  LIST_ENTRY      ListenTokenList;
+  LIST_ENTRY      RcvTokenList;
+  LIST_ENTRY      SndTokenList;
+  LIST_ENTRY      ProcessingSndTokenList;
 
   SOCK_COMPLETION_TOKEN *ConnectionToken; // app's token to signal if connected
   SOCK_COMPLETION_TOKEN *CloseToken;      // app's token to signal if closed
@@ -368,13 +395,20 @@ struct _SOCKET {
     EFI_TCP4_PROTOCOL TcpProtocol;
     EFI_UDP4_PROTOCOL UdpProtocol;
   } NetProtocol;
+
+  //
+  // Callbacks.
+  //
+  SOCK_CREATE_CALLBACK   CreateCallback;
+  SOCK_DESTROY_CALLBACK  DestroyCallback;
+  VOID                   *Context;
 };
 
 //
 // the token structure buffered in socket layer
 //
 typedef struct _SOCK_TOKEN {
-  NET_LIST_ENTRY        TokenList;      // the entry to add in the token list
+  LIST_ENTRY            TokenList;      // the entry to add in the token list
   SOCK_COMPLETION_TOKEN *Token;         // The application's token
   UINT32                RemainDataLen;  // unprocessed data length
   SOCKET                *Sock;          // the poninter to the socket this token
@@ -401,9 +435,7 @@ typedef struct _TCP_RSV_DATA {
 //
 SOCKET  *
 SockCreateChild (
-  IN SOCK_INIT_DATA *SockInitData,
-  IN VOID           *ProtoData,
-  IN UINT32         Len
+  IN SOCK_INIT_DATA *SockInitData
   );
 
 //

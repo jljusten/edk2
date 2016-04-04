@@ -29,7 +29,7 @@ Revision History
 //
 #define EFI_DRIVER_CONFIGURATION_PROTOCOL_GUID \
   { \
-    0x107a772b, 0xd5e1, 0x11d4, 0x9a, 0x46, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d \
+    0x107a772b, 0xd5e1, 0x11d4, {0x9a, 0x46, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_DRIVER_CONFIGURATION_PROTOCOL);
@@ -181,12 +181,12 @@ EFI_STATUS
 //
 // Interface structure for the Driver Configuration Protocol
 //
-typedef struct _EFI_DRIVER_CONFIGURATION_PROTOCOL {
+struct _EFI_DRIVER_CONFIGURATION_PROTOCOL {
   EFI_DRIVER_CONFIGURATION_SET_OPTIONS    SetOptions;
   EFI_DRIVER_CONFIGURATION_OPTIONS_VALID  OptionsValid;
   EFI_DRIVER_CONFIGURATION_FORCE_DEFAULTS ForceDefaults;
   CHAR8                                   *SupportedLanguages;
-} EFI_DRIVER_CONFIGURATION_PROTOCOL;
+};
 
 /*++
 

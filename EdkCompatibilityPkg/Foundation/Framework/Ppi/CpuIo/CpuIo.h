@@ -26,7 +26,7 @@ Abstract:
 
 #define PEI_CPU_IO_PPI_GUID \
   { \
-    0xe6af1f7b, 0xfc3f, 0x46da, 0xa8, 0x28, 0xa3, 0xb4, 0x57, 0xa4, 0x42, 0x82 \
+    0xe6af1f7b, 0xfc3f, 0x46da, {0xa8, 0x28, 0xa3, 0xb4, 0x57, 0xa4, 0x42, 0x82} \
   }
 
 EFI_FORWARD_DECLARATION (PEI_CPU_IO_PPI);
@@ -224,7 +224,7 @@ VOID
 // PEI_CPU_IO_PPI
 // *******************************************************
 //
-typedef struct _PEI_CPU_IO_PPI {
+struct _PEI_CPU_IO_PPI {
   PEI_CPU_IO_PPI_ACCESS       Mem;
   PEI_CPU_IO_PPI_ACCESS       Io;
   PEI_CPU_IO_PPI_IO_READ8     IoRead8;
@@ -243,7 +243,7 @@ typedef struct _PEI_CPU_IO_PPI {
   PEI_CPU_IO_PPI_MEM_WRITE16  MemWrite16;
   PEI_CPU_IO_PPI_MEM_WRITE32  MemWrite32;
   PEI_CPU_IO_PPI_MEM_WRITE64  MemWrite64;
-} PEI_CPU_IO_PPI;
+};
 
 extern EFI_GUID gPeiCpuIoPpiInServiceTableGuid;
 

@@ -1,6 +1,7 @@
-/*++
+/** @file
+  Capsule Runtime Service.
 
-Copyright (c) 2006 - 2007, Intel Corporation
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,15 +10,7 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-  CapsuleService.c
-
-Abstract:
-
-  Capsule Runtime Service.
-
---*/
+**/
 
 #include "CapsuleService.h"
 
@@ -95,7 +88,7 @@ Returns:
     // ScatterGatherList is only referenced if the capsules are defined to persist across
     // system reset. 
     //
-    if (ScatterGatherList == (EFI_PHYSICAL_ADDRESS) NULL) {
+    if (ScatterGatherList == (EFI_PHYSICAL_ADDRESS) (UINTN) NULL) {
       return EFI_INVALID_PARAMETER;
     } else {
       //
@@ -125,7 +118,7 @@ Returns:
   // Now Runtime mode doesn't support the non-reset capsule image.
   //
   if (EfiAtRuntime ()) {
-    return EFI_INVALID_PARAMETER;
+    return EFI_UNSUPPORTED;
   }
 
   //

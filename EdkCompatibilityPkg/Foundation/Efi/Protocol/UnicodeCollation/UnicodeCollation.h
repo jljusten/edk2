@@ -24,7 +24,12 @@ Abstract:
 
 #define EFI_UNICODE_COLLATION_PROTOCOL_GUID \
   { \
-    0x1d85cd7f, 0xf43d, 0x11d2, 0x9a, 0xc, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d \
+    0x1d85cd7f, 0xf43d, 0x11d2, {0x9a, 0xc, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d} \
+  }
+
+#define EFI_UNICODE_COLLATION2_PROTOCOL_GUID \
+  { \
+    0xa4c751fc, 0x23ae, 0x4c3e, {0x92, 0xe9, 0x49, 0x64, 0xcf, 0x63, 0xf3, 0x49} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_UNICODE_COLLATION_PROTOCOL);
@@ -188,7 +193,7 @@ BOOLEAN
 --*/
 ;
 
-typedef struct _EFI_UNICODE_COLLATION_PROTOCOL {
+struct _EFI_UNICODE_COLLATION_PROTOCOL {
   //
   // general
   //
@@ -204,8 +209,9 @@ typedef struct _EFI_UNICODE_COLLATION_PROTOCOL {
   EFI_UNICODE_COLLATION_STRTOFAT    StrToFat;
 
   CHAR8                             *SupportedLanguages;
-} EFI_UNICODE_COLLATION_PROTOCOL;
+};
 
 extern EFI_GUID gEfiUnicodeCollationProtocolGuid;
+extern EFI_GUID gEfiUnicodeCollation2ProtocolGuid;
 
 #endif

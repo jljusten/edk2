@@ -1,13 +1,12 @@
-/*++
+/** @file
+Copyright (c) 2007, Intel Corporation
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-Copyright (c) 2007, Intel Corporation                                                         
-All rights reserved. This program and the accompanying materials                          
-are licensed and made available under the terms and conditions of the BSD License         
-which accompanies this distribution.  The full text of the license may be found at        
-http://opensource.org/licenses/bsd-license.php                                            
-                                                                                          
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 Module Name:
 
@@ -15,12 +14,11 @@ Module Name:
 
 Abstract:
 
-  This file produces the graphics abstration of Graphics Output Protocol. It is called by 
-  CirrusLogic5430.c file which deals with the EFI 1.1 driver model. 
+  This file produces the graphics abstration of Graphics Output Protocol. It is called by
+  CirrusLogic5430.c file which deals with the EFI 1.1 driver model.
   This file just does graphics.
 
---*/
-
+**/
 #include "CirrusLogic5430.h"
 
 //
@@ -127,7 +125,7 @@ Routine Description:
     return EFI_OUT_OF_RESOURCES;
   }
 
-  InitializeGraphicsMode (Private, &CirrusLogic5430VideoModes[ModeNumber]);
+  InitializeGraphicsMode (Private, &CirrusLogic5430VideoModes[ModeData->ModeNumber]);
 
   This->Mode->Mode = ModeNumber;
   This->Mode->Info->HorizontalResolution = ModeData->HorizontalResolution;
@@ -444,7 +442,6 @@ CirrusLogic5430GraphicsOutputConstructor (
 {
   EFI_STATUS                   Status;
   EFI_GRAPHICS_OUTPUT_PROTOCOL *GraphicsOutput;
-  UINTN                        Index;
 
 
   GraphicsOutput            = &Private->GraphicsOutput;
@@ -471,17 +468,10 @@ CirrusLogic5430GraphicsOutputConstructor (
   if (EFI_ERROR (Status)) {
     return Status;
   }
-  Private->GraphicsOutput.Mode->MaxMode = CIRRUS_LOGIC_5430_MODE_COUNT;
-  Private->GraphicsOutput.Mode->Mode = GRAPHICS_OUTPUT_INVALIDE_MODE_NUMBER;
-  for (Index = 0; Index < Private->GraphicsOutput.Mode->MaxMode; Index++) {
-    Private->ModeData[Index].HorizontalResolution = CirrusLogic5430VideoModes[Index].Width;
-    Private->ModeData[Index].VerticalResolution   = CirrusLogic5430VideoModes[Index].Height;
-    Private->ModeData[Index].ColorDepth           = 32;
-    Private->ModeData[Index].RefreshRate          = CirrusLogic5430VideoModes[Index].RefreshRate;
-  }
-
-  Private->HardwareNeedsStarting  = TRUE;
-  Private->LineBuffer             = NULL;
+  Private->GraphicsOutput.Mode->MaxMode = (UINT32) Private->MaxMode;
+  Private->GraphicsOutput.Mode->Mode    = GRAPHICS_OUTPUT_INVALIDE_MODE_NUMBER;
+  Private->HardwareNeedsStarting        = TRUE;
+  Private->LineBuffer                   = NULL;
 
   //
   // Initialize the hardware

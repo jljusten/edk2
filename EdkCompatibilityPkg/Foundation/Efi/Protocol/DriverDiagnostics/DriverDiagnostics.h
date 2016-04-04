@@ -29,7 +29,7 @@ Revision History
 //
 #define EFI_DRIVER_DIAGNOSTICS_PROTOCOL_GUID \
   { \
-    0x0784924f, 0xe296, 0x11d4, 0x9a, 0x49, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d \
+    0x0784924f, 0xe296, 0x11d4, {0x9a, 0x49, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_DRIVER_DIAGNOSTICS_PROTOCOL);
@@ -116,10 +116,10 @@ EFI_STATUS
 //
 // Interface structure for the Driver Diagnostics Protocol
 //
-typedef struct _EFI_DRIVER_DIAGNOSTICS_PROTOCOL {
+struct _EFI_DRIVER_DIAGNOSTICS_PROTOCOL {
   EFI_DRIVER_DIAGNOSTICS_RUN_DIAGNOSTICS  RunDiagnostics;
   CHAR8                                   *SupportedLanguages;
-} EFI_DRIVER_DIAGNOSTICS_PROTOCOL;
+};
 
 /*++
 

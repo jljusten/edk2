@@ -1,21 +1,16 @@
-/*++
+/** @file
+  UEFI Component Name(2) protocol implementation for ConSplitter driver.
 
-Copyright (c) 2006, Intel Corporation                                                         
-All rights reserved. This program and the accompanying materials                          
-are licensed and made available under the terms and conditions of the BSD License         
-which accompanies this distribution.  The full text of the license may be found at        
-http://opensource.org/licenses/bsd-license.php                                            
-                                                                                          
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+Copyright (c) 2006, Intel Corporation. <BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-Module Name:
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-  ComponentName.c
-
-Abstract:
-
---*/
+**/
 
 #include "ConSplitter.h"
 
@@ -235,6 +230,65 @@ ConSplitterComponentNameGetDriverName (
 }
 
 /**
+  Tests whether a controller handle is being managed by a specific driver and
+  the child handle is a child device of the controller.
+
+  @param  ControllerHandle     A handle for a controller to test.
+  @param  DriverBindingHandle  Specifies the driver binding handle for the
+                               driver.
+  @param  ProtocolGuid         Specifies the protocol that the driver specified
+                               by DriverBindingHandle opens in its Start()
+                               function.
+  @param  ChildHandle          A child handle to test.
+  @param  ConsumsedGuid        Supplies the protocol that the child controller
+                               opens on its parent controller.
+
+  @retval EFI_SUCCESS          ControllerHandle is managed by the driver
+                               specifed by DriverBindingHandle and ChildHandle
+                               is a child of the ControllerHandle.
+  @retval EFI_UNSUPPORTED      ControllerHandle is not managed by the driver
+                               specifed by DriverBindingHandle.
+  @retval EFI_UNSUPPORTED      ChildHandle is not a child of the
+                               ControllerHandle.
+
+**/
+EFI_STATUS
+ConSplitterTestControllerHandles (
+  IN  CONST EFI_HANDLE       ControllerHandle,
+  IN  CONST EFI_HANDLE       DriverBindingHandle,
+  IN  CONST EFI_GUID         *ProtocolGuid,
+  IN  EFI_HANDLE             ChildHandle,
+  IN  CONST EFI_GUID         *ConsumsedGuid
+  )
+{
+  EFI_STATUS                 Status;
+
+  //
+  // here ChildHandle is not an Optional parameter.
+  //
+  if (ChildHandle == NULL) {
+    return EFI_UNSUPPORTED;
+  }
+
+  Status = EfiTestManagedDevice (
+             ControllerHandle,
+             DriverBindingHandle,
+             ProtocolGuid
+             );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  Status = EfiTestChildHandle (
+             ControllerHandle,
+             ChildHandle,
+             ConsumsedGuid
+             );
+
+  return Status;
+}
+
+/**
   Retrieves a Unicode string that is the user readable name of the controller
   that is being managed by a driver.
 
@@ -313,24 +367,16 @@ ConSplitterConInComponentNameGetControllerName (
   )
 {
   EFI_STATUS                     Status;
-  EFI_SIMPLE_TEXT_INPUT_PROTOCOL *TextIn;
-  //
-  // here ChildHandle is not an Optional parameter.
-  //
-  if (ChildHandle == NULL) {
-    return EFI_UNSUPPORTED;
-  }
 
-  Status = gBS->OpenProtocol (
-                  ControllerHandle,
-                  &gEfiSimpleTextInProtocolGuid,
-                  (VOID **) &TextIn,
-                  NULL,
-                  ControllerHandle,
-                  EFI_OPEN_PROTOCOL_GET_PROTOCOL
-                  );
+  Status = ConSplitterTestControllerHandles (
+             ControllerHandle,
+             gConSplitterConInDriverBinding.DriverBindingHandle,
+             &gEfiSimpleTextInProtocolGuid,
+             ChildHandle,
+             &gEfiConsoleInDeviceGuid
+             );
   if (EFI_ERROR (Status)) {
-    return EFI_UNSUPPORTED;
+    return Status;
   }
 
   return LookupUnicodeString2 (
@@ -421,24 +467,16 @@ ConSplitterSimplePointerComponentNameGetControllerName (
   )
 {
   EFI_STATUS                  Status;
-  EFI_SIMPLE_POINTER_PROTOCOL *SimplePointer;
-  //
-  // here ChildHandle is not an Optional parameter.
-  //
-  if (ChildHandle == NULL) {
-    return EFI_UNSUPPORTED;
-  }
 
-  Status = gBS->OpenProtocol (
-                  ControllerHandle,
-                  &gEfiSimplePointerProtocolGuid,
-                  (VOID **) &SimplePointer,
-                  NULL,
-                  ControllerHandle,
-                  EFI_OPEN_PROTOCOL_GET_PROTOCOL
-                  );
+  Status = ConSplitterTestControllerHandles (
+             ControllerHandle,
+             gConSplitterSimplePointerDriverBinding.DriverBindingHandle,
+             &gEfiSimplePointerProtocolGuid,
+             ChildHandle,
+             &gEfiSimplePointerProtocolGuid
+             );
   if (EFI_ERROR (Status)) {
-    return EFI_UNSUPPORTED;
+    return Status;
   }
 
   return LookupUnicodeString2 (
@@ -467,72 +505,64 @@ ConSplitterAbsolutePointerComponentNameGetControllerName (
 
   Arguments:
     This             - A pointer to the EFI_COMPONENT_NAME_PROTOCOL instance.
-    ControllerHandle - The handle of a controller that the driver specified by 
-                       This is managing.  This handle specifies the controller 
+    ControllerHandle - The handle of a controller that the driver specified by
+                       This is managing.  This handle specifies the controller
                        whose name is to be returned.
-    ChildHandle      - The handle of the child controller to retrieve the name 
-                       of.  This is an optional parameter that may be NULL.  It 
-                       will be NULL for device drivers.  It will also be NULL 
-                       for a bus drivers that wish to retrieve the name of the 
-                       bus controller.  It will not be NULL for a bus driver 
+    ChildHandle      - The handle of the child controller to retrieve the name
+                       of.  This is an optional parameter that may be NULL.  It
+                       will be NULL for device drivers.  It will also be NULL
+                       for a bus drivers that wish to retrieve the name of the
+                       bus controller.  It will not be NULL for a bus driver
                        that wishes to retrieve the name of a child controller.
-    Language         - A pointer to RFC3066 language identifier. 
-                       This is the language of the controller name 
+    Language         - A pointer to RFC3066 language identifier.
+                       This is the language of the controller name
                        that that the caller is requesting, and it must match one
-                       of the languages specified in SupportedLanguages.  The 
-                       number of languages supported by a driver is up to the 
+                       of the languages specified in SupportedLanguages.  The
+                       number of languages supported by a driver is up to the
                        driver writer.
     ControllerName   - A pointer to the Unicode string to return.  This Unicode
-                       string is the name of the controller specified by 
-                       ControllerHandle and ChildHandle in the language 
-                       specified by Language from the point of view of the 
-                       driver specified by This. 
+                       string is the name of the controller specified by
+                       ControllerHandle and ChildHandle in the language
+                       specified by Language from the point of view of the
+                       driver specified by This.
 
   Returns:
     EFI_SUCCESS           - The Unicode string for the user readable name in the
-                            language specified by Language for the driver 
+                            language specified by Language for the driver
                             specified by This was returned in DriverName.
     EFI_INVALID_PARAMETER - ControllerHandle is not a valid EFI_HANDLE.
-    EFI_INVALID_PARAMETER - ChildHandle is not NULL and it is not a valid 
+    EFI_INVALID_PARAMETER - ChildHandle is not NULL and it is not a valid
                             EFI_HANDLE.
     EFI_INVALID_PARAMETER - Language is NULL.
     EFI_INVALID_PARAMETER - ControllerName is NULL.
-    EFI_UNSUPPORTED       - The driver specified by This is not currently 
-                            managing the controller specified by 
+    EFI_UNSUPPORTED       - The driver specified by This is not currently
+                            managing the controller specified by
                             ControllerHandle and ChildHandle.
-    EFI_UNSUPPORTED       - The driver specified by This does not support the 
+    EFI_UNSUPPORTED       - The driver specified by This does not support the
                             language specified by Language.
 
 --*/
 {
   EFI_STATUS                    Status;
-  EFI_ABSOLUTE_POINTER_PROTOCOL *AbsolutePointer;
-  //
-  // here ChildHandle is not an Optional parameter.
-  //
-  if (ChildHandle == NULL) {
-    return EFI_UNSUPPORTED;
-  }
 
-  Status = gBS->OpenProtocol (
-                  ControllerHandle,
-                  &gEfiAbsolutePointerProtocolGuid,
-                  (VOID **) &AbsolutePointer,
-                  NULL,
-                  ControllerHandle,
-                  EFI_OPEN_PROTOCOL_GET_PROTOCOL
-                  );
+  Status = ConSplitterTestControllerHandles (
+             ControllerHandle,
+             gConSplitterAbsolutePointerDriverBinding.DriverBindingHandle,
+             &gEfiAbsolutePointerProtocolGuid,
+             ChildHandle,
+             &gEfiAbsolutePointerProtocolGuid
+             );
   if (EFI_ERROR (Status)) {
-    return EFI_UNSUPPORTED;
+    return Status;
   }
 
-return LookupUnicodeString2 (
-       Language,
-       This->SupportedLanguages,
-       mConSplitterAbsolutePointerControllerNameTable,
-       ControllerName,
-       (BOOLEAN)(This == &gConSplitterAbsolutePointerComponentName)
-       );
+  return LookupUnicodeString2 (
+           Language,
+           This->SupportedLanguages,
+           mConSplitterAbsolutePointerControllerNameTable,
+           ControllerName,
+           (BOOLEAN)(This == &gConSplitterAbsolutePointerComponentName)
+           );
 }
 
 /**
@@ -614,24 +644,16 @@ ConSplitterConOutComponentNameGetControllerName (
   )
 {
   EFI_STATUS                       Status;
-  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  *TextOut;
-  //
-  // here ChildHandle is not an Optional parameter.
-  //
-  if (ChildHandle == NULL) {
-    return EFI_UNSUPPORTED;
-  }
 
-  Status = gBS->OpenProtocol (
-                  ControllerHandle,
-                  &gEfiSimpleTextOutProtocolGuid,
-                  (VOID **) &TextOut,
-                  NULL,
-                  ControllerHandle,
-                  EFI_OPEN_PROTOCOL_GET_PROTOCOL
-                  );
+  Status = ConSplitterTestControllerHandles (
+             ControllerHandle,
+             gConSplitterConOutDriverBinding.DriverBindingHandle,
+             &gEfiSimpleTextOutProtocolGuid,
+             ChildHandle,
+             &gEfiConsoleOutDeviceGuid
+             );
   if (EFI_ERROR (Status)) {
-    return EFI_UNSUPPORTED;
+    return Status;
   }
 
   return LookupUnicodeString2 (
@@ -722,24 +744,16 @@ ConSplitterStdErrComponentNameGetControllerName (
   )
 {
   EFI_STATUS                       Status;
-  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  *ErrOut;
-  //
-  // here ChildHandle is not an Optional parameter.
-  //
-  if (ChildHandle == NULL) {
-    return EFI_UNSUPPORTED;
-  }
 
-  Status = gBS->OpenProtocol (
-                  ControllerHandle,
-                  &gEfiSimpleTextOutProtocolGuid,
-                  (VOID **) &ErrOut,
-                  NULL,
-                  ControllerHandle,
-                  EFI_OPEN_PROTOCOL_GET_PROTOCOL
-                  );
+  Status = ConSplitterTestControllerHandles (
+             ControllerHandle,
+             gConSplitterStdErrDriverBinding.DriverBindingHandle,
+             &gEfiSimpleTextOutProtocolGuid,
+             ChildHandle,
+             &gEfiStandardErrorDeviceGuid
+             );
   if (EFI_ERROR (Status)) {
-    return EFI_UNSUPPORTED;
+    return Status;
   }
 
   return LookupUnicodeString2 (

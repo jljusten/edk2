@@ -27,7 +27,7 @@ Abstract:
 
 #define EFI_SIMPLE_TEXT_IN_PROTOCOL_GUID \
   { \
-    0x387477c1, 0x69c7, 0x11d2, 0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b \
+    0x387477c1, 0x69c7, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_SIMPLE_TEXT_IN_PROTOCOL);
@@ -125,11 +125,11 @@ EFI_STATUS
 --*/
 ;
 
-typedef struct _EFI_SIMPLE_TEXT_IN_PROTOCOL {
+struct _EFI_SIMPLE_TEXT_IN_PROTOCOL {
   EFI_INPUT_RESET     Reset;
   EFI_INPUT_READ_KEY  ReadKeyStroke;
   EFI_EVENT           WaitForKey;
-} EFI_SIMPLE_TEXT_IN_PROTOCOL;
+};
 
 extern EFI_GUID gEfiSimpleTextInProtocolGuid;
 

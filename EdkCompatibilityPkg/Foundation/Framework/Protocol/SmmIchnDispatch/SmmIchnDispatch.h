@@ -30,7 +30,7 @@ Revision History
 //
 #define EFI_SMM_ICHN_DISPATCH_PROTOCOL_GUID \
   { \
-    0xc50b323e, 0x9075, 0x4f2a, 0xac, 0x8e, 0xd2, 0x59, 0x6a, 0x10, 0x85, 0xcc \
+    0xc50b323e, 0x9075, 0x4f2a, {0xac, 0x8e, 0xd2, 0x59, 0x6a, 0x10, 0x85, 0xcc} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_SMM_ICHN_DISPATCH_PROTOCOL);
@@ -194,10 +194,10 @@ EFI_STATUS
 //
 // Interface structure for the SMM Ich n specific SMI Dispatch Protocol
 //
-typedef struct _EFI_SMM_ICHN_DISPATCH_PROTOCOL {
+struct _EFI_SMM_ICHN_DISPATCH_PROTOCOL {
   EFI_SMM_ICHN_REGISTER   Register;
   EFI_SMM_ICHN_UNREGISTER UnRegister;
-} EFI_SMM_ICHN_DISPATCH_PROTOCOL;
+};
 
 extern EFI_GUID gEfiSmmIchnDispatchProtocolGuid;
 

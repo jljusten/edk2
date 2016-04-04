@@ -39,6 +39,7 @@ Revision History
 #include <Library/UefiLib.h>
 #include <Library/BaseLib.h>
 #include <Library/MemoryAllocationLib.h>
+#include <Library/PcdLib.h>
 
 #include <IndustryStandard/Pci22.h>
 
@@ -98,7 +99,6 @@ typedef struct {
 } USB_CLASSC;
 #pragma pack()
 
-#define UHC_FROM_USB_HC_PROTO(This)   CR(This, USB_HC_DEV, UsbHc, USB_HC_DEV_SIGNATURE)
 #define UHC_FROM_USB2_HC_PROTO(This)  CR(This, USB_HC_DEV, Usb2Hc, USB_HC_DEV_SIGNATURE)
 
 //
@@ -114,7 +114,6 @@ typedef struct {
 //
 struct _USB_HC_DEV {
   UINT32                    Signature;
-  EFI_USB_HC_PROTOCOL       UsbHc;
   EFI_USB2_HC_PROTOCOL      Usb2Hc;
   EFI_PCI_IO_PROTOCOL       *PciIo;
   UINT64                    OriginalPciAttributes;

@@ -1,30 +1,21 @@
-/*++
+/** @file
+  Header file for GraphicsConsole driver.
 
-Copyright (c) 2006, Intel Corporation                                                         
-All rights reserved. This program and the accompanying materials                          
-are licensed and made available under the terms and conditions of the BSD License         
-which accompanies this distribution.  The full text of the license may be found at        
-http://opensource.org/licenses/bsd-license.php                                            
-                                                                                          
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+Copyright (c) 2006, Intel Corporation. <BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-Module Name:
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-  GraphicsConsole.h
-
-Abstract:
-
-  
-Revision History
-
---*/
+**/
 
 #ifndef _GRAPHICS_CONSOLE_H
 #define _GRAPHICS_CONSOLE_H
 
 #include <PiDxe.h>
-#include <Protocol/FrameworkHii.h>
 #include <Protocol/SimpleTextOut.h>
 #include <Protocol/GraphicsOutput.h>
 #include <Protocol/UgaDraw.h>
@@ -32,10 +23,17 @@ Revision History
 #include <Library/DebugLib.h>
 #include <Library/UefiDriverEntryPoint.h>
 #include <Library/UefiLib.h>
-#include <Library/FrameworkHiiLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/UefiBootServicesTableLib.h>
+#include <Library/HiiLib.h>
+#include <Library/BaseLib.h>
+#include <Library/PcdLib.h>
+
+#include <MdeModuleHii.h>
+
+#include <Protocol/HiiFont.h>
+#include <Protocol/HiiDatabase.h>
 
 
 extern EFI_COMPONENT_NAME_PROTOCOL   gGraphicsConsoleComponentName;
@@ -172,10 +170,11 @@ GraphicsConsoleComponentNameGetControllerName (
 
 
 //
-// Glyph database
+// User can define valid graphic resolution here
+// e.g. 640x480, 800x600, 1024x768...
 //
-#define GLYPH_WIDTH   8
-#define GLYPH_HEIGHT  19
+#define CURRENT_HORIZONTAL_RESOLUTION  800
+#define CURRENT_VERTICAL_RESOLUTION    600
 
 typedef union {
   EFI_NARROW_GLYPH  NarrowGlyph;
@@ -200,7 +199,7 @@ typedef struct {
   UINT32  GopModeNumber;
 } GRAPHICS_CONSOLE_MODE_DATA;
 
-#define GRAPHICS_MAX_MODE 3
+#define GRAPHICS_MAX_MODE 4
 
 typedef struct {
   UINTN                            Signature;
@@ -300,11 +299,6 @@ GraphicsConsoleConOutEnableCursor (
   );
 
 EFI_STATUS
-EfiLocateHiiProtocol (
-  VOID
-  );
-
-EFI_STATUS
 EFIAPI
 GraphicsConsoleControllerDriverSupported (
   IN EFI_DRIVER_BINDING_PROTOCOL    *This,
@@ -328,5 +322,12 @@ GraphicsConsoleControllerDriverStop (
   IN  UINTN                          NumberOfChildren,
   IN  EFI_HANDLE                     *ChildHandleBuffer
   );
+
+EFI_STATUS
+EfiLocateHiiProtocol (
+  VOID
+  )
+;
+
 
 #endif

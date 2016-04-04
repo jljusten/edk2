@@ -505,7 +505,8 @@ typedef enum {
   EfiCacheAssociativity4Way         = 5,
   EfiCacheAssociativityFully        = 6,
   EfiCacheAssociativity8Way         = 7,
-  EfiCacheAssociativity16Way        = 8
+  EfiCacheAssociativity16Way        = 8,
+  EfiCacheAssociativity24Way        = 9
 } EFI_CACHE_ASSOCIATIVITY_DATA;
 
 typedef struct {
@@ -790,7 +791,148 @@ typedef struct {
   UINT8                       MemoryChannelDeviceLoad;
 } EFI_MEMORY_CHANNEL_DEVICE_DATA;
 
+//
+//  Memory. Controller Information - SMBIOS Type 5
+//
+#define EFI_MEMORY_CONTROLLER_INFORMATION_RECORD_NUMBER 0x00000008
 
+typedef enum {  
+  EfiErrorDetectingMethodOther   = 1,
+  EfiErrorDetectingMethodUnknown = 2,
+  EfiErrorDetectingMethodNone    = 3,
+  EfiErrorDetectingMethodParity  = 4,
+  EfiErrorDetectingMethod32Ecc   = 5,
+  EfiErrorDetectingMethod64Ecc   = 6,
+  EfiErrorDetectingMethod128Ecc  = 7,
+  EfiErrorDetectingMethodCrc     = 8
+} EFI_MEMORY_ERROR_DETECT_METHOD_TYPE;
+
+typedef struct {
+  UINT8  Other                 :1;
+  UINT8  Unknown               :1;
+  UINT8  None                  :1;
+  UINT8  SingleBitErrorCorrect :1;
+  UINT8  DoubleBitErrorCorrect :1;
+  UINT8  ErrorScrubbing        :1;
+  UINT8  Reserved              :2;
+} EFI_MEMORY_ERROR_CORRECT_CAPABILITY;
+
+typedef enum {  
+  EfiMemoryInterleaveOther      = 1,
+  EfiMemoryInterleaveUnknown    = 2,
+  EfiMemoryInterleaveOneWay     = 3,
+  EfiMemoryInterleaveTwoWay     = 4,
+  EfiMemoryInterleaveFourWay    = 5,
+  EfiMemoryInterleaveEightWay   = 6,
+  EfiMemoryInterleaveSixteenWay = 7
+} EFI_MEMORY_SUPPORT_INTERLEAVE_TYPE;
+
+typedef struct {
+  UINT16  Other                 :1;
+  UINT16  Unknown               :1;
+  UINT16  SeventyNs             :1;
+  UINT16  SixtyNs               :1;
+  UINT16  FiftyNs               :1;
+  UINT16  Reserved              :11;
+} EFI_MEMORY_SPEED_TYPE;
+
+typedef struct {
+  UINT16  Other                 :1;
+  UINT16  Unknown               :1;
+  UINT16  Standard              :1;
+  UINT16  FastPageMode          :1;
+  UINT16  EDO                   :1;
+  UINT16  Parity                :1;
+  UINT16  ECC                   :1;
+  UINT16  SIMM                  :1;
+  UINT16  DIMM                  :1;
+  UINT16  BurstEdo              :1;
+  UINT16  SDRAM                 :1;
+  UINT16  Reserved              :5;
+} EFI_MEMORY_SUPPORTED_TYPE;
+
+typedef struct {
+  UINT8  Five                  :1;
+  UINT8  There                 :1;
+  UINT8  Two                   :1;
+  UINT8  Reserved              :5;
+} EFI_MEMORY_MODULE_VOLTAGE_TYPE;
+
+typedef struct {
+  EFI_MEMORY_ERROR_DETECT_METHOD_TYPE   ErrorDetectingMethod;
+  EFI_MEMORY_ERROR_CORRECT_CAPABILITY   ErrorCorrectingCapability;
+  EFI_MEMORY_SUPPORT_INTERLEAVE_TYPE    MemorySupportedInterleave;
+  EFI_MEMORY_SUPPORT_INTERLEAVE_TYPE    MemoryCurrentInterleave;
+  UINT8                                 MaxMemoryModuleSize;
+  EFI_MEMORY_SPEED_TYPE                 MemorySpeedType;
+  EFI_MEMORY_SUPPORTED_TYPE             MemorySupportedType;
+  EFI_MEMORY_MODULE_VOLTAGE_TYPE        MemoryModuleVoltage;
+  UINT8                                 NumberofMemorySlot;
+  EFI_MEMORY_ERROR_CORRECT_CAPABILITY   EnabledCorrectingCapability;
+  UINT16                                *MemoryModuleConfigHandles;
+} EFI_MEMORY_CONTROLLER_INFORMATION;
+
+//
+//  Memory. Error Information - SMBIOS Type 18
+//
+#define EFI_MEMORY_32BIT_ERROR_INFORMATION_RECORD_NUMBER 0x00000009
+
+typedef enum {  
+  EfiMemoryErrorOther             = 1,
+  EfiMemoryErrorUnknown           = 2,
+  EfiMemoryErrorOk                = 3,
+  EfiMemoryErrorBadRead           = 4,
+  EfiMemoryErrorParity            = 5,
+  EfiMemoryErrorSigleBit          = 6,
+  EfiMemoryErrorDoubleBit         = 7,
+  EfiMemoryErrorMultiBit          = 8,
+  EfiMemoryErrorNibble            = 9,
+  EfiMemoryErrorChecksum          = 10,
+  EfiMemoryErrorCrc               = 11,
+  EfiMemoryErrorCorrectSingleBit  = 12,
+  EfiMemoryErrorCorrected         = 13,
+  EfiMemoryErrorUnCorrectable     = 14
+} EFI_MEMORY_ERROR_TYPE;
+
+typedef enum {  
+  EfiMemoryGranularityOther               = 1,
+  EfiMemoryGranularityOtherUnknown        = 2,
+  EfiMemoryGranularityDeviceLevel         = 3,
+  EfiMemoryGranularityMemPartitionLevel   = 4
+} EFI_MEMORY_ERROR_GRANULARITY_TYPE;
+
+typedef enum {  
+  EfiMemoryErrorOperationOther            = 1,
+  EfiMemoryErrorOperationUnknown          = 2,
+  EfiMemoryErrorOperationRead             = 3,
+  EfiMemoryErrorOperationWrite            = 4,
+  EfiMemoryErrorOperationPartialWrite     = 5
+} EFI_MEMORY_ERROR_OPERATION_TYPE;
+
+typedef struct {
+  EFI_MEMORY_ERROR_TYPE               MemoryErrorType;
+  EFI_MEMORY_ERROR_GRANULARITY_TYPE   MemoryErrorGranularity;
+  EFI_MEMORY_ERROR_OPERATION_TYPE     MemoryErrorOperation;
+  UINT32                              VendorSyndrome;
+  UINT32                              MemoryArrayErrorAddress;
+  UINT32                              DeviceErrorAddress;
+  UINT32                              DeviceErrorResolution;
+} EFI_MEMORY_32BIT_ERROR_INFORMATION;
+
+//
+//  Memory. Error Information - SMBIOS Type 33
+//
+#define EFI_MEMORY_64BIT_ERROR_INFORMATION_RECORD_NUMBER 0x0000000A
+
+typedef struct {
+  EFI_MEMORY_ERROR_TYPE               MemoryErrorType;
+  EFI_MEMORY_ERROR_GRANULARITY_TYPE   MemoryErrorGranularity;
+  EFI_MEMORY_ERROR_OPERATION_TYPE     MemoryErrorOperation;
+  UINT32                              VendorSyndrome;
+  UINT64                              MemoryArrayErrorAddress;
+  UINT64                              DeviceErrorAddress;
+  UINT32                              DeviceErrorResolution;
+} EFI_MEMORY_64BIT_ERROR_INFORMATION;
 
 typedef union _EFI_MEMORY_SUBCLASS_RECORDS {
   EFI_MEMORY_SIZE_DATA                  SizeData;
@@ -800,6 +942,9 @@ typedef union _EFI_MEMORY_SUBCLASS_RECORDS {
   EFI_MEMORY_DEVICE_START_ADDRESS_DATA  DeviceStartAddress;
   EFI_MEMORY_CHANNEL_TYPE_DATA          ChannelTypeData;
   EFI_MEMORY_CHANNEL_DEVICE_DATA        ChannelDeviceData;
+  EFI_MEMORY_CONTROLLER_INFORMATION     MemoryControllerInfo;
+  EFI_MEMORY_32BIT_ERROR_INFORMATION    Memory32bitErrorInfo;
+  EFI_MEMORY_64BIT_ERROR_INFORMATION    Memory64bitErrorInfo;
 } EFI_MEMORY_SUBCLASS_RECORDS;
 
 typedef struct {
@@ -1348,34 +1493,6 @@ typedef struct {
   UINT16                   GroupElementId;
 } EFI_MISC_GROUP_ITEM_SET_DATA;
 
-//  Misc. System Event Log  - SMBIOS Type 15
-//
-#define EFI_MISC_SYSTEM_EVENT_LOG_RECORD_NUMBER 0x0000000D
-typedef struct {
-  UINT16                LogAreaLength;
-  UINT16                LogHeaderStartOffset;
-  UINT16                LogDataStartOffset;
-  UINT8                 AccessMethod;
-  UINT8                 LogStatus;
-  UINT32                LogChangeToken;
-  UINT32                AccessMethodAddress;
-  UINT8                 LogHeaderFormat;
-  UINT8                 NumberOfSupportedLogType;
-  UINT8                 LengthOfLogDescriptor;
-} EFI_MISC_SYSTEM_EVENT_LOG_DATA;
-
-//
-// Access Method.
-//  0x00~0x04:  as following definition
-//  0x05~0x7f:  Available for future assignment.
-//  0x80~0xff:  BIOS Vendor/OEM-specific.
-//
-#define ACCESS_INDEXIO_1INDEX8BIT_DATA8BIT    0x00
-#define ACCESS_INDEXIO_2INDEX8BIT_DATA8BIT    0X01
-#define ACCESS_INDEXIO_1INDEX16BIT_DATA8BIT   0X02
-#define ACCESS_MEMORY_MAPPED                  0x03
-#define ACCESS_GPNV                           0x04
-
 //
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -1421,43 +1538,38 @@ typedef struct {
 //
 // Portable Battery - SMBIOS Type 22
 //
-#define EFI_MISC_BATTERY_LOCATION_RECORD_NUMBER  0x00000010
+#define EFI_MISC_PORTABLE_BATTERY_RECORD_NUMBER 0x00000010
 
-typedef enum {
-  EfiBatteryDeviceChemistryTypeOther               = 0x01,
-  EfiBatteryDeviceChemistryTypeUnknown             = 0x02,
-  EfiBatteryDeviceChemistryTypeLeadAcid            = 0x03,
-  EfiBatteryDeviceChemistryTypeNickelCadmium       = 0x04,
-  EfiBatteryDeviceChemistryTypeNickelMetalHydride  = 0x05,
-  EfiBatteryDeviceChemistryTypeLithiumIon          = 0x06,
-  EfiBatteryDeviceChemistryTypeZincAir             = 0x07,
-  EfiBatteryDeviceChemistryTypeLithiumPolymer      = 0x08,
-} EFI_MISC_BATTERY_DEVICE_CHEMISTRY;
-
-typedef struct  {
-  UINT32 Date              :5;
-  UINT32 Month             :4;
-  UINT32 Year              :7;
-  UINT32 Reserved          :16;
-} EFI_MISC_BATTERY_SBDS_MANUFACTURE_DATE;
+typedef enum {  
+  EfiPortableBatteryDeviceChemistryOther = 1,
+  EfiPortableBatteryDeviceChemistryUnknown = 2,
+  EfiPortableBatteryDeviceChemistryLeadAcid = 3,
+  EfiPortableBatteryDeviceChemistryNickelCadmium = 4,
+  EfiPortableBatteryDeviceChemistryNickelMetalHydride = 5,
+  EfiPortableBatteryDeviceChemistryLithiumIon = 6,
+  EfiPortableBatteryDeviceChemistryZincAir = 7,
+  EfiPortableBatteryDeviceChemistryLithiumPolymer = 8,
+} EFI_MISC_PORTABLE_BATTERY_DEVICE_CHEMISTRY;
 
 typedef struct {
-  STRING_REF                         BatteryLocation;
-  STRING_REF                         BatteryManufacturer;
-  STRING_REF                         BatteryManufactureDate;
-  STRING_REF                         BatterySerialNumber;
-  STRING_REF                         BatteryDeviceName;
-  STRING_REF                         BatterySbdsVersionNumber;
-  STRING_REF                         BatterySbdsDeviceChemistry;
-  EFI_MISC_BATTERY_DEVICE_CHEMISTRY  BatteryDeviceChemistry;
-  EFI_EXP_BASE10_DATA                BatteryDesignCapacity;
-  EFI_EXP_BASE10_DATA                BatteryDesignVoltage;
-  UINT16                             BatteryMaximumError;
-  UINT16                             BatterySbdsSerialNumber;
-  EFI_MISC_BATTERY_SBDS_MANUFACTURE_DATE
-                                     BatterySbdsManufacturingDate;
-  UINT32                             BatteryOemSpecific;
-} EFI_MISC_BATTERY_LOCATION_DATA;
+  STRING_REF                                  Location;
+  STRING_REF                                  Manufacturer;
+  STRING_REF                                  ManufactureDate;
+  STRING_REF                                  SerialNumber;
+  STRING_REF                                  DeviceName;
+  EFI_MISC_PORTABLE_BATTERY_DEVICE_CHEMISTRY  DeviceChemistry;
+  UINT16                                      DesignCapacity;
+  UINT16                                      DesignVoltage;
+  STRING_REF                                  SBDSVersionNumber;
+  UINT8                                       MaximumError;
+  UINT16                                      SBDSSerialNumber;
+  UINT16                                      SBDSManufactureDate;
+  STRING_REF                                  SBDSDeviceChemistry;
+  UINT8                                       DesignCapacityMultiplier;
+  UINT32                                      OEMSpecific;  
+  UINT8                                       BatteryNumber; // Temporary   
+  BOOLEAN                                     Valid; // Is entry valid - Temporary
+} EFI_MISC_PORTABLE_BATTERY;
 
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -1495,7 +1607,7 @@ typedef struct {
 //
 // Misc. Hardware Security - SMBIOS Type 24
 //
-#define EFI_MISC_HARDWARE_SECURITY_RECORD_NUMBER 0x00000012
+#define EFI_MISC_HARDWARE_SECURITY_SETTINGS_DATA_RECORD_NUMBER 0x00000012
 
 typedef enum {
   EfiHardwareSecurityStatusDisabled       = 0,
@@ -1756,6 +1868,7 @@ typedef struct {
   STRING_REF               ManagementDeviceComponentDescription;
   EFI_INTER_LINK_DATA      ManagementDeviceLink;
   EFI_INTER_LINK_DATA      ManagementDeviceComponentLink;
+  EFI_INTER_LINK_DATA      ManagementDeviceThresholdLink;
 } EFI_MISC_MANAGEMENT_DEVICE_COMPONENT_DESCRIPTION_DATA;
 
 //
@@ -1839,6 +1952,54 @@ typedef struct {
 #define EFI_MISC_SMBIOS_STRUCT_ENCAP_RECORD_NUMBER  0x0000001F
 
 //
+//////////////////////////////////////////////////////////////////////////////
+//
+//  Misc. System Event Log  - SMBIOS Type 15
+//
+#define EFI_MISC_SYSTEM_EVENT_LOG_RECORD_NUMBER 0x00000020
+typedef struct {
+  //SMBIOS_STRUCTURE_HDR  Header;
+  UINT16                LogAreaLength;
+  UINT16                LogHeaderStartOffset;
+  UINT16                LogDataStartOffset;
+  UINT8                 AccessMethod;
+  UINT8                 LogStatus;
+  UINT32                LogChangeToken;
+  UINT32                AccessMethodAddress;
+  UINT8                 LogHeaderFormat;
+  UINT8                 NumberOfSupportedLogType;
+  UINT8                 LengthOfLogDescriptor;
+} EFI_MISC_SYSTEM_EVENT_LOG_DATA;
+
+//
+// Access Method.
+//  0x00~0x04:  as following definition
+//  0x05~0x7f:  Available for future assignment.
+//  0x80~0xff:  BIOS Vendor/OEM-specific.
+// 
+#define ACCESS_INDEXIO_1INDEX8BIT_DATA8BIT    0x00
+#define ACCESS_INDEXIO_2INDEX8BIT_DATA8BIT    0X01
+#define ACCESS_INDEXIO_1INDEX16BIT_DATA8BIT   0X02
+#define ACCESS_MEMORY_MAPPED                  0x03
+#define ACCESS_GPNV                           0x04
+
+//
+//////////////////////////////////////////////////////////////////////////////
+//
+//Management Device Threshold Data Record - SMBIOS Type 36
+//
+#define EFI_MISC_MANAGEMENT_DEVICE_THRESHOLD_RECORD_NUMBER  0x00000021
+
+typedef struct {
+  UINT16                          LowerThresNonCritical;
+  UINT16                          UpperThresNonCritical;
+  UINT16                          LowerThresCritical;
+  UINT16                          UpperThresCritical;
+  UINT16                          LowerThresNonRecover;
+  UINT16                          UpperThresNonRecover;
+} EFI_MISC_MANAGEMENT_DEVICE_THRESHOLD;
+
+//
 // Declare the following strutures alias to use them more conviniently.
 //
 typedef EFI_MISC_LAST_PCI_BUS_DATA                        EFI_MISC_LAST_PCI_BUS;
@@ -1859,6 +2020,14 @@ typedef EFI_MISC_BIS_ENTRY_POINT_DATA                     EFI_MISC_BIS_ENTRY_POI
 typedef EFI_MISC_BOOT_INFORMATION_STATUS_DATA             EFI_MISC_BOOT_INFORMATION_STATUS;
 typedef EFI_MISC_SYSTEM_POWER_SUPPLY_DATA                 EFI_MISC_SYSTEM_POWER_SUPPLY;
 typedef EFI_MISC_SMBIOS_STRUCT_ENCAPSULATION_DATA         EFI_MISC_SMBIOS_STRUCT_ENCAPSULATION;
+typedef EFI_MISC_SCHEDULED_POWER_ON_MONTH_DATA            EFI_MISC_SCHEDULED_POWER_ON_MONTH;
+typedef EFI_MISC_VOLTAGE_PROBE_DESCRIPTION_DATA           EFI_MISC_VOLTAGE_PROBE_DESCRIPTION;
+typedef EFI_MISC_COOLING_DEVICE_TEMP_LINK_DATA            EFI_MISC_COOLING_DEVICE_TEMP_LINK;
+typedef EFI_MISC_TEMPERATURE_PROBE_DESCRIPTION_DATA       EFI_MISC_TEMPERATURE_PROBE_DESCRIPTION;
+typedef EFI_MISC_REMOTE_ACCESS_MANUFACTURER_DESCRIPTION_DATA 
+                                                          EFI_MISC_REMOTE_ACCESS_MANUFACTURER_DESCRIPTION;
+typedef EFI_MISC_MANAGEMENT_DEVICE_DESCRIPTION_DATA       EFI_MISC_MANAGEMENT_DEVICE_DESCRIPTION;
+typedef EFI_MISC_ELECTRICAL_CURRENT_PROBE_DESCRIPTION_DATA EFI_MISC_ELECTRICAL_CURRENT_PROBE_DESCRIPTION;
 
 typedef union {
   EFI_MISC_LAST_PCI_BUS_DATA                         LastPciBus;
@@ -1894,6 +2063,7 @@ typedef union {
   EFI_MISC_IPMI_INTERFACE_TYPE_DATA                  MiscIpmiInterfaceTypeData;
   EFI_MISC_SYSTEM_POWER_SUPPLY_DATA                  MiscPowerSupplyInfo;
   EFI_MISC_SMBIOS_STRUCT_ENCAPSULATION_DATA          MiscSmbiosStructEncapsulation;
+  EFI_MISC_MANAGEMENT_DEVICE_THRESHOLD               MiscManagementDeviceThreshold;
 } EFI_MISC_SUBCLASS_RECORDS;
 
 //

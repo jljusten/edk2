@@ -25,6 +25,8 @@ Abstract:
 #include <Protocol/SimpleNetwork.h>
 #include <Protocol/LoadedImage.h>
 #include <Protocol/NicIp4Config.h>
+#include <Protocol/ComponentName.h>
+#include <Protocol/ComponentName2.h>
 
 #include <Library/NetLib.h>
 #include <Library/BaseLib.h>
@@ -121,6 +123,7 @@ NibbleToHexChar (
 
 **/
 INTN
+EFIAPI
 NetGetMaskLength (
   IN IP4_ADDR               NetMask
   )
@@ -148,6 +151,7 @@ NetGetMaskLength (
 
 **/
 INTN
+EFIAPI
 NetGetIpClass (
   IN IP4_ADDR               Addr
   )
@@ -187,6 +191,7 @@ NetGetIpClass (
 
 **/
 BOOLEAN
+EFIAPI
 Ip4IsUnicast (
   IN IP4_ADDR               Ip,
   IN IP4_ADDR               NetMask
@@ -221,6 +226,7 @@ Ip4IsUnicast (
 
 **/
 UINT32
+EFIAPI
 NetRandomInitSeed (
   VOID
   )
@@ -247,13 +253,14 @@ NetRandomInitSeed (
 
 **/
 UINT32
+EFIAPI
 NetGetUint32 (
   IN UINT8                  *Buf
   )
 {
   UINT32                    Value;
 
-  NetCopyMem (&Value, Buf, sizeof (UINT32));
+  CopyMem (&Value, Buf, sizeof (UINT32));
   return NTOHL (Value);
 }
 
@@ -269,13 +276,14 @@ NetGetUint32 (
 
 **/
 VOID
+EFIAPI
 NetPutUint32 (
   IN UINT8                  *Buf,
   IN UINT32                 Data
   )
 {
   Data = HTONL (Data);
-  NetCopyMem (Buf, &Data, sizeof (UINT32));
+  CopyMem (Buf, &Data, sizeof (UINT32));
 }
 
 
@@ -287,16 +295,17 @@ NetPutUint32 (
   @return The entry that is removed from the list, NULL if the list is empty.
 
 **/
-NET_LIST_ENTRY *
+LIST_ENTRY *
+EFIAPI
 NetListRemoveHead (
-  NET_LIST_ENTRY            *Head
+  LIST_ENTRY            *Head
   )
 {
-  NET_LIST_ENTRY            *First;
+  LIST_ENTRY            *First;
 
   ASSERT (Head != NULL);
 
-  if (NetListIsEmpty (Head)) {
+  if (IsListEmpty (Head)) {
     return NULL;
   }
 
@@ -305,8 +314,8 @@ NetListRemoveHead (
   First->ForwardLink->BackLink  = Head;
 
   DEBUG_CODE (
-    First->ForwardLink  = (LIST_ENTRY     *) NULL;
-    First->BackLink     = (LIST_ENTRY     *) NULL;
+    First->ForwardLink  = (LIST_ENTRY *) NULL;
+    First->BackLink     = (LIST_ENTRY *) NULL;
   );
 
   return First;
@@ -321,16 +330,17 @@ NetListRemoveHead (
   @return The entry that is removed from the list, NULL if the list is empty.
 
 **/
-NET_LIST_ENTRY *
+LIST_ENTRY *
+EFIAPI
 NetListRemoveTail (
-  NET_LIST_ENTRY            *Head
+  LIST_ENTRY            *Head
   )
 {
-  NET_LIST_ENTRY            *Last;
+  LIST_ENTRY            *Last;
 
   ASSERT (Head != NULL);
 
-  if (NetListIsEmpty (Head)) {
+  if (IsListEmpty (Head)) {
     return NULL;
   }
 
@@ -339,8 +349,8 @@ NetListRemoveTail (
   Last->BackLink->ForwardLink = Head;
 
   DEBUG_CODE (
-    Last->ForwardLink = (LIST_ENTRY     *) NULL;
-    Last->BackLink    = (LIST_ENTRY     *) NULL;
+    Last->ForwardLink = (LIST_ENTRY *) NULL;
+    Last->BackLink    = (LIST_ENTRY *) NULL;
   );
 
   return Last;
@@ -357,9 +367,10 @@ NetListRemoveTail (
 
 **/
 VOID
+EFIAPI
 NetListInsertAfter (
-  IN NET_LIST_ENTRY         *PrevEntry,
-  IN NET_LIST_ENTRY         *NewEntry
+  IN LIST_ENTRY         *PrevEntry,
+  IN LIST_ENTRY         *NewEntry
   )
 {
   NewEntry->BackLink                = PrevEntry;
@@ -379,9 +390,10 @@ NetListInsertAfter (
 
 **/
 VOID
+EFIAPI
 NetListInsertBefore (
-  IN NET_LIST_ENTRY *PostEntry,
-  IN NET_LIST_ENTRY *NewEntry
+  IN LIST_ENTRY     *PostEntry,
+  IN LIST_ENTRY     *NewEntry
   )
 {
   NewEntry->ForwardLink             = PostEntry;
@@ -400,14 +412,15 @@ NetListInsertBefore (
 
 **/
 VOID
+EFIAPI
 NetMapInit (
   IN NET_MAP                *Map
   )
 {
   ASSERT (Map != NULL);
 
-  NetListInit (&Map->Used);
-  NetListInit (&Map->Recycled);
+  InitializeListHead (&Map->Used);
+  InitializeListHead (&Map->Recycled);
   Map->Count = 0;
 }
 
@@ -421,35 +434,36 @@ NetMapInit (
 
 **/
 VOID
+EFIAPI
 NetMapClean (
   IN NET_MAP                *Map
   )
 {
   NET_MAP_ITEM              *Item;
-  NET_LIST_ENTRY            *Entry;
-  NET_LIST_ENTRY            *Next;
+  LIST_ENTRY                *Entry;
+  LIST_ENTRY                *Next;
 
   ASSERT (Map != NULL);
 
   NET_LIST_FOR_EACH_SAFE (Entry, Next, &Map->Used) {
     Item = NET_LIST_USER_STRUCT (Entry, NET_MAP_ITEM, Link);
 
-    NetListRemoveEntry (&Item->Link);
+    RemoveEntryList (&Item->Link);
     Map->Count--;
 
-    NetFreePool (Item);
+    gBS->FreePool (Item);
   }
 
-  ASSERT ((Map->Count == 0) && NetListIsEmpty (&Map->Used));
+  ASSERT ((Map->Count == 0) && IsListEmpty (&Map->Used));
 
   NET_LIST_FOR_EACH_SAFE (Entry, Next, &Map->Recycled) {
     Item = NET_LIST_USER_STRUCT (Entry, NET_MAP_ITEM, Link);
 
-    NetListRemoveEntry (&Item->Link);
-    NetFreePool (Item);
+    RemoveEntryList (&Item->Link);
+    gBS->FreePool (Item);
   }
 
-  ASSERT (NetListIsEmpty (&Map->Recycled));
+  ASSERT (IsListEmpty (&Map->Recycled));
 }
 
 
@@ -462,6 +476,7 @@ NetMapClean (
 
 **/
 BOOLEAN
+EFIAPI
 NetMapIsEmpty (
   IN NET_MAP                *Map
   )
@@ -480,6 +495,7 @@ NetMapIsEmpty (
 
 **/
 UINTN
+EFIAPI
 NetMapGetCount (
   IN NET_MAP                *Map
   )
@@ -504,16 +520,16 @@ NetMapAllocItem (
   )
 {
   NET_MAP_ITEM              *Item;
-  NET_LIST_ENTRY            *Head;
+  LIST_ENTRY                *Head;
   UINTN                     Index;
 
   ASSERT (Map != NULL);
 
   Head = &Map->Recycled;
 
-  if (NetListIsEmpty (Head)) {
+  if (IsListEmpty (Head)) {
     for (Index = 0; Index < NET_MAP_INCREAMENT; Index++) {
-      Item = NetAllocatePool (sizeof (NET_MAP_ITEM));
+      Item = AllocatePool (sizeof (NET_MAP_ITEM));
 
       if (Item == NULL) {
         if (Index == 0) {
@@ -523,7 +539,7 @@ NetMapAllocItem (
         break;
       }
 
-      NetListInsertHead (Head, &Item->Link);
+      InsertHeadList (Head, &Item->Link);
     }
   }
 
@@ -546,6 +562,7 @@ NetMapAllocItem (
 
 **/
 EFI_STATUS
+EFIAPI
 NetMapInsertHead (
   IN NET_MAP                *Map,
   IN VOID                   *Key,
@@ -564,7 +581,7 @@ NetMapInsertHead (
 
   Item->Key   = Key;
   Item->Value = Value;
-  NetListInsertHead (&Map->Used, &Item->Link);
+  InsertHeadList (&Map->Used, &Item->Link);
 
   Map->Count++;
   return EFI_SUCCESS;
@@ -583,6 +600,7 @@ NetMapInsertHead (
 
 **/
 EFI_STATUS
+EFIAPI
 NetMapInsertTail (
   IN NET_MAP                *Map,
   IN VOID                   *Key,
@@ -601,7 +619,7 @@ NetMapInsertTail (
 
   Item->Key   = Key;
   Item->Value = Value;
-  NetListInsertTail (&Map->Used, &Item->Link);
+  InsertTailList (&Map->Used, &Item->Link);
 
   Map->Count++;
 
@@ -625,7 +643,7 @@ NetItemInMap (
   IN NET_MAP_ITEM           *Item
   )
 {
-  NET_LIST_ENTRY            *ListEntry;
+  LIST_ENTRY            *ListEntry;
 
   NET_LIST_FOR_EACH (ListEntry, &Map->Used) {
     if (ListEntry == &Item->Link) {
@@ -647,12 +665,13 @@ NetItemInMap (
 
 **/
 NET_MAP_ITEM *
+EFIAPI
 NetMapFindKey (
   IN  NET_MAP               *Map,
   IN  VOID                  *Key
   )
 {
-  NET_LIST_ENTRY          *Entry;
+  LIST_ENTRY              *Entry;
   NET_MAP_ITEM            *Item;
 
   ASSERT (Map != NULL);
@@ -680,6 +699,7 @@ NetMapFindKey (
 
 **/
 VOID *
+EFIAPI
 NetMapRemoveItem (
   IN  NET_MAP             *Map,
   IN  NET_MAP_ITEM        *Item,
@@ -689,9 +709,9 @@ NetMapRemoveItem (
   ASSERT ((Map != NULL) && (Item != NULL));
   ASSERT (NetItemInMap (Map, Item));
 
-  NetListRemoveEntry (&Item->Link);
+  RemoveEntryList (&Item->Link);
   Map->Count--;
-  NetListInsertHead (&Map->Recycled, &Item->Link);
+  InsertHeadList (&Map->Recycled, &Item->Link);
 
   if (Value != NULL) {
     *Value = Item->Value;
@@ -711,6 +731,7 @@ NetMapRemoveItem (
 
 **/
 VOID *
+EFIAPI
 NetMapRemoveHead (
   IN  NET_MAP               *Map,
   OUT VOID                  **Value         OPTIONAL
@@ -722,12 +743,12 @@ NetMapRemoveHead (
   // Often, it indicates a programming error to remove
   // the first entry in an empty list
   //
-  ASSERT (Map && !NetListIsEmpty (&Map->Used));
+  ASSERT (Map && !IsListEmpty (&Map->Used));
 
   Item = NET_LIST_HEAD (&Map->Used, NET_MAP_ITEM, Link);
-  NetListRemoveEntry (&Item->Link);
+  RemoveEntryList (&Item->Link);
   Map->Count--;
-  NetListInsertHead (&Map->Recycled, &Item->Link);
+  InsertHeadList (&Map->Recycled, &Item->Link);
 
   if (Value != NULL) {
     *Value = Item->Value;
@@ -747,6 +768,7 @@ NetMapRemoveHead (
 
 **/
 VOID *
+EFIAPI
 NetMapRemoveTail (
   IN  NET_MAP               *Map,
   OUT VOID                  **Value       OPTIONAL
@@ -758,12 +780,12 @@ NetMapRemoveTail (
   // Often, it indicates a programming error to remove
   // the last entry in an empty list
   //
-  ASSERT (Map && !NetListIsEmpty (&Map->Used));
+  ASSERT (Map && !IsListEmpty (&Map->Used));
 
   Item = NET_LIST_TAIL (&Map->Used, NET_MAP_ITEM, Link);
-  NetListRemoveEntry (&Item->Link);
+  RemoveEntryList (&Item->Link);
   Map->Count--;
-  NetListInsertHead (&Map->Recycled, &Item->Link);
+  InsertHeadList (&Map->Recycled, &Item->Link);
 
   if (Value != NULL) {
     *Value = Item->Value;
@@ -787,6 +809,7 @@ NetMapRemoveTail (
 
 **/
 EFI_STATUS
+EFIAPI
 NetMapIterate (
   IN NET_MAP                *Map,
   IN NET_MAP_CALLBACK       CallBack,
@@ -794,9 +817,9 @@ NetMapIterate (
   )
 {
 
-  NET_LIST_ENTRY            *Entry;
-  NET_LIST_ENTRY            *Next;
-  NET_LIST_ENTRY            *Head;
+  LIST_ENTRY            *Entry;
+  LIST_ENTRY            *Next;
+  LIST_ENTRY            *Head;
   NET_MAP_ITEM              *Item;
   EFI_STATUS                Result;
 
@@ -804,7 +827,7 @@ NetMapIterate (
 
   Head = &Map->Used;
 
-  if (NetListIsEmpty (Head)) {
+  if (IsListEmpty (Head)) {
     return EFI_SUCCESS;
   }
 
@@ -842,8 +865,7 @@ NetLibDefaultUnload (
   UINTN                             Index;
   EFI_DRIVER_BINDING_PROTOCOL       *DriverBinding;
   EFI_COMPONENT_NAME_PROTOCOL       *ComponentName;
-  EFI_DRIVER_CONFIGURATION_PROTOCOL *DriverConfiguration;
-  EFI_DRIVER_DIAGNOSTICS_PROTOCOL   *DriverDiagnostics;
+  EFI_COMPONENT_NAME2_PROTOCOL      *ComponentName2;
 
   //
   // Get the list of all the handles in the handle database.
@@ -912,30 +934,15 @@ NetLibDefaultUnload (
 
     Status = gBS->HandleProtocol (
                     DeviceHandleBuffer[Index],
-                    &gEfiDriverConfigurationProtocolGuid,
-                    (VOID **) &DriverConfiguration
+                    &gEfiComponentName2ProtocolGuid,
+                    (VOID **) &ComponentName2
                     );
-
     if (!EFI_ERROR (Status)) {
       gBS->UninstallProtocolInterface (
-            ImageHandle,
-            &gEfiDriverConfigurationProtocolGuid,
-            DriverConfiguration
-            );
-    }
-
-    Status = gBS->HandleProtocol (
-                    DeviceHandleBuffer[Index],
-                    &gEfiDriverDiagnosticsProtocolGuid,
-                    (VOID **) &DriverDiagnostics
-                    );
-
-    if (!EFI_ERROR (Status)) {
-      gBS->UninstallProtocolInterface (
-            ImageHandle,
-            &gEfiDriverDiagnosticsProtocolGuid,
-            DriverDiagnostics
-            );
+             ImageHandle,
+             &gEfiComponentName2ProtocolGuid,
+             ComponentName2
+             );
     }
   }
 
@@ -964,6 +971,7 @@ NetLibDefaultUnload (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibCreateServiceChild (
   IN  EFI_HANDLE            Controller,
   IN  EFI_HANDLE            Image,
@@ -1014,6 +1022,7 @@ NetLibCreateServiceChild (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibDestroyServiceChild (
   IN  EFI_HANDLE            Controller,
   IN  EFI_HANDLE            Image,
@@ -1067,6 +1076,7 @@ NetLibDestroyServiceChild (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibGetMacString (
   IN           EFI_HANDLE  SnpHandle,
   IN           EFI_HANDLE  ImageHandle,
@@ -1102,7 +1112,7 @@ NetLibGetMacString (
   // It takes 2 unicode characters to represent a 1 byte binary buffer.
   // Plus one unicode character for the null-terminator.
   //
-  MacAddress = NetAllocatePool ((2 * Mode->HwAddressSize + 1) * sizeof (CHAR16));
+  MacAddress = AllocatePool ((2 * Mode->HwAddressSize + 1) * sizeof (CHAR16));
   if (MacAddress == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
@@ -1160,7 +1170,7 @@ NetLibDefaultAddressIsStatic (
     return TRUE;
   }
 
-  ConfigInfo = NetAllocatePool (Len);
+  ConfigInfo = AllocatePool (Len);
   if (ConfigInfo == NULL) {
     return TRUE;
   }
@@ -1175,7 +1185,7 @@ NetLibDefaultAddressIsStatic (
 
 ON_EXIT:
 
-  NetFreePool (ConfigInfo);
+  gBS->FreePool (ConfigInfo);
 
   return IsStatic;
 }
@@ -1195,6 +1205,7 @@ ON_EXIT:
   @retval None
 **/
 VOID
+EFIAPI
 NetLibCreateIPv4DPathNode (
   IN OUT IPv4_DEVICE_PATH  *Node,
   IN EFI_HANDLE            Controller,
@@ -1210,8 +1221,8 @@ NetLibCreateIPv4DPathNode (
   Node->Header.SubType = MSG_IPv4_DP;
   SetDevicePathNodeLength (&Node->Header, 19);
 
-  NetCopyMem (&Node->LocalIpAddress, &LocalIp, sizeof (EFI_IPv4_ADDRESS));
-  NetCopyMem (&Node->RemoteIpAddress, &RemoteIp, sizeof (EFI_IPv4_ADDRESS));
+  CopyMem (&Node->LocalIpAddress, &LocalIp, sizeof (EFI_IPv4_ADDRESS));
+  CopyMem (&Node->RemoteIpAddress, &RemoteIp, sizeof (EFI_IPv4_ADDRESS));
 
   Node->LocalPort  = LocalPort;
   Node->RemotePort = RemotePort;
@@ -1243,6 +1254,7 @@ NetLibCreateIPv4DPathNode (
 
 **/
 EFI_HANDLE
+EFIAPI
 NetLibGetNicHandle (
   IN EFI_HANDLE             Controller,
   IN EFI_GUID               *ProtocolGuid
@@ -1294,6 +1306,7 @@ NetLibGetNicHandle (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibQueueDpc (
   IN EFI_TPL            DpcTpl,
   IN EFI_DPC_PROCEDURE  DpcProcedure,
@@ -1311,6 +1324,7 @@ NetLibQueueDpc (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibDispatchDpc (
   VOID
   )

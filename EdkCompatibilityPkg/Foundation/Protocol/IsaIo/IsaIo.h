@@ -92,7 +92,7 @@ typedef enum {
 //
 
 #define EFI_ISA_IO_PROTOCOL_GUID \
-  { 0x7ee2bd44, 0x3da0, 0x11d4, 0x9a, 0x38, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d }
+  { 0x7ee2bd44, 0x3da0, 0x11d4, {0x9a, 0x38, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d} }
 
 EFI_FORWARD_DECLARATION (EFI_ISA_IO_PROTOCOL);
 
@@ -169,7 +169,7 @@ EFI_STATUS
 //
 // Interface structure for the ISA I/O Protocol
 //
-typedef struct _EFI_ISA_IO_PROTOCOL {
+struct _EFI_ISA_IO_PROTOCOL {
   EFI_ISA_IO_PROTOCOL_ACCESS           Mem;
   EFI_ISA_IO_PROTOCOL_ACCESS           Io;
   EFI_ISA_IO_PROTOCOL_COPY_MEM         CopyMem;
@@ -181,7 +181,7 @@ typedef struct _EFI_ISA_IO_PROTOCOL {
   EFI_ISA_ACPI_RESOURCE_LIST           *ResourceList;
   UINT32                               RomSize;
   VOID                                 *RomImage;
-} EFI_ISA_IO_PROTOCOL;
+};
 
 extern EFI_GUID gEfiIsaIoProtocolGuid;
 
@@ -202,7 +202,7 @@ extern EFI_GUID gEfiIsaIoProtocolGuid;
 //
 
 #define EFI_LIGHT_ISA_IO_PROTOCOL_GUID \
-  { 0x7cc7ed80, 0x9a68, 0x4781, 0x80, 0xe4, 0xda, 0x16, 0x99, 0x10, 0x5a, 0xfe }
+  { 0x7cc7ed80, 0x9a68, 0x4781, {0x80, 0xe4, 0xda, 0x16, 0x99, 0x10, 0x5a, 0xfe} }
 
 EFI_FORWARD_DECLARATION (EFI_LIGHT_ISA_IO_PROTOCOL);
 
@@ -345,7 +345,7 @@ Returns:
 //
 // Interface structure for the Light ISA I/O Protocol
 //
-typedef struct _EFI_LIGHT_ISA_IO_PROTOCOL {
+struct _EFI_LIGHT_ISA_IO_PROTOCOL {
   EFI_LIGHT_ISA_IO_PROTOCOL_ACCESS     Io;
   EFI_LIGHT_ISA_IO_PROTOCOL_MAP        Map;
   EFI_LIGHT_ISA_IO_PROTOCOL_UNMAP      Unmap;
@@ -353,7 +353,7 @@ typedef struct _EFI_LIGHT_ISA_IO_PROTOCOL {
   EFI_ISA_ACPI_RESOURCE_LIST           *ResourceList;
   UINT32                               RomSize;
   VOID                                 *RomImage;
-} EFI_LIGHT_ISA_IO_PROTOCOL;
+};
 
 extern EFI_GUID gEfiLightIsaIoProtocolGuid;
 

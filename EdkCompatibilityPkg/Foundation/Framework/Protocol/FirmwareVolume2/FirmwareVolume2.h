@@ -28,7 +28,7 @@ Abstract:
 // Firmware Volume Protocol GUID definition
 //
 #define EFI_FIRMWARE_VOLUME2_PROTOCOL_GUID \
-  { 0x220e73b6, 0x6bdb, 0x4413, 0x84, 0x5, 0xb9, 0x74, 0xb1, 0x8, 0x61, 0x9a }
+  { 0x220e73b6, 0x6bdb, 0x4413, {0x84, 0x5, 0xb9, 0x74, 0xb1, 0x8, 0x61, 0x9a} }
 
 
 EFI_FORWARD_DECLARATION (EFI_FIRMWARE_VOLUME2_PROTOCOL);
@@ -177,7 +177,7 @@ EFI_STATUS
   );
 
 
-typedef struct _EFI_FIRMWARE_VOLUME2_PROTOCOL {
+struct _EFI_FIRMWARE_VOLUME2_PROTOCOL {
   EFI_FV_GET_ATTRIBUTES    GetVolumeAttributes;
   EFI_FV_SET_ATTRIBUTES    SetVolumeAttributes;
   EFI_FV_READ_FILE         ReadFile;
@@ -188,7 +188,7 @@ typedef struct _EFI_FIRMWARE_VOLUME2_PROTOCOL {
   EFI_HANDLE               ParentHandle;
   EFI_FV_GET_INFO          GetInfo;
   EFI_FV_SET_INFO          SetInfo;
-} EFI_FIRMWARE_VOLUME2_PROTOCOL;
+};
 
 extern EFI_GUID gEfiFirmwareVolume2ProtocolGuid;
 

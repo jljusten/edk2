@@ -43,7 +43,7 @@ Revision History
 
 #define EFI_LEGACY_BIOS_THUNK_PROTOCOL_GUID \
   { \
-    0x4c51a7ba, 0x7195, 0x442d, 0x87, 0x92, 0xbe, 0xea, 0x6e, 0x2f, 0xf6, 0xec \
+    0x4c51a7ba, 0x7195, 0x442d, {0x87, 0x92, 0xbe, 0xea, 0x6e, 0x2f, 0xf6, 0xec} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_LEGACY_BIOS_THUNK_PROTOCOL);
@@ -110,10 +110,10 @@ BOOLEAN
 --*/
 ;
 
-typedef struct _EFI_LEGACY_BIOS_THUNK_PROTOCOL {
+struct _EFI_LEGACY_BIOS_THUNK_PROTOCOL {
   EFI_LEGACY_BIOS_THUNK_INT86                 Int86;
   EFI_LEGACY_BIOS_THUNK_FARCALL86             FarCall86;
-} EFI_LEGACY_BIOS_THUNK_PROTOCOL;
+};
 
 extern EFI_GUID gEfiLegacyBiosThunkProtocolGuid;
 

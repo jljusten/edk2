@@ -30,7 +30,7 @@ EFI_FORWARD_DECLARATION (EFI_SMM_ACCESS_PROTOCOL);
 
 #define EFI_SMM_ACCESS_PROTOCOL_GUID \
   { \
-    0x3792095a, 0xe309, 0x4c1e, 0xaa, 0x01, 0x85, 0xf5, 0x65, 0x5a, 0x17, 0xf1 \
+    0x3792095a, 0xe309, 0x4c1e, {0xaa, 0x01, 0x85, 0xf5, 0x65, 0x5a, 0x17, 0xf1} \
   }
 
 //
@@ -65,14 +65,14 @@ EFI_STATUS
   IN OUT EFI_SMRAM_DESCRIPTOR            * SmramMap
   );
 
-typedef struct _EFI_SMM_ACCESS_PROTOCOL {
+struct _EFI_SMM_ACCESS_PROTOCOL {
   EFI_SMM_OPEN          Open;
   EFI_SMM_CLOSE         Close;
   EFI_SMM_LOCK          Lock;
   EFI_SMM_CAPABILITIES  GetCapabilities;
   BOOLEAN               LockState;
   BOOLEAN               OpenState;
-} EFI_SMM_ACCESS_PROTOCOL;
+};
 
 extern EFI_GUID gEfiSmmAccessProtocolGuid;
 

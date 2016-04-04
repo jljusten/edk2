@@ -25,7 +25,7 @@ Abstract:
 #include "EfiStatusCode.h"
 #include EFI_GUID_DEFINITION (StatusCodeCallerId)
 #include EFI_GUID_DEFINITION (StatusCodeDataTypeId)
-#include EFI_PROTOCOL_DEFINITION (DEBUGMASK)
+#include EFI_PROTOCOL_DEFINITION (DebugMask)
 
 //
 // You would think you should divid by sizeof (UINT64), but EBC does not like
@@ -77,7 +77,14 @@ Returns:
   //
   // Put break point in module that contained the error.
   //
+#ifndef __GNUC__
   EFI_BREAKPOINT ();
+#else
+  //
+  // Bugbug: Need to fix a GNC style cpu break point
+  // 
+  EFI_DEADLOOP ();
+#endif
 }
 
 VOID

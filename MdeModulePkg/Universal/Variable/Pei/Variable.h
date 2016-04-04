@@ -1,6 +1,9 @@
-/*++
+/** @file
 
-Copyright (c) 2006 - 2007, Intel Corporation
+  The internal header file includes the common header files, defines
+  internal structure and functions used by PeiVariable module.
+
+Copyright (c) 2006 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,15 +12,7 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-  Variable.h
-
-Abstract:
-
-  Tiano PEIM to provide the variable functionality
-
---*/
+**/
 
 #ifndef _PEI_VARIABLE_H
 #define _PEI_VARIABLE_H
@@ -41,10 +36,7 @@ Abstract:
 #define GET_PAD_SIZE(a) (((~a) + 1) & (ALIGNMENT - 1))
 #endif
 
-#define GET_VARIABLE_NAME_PTR(a)  (CHAR16 *) ((UINTN) (a) + sizeof (VARIABLE_HEADER))
-
-#define GET_VARIABLE_DATA_PTR(a) \
-  (UINT8 *) ((UINTN) GET_VARIABLE_NAME_PTR (a) + (a)->NameSize + GET_PAD_SIZE ((a)->NameSize))
+#define HEADER_ALIGN(Header)  (((UINTN) (Header) + HEADER_ALIGNMENT - 1) & (~(HEADER_ALIGNMENT - 1)))
 
 typedef struct {
   VARIABLE_HEADER *CurrPtr;

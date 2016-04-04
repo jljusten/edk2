@@ -30,7 +30,7 @@ Abstract:
 //
 #define EFI_SMM_STATUS_CODE_PROTOCOL_GUID \
   { \
-    0x6afd2b77, 0x98c1, 0x4acd, 0xa6, 0xf9, 0x8a, 0x94, 0x39, 0xde, 0xf, 0xb1 \
+    0x6afd2b77, 0x98c1, 0x4acd, {0xa6, 0xf9, 0x8a, 0x94, 0x39, 0xde, 0xf, 0xb1} \
   }
 
 extern EFI_GUID gEfiSmmStatusCodeProtocolGuid;
@@ -51,8 +51,8 @@ EFI_STATUS
   IN EFI_STATUS_CODE_DATA         * Data OPTIONAL
   );
 
-typedef struct _EFI_SMM_STATUS_CODE_PROTOCOL {
+struct _EFI_SMM_STATUS_CODE_PROTOCOL {
   EFI_SMM_REPORT_STATUS_CODE  ReportStatusCode;
-} EFI_SMM_STATUS_CODE_PROTOCOL;
+};
 
 #endif

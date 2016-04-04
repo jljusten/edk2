@@ -24,7 +24,7 @@ Abstract:
 
 #define PEI_STATUS_CODE_PPI_GUID \
   { \
-    0x229832d3, 0x7a30, 0x4b36, 0xb8, 0x27, 0xf4, 0xc, 0xb7, 0xd4, 0x54, 0x36 \
+    0x229832d3, 0x7a30, 0x4b36, {0xb8, 0x27, 0xf4, 0xc, 0xb7, 0xd4, 0x54, 0x36} \
   }
 
 EFI_FORWARD_DECLARATION (PEI_STATUS_CODE_PPI);
@@ -40,9 +40,9 @@ EFI_STATUS
   IN EFI_STATUS_CODE_DATA            * Data OPTIONAL
   );
 
-typedef struct _PEI_STATUS_CODE_PPI {
+struct _PEI_STATUS_CODE_PPI {
   PEI_REPORT_STATUS_CODE  ReportStatusCode;
-} PEI_STATUS_CODE_PPI;
+};
 
 extern EFI_GUID gPeiStatusCodePpiGuid;
 

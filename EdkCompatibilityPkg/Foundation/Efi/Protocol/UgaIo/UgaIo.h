@@ -26,7 +26,7 @@ Abstract:
 
 #define EFI_UGA_IO_PROTOCOL_GUID \
   { \
-    0x61a4d49e, 0x6f68, 0x4f1b, 0xb9, 0x22, 0xa8, 0x6e, 0xed, 0xb, 0x7, 0xa2 \
+    0x61a4d49e, 0x6f68, 0x4f1b, {0xb9, 0x22, 0xa8, 0x6e, 0xed, 0xb, 0x7, 0xa2} \
   }
 
 typedef struct _EFI_UGA_IO_PROTOCOL EFI_UGA_IO_PROTOCOL;
@@ -200,11 +200,11 @@ typedef UGA_STATUS (EFIAPI *PUGA_FW_SERVICE_DISPATCH) (IN PUGA_DEVICE pDevice, I
   Varies depending on pIoRequest.
 
 --*/
-typedef struct _EFI_UGA_IO_PROTOCOL {
+struct _EFI_UGA_IO_PROTOCOL {
   EFI_UGA_IO_PROTOCOL_CREATE_DEVICE CreateDevice;
   EFI_UGA_IO_PROTOCOL_DELETE_DEVICE DeleteDevice;
   PUGA_FW_SERVICE_DISPATCH          DispatchService;
-} EFI_UGA_IO_PROTOCOL;
+};
 
 extern EFI_GUID gEfiUgaIoProtocolGuid;
 

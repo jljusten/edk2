@@ -1,4 +1,4 @@
-/*++
+/**@file
 
 Copyright (c) 2006, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
@@ -16,7 +16,7 @@ Module Name:
 Abstract:
   Include file for Windows API based SEC
 
---*/
+**/
 
 #include <stdio.h>
 #include <Base.h>
@@ -31,6 +31,7 @@ Abstract:
 #include <Ppi/NtThunk.h>
 #include <Ppi/StatusCode.h>
 #include <Ppi/NtFwh.h>
+#include <Ppi/TemporaryRamSupport.h>
 #include <Library/PcdLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PrintLib.h>
@@ -576,6 +577,14 @@ SecNt32PeCoffUnloadimage (
   IN PE_COFF_LOADER_IMAGE_CONTEXT         *ImageContext
   );
 
+EFI_STATUS
+EFIAPI
+SecTemporaryRamSupport (
+  IN CONST EFI_PEI_SERVICES   **PeiServices,
+  IN EFI_PHYSICAL_ADDRESS     TemporaryMemoryBase,
+  IN EFI_PHYSICAL_ADDRESS     PermanentMemoryBase,
+  IN UINTN                    CopySize
+  );
 
 typedef struct {
   EFI_PEI_PE_COFF_LOADER_PROTOCOL PeCoff;

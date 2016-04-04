@@ -23,12 +23,8 @@ Abstract:
 #define _PPRINT_H_
 
 #define EFI_PRINT_PROTOCOL_GUID  \
-   { 0xdf2d868e, 0x32fc, 0x4cf0, 0x8e, 0x6b, 0xff, 0xd9, 0x5d, 0x13, 0x43, 0xd0 }
+   { 0xdf2d868e, 0x32fc, 0x4cf0, {0x8e, 0x6b, 0xff, 0xd9, 0x5d, 0x13, 0x43, 0xd0} }
 
-//
-// Forward reference for pure ANSI compatability
-//
-EFI_FORWARD_DECLARATION (EFI_PRINT_PROTOCOL);
 
 typedef struct _EFI_PRINT_PROTOCOL EFI_PRINT_PROTOCOL;
 
@@ -41,9 +37,9 @@ UINTN
   IN  VA_LIST       Marker
   );
 
-typedef struct _EFI_PRINT_PROTOCOL {
+struct _EFI_PRINT_PROTOCOL {
   EFI_VSPRINT                                   VSPrint;
-} EFI_PRINT_PROTOCOL;
+};
 
 
 extern EFI_GUID gEfiPrintProtocolGuid;

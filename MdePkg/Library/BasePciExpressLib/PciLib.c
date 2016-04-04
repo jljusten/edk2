@@ -21,7 +21,7 @@
 
 #include <Base.h>
 
-
+#include <Library/BaseLib.h>
 #include <Library/PciExpressLib.h>
 #include <Library/IoLib.h>
 #include <Library/DebugLib.h>
@@ -1209,7 +1209,7 @@ PciExpressReadBuffer (
   OUT     VOID                      *Buffer
   )
 {
-  UINTN                             ReturnValue;
+  UINTN   ReturnValue;
 
   ASSERT_INVALID_PCI_ADDRESS (StartAddress);
   ASSERT (((StartAddress & 0xFFF) + Size) <= 0x1000);
@@ -1239,7 +1239,8 @@ PciExpressReadBuffer (
     //
     // Read a word if StartAddress is word aligned
     //
-    *(volatile UINT16 *)Buffer = PciExpressRead16 (StartAddress);
+    WriteUnaligned16 ((UINT16 *) Buffer, (UINT16) PciExpressRead16 (StartAddress));
+
     StartAddress += sizeof (UINT16);
     Size -= sizeof (UINT16);
     Buffer = (UINT16*)Buffer + 1;
@@ -1249,7 +1250,8 @@ PciExpressReadBuffer (
     //
     // Read as many double words as possible
     //
-    *(volatile UINT32 *)Buffer = PciExpressRead32 (StartAddress);
+    WriteUnaligned32 ((UINT32 *) Buffer, (UINT32) PciExpressRead32 (StartAddress));
+
     StartAddress += sizeof (UINT32);
     Size -= sizeof (UINT32);
     Buffer = (UINT32*)Buffer + 1;
@@ -1259,7 +1261,7 @@ PciExpressReadBuffer (
     //
     // Read the last remaining word if exist
     //
-    *(volatile UINT16 *)Buffer = PciExpressRead16 (StartAddress);
+    WriteUnaligned16 ((UINT16 *) Buffer, (UINT16) PciExpressRead16 (StartAddress));
     StartAddress += sizeof (UINT16);
     Size -= sizeof (UINT16);
     Buffer = (UINT16*)Buffer + 1;
@@ -1337,7 +1339,7 @@ PciExpressWriteBuffer (
     //
     // Write a word if StartAddress is word aligned
     //
-    PciExpressWrite16 (StartAddress, *(UINT16*)Buffer);
+    PciExpressWrite16 (StartAddress, ReadUnaligned16 ((UINT16*)Buffer));
     StartAddress += sizeof (UINT16);
     Size -= sizeof (UINT16);
     Buffer = (UINT16*)Buffer + 1;
@@ -1347,7 +1349,7 @@ PciExpressWriteBuffer (
     //
     // Write as many double words as possible
     //
-    PciExpressWrite32 (StartAddress, *(UINT32*)Buffer);
+    PciExpressWrite32 (StartAddress, ReadUnaligned32 ((UINT32*)Buffer));
     StartAddress += sizeof (UINT32);
     Size -= sizeof (UINT32);
     Buffer = (UINT32*)Buffer + 1;
@@ -1357,7 +1359,7 @@ PciExpressWriteBuffer (
     //
     // Write the last remaining word if exist
     //
-    PciExpressWrite16 (StartAddress, *(UINT16*)Buffer);
+    PciExpressWrite16 (StartAddress, ReadUnaligned16 ((UINT16*)Buffer));
     StartAddress += sizeof (UINT16);
     Size -= sizeof (UINT16);
     Buffer = (UINT16*)Buffer + 1;

@@ -26,7 +26,7 @@ Abstract:
 
 #define EFI_PEI_READ_ONLY_VARIABLE2_PPI_GUID \
   { \
-    0x2ab86ef5, 0xecb5, 0x4134, 0xb5, 0x56, 0x38, 0x54, 0xca, 0x1f, 0xe1, 0xb4 \
+    0x2ab86ef5, 0xecb5, 0x4134, {0xb5, 0x56, 0x38, 0x54, 0xca, 0x1f, 0xe1, 0xb4} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_PEI_READ_ONLY_VARIABLE2_PPI);
@@ -51,10 +51,10 @@ EFI_STATUS
   IN OUT EFI_GUID                             *VariableGuid
   );
 
-typedef struct _EFI_PEI_READ_ONLY_VARIABLE2_PPI {
+struct _EFI_PEI_READ_ONLY_VARIABLE2_PPI {
   EFI_PEI_GET_VARIABLE2            GetVariable;
   EFI_PEI_GET_NEXT_VARIABLE_NAME2  GetNextVariableName;
-} EFI_PEI_READ_ONLY_VARIABLE2_PPI;
+};
 
 extern EFI_GUID gPeiReadOnlyVariable2PpiGuid;
 

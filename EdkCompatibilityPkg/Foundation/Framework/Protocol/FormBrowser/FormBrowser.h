@@ -30,14 +30,12 @@ Abstract:
 
 #define EFI_FORM_BROWSER_PROTOCOL_GUID \
   { \
-    0xe5a1333e, 0xe1b4, 0x4d55, 0xce, 0xeb, 0x35, 0xc3, 0xef, 0x13, 0x34, 0x43 \
+    0xe5a1333e, 0xe1b4, 0x4d55, {0xce, 0xeb, 0x35, 0xc3, 0xef, 0x13, 0x34, 0x43} \
   }
 
 //
 // Forward reference for pure ANSI compatability
 //
-EFI_FORWARD_DECLARATION (EFI_FORM_BROWSER_PROTOCOL);
-
 typedef struct _EFI_FORM_BROWSER_PROTOCOL EFI_FORM_BROWSER_PROTOCOL;
 
 typedef struct {
@@ -87,10 +85,10 @@ EFI_STATUS
   ...
   );
 
-typedef struct _EFI_FORM_BROWSER_PROTOCOL {
+struct _EFI_FORM_BROWSER_PROTOCOL {
   EFI_SEND_FORM     SendForm;
   EFI_CREATE_POP_UP CreatePopUp;
-} EFI_FORM_BROWSER_PROTOCOL;
+};
 
 extern EFI_GUID gEfiFormBrowserProtocolGuid;
 

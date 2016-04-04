@@ -1,6 +1,7 @@
 /** @file
+  This library provides IpIo layer upon EFI IP4 Protocol.
 
-Copyright (c) 2005 - 2007, Intel Corporation
+Copyright (c) 2005 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -8,13 +9,6 @@ http://opensource.org/licenses/bsd-license.php
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  IpIo.h
-
-Abstract:
-
 
 **/
 
@@ -107,11 +101,11 @@ typedef struct _IP_IO {
   //
   // the node used to link this IpIo to the active IpIo list.
   //
-  NET_LIST_ENTRY                Entry;
+  LIST_ENTRY                    Entry;
 
   // the list used to maintain the IP instance for different sending purpose.
   //
-  NET_LIST_ENTRY                IpList;
+  LIST_ENTRY                    IpList;
 
   //
   // the ip instance consumed by this IP IO
@@ -135,7 +129,7 @@ typedef struct _IP_IO {
   //
   // list entry used to link the token passed to IP_IO
   //
-  NET_LIST_ENTRY                PendingSndList;
+  LIST_ENTRY                    PendingSndList;
 
   //
   // User interface used to get notify from IP_IO
@@ -155,7 +149,7 @@ typedef struct _IP_IO_OPEN_DATA {
 } IP_IO_OPEN_DATA;
 
 typedef struct _IP_IO_SEND_ENTRY {
-  NET_LIST_ENTRY            Entry;
+  LIST_ENTRY                Entry;
   IP_IO                     *IpIo;
   VOID                      *Context;
   VOID                      *NotifyData;
@@ -169,36 +163,97 @@ typedef EFI_IP4_OVERRIDE_DATA IP_IO_OVERRIDE;
 typedef struct _IP_IO_IP_INFO {
   IP4_ADDR                  Addr;
   IP4_ADDR                  SubnetMask;
-  NET_LIST_ENTRY            Entry;
+  LIST_ENTRY                Entry;
   EFI_HANDLE                ChildHandle;
   EFI_IP4_PROTOCOL          *Ip;
   EFI_IP4_COMPLETION_TOKEN  DummyRcvToken;
   INTN                      RefCnt;
 } IP_IO_IP_INFO;
 
+/**
+  Create a new IP_IO instance.
+
+  @param  Image                 The image handle of an IP_IO consumer protocol.
+  @param  Controller            The controller handle of an IP_IO consumer protocol
+                                installed on.
+
+  @return Pointer to a newly created IP_IO instance.
+
+**/
 IP_IO *
+EFIAPI
 IpIoCreate (
   IN EFI_HANDLE Image,
   IN EFI_HANDLE Controller
   );
 
+/**
+  Destroy an IP_IO instance.
+
+  @param  IpIo                  Pointer to the IP_IO instance that needs to
+                                destroy.
+
+  @retval EFI_SUCCESS           The IP_IO instance destroyed successfully.
+  @retval other                 Error condition occurred.
+
+**/
 EFI_STATUS
+EFIAPI
 IpIoDestroy (
   IN IP_IO *IpIo
   );
 
+/**
+  Stop an IP_IO instance.
+
+  @param  IpIo                  Pointer to the IP_IO instance that needs to stop.
+
+  @retval EFI_SUCCESS           The IP_IO instance stopped successfully.
+  @retval other                 Error condition occurred.
+
+**/
 EFI_STATUS
+EFIAPI
 IpIoStop (
   IN IP_IO *IpIo
   );
 
+/**
+  Open an IP_IO instance for use.
+
+  @param  IpIo                  Pointer to an IP_IO instance that needs to open.
+  @param  OpenData              The configuration data for the IP_IO instance.
+
+  @retval EFI_SUCCESS           The IP_IO instance opened with OpenData
+                                successfully.
+  @retval other                 Error condition occurred.
+
+**/
 EFI_STATUS
 IpIoOpen (
   IN IP_IO           *IpIo,
   IN IP_IO_OPEN_DATA *OpenData
   );
 
+/**
+  Send out an IP packet.
+
+  @param  IpIo                  Pointer to an IP_IO instance used for sending IP
+                                packet.
+  @param  Pkt                   Pointer to the IP packet to be sent.
+  @param  Sender                The IP protocol instance used for sending.
+  @param  NotifyData
+  @param  Dest                  The destination IP address to send this packet to.
+  @param  OverrideData          The data to override some configuration of the IP
+                                instance used for sending.
+
+  @retval EFI_SUCCESS           The operation is completed successfully.
+  @retval EFI_NOT_STARTED       The IpIo is not configured.
+  @retval EFI_OUT_OF_RESOURCES  Failed due to resource limit.
+
+**/
 EFI_STATUS
+EFIAPI
 IpIoSend (
   IN IP_IO           *IpIo,
   IN NET_BUF         *Pkt,
@@ -209,36 +264,109 @@ IpIoSend (
   IN IP_IO_OVERRIDE  *OverrideData
   );
 
+/**
+  Add a new IP instance for sending data.
+
+  @param  IpIo                  Pointer to a IP_IO instance to add a new IP
+                                instance for sending purpose.
+
+  @return Pointer to the created IP_IO_IP_INFO structure, NULL is failed.
+
+**/
 VOID
+EFIAPI
 IpIoCancelTxToken (
   IN IP_IO  *IpIo,
   IN VOID   *Packet
   );
 
+/**
+  Add a new IP instance for sending data.
+
+  @param  IpIo                  Pointer to a IP_IO instance to add a new IP
+                                instance for sending purpose.
+
+  @return Pointer to the created IP_IO_IP_INFO structure, NULL is failed.
+
+**/
 IP_IO_IP_INFO *
+EFIAPI
 IpIoAddIp (
   IN IP_IO  *IpIo
   );
 
+/**
+  Configure the IP instance of this IpInfo and start the receiving if Ip4ConfigData
+  is not NULL.
+
+  @param  IpInfo                Pointer to the IP_IO_IP_INFO instance.
+  @param  Ip4ConfigData         The IP4 configure data used to configure the ip
+                                instance, if NULL the ip instance is reseted. If
+                                UseDefaultAddress is set to TRUE, and the configure
+                                operation succeeds, the default address information
+                                is written back in this Ip4ConfigData.
+
+  @retval EFI_STATUS            The status returned by IP4->Configure or
+                                IP4->Receive.
+
+**/
 EFI_STATUS
+EFIAPI
 IpIoConfigIp (
   IN     IP_IO_IP_INFO        *IpInfo,
   IN OUT EFI_IP4_CONFIG_DATA  *Ip4ConfigData OPTIONAL
   );
 
+/**
+  Destroy an IP instance maintained in IpIo->IpList for
+  sending purpose.
+
+  @param  IpIo                  Pointer to the IP_IO instance.
+  @param  IpInfo                Pointer to the IpInfo to be removed.
+
+  @return None.
+
+**/
 VOID
+EFIAPI
 IpIoRemoveIp (
   IN IP_IO            *IpIo,
   IN IP_IO_IP_INFO    *IpInfo
   );
 
+/**
+  Find the first IP protocol maintained in IpIo whose local
+  address is the same with Src.
+
+  @param  IpIo                  Pointer to the pointer of the IP_IO instance.
+  @param  Src                   The local IP address.
+
+  @return Pointer to the IP protocol can be used for sending purpose and its local
+  @return address is the same with Src.
+
+**/
 IP_IO_IP_INFO *
+EFIAPI
 IpIoFindSender (
   IN OUT IP_IO     **IpIo,
   IN     IP4_ADDR  Src
   );
 
+/**
+  Get the ICMP error map information, the ErrorStatus will be returned.
+  The IsHard and Notify are optional. If they are not NULL, this rouine will
+  fill them.
+  We move IcmpErrMap[] to local variable to enable EBC build.
+
+  @param  IcmpError             IcmpError Type
+  @param  IsHard                Whether it is a hard error
+  @param  Notify                Whether it need to notify SockError
+
+  @return ICMP Error Status
+
+**/
 EFI_STATUS
+EFIAPI
 IpIoGetIcmpErrStatus (
   IN  ICMP_ERROR  IcmpError,
   OUT BOOLEAN     *IsHard, OPTIONAL

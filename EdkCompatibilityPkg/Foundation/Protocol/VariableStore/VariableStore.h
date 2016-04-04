@@ -33,7 +33,7 @@ Revision History
 // Variable Store Device protocol
 //
 #define EFI_VARIABLE_STORE_PROTOCOL_GUID    \
-  { 0xf088cd91, 0xa046, 0x11d2, 0x8e, 0x42, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b }
+  { 0xf088cd91, 0xa046, 0x11d2, {0x8e, 0x42, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b} }
 
 EFI_FORWARD_DECLARATION (EFI_VARIABLE_STORE_PROTOCOL);
 
@@ -68,7 +68,7 @@ EFI_STATUS
   IN EFI_VARIABLE_STORE_PROTOCOL   *This
   );
 
-typedef struct _EFI_VARIABLE_STORE_PROTOCOL {
+struct _EFI_VARIABLE_STORE_PROTOCOL {
   
   //
   // Number of banks and bank size
@@ -84,7 +84,7 @@ typedef struct _EFI_VARIABLE_STORE_PROTOCOL {
   EFI_UPDATE_STORE            UpdateStore;
   EFI_CLEANUP_STORE           CleanupStore;
 
-} EFI_VARIABLE_STORE_PROTOCOL;
+};
 
 //
 //

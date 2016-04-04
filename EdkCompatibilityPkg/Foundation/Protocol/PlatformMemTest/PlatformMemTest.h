@@ -1,7 +1,7 @@
 
  /*++
 
-Copyright (c) 2004, Intel Corporation                                                         
+Copyright (c) 2004 - 2007, Intel Corporation                                                  
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -22,13 +22,16 @@ Abstract:
 #ifndef __PLATFORM_MEMTEST_H__
 #define __PLATFORM_MEMTEST_H__
 
-
+#if (EFI_SPECIFICATION_VERSION >= 0x0002000A)
+#include EFI_PROTOCOL_CONSUMER (HiiDatabase)
+#else
 #include EFI_PROTOCOL_CONSUMER (Hii)
+#endif
 #include EFI_PROTOCOL_CONSUMER (GenericMemoryTest)
 
 
 #define EFI_PLATFORM_MEMTEST_PROTOCOL_GUID \
-  { 0x859ba18, 0x7dd7, 0x4ed7, 0xa8, 0x8e, 0x10, 0x9c, 0x63, 0x91, 0x7b, 0xdd }
+  { 0x859ba18, 0x7dd7, 0x4ed7, {0xa8, 0x8e, 0x10, 0x9c, 0x63, 0x91, 0x7b, 0xdd} }
 
 //
 // Forward reference for pure ANSI compatability
@@ -237,7 +240,7 @@ EFI_STATUS
   OUT BOOLEAN                               *Overlap
   );
 
-typedef struct _EFI_PLATFORM_MEMTEST_PROTOCOL {
+struct _EFI_PLATFORM_MEMTEST_PROTOCOL {
   EFI_PLATFORM_MEMTEST_NOTIFY_PHASE       NotifyPhase;
   EFI_PLATFORM_MEMTEST_GET_PLATFORM_INFO  GetPlatformInfo;
   EFI_PLATFORM_MEMTEST_GET_NEXT_DIMM_INFO GetNextDimmInfo;
@@ -249,7 +252,7 @@ typedef struct _EFI_PLATFORM_MEMTEST_PROTOCOL {
   EFI_PLATFORM_MEMTEST_CLEAR_ERROR        ClearError;
   EFI_PLATFORM_MEMTEST_DISABLE_DIMM       DisableDimm;
   EFI_PLATFORM_MEMTEST_OVERLAP            Overlap;
-} EFI_PLATFORM_MEMTEST_PROTOCOL;
+};
 
 
 

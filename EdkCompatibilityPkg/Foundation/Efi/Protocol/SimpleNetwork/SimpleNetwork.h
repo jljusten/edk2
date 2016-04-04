@@ -31,7 +31,7 @@ Abstract:
 
 #define EFI_SIMPLE_NETWORK_PROTOCOL_GUID \
   { \
-    0xA19832B9, 0xAC25, 0x11D3, 0x9A, 0x2D, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D \
+    0xA19832B9, 0xAC25, 0x11D3, {0x9A, 0x2D, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_SIMPLE_NETWORK_PROTOCOL);
@@ -615,7 +615,7 @@ EFI_STATUS
 
 #define EFI_SIMPLE_NETWORK_PROTOCOL_REVISION  0x00010000
 
-typedef struct _EFI_SIMPLE_NETWORK_PROTOCOL {
+struct _EFI_SIMPLE_NETWORK_PROTOCOL {
   UINT64                              Revision;
   EFI_SIMPLE_NETWORK_START            Start;
   EFI_SIMPLE_NETWORK_STOP             Stop;
@@ -632,7 +632,7 @@ typedef struct _EFI_SIMPLE_NETWORK_PROTOCOL {
   EFI_SIMPLE_NETWORK_RECEIVE          Receive;
   EFI_EVENT                           WaitForPacket;
   EFI_SIMPLE_NETWORK_MODE             *Mode;
-} EFI_SIMPLE_NETWORK_PROTOCOL;
+};
 
 extern EFI_GUID gEfiSimpleNetworkProtocolGuid;
 

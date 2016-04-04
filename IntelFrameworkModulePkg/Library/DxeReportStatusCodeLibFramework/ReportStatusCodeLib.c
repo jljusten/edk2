@@ -12,21 +12,9 @@
 
 **/
 
-
-#include <FrameworkDxe.h>
-
-#include <Guid/StatusCodeDataTypeId.h>
-#include <Protocol/StatusCode.h>
-
-#include <Library/ReportStatusCodeLib.h>
-#include <Library/DebugLib.h>
-#include <Library/UefiBootServicesTableLib.h>
-#include <Library/BaseLib.h>
-#include <Library/BaseMemoryLib.h>
-#include <Library/PcdLib.h>
-#include <Library/UefiRuntimeServicesTableLib.h>
-
-#include <DebugInfo.h>
+#include "ReportStatusCodeLibInternal.h"
+ 
+EFI_REPORT_STATUS_CODE  mReportStatusCode = NULL;
 
 /**
   Internal worker function that reports a status code through the Status Code Protocol
@@ -51,7 +39,6 @@
   @retval  EFI_UNSUPPORTED       Status Code Protocol is not available.
 
 **/
-STATIC
 EFI_STATUS
 InternalReportStatusCode (
   IN EFI_STATUS_CODE_TYPE     Type,
@@ -61,24 +48,13 @@ InternalReportStatusCode (
   IN EFI_STATUS_CODE_DATA     *Data     OPTIONAL
   )
 {
-  EFI_STATUS                    Status;
-  EFI_STATUS_CODE_PROTOCOL      *StatusCode;
-  STATIC EFI_REPORT_STATUS_CODE ReportStatusCode = NULL;
-
   //
   // If gStatusCode is NULL, then see if a Status Code Protocol instance is present
   // in the handle database.
   //
-  if (ReportStatusCode == NULL) {
-    if (gBS == NULL) {
-      return EFI_UNSUPPORTED;
-    }
-    Status = gBS->LocateProtocol (&gEfiStatusCodeRuntimeProtocolGuid, NULL, (VOID**)&StatusCode);
-    if (!EFI_ERROR (Status) && StatusCode != NULL) {
-      ReportStatusCode = StatusCode->ReportStatusCode;
-    } else if (gRT->Hdr.Revision < 0x20000) {
-      ReportStatusCode = ((FRAMEWORK_EFI_RUNTIME_SERVICES*)gRT)->ReportStatusCode;
-    } else {
+  if (mReportStatusCode == NULL) {
+    mReportStatusCode = InternalGetReportStatusCode ();
+    if (mReportStatusCode == NULL) {
       return EFI_UNSUPPORTED;
     }
   }
@@ -87,7 +63,7 @@ InternalReportStatusCode (
   // A Status Code Protocol is present in the handle database, so pass in all the
   // parameters to the ReportStatusCode() service of the Status Code Protocol
   //
-  return (*ReportStatusCode) (Type, Value, Instance, (EFI_GUID *)CallerId, Data);
+  return (*mReportStatusCode) (Type, Value, Instance, (EFI_GUID *)CallerId, Data);
 }
 
 
@@ -451,9 +427,10 @@ ReportStatusCodeWithExtendedData (
   an instance specified by Instance and a caller ID specified by CallerId.  If
   CallerId is NULL, then a caller ID of gEfiCallerIdGuid is used.
 
-  ReportStatusCodeEx()must actively prevent recursion.  If ReportStatusCodeEx()
-  is called while processing another any other Report Status Code Library function,
-  then ReportStatusCodeEx() must return EFI_DEVICE_ERROR immediately.
+  ReportStatusCodeEx()must actively prevent recursion. If
+  ReportStatusCodeEx() is called while processing another any
+  other Report Status Code Library function, then
+  ReportStatusCodeEx() must return EFI_DEVICE_ERROR immediately.
 
   If ExtendedData is NULL and ExtendedDataSize is not zero, then ASSERT().
   If ExtendedData is not NULL and ExtendedDataSize is zero, then ASSERT().
@@ -490,52 +467,17 @@ ReportStatusCodeEx (
   IN UINTN                  ExtendedDataSize
   )
 {
-  EFI_STATUS            Status;
-  EFI_STATUS_CODE_DATA  *StatusCodeData;
+  EFI_STATUS  Status;
 
-  ASSERT (!((ExtendedData == NULL) && (ExtendedDataSize != 0)));
-  ASSERT (!((ExtendedData != NULL) && (ExtendedDataSize == 0)));
-
-  if (gBS == NULL) {
-    return EFI_UNSUPPORTED;
-  }
-
-  //
-  // Allocate space for the Status Code Header and its buffer
-  //
-  StatusCodeData = NULL;
-  gBS->AllocatePool (EfiBootServicesData, sizeof (EFI_STATUS_CODE_DATA) + ExtendedDataSize, (VOID **)&StatusCodeData);
-  if (StatusCodeData == NULL) {
-    return EFI_OUT_OF_RESOURCES;
-  }
-
-  //
-  // Fill in the extended data header
-  //
-  StatusCodeData->HeaderSize = sizeof (EFI_STATUS_CODE_DATA);
-  StatusCodeData->Size = (UINT16)ExtendedDataSize;
-  if (ExtendedDataGuid == NULL) {
-    ExtendedDataGuid = &gEfiStatusCodeSpecificDataGuid;
-  }
-  CopyGuid (&StatusCodeData->Type, ExtendedDataGuid);
-
-  //
-  // Fill in the extended data buffer
-  //
-  CopyMem (StatusCodeData + 1, ExtendedData, ExtendedDataSize);
-
-  //
-  // Report the status code
-  //
-  if (CallerId == NULL) {
-    CallerId = &gEfiCallerIdGuid;
-  }
-  Status = InternalReportStatusCode (Type, Value, Instance, CallerId, StatusCodeData);
-
-  //
-  // Free the allocated buffer
-  //
-  gBS->FreePool (StatusCodeData);
+  Status = InternalReportStatusCodeEx (
+             Type,
+             Value,
+             Instance,
+             CallerId,
+             ExtendedDataGuid,
+             ExtendedData,
+             ExtendedDataSize
+             );
 
   return Status;
 }

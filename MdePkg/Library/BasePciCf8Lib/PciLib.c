@@ -15,7 +15,7 @@
 
 #include <Base.h>
 
-
+#include <Library/BaseLib.h>
 #include <Library/PciCf8Lib.h>
 #include <Library/IoLib.h>
 #include <Library/DebugLib.h>
@@ -1301,7 +1301,7 @@ PciCf8ReadBuffer (
   OUT     VOID                      *Buffer
   )
 {
-  UINTN                             ReturnValue;
+  UINTN   ReturnValue;
 
   ASSERT_INVALID_PCI_ADDRESS (StartAddress, 0);
   ASSERT (((StartAddress & 0xFFF) + Size) <= 0x100);
@@ -1331,7 +1331,8 @@ PciCf8ReadBuffer (
     //
     // Read a word if StartAddress is word aligned
     //
-    *(volatile UINT16 *)Buffer = PciCf8Read16 (StartAddress);
+    WriteUnaligned16 ((UINT16 *)Buffer, (UINT16) PciCf8Read16 (StartAddress));
+
     StartAddress += sizeof (UINT16);
     Size -= sizeof (UINT16);
     Buffer = (UINT16*)Buffer + 1;
@@ -1341,7 +1342,7 @@ PciCf8ReadBuffer (
     //
     // Read as many double words as possible
     //
-    *(volatile UINT32 *)Buffer = PciCf8Read32 (StartAddress);
+    WriteUnaligned32 ((UINT32 *)Buffer, (UINT32) PciCf8Read32 (StartAddress));
     StartAddress += sizeof (UINT32);
     Size -= sizeof (UINT32);
     Buffer = (UINT32*)Buffer + 1;
@@ -1351,7 +1352,7 @@ PciCf8ReadBuffer (
     //
     // Read the last remaining word if exist
     //
-    *(volatile UINT16 *)Buffer = PciCf8Read16 (StartAddress);
+    WriteUnaligned16 ((UINT16 *)Buffer, (UINT16) PciCf8Read16 (StartAddress));
     StartAddress += sizeof (UINT16);
     Size -= sizeof (UINT16);
     Buffer = (UINT16*)Buffer + 1;
@@ -1400,7 +1401,7 @@ PciCf8WriteBuffer (
   IN      VOID                      *Buffer
   )
 {
-  UINTN                             ReturnValue;
+  UINTN   ReturnValue;
 
   ASSERT_INVALID_PCI_ADDRESS (StartAddress, 0);
   ASSERT (((StartAddress & 0xFFF) + Size) <= 0x100);
@@ -1430,7 +1431,7 @@ PciCf8WriteBuffer (
     //
     // Write a word if StartAddress is word aligned
     //
-    PciCf8Write16 (StartAddress, *(UINT16*)Buffer);
+    PciCf8Write16 (StartAddress, ReadUnaligned16 ((UINT16*)Buffer));
     StartAddress += sizeof (UINT16);
     Size -= sizeof (UINT16);
     Buffer = (UINT16*)Buffer + 1;
@@ -1440,7 +1441,7 @@ PciCf8WriteBuffer (
     //
     // Write as many double words as possible
     //
-    PciCf8Write32 (StartAddress, *(UINT32*)Buffer);
+    PciCf8Write32 (StartAddress, ReadUnaligned32 ((UINT32*)Buffer));
     StartAddress += sizeof (UINT32);
     Size -= sizeof (UINT32);
     Buffer = (UINT32*)Buffer + 1;
@@ -1450,7 +1451,7 @@ PciCf8WriteBuffer (
     //
     // Write the last remaining word if exist
     //
-    PciCf8Write16 (StartAddress, *(UINT16*)Buffer);
+    PciCf8Write16 (StartAddress, ReadUnaligned16 ((UINT16*)Buffer));
     StartAddress += sizeof (UINT16);
     Size -= sizeof (UINT16);
     Buffer = (UINT16*)Buffer + 1;

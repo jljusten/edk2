@@ -109,6 +109,7 @@ ChildIsType (
   IN EFI_GUID                                 *SectionDefinitionGuid
   );
 
+#if 0
 STATIC
 VOID
 EFIAPI
@@ -116,13 +117,16 @@ NotifyGuidedExtraction (
   IN  EFI_EVENT                             Event,
   IN  VOID                                  *RpnContext
   );
+#endif
 
+#if 0
 STATIC
 VOID
 CreateGuidedExtractionRpnEvent (
   IN CORE_SECTION_STREAM_NODE                 *ParentStream,
   IN CORE_SECTION_CHILD_NODE                  *ChildNode
   );
+#endif
 
 STATIC
 EFI_STATUS
@@ -577,11 +581,13 @@ Returns:
   }
   
   if (IsListEmpty (&SourceStream->Children) && 
-                   SourceStream->StreamLength > sizeof (EFI_COMMON_SECTION_HEADER)) {
+                   SourceStream->StreamLength >= sizeof (EFI_COMMON_SECTION_HEADER)) {
     //
     // This occurs when a section stream exists, but no child sections
     // have been parsed out yet.  Therefore, extract the first child and add it
     // to the list of children so we can get started.
+    // Section stream may contain an array of zero or more bytes. 
+    // So, its size should be >= the size of commen section header.
     //
     Status = CreateChildNode (SourceStream, 0, &CurrentChildNode);
     if (EFI_ERROR (Status)) {
@@ -932,6 +938,7 @@ Returns:
 }
 
 
+#if 0
 STATIC
 VOID
 CreateGuidedExtractionRpnEvent (
@@ -973,8 +980,10 @@ Returns:
                     FALSE
                     );
 }
-  
-  
+#endif
+
+
+#if 0
 STATIC
 VOID
 EFIAPI
@@ -1053,7 +1062,8 @@ Returns:
   CoreCloseEvent (Event);
   CoreFreePool (Context);
 }  
-  
+#endif
+
 
 STATIC
 VOID

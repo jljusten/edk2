@@ -32,7 +32,7 @@ Abstract:
 //
 #define EFI_SECTION_EXTRACTION_PROTOCOL_GUID \
   { \
-    0x448F5DA4, 0x6DD7, 0x4FE1, 0x93, 0x07, 0x69, 0x22, 0x41, 0x92, 0x21, 0x5D \
+    0x448F5DA4, 0x6DD7, 0x4FE1, {0x93, 0x07, 0x69, 0x22, 0x41, 0x92, 0x21, 0x5D} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_SECTION_EXTRACTION_PROTOCOL);
@@ -72,11 +72,11 @@ EFI_STATUS
 //
 // Protocol definition
 //
-typedef struct _EFI_SECTION_EXTRACTION_PROTOCOL {
+struct _EFI_SECTION_EXTRACTION_PROTOCOL {
   EFI_OPEN_SECTION_STREAM   OpenSectionStream;
   EFI_GET_SECTION           GetSection;
   EFI_CLOSE_SECTION_STREAM  CloseSectionStream;
-} EFI_SECTION_EXTRACTION_PROTOCOL;
+};
 
 extern EFI_GUID gEfiSectionExtractionProtocolGuid;
 

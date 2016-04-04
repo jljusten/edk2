@@ -27,14 +27,14 @@ Abstract:
 
 #define EFI_TCP4_SERVICE_BINDING_PROTOCOL_GUID \
   { \
-    0x00720665, 0x67EB, 0x4a99, 0xBA, 0xF7, 0xD3, 0xC3, 0x3A, 0x1C, 0x7C, 0xC9 \
+    0x00720665, 0x67EB, 0x4a99, {0xBA, 0xF7, 0xD3, 0xC3, 0x3A, 0x1C, 0x7C, 0xC9} \
   }
 
 extern EFI_GUID gEfiTcp4ServiceBindingProtocolGuid;
 
 #define EFI_TCP4_PROTOCOL_GUID \
   { \
-    0x65530BC7, 0xA359, 0x410f, 0xB0, 0x10, 0x5A, 0xAD, 0xC7, 0xEC, 0x2B, 0x62 \
+    0x65530BC7, 0xA359, 0x410f, {0xB0, 0x10, 0x5A, 0xAD, 0xC7, 0xEC, 0x2B, 0x62} \
   }
 
 extern EFI_GUID gEfiTcp4ProtocolGuid;
@@ -227,7 +227,7 @@ EFI_STATUS
   IN EFI_TCP4_PROTOCOL        *This
   );
 
-typedef struct _EFI_TCP4_PROTOCOL {
+struct _EFI_TCP4_PROTOCOL {
   EFI_TCP4_GET_MODE_DATA  GetModeData;
   EFI_TCP4_CONFIGURE      Configure;
   EFI_TCP4_ROUTES         Routes;
@@ -238,7 +238,7 @@ typedef struct _EFI_TCP4_PROTOCOL {
   EFI_TCP4_CLOSE          Close;
   EFI_TCP4_CANCEL         Cancel;
   EFI_TCP4_POLL           Poll;
-} EFI_TCP4_PROTOCOL;
+};
 
 #define EFI_CONNECTION_FIN      EFIERR (104)
 #define EFI_CONNECTION_RESET    EFIERR (105)

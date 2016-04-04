@@ -30,7 +30,7 @@ Abstract:
 #include <Library/DebugLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/MemoryAllocationLib.h>
-#include <library/BaseMemoryLib.h>
+#include <Library/BaseMemoryLib.h>
 
 STATIC
 VOID
@@ -87,7 +87,7 @@ UdpIoWrapTx (
   UINT32                    Count;
   IP4_ADDR                  Ip;
 
-  Token = NetAllocatePool (sizeof (UDP_TX_TOKEN) +
+  Token = AllocatePool (sizeof (UDP_TX_TOKEN) +
                            sizeof (EFI_UDP4_FRAGMENT_DATA) * (Packet->BlockOpNum - 1));
 
   if (Token == NULL) {
@@ -95,7 +95,7 @@ UdpIoWrapTx (
   }
 
   Token->Signature  = UDP_IO_TX_SIGNATURE;
-  NetListInit (&Token->Link);
+  InitializeListHead (&Token->Link);
 
   Token->UdpIo      = UdpIo;
   Token->CallBack   = CallBack;
@@ -107,14 +107,14 @@ UdpIoWrapTx (
 
   Status = gBS->CreateEvent (
                   EVT_NOTIFY_SIGNAL,
-                  NET_TPL_EVENT,
+                  TPL_NOTIFY,
                   UdpIoOnDgramSent,
                   Token,
                   &UdpToken->Event
                   );
 
   if (EFI_ERROR (Status)) {
-    NetFreePool (Token);
+    gBS->FreePool (Token);
     return NULL;
   }
 
@@ -126,10 +126,10 @@ UdpIoWrapTx (
 
   if (EndPoint != NULL) {
     Ip = HTONL (EndPoint->LocalAddr);
-    NetCopyMem (&Token->UdpSession.SourceAddress, &Ip, sizeof (EFI_IPv4_ADDRESS));
+    CopyMem (&Token->UdpSession.SourceAddress, &Ip, sizeof (EFI_IPv4_ADDRESS));
 
     Ip = HTONL (EndPoint->RemoteAddr);
-    NetCopyMem (&Token->UdpSession.DestinationAddress, &Ip, sizeof (EFI_IPv4_ADDRESS));
+    CopyMem (&Token->UdpSession.DestinationAddress, &Ip, sizeof (EFI_IPv4_ADDRESS));
 
     Token->UdpSession.SourcePort      = EndPoint->LocalPort;
     Token->UdpSession.DestinationPort = EndPoint->RemotePort;
@@ -138,7 +138,7 @@ UdpIoWrapTx (
 
   if (Gateway != 0) {
     Ip = HTONL (Gateway);
-    NetCopyMem (&Token->Gateway, &Ip, sizeof (EFI_IPv4_ADDRESS));
+    CopyMem (&Token->Gateway, &Ip, sizeof (EFI_IPv4_ADDRESS));
 
     UdpTxData->GatewayAddress = &Token->Gateway;
   }
@@ -166,7 +166,7 @@ UdpIoFreeTxToken (
   )
 {
   gBS->CloseEvent (Token->UdpToken.Event);
-  NetFreePool (Token);
+  gBS->FreePool (Token);
 }
 
 
@@ -192,7 +192,7 @@ UdpIoCreateRxToken (
   UDP_RX_TOKEN              *Token;
   EFI_STATUS                Status;
 
-  Token = NetAllocatePool (sizeof (UDP_RX_TOKEN));
+  Token = AllocatePool (sizeof (UDP_RX_TOKEN));
 
   if (Token == NULL) {
     return NULL;
@@ -209,14 +209,14 @@ UdpIoCreateRxToken (
 
   Status = gBS->CreateEvent (
                   EVT_NOTIFY_SIGNAL,
-                  NET_TPL_EVENT,
+                  TPL_NOTIFY,
                   UdpIoOnDgramRcvd,
                   Token,
                   &Token->UdpToken.Event
                   );
 
   if (EFI_ERROR (Status)) {
-    NetFreePool (Token);
+    gBS->FreePool (Token);
     return NULL;
   }
 
@@ -238,7 +238,7 @@ UdpIoFreeRxToken (
   )
 {
   gBS->CloseEvent (Token->UdpToken.Event);
-  NetFreePool (Token);
+  gBS->FreePool (Token);
 }
 
 
@@ -256,6 +256,7 @@ UdpIoFreeRxToken (
 
 **/
 UDP_IO_PORT *
+EFIAPI
 UdpIoCreatePort (
   IN  EFI_HANDLE            Controller,
   IN  EFI_HANDLE            Image,
@@ -268,20 +269,20 @@ UdpIoCreatePort (
 
   ASSERT (Configure != NULL);
 
-  UdpIo = NetAllocatePool (sizeof (UDP_IO_PORT));
+  UdpIo = AllocatePool (sizeof (UDP_IO_PORT));
 
   if (UdpIo == NULL) {
     return NULL;
   }
 
   UdpIo->Signature    = UDP_IO_SIGNATURE;
-  NetListInit (&UdpIo->Link);
+  InitializeListHead (&UdpIo->Link);
   UdpIo->RefCnt       = 1;
 
   UdpIo->Controller   = Controller;
   UdpIo->Image        = Image;
 
-  NetListInit (&UdpIo->SentDatagram);
+  InitializeListHead (&UdpIo->SentDatagram);
   UdpIo->RecvRequest  = NULL;
   UdpIo->UdpHandle    = NULL;
 
@@ -336,7 +337,7 @@ FREE_CHILD:
     );
 
 FREE_MEM:
-  NetFreePool (UdpIo);
+  gBS->FreePool (UdpIo);
   return NULL;
 }
 
@@ -363,8 +364,8 @@ UdpIoCancelDgrams (
   IN VOID                   *Context
   )
 {
-  NET_LIST_ENTRY            *Entry;
-  NET_LIST_ENTRY            *Next;
+  LIST_ENTRY                *Entry;
+  LIST_ENTRY                *Next;
   UDP_TX_TOKEN              *Token;
 
   NET_LIST_FOR_EACH_SAFE (Entry, Next, &UdpIo->SentDatagram) {
@@ -387,6 +388,7 @@ UdpIoCancelDgrams (
 
 **/
 EFI_STATUS
+EFIAPI
 UdpIoFreePort (
   IN  UDP_IO_PORT           *UdpIo
   )
@@ -425,10 +427,10 @@ UdpIoFreePort (
     );
 
   if (!IsListEmpty(&UdpIo->Link)) {
-    NetListRemoveEntry (&UdpIo->Link);
+    RemoveEntryList (&UdpIo->Link);
   }
 
-  NetFreePool (UdpIo);
+  gBS->FreePool (UdpIo);
   return EFI_SUCCESS;
 }
 
@@ -444,6 +446,7 @@ UdpIoFreePort (
 
 **/
 VOID
+EFIAPI
 UdpIoCleanPort (
   IN  UDP_IO_PORT           *UdpIo
   )
@@ -485,7 +488,7 @@ UdpIoOnDgramSentDpc (
   Token   = (UDP_TX_TOKEN *) Context;
   ASSERT (Token->Signature == UDP_IO_TX_SIGNATURE);
 
-  NetListRemoveEntry (&Token->Link);
+  RemoveEntryList (&Token->Link);
   Token->CallBack (Token->Packet, NULL, Token->UdpToken.Status, Token->Context);
 
   UdpIoFreeTxToken (Token);
@@ -532,6 +535,7 @@ UdpIoOnDgramSent (
 
 **/
 EFI_STATUS
+EFIAPI
 UdpIoSendDatagram (
   IN  UDP_IO_PORT           *UdpIo,
   IN  NET_BUF               *Packet,
@@ -554,10 +558,10 @@ UdpIoSendDatagram (
   // Insert the tx token into SendDatagram list before transmitting it. Remove
   // it from the list if the returned status is not EFI_SUCCESS.
   //
-  NetListInsertHead (&UdpIo->SentDatagram, &Token->Link);
+  InsertHeadList (&UdpIo->SentDatagram, &Token->Link);
   Status = UdpIo->Udp->Transmit (UdpIo->Udp, &Token->UdpToken);
   if (EFI_ERROR (Status)) {
-    NetListRemoveEntry (&Token->Link);
+    RemoveEntryList (&Token->Link);
     UdpIoFreeTxToken (Token);
     return Status;
   }
@@ -604,6 +608,7 @@ UdpIoCancelSingleDgram (
 
 **/
 VOID
+EFIAPI
 UdpIoCancelSentDatagram (
   IN  UDP_IO_PORT           *UdpIo,
   IN  NET_BUF               *Packet
@@ -708,8 +713,8 @@ UdpIoOnDgramRcvdDpc (
   Points.LocalPort  = UdpSession->DestinationPort;
   Points.RemotePort = UdpSession->SourcePort;
 
-  NetCopyMem (&Points.LocalAddr, &UdpSession->DestinationAddress, sizeof (IP4_ADDR));
-  NetCopyMem (&Points.RemoteAddr, &UdpSession->SourceAddress, sizeof (IP4_ADDR));
+  CopyMem (&Points.LocalAddr, &UdpSession->DestinationAddress, sizeof (IP4_ADDR));
+  CopyMem (&Points.RemoteAddr, &UdpSession->SourceAddress, sizeof (IP4_ADDR));
   Points.LocalAddr  = NTOHL (Points.LocalAddr);
   Points.RemoteAddr = NTOHL (Points.RemoteAddr);
 
@@ -772,6 +777,7 @@ Returns:
 
 **/
 EFI_STATUS
+EFIAPI
 UdpIoRecvDatagram (
   IN  UDP_IO_PORT           *UdpIo,
   IN  UDP_IO_CALLBACK       CallBack,

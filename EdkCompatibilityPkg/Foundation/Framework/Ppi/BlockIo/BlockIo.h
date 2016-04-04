@@ -27,7 +27,7 @@ Abstract:
 
 #define PEI_BLOCK_IO_PPI_GUID \
   { \
-    0x695d8aa1, 0x42ee, 0x4c46, 0x80, 0x5c, 0x6e, 0xa6, 0xbc, 0xe7, 0x99, 0xe3 \
+    0x695d8aa1, 0x42ee, 0x4c46, {0x80, 0x5c, 0x6e, 0xa6, 0xbc, 0xe7, 0x99, 0xe3} \
   }
 
 EFI_FORWARD_DECLARATION (PEI_RECOVERY_BLOCK_IO_INTERFACE);
@@ -77,11 +77,11 @@ EFI_STATUS
   OUT VOID                                     *Buffer
   );
 
-typedef struct _PEI_RECOVERY_BLOCK_IO_INTERFACE {
+struct _PEI_RECOVERY_BLOCK_IO_INTERFACE {
   PEI_GET_NUMBER_BLOCK_DEVICES      GetNumberOfBlockDevices;
   PEI_GET_DEVICE_MEDIA_INFORMATION  GetBlockDeviceMediaInfo;
   PEI_READ_BLOCKS                   ReadBlocks;
-} PEI_RECOVERY_BLOCK_IO_INTERFACE;
+};
 
 extern EFI_GUID gPeiBlockIoPpiGuid;
 

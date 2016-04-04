@@ -24,7 +24,7 @@ Abstract:
 #define _FW_FAULT_TOLERANT_WRITE_LITE_PROTOCOL_H_
 
 #define EFI_FTW_LITE_PROTOCOL_GUID \
-{ 0x3f557189, 0x8dae, 0x45ae, 0xa0, 0xb3, 0x2b, 0x99, 0xca, 0x7a, 0xa7, 0xa0 }
+{ 0x3f557189, 0x8dae, 0x45ae, {0xa0, 0xb3, 0x2b, 0x99, 0xca, 0x7a, 0xa7, 0xa0} }
 
 //
 // Forward reference for pure ANSI compatability
@@ -79,9 +79,9 @@ Returns:
 //
 // Protocol declaration
 //
-typedef struct _EFI_FTW_LITE_PROTOCOL {
+struct _EFI_FTW_LITE_PROTOCOL {
   EFI_FTW_LITE_WRITE               Write;
-} EFI_FTW_LITE_PROTOCOL;
+};
 
 extern EFI_GUID gEfiFaultTolerantWriteLiteProtocolGuid;
 

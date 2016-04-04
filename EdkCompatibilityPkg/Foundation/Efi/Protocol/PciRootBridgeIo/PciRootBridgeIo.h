@@ -28,7 +28,7 @@ Abstract:
 
 #define EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_GUID \
   { \
-    0x2f707ebb, 0x4a1a, 0x11d4, 0x9a, 0x38, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0x4d \
+    0x2f707ebb, 0x4a1a, 0x11d4, {0x9a, 0x38, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0x4d} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL);
@@ -196,7 +196,7 @@ EFI_STATUS
   OUT VOID                                     **Resources
   );
 
-typedef struct _EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL {
+struct _EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL {
   EFI_HANDLE                                      ParentHandle;
   EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_POLL_IO_MEM     PollMem;
   EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_POLL_IO_MEM     PollIo;
@@ -213,7 +213,7 @@ typedef struct _EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL {
   EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_SET_ATTRIBUTES  SetAttributes;
   EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_CONFIGURATION   Configuration;
   UINT32                                          SegmentNumber;
-} EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL;
+};
 
 extern EFI_GUID gEfiPciRootBridgeIoProtocolGuid;
 

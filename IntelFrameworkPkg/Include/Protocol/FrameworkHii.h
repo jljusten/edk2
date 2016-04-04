@@ -51,6 +51,8 @@
 
 typedef struct _EFI_HII_PROTOCOL  EFI_HII_PROTOCOL;
 
+typedef UINT16                    FRAMEWORK_EFI_HII_HANDLE;
+
 //
 // Global definition
 //
@@ -139,7 +141,7 @@ typedef struct {
 // ********************************************************
 //
 typedef struct {
-  EFI_HII_HANDLE  HiiHandle;
+  FRAMEWORK_EFI_HII_HANDLE  HiiHandle;
   EFI_GUID        PackageGuid;
   UINT32          DataTableSize;
   UINT32          IfrDataOffset;
@@ -177,7 +179,7 @@ typedef struct {
   STRING_REF            FormTitle;          // If not 0, will update Form with this info
   UINT16                DataCount;          // The number of Data entries in this structure
   UINT8                 *Data;              // An array of 1+ op-codes, specified by DataCount
-} EFI_HII_UPDATE_DATA;
+} FRAMEWORK_EFI_HII_UPDATE_DATA;
 
 //
 // String attributes
@@ -207,25 +209,6 @@ typedef struct {
   //
 } EFI_HII_STRING_PACK;
 
-//
-// Glyph Attributes
-//
-#define EFI_GLYPH_NON_SPACING   1
-#define EFI_GLYPH_WIDE          2
-
-typedef struct {
-  CHAR16  UnicodeWeight;
-  UINT8   Attributes;
-  UINT8   GlyphCol1[GLYPH_HEIGHT];
-} EFI_NARROW_GLYPH;
-
-typedef struct {
-  CHAR16  UnicodeWeight;
-  UINT8   Attributes;
-  UINT8   GlyphCol1[GLYPH_HEIGHT];
-  UINT8   GlyphCol2[GLYPH_HEIGHT];
-  UINT8   Pad[3];
-} EFI_WIDE_GLYPH;
 
 //
 // A font list consists of a font header followed by a series
@@ -249,117 +232,6 @@ typedef struct {
   EFI_HII_PACK_HEADER Header;
 } EFI_HII_IFR_PACK_HEADER;
 
-//
-// pedef EFI_HII_PACK_HEADER EFI_HII_IFR_PACK_HEADER;
-//
-typedef enum {
-  EfiKeyLCtrl,
-  EfiKeyA0,
-  EfiKeyLAlt,
-  EfiKeySpaceBar,
-  EfiKeyA2,
-  EfiKeyA3,
-  EfiKeyA4,
-  EfiKeyRCtrl,
-  EfiKeyLeftArrow,
-  EfiKeyDownArrow,
-  EfiKeyRightArrow,
-  EfiKeyZero,
-  EfiKeyPeriod,
-  EfiKeyEnter,
-  EfiKeyLShift,
-  EfiKeyB0,
-  EfiKeyB1,
-  EfiKeyB2,
-  EfiKeyB3,
-  EfiKeyB4,
-  EfiKeyB5,
-  EfiKeyB6,
-  EfiKeyB7,
-  EfiKeyB8,
-  EfiKeyB9,
-  EfiKeyB10,
-  EfiKeyRshift,
-  EfiKeyUpArrow,
-  EfiKeyOne,
-  EfiKeyTwo,
-  EfiKeyThree,
-  EfiKeyCapsLock,
-  EfiKeyC1,
-  EfiKeyC2,
-  EfiKeyC3,
-  EfiKeyC4,
-  EfiKeyC5,
-  EfiKeyC6,
-  EfiKeyC7,
-  EfiKeyC8,
-  EfiKeyC9,
-  EfiKeyC10,
-  EfiKeyC11,
-  EfiKeyC12,
-  EfiKeyFour,
-  EfiKeyFive,
-  EfiKeySix,
-  EfiKeyPlus,
-  EfiKeyTab,
-  EfiKeyD1,
-  EfiKeyD2,
-  EfiKeyD3,
-  EfiKeyD4,
-  EfiKeyD5,
-  EfiKeyD6,
-  EfiKeyD7,
-  EfiKeyD8,
-  EfiKeyD9,
-  EfiKeyD10,
-  EfiKeyD11,
-  EfiKeyD12,
-  EfiKeyD13,
-  EfiKeyDel,
-  EfiKeyEnd,
-  EfiKeyPgDn,
-  EfiKeySeven,
-  EfiKeyEight,
-  EfiKeyNine,
-  EfiKeyE0,
-  EfiKeyE1,
-  EfiKeyE2,
-  EfiKeyE3,
-  EfiKeyE4,
-  EfiKeyE5,
-  EfiKeyE6,
-  EfiKeyE7,
-  EfiKeyE8,
-  EfiKeyE9,
-  EfiKeyE10,
-  EfiKeyE11,
-  EfiKeyE12,
-  EfiKeyBackSpace,
-  EfiKeyIns,
-  EfiKeyHome,
-  EfiKeyPgUp,
-  EfiKeyNLck,
-  EfiKeySlash,
-  EfiKeyAsterisk,
-  EfiKeyMinus,
-  EfiKeyEsc,
-  EfiKeyF1,
-  EfiKeyF2,
-  EfiKeyF3,
-  EfiKeyF4,
-  EfiKeyF5,
-  EfiKeyF6,
-  EfiKeyF7,
-  EfiKeyF8,
-  EfiKeyF9,
-  EfiKeyF10,
-  EfiKeyF11,
-  EfiKeyF12,
-  EfiKeyPrint,
-  EfiKeySLck,
-  EfiKeyPause
-} EFI_KEY;
-
 typedef struct {
   EFI_KEY Key;
   CHAR16  Unicode;
@@ -367,7 +239,7 @@ typedef struct {
   CHAR16  AltGrUnicode;
   CHAR16  ShiftedAltGrUnicode;
   UINT16  Modifier;
-} EFI_KEY_DESCRIPTOR;
+} FRAMEWORK_EFI_KEY_DESCRIPTOR;
 
 //
 // This structure allows a sparse set of keys to be redefined
@@ -389,7 +261,7 @@ typedef struct {
 //
 typedef struct {
   EFI_HII_PACK_HEADER Header;
-  EFI_KEY_DESCRIPTOR  *Descriptor;
+  FRAMEWORK_EFI_KEY_DESCRIPTOR  *Descriptor;
   UINT8               DescriptorCount;
 } EFI_HII_KEYBOARD_PACK;
 
@@ -422,7 +294,7 @@ typedef struct _EFI_HII_VARIABLE_PACK_LIST {
 
   @param  This                  A pointer to the EFI_HII_PROTOCOL instance.
   @param  Packages              A pointer to an EFI_HII_PACKAGES package instance.
-  @param  Handle                A pointer to the EFI_HII_HANDLE instance.
+  @param  Handle                A pointer to the FRAMEWORK_EFI_HII_HANDLE  instance.
 
   @retval EFI_SUCCESS           Data was extracted from Packages, the database
                                 was updated with the data, and Handle returned successfully.
@@ -431,10 +303,10 @@ typedef struct _EFI_HII_VARIABLE_PACK_LIST {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_NEW_PACK) (
+(EFIAPI *FRAMEWORK_EFI_HII_NEW_PACK) (
   IN  EFI_HII_PROTOCOL    *This,
   IN  EFI_HII_PACKAGES    *Packages,
-  OUT EFI_HII_HANDLE      *Handle
+  OUT FRAMEWORK_EFI_HII_HANDLE       *Handle
   );
 
 /**
@@ -451,9 +323,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_REMOVE_PACK) (
+(EFIAPI *FRAMEWORK_EFI_HII_REMOVE_PACK) (
   IN EFI_HII_PROTOCOL    *This,
-  IN EFI_HII_HANDLE      Handle
+  IN FRAMEWORK_EFI_HII_HANDLE       Handle
   );
 
 /**
@@ -463,7 +335,7 @@ EFI_STATUS
   @param  HandleBufferLength    On input, a pointer to the length of the handle
                                 buffer. On output, the length of the handle buffer that is required
                                 for the handles found.
-  @param  Handle                An array of EFI_HII_HANDLE instances returned.
+  @param  Handle                An array of FRAMEWORK_EFI_HII_HANDLE  instances returned.
 
   @retval EFI_SUCCESS           Handle was updated successfully.
   @retval EFI_BUFFER_TOO_SMALL  The HandleBufferLength parameter indicates
@@ -472,17 +344,17 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_FIND_HANDLES) (
+(EFIAPI *FRAMEWORK_EFI_HII_FIND_HANDLES) (
   IN     EFI_HII_PROTOCOL *This,
   IN OUT UINT16           *HandleBufferLength,
-  OUT    EFI_HII_HANDLE   *Handle
+  OUT    FRAMEWORK_EFI_HII_HANDLE    *Handle
   );
 
 /**
   Exports the contents of the database into a buffer.
 
   @param  This                  A pointer to the EFI_HII_PROTOCOL instance.
-  @param  Handle                An EFI_HII_HANDLE that corresponds to the desired
+  @param  Handle                An FRAMEWORK_EFI_HII_HANDLE  that corresponds to the desired
                                 handle to export. If the value is 0, the entire database will be exported.
                                 In either case, the data will be exported in a format described by the
                                 structure definition of EFI_HII_EXPORT_TABLE.
@@ -497,9 +369,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_EXPORT) (
+(EFIAPI *FRAMEWORK_EFI_HII_EXPORT) (
   IN     EFI_HII_PROTOCOL *This,
-  IN     EFI_HII_HANDLE   Handle,
+  IN     FRAMEWORK_EFI_HII_HANDLE    Handle,
   IN OUT UINTN            *BufferSize,
   OUT    VOID             *Buffer
   );
@@ -517,9 +389,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_RESET_STRINGS) (
+(EFIAPI *FRAMEWORK_EFI_HII_RESET_STRINGS) (
   IN     EFI_HII_PROTOCOL   *This,
-  IN     EFI_HII_HANDLE     Handle
+  IN     FRAMEWORK_EFI_HII_HANDLE      Handle
   );
 
 /**
@@ -543,7 +415,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_TEST_STRING) (
+(EFIAPI *FRAMEWORK_EFI_HII_TEST_STRING) (
   IN     EFI_HII_PROTOCOL  *This,
   IN     CHAR16            *StringToTest,
   IN OUT UINT32            *FirstMissing,
@@ -573,7 +445,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_GET_GLYPH) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_GLYPH) (
   IN     EFI_HII_PROTOCOL  *This,
   IN     CHAR16            *Source,
   IN OUT UINT16            *Index,
@@ -604,7 +476,7 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_GLYPH_TO_BLT) (
+(EFIAPI *FRAMEWORK_EFI_HII_GLYPH_TO_BLT) (
   IN     EFI_HII_PROTOCOL             *This,
   IN     UINT8                        *GlyphBuffer,
   IN     EFI_GRAPHICS_OUTPUT_BLT_PIXEL Foreground,
@@ -634,10 +506,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_NEW_STRING) (
+(EFIAPI *FRAMEWORK_EFI_HII_NEW_STRING) (
   IN     EFI_HII_PROTOCOL      *This,
   IN     CHAR16                *Language,
-  IN     EFI_HII_HANDLE        Handle,
+  IN     FRAMEWORK_EFI_HII_HANDLE         Handle,
   IN OUT STRING_REF            *Reference,
   IN     CHAR16                *NewString
   );
@@ -657,9 +529,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_GET_PRI_LANGUAGES) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_PRI_LANGUAGES) (
   IN  EFI_HII_PROTOCOL    *This,
-  IN  EFI_HII_HANDLE      Handle,
+  IN  FRAMEWORK_EFI_HII_HANDLE       Handle,
   OUT EFI_STRING          *LanguageString
   );
 
@@ -680,9 +552,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_GET_SEC_LANGUAGES) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_SEC_LANGUAGES) (
   IN  EFI_HII_PROTOCOL    *This,
-  IN  EFI_HII_HANDLE      Handle,
+  IN  FRAMEWORK_EFI_HII_HANDLE       Handle,
   IN  CHAR16              *PrimaryLanguage,
   OUT EFI_STRING          *LanguageString
   );
@@ -712,9 +584,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_GET_STRING) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_STRING) (
   IN     EFI_HII_PROTOCOL  *This,
-  IN     EFI_HII_HANDLE    Handle,
+  IN     FRAMEWORK_EFI_HII_HANDLE     Handle,
   IN     STRING_REF        Token,
   IN     BOOLEAN           Raw,
   IN     CHAR16            *LanguageString,
@@ -746,9 +618,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_GET_LINE) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_LINE) (
   IN     EFI_HII_PROTOCOL  *This,
-  IN     EFI_HII_HANDLE    Handle,
+  IN     FRAMEWORK_EFI_HII_HANDLE     Handle,
   IN     STRING_REF        Token,
   IN OUT UINT16            *Index,
   IN     UINT16            LineWidth,
@@ -780,9 +652,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_GET_FORMS) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_FORMS) (
   IN     EFI_HII_PROTOCOL  *This,
-  IN     EFI_HII_HANDLE    Handle,
+  IN     FRAMEWORK_EFI_HII_HANDLE     Handle,
   IN     EFI_FORM_ID       FormId,
   IN OUT UINTN             *BufferLength,
   OUT    UINT8             *Buffer
@@ -807,9 +679,9 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_GET_DEFAULT_IMAGE) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_DEFAULT_IMAGE) (
   IN     EFI_HII_PROTOCOL           *This,
-  IN     EFI_HII_HANDLE             Handle,
+  IN     FRAMEWORK_EFI_HII_HANDLE   Handle,
   IN     UINTN                      DefaultMask,
   OUT    EFI_HII_VARIABLE_PACK_LIST **VariablePackList
   );
@@ -833,12 +705,12 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_UPDATE_FORM) (
+(EFIAPI *FRAMEWORK_EFI_HII_UPDATE_FORM) (
   IN EFI_HII_PROTOCOL     *This,
-  IN EFI_HII_HANDLE       Handle,
+  IN FRAMEWORK_EFI_HII_HANDLE        Handle,
   IN EFI_FORM_LABEL       Label,
   IN BOOLEAN              AddData,
-  IN EFI_HII_UPDATE_DATA  *Data
+  IN FRAMEWORK_EFI_HII_UPDATE_DATA  *Data
   );
 
 /**
@@ -847,7 +719,7 @@ EFI_STATUS
   @param  This                  A pointer to the EFI_HII_PROTOCOL instance.
   @param  DescriptorCount       A pointer to the number of Descriptor entries being
                                 described in the keyboard layout being retrieved.
-  @param  Descriptor            A pointer to a buffer containing an array of EFI_KEY_DESCRIPTOR
+  @param  Descriptor            A pointer to a buffer containing an array of FRAMEWORK_EFI_KEY_DESCRIPTOR
                                 entries. Each entry will reflect the definition of a specific physical key.
 
   @retval EFI_SUCCESS           The keyboard layout was retrieved successfully.
@@ -855,10 +727,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_HII_GET_KEYBOARD_LAYOUT) (
+(EFIAPI *FRAMEWORK_EFI_HII_GET_KEYBOARD_LAYOUT) (
   IN     EFI_HII_PROTOCOL    *This,
   OUT    UINT16              *DescriptorCount,
-  OUT    EFI_KEY_DESCRIPTOR  *Descriptor
+  OUT    FRAMEWORK_EFI_KEY_DESCRIPTOR  *Descriptor
   );
 
 /**
@@ -924,26 +796,26 @@ EFI_STATUS
 
 **/
 struct _EFI_HII_PROTOCOL {
-  EFI_HII_NEW_PACK            NewPack;
-  EFI_HII_REMOVE_PACK         RemovePack;
-  EFI_HII_FIND_HANDLES        FindHandles;
-  EFI_HII_EXPORT              ExportDatabase;
+  FRAMEWORK_EFI_HII_NEW_PACK            NewPack;
+  FRAMEWORK_EFI_HII_REMOVE_PACK         RemovePack;
+  FRAMEWORK_EFI_HII_FIND_HANDLES        FindHandles;
+  FRAMEWORK_EFI_HII_EXPORT              ExportDatabase;
 
-  EFI_HII_TEST_STRING         TestString;
-  EFI_HII_GET_GLYPH           GetGlyph;
-  EFI_HII_GLYPH_TO_BLT        GlyphToBlt;
+  FRAMEWORK_EFI_HII_TEST_STRING         TestString;
+  FRAMEWORK_EFI_HII_GET_GLYPH           GetGlyph;
+  FRAMEWORK_EFI_HII_GLYPH_TO_BLT        GlyphToBlt;
 
-  EFI_HII_NEW_STRING          NewString;
-  EFI_HII_GET_PRI_LANGUAGES   GetPrimaryLanguages;
-  EFI_HII_GET_SEC_LANGUAGES   GetSecondaryLanguages;
-  EFI_HII_GET_STRING          GetString;
-  EFI_HII_RESET_STRINGS       ResetStrings;
-  EFI_HII_GET_LINE            GetLine;
-  EFI_HII_GET_FORMS           GetForms;
-  EFI_HII_GET_DEFAULT_IMAGE   GetDefaultImage;
-  EFI_HII_UPDATE_FORM         UpdateForm;
+  FRAMEWORK_EFI_HII_NEW_STRING          NewString;
+  FRAMEWORK_EFI_HII_GET_PRI_LANGUAGES   GetPrimaryLanguages;
+  FRAMEWORK_EFI_HII_GET_SEC_LANGUAGES   GetSecondaryLanguages;
+  FRAMEWORK_EFI_HII_GET_STRING          GetString;
+  FRAMEWORK_EFI_HII_RESET_STRINGS       ResetStrings;
+  FRAMEWORK_EFI_HII_GET_LINE            GetLine;
+  FRAMEWORK_EFI_HII_GET_FORMS           GetForms;
+  FRAMEWORK_EFI_HII_GET_DEFAULT_IMAGE   GetDefaultImage;
+  FRAMEWORK_EFI_HII_UPDATE_FORM         UpdateForm;
 
-  EFI_HII_GET_KEYBOARD_LAYOUT GetKeyboardLayout;
+  FRAMEWORK_EFI_HII_GET_KEYBOARD_LAYOUT GetKeyboardLayout;
 };
 
 extern EFI_GUID gEfiHiiProtocolGuid;

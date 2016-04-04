@@ -27,7 +27,7 @@ Revision History
 #define EFI_CACHE_SUBCLASS_VERSION    0x00010000
 
 #define EFI_CACHE_SUBCLASS_GUID \
-{ 0x7f0013a7, 0xdc79, 0x4b22, 0x80, 0x99, 0x11, 0xf7, 0x5f, 0xdc, 0x82, 0x9d }
+{ 0x7f0013a7, 0xdc79, 0x4b22, {0x80, 0x99, 0x11, 0xf7, 0x5f, 0xdc, 0x82, 0x9d} }
 
 typedef EFI_EXP_BASE2_DATA  EFI_CACHE_SIZE_DATA;
 
@@ -73,7 +73,8 @@ typedef enum {
   EfiCacheAssociativity4Way = 5,
   EfiCacheAssociativityFully = 6,
   EfiCacheAssociativity8Way = 7,
-  EfiCacheAssociativity16Way = 8
+  EfiCacheAssociativity16Way = 8,
+  EfiCacheAssociativity24Way = 9
 } EFI_CACHE_ASSOCIATIVITY_DATA;
 
 typedef struct {  

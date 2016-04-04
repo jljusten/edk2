@@ -38,7 +38,7 @@ typedef UINT8 PARALLEL_MODE;
 // signature "$EFI"
 ///////////////////////////////////////////////////////////////////////////////
 
-#define EFI_COMPATIBILITY16_TABLE_SIGNATURE EFI_SIGNATURE_32('$', 'E', 'F', 'I')
+#define EFI_COMPATIBILITY16_TABLE_SIGNATURE EFI_SIGNATURE_32 ('I', 'F', 'E', '$')
 
 typedef struct {
   UINT32  Signature;      // "$EFI"
@@ -375,20 +375,6 @@ typedef struct {
   UINT32                      OsMemoryAbove1Mb;
   UINT32                      UnconventionalDeviceTable;
 } EFI_TO_COMPATIBILITY16_BOOT_TABLE;
-
-///////////////////////////////////////////////////////////////////////////////
-// EFI_DISPATCH_OPROM_TABLE
-///////////////////////////////////////////////////////////////////////////////
-
-typedef struct {
-  UINT16  PnPInstallationCheckSegment;
-  UINT16  PnPInstallationCheckOffset;
-  UINT16  OpromSegment;
-  UINT8   PciBus;
-  UINT8   PciDeviceFunction;
-  UINT8   NumberBbsEntries;
-  VOID    *BbsTablePointer; /// @bug: variable size on 32/64-bit systems.
-} EFI_DISPATCH_OPROM_TABLE;
 
 ///////////////////////////////////////////////////////////////////////////////
 // EFI_LEGACY_INSTALL_PCI_HANDLER

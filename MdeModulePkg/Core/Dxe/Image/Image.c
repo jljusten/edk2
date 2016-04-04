@@ -1,6 +1,8 @@
-/*++
+/** @file 
 
-Copyright (c) 2006 - 2007, Intel Corporation
+  Core image handling services to load and unload PeImage.
+
+Copyright (c) 2006 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,15 +11,7 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-  Image.c
-
-Abstract:
-
-  Core image handling services
-
---*/
+**/
 
 #include <DxeMain.h>
 //
@@ -74,7 +68,7 @@ LOADED_IMAGE_PRIVATE_DATA mCorePrivateImage  = {
   0,                          // Machine
   NULL,                       // Ebc
   NULL,                       // RuntimeData
-  NULL,                       // DeviceHandleDevicePath
+  NULL                        // LoadedImageDevicePath
 };
 
 
@@ -169,6 +163,7 @@ Returns:
 
 EFI_STATUS
 CoreLoadPeImage (
+  IN BOOLEAN                     BootPolicy,  
   IN VOID                        *Pe32Handle,
   IN LOADED_IMAGE_PRIVATE_DATA   *Image,
   IN EFI_PHYSICAL_ADDRESS        DstBuffer    OPTIONAL,
@@ -182,7 +177,8 @@ Routine Description:
   Loads, relocates, and invokes a PE/COFF image
 
 Arguments:
-
+  BootPolicy       - If TRUE, indicates that the request originates from the boot manager,
+                     and that the boot manager is attempting to load FilePath as a boot selection.
   Pe32Handle       - The handle of PE32 image
   Image            - PE image to be loaded
   DstBuffer        - The buffer to store the image
@@ -201,10 +197,14 @@ Returns:
 
 --*/
 {
-  EFI_STATUS      Status;
-  BOOLEAN         DstBufAlocated;
-  UINTN           Size;
+  EFI_STATUS                Status;
+  BOOLEAN                   DstBufAlocated;
+  UINTN                     Size;
+  UINTN                     LinkTimeBase;
+  EFI_TCG_PLATFORM_PROTOCOL *TcgPlatformProtocol;
+  IMAGE_FILE_HANDLE         *FHandle;
 
+  FHandle = NULL;
   ZeroMem (&Image->ImageContext, sizeof (Image->ImageContext));
 
   Image->ImageContext.Handle    = Pe32Handle;
@@ -219,11 +219,13 @@ Returns:
   }
 
   if (!EFI_IMAGE_MACHINE_TYPE_SUPPORTED (Image->ImageContext.Machine)) {
-    //
-    // The PE/COFF loader can support loading image types that can be executed.
-    // If we loaded an image type that we can not execute return EFI_UNSUPORTED.
-    //
-    return EFI_UNSUPPORTED;
+    if (!EFI_IMAGE_MACHINE_CROSS_TYPE_SUPPORTED (Image->ImageContext.Machine)) {
+      //
+      // The PE/COFF loader can support loading image types that can be executed.
+      // If we loaded an image type that we can not execute return EFI_UNSUPORTED.
+      //
+      return EFI_UNSUPPORTED;
+    }
   }
   
   //
@@ -247,6 +249,10 @@ Returns:
     Image->ImageContext.ImageError = IMAGE_ERROR_INVALID_SUBSYSTEM;
     return EFI_UNSUPPORTED;
   }
+  //
+  // Get the image base address in the original PeImage.
+  //
+  LinkTimeBase = (UINTN) Image->ImageContext.ImageAddress;
 
   //
   // Allocate memory of the correct memory type aligned on the required image boundry
@@ -344,6 +350,29 @@ Returns:
         goto Done;
       }
     }
+  }
+
+  //
+  // Measure the image before applying fixup
+  //
+  Status = CoreLocateProtocol (
+             &gEfiTcgPlatformProtocolGuid,
+             NULL,
+             (VOID **) &TcgPlatformProtocol
+             );
+  if (!EFI_ERROR (Status)) {
+    FHandle = (IMAGE_FILE_HANDLE *) Image->ImageContext.Handle;
+    Status = TcgPlatformProtocol->MeasurePeImage (
+                                    BootPolicy,
+                                    (EFI_PHYSICAL_ADDRESS) (UINTN) FHandle->Source,
+                                    FHandle->SourceSize,
+                                    LinkTimeBase,
+                                    Image->ImageContext.ImageType,
+                                    Image->Info.DeviceHandle,
+                                    Image->Info.FilePath
+                                    );
+
+    ASSERT_EFI_ERROR (Status);
   }
 
   //
@@ -583,9 +612,9 @@ Arguments:
                         the image to be loaded.
   SourceSize          - The size in bytes of SourceBuffer.
   DstBuffer           - The buffer to store the image
-  NumberOfPages       - If not NULL, a pointer to the image's page number, if this number
-                        is not enough, return EFI_BUFFER_TOO_SMALL and this parameter contain
-                        the required number.
+  NumberOfPages       - If not NULL, it inputs a pointer to the page number of DstBuffer and outputs
+                        a pointer to the page number of the image. If this number is not enough, 
+                        return EFI_BUFFER_TOO_SMALL and this parameter contains the required number.
   ImageHandle         - Pointer to the returned image handle that is created when the image
                         is successfully loaded.
   EntryPoint          - A pointer to the entry point
@@ -684,7 +713,6 @@ Returns:
   if (!EFI_ERROR (Status)) {
     FilePathSize = CoreDevicePathSize (HandleFilePath) - sizeof(EFI_DEVICE_PATH_PROTOCOL);
     FilePath = (EFI_DEVICE_PATH_PROTOCOL *) ( ((UINT8 *)FilePath) + FilePathSize );
-    Image->DeviceHandleDevicePath = CoreDuplicateDevicePath (HandleFilePath);
   }
 
   //
@@ -722,7 +750,7 @@ Returns:
   //
   // Load the image.  If EntryPoint is Null, it will not be set.
   //
-  Status = CoreLoadPeImage (&FHand, Image, DstBuffer, EntryPoint, Attribute);
+  Status = CoreLoadPeImage (BootPolicy, &FHand, Image, DstBuffer, EntryPoint, Attribute);
   if (EFI_ERROR (Status)) {
     if ((Status == EFI_BUFFER_TOO_SMALL) || (Status == EFI_OUT_OF_RESOURCES)) {
       if (NumberOfPages != NULL) {
@@ -731,6 +759,10 @@ Returns:
     }
     goto Done;
   }
+
+  if (NumberOfPages != NULL) {
+    *NumberOfPages = Image->NumberOfPages;
+  }  
 
   //
   // Register the image in the Debug Image Info Table if the attribute is set
@@ -752,6 +784,26 @@ Returns:
     goto Done;
   }
 
+  //
+  // If DevicePath parameter to the LoadImage() is not NULL, then make a copy of DevicePath,
+  // otherwise Loaded Image Device Path Protocol is installed with a NULL interface pointer.
+  //
+  if (OriginalFilePath != NULL) {
+    Image->LoadedImageDevicePath = CoreDuplicateDevicePath (OriginalFilePath);
+  }
+
+  //
+  // Install Loaded Image Device Path Protocol onto the image handle of a PE/COFE image
+  //
+  Status = CoreInstallProtocolInterface (
+            &Image->Handle,
+            &gEfiLoadedImageDevicePathProtocolGuid,
+            EFI_NATIVE_INTERFACE,
+            Image->LoadedImageDevicePath
+            );
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
 
   //
   // Success.  Return the image handle
@@ -832,7 +884,7 @@ Returns:
              FilePath,
              SourceBuffer,
              SourceSize,
-             (EFI_PHYSICAL_ADDRESS)NULL,
+             (EFI_PHYSICAL_ADDRESS) (UINTN) NULL,
              NULL,
              ImageHandle,
              NULL,
@@ -903,9 +955,6 @@ Returns:
            Attribute
            );
 }
-
-
-
 
 EFI_STATUS
 EFIAPI
@@ -1183,9 +1232,16 @@ Returns:
 
     Status = CoreUninstallProtocolInterface (
                Image->Handle,
+               &gEfiLoadedImageDevicePathProtocolGuid,
+               Image->LoadedImageDevicePath
+               );
+
+    Status = CoreUninstallProtocolInterface (
+               Image->Handle,
                &gEfiLoadedImageProtocolGuid,
                &Image->Info
                );
+
   }
 
   if (Image->RuntimeData != NULL) {
@@ -1212,8 +1268,8 @@ Returns:
     CoreFreePool (Image->Info.FilePath);
   }
 
-  if (Image->DeviceHandleDevicePath != NULL) {
-    CoreFreePool (Image->DeviceHandleDevicePath);
+  if (Image->LoadedImageDevicePath != NULL) {
+    CoreFreePool (Image->LoadedImageDevicePath);
   }
 
   if (Image->FixupData != NULL) {

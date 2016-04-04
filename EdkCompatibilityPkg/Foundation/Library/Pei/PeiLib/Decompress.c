@@ -337,7 +337,8 @@ Returns:
   }
 
   while (Index <= 16) {
-    Weight[Index++] = (UINT16) (1U << (16 - Index));
+    Weight[Index] = (UINT16) (1U << (16 - Index));
+    Index++;
   }
 
   Index = (UINT16) (Start[TableBits + 1] >> JuBits);
@@ -761,8 +762,6 @@ Returns: (VOID)
       }
     }
   }
-
-  return ;
 }
 
 EFI_STATUS

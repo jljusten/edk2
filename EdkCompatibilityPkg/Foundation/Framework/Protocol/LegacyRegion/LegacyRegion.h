@@ -29,7 +29,7 @@ Revision History
 
 #define EFI_LEGACY_REGION_PROTOCOL_GUID \
   { \
-    0xfc9013a, 0x568, 0x4ba9, 0x9b, 0x7e, 0xc9, 0xc3, 0x90, 0xa6, 0x60, 0x9b \
+    0xfc9013a, 0x568, 0x4ba9, {0x9b, 0x7e, 0xc9, 0xc3, 0x90, 0xa6, 0x60, 0x9b} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_LEGACY_REGION_PROTOCOL);
@@ -70,12 +70,12 @@ EFI_STATUS
   OUT UINT32                              *Granularity OPTIONAL
   );
 
-typedef struct _EFI_LEGACY_REGION_PROTOCOL {
+struct _EFI_LEGACY_REGION_PROTOCOL {
   EFI_LEGACY_REGION_DECODE    Decode;
   EFI_LEGACY_REGION_LOCK      Lock;
   EFI_LEGACY_REGION_BOOT_LOCK BootLock;
   EFI_LEGACY_REGION_UNLOCK    UnLock;
-} EFI_LEGACY_REGION_PROTOCOL;
+};
 
 extern EFI_GUID gEfiLegacyRegionProtocolGuid;
 

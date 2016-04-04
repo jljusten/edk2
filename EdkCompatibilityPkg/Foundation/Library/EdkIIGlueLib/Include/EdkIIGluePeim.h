@@ -45,6 +45,7 @@ Abstract:
 #include "EfiCapsule.h"
 #include EFI_PROTOCOL_DEFINITION (DevicePath)
 #include "TianoDevicePath.h"
+#include "PeiPerf.h"
 
 //
 // GUID definitions
@@ -58,6 +59,8 @@ Abstract:
 #include EFI_GUID_DEFINITION (FirmwareFileSystem)
 #include EFI_GUID_DEFINITION (SmramMemoryReserve)
 #include EFI_GUID_DEFINITION (DataHubRecords)
+#include EFI_GUID_DEFINITION (PeiPerformanceHob)
+
 //
 // *** NOTE ***: StatusCodeDataTypeId definition differences need to be 
 // resolved when porting a module to real EDK II
@@ -84,7 +87,7 @@ Abstract:
 #include EFI_PPI_DEFINITION (RecoveryModule)
 #include EFI_PPI_DEFINITION (Reset)
 #include EFI_PPI_DEFINITION (S3Resume)
-#include EFI_PPI_DEFINITION (SecPlatforminformation)
+#include EFI_PPI_DEFINITION (SecPlatformInformation)
 #include EFI_PPI_DEFINITION (SectionExtraction)
 #include EFI_PPI_DEFINITION (Security)
 #include EFI_PPI_DEFINITION (Smbus)
@@ -92,22 +95,22 @@ Abstract:
 #include EFI_PPI_DEFINITION (StatusCode)
 
 
-#include "Common\EdkIIGlueDefinitionChangesPeim.h"
+#include "Common/EdkIIGlueDefinitionChangesPeim.h"
 
 //
 // EdkII Glue Library Class headers
 //
 
 #include "EdkIIGlueBase.h"
-#include "Library\EdkIIGlueDebugLib.h"
-#include "Library\EdkIIGluePostCodeLib.h"
-#include "Library\EdkIIGlueReportStatusCodeLib.h"
-#include "Library\EdkIIGlueHobLib.h"
-#include "Library\EdkIIGlueMemoryAllocationLib.h"
-#include "Library\EdkIIGlueSmbusLib.h"
-#include "Library\EdkIIGluePeiServicesLib.h"
-#include "Library\EdkIIGluePeiServicesTablePointerLib.h"
-#include "Library\EdkIIGlueResourcePublicationLib.h"
-#include "Library\EdkIIGluePeimEntryPoint.h"
+#include "Library/EdkIIGlueDebugLib.h"
+#include "Library/EdkIIGluePostCodeLib.h"
+#include "Library/EdkIIGlueReportStatusCodeLib.h"
+#include "Library/EdkIIGlueHobLib.h"
+#include "Library/EdkIIGlueMemoryAllocationLib.h"
+#include "Library/EdkIIGlueSmbusLib.h"
+#include "Library/EdkIIGluePeiServicesLib.h"
+#include "Library/EdkIIGluePeiServicesTablePointerLib.h"
+#include "Library/EdkIIGlueResourcePublicationLib.h"
+#include "Library/EdkIIGluePeimEntryPoint.h"
 
 #endif

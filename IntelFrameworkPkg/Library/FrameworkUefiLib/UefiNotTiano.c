@@ -1,7 +1,7 @@
 /** @file
   Library functions that abstract areas of conflict between Tiano an UEFI 2.1.
 
-  Help Port Framework/Tinao code that has conflicts with UEFI 2.1 by hiding the
+  Help Port Framework/Tiano code that has conflicts with UEFI 2.1 by hiding the
   oldconflicts with library functions and supporting implementations of the old
   (EDK/EFI 1.10) and new (EDK II/UEFI 2.1) way. This module is a DXE driver as
   it contains DXE enum extensions for EFI event services.
@@ -137,7 +137,7 @@ EfiCreateEventLegacyBootEx (
   the EDK/EFI 1.10 form and EDK II/UEFI 2.0 form and allows common code to
   work both ways.
 
-  @param  LegacyBootEvent   Returns the EFI event returned from gBS->CreateEvent(Ex).
+  @param  ReadyToBootEvent   Returns the EFI event returned from gBS->CreateEvent(Ex).
 
   @retval EFI_SUCCESS       Event was created.
   @retval Other             Event was not created.
@@ -170,7 +170,7 @@ EfiCreateEventReadyToBoot (
   @param  NotifyTpl         The task priority level of the event.
   @param  NotifyFunction    The notification function to call when the event is signaled.
   @param  NotifyContext     The content to pass to NotifyFunction when the event is signaled.
-  @param  LegacyBootEvent   Returns the EFI event returned from gBS->CreateEvent(Ex).
+  @param  ReadyToBootEvent  Returns the EFI event returned from gBS->CreateEvent(Ex).
 
   @retval EFI_SUCCESS       Event was created.
   @retval Other             Event was not created.

@@ -27,7 +27,7 @@ Abstract:
 
 #define EFI_SMBUS_HC_PROTOCOL_GUID \
   { \
-    0xe49d33ed, 0x513d, 0x4634, 0xb6, 0x98, 0x6f, 0x55, 0xaa, 0x75, 0x1c, 0x1b \
+    0xe49d33ed, 0x513d, 0x4634, {0xb6, 0x98, 0x6f, 0x55, 0xaa, 0x75, 0x1c, 0x1b} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_SMBUS_HC_PROTOCOL);
@@ -82,12 +82,12 @@ EFI_STATUS
   IN      EFI_SMBUS_NOTIFY_FUNCTION     NotifyFunction
   );
 
-typedef struct _EFI_SMBUS_HC_PROTOCOL {
+struct _EFI_SMBUS_HC_PROTOCOL {
   EFI_SMBUS_HC_EXECUTE_OPERATION    Execute;
   EFI_SMBUS_HC_PROTOCOL_ARP_DEVICE  ArpDevice;
   EFI_SMBUS_HC_PROTOCOL_GET_ARP_MAP GetArpMap;
   EFI_SMBUS_HC_PROTOCOL_NOTIFY      Notify;
-} EFI_SMBUS_HC_PROTOCOL;
+};
 
 extern EFI_GUID gEfiSmbusProtocolGuid;
 #endif

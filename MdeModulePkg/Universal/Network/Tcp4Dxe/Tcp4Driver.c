@@ -51,6 +51,11 @@ SOCK_INIT_DATA mTcp4DefaultSockData = {
   TCP_SND_BUF_SIZE,
   TCP_RCV_BUF_SIZE,
   &mTcp4ProtocolTemplate,
+  Tcp4CreateSocketCallback,
+  Tcp4DestroySocketCallback,
+  NULL,
+  NULL,
+  0,
   Tcp4Dispatcher,
   NULL,
 };
@@ -93,7 +98,7 @@ Tcp4CreateTimer (
 
     Status = gBS->CreateEvent (
                     EVT_TIMER | EVT_NOTIFY_SIGNAL,
-                    NET_TPL_EVENT,
+                    TPL_NOTIFY,
                     TcpTicking,
                     NULL,
                     &mTcp4Timer.TimerEvent
@@ -278,10 +283,10 @@ Tcp4DriverBindingStart (
   TCP4_SERVICE_DATA        *TcpServiceData;
   IP_IO_OPEN_DATA          OpenData;
 
-  TcpServiceData = NetAllocateZeroPool (sizeof (TCP4_SERVICE_DATA));
+  TcpServiceData = AllocateZeroPool (sizeof (TCP4_SERVICE_DATA));
 
   if (NULL == TcpServiceData) {
-    TCP4_DEBUG_ERROR (("Tcp4DriverBindingStart: Have no enough"
+    DEBUG ((EFI_D_ERROR, "Tcp4DriverBindingStart: Have no enough"
       " resource to create a Tcp Servcie Data!\n"));
 
     return EFI_OUT_OF_RESOURCES;
@@ -293,7 +298,7 @@ Tcp4DriverBindingStart (
   TcpServiceData->IpIo = IpIoCreate (This->DriverBindingHandle, ControllerHandle);
   if (NULL == TcpServiceData->IpIo) {
 
-    TCP4_DEBUG_ERROR (("Tcp4DriverBindingStart: Have no enough"
+    DEBUG ((EFI_D_ERROR, "Tcp4DriverBindingStart: Have no enough"
       " resource to create an Ip Io!\n"));
 
     Status = EFI_OUT_OF_RESOURCES;
@@ -303,7 +308,7 @@ Tcp4DriverBindingStart (
   //
   // Configure and start IpIo.
   //
-  NetZeroMem (&OpenData, sizeof (IP_IO_OPEN_DATA));
+  ZeroMem (&OpenData, sizeof (IP_IO_OPEN_DATA));
 
   CopyMem (&OpenData.IpConfigData, &mIpIoDefaultIpConfigData, sizeof (OpenData.IpConfigData));
   OpenData.IpConfigData.DefaultProtocol = EFI_IP_PROTO_TCP;
@@ -321,7 +326,7 @@ Tcp4DriverBindingStart (
   Status = Tcp4CreateTimer ();
   if (EFI_ERROR (Status)) {
 
-    TCP4_DEBUG_ERROR (("Tcp4DriverBindingStart: Create TcpTimer"
+    DEBUG ((EFI_D_ERROR, "Tcp4DriverBindingStart: Create TcpTimer"
       " Event failed with %r\n", Status));
 
     goto ON_ERROR;
@@ -341,7 +346,7 @@ Tcp4DriverBindingStart (
                   );
   if (EFI_ERROR (Status)) {
 
-    TCP4_DEBUG_ERROR (("Tcp4DriverBindingStart: Install Tcp4 Service Binding"
+    DEBUG ((EFI_D_ERROR, "Tcp4DriverBindingStart: Install Tcp4 Service Binding"
       " Protocol failed for %r\n", Status));
 
     Tcp4DestroyTimer ();
@@ -355,7 +360,7 @@ Tcp4DriverBindingStart (
   TcpServiceData->Signature           = TCP4_DRIVER_SIGNATURE;
   TcpServiceData->DriverBindingHandle = This->DriverBindingHandle;
 
-  NetListInit (&TcpServiceData->SocketList);
+  InitializeListHead (&TcpServiceData->SocketList);
 
   TcpSetVariableData (TcpServiceData);
 
@@ -367,7 +372,7 @@ ON_ERROR:
     IpIoDestroy (TcpServiceData->IpIo);
   }
 
-  NetFreePool (TcpServiceData);
+  gBS->FreePool (TcpServiceData);
 
   return Status;
 }
@@ -421,7 +426,7 @@ Tcp4DriverBindingStop (
                   );
   if (EFI_ERROR (Status)) {
 
-    TCP4_DEBUG_ERROR (("Tcp4DriverBindingStop: Locate Tcp4 Service "
+    DEBUG ((EFI_D_ERROR, "Tcp4DriverBindingStop: Locate Tcp4 Service "
       " Binding Protocol failed with %r\n", Status));
 
     return EFI_DEVICE_ERROR;
@@ -458,10 +463,10 @@ Tcp4DriverBindingStop (
     //
     // Release the TCP service data
     //
-    NetFreePool (TcpServiceData);
+    gBS->FreePool (TcpServiceData);
   } else {
 
-    while (!NetListIsEmpty (&TcpServiceData->SocketList)) {
+    while (!IsListEmpty (&TcpServiceData->SocketList)) {
       Sock = NET_LIST_HEAD (&TcpServiceData->SocketList, SOCKET, Link);
 
       ServiceBinding->DestroyChild (ServiceBinding, Sock->SockHandle);
@@ -469,6 +474,97 @@ Tcp4DriverBindingStop (
   }
 
   return Status;
+}
+
+EFI_STATUS
+Tcp4CreateSocketCallback (
+  IN SOCKET  *This,
+  IN VOID    *Context
+  )
+{
+  EFI_STATUS         Status;
+  TCP4_SERVICE_DATA  *TcpServiceData;
+  EFI_IP4_PROTOCOL   *Ip4;
+
+  TcpServiceData = ((TCP4_PROTO_DATA *) This->ProtoReserved)->TcpService;
+
+  //
+  // Open the default Ip4 protocol of IP_IO BY_DRIVER.
+  //
+  Status = gBS->OpenProtocol (
+                  TcpServiceData->IpIo->ChildHandle,
+                  &gEfiIp4ProtocolGuid,
+                  (VOID **) &Ip4,
+                  TcpServiceData->DriverBindingHandle,
+                  This->SockHandle,
+                  EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  //
+  // Open the device path on the handle where service binding resides on.
+  //
+  Status = gBS->OpenProtocol (
+                  TcpServiceData->ControllerHandle,
+                  &gEfiDevicePathProtocolGuid,
+                  (VOID **) &This->ParentDevicePath,
+                  TcpServiceData->DriverBindingHandle,
+                  This->SockHandle,
+                  EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER
+                  );
+  if (EFI_ERROR (Status)) {
+    gBS->CloseProtocol (
+           TcpServiceData->IpIo->ChildHandle,
+           &gEfiIp4ProtocolGuid,
+           TcpServiceData->DriverBindingHandle,
+           This->SockHandle
+           );
+  } else {
+    //
+    // Insert this socket into the SocketList.
+    //
+    InsertTailList (&TcpServiceData->SocketList, &This->Link);
+  }
+
+  return Status;
+}
+
+VOID
+Tcp4DestroySocketCallback (
+  IN SOCKET  *This,
+  IN VOID    *Context
+  )
+{
+  TCP4_SERVICE_DATA  *TcpServiceData;
+
+  TcpServiceData = ((TCP4_PROTO_DATA *) This->ProtoReserved)->TcpService;
+
+  //
+  // Remove this node from the list.
+  //
+  RemoveEntryList (&This->Link);
+
+  //
+  // Close the device path protocol
+  //
+  gBS->CloseProtocol (
+         TcpServiceData->ControllerHandle,
+         &gEfiDevicePathProtocolGuid,
+         TcpServiceData->DriverBindingHandle,
+         This->SockHandle
+         );
+
+  //
+  // Close the Ip4 protocol.
+  //
+  gBS->CloseProtocol (
+         TcpServiceData->IpIo->ChildHandle,
+         &gEfiIp4ProtocolGuid,
+         TcpServiceData->DriverBindingHandle,
+         This->SockHandle
+         );
 }
 
 /**
@@ -497,14 +593,14 @@ Tcp4ServiceBindingCreateChild (
   TCP4_SERVICE_DATA *TcpServiceData;
   TCP4_PROTO_DATA   TcpProto;
   EFI_STATUS        Status;
-  VOID              *Ip4;
   EFI_TPL           OldTpl;
 
   if (NULL == This || NULL == ChildHandle) {
     return EFI_INVALID_PARAMETER;
   }
 
-  OldTpl              = NET_RAISE_TPL (NET_TPL_LOCK);
+  OldTpl              = gBS->RaiseTPL (TPL_CALLBACK);
+  Status              = EFI_SUCCESS;
   TcpServiceData      = TCP4_FROM_THIS (This);
   TcpProto.TcpService = TcpServiceData;
   TcpProto.TcpPcb     = NULL;
@@ -513,61 +609,21 @@ Tcp4ServiceBindingCreateChild (
   // Create a tcp instance with defualt Tcp default
   // sock init data and TcpProto
   //
+  mTcp4DefaultSockData.ProtoData     = &TcpProto;
+  mTcp4DefaultSockData.DataSize      = sizeof (TCP4_PROTO_DATA);
   mTcp4DefaultSockData.DriverBinding = TcpServiceData->DriverBindingHandle;
 
-  Sock = SockCreateChild (&mTcp4DefaultSockData, &TcpProto, sizeof (TCP4_PROTO_DATA));
+  Sock = SockCreateChild (&mTcp4DefaultSockData);
   if (NULL == Sock) {
-    TCP4_DEBUG_ERROR (("Tcp4DriverBindingCreateChild: "
+    DEBUG ((EFI_D_ERROR, "Tcp4DriverBindingCreateChild: "
       "No resource to create a Tcp Child\n"));
 
     Status = EFI_OUT_OF_RESOURCES;
-    goto ON_EXIT;
-  }
-
-  *ChildHandle = Sock->SockHandle;
-
-  //
-  // Open the default Ip4 protocol of IP_IO BY_DRIVER.
-  //
-  Status = gBS->OpenProtocol (
-                  TcpServiceData->IpIo->ChildHandle,
-                  &gEfiIp4ProtocolGuid,
-                  (VOID **) &Ip4,
-                  TcpServiceData->DriverBindingHandle,
-                  Sock->SockHandle,
-                  EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER
-                  );
-  if (EFI_ERROR (Status)) {
-    SockDestroyChild (Sock);
-    goto ON_EXIT;
-  }
-
-  //
-  // Open the device path on the handle where service binding resides on.
-  //
-  Status = gBS->OpenProtocol (
-                  TcpServiceData->ControllerHandle,
-                  &gEfiDevicePathProtocolGuid,
-                  (VOID **) &Sock->ParentDevicePath,
-                  TcpServiceData->DriverBindingHandle,
-                  Sock->SockHandle,
-                  EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER
-                  );
-  if (EFI_ERROR (Status)) {
-    gBS->CloseProtocol (
-           TcpServiceData->IpIo->ChildHandle,
-           &gEfiIp4ProtocolGuid,
-           TcpServiceData->DriverBindingHandle,
-           Sock->SockHandle
-           );
-    SockDestroyChild (Sock);
   } else {
-    NetListInsertTail (&TcpServiceData->SocketList, &Sock->Link);
+    *ChildHandle = Sock->SockHandle;
   }
 
-ON_EXIT:
-
-  NET_RESTORE_TPL (OldTpl);
+  gBS->RestoreTPL (OldTpl);
   return Status;
 }
 
@@ -594,15 +650,13 @@ Tcp4ServiceBindingDestroyChild (
   EFI_STATUS         Status;
   EFI_TCP4_PROTOCOL  *Tcp4;
   SOCKET             *Sock;
-  TCP4_PROTO_DATA    *TcpProtoData;
-  TCP4_SERVICE_DATA  *TcpServiceData;
   EFI_TPL            OldTpl;
 
   if (NULL == This || NULL == ChildHandle) {
     return EFI_INVALID_PARAMETER;
   }
 
-  OldTpl = NET_RAISE_TPL (NET_TPL_LOCK);
+  OldTpl = gBS->RaiseTPL (TPL_CALLBACK);
 
   //
   // retrieve the Tcp4 protocol from ChildHandle
@@ -617,42 +671,17 @@ Tcp4ServiceBindingDestroyChild (
                   );
   if (EFI_ERROR (Status)) {
     Status = EFI_UNSUPPORTED;
-    goto ON_EXIT;
+  } else {
+    //
+    // destroy this sock and related Tcp protocol control
+    // block
+    //
+    Sock = SOCK_FROM_THIS (Tcp4);
+
+    SockDestroyChild (Sock);
   }
 
-  //
-  // destroy this sock and related Tcp protocol control
-  // block
-  //
-  Sock           = SOCK_FROM_THIS (Tcp4);
-  TcpProtoData   = (TCP4_PROTO_DATA *) Sock->ProtoReserved;
-  TcpServiceData = TcpProtoData->TcpService;
-
-  NetListRemoveEntry (&Sock->Link);
-
-  SockDestroyChild (Sock);
-
-  //
-  // Close the device path protocol
-  //
-  gBS->CloseProtocol (
-         TcpServiceData->ControllerHandle,
-         &gEfiDevicePathProtocolGuid,
-         TcpServiceData->DriverBindingHandle,
-         ChildHandle
-         );
-
-  //
-  // Close the Ip4 protocol.
-  //
-  gBS->CloseProtocol (
-         TcpServiceData->IpIo->ChildHandle,
-         &gEfiIp4ProtocolGuid,
-         TcpServiceData->DriverBindingHandle,
-         ChildHandle
-         );
-
-ON_EXIT:
-  NET_RESTORE_TPL (OldTpl);
+  gBS->RestoreTPL (OldTpl);
   return Status;
 }
+

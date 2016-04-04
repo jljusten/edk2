@@ -170,7 +170,8 @@ STATIC TEXT_OUT_SPLITTER_PRIVATE_DATA mConOut = {
     NULL
   },
   (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *) NULL,
-  (TEXT_OUT_GOP_MODE *) NULL,
+  (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *) NULL,
+  0,
   0,
   TRUE,
   {
@@ -233,7 +234,8 @@ STATIC TEXT_OUT_SPLITTER_PRIVATE_DATA mStdErr = {
     NULL
   },
   (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *) NULL,
-  (TEXT_OUT_GOP_MODE *) NULL,
+  (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *) NULL,
+  0,
   0,
   TRUE,
   {
@@ -663,6 +665,7 @@ ConSplitterTextOutConstructor (
   )
 {
   EFI_STATUS  Status;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  *Info;
 
   //
   // Copy protocols template
@@ -679,6 +682,12 @@ ConSplitterTextOutConstructor (
   // Initilize console output splitter's private data.
   //
   ConOutPrivate->TextOut.Mode = &ConOutPrivate->TextOutMode;
+
+  //
+  // When new console device is added, the new mode will be set later,
+  // so put current mode back to init state.
+  //
+  ConOutPrivate->TextOutMode.Mode = 0xFF;
 
   Status = ConSplitterGrowBuffer (
             sizeof (TEXT_OUT_AND_GOP_DATA),
@@ -722,22 +731,25 @@ ConSplitterTextOutConstructor (
     }
     //
     // Setup the DevNullGraphicsOutput to 800 x 600 x 32 bits per pixel
+    // DevNull will be updated to user-defined mode after driver has started.
     //
-    if ((ConOutPrivate->GraphicsOutputModeBuffer = AllocateZeroPool (sizeof (TEXT_OUT_GOP_MODE))) == NULL) {
+    if ((ConOutPrivate->GraphicsOutputModeBuffer = AllocateZeroPool (sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION))) == NULL) {
       return EFI_OUT_OF_RESOURCES;
     }
-    ConOutPrivate->GraphicsOutputModeBuffer[0].HorizontalResolution = 800;
-    ConOutPrivate->GraphicsOutputModeBuffer[0].VerticalResolution = 600;
+    Info = &ConOutPrivate->GraphicsOutputModeBuffer[0];
+    Info->Version = 0;
+    Info->HorizontalResolution = 800;
+    Info->VerticalResolution = 600;
+    Info->PixelFormat = PixelBltOnly;
+    Info->PixelsPerScanLine = 800;
+    CopyMem (ConOutPrivate->GraphicsOutput.Mode->Info, Info, sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION));
+    ConOutPrivate->GraphicsOutput.Mode->SizeOfInfo = sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION);
 
     //
     // Initialize the following items, theset items remain unchanged in GraphicsOutput->SetMode()
-    //  GraphicsOutputMode->Info->Version, GraphicsOutputMode->Info->PixelFormat
-    //  GraphicsOutputMode->SizeOfInfo, GraphicsOutputMode->FrameBufferBase, GraphicsOutputMode->FrameBufferSize
+    // GraphicsOutputMode->FrameBufferBase, GraphicsOutputMode->FrameBufferSize
     //
-    ConOutPrivate->GraphicsOutput.Mode->Info->Version = 0;
-    ConOutPrivate->GraphicsOutput.Mode->Info->PixelFormat = PixelBltOnly;
-    ConOutPrivate->GraphicsOutput.Mode->SizeOfInfo = sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION);
-    ConOutPrivate->GraphicsOutput.Mode->FrameBufferBase = (EFI_PHYSICAL_ADDRESS) NULL;
+    ConOutPrivate->GraphicsOutput.Mode->FrameBufferBase = (EFI_PHYSICAL_ADDRESS) (UINTN) NULL;
     ConOutPrivate->GraphicsOutput.Mode->FrameBufferSize = 0;
 
     ConOutPrivate->GraphicsOutput.Mode->MaxMode = 1;
@@ -1224,6 +1236,9 @@ Returns:
   if (EFI_ERROR (Status)) {
     return Status;
   }
+
+  GraphicsOutput = NULL;
+  UgaDraw        = NULL;
   //
   // Try to Open Graphics Output protocol
   //
@@ -1235,23 +1250,27 @@ Returns:
                   mConOut.VirtualHandle,
                   EFI_OPEN_PROTOCOL_GET_PROTOCOL
                   );
-  if (EFI_ERROR (Status)) {
-    GraphicsOutput = NULL;
+
+  if (EFI_ERROR (Status) && FeaturePcdGet (PcdUgaConsumeSupport)) {
+    //
+    // Open UGA_DRAW protocol
+    //
+    Status = gBS->OpenProtocol (
+                    ControllerHandle,
+                    &gEfiUgaDrawProtocolGuid,
+                    (VOID **) &UgaDraw,
+                    This->DriverBindingHandle,
+                    mConOut.VirtualHandle,
+                    EFI_OPEN_PROTOCOL_GET_PROTOCOL
+                    );
   }
+
   //
-  // Open UGA_DRAW protocol
+  // When new console device is added, the new mode will be set later,
+  // so put current mode back to init state.
   //
-  Status = gBS->OpenProtocol (
-                  ControllerHandle,
-                  &gEfiUgaDrawProtocolGuid,
-                  (VOID **) &UgaDraw,
-                  This->DriverBindingHandle,
-                  mConOut.VirtualHandle,
-                  EFI_OPEN_PROTOCOL_GET_PROTOCOL
-                  );
-  if (EFI_ERROR (Status)) {
-    UgaDraw = NULL;
-  }
+  mConOut.TextOutMode.Mode = 0xFF;
+
   //
   // If both ConOut and StdErr incorporate the same Text Out device,
   // their MaxMode and QueryData should be the intersection of both.
@@ -1259,7 +1278,7 @@ Returns:
   Status = ConSplitterTextOutAddDevice (&mConOut, TextOut, GraphicsOutput, UgaDraw);
   ConSplitterTextOutSetAttribute (&mConOut.TextOut, EFI_TEXT_ATTR (EFI_LIGHTGRAY, EFI_BLACK));
 
-  if (FeaturePcdGet (PcdConOutUgaSupport)) {
+  if (FeaturePcdGet (PcdConOutUgaSupport) && FeaturePcdGet (PcdUgaConsumeSupport)) {
     //
     // Match the UGA mode data of ConOut with the current mode
     //
@@ -1313,6 +1332,13 @@ Returns:
   if (EFI_ERROR (Status)) {
     return Status;
   }
+
+  //
+  // When new console device is added, the new mode will be set later,
+  // so put current mode back to init state.
+  //
+  mStdErr.TextOutMode.Mode = 0xFF;
+
   //
   // If both ConOut and StdErr incorporate the same Text Out device,
   // their MaxMode and QueryData should be the intersection of both.
@@ -2146,12 +2172,20 @@ Returns:
   Mode  = 0;
   Index = 0;
   while (Mode < MaxMode) {
-    TextOut->QueryMode (
-              TextOut,
-              Mode,
-              &Private->TextOutQueryData[Mode].Columns,
-              &Private->TextOutQueryData[Mode].Rows
-              );
+    Status = TextOut->QueryMode (
+                  TextOut,
+                  Mode,
+                  &Private->TextOutQueryData[Mode].Columns,
+                  &Private->TextOutQueryData[Mode].Rows
+                  );
+    //
+    // If mode 1 (80x50) is not supported, make sure mode 1 in TextOutQueryData
+    // is clear to 0x0.
+    //
+    if ((EFI_ERROR(Status)) && (Mode == 1)) {
+      Private->TextOutQueryData[Mode].Columns = 0;
+      Private->TextOutQueryData[Mode].Rows = 0;
+    }
     Private->TextOutModeMap[Index] = Mode;
     Mode++;
     Index += Private->TextOutListCount;
@@ -2160,6 +2194,24 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Reconstruct TextOutModeMap to get intersection of modes
+
+  This routine reconstruct TextOutModeMap to get the intersection
+  of modes for all console out devices. Because EFI/UEFI spec require
+  mode 0 is 80x25, mode 1 is 80x50, this routine will not check the
+  intersection for mode 0 and mode 1.
+
+  @parm TextOutModeMap  Current text out mode map, begin with the mode 80x25
+  @parm NewlyAddedMap   New text out mode map, begin with the mode 80x25
+  @parm MapStepSize     Mode step size for one console device
+  @parm NewMapStepSize  Mode step size for one console device
+  @parm MaxMode         Current max text mode
+  @parm CurrentMode     Current text mode
+
+  @retval None
+
+**/
 STATIC
 VOID
 ConSplitterGetIntersection (
@@ -2177,9 +2229,16 @@ ConSplitterGetIntersection (
   INT32 CurrentMaxMode;
   INT32 Mode;
 
-  Index           = 0;
-  CurrentMapEntry = TextOutModeMap;
-  NextMapEntry    = TextOutModeMap;
+  //
+  // According to EFI/UEFI spec, mode 0 and mode 1 have been reserved
+  // for 80x25 and 80x50 in Simple Text Out protocol, so don't make intersection
+  // for mode 0 and mode 1, mode number starts from 2.
+  //
+  Index           = 2;
+  CurrentMapEntry = &TextOutModeMap[MapStepSize * 2];
+  NextMapEntry    = &TextOutModeMap[MapStepSize * 2];
+  NewlyAddedMap   = &NewlyAddedMap[NewMapStepSize * 2];
+
   CurrentMaxMode  = *MaxMode;
   Mode            = *CurrentMode;
 
@@ -2237,10 +2296,12 @@ Returns:
   INT32                         Index;
   INT32                         *TextOutModeMap;
   INT32                         *MapTable;
+  INT32                         QueryMode;
   TEXT_OUT_SPLITTER_QUERY_DATA  *TextOutQueryData;
   UINTN                         Rows;
   UINTN                         Columns;
   UINTN                         StepSize;
+  EFI_STATUS                    Status;
 
   //
   // Must make sure that current mode won't change even if mode number changes
@@ -2256,14 +2317,23 @@ Returns:
   Mode      = 0;
   MapTable  = TextOutModeMap + Private->CurrentNumberOfConsoles;
   while (Mode < TextOut->Mode->MaxMode) {
-    TextOut->QueryMode (TextOut, Mode, &Columns, &Rows);
-
+    Status = TextOut->QueryMode (TextOut, Mode, &Columns, &Rows);
+    if (EFI_ERROR(Status)) {
+      if (Mode == 1) {
+        MapTable[StepSize] = Mode;
+        TextOutQueryData[Mode].Columns = 0;
+        TextOutQueryData[Mode].Rows = 0;
+      }
+      Mode++;
+      continue;
+    }
     //
-    // Search the QueryData database to see if they intersects
+    // Search the intersection map and QueryData database to see if they intersects
     //
     Index = 0;
     while (Index < CurrentMaxMode) {
-      if ((TextOutQueryData[Index].Rows == Rows) && (TextOutQueryData[Index].Columns == Columns)) {
+      QueryMode = *(TextOutModeMap + Index * StepSize);
+      if ((TextOutQueryData[QueryMode].Rows == Rows) && (TextOutQueryData[QueryMode].Columns == Columns)) {
         MapTable[Index * StepSize] = Mode;
         break;
       }
@@ -2302,7 +2372,7 @@ Arguments:
 
 Returns:
 
-  None
+  EFI_SUCCESS
   EFI_OUT_OF_RESOURCES
 
 --*/
@@ -2313,10 +2383,14 @@ Returns:
   TEXT_OUT_AND_GOP_DATA         *StdErrTextOutList;
   UINTN                         Indexi;
   UINTN                         Indexj;
-  UINTN                         Rows;
-  UINTN                         Columns;
+  UINTN                         ConOutRows;
+  UINTN                         ConOutColumns;
+  UINTN                         StdErrRows;
+  UINTN                         StdErrColumns;
   INT32                         ConOutMaxMode;
   INT32                         StdErrMaxMode;
+  INT32                         ConOutMode;
+  INT32                         StdErrMode;
   INT32                         Mode;
   INT32                         Index;
   INT32                         *ConOutModeMap;
@@ -2325,6 +2399,8 @@ Returns:
   INT32                         *StdErrMapTable;
   TEXT_OUT_SPLITTER_QUERY_DATA  *ConOutQueryData;
   TEXT_OUT_SPLITTER_QUERY_DATA  *StdErrQueryData;
+  UINTN                         ConOutStepSize;
+  UINTN                         StdErrStepSize;
   BOOLEAN                       FoundTheSameTextOut;
   UINTN                         ConOutMapTableSize;
   UINTN                         StdErrMapTableSize;
@@ -2360,10 +2436,12 @@ Returns:
   //
   ConOutMaxMode     = mConOut.TextOutMode.MaxMode;
   ConOutModeMap     = mConOut.TextOutModeMap;
+  ConOutStepSize    = mConOut.TextOutListCount;
   ConOutQueryData   = mConOut.TextOutQueryData;
 
   StdErrMaxMode     = mStdErr.TextOutMode.MaxMode;
   StdErrModeMap     = mStdErr.TextOutModeMap;
+  StdErrStepSize    = mStdErr.TextOutListCount;
   StdErrQueryData   = mStdErr.TextOutQueryData;
 
   //
@@ -2392,13 +2470,17 @@ Returns:
   Mode = 0;
   while (Mode < ConOutMaxMode) {
     //
-    // Search the other's QueryData database to see if they intersect
+    // Search the intersection map and QueryData database to see if they intersect
     //
-    Index   = 0;
-    Rows    = ConOutQueryData[Mode].Rows;
-    Columns = ConOutQueryData[Mode].Columns;
+    Index = 0;
+    ConOutMode    = *(ConOutModeMap + Mode * ConOutStepSize);
+    ConOutRows    = ConOutQueryData[ConOutMode].Rows;
+    ConOutColumns = ConOutQueryData[ConOutMode].Columns;
     while (Index < StdErrMaxMode) {
-      if ((StdErrQueryData[Index].Rows == Rows) && (StdErrQueryData[Index].Columns == Columns)) {
+      StdErrMode    = *(StdErrModeMap + Index * StdErrStepSize);
+      StdErrRows    = StdErrQueryData[StdErrMode].Rows;
+      StdErrColumns = StdErrQueryData[StdErrMode].Columns;
+      if ((StdErrRows == ConOutRows) && (StdErrColumns == ConOutColumns)) {
         ConOutMapTable[Mode]  = 1;
         StdErrMapTable[Index] = 1;
         break;
@@ -2464,20 +2546,38 @@ Returns:
 {
   EFI_STATUS                           Status;
   UINTN                                Index;
-  TEXT_OUT_GOP_MODE                    *Mode;
+  UINTN                                CurrentIndex;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Mode;
   UINTN                                SizeOfInfo;
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
   EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE    *CurrentGraphicsOutputMode;
-  TEXT_OUT_GOP_MODE                    *ModeBuffer;
-  TEXT_OUT_GOP_MODE                    *MatchedMode;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *ModeBuffer;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *MatchedMode;
   UINTN                                NumberIndex;
   BOOLEAN                              Match;
+  BOOLEAN                              AlreadyExist;
+  UINT32                               UgaHorizontalResolution;
+  UINT32                               UgaVerticalResolution;
+  UINT32                               UgaColorDepth;
+  UINT32                               UgaRefreshRate;
 
   if ((GraphicsOutput == NULL) && (UgaDraw == NULL)) {
     return EFI_UNSUPPORTED;
   }
 
   CurrentGraphicsOutputMode = Private->GraphicsOutput.Mode;
+
+  Index        = 0;
+  CurrentIndex = 0;
+
+  if (Private->CurrentNumberOfUgaDraw != 0) {
+    //
+    // If any UGA device has already been added, then there is no need to
+    // calculate intersection of display mode of different GOP/UGA device,
+    // since only one display mode will be exported (i.e. user-defined mode)
+    //
+    goto Done;
+  }
 
   if (GraphicsOutput != NULL) {
     if (Private->CurrentNumberOfGraphicsOutput == 0) {
@@ -2494,7 +2594,7 @@ Returns:
         //
         // Allocate resource for the private mode buffer
         //
-        ModeBuffer = AllocatePool (sizeof (TEXT_OUT_GOP_MODE) * GraphicsOutput->Mode->MaxMode);
+        ModeBuffer = AllocatePool (GraphicsOutput->Mode->SizeOfInfo * GraphicsOutput->Mode->MaxMode);
         if (ModeBuffer == NULL) {
           return EFI_OUT_OF_RESOURCES;
         }
@@ -2510,8 +2610,7 @@ Returns:
           if (EFI_ERROR (Status)) {
             return Status;
           }
-          Mode->HorizontalResolution = Info->HorizontalResolution;
-          Mode->VerticalResolution = Info->VerticalResolution;
+          CopyMem (Mode, Info, SizeOfInfo);
           Mode++;
           FreePool (Info);
         }
@@ -2519,7 +2618,7 @@ Returns:
       //
       // Check intersection of display mode
       //
-      ModeBuffer = AllocatePool (sizeof (TEXT_OUT_GOP_MODE) * CurrentGraphicsOutputMode->MaxMode);
+      ModeBuffer = AllocatePool (sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION) * CurrentGraphicsOutputMode->MaxMode);
       if (ModeBuffer == NULL) {
         return EFI_OUT_OF_RESOURCES;
       }
@@ -2535,7 +2634,7 @@ Returns:
             return Status;
           }
           if ((Info->HorizontalResolution == Mode->HorizontalResolution) &&
-              (Info->VerticalResolution == Mode->VerticalResolution)){
+              (Info->VerticalResolution == Mode->VerticalResolution)) {
             Match = TRUE;
             FreePool (Info);
             break;
@@ -2544,8 +2643,28 @@ Returns:
         }
 
         if (Match) {
-          CopyMem (MatchedMode, Mode, sizeof (TEXT_OUT_GOP_MODE));
-          MatchedMode++;
+          AlreadyExist = FALSE;
+
+          for (Info = ModeBuffer; Info < MatchedMode; Info++) {
+            if ((Info->HorizontalResolution == Mode->HorizontalResolution) &&
+                (Info->VerticalResolution == Mode->VerticalResolution)) {
+              AlreadyExist = TRUE;
+              break;
+            }
+          }
+
+          if (!AlreadyExist) {
+            CopyMem (MatchedMode, Mode, sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION));
+
+            //
+            // Physical frame buffer is no longer available, change PixelFormat to PixelBltOnly
+            //
+            MatchedMode->Version = 0;
+            MatchedMode->PixelFormat = PixelBltOnly;
+            ZeroMem (&MatchedMode->PixelInformation, sizeof (EFI_PIXEL_BITMASK));
+
+            MatchedMode++;
+          }
         }
 
         Mode++;
@@ -2560,61 +2679,80 @@ Returns:
       //
       // Physical frame buffer is no longer available when there are more than one physical GOP devices
       //
-      CurrentGraphicsOutputMode->MaxMode = (UINT32) (((UINTN) MatchedMode - (UINTN) ModeBuffer) / sizeof (TEXT_OUT_GOP_MODE));
+      CurrentGraphicsOutputMode->MaxMode = (UINT32) (((UINTN) MatchedMode - (UINTN) ModeBuffer) / sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION));
       CurrentGraphicsOutputMode->Info->PixelFormat = PixelBltOnly;
       ZeroMem (&CurrentGraphicsOutputMode->Info->PixelInformation, sizeof (EFI_PIXEL_BITMASK));
       CurrentGraphicsOutputMode->SizeOfInfo = sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION);
-      CurrentGraphicsOutputMode->FrameBufferBase = (EFI_PHYSICAL_ADDRESS) NULL;
+      CurrentGraphicsOutputMode->FrameBufferBase = (EFI_PHYSICAL_ADDRESS) (UINTN) NULL;
       CurrentGraphicsOutputMode->FrameBufferSize = 0;
     }
 
     //
-    // Select a prefered Display mode 800x600
+    // Graphics console driver can ensure the same mode for all GOP devices
     //
     for (Index = 0; Index < CurrentGraphicsOutputMode->MaxMode; Index++) {
       Mode = &Private->GraphicsOutputModeBuffer[Index];
-      if ((Mode->HorizontalResolution == 800) && (Mode->VerticalResolution == 600)) {
+      if ((Mode->HorizontalResolution == GraphicsOutput->Mode->Info->HorizontalResolution) &&
+         (Mode->VerticalResolution == GraphicsOutput->Mode->Info->VerticalResolution)) {
+        CurrentIndex = Index;
         break;
       }
     }
-    //
-    // Prefered mode is not found, set to mode 0
-    //
     if (Index >= CurrentGraphicsOutputMode->MaxMode) {
-      Index = 0;
+      //
+      // if user defined mode is not found, set to default mode 800x600
+      //
+      for (Index = 0; Index < CurrentGraphicsOutputMode->MaxMode; Index++) {
+        Mode = &Private->GraphicsOutputModeBuffer[Index];
+        if ((Mode->HorizontalResolution == 800) && (Mode->VerticalResolution == 600)) {
+          CurrentIndex = Index;
+          break;
+        }
+      }
     }
+  }
+  if (UgaDraw != NULL && FeaturePcdGet (PcdUgaConsumeSupport)) {
+    //
+    // Graphics console driver can ensure the same mode for all GOP devices
+    // so we can get the current mode from this video device
+    //
+    UgaDraw->GetMode (
+               UgaDraw,
+               &UgaHorizontalResolution,
+               &UgaVerticalResolution,
+               &UgaColorDepth,
+               &UgaRefreshRate
+               );
 
-    //
-    // Current mode number may need update now, so set it to an invalide mode number
-    //
-    CurrentGraphicsOutputMode->Mode = 0xffff;
-  } else {
-    //
-    // For UGA device, it's inconvenient to retrieve all the supported display modes.
-    // To simplify the implementation, only add one resolution(800x600, 32bit color depth) as defined in UEFI spec
-    //
     CurrentGraphicsOutputMode->MaxMode = 1;
-    CurrentGraphicsOutputMode->Info->Version = 0;
-    CurrentGraphicsOutputMode->Info->HorizontalResolution = 800;
-    CurrentGraphicsOutputMode->Info->VerticalResolution = 600;
-    CurrentGraphicsOutputMode->Info->PixelFormat = PixelBltOnly;
-    CurrentGraphicsOutputMode->Info->PixelsPerScanLine = 800;
+    Info = CurrentGraphicsOutputMode->Info;
+    Info->Version = 0;
+    Info->HorizontalResolution = UgaHorizontalResolution;
+    Info->VerticalResolution = UgaVerticalResolution;
+    Info->PixelFormat = PixelBltOnly;
+    Info->PixelsPerScanLine = UgaHorizontalResolution;
     CurrentGraphicsOutputMode->SizeOfInfo = sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION);
-    CurrentGraphicsOutputMode->FrameBufferBase = (EFI_PHYSICAL_ADDRESS) NULL;
+    CurrentGraphicsOutputMode->FrameBufferBase = (EFI_PHYSICAL_ADDRESS) (UINTN) NULL;
     CurrentGraphicsOutputMode->FrameBufferSize = 0;
 
     //
     // Update the private mode buffer
     //
-    ModeBuffer = &Private->GraphicsOutputModeBuffer[0];
-    ModeBuffer->HorizontalResolution = 800;
-    ModeBuffer->VerticalResolution   = 600;
+    CopyMem (&Private->GraphicsOutputModeBuffer[0], Info, sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION));
 
     //
-    // Current mode is unknow now, set it to an invalid mode number 0xffff
+    // Only mode 0 is available to be set
     //
-    CurrentGraphicsOutputMode->Mode = 0xffff;
-    Index = 0;
+    CurrentIndex = 0;
+  }
+
+Done:
+
+  if (GraphicsOutput != NULL) {
+    Private->CurrentNumberOfGraphicsOutput++;
+  }
+  if (UgaDraw != NULL && FeaturePcdGet (PcdUgaConsumeSupport)) {
+    Private->CurrentNumberOfUgaDraw++;
   }
 
   //
@@ -2622,12 +2760,132 @@ Returns:
   // regardless whether the console is in EfiConsoleControlScreenGraphics or EfiConsoleControlScreenText mode
   //
   Private->HardwareNeedsStarting = TRUE;
-  Status = Private->GraphicsOutput.SetMode (&Private->GraphicsOutput, (UINT32) Index);
+  //
+  // Current mode number may need update now, so set it to an invalid mode number
+  //
+  CurrentGraphicsOutputMode->Mode = 0xffff;
+  //
+  // Graphics console can ensure all GOP devices have the same mode which can be taken as current mode.
+  //
+  Status = Private->GraphicsOutput.SetMode (&Private->GraphicsOutput, (UINT32) CurrentIndex);
 
-  Private->CurrentNumberOfGraphicsOutput++;
+  //
+  // If user defined mode is not valid for UGA, set to the default mode 800x600.
+  //
+  if (EFI_ERROR(Status)) {
+    (Private->GraphicsOutputModeBuffer[0]).HorizontalResolution = 800;
+    (Private->GraphicsOutputModeBuffer[0]).VerticalResolution   = 600;
+    Status = Private->GraphicsOutput.SetMode (&Private->GraphicsOutput, 0);
+  }
 
   return Status;
 }
+
+VOID
+ConsplitterSetConsoleOutMode (
+  IN  TEXT_OUT_SPLITTER_PRIVATE_DATA  *Private
+  )
+/*++
+
+Routine Description:
+
+  This routine will get the current console mode information (column, row)
+  from ConsoleOutMode variable and set it; if the variable does not exist,
+  set to user defined console mode.
+
+Arguments:
+
+  None
+
+Returns:
+
+  None
+
+--*/
+{
+  UINTN                         Col;
+  UINTN                         Row;
+  UINTN                         Mode;
+  UINTN                         PreferMode;
+  UINTN                         BaseMode;
+  UINTN                         ModeInfoSize;
+  UINTN                         MaxMode;
+  EFI_STATUS                    Status;
+  CONSOLE_OUT_MODE              *ModeInfo;
+  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  *TextOut;
+
+  PreferMode   = 0xFF;
+  BaseMode     = 0xFF;
+  TextOut      = &Private->TextOut;
+  MaxMode      = (UINTN) (TextOut->Mode->MaxMode);
+  ModeInfoSize = sizeof (CONSOLE_OUT_MODE);
+
+  ModeInfo = AllocateZeroPool (sizeof(CONSOLE_OUT_MODE));
+  ASSERT(ModeInfo != NULL);
+
+  Status = gRT->GetVariable (
+                   VarConOutMode,
+                   &gEfiGenericPlatformVariableGuid,
+                   NULL,
+                   &ModeInfoSize,
+                   ModeInfo
+                   );
+
+  //
+  // Set to the default mode 80 x 25 required by EFI/UEFI spec;
+  // user can also define other valid default console mode here.
+  //
+  if (EFI_ERROR(Status)) {
+    ModeInfo->Column = 80;
+    ModeInfo->Row    = 25;
+    Status = gRT->SetVariable (
+                    VarConOutMode,
+                    &gEfiGenericPlatformVariableGuid,
+                    EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_NON_VOLATILE,
+                    sizeof (CONSOLE_OUT_MODE),
+                    ModeInfo
+                    );
+  }
+
+  for (Mode = 0; Mode < MaxMode; Mode++) {
+    Status = TextOut->QueryMode (TextOut, Mode, &Col, &Row);
+    if (!EFI_ERROR(Status)) {
+      if (Col == ModeInfo->Column && Row == ModeInfo->Row) {
+        PreferMode = Mode;
+      }
+      if (Col == 80 && Row == 25) {
+        BaseMode = Mode;
+      }
+    }
+  }
+
+  Status = TextOut->SetMode (TextOut, PreferMode);
+
+  //
+  // if current mode setting is failed, default 80x25 mode will be set.
+  //
+  if (EFI_ERROR(Status)) {
+    Status = TextOut->SetMode (TextOut, BaseMode);
+    ASSERT(!EFI_ERROR(Status));
+
+    ModeInfo->Column = 80;
+    ModeInfo->Row    = 25;
+
+    //
+    // Update ConOutMode variable
+    //
+    Status = gRT->SetVariable (
+                    VarConOutMode,
+                    &gEfiGenericPlatformVariableGuid,
+                    EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_NON_VOLATILE,
+                    sizeof (CONSOLE_OUT_MODE),
+                    ModeInfo
+                    );
+  }
+
+  gBS->FreePool (ModeInfo);
+}
+
 
 EFI_STATUS
 ConSplitterTextOutAddDevice (
@@ -2652,6 +2910,10 @@ Returns:
   UINTN                 CurrentNumOfConsoles;
   INT32                 CurrentMode;
   INT32                 MaxMode;
+  UINT32                UgaHorizontalResolution;
+  UINT32                UgaVerticalResolution;
+  UINT32                UgaColorDepth;
+  UINT32                UgaRefreshRate;
   TEXT_OUT_AND_GOP_DATA *TextAndGop;
 
   Status                = EFI_SUCCESS;
@@ -2686,12 +2948,12 @@ Returns:
 
   if ((GraphicsOutput == NULL) && (UgaDraw == NULL)) {
     //
-    // If No UGA device then use the ConOut device
+    // If No GOP/UGA device then use the ConOut device
     //
     TextAndGop->TextOutEnabled = TRUE;
   } else {
     //
-    // If UGA device use ConOut device only used if UGA screen is in Text mode
+    // If GOP/UGA device use ConOut device only used if screen is in Text mode
     //
     TextAndGop->TextOutEnabled = (BOOLEAN) (Private->ConsoleOutputMode == EfiConsoleControlScreenText);
   }
@@ -2718,15 +2980,50 @@ Returns:
   MaxMode     = Private->TextOutMode.MaxMode;
   ASSERT (MaxMode >= 1);
 
+  //
+  // Update DevNull mode according to current video device
+  //
   if (FeaturePcdGet (PcdConOutGopSupport)) {
     if ((GraphicsOutput != NULL) || (UgaDraw != NULL)) {
       ConSplitterAddGraphicsOutputMode (Private, GraphicsOutput, UgaDraw);
     }
   }
+  if (FeaturePcdGet (PcdConOutUgaSupport)) {
+    if (UgaDraw != NULL && FeaturePcdGet (PcdUgaConsumeSupport)) {
+      Status = UgaDraw->GetMode (
+                    UgaDraw,
+                    &UgaHorizontalResolution,
+                    &UgaVerticalResolution,
+                    &UgaColorDepth,
+                    &UgaRefreshRate
+                    );
+      if (!EFI_ERROR (Status)) {
+        Status = ConSpliterUgaDrawSetMode (
+                    &Private->UgaDraw,
+                    UgaHorizontalResolution,
+                    UgaVerticalResolution,
+                    UgaColorDepth,
+                    UgaRefreshRate
+                    );
+      }
+      //
+      // If GetMode/SetMode is failed, set to 800x600 mode
+      //
+      if(EFI_ERROR (Status)) {
+        Status = ConSpliterUgaDrawSetMode (
+                    &Private->UgaDraw,
+                    800,
+                    600,
+                    32,
+                    60
+                    );
+      }
+    }
+  }
 
   if (Private->ConsoleOutputMode == EfiConsoleControlScreenGraphics && GraphicsOutput != NULL) {
     //
-    // We just added a new UGA device in graphics mode
+    // We just added a new GOP or UGA device in graphics mode
     //
     if (FeaturePcdGet (PcdConOutGopSupport)) {
       DevNullGopSync (Private, TextAndGop->GraphicsOutput, TextAndGop->UgaDraw);
@@ -2737,13 +3034,19 @@ Returns:
     //
     // The new console supports the same mode of the current console so sync up
     //
-    DevNullSyncGopStdOut (Private);
+    DevNullSyncStdOut (Private);
   } else {
     //
     // If ConOut, then set the mode to Mode #0 which us 80 x 25
     //
     Private->TextOut.SetMode (&Private->TextOut, 0);
   }
+
+  //
+  // After adding new console device, all existing console devices should be
+  // synced to the current shared mode.
+  //
+  ConsplitterSetConsoleOutMode (Private);
 
   return Status;
 }
@@ -2781,6 +3084,12 @@ Returns:
     if (TextOutList->TextOut == TextOut) {
       CopyMem (TextOutList, TextOutList + 1, sizeof (TEXT_OUT_AND_GOP_DATA) * Index);
       CurrentNumOfConsoles--;
+      if (TextOutList->UgaDraw != NULL && FeaturePcdGet (PcdUgaConsumeSupport)) {
+        Private->CurrentNumberOfUgaDraw--;
+      }
+      if (TextOutList->GraphicsOutput != NULL) {
+        Private->CurrentNumberOfGraphicsOutput--;
+      }
       break;
     }
 
@@ -4075,7 +4384,7 @@ ConSplitterTextOutReset (
     }
   }
 
-  This->SetAttribute (This, EFI_TEXT_ATTR (This->Mode->Attribute & 0x0F, EFI_BACKGROUND_BLACK));
+  This->SetAttribute (This, EFI_TEXT_ATTR (This->Mode->Attribute & 0x0F, EFI_BLACK));
 
   Status = DevNullTextOutSetMode (Private, 0);
   if (EFI_ERROR (Status)) {
@@ -4250,6 +4559,8 @@ ConSplitterTextOutQueryMode (
 --*/
 {
   TEXT_OUT_SPLITTER_PRIVATE_DATA  *Private;
+  UINTN                           CurrentMode;
+  INT32                           *TextOutModeMap;
 
   Private = TEXT_OUT_SPLITTER_PRIVATE_DATA_FROM_THIS (This);
 
@@ -4265,8 +4576,18 @@ ConSplitterTextOutQueryMode (
     return EFI_UNSUPPORTED;
   }
 
-  *Columns  = Private->TextOutQueryData[ModeNumber].Columns;
-  *Rows     = Private->TextOutQueryData[ModeNumber].Rows;
+  //
+  // We get the available mode from mode intersection map if it's available
+  //
+  if (Private->TextOutModeMap != NULL) {
+    TextOutModeMap = Private->TextOutModeMap + Private->TextOutListCount * ModeNumber;
+    CurrentMode    = (UINTN)(*TextOutModeMap);
+    *Columns       = Private->TextOutQueryData[CurrentMode].Columns;
+    *Rows          = Private->TextOutQueryData[CurrentMode].Rows;
+  } else {
+    *Columns  = Private->TextOutQueryData[ModeNumber].Columns;
+    *Rows     = Private->TextOutQueryData[ModeNumber].Rows;
+  }
 
   if (*Columns <= 0 && *Rows <= 0) {
     return EFI_UNSUPPORTED;
@@ -4336,8 +4657,8 @@ ConSplitterTextOutSetMode (
                                                       TextOutModeMap[Index]
                                                       );
       //
-      // If this console device is based on a UGA device, then sync up the bitmap from
-      // the UGA splitter and reclear the text portion of the display in the new mode.
+      // If this console device is based on a GOP or UGA device, then sync up the bitmap from
+      // the GOP/UGA splitter and reclear the text portion of the display in the new mode.
       //
       if ((Private->TextOutList[Index].GraphicsOutput != NULL) || (Private->TextOutList[Index].UgaDraw != NULL)) {
         Private->TextOutList[Index].TextOut->ClearScreen (Private->TextOutList[Index].TextOut);
@@ -4601,3 +4922,4 @@ ConSplitterTextOutEnableCursor (
 
   return ReturnStatus;
 }
+

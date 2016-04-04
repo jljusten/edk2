@@ -1,23 +1,16 @@
-/*++
-
-Copyright (c) 2006, Intel Corporation                                                         
-All rights reserved. This program and the accompanying materials                          
-are licensed and made available under the terms and conditions of the BSD License         
-which accompanies this distribution.  The full text of the license may be found at        
-http://opensource.org/licenses/bsd-license.php                                            
-                                                                                          
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
-
-Module Name:
-
-  DevicePathFromText.c
-
-Abstract:
-
+/** @file
   DevicePathFromText protocol as defined in the UEFI 2.0 specification.
 
---*/
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
+
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+
+**/
 
 #include "DevicePath.h"
 
@@ -2080,7 +2073,7 @@ DevPathFromTextiSCSI (
   iSCSI             = (ISCSI_DEVICE_PATH_WITH_NAME *) CreateDeviceNode (
                                                         MESSAGING_DEVICE_PATH,
                                                         MSG_ISCSI_DP,
-                                                        (UINT16) (sizeof (ISCSI_DEVICE_PATH_WITH_NAME) + StrLen (NameStr) * 2)
+                                                        (UINT16) (sizeof (ISCSI_DEVICE_PATH_WITH_NAME) + StrLen (NameStr))
                                                         );
 
   AsciiStr = iSCSI->iSCSITargetName;
@@ -2359,14 +2352,14 @@ DevPathFromTextSata (
                                 MSG_SATA_DP,
                                 sizeof (SATA_DEVICE_PATH)
                                 );
-  Sata->HbaPortNumber = (UINT16) Xtoi (Param1);
+  Sata->HBAPortNumber = (UINT16) Xtoi (Param1);
   if (Param3 != NULL) {
-    Sata->PortMultiplierPort = (UINT16) Xtoi (Param2);
+    Sata->PortMultiplierPortNumber = (UINT16) Xtoi (Param2);
     Param2                   = Param3;
   } else {
-    Sata->PortMultiplierPort = 0;
+    Sata->PortMultiplierPortNumber = 0;
   }
-  Sata->LogicalUnitNumber = (UINT16) Xtoi (Param2);
+  Sata->Lun = (UINT16) Xtoi (Param2);
 
   return (EFI_DEVICE_PATH_PROTOCOL *) Sata;
 }

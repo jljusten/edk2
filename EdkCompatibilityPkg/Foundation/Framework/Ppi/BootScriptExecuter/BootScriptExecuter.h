@@ -24,7 +24,7 @@ Abstract:
 
 #define PEI_BOOT_SCRIPT_EXECUTER_PPI_GUID \
   { \
-    0xabd42895, 0x78cf, 0x4872, 0x84, 0x44, 0x1b, 0x5c, 0x18, 0x0b, 0xfb, 0xff \
+    0xabd42895, 0x78cf, 0x4872, {0x84, 0x44, 0x1b, 0x5c, 0x18, 0x0b, 0xfb, 0xff} \
   }
 
 EFI_FORWARD_DECLARATION (PEI_BOOT_SCRIPT_EXECUTER_PPI);
@@ -40,10 +40,10 @@ EFI_STATUS
   IN     EFI_GUID                                * FvFile OPTIONAL
   );
 
-typedef struct _PEI_BOOT_SCRIPT_EXECUTER_PPI {
+struct _PEI_BOOT_SCRIPT_EXECUTER_PPI {
   UINT64                  Revision;
   PEI_BOOT_SCRIPT_EXECUTE Execute;
-} PEI_BOOT_SCRIPT_EXECUTER_PPI;
+};
 
 extern EFI_GUID gPeiBootScriptExecuterPpiGuid;
 

@@ -1,4 +1,4 @@
-/*++
+/**@file
 
 Copyright (c) 2006 - 2007, Intel Corporation
 All rights reserved. This program and the accompanying materials
@@ -15,7 +15,7 @@ Module Name:
 
 Abstract:
 
---*/
+**/
 #include <Uefi.h>
 #include <WinNtDxe.h>
 #include <Protocol/BlockIo.h>
@@ -159,7 +159,7 @@ WinNtBlockIoDriverDiagnosticsRunDiagnostics (
       SupportedLanguages += 3;
     } else {
       for (Index = 0; SupportedLanguages[Index] != 0 && SupportedLanguages[Index] != ';'; Index++);
-      if (AsciiStrnCmp(SupportedLanguages, Language, Index) == 0) {
+      if ((AsciiStrnCmp(SupportedLanguages, Language, Index) == 0) && (Language[Index] == 0)) {
         Found = TRUE;
         break;
       }
@@ -185,6 +185,13 @@ WinNtBlockIoDriverDiagnosticsRunDiagnostics (
   }
 
   //
+  // This is a device driver, so ChildHandle must be NULL.
+  //
+  if (ChildHandle != NULL) {
+    return EFI_UNSUPPORTED;
+  }
+
+  //
   // Validate controller handle
   //
   Status = gBS->OpenProtocol (
@@ -207,6 +214,7 @@ WinNtBlockIoDriverDiagnosticsRunDiagnostics (
     return EFI_UNSUPPORTED;
   }
 
+  
   if (Status == EFI_UNSUPPORTED) {
     return Status;
   } else if (Status != EFI_ALREADY_STARTED) {

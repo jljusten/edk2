@@ -42,31 +42,31 @@ Abstract:
 // Global ID for the Runtime Architectural Protocol
 //
 #define EFI_RUNTIME_ARCH_PROTOCOL_GUID \
-  { 0xb7dfb4e1, 0x52f, 0x449f, 0x87, 0xbe, 0x98, 0x18, 0xfc, 0x91, 0xb7, 0x33 }
+  { 0xb7dfb4e1, 0x52f, 0x449f, {0x87, 0xbe, 0x98, 0x18, 0xfc, 0x91, 0xb7, 0x33} }
 
 EFI_FORWARD_DECLARATION (EFI_RUNTIME_ARCH_PROTOCOL);
 
-typedef struct _EFI_RUNTIME_IMAGE_ENTRY {
+struct _EFI_RUNTIME_IMAGE_ENTRY {
   VOID                    *ImageBase;
   UINT64                  ImageSize;
   VOID                    *RelocationData;
   EFI_HANDLE              Handle;
   EFI_LIST_ENTRY          Link;
-} EFI_RUNTIME_IMAGE_ENTRY;
+};
 
-typedef struct _EFI_RUNTIME_EVENT_ENTRY {
+struct _EFI_RUNTIME_EVENT_ENTRY {
   UINT32                  Type;
   EFI_TPL                 NotifyTpl;
   EFI_EVENT_NOTIFY        NotifyFunction;
   VOID                    *NotifyContext;
   EFI_EVENT               *Event;
   EFI_LIST_ENTRY          Link;
-} EFI_RUNTIME_EVENT_ENTRY;
+};
 
 //
 // Interface stucture for the Runtime Architectural Protocol
 //
-typedef struct _EFI_RUNTIME_ARCH_PROTOCOL {
+struct _EFI_RUNTIME_ARCH_PROTOCOL {
   EFI_LIST_ENTRY          ImageHead;
   EFI_LIST_ENTRY          EventHead;
   UINTN                   MemoryDescriptorSize;
@@ -76,7 +76,7 @@ typedef struct _EFI_RUNTIME_ARCH_PROTOCOL {
   EFI_MEMORY_DESCRIPTOR   *MemoryMapVirtual;
   BOOLEAN                 VirtualMode;
   BOOLEAN                 AtRuntime;
-} EFI_RUNTIME_ARCH_PROTOCOL;
+};
 /*++
 
 Protocol Description:

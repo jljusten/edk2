@@ -26,7 +26,7 @@ Abstract:
 
 #define EFI_USB_HC_PROTOCOL_GUID \
   { \
-    0xf5089266, 0x1aa0, 0x4953, 0x97, 0xd8, 0x56, 0x2f, 0x8a, 0x73, 0xb5, 0x19 \
+    0xf5089266, 0x1aa0, 0x4953, {0x97, 0xd8, 0x56, 0x2f, 0x8a, 0x73, 0xb5, 0x19} \
   }
 
 //
@@ -186,7 +186,7 @@ EFI_STATUS
   IN EFI_USB_PORT_FEATURE    PortFeature
   );
 
-typedef struct _EFI_USB_HC_PROTOCOL {
+struct _EFI_USB_HC_PROTOCOL {
   EFI_USB_HC_PROTOCOL_RESET                       Reset;
   EFI_USB_HC_PROTOCOL_GET_STATE                   GetState;
   EFI_USB_HC_PROTOCOL_SET_STATE                   SetState;
@@ -202,14 +202,14 @@ typedef struct _EFI_USB_HC_PROTOCOL {
   EFI_USB_HC_PROTOCOL_CLEAR_ROOTHUB_PORT_FEATURE  ClearRootHubPortFeature;
   UINT16                                          MajorRevision;
   UINT16                                          MinorRevision;
-} EFI_USB_HC_PROTOCOL;
+};
 
 extern EFI_GUID gEfiUsbHcProtocolGuid;
 
 
 #define EFI_USB2_HC_PROTOCOL_GUID \
   { \
-    0x3e745226, 0x9818, 0x45b6, 0xa2, 0xac, 0xd7, 0xcd, 0xe, 0x8b, 0xa2, 0xbc \
+    0x3e745226, 0x9818, 0x45b6, {0xa2, 0xac, 0xd7, 0xcd, 0xe, 0x8b, 0xa2, 0xbc} \
   }
 
 //
@@ -388,7 +388,7 @@ EFI_STATUS
   IN EFI_USB_PORT_FEATURE    PortFeature
   );
 
-typedef struct _EFI_USB2_HC_PROTOCOL {
+struct _EFI_USB2_HC_PROTOCOL {
   EFI_USB2_HC_PROTOCOL_GET_CAPABILITY              GetCapability;
   EFI_USB2_HC_PROTOCOL_RESET                       Reset;
   EFI_USB2_HC_PROTOCOL_GET_STATE                   GetState;
@@ -404,7 +404,7 @@ typedef struct _EFI_USB2_HC_PROTOCOL {
   EFI_USB2_HC_PROTOCOL_CLEAR_ROOTHUB_PORT_FEATURE  ClearRootHubPortFeature;
   UINT16                                           MajorRevision;
   UINT16                                           MinorRevision;
-} EFI_USB2_HC_PROTOCOL;
+};
 
 extern EFI_GUID gEfiUsb2HcProtocolGuid;
 

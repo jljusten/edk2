@@ -29,7 +29,7 @@ Revision History
 //
 #define EFI_PCI_IO_PROTOCOL_GUID \
   { \
-    0x4cf5b200, 0x68b8, 0x4ca5, 0x9e, 0xec, 0xb2, 0x3e, 0x3f, 0x50, 0x2, 0x9a \
+    0x4cf5b200, 0x68b8, 0x4ca5, {0x9e, 0xec, 0xb2, 0x3e, 0x3f, 0x50, 0x2, 0x9a} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_PCI_IO_PROTOCOL);
@@ -250,7 +250,7 @@ EFI_STATUS
 //
 // Interface structure for the PCI I/O Protocol
 //
-typedef struct _EFI_PCI_IO_PROTOCOL {
+struct _EFI_PCI_IO_PROTOCOL {
   EFI_PCI_IO_PROTOCOL_POLL_IO_MEM         PollMem;
   EFI_PCI_IO_PROTOCOL_POLL_IO_MEM         PollIo;
   EFI_PCI_IO_PROTOCOL_ACCESS              Mem;
@@ -268,7 +268,7 @@ typedef struct _EFI_PCI_IO_PROTOCOL {
   EFI_PCI_IO_PROTOCOL_SET_BAR_ATTRIBUTES  SetBarAttributes;
   UINT64                                  RomSize;
   VOID                                    *RomImage;
-} EFI_PCI_IO_PROTOCOL;
+};
 
 extern EFI_GUID gEfiPciIoProtocolGuid;
 

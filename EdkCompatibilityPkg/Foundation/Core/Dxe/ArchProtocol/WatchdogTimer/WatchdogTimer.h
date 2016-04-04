@@ -28,7 +28,7 @@ Abstract:
 // Global ID for the Watchdog Timer Architectural Protocol
 //
 #define EFI_WATCHDOG_TIMER_ARCH_PROTOCOL_GUID \
-  { 0x665E3FF5, 0x46CC, 0x11d4, 0x9A, 0x38, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D }
+  { 0x665E3FF5, 0x46CC, 0x11d4, {0x9A, 0x38, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D} }
 
 //
 // Declare forward reference for the Timer Architectural Protocol
@@ -166,11 +166,11 @@ Returns:
 //
 // Interface stucture for the Watchdog Timer Architectural Protocol
 //
-typedef struct _EFI_WATCHDOG_TIMER_ARCH_PROTOCOL {
+struct _EFI_WATCHDOG_TIMER_ARCH_PROTOCOL {
   EFI_WATCHDOG_TIMER_REGISTER_HANDLER  RegisterHandler;
   EFI_WATCHDOG_TIMER_SET_TIMER_PERIOD  SetTimerPeriod;
   EFI_WATCHDOG_TIMER_GET_TIMER_PERIOD  GetTimerPeriod;
-} EFI_WATCHDOG_TIMER_ARCH_PROTOCOL;
+};
 
 /*++
 

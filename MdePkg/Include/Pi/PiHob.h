@@ -1,4 +1,4 @@
-/* @file
+/** @file
   HOB related definitions in PI.
 
   Copyright (c) 2006 - 2007, Intel Corporation                                                         
@@ -17,6 +17,11 @@
 
 #ifndef __PI_HOB_H__
 #define __PI_HOB_H__
+
+#include <ProcessorBind.h>
+#include <Pi/PiBootMode.h>
+#include <Uefi/UefiBaseType.h>
+#include <Uefi/UefiMultiPhase.h>
 
 //
 // HobType of EFI_HOB_GENERIC_HEADER.

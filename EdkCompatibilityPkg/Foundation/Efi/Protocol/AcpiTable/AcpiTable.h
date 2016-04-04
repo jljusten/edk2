@@ -31,7 +31,7 @@ Abstract:
 //
 #define EFI_ACPI_TABLE_PROTOCOL_GUID \
   { \
-    0xffe06bdd, 0x6107, 0x46a6, 0x7b, 0xb2, 0x5a, 0x9c, 0x7e, 0xc5, 0x27, 0x5c \
+    0xffe06bdd, 0x6107, 0x46a6, {0x7b, 0xb2, 0x5a, 0x9c, 0x7e, 0xc5, 0x27, 0x5c} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_ACPI_TABLE_PROTOCOL);
@@ -102,10 +102,10 @@ EFI_STATUS
 //
 // Interface structure for the ACPI Table Protocol
 //
-typedef struct _EFI_ACPI_TABLE_PROTOCOL {
+struct _EFI_ACPI_TABLE_PROTOCOL {
   EFI_ACPI_TABLE_INSTALL_ACPI_TABLE    InstallAcpiTable;
   EFI_ACPI_TABLE_UNINSTALL_ACPI_TABLE  UninstallAcpiTable;
-} EFI_ACPI_TABLE_PROTOCOL;
+};
 
 extern EFI_GUID gEfiAcpiTableProtocolGuid;
 

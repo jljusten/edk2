@@ -1,4 +1,4 @@
-/*++
+/**@file
 
 Copyright (c) 2006, Intel Corporation
 All rights reserved. This program and the accompanying materials
@@ -15,7 +15,7 @@ Module Name:
 Abstract:
   Public include file for the WinNt Library
 
---*/
+**/
 
 #ifndef __WIN_NT_INCLUDE_H__
 #define __WIN_NT_INCLUDE_H__
@@ -41,6 +41,11 @@ Abstract:
 #undef CONST
 #undef VOID
 #undef DEBUG_EVENT
+
+// WQBugBug: This typedef is to make "windows.h" buildable.
+//                   It should be removed after the root cause why
+//                   size_t is undefined when go into the line below is found.
+typedef UINT32 size_t ;
 
 #include "windows.h"
 

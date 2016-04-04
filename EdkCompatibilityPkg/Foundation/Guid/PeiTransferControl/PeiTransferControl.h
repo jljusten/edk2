@@ -23,7 +23,7 @@ Abstract:
 #define _PEI_TRANSFER_CONTROL_H_
 
 #define EFI_PEI_TRANSFER_CONTROL_GUID  \
-  { 0xd8117d02, 0x94a6, 0x11d4, 0x9a, 0x3a, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d }
+  { 0xd8117d02, 0x94a6, 0x11d4, {0x9a, 0x3a, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d} }
 
 
 EFI_FORWARD_DECLARATION (EFI_PEI_TRANSFER_CONTROL_PROTOCOL);
@@ -42,11 +42,11 @@ EFI_STATUS
   IN VOID                                       *Context
   );
 
-typedef struct _EFI_PEI_TRANSFER_CONTROL_PROTOCOL {
+struct _EFI_PEI_TRANSFER_CONTROL_PROTOCOL {
   EFI_PEI_TRANSFER_CONTROL_LONG_JUMP   SetJump;
   EFI_PEI_TRANSFER_CONTROL_LONG_JUMP   LongJump;
   UINT32                               JumpContextSize;
-} EFI_PEI_TRANSFER_CONTROL_PROTOCOL;
+};
 
 extern EFI_GUID gEfiPeiTransferControlGuid;
 

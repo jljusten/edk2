@@ -58,7 +58,7 @@ Returns:
                   );
 
   if (EFI_ERROR (Status)) {
-    EfiAsciiStrCpy (Language, "eng");
+    EfiAsciiStrCpy (Language, (CHAR8 *) "eng");
   }
 
   for (Index = 0; Index < 3; Index++) {
@@ -78,6 +78,7 @@ Returns:
 }
 
 
+#ifdef SUPPORT_DEPRECATED_IFRSUPPORTLIB_API
 EFI_STATUS
 AddString (
   IN      VOID                *StringBuffer,
@@ -118,6 +119,8 @@ Returns:
   UINT8               *Destination;
   UINTN               Index;
   BOOLEAN             Finished;
+  UINTN               SizeofLanguage;
+  UINTN               SizeofString;
 
   StringPack  = (EFI_HII_STRING_PACK *) StringBuffer;
   Finished    = FALSE;
@@ -238,14 +241,16 @@ Returns:
     //
     // Pointing to a new string pack location
     //
+    SizeofLanguage = EfiStrSize (Language);
+    SizeofString   = EfiStrSize (String);
     StringPackBuffer->Header.Length = (UINT32)
       (
         sizeof (EFI_HII_STRING_PACK) -
         sizeof (EFI_STRING) +
         sizeof (RELOFST) +
         sizeof (RELOFST) +
-        EfiStrSize (Language) +
-        EfiStrSize (String)
+        SizeofLanguage +
+        SizeofString
       );
     StringPackBuffer->Header.Type           = EFI_HII_STRING;
     StringPackBuffer->LanguageNameString    = (UINT16) ((UINTN) &PackDestination[3] - (UINTN) StringPackBuffer);
@@ -412,6 +417,7 @@ Returns:
   gBS->FreePool (NewBuffer);
   return EFI_SUCCESS;
 }
+#endif
 
 
 EFI_STATUS
@@ -484,6 +490,8 @@ Returns:
   
 --*/
 {
+#ifdef SUPPORT_DEPRECATED_IFRSUPPORTLIB_API
+
   EFI_STATUS        Status;
   EFI_HII_PROTOCOL  *Hii;
   UINTN             DataLength;
@@ -624,6 +632,13 @@ Returns:
   gBS->FreePool (OldData);
 
   return EFI_SUCCESS;
+#else
+  //
+  // The implementation will be added later.
+  //
+  ASSERT (FALSE);
+  return EFI_UNSUPPORTED;
+#endif
 }
 
 
@@ -649,6 +664,7 @@ Returns:
 
 --*/
 {
+#ifdef SUPPORT_DEPRECATED_IFRSUPPORTLIB_API
   EFI_STATUS        Status;
 
   EFI_HII_HANDLE    *HiiHandleBuffer;
@@ -740,9 +756,16 @@ Returns:
 lbl_exit:
   gBS->FreePool (HiiHandleBuffer);
   return HiiHandle;
+#else
+  //
+  // The implementation will be added later.
+  //
+  ASSERT (FALSE);
+  return (EFI_HII_HANDLE) 0;
+#endif
 }
 
-
+#ifdef SUPPORT_DEPRECATED_IFRSUPPORTLIB_API
 EFI_STATUS
 ValidateDataFromHiiHandle (
   IN      EFI_HII_HANDLE      HiiHandle,
@@ -981,6 +1004,7 @@ Returns:
 
   return EFI_SUCCESS;
 }
+#endif
 
 EFI_HII_PACKAGES *
 PreparePackages (

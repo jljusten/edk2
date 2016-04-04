@@ -24,7 +24,7 @@ Abstract:
 
 #define EFI_EBC_INTERPRETER_PROTOCOL_GUID \
   { \
-    0x13AC6DD1, 0x73D0, 0x11D4, 0xB0, 0x6B, 0x00, 0xAA, 0x00, 0xBD, 0x6D, 0xE7 \
+    0x13AC6DD1, 0x73D0, 0x11D4, {0xB0, 0x6B, 0x00, 0xAA, 0x00, 0xBD, 0x6D, 0xE7} \
   }
 
 //
@@ -168,12 +168,12 @@ EFI_STATUS
 //
 // Prototype for the actual EBC protocol interface
 //
-typedef struct _EFI_EBC_PROTOCOL {
+struct _EFI_EBC_PROTOCOL {
   EFI_EBC_CREATE_THUNK          CreateThunk;
   EFI_EBC_UNLOAD_IMAGE          UnloadImage;
   EFI_EBC_REGISTER_ICACHE_FLUSH RegisterICacheFlush;
   EFI_EBC_GET_VERSION           GetVersion;
-} EFI_EBC_PROTOCOL;
+};
 
 //
 // Extern the global EBC protocol GUID

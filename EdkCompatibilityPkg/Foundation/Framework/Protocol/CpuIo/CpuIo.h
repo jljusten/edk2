@@ -26,7 +26,7 @@ Abstract:
 
 #define EFI_CPU_IO_PROTOCOL_GUID \
   { \
-    0xB0732526, 0x38C8, 0x4b40, 0x88, 0x77, 0x61, 0xC7, 0xB0, 0x6A, 0xAC, 0x45 \
+    0xB0732526, 0x38C8, 0x4b40, {0x88, 0x77, 0x61, 0xC7, 0xB0, 0x6A, 0xAC, 0x45} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_CPU_IO_PROTOCOL);
@@ -83,10 +83,10 @@ typedef struct {
 // EFI_CPU_IO_PROTOCOL
 // *******************************************************
 //
-typedef struct _EFI_CPU_IO_PROTOCOL {
+struct _EFI_CPU_IO_PROTOCOL {
   EFI_CPU_IO_PROTOCOL_ACCESS  Mem;
   EFI_CPU_IO_PROTOCOL_ACCESS  Io;
-} EFI_CPU_IO_PROTOCOL;
+};
 
 extern EFI_GUID gEfiCpuIoProtocolGuid;
 

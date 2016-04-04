@@ -43,14 +43,14 @@ typedef struct {
 typedef struct {
   EFI_HII_IFR_PACK    *IfrData;
   EFI_HII_STRING_PACK *StringData;
-} EFI_IFR_PACKET;
+} FRAMEWORK_EFI_IFR_PACKET;
 
 typedef struct {
   UINTN LeftColumn;
   UINTN RightColumn;
   UINTN TopRow;
   UINTN BottomRow;
-} EFI_SCREEN_DESCRIPTOR;
+} FRAMEWORK_EFI_SCREEN_DESCRIPTOR;
 
 /**
   Provides direction to the configuration driver whether to use the HII
@@ -94,12 +94,12 @@ EFI_STATUS
 (EFIAPI *EFI_SEND_FORM) (
   IN  EFI_FORM_BROWSER_PROTOCOL       *This,
   IN  BOOLEAN                         UseDatabase,
-  IN  EFI_HII_HANDLE                  *Handle,
+  IN  FRAMEWORK_EFI_HII_HANDLE        *Handle,
   IN  UINTN                           HandleCount,
-  IN  EFI_IFR_PACKET                  *Packet, OPTIONAL
+  IN  FRAMEWORK_EFI_IFR_PACKET                  *Packet, OPTIONAL
   IN  EFI_HANDLE                      CallbackHandle, OPTIONAL
   IN  UINT8                           *NvMapOverride, OPTIONAL
-  IN EFI_SCREEN_DESCRIPTOR            *ScreenDimensions, OPTIONAL
+  IN  FRAMEWORK_EFI_SCREEN_DESCRIPTOR            *ScreenDimensions, OPTIONAL
   OUT BOOLEAN                         *ResetRequired OPTIONAL
   );
 

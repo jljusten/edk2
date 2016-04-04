@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 1999 - 2006, Intel Corporation                                                         
+Copyright (c) 1999 - 2007, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -37,7 +37,7 @@ EFI_FORWARD_DECLARATION (EFI_BOOT_SCRIPT_SAVE_PROTOCOL);
 //
 #define EFI_BOOT_SCRIPT_SAVE_PROTOCOL_GUID \
   { \
-    0x470e1529, 0xb79e, 0x4e32, 0xa0, 0xfe, 0x6a, 0x15, 0x6d, 0x29, 0xf9, 0xb2 \
+    0x470e1529, 0xb79e, 0x4e32, {0xa0, 0xfe, 0x6a, 0x15, 0x6d, 0x29, 0xf9, 0xb2} \
   }
 
 //
@@ -45,7 +45,6 @@ EFI_FORWARD_DECLARATION (EFI_BOOT_SCRIPT_SAVE_PROTOCOL);
 //
 typedef
 EFI_STATUS
-EFI_BOOTSERVICE
 (EFIAPI *EFI_BOOT_SCRIPT_WRITE) (
   IN EFI_BOOT_SCRIPT_SAVE_PROTOCOL            * This,
   IN UINT16                                   TableName,
@@ -55,7 +54,6 @@ EFI_BOOTSERVICE
 
 typedef
 EFI_STATUS
-EFI_BOOTSERVICE
 (EFIAPI *EFI_BOOT_SCRIPT_CLOSE_TABLE) (
   IN EFI_BOOT_SCRIPT_SAVE_PROTOCOL            * This,
   IN UINT16                                   TableName,
@@ -65,10 +63,10 @@ EFI_BOOTSERVICE
 //
 // S3 Save Protocol data structure
 //
-typedef struct _EFI_BOOT_SCRIPT_SAVE_PROTOCOL {
+struct _EFI_BOOT_SCRIPT_SAVE_PROTOCOL {
   EFI_BOOT_SCRIPT_WRITE       Write;
   EFI_BOOT_SCRIPT_CLOSE_TABLE CloseTable;
-} EFI_BOOT_SCRIPT_SAVE_PROTOCOL;
+};
 
 extern EFI_GUID gEfiBootScriptSaveGuid;
 

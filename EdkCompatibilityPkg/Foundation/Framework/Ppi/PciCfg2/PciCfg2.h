@@ -27,7 +27,7 @@ Abstract:
 
 #define EFI_PEI_PCI_CFG2_PPI_GUID \
   { \
-    0x57a449a, 0x1fdc, 0x4c06, 0xbf, 0xc9, 0xf5, 0x3f, 0x6a, 0x99, 0xbb, 0x92 \
+    0x57a449a, 0x1fdc, 0x4c06, {0xbf, 0xc9, 0xf5, 0x3f, 0x6a, 0x99, 0xbb, 0x92} \
   }
 
 EFI_FORWARD_DECLARATION (EFI_PEI_PCI_CFG2_PPI);
@@ -54,12 +54,12 @@ EFI_STATUS
   IN VOID                           *ClearBits
   );
 
-typedef struct _EFI_PEI_PCI_CFG2_PPI {
+struct _EFI_PEI_PCI_CFG2_PPI {
   EFI_PEI_PCI_CFG_PPI_IO  Read;
   EFI_PEI_PCI_CFG_PPI_IO  Write;
   EFI_PEI_PCI_CFG_PPI_RW  Modify;
   UINT16                  Segment;
-} EFI_PEI_PCI_CFG2_PPI;
+};
 
 extern EFI_GUID gPeiPciCfg2PpiGuid;
 

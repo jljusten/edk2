@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 1999 - 2005, Intel Corporation
+Copyright (c) 1999 - 2007, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -39,7 +39,7 @@ EFI_FORWARD_DECLARATION (EFI_ACPI_SUPPORT_PROTOCOL);
 //
 #define EFI_ACPI_SUPPORT_GUID \
   { \
-    0xdbff9d55, 0x89b7, 0x46da, 0xbd, 0xdf, 0x67, 0x7d, 0x3d, 0xc0, 0x24, 0x1d \
+    0xdbff9d55, 0x89b7, 0x46da, {0xbd, 0xdf, 0x67, 0x7d, 0x3d, 0xc0, 0x24, 0x1d} \
   }
 
 //
@@ -82,7 +82,6 @@ extern EFI_GUID gEfiAcpiSupportGuid;
 //
 typedef
 EFI_STATUS
-EFI_BOOTSERVICE
 (EFIAPI *EFI_ACPI_GET_ACPI_TABLE) (
   IN EFI_ACPI_SUPPORT_PROTOCOL            * This,
   IN INTN                                 Index,
@@ -96,7 +95,6 @@ EFI_BOOTSERVICE
 //
 typedef
 EFI_STATUS
-EFI_BOOTSERVICE
 (EFIAPI *EFI_ACPI_SET_ACPI_TABLE) (
   IN EFI_ACPI_SUPPORT_PROTOCOL            * This,
   IN VOID                                 *Table OPTIONAL,
@@ -110,7 +108,6 @@ EFI_BOOTSERVICE
 //
 typedef
 EFI_STATUS
-EFI_BOOTSERVICE
 (EFIAPI *EFI_ACPI_PUBLISH_TABLES) (
   IN EFI_ACPI_SUPPORT_PROTOCOL            * This,
   IN EFI_ACPI_TABLE_VERSION               Version
@@ -119,10 +116,10 @@ EFI_BOOTSERVICE
 //
 // ACPI Support Protocol
 //
-typedef struct _EFI_ACPI_SUPPORT_PROTOCOL {
+struct _EFI_ACPI_SUPPORT_PROTOCOL {
   EFI_ACPI_GET_ACPI_TABLE GetAcpiTable;
   EFI_ACPI_SET_ACPI_TABLE SetAcpiTable;
   EFI_ACPI_PUBLISH_TABLES PublishTables;
-} EFI_ACPI_SUPPORT_PROTOCOL;
+};
 
 #endif

@@ -1,6 +1,9 @@
-/*++
+/** @file
 
-Copyright (c) 2006 - 2007 Intel Corporation. <BR>
+  Implement ReadOnly Variable Services required by PEIM and install
+  PI ReadOnly Varaiable2 PPI. These services operates the non volatile storage space.
+
+Copyright (c) 2006 - 2008 Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -10,13 +13,7 @@ THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 Module Name:
 
-  Variable.c
-
-Abstract:
-
-  PEIM to provide the Variable functionality
-
---*/
+**/
 
 
 #include "Variable.h"
@@ -68,27 +65,56 @@ Returns:
 
 }
 
-STATIC
 VARIABLE_HEADER *
-GetNextVariablePtr (
-  IN VARIABLE_HEADER  *Variable
+GetStartPointer (
+  IN VARIABLE_STORE_HEADER       *VarStoreHeader
   )
 /*++
 
 Routine Description:
 
-  This code checks if variable header is valid or not.
+  This code gets the pointer to the first variable memory pointer byte
 
 Arguments:
-  Variable       Pointer to the Variable Header.
+
+  VarStoreHeader        Pointer to the Variable Store Header.
 
 Returns:
-  TRUE            Variable header is valid.
-  FALSE           Variable header is not valid.
+
+  VARIABLE_HEADER*      Pointer to last unavailable Variable Header
 
 --*/
 {
-  return (VARIABLE_HEADER *) ((UINTN) GET_VARIABLE_DATA_PTR (Variable) + Variable->DataSize + GET_PAD_SIZE (Variable->DataSize));
+  //
+  // The end of variable store
+  //
+  return (VARIABLE_HEADER *) HEADER_ALIGN (VarStoreHeader + 1);
+}
+
+VARIABLE_HEADER *
+GetEndPointer (
+  IN VARIABLE_STORE_HEADER       *VarStoreHeader
+  )
+/*++
+
+Routine Description:
+
+  This code gets the pointer to the last variable memory pointer byte
+
+Arguments:
+
+  VarStoreHeader        Pointer to the Variable Store Header.
+
+Returns:
+
+  VARIABLE_HEADER*      Pointer to last unavailable Variable Header
+
+--*/
+{
+  //
+  // The end of variable store
+  //
+  return (VARIABLE_HEADER *) HEADER_ALIGN ((UINTN) VarStoreHeader + VarStoreHeader->Size);
 }
 
 STATIC
@@ -112,15 +138,165 @@ Returns:
 
 --*/
 {
-  if (Variable == NULL ||
-      Variable->StartId != VARIABLE_DATA ||
-      (sizeof (VARIABLE_HEADER) + Variable->DataSize + Variable->NameSize) > MAX_VARIABLE_SIZE
-      ) {
+  if (Variable == NULL || Variable->StartId != VARIABLE_DATA ) {
     return FALSE;
   }
 
   return TRUE;
 }
+
+
+UINTN
+NameSizeOfVariable (
+  IN  VARIABLE_HEADER   *Variable
+  )
+/*++
+
+Routine Description:
+
+  This code gets the size of name of variable.
+
+Arguments:
+
+  Variable            Pointer to the Variable Header.
+
+Returns:
+
+  UINTN               Size of variable in bytes
+
+--*/
+{
+  if (Variable->State    == (UINT8) (-1) ||
+      Variable->DataSize == (UINT32) -1 ||
+      Variable->NameSize == (UINT32) -1 ||
+      Variable->Attributes == (UINT32) -1) {
+    return 0;
+  }
+  return (UINTN) Variable->NameSize;
+}
+
+UINTN
+DataSizeOfVariable (
+  IN  VARIABLE_HEADER   *Variable
+  )
+/*++
+
+Routine Description:
+
+  This code gets the size of name of variable.
+
+Arguments:
+
+  Variable            Pointer to the Variable Header.
+
+Returns:
+
+  UINTN               Size of variable in bytes
+
+--*/
+{
+  if (Variable->State    == (UINT8)  -1 ||
+      Variable->DataSize == (UINT32) -1 ||
+      Variable->NameSize == (UINT32) -1 ||
+      Variable->Attributes == (UINT32) -1) {
+    return 0;
+  }
+  return (UINTN) Variable->DataSize;
+}
+
+CHAR16 *
+GetVariableNamePtr (
+  IN  VARIABLE_HEADER   *Variable
+  )
+/*++
+
+Routine Description:
+
+  This code gets the pointer to the variable name.
+
+Arguments:
+
+  Variable            Pointer to the Variable Header.
+
+Returns:
+
+  CHAR16*              Pointer to Variable Name
+
+--*/
+{
+
+  return (CHAR16 *) (Variable + 1);
+}
+
+
+UINT8 *
+GetVariableDataPtr (
+  IN  VARIABLE_HEADER   *Variable
+  )
+/*++
+
+Routine Description:
+
+  This code gets the pointer to the variable data.
+
+Arguments:
+
+  Variable            Pointer to the Variable Header.
+
+Returns:
+
+  UINT8*              Pointer to Variable Data
+
+--*/
+{
+  UINTN Value;
+  
+  //
+  // Be careful about pad size for alignment
+  //
+  Value =  (UINTN) GetVariableNamePtr (Variable);
+  Value += NameSizeOfVariable (Variable);
+  Value += GET_PAD_SIZE (NameSizeOfVariable (Variable));
+
+  return (UINT8 *) Value;
+}
+
+VARIABLE_HEADER *
+GetNextVariablePtr (
+  IN  VARIABLE_HEADER   *Variable
+  )
+/*++
+
+Routine Description:
+
+  This code gets the pointer to the next variable header.
+
+Arguments:
+
+  Variable              Pointer to the Variable Header.
+
+Returns:
+
+  VARIABLE_HEADER*      Pointer to next variable header.
+
+--*/
+{
+  UINTN Value;
+
+  if (!IsValidVariableHeader (Variable)) {
+    return NULL;
+  }
+
+  Value =  (UINTN) GetVariableDataPtr (Variable);
+  Value += DataSizeOfVariable (Variable);
+  Value += GET_PAD_SIZE (DataSizeOfVariable (Variable));
+
+  //
+  // Be careful about pad size for alignment
+  //
+  return (VARIABLE_HEADER *) HEADER_ALIGN (Value);
+}
+
 
 STATIC
 VARIABLE_STORE_STATUS
@@ -195,6 +371,8 @@ Returns:
 
 --*/
 {
+  VOID  *Point;
+
   if (VariableName[0] == 0) {
     PtrTrack->CurrPtr = Variable;
     return EFI_SUCCESS;
@@ -209,7 +387,9 @@ Returns:
         (((INT32 *) VendorGuid)[2] == ((INT32 *) &Variable->VendorGuid)[2]) &&
         (((INT32 *) VendorGuid)[3] == ((INT32 *) &Variable->VendorGuid)[3])
         ) {
-      if (!CompareMem (VariableName, GET_VARIABLE_NAME_PTR (Variable), Variable->NameSize)) {
+      ASSERT (NameSizeOfVariable (Variable) != 0);
+      Point = (VOID *) GetVariableNamePtr (Variable);
+      if (!CompareMem (VariableName, Point, NameSizeOfVariable (Variable))) {
         PtrTrack->CurrPtr = Variable;
         return EFI_SUCCESS;
       }
@@ -314,8 +494,8 @@ Returns:
       //
       // Find the variable by walk through non-volatile variable store
       //
-      IndexTable->StartPtr  = (VARIABLE_HEADER *) (VariableStoreHeader + 1);
-      IndexTable->EndPtr    = (VARIABLE_HEADER *) ((UINTN) VariableStoreHeader + VariableStoreHeader->Size);
+      IndexTable->StartPtr  = GetStartPointer (VariableStoreHeader);
+      IndexTable->EndPtr    = GetEndPointer (VariableStoreHeader);
 
       //
       // Start Pointers for the variable.
@@ -405,7 +585,7 @@ Returns:
   EFI_PEI_SERVICES        **PeiServices;
 
   PeiServices = GetPeiServicesTablePointer ();
-  if (VariableName == NULL || VariableGuid == NULL) {
+  if (VariableName == NULL || VariableGuid == NULL || DataSize == NULL) {
     return EFI_INVALID_PARAMETER;
   }
   //
@@ -418,9 +598,16 @@ Returns:
   //
   // Get data size
   //
-  VarDataSize = Variable.CurrPtr->DataSize;
+  VarDataSize = DataSizeOfVariable (Variable.CurrPtr);
   if (*DataSize >= VarDataSize) {
-    (*PeiServices)->CopyMem (Data, GET_VARIABLE_DATA_PTR (Variable.CurrPtr), VarDataSize);
+    //
+    // PO-TKW: Address one checking in this place
+    //
+    if (Data == NULL) {
+      return EFI_INVALID_PARAMETER;
+    }
+
+    (*PeiServices)->CopyMem (Data, GetVariableDataPtr (Variable.CurrPtr), VarDataSize);
 
     if (Attributes != NULL) {
       *Attributes = Variable.CurrPtr->Attributes;
@@ -475,7 +662,7 @@ Returns:
   EFI_PEI_SERVICES        **PeiServices;
 
   PeiServices = GetPeiServicesTablePointer ();
-  if (VariableName == NULL) {
+  if (VariableName == NULL || VariableGuid == NULL || VariableNameSize == NULL) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -494,9 +681,11 @@ Returns:
   while (!(Variable.CurrPtr >= Variable.EndPtr || Variable.CurrPtr == NULL)) {
     if (IsValidVariableHeader (Variable.CurrPtr)) {
       if (Variable.CurrPtr->State == VAR_ADDED) {
-        VarNameSize = (UINTN) Variable.CurrPtr->NameSize;
+        ASSERT (NameSizeOfVariable (Variable.CurrPtr) != 0);
+
+        VarNameSize = (UINTN) NameSizeOfVariable (Variable.CurrPtr);
         if (VarNameSize <= *VariableNameSize) {
-          (*PeiServices)->CopyMem (VariableName, GET_VARIABLE_NAME_PTR (Variable.CurrPtr), VarNameSize);
+          (*PeiServices)->CopyMem (VariableName, GetVariableNamePtr (Variable.CurrPtr), VarNameSize);
 
           (*PeiServices)->CopyMem (VariableGuid, &Variable.CurrPtr->VendorGuid, sizeof (EFI_GUID));
 

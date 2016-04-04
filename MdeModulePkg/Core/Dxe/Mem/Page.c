@@ -1,6 +1,8 @@
-/*++
+/** @file
 
-Copyright (c) 2007, Intel Corporation                                                         
+  UEFI Memory page management functions.
+
+Copyright (c) 2007 - 2008, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -9,18 +11,7 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
-Module Name:
-
-  page.c
-
-Abstract:
-
-  EFI Memory page management
-
-
-Revision History
-
---*/
+**/
 
 #include <DxeMain.h>
 
@@ -1432,7 +1423,7 @@ Returns:
   //
   // Build the map
   //
-  ZeroMem (MemoryMap, Size);
+  ZeroMem (MemoryMap, BufferSize);
   for (Link = gMemoryMap.ForwardLink; Link != &gMemoryMap; Link = Link->ForwardLink) {
     Entry = CR (Link, MEMORY_MAP, Link, MEMORY_MAP_SIGNATURE);
     ASSERT (Entry->VirtualStart == 0);

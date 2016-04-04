@@ -27,7 +27,7 @@ Abstract:
 
 #define PEI_PCI_CFG_PPI_GUID \
   { \
-    0xe1f2eba0, 0xf7b9, 0x4a26, 0x86, 0x20, 0x13, 0x12, 0x21, 0x64, 0x2a, 0x90 \
+    0xe1f2eba0, 0xf7b9, 0x4a26, {0x86, 0x20, 0x13, 0x12, 0x21, 0x64, 0x2a, 0x90} \
   }
 
 EFI_FORWARD_DECLARATION (PEI_PCI_CFG_PPI);
@@ -54,11 +54,11 @@ EFI_STATUS
   IN UINTN                    ClearBits
   );
 
-typedef struct _PEI_PCI_CFG_PPI {
+struct _PEI_PCI_CFG_PPI {
   PEI_PCI_CFG_PPI_IO  Read;
   PEI_PCI_CFG_PPI_IO  Write;
   PEI_PCI_CFG_PPI_RW  Modify;
-} PEI_PCI_CFG_PPI;
+};
 
 extern EFI_GUID gPeiPciCfgPpiInServiceTableGuid;
 

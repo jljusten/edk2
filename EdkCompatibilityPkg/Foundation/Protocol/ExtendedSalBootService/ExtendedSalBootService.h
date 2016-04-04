@@ -26,7 +26,7 @@ Abstract:
 
 
 #define EXTENDED_SAL_BOOT_SERVICE_PROTOCOL_GUID   \
-  {0xde0ee9a4,0x3c7a,0x44f2,0xb7,0x8b,0xe3,0xcc,0xd6,0x9c,0x3a,0xf7}
+  {0xde0ee9a4,0x3c7a,0x44f2,{0xb7,0x8b,0xe3,0xcc,0xd6,0x9c,0x3a,0xf7}}
 
 #define EXTENDED_SAL_SIGNATURE  EFI_SIGNATURE_32('e', 's', 'a', 'l')
 
@@ -105,13 +105,13 @@ EFI_STATUS
 //
 // Extended Sal Boot Service Protocol Interface
 //
-typedef struct _EXTENDED_SAL_BOOT_SERVICE_PROTOCOL{
+struct _EXTENDED_SAL_BOOT_SERVICE_PROTOCOL {
   EXTENDED_SAL_ADD_SST_INFO                       AddSalSystemTableInfo;
   EXTENDED_SAL_ADD_SST_ENTRY                      AddSalSystemTableEntry;
   EXTENDED_SAL_REGISTER_INTERNAL_PROC             AddExtendedSalProc;   
   SAL_EXTENDED_SAL_PROC                           ExtendedSalProc;
   SAL_PROC                                        SalProc;
-} EXTENDED_SAL_BOOT_SERVICE_PROTOCOL;
+};
 
 extern EFI_GUID   gEfiExtendedSalBootServiceProtocolGuid;
 

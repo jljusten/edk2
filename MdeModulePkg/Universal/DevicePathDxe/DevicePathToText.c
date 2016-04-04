@@ -1,30 +1,23 @@
-/*++
-
-Copyright (c) 2006, Intel Corporation                                                         
-All rights reserved. This program and the accompanying materials                          
-are licensed and made available under the terms and conditions of the BSD License         
-which accompanies this distribution.  The full text of the license may be found at        
-http://opensource.org/licenses/bsd-license.php                                            
-                                                                                          
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
-
-Module Name:
-
-  DevicePathToText.c
-
-Abstract:
-
+/** @file
   DevicePathToText protocol as defined in the UEFI 2.0 specification.
 
---*/
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
+
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+
+**/
 
 #include "DevicePath.h"
 
 STATIC
 EFI_DEVICE_PATH_PROTOCOL *
 UnpackDevicePath (
-  IN EFI_DEVICE_PATH_PROTOCOL  *DevPath
+  IN CONST EFI_DEVICE_PATH_PROTOCOL  *DevPath
   )
 /*++
 
@@ -41,7 +34,7 @@ UnpackDevicePath (
 
 --*/
 {
-  EFI_DEVICE_PATH_PROTOCOL  *Src;
+  CONST EFI_DEVICE_PATH_PROTOCOL  *Src;
   EFI_DEVICE_PATH_PROTOCOL  *Dest;
   EFI_DEVICE_PATH_PROTOCOL  *NewPath;
   UINTN                     Size;
@@ -440,11 +433,11 @@ EisaIdToText (
   //
   //UnicodeSPrint ("%X", 0x0a03) => "0000000000000A03"
   //
-  UnicodeSPrint (PnpIdStr, 17 * 2, L"%X", EisaId >> 16);
+  UnicodeSPrint (PnpIdStr, 17 * 2, L"%16X", EisaId >> 16);
 
   UnicodeSPrint (
     Text,
-    0,
+    sizeof (CHAR16) + sizeof (CHAR16) + sizeof (CHAR16) + sizeof (PnpIdStr),
     L"%c%c%c%s",
     '@' + ((EisaId >> 10) & 0x1f),
     '@' + ((EisaId >>  5) & 0x1f),
@@ -830,9 +823,9 @@ DevPathToTextSata (
   CatPrint (
     Str,
     L"Sata(0x%x,0x%x,0x%x)",
-    (UINTN) Sata->HbaPortNumber,
-    (UINTN) Sata->PortMultiplierPort,
-    (UINTN) Sata->LogicalUnitNumber
+    (UINTN) Sata->HBAPortNumber,
+    (UINTN) Sata->PortMultiplierPortNumber,
+    (UINTN) Sata->Lun
     );
 }
 

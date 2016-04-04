@@ -26,10 +26,10 @@ Abstract:
 #include EFI_PROTOCOL_DEFINITION (ServiceBinding)
 
 #define EFI_MANAGED_NETWORK_SERVICE_BINDING_PROTOCOL_GUID \
-  {0xf36ff770, 0xa7e1, 0x42cf, 0x9e, 0xd2, 0x56, 0xf0, 0xf2, 0x71, 0xf4, 0x4c}
+  { 0xf36ff770, 0xa7e1, 0x42cf, {0x9e, 0xd2, 0x56, 0xf0, 0xf2, 0x71, 0xf4, 0x4c} }
 
 #define EFI_MANAGED_NETWORK_PROTOCOL_GUID \
-  { 0x3b95aa31, 0x3793, 0x434b, 0x86, 0x67, 0xc8, 0x7, 0x8, 0x92, 0xe0, 0x5e }
+  { 0x7ab33a91, 0xace5, 0x4326, {0xb5, 0x72, 0xe7, 0xee, 0x33, 0xd3, 0x9f, 0x16} }
 
 EFI_FORWARD_DECLARATION (EFI_MANAGED_NETWORK_PROTOCOL);
 
@@ -147,7 +147,7 @@ EFI_STATUS
   IN EFI_MANAGED_NETWORK_PROTOCOL    *This
   );
 
-typedef struct _EFI_MANAGED_NETWORK_PROTOCOL {
+struct _EFI_MANAGED_NETWORK_PROTOCOL {
   EFI_MANAGED_NETWORK_GET_MODE_DATA       GetModeData;
   EFI_MANAGED_NETWORK_CONFIGURE           Configure;
   EFI_MANAGED_NETWORK_MCAST_IP_TO_MAC     McastIpToMac;
@@ -156,7 +156,7 @@ typedef struct _EFI_MANAGED_NETWORK_PROTOCOL {
   EFI_MANAGED_NETWORK_RECEIVE             Receive;
   EFI_MANAGED_NETWORK_CANCEL              Cancel;
   EFI_MANAGED_NETWORK_POLL                Poll;
-} EFI_MANAGED_NETWORK_PROTOCOL;
+};
 
 extern EFI_GUID gEfiManagedNetworkServiceBindingProtocolGuid;
 extern EFI_GUID gEfiManagedNetworkProtocolGuid;

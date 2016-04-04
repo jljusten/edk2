@@ -1201,7 +1201,6 @@ BcStart (
     return EFI_ALREADY_STARTED;
   }
 
-#if !SUPPORT_IPV6
   //
   // Fail if IPv6 is requested and not supported.
   //
@@ -1210,7 +1209,6 @@ BcStart (
     EfiReleaseLock (&Private->Lock);
     return EFI_UNSUPPORTED;
   }
-#endif
   //
   // Setup shortcuts to SNP protocol and data structure.
   //
@@ -2174,7 +2172,7 @@ PxeBcDriverStart (
   if (EFI_ERROR (Status)) {
     goto PxeBcError;
   }
-  
+
   //
   // Get the Snp interface
   //
@@ -2223,12 +2221,8 @@ PxeBcDriverStart (
   // implementation supports IPv6.
   //
   Private->EfiBc.Mode->Ipv6Supported = SUPPORT_IPV6;
-
-#if SUPPORT_IPV6
-  Private->EfiBc.Mode->Ipv6Available = Private->NiiPtr->Ipv6Supported;
-#else
   Private->EfiBc.Mode->Ipv6Available = FALSE;
-#endif
+
   //
   // Set to TRUE by the BC constructor if this BC
   // implementation supports BIS.
@@ -2350,6 +2344,41 @@ PxeBcDriverStop (
   return Status;
 }
 
+EFI_STATUS
+EFIAPI
+PxeBcUnload (
+  IN EFI_HANDLE  ImageHandle
+  )
+{
+  EFI_STATUS  Status;
+  UINTN       DeviceHandleCount;
+  EFI_HANDLE  *DeviceHandleBuffer;
+  UINTN       Index;
+
+  Status = gBS->LocateHandleBuffer (
+                  AllHandles,
+                  NULL,
+                  NULL,
+                  &DeviceHandleCount,
+                  &DeviceHandleBuffer
+                  );
+  if (!EFI_ERROR (Status)) {
+    for (Index = 0; Index < DeviceHandleCount; Index++) {
+      Status = gBS->DisconnectController (
+                      DeviceHandleBuffer[Index],
+                      mPxeBcDriverBinding.DriverBindingHandle,
+                      NULL
+                      );
+    }
+
+    if (DeviceHandleBuffer != NULL) {
+      gBS->FreePool (DeviceHandleBuffer);
+    }
+  }
+
+  return Status;
+}
+
 
 /**
   Initialize the base code drivers and install the driver binding
@@ -2366,7 +2395,8 @@ InitializeBCDriver (
   IN EFI_SYSTEM_TABLE *SystemTable
   )
 {
-  EFI_STATUS  Status;
+  EFI_STATUS                 Status;
+  EFI_LOADED_IMAGE_PROTOCOL  *LoadedImage;
 
   //
   // Initialize EFI library
@@ -2379,6 +2409,17 @@ InitializeBCDriver (
              &gPxeBcComponentName,
              &gPxeBcComponentName2
              );
+
+  Status = gBS->HandleProtocol (
+                  ImageHandle,
+                  &gEfiLoadedImageProtocolGuid,
+                  (VOID **) &LoadedImage
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  } else {
+    LoadedImage->Unload = PxeBcUnload;
+  }
 
   InitArpHeader ();
   OptionsStrucInit ();

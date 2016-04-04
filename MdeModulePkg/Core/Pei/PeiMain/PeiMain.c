@@ -1,4 +1,4 @@
-/*++
+/** @file
 
 Copyright (c) 2006, Intel Corporation
 All rights reserved. This program and the accompanying materials
@@ -19,14 +19,9 @@ Abstract:
 
 Revision History
 
---*/
+**/
 
 #include <PeiMain.h>
-
-//
-//CAR is filled with this initial value during SEC phase
-//
-#define INIT_CAR_VALUE 0x5AA55AA5
 
 static EFI_PEI_PPI_DESCRIPTOR mMemoryDiscoveredPpi = {
   (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
@@ -122,6 +117,7 @@ Returns:
   PEI_CORE_INSTANCE                                     *OldCoreData;
   EFI_PEI_CPU_IO_PPI                                    *CpuIo;
   EFI_PEI_PCI_CFG2_PPI                                  *PciCfg;
+  PEI_CORE_ENTRY_POINT                                  ShadowedPeiCore;
 
   mTick = 0;
   OldCoreData = (PEI_CORE_INSTANCE *) Data;
@@ -133,6 +129,16 @@ Returns:
   }
 
   if (OldCoreData != NULL) {
+    ShadowedPeiCore = (PEI_CORE_ENTRY_POINT) (UINTN) OldCoreData->ShadowedPeiCore;
+    if (ShadowedPeiCore != NULL) {
+      OldCoreData->ShadowedPeiCore = NULL;
+      ShadowedPeiCore (
+        SecCoreData,
+        PpiList,
+        OldCoreData
+        );
+    }
+
     CopyMem (&PrivateData, OldCoreData, sizeof (PEI_CORE_INSTANCE));
     
     CpuIo = (VOID*)PrivateData.ServiceTableShadow.CpuIo;
@@ -169,34 +175,6 @@ Returns:
 
     PERF_END (NULL,"PreMem", NULL, 0);
     PERF_START (NULL,"PostMem", NULL, 0);
-
-    //
-    // The following code dumps out interesting cache as RAM usage information
-    // so we can keep tabs on how the cache as RAM is being utilized.  The
-    // DEBUG_CODE_BEGIN macro is used to prevent this code from being compiled
-    // on a debug build.
-    //
-    DEBUG_CODE_BEGIN ();
-      UINTN  *StackPointer;
-      UINTN  StackValue;
-
-      StackValue = INIT_CAR_VALUE;
-      for (StackPointer = (UINTN *) OldCoreData->TopOfCarHeap;
-           ((UINTN) StackPointer < ((UINTN) OldCoreData->MaxTopOfCarHeap))
-           && StackValue == INIT_CAR_VALUE;
-           StackPointer++) {
-        StackValue = *StackPointer;
-      }
-      
-      DEBUG ((EFI_D_INFO, "Total Cache as RAM:    %d bytes.\n", OldCoreData->SizeOfCacheAsRam));
-      DEBUG ((EFI_D_INFO, "  CAR stack ever used: %d bytes.\n",
-        ((UINTN) OldCoreData->MaxTopOfCarHeap - (UINTN) StackPointer)
-        ));
-      DEBUG ((EFI_D_INFO, "  CAR heap used:       %d bytes.\n",
-        ((UINTN) OldCoreData->HobList.HandoffInformationTable->EfiFreeMemoryBottom -
-        (UINTN) OldCoreData->HobList.Raw)
-        ));
-    DEBUG_CODE_END ();
 
     //
     // Alert any listeners that there is permanent memory available

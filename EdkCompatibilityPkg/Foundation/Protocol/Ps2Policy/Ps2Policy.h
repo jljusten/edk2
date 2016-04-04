@@ -27,7 +27,7 @@ EFI_FORWARD_DECLARATION (EFI_PS2_POLICY_PROTOCOL);
 
 #define EFI_PS2_POLICY_PROTOCOL_GUID \
   { \
-    0x4df19259, 0xdc71, 0x4d46, 0xbe, 0xf1, 0x35, 0x7b, 0xb5, 0x78, 0xc4, 0x18 \
+    0x4df19259, 0xdc71, 0x4d46, {0xbe, 0xf1, 0x35, 0x7b, 0xb5, 0x78, 0xc4, 0x18} \
   }
 
 #define EFI_KEYBOARD_CAPSLOCK   0x0004
@@ -40,10 +40,10 @@ EFI_STATUS
   IN  EFI_HANDLE              Handle
   );
 
-typedef struct _EFI_PS2_POLICY_PROTOCOL {
+struct _EFI_PS2_POLICY_PROTOCOL {
   UINT8                 KeyboardLight;
   EFI_PS2_INIT_HARDWARE Ps2InitHardware;
-} EFI_PS2_POLICY_PROTOCOL;
+};
 
 extern EFI_GUID gEfiPs2PolicyProtocolGuid;
 

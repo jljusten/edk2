@@ -100,7 +100,7 @@ Returns:
 {
   return GetImageEx (
            ImageHandle,
-           &gEfiDefaultBmpLogoGuid,
+           FileNameGuid,
            EFI_SECTION_RAW,
            Image,
            ImageSize,
@@ -463,7 +463,7 @@ Returns:
         continue;
       }
     } else {
-      Status = GetGraphicsBitMapFromFVEx (ImageHandle, LogoFile, &ImageData, &ImageSize);
+      Status = GetGraphicsBitMapFromFVEx (ImageHandle, LogoFile, (VOID **) &ImageData, &ImageSize);
       if (EFI_ERROR (Status)) {
         return EFI_UNSUPPORTED;
       }

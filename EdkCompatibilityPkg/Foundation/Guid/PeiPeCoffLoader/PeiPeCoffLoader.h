@@ -25,7 +25,7 @@ Abstract:
 #include "EfiImage.h"
 
 #define EFI_PEI_PE_COFF_LOADER_GUID  \
-  { 0xd8117cff, 0x94a6, 0x11d4, 0x9a, 0x3a, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d }
+  { 0xd8117cff, 0x94a6, 0x11d4, {0x9a, 0x3a, 0x0, 0x90, 0x27, 0x3f, 0xc1, 0x4d} }
 
 EFI_FORWARD_DECLARATION (EFI_PEI_PE_COFF_LOADER_PROTOCOL);
 
@@ -104,12 +104,12 @@ EFI_STATUS
   IN EFI_PEI_PE_COFF_LOADER_IMAGE_CONTEXT *ImageContext
   );
 
-typedef struct _EFI_PEI_PE_COFF_LOADER_PROTOCOL {
+struct _EFI_PEI_PE_COFF_LOADER_PROTOCOL {
   EFI_PEI_PE_COFF_LOADER_GET_IMAGE_INFO  GetImageInfo;
   EFI_PEI_PE_COFF_LOADER_LOAD_IMAGE      LoadImage;
   EFI_PEI_PE_COFF_LOADER_RELOCATE_IMAGE  RelocateImage;
   EFI_PEI_PE_COFF_LOADER_UNLOAD_IMAGE    UnloadImage;
-} EFI_PEI_PE_COFF_LOADER_PROTOCOL;
+};
 
 extern EFI_GUID gEfiPeiPeCoffLoaderGuid;
 

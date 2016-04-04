@@ -27,7 +27,7 @@ Abstract:
 #include EFI_PROTOCOL_DEFINITION (DebugSupport)
 
 #define EFI_CPU_ARCH_PROTOCOL_GUID \
-  { 0x26baccb1, 0x6f42, 0x11d4, 0xbc, 0xe7, 0x0, 0x80, 0xc7, 0x3c, 0x88, 0x81 }
+  { 0x26baccb1, 0x6f42, 0x11d4, {0xbc, 0xe7, 0x0, 0x80, 0xc7, 0x3c, 0x88, 0x81} }
 
 EFI_FORWARD_DECLARATION (EFI_CPU_ARCH_PROTOCOL);
 
@@ -45,7 +45,7 @@ typedef enum {
 
 typedef
 VOID
-(*EFI_CPU_INTERRUPT_HANDLER) (
+(EFIAPI *EFI_CPU_INTERRUPT_HANDLER) (
   IN EFI_EXCEPTION_TYPE                 InterruptType,
   IN EFI_SYSTEM_CONTEXT                 SystemContext
   );
@@ -304,7 +304,7 @@ Returns:
                                           
 --*/
 
-typedef struct _EFI_CPU_ARCH_PROTOCOL {
+struct _EFI_CPU_ARCH_PROTOCOL {
   EFI_CPU_FLUSH_DATA_CACHE            FlushDataCache;
   EFI_CPU_ENABLE_INTERRUPT            EnableInterrupt;
   EFI_CPU_DISABLE_INTERRUPT           DisableInterrupt;
@@ -315,7 +315,7 @@ typedef struct _EFI_CPU_ARCH_PROTOCOL {
   EFI_CPU_SET_MEMORY_ATTRIBUTES       SetMemoryAttributes;
   UINT32                              NumberOfTimers;
   UINT32                              DmaBufferAlignment;
-} EFI_CPU_ARCH_PROTOCOL;
+};
 
 /*++
 

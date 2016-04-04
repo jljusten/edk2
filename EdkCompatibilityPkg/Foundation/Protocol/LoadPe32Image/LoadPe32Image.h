@@ -23,7 +23,7 @@ Abstract:
 #define _LOAD_PE32_IMAGE_H_
 
 #define PE32_IMAGE_PROTOCOL_GUID  \
-  {0x5cb5c776,0x60d5,0x45ee,0x88,0x3c,0x45,0x27,0x8,0xcd,0x74,0x3f }
+  {0x5cb5c776,0x60d5,0x45ee,{0x88,0x3c,0x45,0x27,0x8,0xcd,0x74,0x3f} }
 
 #define EFI_LOAD_PE_IMAGE_ATTRIBUTE_NONE                                 0x00
 #define EFI_LOAD_PE_IMAGE_ATTRIBUTE_RUNTIME_REGISTRATION                 0x01
@@ -53,10 +53,10 @@ EFI_STATUS
   IN EFI_HANDLE                       ImageHandle
   );
 
-typedef struct _EFI_PE32_IMAGE_PROTOCOL {
+struct _EFI_PE32_IMAGE_PROTOCOL {
   LOAD_PE_IMAGE     LoadPeImage;
   UNLOAD_PE_IMAGE  UnLoadPeImage;
-} EFI_PE32_IMAGE_PROTOCOL;
+};
 
 extern EFI_GUID gEfiLoadPeImageGuid;
 

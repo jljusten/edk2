@@ -29,10 +29,10 @@ Abstract:
 //GUID definitions
 //
 #define EFI_IP4_SERVICE_BINDING_PROTOCOL_GUID \
-   {0xc51711e7, 0xb4bf, 0x404a, 0xbf, 0xb8, 0x0a, 0x04, 0x8e, 0xf1, 0xff, 0xe4}
+   {0xc51711e7, 0xb4bf, 0x404a, {0xbf, 0xb8, 0x0a, 0x04, 0x8e, 0xf1, 0xff, 0xe4}}
 
 #define EFI_IP4_PROTOCOL_GUID \
-   {0x41d94cd2, 0x35b6, 0x455a, 0x82, 0x58, 0xd4, 0xe5, 0x13, 0x34, 0xaa, 0xdd}
+   {0x41d94cd2, 0x35b6, 0x455a, {0x82, 0x58, 0xd4, 0xe5, 0x13, 0x34, 0xaa, 0xdd}}
 
 EFI_FORWARD_DECLARATION (EFI_IP4_PROTOCOL);
 
@@ -223,7 +223,7 @@ EFI_STATUS
   IN EFI_IP4_PROTOCOL           *This
   );
 
-typedef struct _EFI_IP4_PROTOCOL {
+struct _EFI_IP4_PROTOCOL {
   EFI_IP4_GET_MODE_DATA         GetModeData;
   EFI_IP4_CONFIGURE             Configure;
   EFI_IP4_GROUPS                Groups;
@@ -232,7 +232,7 @@ typedef struct _EFI_IP4_PROTOCOL {
   EFI_IP4_RECEIVE               Receive;
   EFI_IP4_CANCEL                Cancel;
   EFI_IP4_POLL                  Poll;
-} EFI_IP4_PROTOCOL;
+};
 
 
 extern EFI_GUID gEfiIp4ServiceBindingProtocolGuid;

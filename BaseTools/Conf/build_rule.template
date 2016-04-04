@@ -78,7 +78,7 @@
 
 ## Reserved File-Type
 #
-# Dont't change following names of file types and their associated files,
+# Don't change following names of file types and their associated files,
 # which are also used in tools' code
 #
 #   C-Code-File
@@ -164,7 +164,7 @@
         "$(PP)" $(VFRPP_FLAGS) $(INC) ${src} > $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i
         Trim --vfr-file -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iii $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i
         -mkdir ${d_path} > NUL 2>&1
-        VfrCompile -od ${d_path} $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iii
+        VfrCompile --no-pre-processing --output-directory ${d_path} $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iii
 
 [Build.Object-File]
     <InputFile>
@@ -237,7 +237,9 @@
         $(OUTPUT_DIR)(+)$(MODULE_NAME).depex
 
     <Command>
-#       GenDepex -o ${dst} ${src}
+        "$(PP)" $(CC_FLAGS) $(APP_FLAGS) $(INC) ${src} > $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i
+        Trim --source-code -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iii $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i
+        GenDepex -t $(MODULE_TYPE) -o ${dst} $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iii
 
 [Build.Acpi-Source-Language-File]
     <InputFile>
@@ -248,7 +250,7 @@
 
     <Command.MSFT, Command.INTEL>
         "$(PP)" $(APP_FLAGS) $(INC) ${src} > ${d_path}(+)${s_base}.i
-        "$(ASL)" -p ${dst} ${d_path}(+)${s_base}.i
+        "$(ASL)" -p ${dst} $(ASL_FLAGS) ${d_path}(+)${s_base}.i
 
 [Build.Acpi-Table-Code-File]
     <InputFile>
@@ -293,6 +295,7 @@
 
     <Command>
         GenFw -o ${dst} -j ${src}
+        -$(CP) ${dst} $(BIN_DIR)
 
 [Build.Unicode-Text-File]
     <InputFile>

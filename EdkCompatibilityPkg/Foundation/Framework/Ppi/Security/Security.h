@@ -24,7 +24,7 @@ Abstract:
 
 #define PEI_SECURITY_PPI_GUID \
   { \
-    0x1388066e, 0x3a57, 0x4efa, 0x98, 0xf3, 0xc1, 0x2f, 0x3a, 0x95, 0x8a, 0x29 \
+    0x1388066e, 0x3a57, 0x4efa, {0x98, 0xf3, 0xc1, 0x2f, 0x3a, 0x95, 0x8a, 0x29} \
   }
 
 EFI_FORWARD_DECLARATION (PEI_SECURITY_PPI);
@@ -39,9 +39,9 @@ EFI_STATUS
   IN OUT BOOLEAN                  *StartCrisisRecovery
   );
 
-typedef struct _PEI_SECURITY_PPI {
+struct _PEI_SECURITY_PPI {
   PEI_SECURITY_AUTHENTICATION_STATE AuthenticationState;
-} PEI_SECURITY_PPI;
+};
 
 extern EFI_GUID gPeiSecurityPpiGuid;
 
