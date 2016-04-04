@@ -1,6 +1,8 @@
 ;------------------------------------------------------------------------------
+; @file
+; Transition from 16 bit real mode into 32 bit flat protected mode
 ;
-; Copyright (c) 2008, Intel Corporation
+; Copyright (c) 2008 - 2010, Intel Corporation
 ; All rights reserved. This program and the accompanying materials
 ; are licensed and made available under the terms and conditions of the BSD License
 ; which accompanies this distribution.  The full text of the license may be found at
@@ -9,14 +11,6 @@
 ; THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 ; WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 ;
-; Module Name:
-;
-;   16RealTo32Flat.asm
-;
-; Abstract:
-;
-;   Transition from 16 bit real mode into 32 bit flat protected mode
-;
 ;------------------------------------------------------------------------------
 
 %define SEC_DEFAULT_CR0  0x40000023
@@ -24,11 +18,12 @@
 
 BITS    16
 
-to32BitFlat:
+;
+; Modified:  EAX, EBX
+;
+TransitionFromReal16To32BitFlat:
 
-    writeToSerialPort '1'
-    writeToSerialPort '6'
-    writeToSerialPort ' '
+    debugShowPostCode POSTCODE_16BIT_MODE
 
     cli
 
@@ -42,10 +37,6 @@ o32 lgdt    [bx]
     mov     eax, SEC_DEFAULT_CR0
     mov     cr0, eax
 
-;    mov     eax, cr0
-;    or      al, 1
-;    mov     cr0, eax
-
     jmp     LINEAR_CODE_SEL:dword ADDR_OF(jumpTo32BitAndLandHere)
 BITS    32
 jumpTo32BitAndLandHere:
@@ -53,18 +44,16 @@ jumpTo32BitAndLandHere:
     mov     eax, SEC_DEFAULT_CR4
     mov     cr4, eax
 
-    writeToSerialPort '3'
-    writeToSerialPort '2'
-    writeToSerialPort ' '
+    debugShowPostCode POSTCODE_32BIT_MODE
 
-    mov ax, LINEAR_SEL
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
+    mov     ax, LINEAR_SEL
+    mov     ds, ax
+    mov     es, ax
+    mov     fs, ax
+    mov     gs, ax
+    mov     ss, ax
 
-    jmp     TransitionFrom16RealTo32FlatComplete
+    OneTimeCallRet TransitionFromReal16To32BitFlat
 
 ALIGN   2
 
@@ -74,78 +63,71 @@ gdtr:
 
 ALIGN   16
 
+;
+; Macros for GDT entries
+;
+
+%define  PRESENT_FLAG(p) (p << 7)
+%define  DPL(dpl) (dpl << 5)
+%define  SYSTEM_FLAG(s) (s << 4)
+%define  DESC_TYPE(t) (t)
+
+; Type: data, expand-up, writable, accessed
+%define  DATA32_TYPE 3
+
+; Type: execute, readable, expand-up, accessed
+%define  CODE32_TYPE 0xb
+
+; Type: execute, readable, expand-up, accessed
+%define  CODE64_TYPE 0xb
+
+%define  GRANULARITY_FLAG(g) (g << 7)
+%define  DEFAULT_SIZE32(d) (d << 6)
+%define  CODE64_FLAG(l) (l << 5)
+%define  UPPER_LIMIT(l) (l)
+
+;
+; The Global Descriptor Table (GDT)
+;
+
 GDT_BASE:
 ; null descriptor
 NULL_SEL            equ $-GDT_BASE
-        dw 0            ; limit 15:0
-        dw 0            ; base 15:0
-        db 0            ; base 23:16
-        db 0            ; type
-        db 0            ; limit 19:16, flags
-        db 0            ; base 31:24
+    DW      0            ; limit 15:0
+    DW      0            ; base 15:0
+    DB      0            ; base 23:16
+    DB      0            ; sys flag, dpl, type
+    DB      0            ; limit 19:16, flags
+    DB      0            ; base 31:24
 
 ; linear data segment descriptor
-LINEAR_SEL      equ $-GDT_BASE
-        dw 0FFFFh       ; limit 0xFFFFF
-        dw 0            ; base 0
-        db 0
-        db 092h         ; present, ring 0, data, expand-up, writable
-        db 0CFh                 ; page-granular, 32-bit
-        db 0
+LINEAR_SEL          equ $-GDT_BASE
+    DW      0xffff       ; limit 15:0
+    DW      0            ; base 15:0
+    DB      0            ; base 23:16
+    DB      PRESENT_FLAG(1)|DPL(0)|SYSTEM_FLAG(1)|DESC_TYPE(DATA32_TYPE)
+    DB      GRANULARITY_FLAG(1)|DEFAULT_SIZE32(1)|CODE64_FLAG(0)|UPPER_LIMIT(0xf)
+    DB      0            ; base 31:24
 
 ; linear code segment descriptor
-LINEAR_CODE_SEL equ $-GDT_BASE
-        dw 0FFFFh       ; limit 0xFFFFF
-        dw 0            ; base 0
-        db 0
-        db 09Ah         ; present, ring 0, data, expand-up, writable
-        db 0CFh                 ; page-granular, 32-bit
-        db 0
+LINEAR_CODE_SEL     equ $-GDT_BASE
+    DW      0xffff       ; limit 15:0
+    DW      0            ; base 15:0
+    DB      0            ; base 23:16
+    DB      PRESENT_FLAG(1)|DPL(0)|SYSTEM_FLAG(1)|DESC_TYPE(CODE32_TYPE)
+    DB      GRANULARITY_FLAG(1)|DEFAULT_SIZE32(1)|CODE64_FLAG(0)|UPPER_LIMIT(0xf)
+    DB      0            ; base 31:24
 
-; system data segment descriptor
-SYS_DATA_SEL    equ $-GDT_BASE
-        dw 0FFFFh       ; limit 0xFFFFF
-        dw 0            ; base 0
-        db 0
-        db 092h         ; present, ring 0, data, expand-up, writable
-        db 0CFh                 ; page-granular, 32-bit
-        db 0
-
-; system code segment descriptor
-SYS_CODE_SEL    equ $-GDT_BASE
-        dw 0FFFFh       ; limit 0xFFFFF
-        dw 0            ; base 0
-        db 0
-        db 09Ah         ; present, ring 0, data, expand-up, writable
-        db 0CFh                 ; page-granular, 32-bit
-        db 0
-
-; spare segment descriptor
-LINEAR_CODE64_SEL  equ $-GDT_BASE
-    DW      -1                  ; LimitLow
-    DW      0                   ; BaseLow
-    DB      0                   ; BaseMid
-    DB      9bh
-    DB      0afh                ; LimitHigh   (CS.L=1, CS.D=0)
-    DB      0                   ; BaseHigh
-
-; spare segment descriptor
-SPARE4_SEL  equ $-GDT_BASE
-        dw 0            ; limit 0xFFFFF
-        dw 0            ; base 0
-        db 0
-        db 0            ; present, ring 0, data, expand-up, writable
-        db 0            ; page-granular, 32-bit
-        db 0
-
-; spare segment descriptor
-SPARE5_SEL  equ $-GDT_BASE
-        dw 0            ; limit 0xFFFFF
-        dw 0            ; base 0
-        db 0
-        db 0            ; present, ring 0, data, expand-up, writable
-        db 0            ; page-granular, 32-bit
-        db 0
+%ifdef ARCH_X64
+; linear code (64-bit) segment descriptor
+LINEAR_CODE64_SEL   equ $-GDT_BASE
+    DW      0xffff       ; limit 15:0
+    DW      0            ; base 15:0
+    DB      0            ; base 23:16
+    DB      PRESENT_FLAG(1)|DPL(0)|SYSTEM_FLAG(1)|DESC_TYPE(CODE64_TYPE)
+    DB      GRANULARITY_FLAG(1)|DEFAULT_SIZE32(0)|CODE64_FLAG(1)|UPPER_LIMIT(0xf)
+    DB      0            ; base 31:24
+%endif
 
 GDT_END:
 

@@ -17,6 +17,7 @@
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/PeimEntryPoint.h>
 #include <Library/PeiServicesLib.h>
 #include <Ppi/TemporaryRamSupport.h>
 #include <Library/PcdLib.h>
@@ -61,10 +62,8 @@ InitializeIdtPtr (
 VOID
 EFIAPI
 SecCoreStartupWithStack (
-  IN VOID       *BootFirmwareVolumePtr,
-  IN VOID       *SecCoreEntryPoint,
-  IN VOID       *PeiCoreEntryPoint,
-  IN VOID       *TopOfCurrentStack
+  IN EFI_FIRMWARE_VOLUME_HEADER       *BootFv,
+  IN VOID                             *TopOfCurrentStack
   )
 {
   EFI_SEC_PEI_HAND_OFF        *SecCoreData;
@@ -72,6 +71,15 @@ SecCoreStartupWithStack (
   UINT8                       *TopOfTempRam;
   UINTN                       SizeOfTempRam;
   VOID                        *IdtPtr;
+  VOID                        *PeiCoreEntryPoint;
+
+  DEBUG ((EFI_D_INFO,
+    "SecCoreStartupWithStack(0x%x, 0x%x)\n",
+    (UINT32)(UINTN)BootFv,
+    (UINT32)(UINTN)TopOfCurrentStack
+    ));
+
+  ProcessLibraryConstructorList (NULL, NULL);
 
   //
   // Initialize floating point operating environment
@@ -79,14 +87,6 @@ SecCoreStartupWithStack (
   //
   InitializeFloatingPointUnits ();
 
-  DEBUG ((EFI_D_ERROR,
-    "SecCoreStartupWithStack(0x%x, 0x%x, 0x%x, 0x%x)\n",
-    (UINT32)(UINTN)BootFirmwareVolumePtr,
-    (UINT32)(UINTN)SecCoreEntryPoint,
-    (UINT32)(UINTN)PeiCoreEntryPoint,
-    (UINT32)(UINTN)TopOfCurrentStack));
-
-  
   BottomOfTempRam = (UINT8*)(UINTN) INITIAL_TOP_OF_STACK;
   SizeOfTempRam = (UINTN) SIZE_64KB;
   TopOfTempRam = BottomOfTempRam + SizeOfTempRam;
@@ -107,9 +107,6 @@ SecCoreStartupWithStack (
   SecCoreData = (EFI_SEC_PEI_HAND_OFF*)((UINTN) TopOfTempRam - SIZE_4KB);
   SecCoreData->DataSize = sizeof(EFI_SEC_PEI_HAND_OFF);
 
-  SecCoreData->BootFirmwareVolumeBase = (VOID*)(UINTN) PcdGet32 (PcdOvmfFlashFvRecoveryBase);
-  SecCoreData->BootFirmwareVolumeSize = PcdGet32 (PcdOvmfFlashFvRecoverySize);
-
   SecCoreData->TemporaryRamBase       = (VOID*) BottomOfTempRam;
   SecCoreData->TemporaryRamSize       = SizeOfTempRam;
 
@@ -127,20 +124,34 @@ SecCoreStartupWithStack (
   IdtPtr = ALIGN_POINTER(IdtPtr, 16);
   InitializeIdtPtr (IdtPtr);
 
-  //
-  // Transfer control to the PEI Core
-  //
-  PeiSwitchStacks (
-    (SWITCH_STACK_ENTRY_POINT) (UINTN) PeiCoreEntryPoint,
-    SecCoreData,
-    (VOID *) (UINTN) ((EFI_PEI_PPI_DESCRIPTOR *) &mPrivateDispatchTable),
-    NULL,
-    TopOfCurrentStack,
-    (VOID *)((UINTN)SecCoreData->StackBase + SecCoreData->StackSize)
-    );
+  FindPeiCoreEntryPoint (&BootFv, &PeiCoreEntryPoint);
+
+  SecCoreData->BootFirmwareVolumeBase = BootFv;
+  SecCoreData->BootFirmwareVolumeSize = (UINTN) BootFv->FvLength;
+
+  if (PeiCoreEntryPoint != NULL) {
+    DEBUG ((EFI_D_INFO,
+      "Calling PEI Core entry point at 0x%x\n",
+      PeiCoreEntryPoint
+      ));
+    //
+    // Transfer control to the PEI Core
+    //
+    PeiSwitchStacks (
+      (SWITCH_STACK_ENTRY_POINT) (UINTN) PeiCoreEntryPoint,
+      SecCoreData,
+      (VOID *) (UINTN) ((EFI_PEI_PPI_DESCRIPTOR *) &mPrivateDispatchTable),
+      NULL,
+      TopOfCurrentStack,
+      (VOID *)((UINTN)SecCoreData->StackBase + SecCoreData->StackSize)
+      );
+  }
 
   //
-  // If we get here, then the PEI Core returned.  This is an error
+  // If we get here, then either we couldn't locate the PEI Core, or
+  // the PEI Core returned.
+  //
+  // Both of these errors are unrecoverable.
   //
   ASSERT (FALSE);
   CpuDeadLoop ();

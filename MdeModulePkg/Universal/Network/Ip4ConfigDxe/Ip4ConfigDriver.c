@@ -1,7 +1,7 @@
 /** @file
   The driver binding for IP4 CONFIG protocol.
 
-Copyright (c) 2006 - 2009, Intel Corporation.<BR>
+Copyright (c) 2006 - 2010, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at<BR>
@@ -42,8 +42,6 @@ EfiIp4ConfigUnload (
 {
   UINT32      Index;
 
-  Ip4ConfigFormUnload ();
-
   //
   //  Stop all the IP4_CONFIG instances
   //
@@ -81,8 +79,6 @@ Ip4ConfigDriverEntryPoint (
   IN EFI_SYSTEM_TABLE       *SystemTable
   )
 {
-  Ip4ConfigFormInit ();
-
   return EfiLibInstallDriverBindingComponentName2 (
            ImageHandle,
            SystemTable,
@@ -161,6 +157,16 @@ Ip4ConfigDriverBindingStart (
   IP4_CONFIG_VARIABLE           *NewVariable;
   EFI_STATUS                    Status;
   UINT32                        Index;
+  EFI_DEVICE_PATH_PROTOCOL      *ParentDevicePath;
+
+  Status = gBS->HandleProtocol (
+                  ControllerHandle,
+                  &gEfiDevicePathProtocolGuid,
+                  (VOID **) &ParentDevicePath
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
 
   //
   // Check for multiple start.
@@ -222,6 +228,7 @@ Ip4ConfigDriverBindingStart (
   Instance->Signature         = IP4_CONFIG_INSTANCE_SIGNATURE;
   Instance->Controller        = ControllerHandle;
   Instance->Image             = This->DriverBindingHandle;
+  Instance->ParentDevicePath  = ParentDevicePath;
 
   CopyMem (&Instance->Ip4ConfigProtocol, &mIp4ConfigProtocolTemplate, sizeof (mIp4ConfigProtocolTemplate));
 
@@ -272,12 +279,6 @@ Ip4ConfigDriverBindingStart (
   }
 
   Status = Ip4ConfigDeviceInit (Instance);
-  if (!EFI_ERROR (Status)) {
-    //
-    // Try to add a port configuration page for this controller.
-    //
-    Ip4ConfigUpdateForm (Instance, TRUE);
-  }
 
   //
   // Install the IP4_CONFIG and NIC_IP4CONFIG protocols

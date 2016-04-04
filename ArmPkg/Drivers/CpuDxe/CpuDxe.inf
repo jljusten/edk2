@@ -1,4 +1,3 @@
-#%HEADER%
 #/** @file
 #  
 #  DXE CPU driver
@@ -28,8 +27,19 @@
   CpuDxe.h
   DebugSupport.c
   Exception.c
-  ExceptionSupport.asm | RVCT
-  ExceptionSupport.S   | GCC
+
+#
+# Prior to ARMv6 we have multiple stacks, one per mode
+#
+#  ExceptionSupport.asm | RVCT
+  ExceptionSupport.S         | GCC
+
+#
+# ARMv6 or later uses a single stack via srs/stm instructions
+#
+  ExceptionSupport.ARMv6.asm | RVCT
+#  ExceptionSupport.ARMv6.S   | GCC
+  Mmu.c
 
 [Packages]
   ArmPkg/ArmPkg.dec
@@ -41,10 +51,18 @@
   CacheMaintenanceLib
   UefiDriverEntryPoint
   ArmLib
+  DxeServicesTableLib
+  PeCoffGetEntryPointLib
+  UefiLib
+  CpuLib
 
 [Protocols]
   gEfiCpuArchProtocolGuid
   gEfiDebugSupportPeriodicCallbackProtocolGuid
+  gVirtualUncachedPagesProtocolGuid
+
+[Guids]
+  gEfiDebugImageInfoTableGuid
 
 [Pcd.common]
   gArmTokenSpaceGuid.PcdCpuVectorBaseAddress

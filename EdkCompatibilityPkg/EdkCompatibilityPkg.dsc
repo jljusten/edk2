@@ -2,7 +2,7 @@
 # EDK Compatibility Package Build File
 #
 #
-# Copyright (c) 2008 - 2009, Intel Corporation
+# Copyright (c) 2008 - 2010, Intel Corporation
 #
 #  All rights reserved. This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -63,13 +63,20 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   PeiServicesTablePointerLib|MdePkg/Library/PeiServicesTablePointerLib/PeiServicesTablePointerLib.inf
   LanguageLib|EdkCompatibilityPkg/Compatibility/Library/UefiLanguageLib/UefiLanguageLib.inf
   DxeServicesTableLib|MdePkg/Library/DxeServicesTableLib/DxeServicesTableLib.inf
+  PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
+  PeCoffExtraActionLib|MdePkg/Library/BasePeCoffExtraActionLibNull/BasePeCoffExtraActionLibNull.inf
+  CacheMaintenanceLib|MdePkg/Library/BaseCacheMaintenanceLib/BaseCacheMaintenanceLib.inf
 
 [LibraryClasses.common.PEIM]
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
   MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
 
-[LibraryClasses.common.DXE_DRIVER]
+[LibraryClasses.common.DXE_DRIVER,LibraryClasses.common.DXE_RUNTIME_DRIVER,LibraryClasses.common.DXE_SMM_DRIVER]
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
+
+[LibraryClasses.IA32.DXE_SMM_DRIVER,LibraryClasses.X64.DXE_SMM_DRIVER]
+  SmmServicesTableLib|MdePkg/Library/SmmServicesTableLib/SmmServicesTableLib.inf
+  ReportStatusCodeLib|MdeModulePkg/Library/SmmReportStatusCodeLib/SmmReportStatusCodeLib.inf
 
 [BuildOptions]
   GCC:*_*_IA32_CC_FLAGS     = -DEFI32 $(GCC_MACRO)
@@ -125,7 +132,7 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   MSFT:*_*_X64_APP_FLAGS    = /D EFIX64 $(MSFT_MACRO)
   MSFT:*_*_X64_PP_FLAGS     = /D EFIX64 $(MSFT_MACRO)
 
-  MSFT:*_*_IPF_CC_FLAGS     = /D EFI64 $(MSFT_MACRO)
+  MSFT:*_*_IPF_CC_FLAGS     = /Od /Os /D EFI64 $(MSFT_MACRO)
   MSFT:*_*_IPF_ASM_FLAGS    =
   MSFT:*_*_IPF_VFRPP_FLAGS  = /D EFI64 $(MSFT_MACRO)
   MSFT:*_*_IPF_APP_FLAGS    = /D EFI64 $(MSFT_MACRO)
@@ -243,7 +250,7 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   EdkCompatibilityPkg/Compatibility/UcOnUc2Thunk/UcOnUc2Thunk.inf
   EdkCompatibilityPkg/Compatibility/PrintThunk/PrintThunk.inf
   EdkCompatibilityPkg/Compatibility/LegacyRegion2OnLegacyRegionThunk/LegacyRegion2OnLegacyRegionThunk.inf
-  EdkCompatibilityPkg/Compatibility/MpServicesOnFrameworkMpServicesThunk/MpServicesOnFrameworkMpServicesThunk.inf
+  EdkCompatibilityPkg/Compatibility/PiSmbiosRecordOnDataHubSmbiosRecordThunk/PiSmbiosRecordOnDataHubSmbiosRecordThunk.inf
   EdkCompatibilityPkg/Compatibility/CpuIo2OnCpuIoThunk/CpuIo2OnCpuIoThunk.inf
 
   #
@@ -266,6 +273,11 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   EdkCompatibilityPkg/Foundation/Library/EdkIIGlueLib/Library/PeiServicesTablePointerLibMm7/PeiServicesTablePointerLibMm7.inf
   EdkCompatibilityPkg/Foundation/Library/EdkIIGlueLib/Library/DxePerformanceLib/DxePerformanceLib.inf # Use IA32/X64 specific AsmReadTsc (). 
   EdkCompatibilityPkg/Foundation/Library/EdkIIGlueLib/Library/PeiPerformanceLib/PeiPerformanceLib.inf # Use IA32/X64 specific AsmReadTsc ().
+  EdkCompatibilityPkg/Compatibility/MpServicesOnFrameworkMpServicesThunk/MpServicesOnFrameworkMpServicesThunk.inf
+  EdkCompatibilityPkg/Compatibility/SmmBaseOnSmmBase2Thunk/SmmBaseOnSmmBase2Thunk.inf
+  EdkCompatibilityPkg/Compatibility/SmmBaseHelper/SmmBaseHelper.inf
+  EdkCompatibilityPkg/Compatibility/SmmAccess2OnSmmAccessThunk/SmmAccess2OnSmmAccessThunk.inf
+  EdkCompatibilityPkg/Compatibility/SmmControl2OnSmmControlThunk/SmmControl2OnSmmControlThunk.inf
 
 [Components.IPF]
   EdkCompatibilityPkg/Foundation/Cpu/Itanium/CpuIa64Lib/CpuIA64Lib.inf

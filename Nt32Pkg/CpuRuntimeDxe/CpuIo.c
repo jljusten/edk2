@@ -1,6 +1,6 @@
 /**@file
 
-Copyright (c) 2006 - 2009, Intel Corporation                                                         
+Copyright (c) 2006 - 2010, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -81,6 +81,10 @@ Returns:
     return EFI_INVALID_PARAMETER;
   }
 
+  if ((Width < 0) || (Width >= EfiCpuIoWidthMaximum)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
   Status = CpuIoCheckAddressRange (Width, Address, Count, Buffer, IA32_MAX_MEM_ADDRESS);
   if (EFI_ERROR (Status)) {
     return Status;
@@ -89,7 +93,7 @@ Returns:
   //
   // Do nothing for Nt32 version
   //
-  return EFI_SUCCESS;
+  return EFI_UNSUPPORTED;
 }
 
 EFI_STATUS
@@ -135,6 +139,10 @@ Returns:
     return EFI_INVALID_PARAMETER;
   }
 
+  if ((Width < 0) || (Width >= EfiCpuIoWidthMaximum)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
   Status = CpuIoCheckAddressRange (Width, Address, Count, Buffer, IA32_MAX_MEM_ADDRESS);
   if (EFI_ERROR (Status)) {
     return Status;
@@ -143,7 +151,7 @@ Returns:
   //
   // Do nothing for Nt32 version
   //
-  return EFI_SUCCESS;
+  return EFI_UNSUPPORTED;
 }
 
 EFI_STATUS
@@ -192,7 +200,7 @@ Returns:
 
   Address = (UINTN) UserAddress;
 
-  if (Width >= EfiCpuIoWidthMaximum) {
+  if ((Width < 0) || (Width >= EfiCpuIoWidthMaximum)) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -204,7 +212,7 @@ Returns:
   //
   // Do nothing for Nt32 version
   //
-  return EFI_SUCCESS;
+  return EFI_UNSUPPORTED;
 }
 
 EFI_STATUS
@@ -257,7 +265,7 @@ Returns:
 
   Address = (UINTN) UserAddress;
 
-  if (Width >= EfiCpuIoWidthMaximum) {
+  if ((Width < 0) || (Width >= EfiCpuIoWidthMaximum)) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -269,7 +277,7 @@ Returns:
   //
   // Do nothing for Nt32 version
   //
-  return EFI_SUCCESS;
+  return EFI_UNSUPPORTED;
 }
 
 

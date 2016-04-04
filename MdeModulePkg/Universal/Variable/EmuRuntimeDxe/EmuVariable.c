@@ -574,7 +574,7 @@ AutoUpdateLangVariable(
     // Therefore, in variable driver, only store the original value for other use.
     //
     AsciiStrnCpy (mVariableModuleGlobal->LangCodes, Data, DataSize);
-  } else if (StrCmp (VariableName, L"PlatformLang") == 0) {
+  } else if ((StrCmp (VariableName, L"PlatformLang") == 0) && (DataSize != 0)) {
     ASSERT (AsciiStrLen (mVariableModuleGlobal->PlatformLangCodes) != 0);
 
     //
@@ -604,7 +604,7 @@ AutoUpdateLangVariable(
 
     ASSERT_EFI_ERROR(Status);
 
-  } else if (StrCmp (VariableName, L"Lang") == 0) {
+  } else if ((StrCmp (VariableName, L"Lang") == 0) && (DataSize != 0)) {
     ASSERT (AsciiStrLen (mVariableModuleGlobal->LangCodes) != 0);
 
     //
@@ -1153,6 +1153,11 @@ EmuSetVariable (
   if (VariableName == NULL || VariableName[0] == 0 || VendorGuid == NULL) {
     return EFI_INVALID_PARAMETER;
   }  
+
+  if (DataSize != 0 && Data == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
   //
   //  Make sure if runtime bit is set, boot service bit is set also
   //
@@ -1358,8 +1363,7 @@ EmuQueryVariableInfo (
 
   This function allocates memory space for variable store area and initializes its attributes.
 
-  @param  VariableBase         Base of the variable store area created
-  @param  LastVariableOffset   Size of VARIABLE_STORE_HEADER
+  @param  VolatileStore  Indicates if the variable store is volatile.
 
 **/
 EFI_STATUS

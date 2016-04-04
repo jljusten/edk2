@@ -151,6 +151,7 @@ ArmInvalidateDataCache (
   VOID
   );
 
+
 VOID
 EFIAPI
 ArmCleanInvalidateDataCache (
@@ -259,12 +260,24 @@ ArmSetTranslationTableBaseAddress (
   IN  VOID  *TranslationTableBase
   );
 
+VOID *
+EFIAPI
+ArmGetTranslationTableBaseAddress (
+  VOID
+  );
+
 VOID
 EFIAPI
 ArmConfigureMmu (
   IN  ARM_MEMORY_REGION_DESCRIPTOR  *MemoryTable,
   OUT VOID                          **TranslationTableBase OPTIONAL,
   OUT UINTN                         *TranslationTableSize  OPTIONAL
+  );
+  
+BOOLEAN
+EFIAPI
+ArmMmuEnabled (
+  VOID
   );
   
 VOID

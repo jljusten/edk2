@@ -1,7 +1,15 @@
-#%HEADER%
 #/** @file
+# ARM processor package.
 #
-# ARM Package
+# Copyright (c) 2009 - 2010, Apple Inc. All rights reserved.
+#
+#  All rights reserved. This program and the accompanying materials
+#    are licensed and made available under the terms and conditions of the BSD License
+#    which accompanies this distribution. The full text of the license may be found at
+#    http://opensource.org/licenses/bsd-license.php
+#
+#    THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #
 #**/
 
@@ -35,11 +43,30 @@
   UefiLib|MdePkg/Library/UefiLib/UefiLib.inf
   DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
+  PeCoffGetEntryPointLib|MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
 
-  ArmLib|ArmPkg/Library/ArmLib/Null/NullArmLib.inf
   SemihostLib|ArmPkg/Library/SemihostLib/SemihostLib.inf
   UncachedMemoryAllocationLib|ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
+  DxeServicesTableLib|MdePkg/Library/DxeServicesTableLib/DxeServicesTableLib.inf
 
+  ArmLib|ArmPkg/Library/ArmLib/ArmCortexA/ArmCortexArmLib.inf
+  CpuLib|MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
+
+[LibraryClasses.ARM]
+  #
+  # Note: This NULL library feature is not yet in the edk2/BaseTools, but it is checked in to 
+  # the BaseTools project. So you need to build with the BaseTools project util this feature gets synced.
+  #
+  NULL|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
+
+[BuildOptions]
+  XCODE:*_*_ARM_ARCHCC_FLAGS     == -arch armv6 -march=armv6
+  XCODE:*_*_ARM_ARCHASM_FLAGS    == -arch armv6
+  XCODE:*_*_ARM_ARCHDLINK_FLAGS  == -arch armv6
+
+  RVCT:*_*_ARM_ARCHCC_FLAGS     == --cpu Cortex-A8
+  RVCT:*_*_ARM_ARCHASM_FLAGS    == --cpu Cortex-A8
+ 
 
 [Components.common]
   ArmPkg/Library/ArmCacheMaintenanceLib/ArmCacheMaintenanceLib.inf
@@ -55,6 +82,8 @@
   ArmPkg/Library/SemiHostingSerialPortLib/SemiHostingSerialPortLib.inf
   ArmPkg/Library/SemihostLib/SemihostLib.inf
   ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
+  ArmPkg/Library/DebugUncachedMemoryAllocationLib/DebugUncachedMemoryAllocationLib.inf
+  ArmPkg/Library/RviPeCoffExtraActionLib/RviPeCoffExtraActionLib.inf
 
   ArmPkg/Drivers/CpuDxe/CpuDxe.inf
   ArmPkg/Drivers/DebugSupportDxe/DebugSupportDxe.inf

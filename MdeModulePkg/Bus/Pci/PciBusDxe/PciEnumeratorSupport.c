@@ -469,6 +469,36 @@ GatherPpbInfo (
     }
   }
 
+  //
+  // if PcdPciBridgeIoAlignmentProbe is TRUE, PCI bus driver probes
+  // PCI bridge supporting non-stardard I/O window alignment less than 4K.
+  //
+
+  PciIoDevice->BridgeIoAlignment = 0xFFF;
+  if (FeaturePcdGet (PcdPciBridgeIoAlignmentProbe)) {
+    //
+    // Check any bits of bit 3-1 of I/O Base Register are writable.
+    // if so, it is assumed non-stardard I/O window alignment is supported by this bridge.
+    // Per spec, bit 3-1 of I/O Base Register are reserved bits, so its content can't be assumed.
+    //
+    Value = (UINT8)(Temp ^ (BIT3 | BIT2 | BIT1));
+    PciIo->Pci.Write (PciIo, EfiPciIoWidthUint8, 0x1C, 1, &Value);
+    PciIo->Pci.Read (PciIo, EfiPciIoWidthUint8, 0x1C, 1, &Value);
+    PciIo->Pci.Write (PciIo, EfiPciIoWidthUint8, 0x1C, 1, &Temp);
+    Value = (UINT8)((Value ^ Temp) & (BIT3 | BIT2 | BIT1));
+    switch (Value) {
+      case BIT3:
+        PciIoDevice->BridgeIoAlignment = 0x7FF;
+        break;
+      case BIT3 | BIT2:
+        PciIoDevice->BridgeIoAlignment = 0x3FF;
+        break;
+      case BIT3 | BIT2 | BIT1:
+        PciIoDevice->BridgeIoAlignment = 0x1FF;
+        break;
+    }
+  }
+
   Status = BarExisted (
             PciIoDevice,
             0x24,
@@ -1390,7 +1420,7 @@ PciIovParseVfBar (
   }
 
   PciIoDevice->VfPciBar[BarIndex].Offset = (UINT8) Offset;
-  if (Value & 0x01) {
+  if ((Value & 0x01) != 0) {
     //
     // Device I/Os. Impossible
     //
@@ -1409,7 +1439,7 @@ PciIovParseVfBar (
     //memory space; anywhere in 32 bit address space
     //
     case 0x00:
-      if (Value & 0x08) {
+      if ((Value & 0x08) != 0) {
         PciIoDevice->VfPciBar[BarIndex].BarType = PciBarTypePMem32;
       } else {
         PciIoDevice->VfPciBar[BarIndex].BarType = PciBarTypeMem32;
@@ -1435,7 +1465,7 @@ PciIovParseVfBar (
     // memory space; anywhere in 64 bit address space
     //
     case 0x04:
-      if (Value & 0x08) {
+      if ((Value & 0x08) != 0) {
         PciIoDevice->VfPciBar[BarIndex].BarType = PciBarTypePMem64;
       } else {
         PciIoDevice->VfPciBar[BarIndex].BarType = PciBarTypeMem64;
@@ -2010,7 +2040,7 @@ CreatePciIoDevice (
                  );
     DEBUG ((EFI_D_INFO, "PCI-IOV B%x.D%x.F%x - SupportedPageSize - 0x%x\n", (UINTN)Bus, (UINTN)Device, (UINTN)Func, PciIoDevice->SystemPageSize));
 
-    PciIoDevice->SystemPageSize = (PcdGet32(PcdSrIovSystemPageSize) & PciIoDevice->SystemPageSize);
+    PciIoDevice->SystemPageSize = (FixedPcdGet32(PcdSrIovSystemPageSize) & PciIoDevice->SystemPageSize);
     ASSERT (PciIoDevice->SystemPageSize != 0);
 
     PciIo->Pci.Write (

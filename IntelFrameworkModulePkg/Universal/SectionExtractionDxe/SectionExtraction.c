@@ -27,7 +27,7 @@
   3) A support protocol is not found, and the data is not available to be read
      without it.  This results in EFI_PROTOCOL_ERROR.
 
-Copyright (c) 2006 - 2009, Intel Corporation. <BR>
+Copyright (c) 2006 - 2010, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -1000,6 +1000,7 @@ FindChildNode (
       }
     }
     
+    ASSERT (CurrentChildNode != NULL);
     if (CurrentChildNode->EncapsulatedStreamHandle != NULL_STREAM_HANDLE) {
       //
       // If the current node is an encapsulating node, recurse into it...
@@ -1204,6 +1205,8 @@ GetSection (
     if (EFI_ERROR (Status)) {
       goto GetSection_Done;
     }
+    ASSERT (ChildNode != NULL);
+    ASSERT (ChildStreamNode != NULL);
     CopySize = ChildNode->Size - sizeof (EFI_COMMON_SECTION_HEADER);
     CopyBuffer = ChildStreamNode->StreamBuffer + ChildNode->OffsetInStream + sizeof (EFI_COMMON_SECTION_HEADER);
     *AuthenticationStatus = ExtractedAuthenticationStatus;

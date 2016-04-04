@@ -475,6 +475,7 @@ DetermineRootBridgeAttributes (
   }
 
   if ((Attributes & EFI_PCI_HOST_BRIDGE_MEM64_DECODE) != 0) {
+    RootBridgeDev->Decodes |= EFI_BRIDGE_MEM64_DECODE_SUPPORTED;
     RootBridgeDev->Decodes |= EFI_BRIDGE_PMEM64_DECODE_SUPPORTED;
   }
 
@@ -1428,7 +1429,7 @@ PciBridgeResourceAllocator (
   IoBridge = CreateResourceNode (
                Bridge,
                0,
-               0xFFF,
+               Bridge->BridgeIoAlignment,
                0,
                PciBarTypeIo16,
                PciResUsageTypical

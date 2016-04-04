@@ -1,7 +1,7 @@
 /** @file
   LZMA Decompress interfaces
 
-  Copyright (c) 2009, Intel Corporation<BR>
+  Copyright (c) 2009 - 2010, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -17,17 +17,14 @@
 #include "Sdk/C/7zVersion.h"
 #include "Sdk/C/LzmaDec.h"
 
-//
-// Global data
-//
-
-CONST VOID  *mSourceLastUsedWithGetInfo;
-UINT32      mSizeOfLastSource;
-UINT32      mDecompressedSizeForLastSource;
-VOID        *mScratchBuffer;
-UINTN       mScratchBufferSize;
-
 #define SCRATCH_BUFFER_REQUEST_SIZE SIZE_64KB
+
+typedef struct
+{
+  ISzAlloc Functions;
+  VOID     *Buffer;
+  UINTN    BufferSize;
+} ISzAllocWithData;
 
 /**
   Allocation routine used by LZMA decompression.
@@ -44,11 +41,14 @@ SzAlloc (
   )
 {
   VOID *Addr;
+  ISzAllocWithData *Private;
 
-  if (mScratchBufferSize >= Size) {
-    Addr = mScratchBuffer;
-    mScratchBuffer = (VOID*) ((UINT8*)Addr + Size);
-    mScratchBufferSize -= Size;
+  Private = (ISzAllocWithData*) P;
+
+  if (Private->BufferSize >= Size) {
+    Addr = Private->Buffer;
+    Private->Buffer = (VOID*) ((UINT8*)Addr + Size);
+    Private->BufferSize -= Size;
     return Addr;
   } else {
     ASSERT (FALSE);
@@ -74,8 +74,6 @@ SzFree (
   // of the decompression code.
   //
 }
-
-STATIC ISzAlloc g_Alloc = { SzAlloc, SzFree };
 
 #define LZMA_HEADER_SIZE (LZMA_PROPS_SIZE + 8)
 
@@ -151,14 +149,10 @@ LzmaUefiDecompressGetInfo (
 
   DecodedSize = GetDecodedSizeOfBuf((UINT8*)Source);
 
-  mSourceLastUsedWithGetInfo = Source;
-  mSizeOfLastSource = SourceSize;
-  mDecompressedSizeForLastSource = (UInt32)DecodedSize;
-  *DestinationSize = mDecompressedSizeForLastSource;
+  *DestinationSize = (UINT32)DecodedSize;
   *ScratchSize = SCRATCH_BUFFER_REQUEST_SIZE;
   return RETURN_SUCCESS;
 }
-
 
 /**
   Decompresses a Lzma compressed source buffer.
@@ -170,6 +164,7 @@ LzmaUefiDecompressGetInfo (
   then RETURN_INVALID_PARAMETER is returned.
 
   @param  Source      The source buffer containing the compressed data.
+  @param  SourceSize  The size of source buffer.
   @param  Destination The destination buffer to store the decompressed data
   @param  Scratch     A temporary scratch buffer that is used to perform the decompression.
                       This is an optional parameter that may be NULL if the 
@@ -185,24 +180,24 @@ RETURN_STATUS
 EFIAPI
 LzmaUefiDecompress (
   IN CONST VOID  *Source,
+  IN UINTN       SourceSize,
   IN OUT VOID    *Destination,
   IN OUT VOID    *Scratch
   )
 {
-  SRes        LzmaResult;
-  ELzmaStatus Status;
-  SizeT       DecodedBufSize;
-  SizeT       EncodedDataSize;
+  SRes              LzmaResult;
+  ELzmaStatus       Status;
+  SizeT             DecodedBufSize;
+  SizeT             EncodedDataSize;
+  ISzAllocWithData  AllocFuncs;
 
-  if (Source != mSourceLastUsedWithGetInfo) {
-    return RETURN_INVALID_PARAMETER;
-  }
-
-  DecodedBufSize = (SizeT)mDecompressedSizeForLastSource;
-  EncodedDataSize = (SizeT)(mSizeOfLastSource - LZMA_HEADER_SIZE);
-
-  mScratchBuffer = Scratch;
-  mScratchBufferSize = SCRATCH_BUFFER_REQUEST_SIZE;
+  AllocFuncs.Functions.Alloc  = SzAlloc;
+  AllocFuncs.Functions.Free   = SzFree;
+  AllocFuncs.Buffer           = Scratch;
+  AllocFuncs.BufferSize       = SCRATCH_BUFFER_REQUEST_SIZE;
+  
+  DecodedBufSize = (SizeT)GetDecodedSizeOfBuf((UINT8*)Source);
+  EncodedDataSize = (SizeT) (SourceSize - LZMA_HEADER_SIZE);
 
   LzmaResult = LzmaDecode(
     Destination,
@@ -213,7 +208,7 @@ LzmaUefiDecompress (
     LZMA_PROPS_SIZE,
     LZMA_FINISH_END,
     &Status,
-    &g_Alloc
+    &(AllocFuncs.Functions)
     );
 
   if (LzmaResult == SZ_OK) {

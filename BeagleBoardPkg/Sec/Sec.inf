@@ -1,4 +1,4 @@
-#%HEADER%
+
 #/** @file
 #  SEC - Reset vector code that jumps to C and loads DXE core
 #  
@@ -46,13 +46,12 @@
   ExtractGuidedSectionLib
   LzmaDecompressLib
   OmapLib
+  PeCoffGetEntryPointLib
 
 [FeaturePcd]  
   gEmbeddedTokenSpaceGuid.PcdCacheEnable
 
 [FixedPcd]
-  gArmTokenSpaceGuid.PcdArmUncachedMemoryMask
-
   gEmbeddedTokenSpaceGuid.PcdEmbeddedFdBaseAddress
   gEmbeddedTokenSpaceGuid.PcdEmbeddedFdSize
   gEmbeddedTokenSpaceGuid.PcdFlashFvMainBase
