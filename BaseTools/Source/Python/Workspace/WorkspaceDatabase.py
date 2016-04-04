@@ -147,6 +147,7 @@ class DscBuildData(PlatformBuildClassObject):
         self._Pcds              = None
         self._DecPcds           = None
         self._BuildOptions      = None
+        self._ModuleTypeOptions = None
         self._LoadFixAddress    = None
         self._RFCLanguages      = None
         self._ISOLanguages      = None
@@ -754,18 +755,37 @@ class DscBuildData(PlatformBuildClassObject):
         if self._BuildOptions == None:
             self._BuildOptions = sdict()
             #
-            # Retrieve build option for EDKII style module
+            # Retrieve build option for EDKII and EDK style module
             #
-            RecordList = self._RawData[MODEL_META_DATA_BUILD_OPTION, self._Arch, EDKII_NAME]
-            for ToolChainFamily, ToolChain, Option, Dummy1, Dummy2, Dummy3, Dummy4 in RecordList:
-                self._BuildOptions[ToolChainFamily, ToolChain, EDKII_NAME] = Option
-            #
-            # Retrieve build option for EDK style module
-            #
-            RecordList = self._RawData[MODEL_META_DATA_BUILD_OPTION, self._Arch, EDK_NAME]     
-            for ToolChainFamily, ToolChain, Option, Dummy1, Dummy2, Dummy3, Dummy4 in RecordList:
-                self._BuildOptions[ToolChainFamily, ToolChain, EDK_NAME] = Option
+            for CodeBase in (EDKII_NAME, EDK_NAME):
+                RecordList = self._RawData[MODEL_META_DATA_BUILD_OPTION, self._Arch, CodeBase]
+                for ToolChainFamily, ToolChain, Option, Dummy1, Dummy2, Dummy3, Dummy4 in RecordList:
+                    CurKey = (ToolChainFamily, ToolChain, CodeBase)
+                    #
+                    # Only flags can be appended
+                    #
+                    if CurKey not in self._BuildOptions or not ToolChain.endswith('_FLAGS') or Option.startswith('='):
+                        self._BuildOptions[CurKey] = Option
+                    else:
+                        self._BuildOptions[CurKey] += ' ' + Option
         return self._BuildOptions
+
+    def GetBuildOptionsByModuleType(self, Edk, ModuleType):
+        if self._ModuleTypeOptions == None:
+            self._ModuleTypeOptions = sdict()
+        if (Edk, ModuleType) not in self._ModuleTypeOptions:
+            options = sdict()
+            self._ModuleTypeOptions[Edk, ModuleType] = options
+            DriverType = '%s.%s' % (Edk, ModuleType)
+            RecordList = self._RawData[MODEL_META_DATA_BUILD_OPTION, self._Arch, DriverType]
+            for ToolChainFamily, ToolChain, Option, Arch, Type, Dummy3, Dummy4 in RecordList:
+                if Type == DriverType:
+                    Key = (ToolChainFamily, ToolChain, Edk)
+                    if Key not in options or not ToolChain.endswith('_FLAGS') or Option.startswith('='):
+                        options[Key] = Option
+                    else:
+                        options[Key] += ' ' + Option
+        return self._ModuleTypeOptions[Edk, ModuleType]
 
     ## Retrieve non-dynamic PCD settings
     #
@@ -1116,7 +1136,7 @@ class DscBuildData(PlatformBuildClassObject):
                                                 TokenSpaceGuid,
                                                 self._PCD_TYPE_STRING_[Type],
                                                 '',
-                                                '',
+                                                InitialValue,
                                                 '',
                                                 MaxDatumSize,
                                                 {SkuName : SkuInfo},
@@ -1993,7 +2013,7 @@ class InfBuildData(ModuleBuildClassObject):
             if self._Header_ == None:
                 self._GetHeaderInfo()
             if self._Guid == None:
-                self._Guid = '00000000-0000-0000-000000000000'
+                self._Guid = '00000000-0000-0000-0000-000000000000'
         return self._Guid
 
     ## Retrieve module version
@@ -2373,7 +2393,7 @@ class InfBuildData(ModuleBuildClassObject):
                 ToolChainFamily = Record[0]
                 ToolChain = Record[1]
                 Option = Record[2]
-                if (ToolChainFamily, ToolChain) not in self._BuildOptions:
+                if (ToolChainFamily, ToolChain) not in self._BuildOptions or Option.startswith('='):
                     self._BuildOptions[ToolChainFamily, ToolChain] = Option
                 else:
                     # concatenate the option string if they're for the same tool

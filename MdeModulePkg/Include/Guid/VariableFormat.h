@@ -2,13 +2,13 @@
   The variable data structures are related to EDK II-specific implementation of UEFI variables.
   VariableFormat.h defines variable data headers and variable storage region headers.
 
-Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
-This program and the accompanying materials are licensed and made available under 
-the terms and conditions of the BSD License that accompanies this distribution.  
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials are licensed and made available under
+the terms and conditions of the BSD License that accompanies this distribution.
 The full text of the license may be found at
-http://opensource.org/licenses/bsd-license.php.                                            
+http://opensource.org/licenses/bsd-license.php.
 
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
@@ -19,7 +19,11 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define EFI_VARIABLE_GUID \
   { 0xddcf3616, 0x3275, 0x4164, { 0x98, 0xb6, 0xfe, 0x85, 0x70, 0x7f, 0xfe, 0x7d } }
 
+#define EFI_AUTHENTICATED_VARIABLE_GUID \
+  { 0xaaf32c78, 0x947b, 0x439a, { 0xa1, 0x80, 0x2e, 0x14, 0x4e, 0xc3, 0x77, 0x92 } }
+
 extern EFI_GUID gEfiVariableGuid;
+extern EFI_GUID gEfiAuthenticatedVariableGuid;
 
 ///
 /// Alignment of variable name and data, according to the architecture:
@@ -60,6 +64,7 @@ typedef enum {
 #pragma pack(1)
 
 #define VARIABLE_STORE_SIGNATURE  EFI_VARIABLE_GUID
+#define AUTHENTICATED_VARIABLE_STORE_SIGNATURE  EFI_AUTHENTICATED_VARIABLE_GUID
 
 ///
 /// Variable Store Header Format and State.
@@ -76,7 +81,7 @@ typedef struct {
   ///
   EFI_GUID  Signature;
   ///
-  /// Size of entire variable store, 
+  /// Size of entire variable store,
   /// including size of variable store header but not including the size of FvHeader.
   ///
   UINT32  Size;
@@ -104,6 +109,18 @@ typedef struct {
 #define VAR_DELETED                   0xfd  ///< Variable is obsolete.
 #define VAR_HEADER_VALID_ONLY         0x7f  ///< Variable header has been valid.
 #define VAR_ADDED                     0x3f  ///< Variable has been completely added.
+
+///
+/// Variable Attribute combinations.
+///
+#define VARIABLE_ATTRIBUTE_NV_BS        (EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS)
+#define VARIABLE_ATTRIBUTE_BS_RT        (EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS)
+#define VARIABLE_ATTRIBUTE_AT_AW        (EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS | EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS)
+#define VARIABLE_ATTRIBUTE_NV_BS_RT     (VARIABLE_ATTRIBUTE_BS_RT | EFI_VARIABLE_NON_VOLATILE)
+#define VARIABLE_ATTRIBUTE_NV_BS_RT_HR  (VARIABLE_ATTRIBUTE_NV_BS_RT | EFI_VARIABLE_HARDWARE_ERROR_RECORD)
+#define VARIABLE_ATTRIBUTE_NV_BS_RT_AT  (VARIABLE_ATTRIBUTE_NV_BS_RT | EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS)
+#define VARIABLE_ATTRIBUTE_NV_BS_RT_AW  (VARIABLE_ATTRIBUTE_NV_BS_RT | EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS)
+#define VARIABLE_ATTRIBUTE_NV_BS_RT_HR_AT_AW    (VARIABLE_ATTRIBUTE_NV_BS_RT_HR | VARIABLE_ATTRIBUTE_AT_AW)
 
 ///
 /// Single Variable Data Header Structure.
@@ -136,6 +153,55 @@ typedef struct {
   EFI_GUID    VendorGuid;
 } VARIABLE_HEADER;
 
+///
+/// Single Authenticated Variable Data Header Structure.
+///
+typedef struct {
+  ///
+  /// Variable Data Start Flag.
+  ///
+  UINT16      StartId;
+  ///
+  /// Variable State defined above.
+  ///
+  UINT8       State;
+  UINT8       Reserved;
+  ///
+  /// Attributes of variable defined in UEFI specification.
+  ///
+  UINT32      Attributes;
+  ///
+  /// Associated monotonic count value against replay attack.
+  ///
+  UINT64      MonotonicCount;
+  ///
+  /// Associated TimeStamp value against replay attack.
+  ///
+  EFI_TIME    TimeStamp;
+  ///
+  /// Index of associated public key in database.
+  ///
+  UINT32      PubKeyIndex;
+  ///
+  /// Size of variable null-terminated Unicode string name.
+  ///
+  UINT32      NameSize;
+  ///
+  /// Size of the variable data without this header.
+  ///
+  UINT32      DataSize;
+  ///
+  /// A unique identifier for the vendor that produces and consumes this varaible.
+  ///
+  EFI_GUID    VendorGuid;
+} AUTHENTICATED_VARIABLE_HEADER;
+
+typedef struct {
+  EFI_GUID    *Guid;
+  CHAR16      *Name;
+  UINTN       VariableSize;
+} VARIABLE_ENTRY_CONSISTENCY;
+
 #pragma pack()
 
 typedef struct _VARIABLE_INFO_ENTRY  VARIABLE_INFO_ENTRY;
@@ -143,12 +209,12 @@ typedef struct _VARIABLE_INFO_ENTRY  VARIABLE_INFO_ENTRY;
 ///
 /// This structure contains the variable list that is put in EFI system table.
 /// The variable driver collects all variables that were used at boot service time and produces this list.
-/// This is an optional feature to dump all used variables in shell environment. 
+/// This is an optional feature to dump all used variables in shell environment.
 ///
 struct _VARIABLE_INFO_ENTRY {
   VARIABLE_INFO_ENTRY *Next;       ///< Pointer to next entry.
   EFI_GUID            VendorGuid;  ///< Guid of Variable.
-  CHAR16              *Name;       ///< Name of Variable. 
+  CHAR16              *Name;       ///< Name of Variable.
   UINT32              Attributes;  ///< Attributes of variable defined in UEFI specification.
   UINT32              ReadCount;   ///< Number of times to read this variable.
   UINT32              WriteCount;  ///< Number of times to write this variable.

@@ -1,7 +1,7 @@
 /** @file
   Provides interface to EFI_FILE_HANDLE functionality.
 
-  Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved. <BR>
+  Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved. <BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -383,18 +383,17 @@ FileHandleFlush (
 }
 
 /**
-  function to determine if a given handle is a directory handle
+  Function to determine if a given handle is a directory handle.
 
-  if DirHandle is NULL then return error
-
-  open the file information on the DirHandle and verify that the Attribute
+  Open the file information on the DirHandle and verify that the Attribute
   includes EFI_FILE_DIRECTORY bit set.
 
-  @param DirHandle              Handle to open file
+  @param[in] DirHandle          Handle to open file.
 
-  @retval EFI_SUCCESS           DirHandle is a directory
-  @retval EFI_INVALID_PARAMETER DirHandle did not have EFI_FILE_INFO available
-  @retval EFI_NOT_FOUND         DirHandle is not a directory
+  @retval EFI_SUCCESS           DirHandle is a directory.
+  @retval EFI_INVALID_PARAMETER DirHandle is NULL. 
+                                The file information returns from FileHandleGetInfo is NULL. 
+  @retval EFI_NOT_FOUND         DirHandle is not a directory.
 **/
 EFI_STATUS
 EFIAPI
@@ -576,17 +575,16 @@ FileHandleFindNextFile(
 /**
   Retrieve the size of a file.
 
-  if FileHandle is NULL then return error
-  if Size is NULL then return error
-
   This function extracts the file size info from the FileHandle's EFI_FILE_INFO
   data.
 
-  @param FileHandle             file handle from which size is retrieved
-  @param Size                   pointer to size
+  @param[in] FileHandle         The file handle from which size is retrieved.
+  @param[out] Size              The pointer to size.
 
-  @retval EFI_SUCCESS           operation was completed sucessfully
-  @retval EFI_DEVICE_ERROR      cannot access the file
+  @retval EFI_SUCCESS           Operation was completed sucessfully.
+  @retval EFI_DEVICE_ERROR      Cannot access the file.
+  @retval EFI_INVALID_PARAMETER FileHandle is NULL.
+                                Size is NULL.
 **/
 EFI_STATUS
 EFIAPI
@@ -625,16 +623,15 @@ FileHandleGetSize (
 /**
   Set the size of a file.
 
-  If FileHandle is NULL then return error.
-
   This function changes the file size info from the FileHandle's EFI_FILE_INFO
   data.
 
-  @param FileHandle             File handle whose size is to be changed.
-  @param Size                   New size.
+  @param[in] FileHandle         The file handle whose size is to be changed.
+  @param[in] Size               The new size.
 
-  @retval EFI_SUCCESS           operation was completed sucessfully.
-  @retval EFI_DEVICE_ERROR      cannot access the file.
+  @retval EFI_SUCCESS           The operation completed successfully.
+  @retval EFI_DEVICE_ERROR      Cannot access the file.
+  @retval EFI_INVALID_PARAMETER FileHandle is NULL.
 **/
 EFI_STATUS
 EFIAPI
@@ -912,25 +909,29 @@ FileHandleReturnLine(
 }
 
 /**
-  Function to read a single line (up to but not including the \n) from a EFI_FILE_HANDLE.
+  Function to read a single line (up to but not including the \n) from a file.
 
   If the position upon start is 0, then the Ascii Boolean will be set.  This should be
   maintained and not changed for all operations with the same file.
 
-  @param[in]       Handle        FileHandle to read from
-  @param[in, out]  Buffer        pointer to buffer to read into
-  @param[in, out]  Size          pointer to number of bytes in buffer
-  @param[in]       Truncate      if TRUE then allows for truncation of the line to fit.
-                                 if FALSE will reset the position to the begining of the
-                                 line if the buffer is not large enough.
-  @param[in, out]  Ascii         Boolean value for indicating whether the file is Ascii (TRUE) or UCS2 (FALSE);
+  @param[in]       Handle        FileHandle to read from.
+  @param[in, out]  Buffer        The pointer to buffer to read into.
+  @param[in, out]  Size          The pointer to number of bytes in Buffer.
+  @param[in]       Truncate      If the buffer is large enough, this has no effect.
+                                 If the buffer is is too small and Truncate is TRUE,
+                                 the line will be truncated.
+                                 If the buffer is is too small and Truncate is FALSE,
+                                 then no read will occur.
 
-  @retval EFI_SUCCESS           the operation was sucessful.  the line is stored in
+  @param[in, out]  Ascii         Boolean value for indicating whether the file is
+                                 Ascii (TRUE) or UCS2 (FALSE).
+
+  @retval EFI_SUCCESS           The operation was successful.  The line is stored in
                                 Buffer.
   @retval EFI_INVALID_PARAMETER Handle was NULL.
   @retval EFI_INVALID_PARAMETER Size was NULL.
-  @retval EFI_BUFFER_TOO_SMALL  Size was not enough space to store the line.
-                                Size was updated to minimum space required.
+  @retval EFI_BUFFER_TOO_SMALL  Size was not large enough to store the line.
+                                Size was updated to the minimum space required.
   @sa FileHandleRead
 **/
 EFI_STATUS
@@ -945,20 +946,29 @@ FileHandleReadLine(
 {
   EFI_STATUS  Status;
   CHAR16      CharBuffer;
+  UINT64      FileSize;
   UINTN       CharSize;
   UINTN       CountSoFar;
   UINT64      OriginalFilePosition;
-
 
   if (Handle == NULL
     ||Size   == NULL
     ||(Buffer==NULL&&*Size!=0)
    ){
     return (EFI_INVALID_PARAMETER);
-  }
+  } 
+  
   if (Buffer != NULL) {
     *Buffer = CHAR_NULL;
   }
+  
+  Status = FileHandleGetSize (Handle, &FileSize);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  } else if (FileSize == 0) {
+    return EFI_SUCCESS;
+  }  
+  
   FileHandleGetPosition(Handle, &OriginalFilePosition);
   if (OriginalFilePosition == 0) {
     CharSize = sizeof(CHAR16);
@@ -1017,16 +1027,23 @@ FileHandleReadLine(
 }
 
 /**
-  function to write a line of unicode text to a file.
+  Function to write a line of text to a file.
+  
+  If the file is a Unicode file (with UNICODE file tag) then write the unicode 
+  text.
+  If the file is an ASCII file then write the ASCII text.
+  If the size of file is zero (without file tag at the beginning) then write 
+  ASCII text as default.
 
-  if Handle is NULL, return error.
-  if Buffer is NULL, do nothing.  (return SUCCESS)
+  @param[in]     Handle         FileHandle to write to.
+  @param[in]     Buffer         Buffer to write, if NULL the function will
+                                take no action and return EFI_SUCCESS.
 
-  @param[in]     Handle         FileHandle to write to
-  @param[in]     Buffer         Buffer to write
-
-  @retval  EFI_SUCCESS          the data was written.
-  @retval  other                failure.
+  @retval  EFI_SUCCESS            The data was written.
+                                  Buffer is NULL.
+  @retval  EFI_INVALID_PARAMETER  Handle is NULL.
+  @retval  EFI_OUT_OF_RESOURCES   Unable to allocate temporary space for ASCII 
+                                  string due to out of resources.
 
   @sa FileHandleWrite
 **/
@@ -1037,8 +1054,14 @@ FileHandleWriteLine(
   IN CHAR16          *Buffer
   )
 {
-  EFI_STATUS Status;
-  UINTN      Size;
+  EFI_STATUS  Status;
+  CHAR16      CharBuffer;
+  UINTN       Size;
+  UINTN       CharSize;
+  UINT64      FileSize;
+  UINT64      OriginalFilePosition;
+  BOOLEAN     Ascii;
+  CHAR8       *AsciiBuffer;
 
   if (Buffer == NULL) {
     return (EFI_SUCCESS);
@@ -1047,14 +1070,79 @@ FileHandleWriteLine(
   if (Handle == NULL) {
     return (EFI_INVALID_PARAMETER);
   }
-
-  Size = StrSize(Buffer) - sizeof(Buffer[0]);
-  Status = FileHandleWrite(Handle, &Size, Buffer);
+  
+  Ascii = FALSE;
+  AsciiBuffer = NULL;
+  
+  Status = FileHandleGetPosition(Handle, &OriginalFilePosition);
   if (EFI_ERROR(Status)) {
-    return (Status);
+    return Status;
   }
-  Size = StrSize(L"\r\n") - sizeof(CHAR16);
-  return FileHandleWrite(Handle, &Size, L"\r\n");
+  
+  Status = FileHandleSetPosition(Handle, 0);
+  if (EFI_ERROR(Status)) {
+    return Status;
+  }
+  
+  Status = FileHandleGetSize(Handle, &FileSize);
+  if (EFI_ERROR(Status)) {
+    return Status;
+  }
+  
+  if (FileSize == 0) {
+    Ascii = TRUE;
+  } else {
+    CharSize = sizeof (CHAR16);
+    Status = FileHandleRead (Handle, &CharSize, &CharBuffer);
+    ASSERT_EFI_ERROR (Status);
+    if (CharBuffer == gUnicodeFileTag) {
+      Ascii = FALSE;
+    } else {
+      Ascii = TRUE;
+    }
+  }
+  
+  Status = FileHandleSetPosition(Handle, OriginalFilePosition);
+  if (EFI_ERROR(Status)) {
+    return Status;
+  }
+  
+  if (Ascii) {
+    Size = ( StrSize(Buffer) / sizeof(CHAR16) ) * sizeof(CHAR8);
+    AsciiBuffer = (CHAR8 *)AllocateZeroPool(Size);
+    if (AsciiBuffer == NULL) {
+      return EFI_OUT_OF_RESOURCES;
+    }
+    UnicodeStrToAsciiStr (Buffer, AsciiBuffer);
+    
+    Size = AsciiStrSize(AsciiBuffer) - sizeof(CHAR8);
+    Status = FileHandleWrite(Handle, &Size, AsciiBuffer);
+    if (EFI_ERROR(Status)) {
+      FreePool (AsciiBuffer);
+      return (Status);
+    }
+    Size = AsciiStrSize("\r\n") - sizeof(CHAR8);
+    Status = FileHandleWrite(Handle, &Size, "\r\n");
+  } else {
+    if (OriginalFilePosition == 0) {
+      Status = FileHandleSetPosition (Handle, sizeof(CHAR16));
+      if (EFI_ERROR(Status)) {
+        return Status;
+      }
+    }
+    Size = StrSize(Buffer) - sizeof(CHAR16);
+    Status = FileHandleWrite(Handle, &Size, Buffer);
+    if (EFI_ERROR(Status)) {
+      return (Status);
+    }
+    Size = StrSize(L"\r\n") - sizeof(CHAR16);
+    Status = FileHandleWrite(Handle, &Size, L"\r\n");
+  }
+  
+  if (AsciiBuffer != NULL) {
+    FreePool (AsciiBuffer);
+  }
+  return Status;
 }
 
 /**

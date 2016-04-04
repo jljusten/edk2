@@ -2,7 +2,7 @@
 #
 # This file is the main entry for UPT 
 #
-# Copyright (c) 2011 - 2014, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2011 - 2015, Intel Corporation. All rights reserved.<BR>
 #
 # This program and the accompanying materials are licensed and made available 
 # under the terms and conditions of the BSD License which accompanies this 
@@ -38,6 +38,7 @@ from Logger.ToolError import OPTION_MISSING
 from Logger.ToolError import FILE_TYPE_MISMATCH
 from Logger.ToolError import OPTION_CONFLICT
 from Logger.ToolError import FatalError
+from Logger.ToolError import UPT_ALREADY_INSTALLED_ERROR
 
 import MkPkg
 import InstallPkg
@@ -48,13 +49,6 @@ from Library.Misc import GetWorkspace
 from Library import GlobalData
 from Core.IpiDb import IpiDatabase
 from BuildVersion import gBUILD_VERSION
-
-##
-# Version and Copyright
-#
-#VersionNumber = "1.0"
-#__version__ = "Revision " + VersionNumber
-#__copyright__ = "Copyright (c) 2011 Intel Corporation All Rights Reserved."
 
 ## CheckConflictOption
 #
@@ -282,7 +276,7 @@ def Main():
                          format_exc())
     finally:
         try:
-            if ReturnCode != 0:
+            if ReturnCode != 0 and ReturnCode != UPT_ALREADY_INSTALLED_ERROR:
                 Logger.Quiet(ST.MSG_RECOVER_START)
                 GlobalData.gDB.RollBack()
                 Mgr.rollback()

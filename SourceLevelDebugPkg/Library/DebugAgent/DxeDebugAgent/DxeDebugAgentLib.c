@@ -306,7 +306,7 @@ SetupDebugAgentEnvironment (
   //
   // Initialize Debug Timer hardware and save its initial count and frequency
   //
-  mDebugMpContext.DebugTimerInitCount = InitializeDebugTimer (&DebugTimerFrequency);
+  mDebugMpContext.DebugTimerInitCount = InitializeDebugTimer (&DebugTimerFrequency, TRUE);
   UpdateMailboxContent (mMailboxPointer, DEBUG_MAILBOX_DEBUG_TIMER_FREQUENCY, DebugTimerFrequency);
   //
   // Initialize debug communication port
@@ -365,8 +365,18 @@ InitializeDebugAgent (
   IA32_DESCRIPTOR              IdtDescriptor;
   IA32_DESCRIPTOR              *Ia32Idtr;
   IA32_IDT_ENTRY               *Ia32IdtEntry;
+  BOOLEAN                      PeriodicMode;
+  UINTN                        TimerCycle;
 
   if (InitFlag == DEBUG_AGENT_INIT_DXE_AP) {
+    //
+    // Check if CPU APIC Timer is working, otherwise initialize it.
+    //
+    GetApicTimerState (NULL, &PeriodicMode, NULL);
+    TimerCycle = GetApicTimerInitCount ();
+    if (!PeriodicMode || TimerCycle == 0) {
+      InitializeDebugTimer (NULL, FALSE);
+    }
     //
     // Invoked by AP, enable interrupt to let AP could receive IPI from other processors
     //
@@ -428,6 +438,10 @@ InitializeDebugAgent (
     //
     InternalConstructorWorker ();
     //
+    // Enable Debug Timer interrupt
+    //
+    SaveAndSetDebugTimerInterrupt (TRUE);
+    //
     // Enable interrupt to receive Debug Timer interrupt
     //
     EnableInterrupts ();
@@ -482,6 +496,10 @@ InitializeDebugAgent (
     //
     SetupDebugAgentEnvironment (Mailbox);
     //
+    // Enable Debug Timer interrupt
+    //
+    SaveAndSetDebugTimerInterrupt (TRUE);
+    //
     // Enable interrupt to receive Debug Timer interrupt
     //
     EnableInterrupts ();
@@ -494,7 +512,7 @@ InitializeDebugAgent (
       Ia32Idtr =  (IA32_DESCRIPTOR *) Context;
       Ia32IdtEntry = (IA32_IDT_ENTRY *)(Ia32Idtr->Base);
       MailboxLocation = (UINT64 *) (UINTN) (Ia32IdtEntry[DEBUG_MAILBOX_VECTOR].Bits.OffsetLow +
-                                           (Ia32IdtEntry[DEBUG_MAILBOX_VECTOR].Bits.OffsetHigh << 16));
+                                  (UINT32) (Ia32IdtEntry[DEBUG_MAILBOX_VECTOR].Bits.OffsetHigh << 16));
       Mailbox = (DEBUG_AGENT_MAILBOX *)(UINTN)(*MailboxLocation);
       VerifyMailboxChecksum (Mailbox);
     }

@@ -25,6 +25,8 @@ CHAR16       mBmUefiPrefix[] = L"UEFI ";
 EFI_BOOT_MANAGER_REFRESH_LEGACY_BOOT_OPTION  mBmRefreshLegacyBootOption = NULL;
 EFI_BOOT_MANAGER_LEGACY_BOOT                 mBmLegacyBoot              = NULL;
 
+LIST_ENTRY mPlatformBootDescriptionHandlers = INITIALIZE_LIST_HEAD_VARIABLE (mPlatformBootDescriptionHandlers);
+
 ///
 /// This GUID is used for an EFI Variable that stores the front device pathes
 /// for a partial device path that starts with the HD node.
@@ -550,6 +552,7 @@ BmGetUsbDescription (
   CHAR16                       *SerialNumber;
   CHAR16                       *Description;
   EFI_USB_DEVICE_DESCRIPTOR    DevDesc;
+  UINTN                        DescMaxSize;
 
   Status = gBS->HandleProtocol (
                   Handle,
@@ -604,15 +607,16 @@ BmGetUsbDescription (
     return NULL;
   }
 
-  Description = AllocateZeroPool (StrSize (Manufacturer) + StrSize (Product) + StrSize (SerialNumber));
+  DescMaxSize = StrSize (Manufacturer) + StrSize (Product) + StrSize (SerialNumber);
+  Description = AllocateZeroPool (DescMaxSize);
   ASSERT (Description != NULL);
-  StrCat (Description, Manufacturer);
-  StrCat (Description, L" ");
+  StrCatS (Description, DescMaxSize/sizeof(CHAR16), Manufacturer);
+  StrCatS (Description, DescMaxSize/sizeof(CHAR16), L" ");
 
-  StrCat (Description, Product);  
-  StrCat (Description, L" ");
+  StrCatS (Description, DescMaxSize/sizeof(CHAR16), Product);  
+  StrCatS (Description, DescMaxSize/sizeof(CHAR16), L" ");
 
-  StrCat (Description, SerialNumber);
+  StrCatS (Description, DescMaxSize/sizeof(CHAR16), SerialNumber);
 
   if (Manufacturer != &NullChar) {
     FreePool (Manufacturer);
@@ -641,9 +645,10 @@ BmGetMiscDescription (
   IN EFI_HANDLE                  Handle
   )
 {
-  EFI_STATUS                     Status;
-  CHAR16                         *Description;
-  EFI_BLOCK_IO_PROTOCOL          *BlockIo;
+  EFI_STATUS                      Status;
+  CHAR16                          *Description;
+  EFI_BLOCK_IO_PROTOCOL           *BlockIo;
+  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs;
 
   switch (BmDevicePathType (DevicePathFromHandle (Handle))) {
   case BmAcpiFloppyBoot:
@@ -677,19 +682,132 @@ BmGetMiscDescription (
     }
     break;
 
+  case BmMessageNetworkBoot:
+    Description = L"Network";
+    break;
+
   default:
-    Description = L"Misc Device";
+    Status = gBS->HandleProtocol (Handle, &gEfiSimpleFileSystemProtocolGuid, (VOID **) &Fs);
+    if (!EFI_ERROR (Status)) {
+      Description = L"Non-Block Boot Device";
+    } else {
+      Description = L"Misc Device";
+    }
     break;
   }
 
   return AllocateCopyPool (StrSize (Description), Description);
 }
 
-BM_GET_BOOT_DESCRIPTION mBmGetBootDescription[] = {
+/**
+  Register the platform provided boot description handler.
+
+  @param Handler  The platform provided boot description handler
+
+  @retval EFI_SUCCESS          The handler was registered successfully.
+  @retval EFI_ALREADY_STARTED  The handler was already registered.
+  @retval EFI_OUT_OF_RESOURCES There is not enough resource to perform the registration.
+**/
+EFI_STATUS
+EFIAPI
+EfiBootManagerRegisterBootDescriptionHandler (
+  IN EFI_BOOT_MANAGER_BOOT_DESCRIPTION_HANDLER  Handler
+  )
+{
+  LIST_ENTRY                                    *Link;
+  BM_BOOT_DESCRIPTION_ENTRY                    *Entry;
+
+  for ( Link = GetFirstNode (&mPlatformBootDescriptionHandlers)
+      ; !IsNull (&mPlatformBootDescriptionHandlers, Link)
+      ; Link = GetNextNode (&mPlatformBootDescriptionHandlers, Link)
+      ) {
+    Entry = CR (Link, BM_BOOT_DESCRIPTION_ENTRY, Link, BM_BOOT_DESCRIPTION_ENTRY_SIGNATURE);
+    if (Entry->Handler == Handler) {
+      return EFI_ALREADY_STARTED;
+    }
+  }
+
+  Entry = AllocatePool (sizeof (BM_BOOT_DESCRIPTION_ENTRY));
+  if (Entry == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  Entry->Signature = BM_BOOT_DESCRIPTION_ENTRY_SIGNATURE;
+  Entry->Handler   = Handler;
+  InsertTailList (&mPlatformBootDescriptionHandlers, &Entry->Link);
+  return EFI_SUCCESS;
+}
+
+BM_GET_BOOT_DESCRIPTION mBmBootDescriptionHandlers[] = {
   BmGetUsbDescription,
   BmGetDescriptionFromDiskInfo,
   BmGetMiscDescription
 };
+
+/**
+  Return the boot description for the controller.
+
+  @param Handle                Controller handle.
+
+  @return  The description string.
+**/
+CHAR16 *
+BmGetBootDescription (
+  IN EFI_HANDLE                  Handle
+  )
+{
+  LIST_ENTRY                     *Link;
+  BM_BOOT_DESCRIPTION_ENTRY      *Entry;
+  CHAR16                         *Description;
+  CHAR16                         *DefaultDescription;
+  CHAR16                         *Temp;
+  UINTN                          Index;
+
+  //
+  // Firstly get the default boot description
+  //
+  DefaultDescription = NULL;
+  for (Index = 0; Index < sizeof (mBmBootDescriptionHandlers) / sizeof (mBmBootDescriptionHandlers[0]); Index++) {
+    DefaultDescription = mBmBootDescriptionHandlers[Index] (Handle);
+    if (DefaultDescription != NULL) {
+      //
+      // Avoid description confusion between UEFI & Legacy boot option by adding "UEFI " prefix
+      // ONLY for core provided boot description handler.
+      //
+      Temp = AllocatePool (StrSize (DefaultDescription) + sizeof (mBmUefiPrefix)); 
+      ASSERT (Temp != NULL);
+      StrCpyS ( Temp, 
+                (StrSize (DefaultDescription) + sizeof (mBmUefiPrefix))/sizeof(CHAR16), 
+                mBmUefiPrefix
+                );
+      StrCatS ( Temp, 
+                (StrSize (DefaultDescription) + sizeof (mBmUefiPrefix))/sizeof(CHAR16), 
+                DefaultDescription
+                );
+      FreePool (DefaultDescription);
+      DefaultDescription = Temp;
+      break;
+    }
+  }
+  ASSERT (DefaultDescription != NULL);
+
+  //
+  // Secondly query platform for the better boot description
+  //
+  for ( Link = GetFirstNode (&mPlatformBootDescriptionHandlers)
+      ; !IsNull (&mPlatformBootDescriptionHandlers, Link)
+      ; Link = GetNextNode (&mPlatformBootDescriptionHandlers, Link)
+      ) {
+    Entry = CR (Link, BM_BOOT_DESCRIPTION_ENTRY, Link, BM_BOOT_DESCRIPTION_ENTRY_SIGNATURE);
+    Description = Entry->Handler (Handle, DefaultDescription);
+    if (Description != NULL) {
+      FreePool (DefaultDescription);
+      return Description;
+    }
+  }
+
+  return DefaultDescription;
+}
 
 /**
   Check whether a USB device match the specified USB WWID device path. This
@@ -1383,9 +1501,18 @@ BmGetLoadOptionBuffer (
   // Directly reads the load option when it doesn't reside in simple file system instance (LoadFile/LoadFile2),
   //   or it directly points to a file in simple file system instance.
   //
+  Node   = FilePath;
+  Status = gBS->LocateDevicePath (&gEfiLoadFileProtocolGuid, &Node, &Handle);
   FileBuffer = GetFileBufferByFilePath (TRUE, FilePath, FileSize, &AuthenticationStatus);
   if (FileBuffer != NULL) {
-    *FullPath = DuplicateDevicePath (FilePath);
+    if (EFI_ERROR (Status)) {
+      *FullPath = DuplicateDevicePath (FilePath);
+    } else {
+      //
+      // LoadFile () may cause the device path of the Handle be updated.
+      //
+      *FullPath = AppendDevicePath (DevicePathFromHandle (Handle), Node);
+    }
   }
 
   return FileBuffer;
@@ -1755,16 +1882,12 @@ BmEnumerateBootOptions (
 {
   EFI_STATUS                            Status;
   EFI_BOOT_MANAGER_LOAD_OPTION          *BootOptions;
-  UINT16                                NonBlockNumber;
   UINTN                                 HandleCount;
   EFI_HANDLE                            *Handles;
   EFI_BLOCK_IO_PROTOCOL                 *BlkIo;
   UINTN                                 Removable;
   UINTN                                 Index;
-  UINTN                                 FunctionIndex;
-  CHAR16                                *Temp;
-  CHAR16                                *DescriptionPtr;
-  CHAR16                                Description[30];
+  CHAR16                                *Description;
 
   ASSERT (BootOptionCount != NULL);
 
@@ -1807,28 +1930,7 @@ BmEnumerateBootOptions (
         continue;
       }
 
-      DescriptionPtr = NULL;
-      for (FunctionIndex = 0; FunctionIndex < sizeof (mBmGetBootDescription) / sizeof (mBmGetBootDescription[0]); FunctionIndex++) {
-        DescriptionPtr = mBmGetBootDescription[FunctionIndex] (Handles[Index]);
-        if (DescriptionPtr != NULL) {
-          break;
-        }
-      }
-
-      if (DescriptionPtr == NULL) {
-        continue;
-      }
-
-      //
-      // Avoid description confusion between UEFI & Legacy boot option by adding "UEFI " prefix
-      //
-      Temp = AllocatePool (StrSize (DescriptionPtr) + sizeof (mBmUefiPrefix)); 
-      ASSERT (Temp != NULL);
-      StrCpy (Temp, mBmUefiPrefix);
-      StrCat (Temp, DescriptionPtr);
-      FreePool (DescriptionPtr);
-      DescriptionPtr = Temp;
-
+      Description = BmGetBootDescription (Handles[Index]);
       BootOptions = ReallocatePool (
                       sizeof (EFI_BOOT_MANAGER_LOAD_OPTION) * (*BootOptionCount),
                       sizeof (EFI_BOOT_MANAGER_LOAD_OPTION) * (*BootOptionCount + 1),
@@ -1841,14 +1943,14 @@ BmEnumerateBootOptions (
                  LoadOptionNumberUnassigned,
                  LoadOptionTypeBoot,
                  LOAD_OPTION_ACTIVE,
-                 DescriptionPtr,
+                 Description,
                  DevicePathFromHandle (Handles[Index]),
                  NULL,
                  0
                  );
       ASSERT_EFI_ERROR (Status);
 
-      FreePool (DescriptionPtr);
+      FreePool (Description);
     }
   }
 
@@ -1859,7 +1961,6 @@ BmEnumerateBootOptions (
   //
   // Parse simple file system not based on block io
   //
-  NonBlockNumber = 0;
   gBS->LocateHandleBuffer (
          ByProtocol,
          &gEfiSimpleFileSystemProtocolGuid,
@@ -1879,8 +1980,7 @@ BmEnumerateBootOptions (
       //
       continue;
     }
-    UnicodeSPrint (Description, sizeof (Description), NonBlockNumber > 0 ? L"%s %d" : L"%s", L"UEFI Non-Block Boot Device", NonBlockNumber);
-    
+    Description = BmGetBootDescription (Handles[Index]);
     BootOptions = ReallocatePool (
                     sizeof (EFI_BOOT_MANAGER_LOAD_OPTION) * (*BootOptionCount),
                     sizeof (EFI_BOOT_MANAGER_LOAD_OPTION) * (*BootOptionCount + 1),
@@ -1899,6 +1999,7 @@ BmEnumerateBootOptions (
                0
                );
     ASSERT_EFI_ERROR (Status);
+    FreePool (Description);
   }
 
   if (HandleCount != 0) {
@@ -1917,8 +2018,7 @@ BmEnumerateBootOptions (
          );
   for (Index = 0; Index < HandleCount; Index++) {
 
-    UnicodeSPrint (Description, sizeof (Description), Index > 0 ? L"%s %d" : L"%s", L"UEFI Network", Index);
-
+    Description = BmGetBootDescription (Handles[Index]);
     BootOptions = ReallocatePool (
                     sizeof (EFI_BOOT_MANAGER_LOAD_OPTION) * (*BootOptionCount),
                     sizeof (EFI_BOOT_MANAGER_LOAD_OPTION) * (*BootOptionCount + 1),
@@ -1937,6 +2037,7 @@ BmEnumerateBootOptions (
                0
                );
     ASSERT_EFI_ERROR (Status);
+    FreePool (Description);
   }
 
   if (HandleCount != 0) {

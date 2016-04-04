@@ -1,7 +1,7 @@
 ## @file
 # This file is used to be the c coding style checking of ECC tool
 #
-# Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2009 - 2015, Intel Corporation. All rights reserved.<BR>
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -514,6 +514,8 @@ def CollectSourceCodeDataIntoDB(RootDir):
                     dirnames.append(Dirname)
 
         for f in filenames:
+            if f.lower() in EccGlobalData.gConfig.SkipFileList:
+                continue
             collector = None
             FullName = os.path.normpath(os.path.join(dirpath, f))
             model = DataClass.MODEL_FILE_OTHERS
@@ -1170,6 +1172,8 @@ def GetVarInfo(PredVarList, FuncRecord, FullFileName, IsFuncCall=False, TargetTy
             else:
                 TypeList = GetDataTypeFromModifier(Param.Modifier).split()
                 Type = TypeList[-1]
+                if Type == '*' and len(TypeList) >= 2:
+                    Type = TypeList[-2]
                 if len(TypeList) > 1 and StarList != None:
                     for Star in StarList:
                         Type = Type.strip()
@@ -1628,8 +1632,11 @@ def CheckMemberVariableFormat(Name, Value, FileTable, TdId, ModelId):
         Field = Field.split('=')[0].strip()
         TokenList = Field.split()
         # Remove pointers before variable
-        if not Pattern.match(TokenList[-1].lstrip('*')):
-            ErrMsgList.append(TokenList[-1].lstrip('*'))
+        Token = TokenList[-1]
+        if Token in ['OPTIONAL']:
+            Token = TokenList[-2]
+        if not Pattern.match(Token.lstrip('*')):
+            ErrMsgList.append(Token.lstrip('*'))
 
     return ErrMsgList
 
@@ -2357,7 +2364,10 @@ def CheckFileHeaderDoxygenComments(FullFileName):
             if CommentLine.startswith('Copyright'):
                 NoCopyrightFlag = False
                 if CommentLine.find('All rights reserved') == -1:
-                    PrintErrorMsg(ERROR_HEADER_CHECK_FILE, '""All rights reserved"" announcement should be following the ""Copyright"" at the same line', FileTable, ID)
+                    for Copyright in EccGlobalData.gConfig.Copyright:
+                        if CommentLine.find(Copyright) > -1:
+                            PrintErrorMsg(ERROR_HEADER_CHECK_FILE, '""All rights reserved"" announcement should be following the ""Copyright"" at the same line', FileTable, ID)
+                            break
                 if CommentLine.endswith('<BR>') == -1:
                     PrintErrorMsg(ERROR_HEADER_CHECK_FILE, 'The ""<BR>"" at the end of the Copyright line is required', FileTable, ID)
                 if NextLineIndex < len(CommentStrList) and CommentStrList[NextLineIndex].strip().startswith('Copyright') == False and CommentStrList[NextLineIndex].strip():

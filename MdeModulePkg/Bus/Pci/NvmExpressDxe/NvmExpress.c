@@ -155,6 +155,12 @@ EnumerateNvmeDevNamespace (
     Device->BlockIo.FlushBlocks  = NvmeBlockIoFlushBlocks;
 
     //
+    // Create StorageSecurityProtocol Instance
+    //
+    Device->StorageSecurity.ReceiveData = NvmeStorageSecurityReceiveData;
+    Device->StorageSecurity.SendData    = NvmeStorageSecuritySendData;
+
+    //
     // Create DiskInfo Protocol instance
     //
     InitializeDiskInfo (Device);
@@ -211,10 +217,36 @@ EnumerateNvmeDevNamespace (
     if(EFI_ERROR(Status)) {
       goto Exit;
     }
+
+    //
+    // Check if the NVMe controller supports the Security Send and Security Receive commands
+    //
+    if ((Private->ControllerData->Oacs & SECURITY_SEND_RECEIVE_SUPPORTED) != 0) {
+      Status = gBS->InstallProtocolInterface (
+                      &Device->DeviceHandle,
+                      &gEfiStorageSecurityCommandProtocolGuid,
+                      EFI_NATIVE_INTERFACE,
+                      &Device->StorageSecurity
+                      );
+      if(EFI_ERROR(Status)) {
+        gBS->UninstallMultipleProtocolInterfaces (
+               &Device->DeviceHandle,
+               &gEfiDevicePathProtocolGuid,
+               Device->DevicePath,
+               &gEfiBlockIoProtocolGuid,
+               &Device->BlockIo,
+               &gEfiDiskInfoProtocolGuid,
+               &Device->DiskInfo,
+               NULL
+               );
+        goto Exit;
+      }
+    }
+
     gBS->OpenProtocol (
            Private->ControllerHandle,
-           &gEfiPciIoProtocolGuid,
-           (VOID **) &Private->PciIo,
+           &gEfiNvmExpressPassThruProtocolGuid,
+           (VOID **) &Private->Passthru,
            Private->DriverBindingHandle,
            Device->DeviceHandle,
            EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER
@@ -336,9 +368,10 @@ UnregisterNvmeNamespace (
   )
 {
   EFI_STATUS                               Status;
-  EFI_PCI_IO_PROTOCOL                      *PciIo;
   EFI_BLOCK_IO_PROTOCOL                    *BlockIo;
   NVME_DEVICE_PRIVATE_DATA                 *Device;
+  NVME_CONTROLLER_PRIVATE_DATA             *Private;
+  EFI_STORAGE_SECURITY_COMMAND_PROTOCOL    *StorageSecurity;
 
   BlockIo = NULL;
 
@@ -354,14 +387,15 @@ UnregisterNvmeNamespace (
     return Status;
   }
 
-  Device = NVME_DEVICE_PRIVATE_DATA_FROM_BLOCK_IO (BlockIo);
+  Device  = NVME_DEVICE_PRIVATE_DATA_FROM_BLOCK_IO (BlockIo);
+  Private = Device->Controller;
 
   //
   // Close the child handle
   //
   gBS->CloseProtocol (
          Controller,
-         &gEfiPciIoProtocolGuid,
+         &gEfiNvmExpressPassThruProtocolGuid,
          This->DriverBindingHandle,
          Handle
          );
@@ -384,13 +418,44 @@ UnregisterNvmeNamespace (
   if (EFI_ERROR (Status)) {
     gBS->OpenProtocol (
            Controller,
-           &gEfiPciIoProtocolGuid,
-           (VOID **) &PciIo,
+           &gEfiNvmExpressPassThruProtocolGuid,
+           (VOID **) &Private->Passthru,
            This->DriverBindingHandle,
            Handle,
            EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER
            );
     return Status;
+  }
+
+  //
+  // If Storage Security Command Protocol is installed, then uninstall this protocol.
+  //
+  Status = gBS->OpenProtocol (
+                  Handle,
+                  &gEfiStorageSecurityCommandProtocolGuid,
+                  (VOID **) &StorageSecurity,
+                  This->DriverBindingHandle,
+                  Controller,
+                  EFI_OPEN_PROTOCOL_GET_PROTOCOL
+                  );
+
+  if (!EFI_ERROR (Status)) {
+    Status = gBS->UninstallProtocolInterface (
+                    Handle,
+                    &gEfiStorageSecurityCommandProtocolGuid,
+                    &Device->StorageSecurity
+                    );
+    if (EFI_ERROR (Status)) {
+      gBS->OpenProtocol (
+        Controller,
+        &gEfiNvmExpressPassThruProtocolGuid,
+        (VOID **) &Private->Passthru,
+        This->DriverBindingHandle,
+        Handle,
+        EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER
+        );
+      return Status;
+    }
   }
 
   if(Device->DevicePath != NULL) {
@@ -479,8 +544,8 @@ NvmExpressDriverBindingSupported (
 
       if ((DevicePathNode.DevPath->Type    != MESSAGING_DEVICE_PATH) ||
           (DevicePathNode.DevPath->SubType != MSG_NVME_NAMESPACE_DP) ||
-           DevicePathNodeLength(DevicePathNode.DevPath) != sizeof(NVME_NAMESPACE_DEVICE_PATH)) {
-        return EFI_UNSUPPORTED;
+          (DevicePathNodeLength(DevicePathNode.DevPath) != sizeof(NVME_NAMESPACE_DEVICE_PATH))) {
+         return EFI_UNSUPPORTED;
       }
     }
   }
@@ -844,22 +909,24 @@ NvmExpressDriverBindingStop (
   BOOLEAN                             AllChildrenStopped;
   UINTN                               Index;
   NVME_CONTROLLER_PRIVATE_DATA        *Private;
+  EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL  *PassThru;
 
   if (NumberOfChildren == 0) {
     Status = gBS->OpenProtocol (
                     Controller,
-                    &gEfiCallerIdGuid,
-                    (VOID **) &Private,
+                    &gEfiNvmExpressPassThruProtocolGuid,
+                    (VOID **) &PassThru,
                     This->DriverBindingHandle,
                     Controller,
                     EFI_OPEN_PROTOCOL_GET_PROTOCOL
                     );
 
     if (!EFI_ERROR (Status)) {
+      Private = NVME_CONTROLLER_PRIVATE_DATA_FROM_PASS_THRU (PassThru);
       gBS->UninstallMultipleProtocolInterfaces (
             Controller,
-            &gEfiCallerIdGuid,
-            Private,
+            &gEfiNvmExpressPassThruProtocolGuid,
+            PassThru,
             NULL
             );
 
@@ -940,7 +1007,7 @@ NvmExpressUnload (
   DeviceHandleBuffer = NULL;
   Status = gBS->LocateHandleBuffer (
                   ByProtocol,
-                  &gEfiCallerIdGuid,
+                  &gEfiNvmExpressPassThruProtocolGuid,
                   NULL,
                   &DeviceHandleCount,
                   &DeviceHandleBuffer

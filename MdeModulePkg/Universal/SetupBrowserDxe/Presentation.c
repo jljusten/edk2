@@ -546,6 +546,21 @@ AddStatementToDisplayForm (
   }
 
   //
+  // treat formset as statement outside the form,get its opcode.
+  //
+  DisplayStatement = AllocateZeroPool (sizeof (FORM_DISPLAY_ENGINE_STATEMENT));
+  ASSERT (DisplayStatement != NULL);
+
+  DisplayStatement->Signature = FORM_DISPLAY_ENGINE_STATEMENT_SIGNATURE;
+  DisplayStatement->Version   = FORM_DISPLAY_ENGINE_STATEMENT_VERSION_1;
+  DisplayStatement->OpCode = gCurrentSelection->FormSet->OpCode;
+
+  InitializeListHead (&DisplayStatement->NestStatementList);
+  InitializeListHead (&DisplayStatement->OptionListHead);
+
+  InsertTailList(&gDisplayFormData.StatementListOSF, &DisplayStatement->DisplayLink);
+
+  //
   // Process the statement in this form.
   //
   Link = GetFirstNode (&gCurrentSelection->Form->StatementListHead);
@@ -1885,6 +1900,30 @@ FindNextMenu (
 }
 
 /**
+  Reconnect the controller.
+
+  @param DriverHandle          The controller handle which need to be reconnect.
+
+  @retval   TRUE     do the reconnect behavior success.
+  @retval   FALSE    do the reconnect behavior failed.
+  
+**/
+BOOLEAN
+ReconnectController (
+  IN EFI_HANDLE   DriverHandle
+  )
+{
+  EFI_STATUS                      Status;
+
+  Status = gBS->DisconnectController(DriverHandle, NULL, NULL);
+  if (!EFI_ERROR (Status)) {
+    Status = gBS->ConnectController(DriverHandle, NULL, NULL, TRUE);
+  }
+
+  return Status == EFI_SUCCESS;
+}
+
+/**
   Call the call back function for the question and process the return action.
 
   @param Selection             On input, Selection tell setup browser the information
@@ -2055,6 +2094,10 @@ ProcessCallBackFunction (
           SettingLevel          = FormLevel;
           break;
 
+        case EFI_BROWSER_ACTION_REQUEST_RECONNECT:
+          gCallbackReconnect    = TRUE;
+          break;
+
         default:
           break;
         }
@@ -2066,6 +2109,11 @@ ProcessCallBackFunction (
         //
         Status = ValueChangedValidation (gCurrentSelection->FormSet, gCurrentSelection->Form, Statement);
         if (!EFI_ERROR (Status)) {
+          //
+          //check whether the question value  changed compared with edit buffer before updating edit buffer
+          // if changed, set the ValueChanged flag to TRUE,in order to trig the CHANGED callback function
+          //
+          IsQuestionValueChanged(gCurrentSelection->FormSet, gCurrentSelection->Form, Statement, GetSetValueWithEditBuffer);
           //
           // According the spec, return value from call back of "changing" and 
           // "retrieve" should update to the question's temp buffer.
@@ -2103,6 +2151,11 @@ ProcessCallBackFunction (
         //
         InternalStatus = ValueChangedValidation (gCurrentSelection->FormSet, gCurrentSelection->Form, Statement);
         if (!EFI_ERROR (InternalStatus)) {
+          //
+          //check whether the question value  changed compared with edit buffer before updating edit buffer
+          // if changed, set the ValueChanged flag to TRUE,in order to trig the CHANGED callback function
+          //
+          IsQuestionValueChanged(gCurrentSelection->FormSet, gCurrentSelection->Form, Statement, GetSetValueWithEditBuffer);
           SetQuestionValue(FormSet, Form, Statement, GetSetValueWithEditBuffer);
         }
       }
@@ -2143,6 +2196,28 @@ ProcessCallBackFunction (
     if (Question != NULL) {
       break;
     }
+  }
+
+  if (gCallbackReconnect && (EFI_BROWSER_ACTION_CHANGED == Action)) {
+    //
+    // Confirm changes with user first.
+    //
+    if (IsNvUpdateRequiredForFormSet(FormSet)) {
+      if (BROWSER_ACTION_DISCARD == PopupErrorMessage(BROWSER_RECONNECT_SAVE_CHANGES, NULL, NULL, NULL)) {
+        gCallbackReconnect = FALSE;
+        DiscardFormIsRequired = TRUE;
+      } else {
+        SubmitFormIsRequired = TRUE;
+      }
+    } else {
+      PopupErrorMessage(BROWSER_RECONNECT_REQUIRED, NULL, NULL, NULL);
+    }
+
+    //
+    // Exit current formset before do the reconnect.
+    //
+    NeedExit = TRUE;
+    SettingLevel = FormSetLevel;
   }
 
   if (SubmitFormIsRequired && !SkipSaveOrDiscard) {
@@ -2437,10 +2512,6 @@ SetupBrowser (
           }
         }
 
-        //
-        // Verify whether question value has checked, update the ValueChanged flag in Question.
-        //
-        IsQuestionValueChanged(gCurrentSelection->FormSet, gCurrentSelection->Form, Statement, GetSetValueWithBuffer);
 
         if (!EFI_ERROR (Status) && 
             (Statement->Operand != EFI_IFR_REF_OP) && 
@@ -2449,6 +2520,11 @@ SetupBrowser (
           // Only question value has been changed, browser will trig CHANGED callback.
           //
           ProcessCallBackFunction(Selection, Selection->FormSet, Selection->Form, Statement, EFI_BROWSER_ACTION_CHANGED, FALSE);
+          //
+          //check whether the question value changed compared with buffer value
+          //if doesn't change ,set the ValueChanged flag to FALSE ,in order not to display the "configuration changed "information on the screen
+          //
+          IsQuestionValueChanged(gCurrentSelection->FormSet, gCurrentSelection->Form, Statement, GetSetValueWithBuffer);
         }
       } else {
         //
@@ -2465,13 +2541,18 @@ SetupBrowser (
       }
 
       //
-      // If question has EFI_IFR_FLAG_RESET_REQUIRED flag and without storage and process question success till here, 
-      // trig the gResetFlag.
+      // If question has EFI_IFR_FLAG_RESET_REQUIRED/EFI_IFR_FLAG_RECONNECT_REQUIRED flag and without storage 
+      // and process question success till here, trig the gResetFlag/gFlagReconnect.
       //
       if ((Status == EFI_SUCCESS) && 
-          (Statement->Storage == NULL) && 
-          ((Statement->QuestionFlags & EFI_IFR_FLAG_RESET_REQUIRED) != 0)) {
-        gResetRequired = TRUE;
+          (Statement->Storage == NULL)) { 
+        if ((Statement->QuestionFlags & EFI_IFR_FLAG_RESET_REQUIRED) != 0) {
+          gResetRequired = TRUE;
+        }
+
+        if ((Statement->QuestionFlags & EFI_IFR_FLAG_RECONNECT_REQUIRED) != 0) {
+          gFlagReconnect = TRUE;
+        }
       }
     }
 

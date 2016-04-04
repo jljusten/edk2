@@ -403,7 +403,7 @@ InitializeDebugAgent (
     //
     // Initialize Debug Timer hardware and save its frequency
     //
-    InitializeDebugTimer (&DebugTimerFrequency);
+    InitializeDebugTimer (&DebugTimerFrequency, TRUE);
     UpdateMailboxContent (Mailbox, DEBUG_MAILBOX_DEBUG_TIMER_FREQUENCY, DebugTimerFrequency);
 
     Phase2Context.InitFlag = InitFlag;
@@ -535,7 +535,7 @@ InitializeDebugAgent (
       //
       // Initialize Debug Timer hardware and save its frequency
       //
-      InitializeDebugTimer (&DebugTimerFrequency);
+      InitializeDebugTimer (&DebugTimerFrequency, TRUE);
       UpdateMailboxContent (Mailbox, DEBUG_MAILBOX_DEBUG_TIMER_FREQUENCY, DebugTimerFrequency);
       //
       // Update IDT entry to save the location pointer saved mailbox pointer
@@ -579,7 +579,7 @@ InitializeDebugAgent (
       Ia32Idtr =  (IA32_DESCRIPTOR *) Context;
       Ia32IdtEntry = (IA32_IDT_ENTRY *)(Ia32Idtr->Base);
       MailboxLocationPointer = (UINT64 *) (UINTN) (Ia32IdtEntry[DEBUG_MAILBOX_VECTOR].Bits.OffsetLow +
-                                                (Ia32IdtEntry[DEBUG_MAILBOX_VECTOR].Bits.OffsetHigh << 16));
+                                         (UINT32) (Ia32IdtEntry[DEBUG_MAILBOX_VECTOR].Bits.OffsetHigh << 16));
       Mailbox = (DEBUG_AGENT_MAILBOX *) (UINTN)(*MailboxLocationPointer);
       //
       // Mailbox should valid and setup before executing thunk code
@@ -611,6 +611,10 @@ InitializeDebugAgent (
     break;
   }
 
+  //
+  // Enable Debug Timer interrupt
+  //
+  SaveAndSetDebugTimerInterrupt (TRUE);
   //
   // Enable CPU interrupts so debug timer interrupts can be delivered
   //
@@ -657,7 +661,7 @@ InitializeDebugAgentPhase2 (
   MailboxLocation = GetLocationSavedMailboxPointerInIdtEntry ();
   Mailbox = (DEBUG_AGENT_MAILBOX *)(UINTN)(*MailboxLocation);
   BufferSize = PcdGet16(PcdDebugPortHandleBufferSize);
-  if (Phase2Context->InitFlag == DEBUG_AGENT_INIT_PEI) {
+  if (Phase2Context->InitFlag == DEBUG_AGENT_INIT_PEI && BufferSize != 0) {
     NewDebugPortHandle = (UINT64)(UINTN)AllocateCopyPool (BufferSize, DebugPortHandle);
   } else {
     NewDebugPortHandle = (UINT64)(UINTN)DebugPortHandle;
@@ -679,6 +683,10 @@ InitializeDebugAgentPhase2 (
       SetDebugFlag (DEBUG_AGENT_FLAG_MEMORY_READY, 1);
       TriggerSoftInterrupt (MEMORY_READY_SIGNATURE);
     }
+    //
+    // Enable Debug Timer interrupt
+    //
+    SaveAndSetDebugTimerInterrupt (TRUE);
     //
     // Enable CPU interrupts so debug timer interrupts can be delivered
     //

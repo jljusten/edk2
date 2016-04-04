@@ -2,7 +2,7 @@
 Implementation for handling the User Interface option processing.
 
 
-Copyright (c) 2004 - 2014, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -28,6 +28,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 VOID
 NewStrCat (
   IN OUT CHAR16               *Destination,
+  IN     UINTN                DestMax,
   IN     CHAR16               *Source
   )
 {
@@ -45,7 +46,7 @@ NewStrCat (
   Destination[Length] = NARROW_CHAR;
   Length++;
 
-  StrCpy (Destination + Length, Source);
+  StrCpyS (Destination + Length, DestMax - Length, Source);
 }
 
 /**
@@ -957,6 +958,7 @@ ProcessOptions (
   UINT8                           ValueType;
   EFI_IFR_ORDERED_LIST            *OrderList;
   BOOLEAN                         ValueInvalid;
+  UINTN                           MaxLen;
 
   Status        = EFI_SUCCESS;
 
@@ -999,7 +1001,8 @@ ProcessOptions (
       // We now know how many strings we will have, so we can allocate the
       // space required for the array or strings.
       //
-      *OptionString = AllocateZeroPool (OrderList->MaxContainers * BufferSize);
+      MaxLen = OrderList->MaxContainers * BufferSize / sizeof (CHAR16);
+      *OptionString = AllocateZeroPool (MaxLen * sizeof (CHAR16));
       ASSERT (*OptionString);
 
       HiiValue.Type = ValueType;
@@ -1057,14 +1060,14 @@ ProcessOptions (
         }
 
         Character[0] = LEFT_ONEOF_DELIMITER;
-        NewStrCat (OptionString[0], Character);
+        NewStrCat (OptionString[0], MaxLen, Character);
         StringPtr = GetToken (OneOfOption->OptionOpCode->Option, gFormData->HiiHandle);
         ASSERT (StringPtr != NULL);
-        NewStrCat (OptionString[0], StringPtr);
+        NewStrCat (OptionString[0], MaxLen, StringPtr);
         Character[0] = RIGHT_ONEOF_DELIMITER;
-        NewStrCat (OptionString[0], Character);
+        NewStrCat (OptionString[0], MaxLen, Character);
         Character[0] = CHAR_CARRIAGE_RETURN;
-        NewStrCat (OptionString[0], Character);
+        NewStrCat (OptionString[0], MaxLen, Character);
         FreePool (StringPtr);
       }
 
@@ -1092,14 +1095,14 @@ ProcessOptions (
           // Not report error, just get the correct option string info.
           //
           Character[0] = LEFT_ONEOF_DELIMITER;
-          NewStrCat (OptionString[0], Character);
+          NewStrCat (OptionString[0], MaxLen, Character);
           StringPtr = GetToken (OneOfOption->OptionOpCode->Option, gFormData->HiiHandle);
           ASSERT (StringPtr != NULL);
-          NewStrCat (OptionString[0], StringPtr);
+          NewStrCat (OptionString[0], MaxLen, StringPtr);
           Character[0] = RIGHT_ONEOF_DELIMITER;
-          NewStrCat (OptionString[0], Character);
+          NewStrCat (OptionString[0], MaxLen, Character);
           Character[0] = CHAR_CARRIAGE_RETURN;
-          NewStrCat (OptionString[0], Character);
+          NewStrCat (OptionString[0], MaxLen, Character);
           FreePool (StringPtr);
 
           continue;
@@ -1151,6 +1154,7 @@ ProcessOptions (
       //
       Status = GetSelectionInputPopUp (MenuOption);
     } else {
+      MaxLen = BufferSize / sizeof(CHAR16);
       *OptionString = AllocateZeroPool (BufferSize);
       ASSERT (*OptionString);
 
@@ -1204,12 +1208,12 @@ ProcessOptions (
       }
 
       Character[0] = LEFT_ONEOF_DELIMITER;
-      NewStrCat (OptionString[0], Character);
+      NewStrCat (OptionString[0], MaxLen, Character);
       StringPtr = GetToken (OneOfOption->OptionOpCode->Option, gFormData->HiiHandle);
       ASSERT (StringPtr != NULL);
-      NewStrCat (OptionString[0], StringPtr);
+      NewStrCat (OptionString[0], MaxLen, StringPtr);
       Character[0] = RIGHT_ONEOF_DELIMITER;
-      NewStrCat (OptionString[0], Character);
+      NewStrCat (OptionString[0], MaxLen, Character);
 
       FreePool (StringPtr);
     }
@@ -1278,19 +1282,31 @@ ProcessOptions (
       switch (MenuOption->Sequence) {
       case 0:
         *OptionString[0] = LEFT_NUMERIC_DELIMITER;
-        UnicodeSPrint (OptionString[0] + 1, 21 * sizeof (CHAR16), L"%02d", QuestionValue->Value.date.Month);
+        if (QuestionValue->Value.date.Month == 0xff){
+          UnicodeSPrint (OptionString[0] + 1, 21 * sizeof (CHAR16), L"??");
+        } else {
+          UnicodeSPrint (OptionString[0] + 1, 21 * sizeof (CHAR16), L"%02d", QuestionValue->Value.date.Month);
+        }
         *(OptionString[0] + 3) = DATE_SEPARATOR;
         break;
 
       case 1:
         SetUnicodeMem (OptionString[0], 4, L' ');
-        UnicodeSPrint (OptionString[0] + 4, 21 * sizeof (CHAR16), L"%02d", QuestionValue->Value.date.Day);
+        if (QuestionValue->Value.date.Day == 0xff){
+          UnicodeSPrint (OptionString[0] + 4, 21 * sizeof (CHAR16), L"??");
+        } else {
+          UnicodeSPrint (OptionString[0] + 4, 21 * sizeof (CHAR16), L"%02d", QuestionValue->Value.date.Day);
+        }
         *(OptionString[0] + 6) = DATE_SEPARATOR;
         break;
 
       case 2:
         SetUnicodeMem (OptionString[0], 7, L' ');
-        UnicodeSPrint (OptionString[0] + 7, 21 * sizeof (CHAR16), L"%04d", QuestionValue->Value.date.Year);
+        if (QuestionValue->Value.date.Year == 0xff){
+          UnicodeSPrint (OptionString[0] + 7, 21 * sizeof (CHAR16), L"????");
+        } else {
+          UnicodeSPrint (OptionString[0] + 7, 21 * sizeof (CHAR16), L"%04d", QuestionValue->Value.date.Year);
+        }
         *(OptionString[0] + 11) = RIGHT_NUMERIC_DELIMITER;
         break;
       }
@@ -1310,19 +1326,31 @@ ProcessOptions (
       switch (MenuOption->Sequence) {
       case 0:
         *OptionString[0] = LEFT_NUMERIC_DELIMITER;
-        UnicodeSPrint (OptionString[0] + 1, 21 * sizeof (CHAR16), L"%02d", QuestionValue->Value.time.Hour);
+        if (QuestionValue->Value.time.Hour == 0xff){
+          UnicodeSPrint (OptionString[0] + 1, 21 * sizeof (CHAR16), L"??");
+        } else {
+          UnicodeSPrint (OptionString[0] + 1, 21 * sizeof (CHAR16), L"%02d", QuestionValue->Value.time.Hour);
+        }
         *(OptionString[0] + 3) = TIME_SEPARATOR;
         break;
 
       case 1:
         SetUnicodeMem (OptionString[0], 4, L' ');
-        UnicodeSPrint (OptionString[0] + 4, 21 * sizeof (CHAR16), L"%02d", QuestionValue->Value.time.Minute);
+        if (QuestionValue->Value.time.Minute == 0xff){
+          UnicodeSPrint (OptionString[0] + 4, 21 * sizeof (CHAR16), L"??");
+        } else {
+          UnicodeSPrint (OptionString[0] + 4, 21 * sizeof (CHAR16), L"%02d", QuestionValue->Value.time.Minute);
+        }
         *(OptionString[0] + 6) = TIME_SEPARATOR;
         break;
 
       case 2:
         SetUnicodeMem (OptionString[0], 7, L' ');
-        UnicodeSPrint (OptionString[0] + 7, 21 * sizeof (CHAR16), L"%02d", QuestionValue->Value.time.Second);
+        if (QuestionValue->Value.time.Second == 0xff){
+          UnicodeSPrint (OptionString[0] + 7, 21 * sizeof (CHAR16), L"??");
+        } else {
+          UnicodeSPrint (OptionString[0] + 7, 21 * sizeof (CHAR16), L"%02d", QuestionValue->Value.time.Second);
+        }
         *(OptionString[0] + 9) = RIGHT_NUMERIC_DELIMITER;
         break;
       }

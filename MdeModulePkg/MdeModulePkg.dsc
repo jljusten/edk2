@@ -95,6 +95,8 @@
   S3BootScriptLib|MdeModulePkg/Library/PiDxeS3BootScriptLib/DxeS3BootScriptLib.inf
   CpuExceptionHandlerLib|MdeModulePkg/Library/CpuExceptionHandlerLibNull/CpuExceptionHandlerLibNull.inf
   PlatformBootManagerLib|MdeModulePkg/Library/PlatformBootManagerLibNull/PlatformBootManagerLibNull.inf
+  TpmMeasurementLib|MdeModulePkg/Library/TpmMeasurementLibNull/TpmMeasurementLibNull.inf
+  AuthVariableLib|MdeModulePkg/Library/AuthVariableLibNull/AuthVariableLibNull.inf
 
 [LibraryClasses.EBC.PEIM]
   IoLib|MdePkg/Library/PeiIoLibCpuIo/PeiIoLibCpuIo.inf
@@ -231,6 +233,7 @@
   MdeModulePkg/Bus/I2c/I2cDxe/I2cBusDxe.inf
   MdeModulePkg/Bus/I2c/I2cDxe/I2cHostDxe.inf
   MdeModulePkg/Bus/I2c/I2cDxe/I2cDxe.inf
+  MdeModulePkg/Bus/Isa/IsaBusDxe/IsaBusDxe.inf
 
   MdeModulePkg/Core/Dxe/DxeMain.inf {
     <LibraryClasses>
@@ -272,6 +275,8 @@
   MdeModulePkg/Library/PeiDxeDebugLibReportStatusCode/PeiDxeDebugLibReportStatusCode.inf
   MdeModulePkg/Library/UefiBootManagerLib/UefiBootManagerLib.inf
   MdeModulePkg/Library/PlatformBootManagerLibNull/PlatformBootManagerLibNull.inf
+  MdeModulePkg/Library/TpmMeasurementLibNull/TpmMeasurementLibNull.inf
+  MdeModulePkg/Library/AuthVariableLibNull/AuthVariableLibNull.inf
 
   MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
   MdeModulePkg/Application/BootManagerMenuApp/BootManagerMenuApp.inf
@@ -355,6 +360,8 @@
 
   MdeModulePkg/Universal/FvSimpleFileSystemDxe/FvSimpleFileSystemDxe.inf
   MdeModulePkg/Universal/EsrtDxe/EsrtDxe.inf
+  
+  MdeModulePkg/Universal/PropertiesTableAttributesDxe/PropertiesTableAttributesDxe.inf
 
 [Components.IA32, Components.X64, Components.IPF]  
   MdeModulePkg/Universal/Network/UefiPxeBcDxe/UefiPxeBcDxe.inf

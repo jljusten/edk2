@@ -1,7 +1,7 @@
 /** @file
   Provides interface to EFI_FILE_HANDLE functionality.
 
-  Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -242,15 +242,14 @@ FileHandleFlush (
 /**
   Function to determine if a given handle is a directory handle.
 
-  If DirHandle is NULL, then ASSERT().
-
-  Open the file information on the DirHandle, and verify that the Attribute
+  Open the file information on the DirHandle and verify that the Attribute
   includes EFI_FILE_DIRECTORY bit set.
 
-  @param[in] DirHandle          The handle to open the file.
+  @param[in] DirHandle          Handle to open file.
 
   @retval EFI_SUCCESS           DirHandle is a directory.
-  @retval EFI_INVALID_PARAMETER DirHandle did not have EFI_FILE_INFO available.
+  @retval EFI_INVALID_PARAMETER DirHandle is NULL. 
+                                The file information returns from FileHandleGetInfo is NULL. 
   @retval EFI_NOT_FOUND         DirHandle is not a directory.
 **/
 EFI_STATUS
@@ -317,17 +316,16 @@ FileHandleFindNextFile(
 /**
   Retrieve the size of a file.
 
-  If FileHandle is NULL then ASSERT().
-  If Size is NULL then ASSERT().
-
   This function extracts the file size info from the FileHandle's EFI_FILE_INFO
   data.
 
   @param[in] FileHandle         The file handle from which size is retrieved.
   @param[out] Size              The pointer to size.
 
-  @retval EFI_SUCCESS           The operation completed successfully.
+  @retval EFI_SUCCESS           Operation was completed sucessfully.
   @retval EFI_DEVICE_ERROR      Cannot access the file.
+  @retval EFI_INVALID_PARAMETER FileHandle is NULL.
+                                Size is NULL.
 **/
 EFI_STATUS
 EFIAPI
@@ -339,8 +337,6 @@ FileHandleGetSize (
 /**
   Set the size of a file.
 
-  If FileHandle is NULL then ASSERT().
-
   This function changes the file size info from the FileHandle's EFI_FILE_INFO
   data.
 
@@ -349,6 +345,7 @@ FileHandleGetSize (
 
   @retval EFI_SUCCESS           The operation completed successfully.
   @retval EFI_DEVICE_ERROR      Cannot access the file.
+  @retval EFI_INVALID_PARAMETER FileHandle is NULL.
 **/
 EFI_STATUS
 EFIAPI
@@ -436,16 +433,23 @@ FileHandleReturnLine(
   );
 
 /**
-  Function to write a line of unicode text to a file.
-
-  If Handle is NULL, ASSERT.
+  Function to write a line of text to a file.
+  
+  If the file is a Unicode file (with UNICODE file tag) then write the unicode 
+  text.
+  If the file is an ASCII file then write the ASCII text.
+  If the size of file is zero (without file tag at the beginning) then write 
+  ASCII text as default.
 
   @param[in]     Handle         FileHandle to write to.
   @param[in]     Buffer         Buffer to write, if NULL the function will
                                 take no action and return EFI_SUCCESS.
 
-  @retval  EFI_SUCCESS          The data was written.
-  @retval  other                Failure.
+  @retval  EFI_SUCCESS            The data was written.
+                                  Buffer is NULL.
+  @retval  EFI_INVALID_PARAMETER  Handle is NULL.
+  @retval  EFI_OUT_OF_RESOURCES   Unable to allocate temporary space for ASCII 
+                                  string due to out of resources.
 
   @sa FileHandleWrite
 **/

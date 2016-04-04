@@ -190,6 +190,8 @@ InitializeDebugAgent (
   DEBUG_AGENT_MAILBOX           *Mailbox;
   UINT64                        *MailboxLocation;
   UINT32                        DebugTimerFrequency;
+  BOOLEAN                       PeriodicMode;
+  UINTN                         TimerCycle;
 
   switch (InitFlag) {
   case DEBUG_AGENT_INIT_SMM:
@@ -240,7 +242,7 @@ InitializeDebugAgent (
     //
     // Initialize Debug Timer hardware and save its frequency
     //
-    InitializeDebugTimer (&DebugTimerFrequency);
+    InitializeDebugTimer (&DebugTimerFrequency, TRUE);
     UpdateMailboxContent (mMailboxPointer, DEBUG_MAILBOX_DEBUG_TIMER_FREQUENCY, DebugTimerFrequency);
 
     DebugPortHandle = (UINT64) (UINTN)DebugPortInitialize ((DEBUG_PORT_HANDLE) (UINTN)Mailbox->DebugPortHandle, NULL);
@@ -275,7 +277,14 @@ InitializeDebugAgent (
   case DEBUG_AGENT_INIT_ENTER_SMI:
     SaveDebugRegister ();
     InitializeDebugIdt ();
-
+    //
+    // Check if CPU APIC Timer is working, otherwise initialize it.
+    //
+    GetApicTimerState (NULL, &PeriodicMode, NULL);
+    TimerCycle = GetApicTimerInitCount ();
+    if (!PeriodicMode || TimerCycle == 0) {
+      InitializeDebugTimer (NULL, FALSE);
+    }
     Mailbox = GetMailboxPointer ();
     if (GetDebugFlag (DEBUG_AGENT_FLAG_AGENT_IN_PROGRESS) == 1) {
       //
@@ -319,7 +328,7 @@ InitializeDebugAgent (
       Ia32Idtr =  (IA32_DESCRIPTOR *) Context;
       Ia32IdtEntry = (IA32_IDT_ENTRY *)(Ia32Idtr->Base);
       MailboxLocation = (UINT64 *) (UINTN) (Ia32IdtEntry[DEBUG_MAILBOX_VECTOR].Bits.OffsetLow + 
-                                           (Ia32IdtEntry[DEBUG_MAILBOX_VECTOR].Bits.OffsetHigh << 16));
+                                  (UINT32) (Ia32IdtEntry[DEBUG_MAILBOX_VECTOR].Bits.OffsetHigh << 16));
       mMailboxPointer = (DEBUG_AGENT_MAILBOX *)(UINTN)(*MailboxLocation);
       VerifyMailboxChecksum (mMailboxPointer);
       //
@@ -338,8 +347,12 @@ InitializeDebugAgent (
       //
       // Initialize Debug Timer hardware and save its frequency
       //
-      InitializeDebugTimer (&DebugTimerFrequency);
+      InitializeDebugTimer (&DebugTimerFrequency, TRUE);
       UpdateMailboxContent (mMailboxPointer, DEBUG_MAILBOX_DEBUG_TIMER_FREQUENCY, DebugTimerFrequency);
+      //
+      // Enable Debug Timer interrupt and CPU interrupt
+      //
+      SaveAndSetDebugTimerInterrupt (TRUE);
       EnableInterrupts ();
 
       FindAndReportModuleImageInfo (SIZE_4KB);

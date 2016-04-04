@@ -241,6 +241,7 @@ PLATFORM_OUTPUT_DIR = ${platform_output_directory}
 #
 MODULE_NAME = ${module_name}
 MODULE_GUID = ${module_guid}
+MODULE_NAME_GUID = ${module_name_guid}
 MODULE_VERSION = ${module_version}
 MODULE_TYPE = ${module_type}
 MODULE_FILE = ${module_file}
@@ -554,8 +555,16 @@ cleanlib:
             LibraryMakeCommandList.append(Command)
 
         package_rel_dir = self._AutoGenObject.SourceDir
-        if os.sep in package_rel_dir:
-            package_rel_dir = package_rel_dir[package_rel_dir.index(os.sep) + 1:]
+        current_dir = self.Macros["WORKSPACE"]
+        found = False
+        while not found and os.sep in package_rel_dir:
+            index = package_rel_dir.index(os.sep)
+            current_dir = os.path.join(current_dir, package_rel_dir[:index])
+            for fl in os.listdir(current_dir):
+                if fl.endswith('.dec'):
+                    found = True
+                    break
+            package_rel_dir = package_rel_dir[index + 1:]
 
         MakefileTemplateDict = {
             "makefile_header"           : self._FILE_HEADER_[self._FileType],
@@ -569,6 +578,7 @@ cleanlib:
 
             "module_name"               : self._AutoGenObject.Name,
             "module_guid"               : self._AutoGenObject.Guid,
+            "module_name_guid"          : self._AutoGenObject._GetUniqueBaseName(),
             "module_version"            : self._AutoGenObject.Version,
             "module_type"               : self._AutoGenObject.ModuleType,
             "module_file"               : self._AutoGenObject.MetaFile.Name,
@@ -846,6 +856,7 @@ PLATFORM_OUTPUT_DIR = ${platform_output_directory}
 #
 MODULE_NAME = ${module_name}
 MODULE_GUID = ${module_guid}
+MODULE_NAME_GUID = ${module_name_guid}
 MODULE_VERSION = ${module_version}
 MODULE_TYPE = ${module_type}
 MODULE_FILE = ${module_file}
@@ -970,6 +981,7 @@ ${BEGIN}\t-@${create_directory_command}\n${END}\
 
             "module_name"               : self._AutoGenObject.Name,
             "module_guid"               : self._AutoGenObject.Guid,
+            "module_name_guid"          : self._AutoGenObject._GetUniqueBaseName(),
             "module_version"            : self._AutoGenObject.Version,
             "module_type"               : self._AutoGenObject.ModuleType,
             "module_file"               : self._AutoGenObject.MetaFile,

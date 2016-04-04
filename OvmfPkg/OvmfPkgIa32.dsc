@@ -120,9 +120,13 @@
   IntrinsicLib|CryptoPkg/Library/IntrinsicLib/IntrinsicLib.inf
   OpensslLib|CryptoPkg/Library/OpensslLib/OpensslLib.inf
   TpmMeasurementLib|SecurityPkg/Library/DxeTpmMeasurementLib/DxeTpmMeasurementLib.inf
+  AuthVariableLib|SecurityPkg/Library/AuthVariableLib/AuthVariableLib.inf
 !if $(NETWORK_IP6_ENABLE) == TRUE
   TcpIoLib|MdeModulePkg/Library/DxeTcpIoLib/DxeTcpIoLib.inf
 !endif
+!else
+  TpmMeasurementLib|MdeModulePkg/Library/TpmMeasurementLibNull/TpmMeasurementLibNull.inf
+  AuthVariableLib|MdeModulePkg/Library/AuthVariableLibNull/AuthVariableLibNull.inf
 !endif
 
   S3BootScriptLib|MdeModulePkg/Library/PiDxeS3BootScriptLib/DxeS3BootScriptLib.inf
@@ -357,6 +361,8 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoHorizontalResolution|640
   gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoVerticalResolution|480
 
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion|0x0208
+
 ################################################################################
 #
 # Components Section - list of all EDK II Modules needed by this Platform.
@@ -590,11 +596,6 @@
 !endif
 
 !if $(SECURE_BOOT_ENABLE) == TRUE
-  SecurityPkg/VariableAuthenticated/RuntimeDxe/VariableRuntimeDxe.inf {
-    <LibraryClasses>
-      BaseCryptLib|CryptoPkg/Library/BaseCryptLib/RuntimeCryptLib.inf
-      OpensslLib|CryptoPkg/Library/OpensslLib/OpensslLib.inf
-  }
   SecurityPkg/VariableAuthenticated/SecureBootConfigDxe/SecureBootConfigDxe.inf
 !endif
 

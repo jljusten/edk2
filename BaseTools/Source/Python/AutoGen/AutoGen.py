@@ -17,6 +17,7 @@ import Common.LongFilePathOs as os
 import re
 import os.path as path
 import copy
+import uuid
 
 import GenC
 import GenMake
@@ -650,7 +651,7 @@ class WorkspaceAutoGen(AutoGen):
         for Pa in self.AutoGenObjectList:
             for Package in Pa.PackageList:
                 PcdList = Package.Pcds.values()
-                PcdList.sort(lambda x, y: cmp(x.TokenValue, y.TokenValue)) 
+                PcdList.sort(lambda x, y: cmp(int(x.TokenValue, 0), int(y.TokenValue, 0))) 
                 Count = 0
                 while (Count < len(PcdList) - 1) :
                     Item = PcdList[Count]
@@ -658,13 +659,13 @@ class WorkspaceAutoGen(AutoGen):
                     #
                     # Make sure in the same token space the TokenValue should be unique
                     #
-                    if (Item.TokenValue == ItemNext.TokenValue):
+                    if (int(Item.TokenValue, 0) == int(ItemNext.TokenValue, 0)):
                         SameTokenValuePcdList = []
                         SameTokenValuePcdList.append(Item)
                         SameTokenValuePcdList.append(ItemNext)
                         RemainPcdListLength = len(PcdList) - Count - 2
                         for ValueSameCount in range(RemainPcdListLength):
-                            if PcdList[len(PcdList) - RemainPcdListLength + ValueSameCount].TokenValue == Item.TokenValue:
+                            if int(PcdList[len(PcdList) - RemainPcdListLength + ValueSameCount].TokenValue, 0) == int(Item.TokenValue, 0):
                                 SameTokenValuePcdList.append(PcdList[len(PcdList) - RemainPcdListLength + ValueSameCount])
                             else:
                                 break;
@@ -698,7 +699,7 @@ class WorkspaceAutoGen(AutoGen):
                     #
                     # Check PCDs with same TokenSpaceGuidCName.TokenCName have same token value as well.
                     #
-                    if (Item.TokenSpaceGuidCName == ItemNext.TokenSpaceGuidCName) and (Item.TokenCName == ItemNext.TokenCName) and (Item.TokenValue != ItemNext.TokenValue):
+                    if (Item.TokenSpaceGuidCName == ItemNext.TokenSpaceGuidCName) and (Item.TokenCName == ItemNext.TokenCName) and (int(Item.TokenValue, 0) != int(ItemNext.TokenValue, 0)):
                         EdkLogger.error(
                                     'build',
                                     FORMAT_INVALID,
@@ -1962,7 +1963,8 @@ class PlatformAutoGen(AutoGen):
             # Key[0] -- tool family
             # Key[1] -- TARGET_TOOLCHAIN_ARCH_COMMANDTYPE_ATTRIBUTE
             #
-            if Key[0] == self.BuildRuleFamily :
+            if (Key[0] == self.BuildRuleFamily and
+                (ModuleStyle == None or len(Key) < 3 or (len(Key) > 2 and Key[2] == ModuleStyle))):
                 Target, ToolChain, Arch, CommandType, Attr = Key[1].split('_')
                 if Target == self.BuildTarget or Target == "*":
                     if ToolChain == self.ToolChain or ToolChain == "*":
@@ -1998,7 +2000,6 @@ class PlatformAutoGen(AutoGen):
                                             if Options.get((self.BuildRuleFamily, NowKey)) != None: 
                                                 Options.pop((self.BuildRuleFamily, NowKey))
                                                            
-        
         for Key in Options:
             if ModuleStyle != None and len (Key) > 2:
                 # Check Module style is EDK or EDKII.
@@ -2024,7 +2025,7 @@ class PlatformAutoGen(AutoGen):
                     if Arch == "*" or Arch == self.Arch:
                         if Tool not in BuildOptions:
                             BuildOptions[Tool] = {}
-                        if Attr != "FLAGS" or Attr not in BuildOptions[Tool]:
+                        if Attr != "FLAGS" or Attr not in BuildOptions[Tool] or Options[Key].startswith('='):
                             BuildOptions[Tool][Attr] = Options[Key]
                         else:
                             # append options for the same tool
@@ -2032,7 +2033,7 @@ class PlatformAutoGen(AutoGen):
         # Build Option Family has been checked, which need't to be checked again for family.
         if FamilyMatch or FamilyIsNull:
             return BuildOptions
-        
+
         for Key in Options:
             if ModuleStyle != None and len (Key) > 2:
                 # Check Module style is EDK or EDKII.
@@ -2056,7 +2057,7 @@ class PlatformAutoGen(AutoGen):
                     if Arch == "*" or Arch == self.Arch:
                         if Tool not in BuildOptions:
                             BuildOptions[Tool] = {}
-                        if Attr != "FLAGS" or Attr not in BuildOptions[Tool]:
+                        if Attr != "FLAGS" or Attr not in BuildOptions[Tool] or Options[Key].startswith('='):
                             BuildOptions[Tool][Attr] = Options[Key]
                         else:
                             # append options for the same tool
@@ -2073,8 +2074,11 @@ class PlatformAutoGen(AutoGen):
         # Get the different options for the different style module
         if Module.AutoGenVersion < 0x00010005:
             PlatformOptions = self.EdkBuildOption
+            ModuleTypeOptions = self.Platform.GetBuildOptionsByModuleType(EDK_NAME, Module.ModuleType)
         else:
             PlatformOptions = self.EdkIIBuildOption
+            ModuleTypeOptions = self.Platform.GetBuildOptionsByModuleType(EDKII_NAME, Module.ModuleType)
+        ModuleTypeOptions = self._ExpandBuildOption(ModuleTypeOptions)
         ModuleOptions = self._ExpandBuildOption(Module.BuildOptions)
         if Module in self.Platform.Modules:
             PlatformModule = self.Platform.Modules[str(Module)]
@@ -2082,17 +2086,31 @@ class PlatformAutoGen(AutoGen):
         else:
             PlatformModuleOptions = {}
 
-        AllTools = set(ModuleOptions.keys() + PlatformOptions.keys() + PlatformModuleOptions.keys() + self.ToolDefinition.keys())
+        BuildRuleOrder = None
+        for Options in [self.ToolDefinition, ModuleOptions, PlatformOptions, ModuleTypeOptions, PlatformModuleOptions]:
+            for Tool in Options:
+                for Attr in Options[Tool]:
+                    if Attr == TAB_TOD_DEFINES_BUILDRULEORDER:
+                        BuildRuleOrder = Options[Tool][Attr]
+
+        AllTools = set(ModuleOptions.keys() + PlatformOptions.keys() +
+                       PlatformModuleOptions.keys() + ModuleTypeOptions.keys() +
+                       self.ToolDefinition.keys())
         BuildOptions = {}
         for Tool in AllTools:
             if Tool not in BuildOptions:
                 BuildOptions[Tool] = {}
 
-            for Options in [self.ToolDefinition, ModuleOptions, PlatformOptions, PlatformModuleOptions]:
+            for Options in [self.ToolDefinition, ModuleOptions, PlatformOptions, ModuleTypeOptions, PlatformModuleOptions]:
                 if Tool not in Options:
                     continue
                 for Attr in Options[Tool]:
                     Value = Options[Tool][Attr]
+                    #
+                    # Do not generate it in Makefile
+                    #
+                    if Attr == TAB_TOD_DEFINES_BUILDRULEORDER:
+                        continue
                     if Attr not in BuildOptions[Tool]:
                         BuildOptions[Tool][Attr] = ""
                     # check if override is indicated
@@ -2107,7 +2125,7 @@ class PlatformAutoGen(AutoGen):
             if 'BUILD' not in BuildOptions:
                 BuildOptions['BUILD'] = {}
             BuildOptions['BUILD']['FLAGS'] = self.Workspace.UniFlag
-        return BuildOptions
+        return BuildOptions, BuildRuleOrder
 
     Platform            = property(_GetPlatform)
     Name                = property(_GetName)
@@ -2195,6 +2213,7 @@ class ModuleAutoGen(AutoGen):
         self.DepexGenerated = False
 
         self.BuildDatabase = self.Workspace.BuildDatabase
+        self.BuildRuleOrder = None
 
         self._Module          = None
         self._Name            = None
@@ -2272,12 +2291,25 @@ class ModuleAutoGen(AutoGen):
                 
         return self._FixedAtBuildPcds        
 
+    def _GetUniqueBaseName(self):
+        BaseName = self.Name
+        for Module in self.PlatformInfo.ModuleAutoGenList:
+            if Module.MetaFile == self.MetaFile:
+                continue
+            if Module.Name == self.Name:
+                if uuid.UUID(Module.Guid) == uuid.UUID(self.Guid):
+                    EdkLogger.error("build", FILE_DUPLICATED, 'Modules have same BaseName and FILE_GUID:\n'
+                                    '  %s\n  %s' % (Module.MetaFile, self.MetaFile))
+                BaseName = '%s_%s' % (self.Name, self.Guid)
+        return BaseName
+
     # Macros could be used in build_rule.txt (also Makefile)
     def _GetMacros(self):
         if self._Macro == None:
             self._Macro = sdict()
             self._Macro["WORKSPACE"             ] = self.WorkspaceDir
             self._Macro["MODULE_NAME"           ] = self.Name
+            self._Macro["MODULE_NAME_GUID"      ] = self._GetUniqueBaseName()
             self._Macro["MODULE_GUID"           ] = self.Guid
             self._Macro["MODULE_VERSION"        ] = self.Version
             self._Macro["MODULE_TYPE"           ] = self.ModuleType
@@ -2587,7 +2619,9 @@ class ModuleAutoGen(AutoGen):
     #
     def _GetModuleBuildOption(self):
         if self._BuildOption == None:
-            self._BuildOption = self.PlatformInfo.ApplyBuildOption(self.Module)
+            self._BuildOption, self.BuildRuleOrder = self.PlatformInfo.ApplyBuildOption(self.Module)
+            if self.BuildRuleOrder:
+                self.BuildRuleOrder = ['.%s' % Ext for Ext in self.BuildRuleOrder.split()]
         return self._BuildOption
 
     ## Get include path list from tool option for the module build
@@ -2746,6 +2780,11 @@ class ModuleAutoGen(AutoGen):
         RuleChain = []
         SourceList = [File]
         Index = 0
+        #
+        # Make sure to get build rule order value
+        #
+        self._GetModuleBuildOption()
+
         while Index < len(SourceList):
             Source = SourceList[Index]
             Index = Index + 1
@@ -2779,7 +2818,7 @@ class ModuleAutoGen(AutoGen):
                     self._FinalBuildTargetList.add(LastTarget)
                 break
 
-            Target = RuleObject.Apply(Source)
+            Target = RuleObject.Apply(Source, self.BuildRuleOrder)
             if not Target:
                 if LastTarget:
                     self._FinalBuildTargetList.add(LastTarget)
@@ -3076,6 +3115,76 @@ class ModuleAutoGen(AutoGen):
 
         return HiiExPcds
 
+    def _GenOffsetBin(self):
+        VfrUniBaseName = {}
+        for SourceFile in self.Module.Sources:
+            if SourceFile.Type.upper() == ".VFR" :
+                #
+                # search the .map file to find the offset of vfr binary in the PE32+/TE file. 
+                #
+                VfrUniBaseName[SourceFile.BaseName] = (SourceFile.BaseName + "Bin")
+            if SourceFile.Type.upper() == ".UNI" :
+                #
+                # search the .map file to find the offset of Uni strings binary in the PE32+/TE file. 
+                #
+                VfrUniBaseName["UniOffsetName"] = (self.Name + "Strings")
+
+        if len(VfrUniBaseName) == 0:
+            return None
+        MapFileName = os.path.join(self.OutputDir, self.Name + ".map")
+        EfiFileName = os.path.join(self.OutputDir, self.Name + ".efi")
+        VfrUniOffsetList = GetVariableOffset(MapFileName, EfiFileName, VfrUniBaseName.values())
+        if not VfrUniOffsetList:
+            return None
+
+        OutputName = '%sOffset.bin' % self.Name
+        UniVfrOffsetFileName    =  os.path.join( self.OutputDir, OutputName)
+
+        try:
+            fInputfile = open(UniVfrOffsetFileName, "wb+", 0)
+        except:
+            EdkLogger.error("build", FILE_OPEN_FAILURE, "File open failed for %s" % UniVfrOffsetFileName,None)
+
+        # Use a instance of StringIO to cache data
+        fStringIO = StringIO('')  
+
+        for Item in VfrUniOffsetList:
+            if (Item[0].find("Strings") != -1):
+                #
+                # UNI offset in image.
+                # GUID + Offset
+                # { 0x8913c5e0, 0x33f6, 0x4d86, { 0x9b, 0xf1, 0x43, 0xef, 0x89, 0xfc, 0x6, 0x66 } }
+                #
+                UniGuid = [0xe0, 0xc5, 0x13, 0x89, 0xf6, 0x33, 0x86, 0x4d, 0x9b, 0xf1, 0x43, 0xef, 0x89, 0xfc, 0x6, 0x66]
+                UniGuid = [chr(ItemGuid) for ItemGuid in UniGuid]
+                fStringIO.write(''.join(UniGuid))            
+                UniValue = pack ('Q', int (Item[1], 16))
+                fStringIO.write (UniValue)
+            else:
+                #
+                # VFR binary offset in image.
+                # GUID + Offset
+                # { 0xd0bc7cb4, 0x6a47, 0x495f, { 0xaa, 0x11, 0x71, 0x7, 0x46, 0xda, 0x6, 0xa2 } };
+                #
+                VfrGuid = [0xb4, 0x7c, 0xbc, 0xd0, 0x47, 0x6a, 0x5f, 0x49, 0xaa, 0x11, 0x71, 0x7, 0x46, 0xda, 0x6, 0xa2]
+                VfrGuid = [chr(ItemGuid) for ItemGuid in VfrGuid]
+                fStringIO.write(''.join(VfrGuid))                   
+                type (Item[1]) 
+                VfrValue = pack ('Q', int (Item[1], 16))
+                fStringIO.write (VfrValue)
+        #
+        # write data into file.
+        #
+        try :  
+            fInputfile.write (fStringIO.getvalue())
+        except:
+            EdkLogger.error("build", FILE_WRITE_FAILURE, "Write data to file %s failed, please check whether the "
+                            "file been locked or using by other applications." %UniVfrOffsetFileName,None)
+
+        fStringIO.close ()
+        fInputfile.close ()
+        return OutputName
+
     ## Create AsBuilt INF file the module
     #
     def CreateAsBuiltInf(self):
@@ -3229,6 +3338,10 @@ class ModuleAutoGen(AutoGen):
               AsBuiltInfDict['binary_item'] += ['DXE_DEPEX|' + self.Name + '.depex']
             if self.ModuleType in ['DXE_SMM_DRIVER']:
               AsBuiltInfDict['binary_item'] += ['SMM_DEPEX|' + self.Name + '.depex']
+
+        Bin = self._GenOffsetBin()
+        if Bin:
+            AsBuiltInfDict['binary_item'] += ['BIN|%s' % Bin]
 
         for Root, Dirs, Files in os.walk(OutputDir):
             for File in Files:

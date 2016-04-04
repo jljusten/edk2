@@ -1,7 +1,7 @@
 /** @file
   SMM IPL that produces SMM related runtime protocols and load the SMM Core into SMRAM
 
-  Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials are licensed and made available 
   under the terms and conditions of the BSD License which accompanies this 
   distribution.  The full text of the license may be found at        
@@ -267,7 +267,7 @@ SMM_IPL_EVENT_NOTIFICATION  mSmmIplEvents[] = {
   // the associated event is immediately signalled, so the notification function will be executed and the 
   // SMM End Of Dxe Protocol will be found if it is already in the handle database.
   //
-  { FALSE, FALSE,  &gEfiEndOfDxeEventGroupGuid,        SmmIplGuidedEventNotify,           &gEfiEndOfDxeEventGroupGuid,        TPL_CALLBACK, NULL },
+  { FALSE, TRUE,  &gEfiEndOfDxeEventGroupGuid,        SmmIplGuidedEventNotify,           &gEfiEndOfDxeEventGroupGuid,        TPL_CALLBACK, NULL },
   //
   // Declare event notification on the DXE Dispatch Event Group.  This event is signaled by the DXE Core
   // each time the DXE Core dispatcher has completed its work.  When this event is signalled, the SMM Core
@@ -283,8 +283,19 @@ SMM_IPL_EVENT_NOTIFICATION  mSmmIplEvents[] = {
   // Declare event notification on Legacy Boot Event Group.  This is used to inform the SMM Core that the platform 
   // is performing a legacy boot operation, and that the UEFI environment is no longer available and the SMM Core 
   // must guarantee that it does not access any UEFI related structures outside of SMRAM.
+  // It is also to inform the SMM Core to notify SMM driver that system enter legacy boot.
   //
   { FALSE, FALSE, &gEfiEventLegacyBootGuid,           SmmIplGuidedEventNotify,           &gEfiEventLegacyBootGuid,           TPL_CALLBACK, NULL },
+  //
+  // Declare event notification on Exit Boot Services Event Group.  This is used to inform the SMM Core
+  // to notify SMM driver that system enter exit boot services.
+  //
+  { FALSE, FALSE, &gEfiEventExitBootServicesGuid,     SmmIplGuidedEventNotify,           &gEfiEventExitBootServicesGuid,     TPL_CALLBACK, NULL },
+  //
+  // Declare event notification on Ready To Boot Event Group.  This is used to inform the SMM Core
+  // to notify SMM driver that system enter ready to boot.
+  //
+  { FALSE, FALSE, &gEfiEventReadyToBootGuid,          SmmIplGuidedEventNotify,           &gEfiEventReadyToBootGuid,          TPL_CALLBACK, NULL },
   //
   // Declare event notification on SetVirtualAddressMap() Event Group.  This is used to convert gSmmCorePrivate 
   // and mSmmControl2 from physical addresses to virtual addresses.
@@ -1251,7 +1262,8 @@ SmmIplEntry (
     // Free all allocated resources
     //
     FreePool (gSmmCorePrivate->SmramRanges);
-    
+    FreePool (gSmmCorePrivate->FullSmramRanges);
+
     return EFI_UNSUPPORTED;
   }
   

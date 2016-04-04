@@ -2,7 +2,7 @@
   The internal header file includes the common header files, defines
   internal structure and functions used by SmmCore module.
 
-  Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials are licensed and made available 
   under the terms and conditions of the BSD License which accompanies this 
   distribution.  The full text of the license may be found at        
@@ -29,6 +29,9 @@
 #include <Protocol/DevicePath.h>        
 #include <Protocol/Security.h>          
 #include <Protocol/Security2.h>
+#include <Protocol/SmmExitBootServices.h>
+#include <Protocol/SmmLegacyBoot.h>
+#include <Protocol/SmmReadyToBoot.h>
 
 #include <Guid/Apriori.h>
 #include <Guid/EventGroup.h>
@@ -693,6 +696,50 @@ SmmEndOfDxeHandler (
   );
 
 /**
+  This function is the main entry point for an SMM handler dispatch
+  or communicate-based callback.
+
+  @param  DispatchHandle  The unique handle assigned to this handler by SmiHandlerRegister().
+  @param  Context         Points to an optional handler context which was specified when the handler was registered.
+  @param  CommBuffer      A pointer to a collection of data in memory that will
+                          be conveyed from a non-SMM environment into an SMM environment.
+  @param  CommBufferSize  The size of the CommBuffer.
+
+  @return Status Code
+
+**/
+EFI_STATUS
+EFIAPI
+SmmExitBootServicesHandler (
+  IN     EFI_HANDLE               DispatchHandle,
+  IN     CONST VOID               *Context,        OPTIONAL
+  IN OUT VOID                     *CommBuffer,     OPTIONAL
+  IN OUT UINTN                    *CommBufferSize  OPTIONAL
+  );
+
+/**
+  This function is the main entry point for an SMM handler dispatch
+  or communicate-based callback.
+
+  @param  DispatchHandle  The unique handle assigned to this handler by SmiHandlerRegister().
+  @param  Context         Points to an optional handler context which was specified when the handler was registered.
+  @param  CommBuffer      A pointer to a collection of data in memory that will
+                          be conveyed from a non-SMM environment into an SMM environment.
+  @param  CommBufferSize  The size of the CommBuffer.
+
+  @return Status Code
+
+**/
+EFI_STATUS
+EFIAPI
+SmmReadyToBootHandler (
+  IN     EFI_HANDLE               DispatchHandle,
+  IN     CONST VOID               *Context,        OPTIONAL
+  IN OUT VOID                     *CommBuffer,     OPTIONAL
+  IN OUT UINTN                    *CommBufferSize  OPTIONAL
+  );
+
+/**
   Place holder function until all the SMM System Table Service are available.
 
   @param  Arg1                   Undefined
@@ -909,16 +956,51 @@ SmramProfileReadyToLock (
   VOID
   );
 
-/**
-  Dump SMRAM infromation.
-
-**/
-VOID
-DumpSmramInfo (
-  VOID
-  );
-
 extern UINTN                    mFullSmramRangeCount;
 extern EFI_SMRAM_DESCRIPTOR     *mFullSmramRanges;
+
+//
+// Page management
+//
+
+typedef struct {
+  LIST_ENTRY  Link;
+  UINTN       NumberOfPages;
+} FREE_PAGE_LIST;
+
+extern LIST_ENTRY  mSmmMemoryMap;
+
+//
+// Pool management
+//
+
+//
+// MIN_POOL_SHIFT must not be less than 5
+//
+#define MIN_POOL_SHIFT  6
+#define MIN_POOL_SIZE   (1 << MIN_POOL_SHIFT)
+
+//
+// MAX_POOL_SHIFT must not be less than EFI_PAGE_SHIFT - 1
+//
+#define MAX_POOL_SHIFT  (EFI_PAGE_SHIFT - 1)
+#define MAX_POOL_SIZE   (1 << MAX_POOL_SHIFT)
+
+//
+// MAX_POOL_INDEX are calculated by maximum and minimum pool sizes
+//
+#define MAX_POOL_INDEX  (MAX_POOL_SHIFT - MIN_POOL_SHIFT + 1)
+
+typedef struct {
+  UINTN        Size;
+  BOOLEAN      Available;
+} POOL_HEADER;
+
+typedef struct {
+  POOL_HEADER  Header;
+  LIST_ENTRY   Link;
+} FREE_POOL_HEADER;
+
+extern LIST_ENTRY  mSmmPoolLists[MAX_POOL_INDEX];
 
 #endif
