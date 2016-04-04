@@ -58,6 +58,7 @@ CHAR16            *gFunctionNineString;
 CHAR16            *gFunctionTenString;
 CHAR16            *gEnterString;
 CHAR16            *gEnterCommitString;
+CHAR16            *gEnterEscapeString;
 CHAR16            *gEscapeString;
 CHAR16            *gSaveFailed;
 CHAR16            *gMoveHighlight;
@@ -81,6 +82,7 @@ CHAR16            *gPlusString;
 CHAR16            *gMinusString;
 CHAR16            *gAdjustNumber;
 CHAR16            *gSaveChanges;
+CHAR16            *gOptionMismatch;
 
 CHAR16            gPromptBlockWidth;
 CHAR16            gOptionBlockWidth;
@@ -724,7 +726,9 @@ NewStringCpy (
   IN CHAR16           *Src
   )
 {
-  SafeFreePool (*Dest);
+  if (*Dest != NULL) {
+    FreePool (*Dest);
+  }
   *Dest = AllocateCopyPool (StrSize (Src), Src);
   ASSERT (*Dest != NULL);
 }
@@ -865,7 +869,9 @@ SetValueByName (
     Node = NAME_VALUE_NODE_FROM_LINK (Link);
 
     if (StrCmp (Name, Node->Name) == 0) {
-      SafeFreePool (Node->EditValue);
+      if (Node->EditValue != NULL) {
+        FreePool (Node->EditValue);
+      }
       Node->EditValue = AllocateCopyPool (StrSize (Value), Value);
       ASSERT (Node->EditValue != NULL);
       return EFI_SUCCESS;
@@ -1046,6 +1052,7 @@ GetQuestionValue (
   CHAR16              *Progress;
   CHAR16              *Result;
   CHAR16              *Value;
+  CHAR16              *StringPtr;
   UINTN               Length;
   BOOLEAN             IsBufferStorage;
   BOOLEAN             IsString;
@@ -1241,6 +1248,16 @@ GetQuestionValue (
     // Skip '=', point to value
     //
     Value = Value + 1;
+
+    //
+    // Suppress <AltResp> if any
+    //
+    StringPtr = Value;
+    while (*StringPtr != L'\0' && *StringPtr != L'&') {
+      StringPtr++;
+    }
+    *StringPtr = L'\0';
+
     if (!IsBufferStorage && IsString) {
       //
       // Convert Config String to Unicode String, e.g "0041004200430044" => "ABCD"
@@ -1892,6 +1909,16 @@ ExtractFormDefault (
     Link = GetNextNode (&Form->StatementListHead, Link);
 
     //
+    // If Question is suppressed, don't reset it to default
+    //
+    if (Question->SuppressExpression != NULL) {
+      Status = EvaluateExpression (FormSet, Form, Question->SuppressExpression);
+      if (!EFI_ERROR (Status) && Question->SuppressExpression->Result.Value.b) {
+        continue;
+      }
+    }
+
+    //
     // Reset Question to its default value
     //
     Status = GetQuestionDefault (FormSet, Form, Question, DefaultId);
@@ -2142,7 +2169,7 @@ GetIfrBinaryData (
     Package = ((UINT8 *) HiiPackageList) + Offset;
     CopyMem (&PackageHeader, Package, sizeof (EFI_HII_PACKAGE_HEADER));
 
-    if (PackageHeader.Type == EFI_HII_PACKAGE_FORM) {
+    if (PackageHeader.Type == EFI_HII_PACKAGE_FORMS) {
       //
       // Search FormSet in this Form Package
       //

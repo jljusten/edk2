@@ -221,7 +221,7 @@ del_v2p (
     FreePool (v);
 
     if (Status) {
-      DEBUG ((EFI_D_ERROR, "Unmap failed with status = %x\n", Status));
+      DEBUG ((EFI_D_ERROR, "Unmap failed with status = %r\n", Status));
     }
     return Status;
   }
@@ -233,7 +233,7 @@ del_v2p (
       FreePool (t);
 
       if (Status) {
-        DEBUG ((EFI_D_ERROR, "Unmap failed with status = %x\n", Status));
+        DEBUG ((EFI_D_ERROR, "Unmap failed with status = %r\n", Status));
       }
       return Status;
     }
@@ -242,7 +242,6 @@ del_v2p (
   return EFI_NOT_FOUND;
 }
 
-STATIC
 EFI_STATUS
 issue_hwundi_command (
   UINT64 cdb
@@ -280,7 +279,6 @@ Returns:
   @return If ptr is NULL or len is zero, zero is returned.
 
 **/
-STATIC
 UINT8
 calc_8bit_cksum (
   VOID  *ptr,
@@ -353,12 +351,12 @@ SimpleNetworkDriverSupported (
 
   if (EFI_ERROR (Status)) {
     if (Status == EFI_ALREADY_STARTED) {
-      DEBUG ((EFI_D_INFO, "Support(): Already Started. on handle %x\n", Controller));
+      DEBUG ((EFI_D_INFO, "Support(): Already Started. on handle %p\n", Controller));
     }
     return Status;
   }
 
-  DEBUG ((EFI_D_INFO, "Support(): UNDI3.1 found on handle %x\n", Controller));
+  DEBUG ((EFI_D_INFO, "Support(): UNDI3.1 found on handle %p\n", Controller));
 
   //
   // check the version, we don't want to connect to the undi16
@@ -422,7 +420,7 @@ SimpleNetworkDriverSupported (
   }
 
   Status = EFI_SUCCESS;
-  DEBUG ((EFI_D_INFO, "Support(): supported on %x\n", Controller));
+  DEBUG ((EFI_D_INFO, "Support(): supported on %p\n", Controller));
 
 Done:
   gBS->CloseProtocol (

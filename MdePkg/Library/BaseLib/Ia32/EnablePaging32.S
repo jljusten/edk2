@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-# Copyright (c) 2006, Intel Corporation
+# Copyright (c) 2006 - 2008, Intel Corporation
 # All rights reserved. This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -11,7 +11,7 @@
 #
 # Module Name:
 #
-#   EnablePaging32.Asm
+#   EnablePaging32.S
 #
 # Abstract:
 #
@@ -38,14 +38,14 @@ ASM_PFX(InternalX86EnablePaging32):
     movl    8(%esp), %ecx
     movl    12(%esp), %edx
     pushfl
-    pop     %edi
+    pop     %edi                        # save flags in edi
     cli
     movl    %cr0, %eax
     btsl    $31, %eax
     movl    16(%esp), %esp
     movl    %eax, %cr0
     push    %edi
-    popfl
+    popfl                               # restore flags
     push    %edx
     push    %ecx
     call    *%ebx

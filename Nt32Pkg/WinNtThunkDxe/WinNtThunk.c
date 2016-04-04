@@ -39,7 +39,6 @@ Abstract:
 //
 // The Library classes this module consumes
 //
-#include <Library/DebugLib.h>
 #include <Library/UefiDriverEntryPoint.h>
 #include <Library/WinNtLib.h>
 #include <Library/UefiBootServicesTableLib.h>
@@ -49,7 +48,7 @@ Abstract:
 //
 // WinNtThunk Device Path Protocol Instance
 //
-static WIN_NT_THUNK_DEVICE_PATH mWinNtThunkDevicePath = {
+WIN_NT_THUNK_DEVICE_PATH mWinNtThunkDevicePath = {
   {
     HARDWARE_DEVICE_PATH,
     HW_VENDOR_DP,

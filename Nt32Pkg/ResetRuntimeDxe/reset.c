@@ -35,8 +35,7 @@ InitializeNtReset (
   IN EFI_SYSTEM_TABLE  *SystemTable
   );
 
-STATIC
-EFI_STATUS
+VOID
 EFIAPI
 WinNtResetSystem (
   IN EFI_RESET_TYPE   ResetType,
@@ -85,8 +84,7 @@ Returns:
   return Status;
 }
 
-STATIC
-EFI_STATUS
+VOID
 EFIAPI
 WinNtResetSystem (
   IN EFI_RESET_TYPE   ResetType,
@@ -124,5 +122,5 @@ Returns:
   //
   // Should never go here
   //
-  return EFI_SUCCESS;
+  ASSERT (FALSE);
 }

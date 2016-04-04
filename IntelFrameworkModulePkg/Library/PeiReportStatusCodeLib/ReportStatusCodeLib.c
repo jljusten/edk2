@@ -1,7 +1,7 @@
 /** @file
   Report Status Code Library for PEI Phase.
 
-  Copyright (c) 2006, Intel Corporation<BR>
+  Copyright (c) 2006 - 2008, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -55,7 +55,6 @@
   @retval  EFI_UNSUPPORTED       Status Code Protocol is not available.
 
 **/
-STATIC
 EFI_STATUS
 InternalReportStatusCode (
   IN EFI_STATUS_CODE_TYPE     Type,
@@ -68,7 +67,7 @@ InternalReportStatusCode (
   CONST EFI_PEI_SERVICES  **PeiServices;
   EFI_STATUS              Status;
 
-  PeiServices = (CONST EFI_PEI_SERVICES  **) GetPeiServicesTablePointer ();
+  PeiServices = GetPeiServicesTablePointer ();
   Status =  (*PeiServices)->ReportStatusCode (
                              PeiServices,
                              Type,

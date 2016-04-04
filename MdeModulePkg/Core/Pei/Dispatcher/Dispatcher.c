@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <PeiMain.h>
+#include "PeiMain.h"
 
 ///
 /// CAR is filled with this initial value during SEC phase
@@ -182,8 +182,8 @@ DiscoverPeimsAndOrderWithApriori (
 **/
 VOID*
 ShadowPeiCore(
-  EFI_PEI_SERVICES     **PeiServices,
-  PEI_CORE_INSTANCE    *PrivateInMem
+  IN CONST EFI_PEI_SERVICES     **PeiServices,
+  IN       PEI_CORE_INSTANCE    *PrivateInMem
   )
 {
   EFI_PEI_FILE_HANDLE  PeiCoreFileHandle;
@@ -231,9 +231,6 @@ ShadowPeiCore(
                          the BFV location.
   @param Private         Pointer to the private data passed in from caller
 
-  @retval EFI_SUCCESS   - Successfully dispatched PEIM.
-  @retval EFI_NOT_FOUND - The dispatch failed.
-
 **/
 VOID
 PeiDispatcher (
@@ -244,7 +241,7 @@ PeiDispatcher (
   EFI_STATUS                          Status;
   UINT32                              Index1;
   UINT32                              Index2;
-  EFI_PEI_SERVICES                    **PeiServices;
+  CONST EFI_PEI_SERVICES              **PeiServices;
   EFI_PEI_FV_HANDLE                   VolumeHandle;
   EFI_PEI_FILE_HANDLE                 PeimFileHandle;
   UINTN                               FvCount;
@@ -271,7 +268,7 @@ PeiDispatcher (
   UINTN                               OldCheckingBottom;
 
 
-  PeiServices = &Private->PS;
+  PeiServices = (CONST EFI_PEI_SERVICES **) &Private->PS;
   PeimEntryPoint = NULL;
   PeimFileHandle = NULL;
   EntryPoint     = 0;
@@ -290,7 +287,7 @@ PeiDispatcher (
         if (Private->Fv[Index1].PeimState[Index2] == PEIM_STATE_REGISITER_FOR_SHADOW) {
           PeimFileHandle = Private->Fv[Index1].FvFileHandles[Index2];
           Status = PeiLoadImage (
-                    &Private->PS,
+                    (CONST EFI_PEI_SERVICES **) &Private->PS,
                     PeimFileHandle,
                     &EntryPoint,
                     &AuthenticationState
@@ -350,7 +347,7 @@ PeiDispatcher (
       //
       // Get this Fv Handle by PeiService FvFindNextVolume.
       //
-      PeiFvFindNextVolume ((CONST EFI_PEI_SERVICES **) PeiServices, FvCount, &VolumeHandle);
+      PeiFvFindNextVolume (PeiServices, FvCount, &VolumeHandle);
 
       if (Private->CurrentPeimCount == 0) {
         //
@@ -552,7 +549,7 @@ PeiDispatcher (
               PrivateInMem->HobList.Raw = (VOID*) ((UINTN) PrivateInMem->HobList.Raw + HeapOffset);
               PrivateInMem->StackBase   = (EFI_PHYSICAL_ADDRESS)(((UINTN)PrivateInMem->PhysicalMemoryBegin + EFI_PAGE_MASK) & ~EFI_PAGE_MASK);
 
-              PeiServices = &PrivateInMem->PS;
+              PeiServices = (CONST EFI_PEI_SERVICES **) &PrivateInMem->PS;
 
               //
               // Fixup for PeiService's address

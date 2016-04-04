@@ -1,3 +1,6 @@
+#
+# ConvertAsm.py: Automatically generated from CopyMem.asm
+#
 #------------------------------------------------------------------------------
 #
 # Copyright (c) 2006, Intel Corporation
@@ -11,7 +14,7 @@
 #
 # Module Name:
 #
-#   CopyMem.asm
+#   CopyMem.S
 #
 # Abstract:
 #
@@ -23,50 +26,50 @@
 
 
 #------------------------------------------------------------------------------
-# VOID *
-# EFIAPI
-# InternalMemCopyMem (
-#   OUT     VOID                      *DestinationBuffer,
-#   IN      CONST VOID                *SourceBuffer,
-#   IN      UINTN                     Length
-#   );
+#  VOID *
+#  EFIAPI
+#  InternalMemCopyMem (
+#    IN VOID   *Destination,
+#    IN VOID   *Source,
+#    IN UINTN  Count
+#    )
 #------------------------------------------------------------------------------
-.global _InternalMemCopyMem;
-_InternalMemCopyMem:
-    push    %rsi
-    push    %rdi
-    mov     %rdi, %rsi
-    mov     %rcx, %rdi
-    lea     -1(%r8,%rsi,1),%r9
-    cmp     %rdi, %rsi
-    mov     %rdi, %rax
-    jae     L1
-    cmp     %rdi, %r9
-    jae     LCopyBackward               # Copy backward if overlapped
-L1: 
-    mov     %r8, %rcx
-    and     $7, %r8
-    shr     $3, %rcx
-    jz      LCopyBytes
-    movd    %mm0, %r10                  # (Save mm0 in r10)
-L2: 
-    movd    (%rsi), %mm0
-    movntq  %mm0, (%rdi)
-    add     $8, %rsi
-    add     $8, %rdi
-    loop    L2
+.intel_syntax noprefix
+.globl ASM_PFX(InternalMemCopyMem)
+ASM_PFX(InternalMemCopyMem):
+    push    rsi
+    push    rdi
+    mov     rsi, rdx                    # rsi <- Source
+    mov     rdi, rcx                    # rdi <- Destination
+    lea     r9, [rsi + r8 - 1]          # r9 <- End of Source
+    cmp     rsi, rdi
+    mov     rax, rdi                    # rax <- Destination as return value
+    jae     L0
+    cmp     r9, rdi
+    jae     L_CopyBackward              # Copy backward if overlapped
+L0:
+    mov     rcx, r8
+    and     r8, 7
+    shr     rcx, 3                      # rcx <- # of Qwords to copy
+    jz      L_CopyBytes
+    movd    r10, mm0                    # (Save mm0 in r10)
+L1:
+    movq    mm0, [rsi]
+    movntq  [rdi], mm0
+    add     rsi, 8
+    add     rdi, 8
+    loop    L1
     mfence
-    movd    %r10, %mm0                  #(Restore mm0)
-    jmp     LCopyBytes
-LCopyBackward: 
-    mov     %r9, %rsi
-    lea     -1(%r8,%rdi,1),%rdi
+    movd    mm0, r10                    # (Restore mm0)
+    jmp     L_CopyBytes
+L_CopyBackward:
+    mov     rsi, r9                     # rsi <- End of Source
+    lea     rdi, [rdi + r8 - 1]         # rdi <- End of Destination
     std                                 # set direction flag
-LCopyBytes: 
-    mov     %r8, %rcx
-    rep
-    movsb                               # Copy bytes backward
+L_CopyBytes:
+    mov     rcx, r8
+    rep     movsb                       # Copy bytes backward
     cld
-    pop     %rdi
-    pop     %rsi
+    pop     rdi
+    pop     rsi
     ret

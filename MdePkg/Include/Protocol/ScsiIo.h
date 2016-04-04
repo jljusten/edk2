@@ -20,7 +20,7 @@
 
 #define EFI_SCSI_IO_PROTOCOL_GUID \
   { \
-    0x932f4736, 0x2362, 0x4002, {0x80, 0x3e, 0x3c, 0xd5, 0x4b, 0x13, 0x8f, 0x85 } \
+    0x932f47e6, 0x2362, 0x4002, {0x80, 0x3e, 0x3c, 0xd5, 0x4b, 0x13, 0x8f, 0x85 } \
   }
 
 ///
@@ -215,10 +215,9 @@ EFI_STATUS
   IN EFI_EVENT                              Event  OPTIONAL
   );
 
-/**  
-  @par Protocol Description:
-  Provides services to manage and communicate with SCSI devices.
-**/
+///
+/// Provides services to manage and communicate with SCSI devices.
+///
 struct _EFI_SCSI_IO_PROTOCOL {
   EFI_SCSI_IO_PROTOCOL_GET_DEVICE_TYPE      GetDeviceType;
   EFI_SCSI_IO_PROTOCOL_GET_DEVICE_LOCATION  GetDeviceLocation;

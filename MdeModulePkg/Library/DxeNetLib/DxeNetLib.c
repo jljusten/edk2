@@ -27,6 +27,8 @@ Abstract:
 #include <Protocol/NicIp4Config.h>
 #include <Protocol/ComponentName.h>
 #include <Protocol/ComponentName2.h>
+#include <Protocol/Ip4.h>
+#include <Protocol/Dpc.h>
 
 #include <Library/NetLib.h>
 #include <Library/BaseLib.h>
@@ -486,7 +488,6 @@ NetMapGetCount (
   @return The allocated item or NULL
 
 **/
-STATIC
 NET_MAP_ITEM *
 NetMapAllocItem (
   IN NET_MAP                *Map
@@ -609,7 +610,6 @@ NetMapInsertTail (
   @return TRUE if the item is in the netmap, otherwise FALSE.
 
 **/
-STATIC
 BOOLEAN
 NetItemInMap (
   IN NET_MAP                *Map,
@@ -1116,7 +1116,6 @@ NetLibGetMacString (
   @retval FALSE          If the default address is acquired from DHCP.
 
 **/
-STATIC
 BOOLEAN
 NetLibDefaultAddressIsStatic (
   IN EFI_HANDLE  Controller

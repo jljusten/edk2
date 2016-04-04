@@ -1,6 +1,6 @@
 /** @file
 
-Copyright (c) 2004 - 2007, Intel Corporation
+Copyright (c) 2004 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -39,7 +39,7 @@ typedef union {
   UINT8                     *BytePtr;
 } UNION_PTR;
 
-
+UINTN  mPropeller;
 
 /**
   PxeBc callback routine for status updates and aborts.
@@ -58,7 +58,6 @@ typedef union {
                                                       -
 
 **/
-STATIC
 EFI_PXE_BASE_CODE_CALLBACK_STATUS
 EFIAPI
 bc_callback (
@@ -69,13 +68,11 @@ bc_callback (
   IN EFI_PXE_BASE_CODE_PACKET             * PacketPtr OPTIONAL
   )
 {
-  STATIC UINTN  Propeller;
-
   EFI_INPUT_KEY Key;
   UINTN         Row;
   UINTN         Col;
 
-  Propeller = 0;
+  mPropeller = 0;
   //
   // Resolve Warning 4 unreferenced parameter problem
   //
@@ -140,16 +137,16 @@ bc_callback (
     Row = gST->ConOut->Mode->CursorRow;
     Col = gST->ConOut->Mode->CursorColumn;
 
-    AsciiPrint ("%c", "/-\\|"[Propeller]);
+    AsciiPrint ("%c", "/-\\|"[mPropeller]);
     gST->ConOut->SetCursorPosition (gST->ConOut, Col, Row);
 
-    Propeller = (Propeller + 1) & 3;
+    mPropeller = (mPropeller + 1) & 3;
   }
 
   return EFI_PXE_BASE_CODE_CALLBACK_STATUS_CONTINUE;
 }
 
-STATIC EFI_PXE_BASE_CODE_CALLBACK_PROTOCOL  _bc_callback = {
+EFI_PXE_BASE_CODE_CALLBACK_PROTOCOL  _bc_callback = {
   EFI_PXE_BASE_CODE_CALLBACK_PROTOCOL_REVISION,
   &bc_callback
 };
@@ -163,7 +160,6 @@ STATIC EFI_PXE_BASE_CODE_CALLBACK_PROTOCOL  _bc_callback = {
   @return None
 
 **/
-STATIC
 VOID
 PrintIpv4 (
   UINT8 *Ptr
@@ -183,7 +179,6 @@ PrintIpv4 (
   @return None
 
 **/
-STATIC
 VOID
 ShowMyInfo (
   IN PXE_BASECODE_DEVICE *Private
@@ -257,7 +252,6 @@ ShowMyInfo (
   @retval LOCAL_BOOT
 
 **/
-STATIC
 EFI_STATUS
 DoPrompt (
   PXE_BASECODE_DEVICE *Private,
@@ -447,7 +441,6 @@ DoPrompt (
   @return None
 
 **/
-STATIC
 VOID
 PrintMenuItem (
   PXE_BOOT_MENU_ENTRY *MenuItemPtr
@@ -475,7 +468,6 @@ PrintMenuItem (
   @retval LOCAL_BOOT
 
 **/
-STATIC
 EFI_STATUS
 DoMenu (
   PXE_BASECODE_DEVICE *Private,
@@ -765,7 +757,6 @@ DoMenu (
   @return Value from DHCP option
 
 **/
-STATIC
 UINT16
 GetValue (
   DHCPV4_OP_STRUCT *OpPtr
@@ -789,7 +780,6 @@ GetValue (
   @return Pointer to opcode, may be NULL
 
 **/
-STATIC
 UINT8 *
 _PxeBcFindOpt (
   UINT8 *BufferPtr,
@@ -837,7 +827,6 @@ _PxeBcFindOpt (
   @return Pointer to option in packet
 
 **/
-STATIC
 UINT8 *
 PxeBcFindDhcpOpt (
   EFI_PXE_BASE_CODE_PACKET  *PacketPtr,
@@ -937,7 +926,6 @@ PxeBcFindDhcpOpt (
   @return EFI_PROTOCOL_ERROR -
 
 **/
-STATIC
 EFI_STATUS
 DownloadFile (
   IN PXE_BASECODE_DEVICE  *Private,
@@ -1178,7 +1166,6 @@ DownloadFile (
   @retval EFI_NOT_READY
 
 **/
-STATIC
 EFI_STATUS
 LoadfileStart (
   IN PXE_BASECODE_DEVICE  *Private,
@@ -1329,7 +1316,7 @@ LoadFile (
   //
   // The following line is only used for passing ICC build.
   //
-  DEBUG ((EFI_D_INFO, "FilePath = %x\n", FilePath));
+  DEBUG ((EFI_D_INFO, "FilePath = %p\n", FilePath));
 
   //
   //

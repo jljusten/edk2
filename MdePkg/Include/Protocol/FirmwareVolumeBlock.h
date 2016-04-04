@@ -139,6 +139,8 @@ EFI_STATUS
 
 
 /**
+  Reads the specified number of bytes into a buffer from the specified block.
+
   The Read() function reads the requested number of bytes from the
   requested block and stores them in the provided buffer.
   Implementations should be mindful that the firmware volume
@@ -194,6 +196,8 @@ EFI_STATUS
 );
 
 /**
+  Writes the specified number of bytes from the input buffer to the block.
+
   The Write() function writes the specified number of bytes from
   the provided buffer to the specified block and offset. If the
   firmware volume is sticky write, the caller must ensure that
@@ -270,6 +274,8 @@ EFI_STATUS
 
 
 /**
+  Erases and initializes a firmware volume block.
+
   The EraseBlocks() function erases one or more blocks as denoted
   by the variable argument list. The entire parameter list of
   blocks must be verified before erasing any blocks. If a block is
@@ -322,30 +328,15 @@ EFI_STATUS
   ...
 );
 
-/**
-  @par Protocol Description:
-  The Firmware Volume Block Protocol is the low-level interface
-  to a firmware volume. File-level access to a firmware volume
-  should not be done using the Firmware Volume Block Protocol.
-  Normal access to a firmware volume must use the Firmware
-  Volume Protocol. Typically, only the file system driver that
-  produces the Firmware Volume Protocol will bind to the
-  Firmware Volume Block Protocol. The Firmware Volume Block
-  Protocol provides the following:
-  - Byte-level read/write functionality.
-  - Block-level erase functionality.
-  - It further exposes device-hardening features, such as may be
-    equired to protect the firmware from unwanted overwriting
-    and/or erasure.
-  - It is useful to layer a file system driver on top of the
-    Firmware Volume Block Protocol.
-
-  This file system driver produces the Firmware Volume Protocol,
-  which provides file-level access to a firmware volume. The
-  Firmware Volume Protocol abstracts the file system that is
-  used to format the firmware volume and the hardware
-  device-hardening features that may be present.
-**/
+///
+/// The Firmware Volume Block Protocol is the low-level interface
+/// to a firmware volume. File-level access to a firmware volume
+/// should not be done using the Firmware Volume Block Protocol.
+/// Normal access to a firmware volume must use the Firmware
+/// Volume Protocol. Typically, only the file system driver that
+/// produces the Firmware Volume Protocol will bind to the
+/// Firmware Volume Block Protocol.
+///
 struct _EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL {
   EFI_FVB_GET_ATTRIBUTES        GetAttributes;
   EFI_FVB_SET_ATTRIBUTES        SetAttributes;

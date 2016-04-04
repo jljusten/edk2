@@ -1,7 +1,7 @@
 /** @file
 Utility functions for User Interface functions.
 
-Copyright (c) 2004 - 2007, Intel Corporation
+Copyright (c) 2004 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -115,6 +115,8 @@ SCREEN_OPERATION_T0_CONTROL_FLAG  gScreenOperationToControlFlag[] = {
     CfUiPageDown
   }
 };
+
+BOOLEAN  mInputError;
 
 
 /**
@@ -293,24 +295,29 @@ UiFreeRefreshList (
   Refresh screen.
 
 **/
-VOID
+EFI_STATUS
 RefreshForm (
   VOID
   )
 {
-  CHAR16                  *OptionString;
-  MENU_REFRESH_ENTRY      *MenuRefreshEntry;
-  UINTN                   Index;
-  UINTN                   Loop;
-  EFI_STATUS              Status;
-  UI_MENU_SELECTION       *Selection;
-  FORM_BROWSER_STATEMENT  *Question;
-
-  OptionString = NULL;
+  CHAR16                          *OptionString;
+  MENU_REFRESH_ENTRY              *MenuRefreshEntry;
+  UINTN                           Index;
+  EFI_STATUS                      Status;
+  UI_MENU_SELECTION               *Selection;
+  FORM_BROWSER_STATEMENT          *Question;
+  EFI_HII_CONFIG_ACCESS_PROTOCOL  *ConfigAccess;
+  EFI_HII_VALUE                   *HiiValue;
+  EFI_BROWSER_ACTION_REQUEST      ActionRequest;
 
   if (gMenuRefreshHead != NULL) {
 
     MenuRefreshEntry = gMenuRefreshHead;
+
+    //
+    // Reset FormPackage update flag
+    //
+    mHiiPackageListUpdated = FALSE;
 
     do {
       gST->ConOut->SetAttribute (gST->ConOut, MenuRefreshEntry->CurrentAttribute);
@@ -318,41 +325,92 @@ RefreshForm (
       Selection = MenuRefreshEntry->Selection;
       Question = MenuRefreshEntry->MenuOption->ThisTag;
 
-      //
-      // Don't update Question being edited
-      //
-      if (Question != MenuRefreshEntry->Selection->Statement) {
+      Status = GetQuestionValue (Selection->FormSet, Selection->Form, Question, FALSE);
+      if (EFI_ERROR (Status)) {
+        return Status;
+      }
 
-        Status = GetQuestionValue (Selection->FormSet, Selection->Form, Question, FALSE);
-        if (EFI_ERROR (Status)) {
-          return;
+      OptionString = NULL;
+      ProcessOptions (Selection, MenuRefreshEntry->MenuOption, FALSE, &OptionString);
+
+      if (OptionString != NULL) {
+        //
+        // If leading spaces on OptionString - remove the spaces
+        //
+        for (Index = 0; OptionString[Index] == L' '; Index++)
+          ;
+
+        PrintStringAt (MenuRefreshEntry->CurrentColumn, MenuRefreshEntry->CurrentRow, &OptionString[Index]);
+        gBS->FreePool (OptionString);
+      }
+
+      //
+      // Question value may be changed, need invoke its Callback()
+      //
+      ConfigAccess = Selection->FormSet->ConfigAccess;
+      if ((Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) && (ConfigAccess != NULL)) {
+        ActionRequest = EFI_BROWSER_ACTION_REQUEST_NONE;
+
+        HiiValue = &Question->HiiValue;
+        if (HiiValue->Type == EFI_IFR_TYPE_STRING) {
+          //
+          // Create String in HII database for Configuration Driver to retrieve
+          //
+          HiiValue->Value.string = NewString ((CHAR16 *) Question->BufferValue, Selection->FormSet->HiiHandle);
         }
 
-        ProcessOptions (Selection, MenuRefreshEntry->MenuOption, FALSE, &OptionString);
+        Status = ConfigAccess->Callback (
+                                 ConfigAccess,
+                                 EFI_BROWSER_ACTION_CHANGING,
+                                 Question->QuestionId,
+                                 HiiValue->Type,
+                                 &HiiValue->Value,
+                                 &ActionRequest
+                                 );
 
-        if (OptionString != NULL) {
+        if (HiiValue->Type == EFI_IFR_TYPE_STRING) {
           //
-          // If leading spaces on OptionString - remove the spaces
+          // Clean the String in HII Database
           //
-          for (Index = 0; OptionString[Index] == L' '; Index++)
-            ;
+          DeleteString (HiiValue->Value.string, Selection->FormSet->HiiHandle);
+        }
 
-          for (Loop = 0; OptionString[Index] != CHAR_NULL; Index++) {
-            OptionString[Loop] = OptionString[Index];
-            Loop++;
+        if (!EFI_ERROR (Status)) {
+          switch (ActionRequest) {
+          case EFI_BROWSER_ACTION_REQUEST_RESET:
+            gResetRequired = TRUE;
+            break;
+
+          case EFI_BROWSER_ACTION_REQUEST_SUBMIT:
+            SubmitForm (Selection->FormSet, Selection->Form);
+            break;
+
+          case EFI_BROWSER_ACTION_REQUEST_EXIT:
+            Selection->Action = UI_ACTION_EXIT;
+            gNvUpdateRequired = FALSE;
+            break;
+
+          default:
+            break;
           }
-
-          OptionString[Loop] = CHAR_NULL;
-
-          PrintStringAt (MenuRefreshEntry->CurrentColumn, MenuRefreshEntry->CurrentRow, OptionString);
-          gBS->FreePool (OptionString);
         }
       }
 
       MenuRefreshEntry = MenuRefreshEntry->Next;
 
     } while (MenuRefreshEntry != NULL);
+
+    if (mHiiPackageListUpdated) {
+      //
+      // Package list is updated, force to reparse IFR binary of target Formset
+      //
+      mHiiPackageListUpdated = FALSE;
+      Selection->Action = UI_ACTION_REFRESH_FORMSET;
+      return EFI_SUCCESS;
+    }
   }
+
+  return EFI_TIMEOUT;
 }
 
 
@@ -444,7 +502,7 @@ UiWaitForSingleEvent (
       if (!EFI_ERROR (Status) && Index == 1) {
         Status = EFI_TIMEOUT;
         if (RefreshInterval != 0) {
-          RefreshForm ();
+          Status = RefreshForm ();
         }
       }
 
@@ -892,7 +950,6 @@ UpdateStatusBar (
   )
 {
   UINTN           Index;
-  STATIC BOOLEAN  InputError;
   CHAR16          *NvUpdateMessage;
   CHAR16          *InputErrorMessage;
 
@@ -908,14 +965,14 @@ UpdateStatusBar (
         gScreenDimensions.BottomRow - 1,
         InputErrorMessage
         );
-      InputError = TRUE;
+      mInputError = TRUE;
     } else {
       gST->ConOut->SetAttribute (gST->ConOut, FIELD_TEXT_HIGHLIGHT);
       for (Index = 0; Index < (GetStringWidth (InputErrorMessage) - 2) / 2; Index++) {
         PrintAt (gScreenDimensions.LeftColumn + gPromptBlockWidth + Index, gScreenDimensions.BottomRow - 1, L"  ");
       }
 
-      InputError = FALSE;
+      mInputError = FALSE;
     }
     break;
 
@@ -947,7 +1004,7 @@ UpdateStatusBar (
     break;
 
   case REFRESH_STATUS_BAR:
-    if (InputError) {
+    if (mInputError) {
       UpdateStatusBar (INPUT_ERROR, Flags, TRUE);
     }
 
@@ -1019,7 +1076,7 @@ GetWidth (
 }
 
 
-STATIC BOOLEAN GetLineByWidthFinished = FALSE;
+BOOLEAN GetLineByWidthFinished = FALSE;
 
 /**
   Will copy LineWidth amount of a string in the OutputString buffer and return the
@@ -1594,7 +1651,16 @@ UiDisplayMenu (
           Row   = OriginalRow;
 
           gST->ConOut->SetAttribute (gST->ConOut, FIELD_TEXT | FIELD_BACKGROUND);
-          ProcessOptions (Selection, MenuOption, FALSE, &OptionString);
+          Status = ProcessOptions (Selection, MenuOption, FALSE, &OptionString);
+          if (EFI_ERROR (Status)) {
+            //
+            // Repaint to clear possible error prompt pop-up
+            //
+            Repaint = TRUE;
+            NewLine = TRUE;
+            ControlFlag = CfRepaint;
+            break;
+          }
 
           if (OptionString != NULL) {
             if (Statement->Operand == EFI_IFR_DATE_OP || Statement->Operand == EFI_IFR_TIME_OP) {
@@ -2022,12 +2088,8 @@ UiDisplayMenu (
           }
         }
 
-        if (((NewPos->ForwardLink != &Menu) && (ScreenOperation == UiDown)) ||
-            ((NewPos->BackLink != &Menu) && (ScreenOperation == UiUp)) ||
-            (ScreenOperation == UiNoOperation)
-            ) {
-          UpdateKeyHelp (MenuOption, FALSE);
-        }
+        UpdateKeyHelp (MenuOption, FALSE);
+
         //
         // Clear reverse attribute
         //
@@ -2094,17 +2156,22 @@ UiDisplayMenu (
         Status = UiWaitForSingleEvent (gST->ConIn->WaitForKey, 0, MinRefreshInterval);
       } while (Status == EFI_TIMEOUT);
 
-      if (Status == EFI_TIMEOUT) {
-        Key.UnicodeChar = CHAR_CARRIAGE_RETURN;
-      } else {
-        Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
+      if (Selection->Action == UI_ACTION_REFRESH_FORMSET) {
         //
-        // if we encounter error, continue to read another key in.
+        // IFR is updated in Callback of refresh opcode, re-parse it
         //
-        if (EFI_ERROR (Status)) {
-          ControlFlag = CfReadKey;
-          continue;
-        }
+        ControlFlag = CfUiReset;
+        Selection->Statement = NULL;
+        break;
+      }
+
+      Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
+      //
+      // if we encounter error, continue to read another key in.
+      //
+      if (EFI_ERROR (Status)) {
+        ControlFlag = CfReadKey;
+        break;
       }
 
       if (IsListEmpty (&Menu) && Key.UnicodeChar != CHAR_NULL) {
@@ -2137,7 +2204,16 @@ UiDisplayMenu (
             gDirection = SCAN_LEFT;
           }
           Status = ProcessOptions (Selection, MenuOption, TRUE, &OptionString);
-          SafeFreePool (OptionString);
+          if (EFI_ERROR (Status)) {
+            //
+            // Repaint to clear possible error prompt pop-up
+            //
+            Repaint = TRUE;
+            NewLine = TRUE;
+          }
+          if (OptionString != NULL) {
+            FreePool (OptionString);
+          }
         }
         break;
 
@@ -2375,15 +2451,14 @@ UiDisplayMenu (
         if (EFI_ERROR (Status)) {
           Repaint = TRUE;
           NewLine = TRUE;
-          break;
-        }
+            UpdateKeyHelp (MenuOption, FALSE);
+          } else {
+            Selection->Action = UI_ACTION_REFRESH_FORM;
+          }
 
-        if (OptionString != NULL) {
-          PrintStringAt (LocalScreen.LeftColumn + gPromptBlockWidth + 1, MenuOption->Row, OptionString);
-          gBS->FreePool (OptionString);
-        }
-
-        Selection->Action = UI_ACTION_REFRESH_FORM;
+          if (OptionString != NULL) {
+            FreePool (OptionString);
+          }
         break;
       }
       break;

@@ -24,7 +24,7 @@
   Set Buffer to Value for Size bytes.
 
   @param  Buffer Memory to set.
-  @param  Size Number of bytes to set
+  @param  Length Number of bytes to set
   @param  Value Value of the set operation.
 
   @return Buffer
@@ -34,7 +34,7 @@ VOID *
 EFIAPI
 InternalMemSetMem (
   IN      VOID                      *Buffer,
-  IN      UINTN                     Size,
+  IN      UINTN                     Length,
   IN      UINT8                     Value
   )
 {
@@ -46,7 +46,7 @@ InternalMemSetMem (
   volatile UINT8                    *Pointer;
 
   Pointer = (UINT8*)Buffer;
-  while (Size-- != 0) {
+  while (Length-- != 0) {
     *(Pointer++) = Value;
   }
   return Buffer;

@@ -16,8 +16,7 @@
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
   @par Revision Reference:
-  This PPI is defined in PI.
-  Version 1.00.
+  This PPI is introduced in PI Version 1.0.
 
 **/
 
@@ -156,9 +155,6 @@ EFI_STATUS
 /// discover where to begin dispatching PEIMs.
 ///
 struct _EFI_SEC_PLATFORM_INFORMATION_PPI {
-  ///
-  /// Conveys state information out of the SEC phase into PEI.
-  ///
   EFI_SEC_PLATFORM_INFORMATION  PlatformInformation;
 };
 

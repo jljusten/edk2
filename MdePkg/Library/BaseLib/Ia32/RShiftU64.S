@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-# Copyright (c) 2006, Intel Corporation
+# Copyright (c) 2006 - 2008, Intel Corporation
 # All rights reserved. This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -11,7 +11,7 @@
 #
 # Module Name:
 #
-#   RShiftU64.asm
+#   RShiftU64.S
 #
 # Abstract:
 #
@@ -33,10 +33,10 @@
 #   );
 #------------------------------------------------------------------------------
 ASM_PFX(InternalMathRShiftU64):
-    movb    12(%esp), %cl
+    movb    12(%esp), %cl               # cl <- Count
     xorl    %edx, %edx
     movl    8(%esp), %eax
-    testb   $32, %cl
+    testb   $32, %cl                    # Count >= 32?
     cmovz   %eax, %edx
     cmovz   0x4(%esp), %eax
     shrdl   %cl, %edx, %eax

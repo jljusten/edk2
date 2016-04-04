@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-# Copyright (c) 2006, Intel Corporation
+# Copyright (c) 2006 - 2008, Intel Corporation
 # All rights reserved. This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -11,7 +11,7 @@
 #
 # Module Name:
 #
-#   CpuId.Asm
+#   CpuId.S
 #
 # Abstract:
 #
@@ -31,8 +31,8 @@
 #------------------------------------------------------------------------------
 .globl ASM_PFX(InternalMathSwapBytes64)
 ASM_PFX(InternalMathSwapBytes64):
-    movl    8(%esp), %eax
-    movl    4(%esp), %edx
+    movl    8(%esp), %eax               # eax <- upper 32 bits
+    movl    4(%esp), %edx               # edx <- lower 32 bits
     bswapl  %eax
     bswapl  %edx
     ret

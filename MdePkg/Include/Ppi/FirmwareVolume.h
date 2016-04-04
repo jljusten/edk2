@@ -1,7 +1,7 @@
 /** @file
   This file provides functions for accessing a memory-mapped firmware volume of a specific format.
 
-  Copyright (c) 2006 - 2007, Intel Corporation                                                         
+  Copyright (c) 2006 - 2008, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -11,8 +11,7 @@
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
   @par Revision Reference:
-  This PPI is defined in PI.
-  Version 1.00
+  This PPI is introduced in PI Version 1.0.
 
 **/
 
@@ -208,29 +207,11 @@ EFI_STATUS
 /// This PPI provides functions for accessing a memory-mapped firmware volume of a specific format.
 ///
 struct _EFI_PEI_FIRMWARE_VOLUME_PPI {
-  ///
-  /// Process a firmware volume and create a volume handle.
-  ///
   EFI_PEI_FV_PROCESS_FV       ProcessVolume;
-  ///
-  /// Find all files of a specific type.
-  ///
   EFI_PEI_FV_FIND_FILE_TYPE   FindFileByType;
-  ///
-  /// Find the file with a specific name.
-  ///
   EFI_PEI_FV_FIND_FILE_NAME   FindFileByName;
-  ///
-  /// Return the information about a specific file.
-  ///
   EFI_PEI_FV_GET_FILE_INFO    GetFileInfo;
-  ///
-  /// Return the firmware volume attributes.
-  ///
   EFI_PEI_FV_GET_INFO         GetVolumeInfo;
-  ///
-  /// Find all sections of a specific type.
-  ///
   EFI_PEI_FV_FIND_SECTION     FindSectionByType;
 };
 

@@ -648,10 +648,10 @@ EFI_STATUS
 typedef
 EFI_STATUS
 (EFIAPI *PCD_PROTOCOL_SET_EX_POINTER)(
-  IN      CONST EFI_GUID    *Guid,
-  IN      UINTN             TokenNumber,
-  IN OUT  UINTN             *SizeOfBuffer,
-  IN      VOID              *Buffer
+  IN CONST EFI_GUID          *Guid,
+  IN       UINTN             TokenNumber,
+  IN OUT   UINTN             *SizeOfBuffer,
+  IN       VOID              *Buffer
   );
 
 
@@ -706,10 +706,10 @@ EFI_STATUS
 typedef
 VOID
 (EFIAPI *PCD_PROTOCOL_CALLBACK)(
-  IN      CONST EFI_GUID   *CallBackGuid, OPTIONAL
-  IN      UINTN            CallBackToken,
-  IN  OUT VOID             *TokenData,
-  IN      UINTN            TokenDataSize
+  IN CONST EFI_GUID         *CallBackGuid, OPTIONAL
+  IN       UINTN            CallBackToken,
+  IN OUT   VOID             *TokenData,
+  IN       UINTN            TokenDataSize
   );
 
 
@@ -813,13 +813,9 @@ EFI_STATUS
   IN  OUT    CONST EFI_GUID      **Guid
   );
 
-//
-// Interface structure for the PCD Protocol
-//
-/**
-  @par Protocol Description:
-  This service abstracts the ability to set/get Platform Configuration Database (PCD).
-**/
+///
+/// This service abstracts the ability to set/get Platform Configuration Database (PCD).
+///
 typedef struct {
   PCD_PROTOCOL_SET_SKU              SetSku;
 

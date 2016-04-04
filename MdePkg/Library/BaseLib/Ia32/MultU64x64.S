@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-# Copyright (c) 2006, Intel Corporation
+# Copyright (c) 2006 - 2008, Intel Corporation
 # All rights reserved. This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -11,7 +11,7 @@
 #
 # Module Name:
 #
-#   MultU64x64.asm
+#   MultU64x64.S
 #
 # Abstract:
 #
@@ -30,15 +30,15 @@
 #   );
 #------------------------------------------------------------------------------
 ASM_PFX(InternalMathMultU64x64):
-    push    %ebx
-    movl    8(%esp), %ebx
-    movl    16(%esp), %edx
-    movl    %ebx, %ecx
-    movl    %edx, %eax
-    imull   20(%esp), %ebx
-    imull   12(%esp), %edx
-    addl    %edx, %ebx
-    mull    %ecx
-    addl    %ebx, %edx
+    push    %ebx                                     
+    movl    8(%esp), %ebx             # ebx <- M1[0..31]                
+    movl    16(%esp), %edx            # edx <- M2[0..31]                                   
+    movl    %ebx, %ecx                                                  
+    movl    %edx, %eax                
+    imull   20(%esp), %ebx            # ebx <- M1[0..31] * M2[32..63]   
+    imull   12(%esp), %edx            # edx <- M1[32..63] * M2[0..31]   
+    addl    %edx, %ebx                # carries are abandoned           
+    mull    %ecx                      # edx:eax <- M1[0..31] * M2[0..31]
+    addl    %ebx, %edx                # carries are abandoned           
     pop     %ebx
     ret

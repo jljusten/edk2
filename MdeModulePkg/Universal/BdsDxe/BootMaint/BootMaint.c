@@ -132,6 +132,10 @@ BootMaintExtractConfig (
   UINTN              BufferSize;
   BMM_CALLBACK_DATA  *Private;
 
+  if (Request == NULL) {
+    return EFI_NOT_FOUND;
+  }
+
   Private = BMM_CALLBACK_DATA_FROM_THIS (This);
 
   //
@@ -811,7 +815,7 @@ InitializeBM (
   //
   Ptr = AllocateZeroPool (sizeof (BM_LOAD_CONTEXT) + sizeof (BM_FILE_CONTEXT) + sizeof (BM_HANDLE_CONTEXT) + sizeof (BM_MENU_ENTRY));
   if (Ptr == NULL) {
-    SafeFreePool (BmmCallbackInfo);
+    FreePool (BmmCallbackInfo);
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -917,8 +921,8 @@ InitializeBM (
   gUpdateData.BufferSize = UPDATE_DATA_SIZE;
   gUpdateData.Data = AllocateZeroPool (UPDATE_DATA_SIZE);
   if (gUpdateData.Data == NULL) {
-    SafeFreePool (BmmCallbackInfo->LoadContext);
-    SafeFreePool (BmmCallbackInfo);
+    FreePool (BmmCallbackInfo->LoadContext);
+    FreePool (BmmCallbackInfo);
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -1020,9 +1024,9 @@ InitializeBM (
 
   FreeAllMenu ();
 
-  SafeFreePool (BmmCallbackInfo->LoadContext);
-  SafeFreePool (BmmCallbackInfo);
-  SafeFreePool (gUpdateData.Data);
+  FreePool (BmmCallbackInfo->LoadContext);
+  FreePool (BmmCallbackInfo);
+  FreePool (gUpdateData.Data);
   gUpdateData.Data = NULL;
 
   return Status;
@@ -1205,7 +1209,7 @@ CleanUpStringDepository (
     CurrentListNode = StringDepository->ListHead;
     for (NodeIndex = 0; NodeIndex < StringDepository->TotalNodeNumber; NodeIndex++) {
       NextListNode = CurrentListNode->Next;
-      SafeFreePool (CurrentListNode);
+      FreePool (CurrentListNode);
       CurrentListNode = NextListNode;
     }
 
@@ -1214,7 +1218,7 @@ CleanUpStringDepository (
   //
   // Release string depository.
   //
-  SafeFreePool (FileOptionStrDepository);
+  FreePool (FileOptionStrDepository);
 }
 
 /**

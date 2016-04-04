@@ -12,8 +12,7 @@
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
   @par Revision Reference:
-  This PPI is defined in PI
-  Version 1.00.
+  This PPI is introduced in PI Version 1.0.
 
 **/
 
@@ -107,13 +106,7 @@ EFI_STATUS
 /// variable services. 
 ///
 struct _EFI_PEI_READ_ONLY_VARIABLE2_PPI {
-  ///
-  /// A service to read the value of a particular variable using its name.
-  ///
   EFI_PEI_GET_VARIABLE2       GetVariable;
-  ///
-  /// Find the next variable name in the variable store.
-  ///
   EFI_PEI_NEXT_VARIABLE_NAME2 NextVariableName;
 };
 

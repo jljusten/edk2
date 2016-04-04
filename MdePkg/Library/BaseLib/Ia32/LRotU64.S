@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-# Copyright (c) 2006, Intel Corporation
+# Copyright (c) 2006 - 2008, Intel Corporation
 # All rights reserved. This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -11,7 +11,7 @@
 #
 # Module Name:
 #
-#   LRotU64.asm
+#   LRotU64.S
 #
 # Abstract:
 #
@@ -38,7 +38,7 @@ ASM_PFX(InternalMathLRotU64):
     shldl   %cl, %eax, %edx
     rorl    %cl, %ebx
     shldl   %cl, %ebx, %eax
-    testb   $32, %cl
+    testb   $32, %cl                    # Count >= 32?
     cmovnz  %eax, %ecx
     cmovnz  %edx, %eax
     cmovnz  %ecx, %edx

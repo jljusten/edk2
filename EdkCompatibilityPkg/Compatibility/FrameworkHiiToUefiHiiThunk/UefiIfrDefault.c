@@ -114,7 +114,7 @@ GetIfrBinaryData (
     Package = ((UINT8 *) HiiPackageList) + Offset;
     CopyMem (&PackageHeader, Package, sizeof (EFI_HII_PACKAGE_HEADER));
 
-    if (PackageHeader.Type == EFI_HII_PACKAGE_FORM) {
+    if (PackageHeader.Type == EFI_HII_PACKAGE_FORMS) {
       //
       // Search FormSet in this Form Package
       //
@@ -462,9 +462,9 @@ DestroyDefaultNode (
   IN UEFI_IFR_BUFFER_STORAGE_NODE        *Node
   )
 {
-  SafeFreePool (Node->Buffer);
-  SafeFreePool (Node->Name);
-  SafeFreePool (Node);
+  FreePool (Node->Buffer);
+  FreePool (Node->Name);
+  FreePool (Node);
 }
 
 
@@ -713,7 +713,7 @@ UefiDefaultsToFwDefaults (
       //
       // In UEFI, 0 is defined to be invalid for EFI_IFR_VARSTORE.VarStoreId.
       // So the default storage of Var Store in VFR from a Framework module 
-      // should be translated to 0xFFEE.
+      // should be translated to 0x0001 (RESERVED_VARSTORE_ID).
       //
       if (Node->StoreId == RESERVED_VARSTORE_ID) {
         Pack->VariableId = 0;

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <PeiMain.h>
+#include "PeiMain.h"
 
 /**
 
@@ -138,7 +138,7 @@ PeiAllocatePages (
   if (!PrivateData->PeiMemoryInstalled) {
     //
     // When PeiInstallMemory is called but CAR has *not* been moved to temporary memory,
-    // the AllocatePage will dependent on the field of PEI_CORE_INSTANCE structure.
+    // the AllocatePage will depend on the field of PEI_CORE_INSTANCE structure.
     //
     if (!PrivateData->SwitchStackSignal) {
       return EFI_NOT_AVAILABLE_YET;

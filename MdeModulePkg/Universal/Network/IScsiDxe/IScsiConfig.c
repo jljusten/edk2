@@ -42,7 +42,6 @@ LIST_ENTRY      mIScsiConfigFormList = {
   @retval None.
 
 **/
-STATIC
 VOID
 IScsiIpToStr (
   IN  EFI_IPv4_ADDRESS  *Ip,
@@ -218,7 +217,6 @@ IScsiUpdateDeviceList (
   @retval The iSCSI configuration form entry found.
 
 **/
-STATIC
 ISCSI_CONFIG_FORM_ENTRY *
 IScsiGetConfigFormEntryByIndex (
   IN UINT32 Index
@@ -253,7 +251,6 @@ IScsiGetConfigFormEntryByIndex (
   @retval None.
 
 **/
-STATIC
 VOID
 IScsiConvertDeviceConfigDataToIfrNvData (
   IN ISCSI_CONFIG_FORM_ENTRY  *ConfigFormEntry,
@@ -337,6 +334,10 @@ IScsiFormExtractConfig (
   ISCSI_CONFIG_IFR_NVDATA          *IfrNvData;
   ISCSI_FORM_CALLBACK_INFO         *Private;
   EFI_HII_CONFIG_ROUTING_PROTOCOL  *HiiConfigRouting;
+
+  if (Request == NULL) {
+    return EFI_NOT_FOUND;
+  }
 
   if (!mIScsiDeviceListUpdated) {
     //
@@ -451,7 +452,7 @@ IScsiFormCallback (
   CHAR8                     Ip4String[IP4_STR_MAX_SIZE];
   CHAR8                     LunString[ISCSI_LUN_STR_MAX_LEN];
   UINT64                    Lun;
-  STRING_REF                DeviceFormTitleToken;
+  EFI_STRING_ID             DeviceFormTitleToken;
   ISCSI_CONFIG_IFR_NVDATA   *IfrNvData;
   ISCSI_CONFIG_FORM_ENTRY   *ConfigFormEntry;
   EFI_IP_ADDRESS            HostIp;
@@ -675,7 +676,7 @@ IScsiFormCallback (
       ASSERT (ConfigFormEntry != NULL);
 
       UnicodeSPrint (PortString, (UINTN) 128, L"Port %s", ConfigFormEntry->MacString);
-      DeviceFormTitleToken = (STRING_REF) STR_ISCSI_DEVICE_FORM_TITLE;
+      DeviceFormTitleToken = (EFI_STRING_ID) STR_ISCSI_DEVICE_FORM_TITLE;
       HiiLibSetString (Private->RegisteredHandle, DeviceFormTitleToken, PortString);
 
       IScsiConvertDeviceConfigDataToIfrNvData (ConfigFormEntry, IfrNvData);
@@ -800,13 +801,13 @@ IScsiConfigUpdateForm (
         ZeroMem (&ConfigFormEntry->AuthConfigData, sizeof (ConfigFormEntry->AuthConfigData));
       }
       //
-      // Compose the Port string and create a new STRING_REF.
+      // Compose the Port string and create a new EFI_STRING_ID.
       //
       UnicodeSPrint (PortString, 128, L"Port %s", ConfigFormEntry->MacString);
       HiiLibNewString (mCallbackInfo->RegisteredHandle, &ConfigFormEntry->PortTitleToken, PortString);
 
       //
-      // Compose the help string of this port and create a new STRING_REF.
+      // Compose the help string of this port and create a new EFI_STRING_ID.
       //
       UnicodeSPrint (PortString, 128, L"Set the iSCSI parameters on port %s", ConfigFormEntry->MacString);
       HiiLibNewString (mCallbackInfo->RegisteredHandle, &ConfigFormEntry->PortTitleHelpToken, PortString);

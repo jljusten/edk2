@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <PeiMain.h>
+#include "PeiMain.h"
 
-STATIC EFI_PEI_PPI_DESCRIPTOR mMemoryDiscoveredPpi = {
+EFI_PEI_PPI_DESCRIPTOR mMemoryDiscoveredPpi = {
   (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
   &gEfiPeiMemoryDiscoveredPpiGuid,
   NULL
@@ -23,7 +23,7 @@ STATIC EFI_PEI_PPI_DESCRIPTOR mMemoryDiscoveredPpi = {
 ///
 /// Pei service instance
 ///
-STATIC EFI_PEI_SERVICES  gPs = {
+EFI_PEI_SERVICES  gPs = {
   {
     PEI_SERVICES_SIGNATURE,
     PEI_SERVICES_REVISION,
@@ -86,7 +86,7 @@ STATIC EFI_PEI_SERVICES  gPs = {
   @retval EFI_NOT_FOUND  Never reach
 
 **/
-EFI_STATUS
+VOID
 EFIAPI
 PeiCore (
   IN CONST EFI_SEC_PEI_HAND_OFF        *SecCoreData,
@@ -156,7 +156,7 @@ PeiCore (
   //
   // Initialize libraries that the PeiCore is linked against
   //
-  ProcessLibraryConstructorList (NULL, &PrivateData.PS);
+  ProcessLibraryConstructorList (NULL, (CONST EFI_PEI_SERVICES **)&PrivateData.PS);
 
   InitializeMemoryServices (&PrivateData, SecCoreData, OldCoreData);
 
@@ -165,7 +165,7 @@ PeiCore (
   //
   // Save PeiServicePointer so that it can be retrieved anywhere.
   //
-  SetPeiServicesTablePointer(&PrivateData.PS);
+  SetPeiServicesTablePointer((CONST EFI_PEI_SERVICES **) &PrivateData.PS);
   
   if (OldCoreData != NULL) {
 
@@ -189,6 +189,9 @@ PeiCore (
       EFI_PROGRESS_CODE,
       FixedPcdGet32 (PcdStatusCodeValuePeiCoreEntry)
       );
+      
+    PERF_START (NULL, "SEC", NULL, 1);
+    PERF_END (NULL, "SEC", NULL, Tick);
 
     PERF_START (NULL,"PEI", NULL, Tick);
     //
@@ -247,10 +250,11 @@ PeiCore (
                              &PrivateData.PS,
                              PrivateData.HobList
                              );
-
+  //
+  // Should never reach here.
+  //
   ASSERT_EFI_ERROR (Status);
-
-  return EFI_NOT_FOUND;
+  CpuDeadLoop();
 }
 
 

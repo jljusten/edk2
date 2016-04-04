@@ -1,7 +1,6 @@
 #/** @file
-# Component description file for Base Print Library.
+# Print Library implementation.
 #
-# Base Print Library instance implementation.
 # Copyright (c) 2007 - 2008, Intel Corporation.
 #
 #  All rights reserved. This program and the accompanying materials
@@ -22,7 +21,6 @@
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = PrintLib 
   EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
 
 
 #

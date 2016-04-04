@@ -1,0 +1,48 @@
+#/** @file
+# This module produces the Metronome Architectural Protocol on top of an instance
+# of the Timer Library defined in the MdePkg.
+#
+# Copyright (c) 2008, Intel Corporation                                                         
+# All rights reserved. This program and the accompanying materials                          
+# are licensed and made available under the terms and conditions of the BSD License         
+# which accompanies this distribution.  The full text of the license may be found at        
+# http://opensource.org/licenses/bsd-license.php                                            
+#                                                                                           
+# THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
+# WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+#
+#**/
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = Metronome
+  FILE_GUID                      = C8339973-A563-4561-B858-D8476F9DEFC4
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  EDK_RELEASE_VERSION            = 0x00020000
+  EFI_SPECIFICATION_VERSION      = 0x00020000
+  ENTRY_POINT                    = InstallMetronome
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
+#
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  TimerLib
+  DebugLib
+
+[Sources.common]
+  Metronome.c
+
+[Protocols]
+  gEfiMetronomeArchProtocolGuid
+
+[Depex]
+  TRUE

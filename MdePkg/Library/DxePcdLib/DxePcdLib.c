@@ -514,7 +514,7 @@ LibPcdSet64 (
   maximum size supported by TokenNumber and return NULL to 
   indicate that the set operation was not actually performed. 
   
-  If SizeOfValue > 0 and Buffer is NULL, then ASSERT().
+  If SizeOfBuffer > 0 and Buffer is NULL, then ASSERT().
   
   @param[in]      TokenNumber   The PCD token number to set a current value for.
   @param[in, out] SizeOfBuffer  The size, in bytes, of Buffer.
@@ -816,9 +816,6 @@ LibPcdSetExBool (
   @param[in]  TokenNumber The PCD token number to monitor.
   @param[in]  NotificationFunction The function to call when the token 
               specified by Guid and TokenNumber is set.
-
-  @retval VOID
-
 **/
 VOID
 EFIAPI
@@ -849,8 +846,6 @@ LibPcdCallbackOnSet (
   @param[in]  Guid Specify the GUID token space.
   @param[in]  TokenNumber Specify the token number.
   @param[in]  NotificationFunction The callback function to be unregistered.
-
-  @retval VOID
 
 **/
 VOID
@@ -961,7 +956,8 @@ LibPcdGetNextTokenSpace (
   @param[in] Buffer             A pointer to the buffer to used to set the target variable.
 
   @return Return the pinter to the buffer been set.
-
+  @retval NULL   If SizeOfBuffer is set to MAX_ADDRESS, then SizeOfBuffer must be set 
+                 to MaximumDatumSize and NULL must be returned.
 **/
 VOID *
 EFIAPI

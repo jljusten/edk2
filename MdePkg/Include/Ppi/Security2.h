@@ -15,8 +15,7 @@
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
   @par Revision Reference:
-  This PPI is defined in PI.
-  Version 1.0.
+  This PPI is introduced in PI Version 1.0.
 
 **/
 
@@ -84,10 +83,6 @@ EFI_STATUS
 /// trusted.
 ///
 struct _EFI_PEI_SECURITY2_PPI {
-  ///
-  /// Allows the platform builder to implement a security policy
-  /// in response to varying file authentication states.
-  ///
   EFI_PEI_SECURITY_AUTHENTICATION_STATE   AuthenticationState;
 };
 

@@ -19,7 +19,7 @@
 
 #define EFI_EXT_SCSI_PASS_THRU_PROTOCOL_GUID \
   { \
-    0x1d3de7f0, 0x0807, 0x424f, {0xaa, 0x69, 0x11, 0xa5, 0x4e, 0x19, 0xa4, 0x6f } \
+    0x143b7632, 0xb81b, 0x4cb7, {0xab, 0xd3, 0xb6, 0x25, 0xa5, 0xb9, 0xbf, 0xfe } \
   }
 
 typedef struct _EFI_EXT_SCSI_PASS_THRU_PROTOCOL EFI_EXT_SCSI_PASS_THRU_PROTOCOL;
@@ -205,7 +205,7 @@ EFI_STATUS
   IN UINT8                                         *Target,
   IN UINT64                                        Lun,
   IN OUT EFI_DEVICE_PATH_PROTOCOL                  **DevicePath
-  );     
+  );
 
 /**
   Used to translate a device path node to a Target ID and LUN.
@@ -308,14 +308,16 @@ EFI_STATUS
   IN OUT UINT8                                     **Target
   );          
 
-/**  
-  @par Protocol Description:
-  The EFI_EXT_SCSI_PASS_THRU_PROTOCOL provides information about a SCSI channel 
-  and the ability to send SCI Request Packets to any SCSI device attached to 
-  that SCSI channel. The information includes the Target ID of the host controller 
-  on the SCSI channel and the attributes of the SCSI channel.
-**/  
+///
+/// The EFI_EXT_SCSI_PASS_THRU_PROTOCOL provides information about a SCSI channel 
+/// and the ability to send SCI Request Packets to any SCSI device attached to 
+/// that SCSI channel. The information includes the Target ID of the host controller 
+/// on the SCSI channel and the attributes of the SCSI channel.
+///
 struct _EFI_EXT_SCSI_PASS_THRU_PROTOCOL {
+  ///
+  /// A pointer to the EFI_EXT_SCSI_PASS_THRU_MODE data for this SCSI channel.
+  ///
   EFI_EXT_SCSI_PASS_THRU_MODE                *Mode;
   EFI_EXT_SCSI_PASS_THRU_PASSTHRU            PassThru;
   EFI_EXT_SCSI_PASS_THRU_GET_NEXT_TARGET_LUN GetNextTargetLun;

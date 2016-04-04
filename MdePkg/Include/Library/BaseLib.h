@@ -1370,7 +1370,7 @@ BcdToDecimal8 (
 LIST_ENTRY *
 EFIAPI
 InitializeListHead (
-  IN      LIST_ENTRY                *ListHead
+  IN OUT  LIST_ENTRY                *ListHead
   );
 
 
@@ -1398,8 +1398,8 @@ InitializeListHead (
 LIST_ENTRY *
 EFIAPI
 InsertHeadList (
-  IN      LIST_ENTRY                *ListHead,
-  IN      LIST_ENTRY                *Entry
+  IN OUT  LIST_ENTRY                *ListHead,
+  IN OUT  LIST_ENTRY                *Entry
   );
 
 
@@ -1427,8 +1427,8 @@ InsertHeadList (
 LIST_ENTRY *
 EFIAPI
 InsertTailList (
-  IN      LIST_ENTRY                *ListHead,
-  IN      LIST_ENTRY                *Entry
+  IN OUT  LIST_ENTRY                *ListHead,
+  IN OUT  LIST_ENTRY                *Entry
   );
 
 
@@ -1513,11 +1513,13 @@ IsListEmpty (
 
 
 /**
-  Determines if a node in a doubly linked list is null.
+  Determines if a node in a doubly linked list is the head node of a the same
+  doubly linked list.  This function is typically used to terminate a loop that
+  traverses all the nodes in a doubly linked list starting with the head node.
 
-  Returns FALSE if Node is one of the nodes in the doubly linked list specified
-  by List. Otherwise, TRUE is returned. List must have been initialized with
-  InitializeListHead().
+  Returns TRUE if Node is equal to List.  Returns FALSE if Node is one of the
+  nodes in the doubly linked list specified by List.  List must have been
+  initialized with InitializeListHead().
 
   If List is NULL, then ASSERT().
   If Node is NULL, then ASSERT().
@@ -1600,8 +1602,8 @@ IsNodeAtEnd (
 LIST_ENTRY *
 EFIAPI
 SwapListEntries (
-  IN      LIST_ENTRY                *FirstEntry,
-  IN      LIST_ENTRY                *SecondEntry
+  IN OUT  LIST_ENTRY                *FirstEntry,
+  IN OUT  LIST_ENTRY                *SecondEntry
   );
 
 
@@ -3054,7 +3056,7 @@ GetSpinLockProperties (
 SPIN_LOCK *
 EFIAPI
 InitializeSpinLock (
-  IN      SPIN_LOCK                 *SpinLock
+  OUT      SPIN_LOCK                 *SpinLock
   );
 
 
@@ -3081,7 +3083,7 @@ InitializeSpinLock (
 SPIN_LOCK *
 EFIAPI
 AcquireSpinLock (
-  IN      SPIN_LOCK                 *SpinLock
+  IN OUT  SPIN_LOCK                 *SpinLock
   );
 
 
@@ -3105,7 +3107,7 @@ AcquireSpinLock (
 BOOLEAN
 EFIAPI
 AcquireSpinLockOrFail (
-  IN      SPIN_LOCK                 *SpinLock
+  IN OUT  SPIN_LOCK                 *SpinLock
   );
 
 
@@ -3126,7 +3128,7 @@ AcquireSpinLockOrFail (
 SPIN_LOCK *
 EFIAPI
 ReleaseSpinLock (
-  IN      SPIN_LOCK                 *SpinLock
+  IN OUT  SPIN_LOCK                 *SpinLock
   );
 
 
@@ -5077,16 +5079,38 @@ typedef struct {
 ///
 /// Byte packed structure for an Interrupt Gate Descriptor
 ///
+#if defined (MDE_CPU_IA32)
+
 typedef union {
   struct {
-    UINT32  OffsetLow:16;   /// Offset bits 15..0
-    UINT32  Selector:16;    /// Selector
-    UINT32  Reserved_0:8;   /// Reserved
-    UINT32  GateType:8;     /// Gate Type.  See #defines above
-    UINT32  OffsetHigh:16;  /// Offset bits 31..16
+    UINT32  OffsetLow:16;   // Offset bits 15..0
+    UINT32  Selector:16;    // Selector
+    UINT32  Reserved_0:8;   // Reserved
+    UINT32  GateType:8;     // Gate Type.  See #defines above
+    UINT32  OffsetHigh:16;  // Offset bits 31..16
   } Bits;
   UINT64  Uint64;
 } IA32_IDT_GATE_DESCRIPTOR;
+
+#endif
+
+#if defined (MDE_CPU_X64)
+
+typedef union {
+  struct {
+    UINT32  OffsetLow:16;   // Offset bits 15..0
+    UINT32  Selector:16;    // Selector
+    UINT32  Reserved_0:8;   // Reserved
+    UINT32  GateType:8;     // Gate Type.  See #defines above
+    UINT32  OffsetHigh:16;  // Offset bits 31..16
+    UINT32  OffsetUpper:32; // Offset bits 63..32
+    UINT32  Reserved_1:32;  // Reserved
+  } Bits;
+  UINT64  Uint64;
+  UINT64  Uint64_1;
+} IA32_IDT_GATE_DESCRIPTOR;
+
+#endif
 
 ///
 /// Byte packed structure for an FP/SSE/SSE2 context

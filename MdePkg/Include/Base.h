@@ -1,5 +1,4 @@
 /** @file
-
   Root include file for Mde Package Base type modules
 
   This is the include file for any module of type base. Base modules only use 
@@ -57,34 +56,18 @@ struct _LIST_ENTRY {
 // Modifiers for Data Types used to self document code.
 // This concept is borrowed for UEFI specification.
 //
-#ifndef IN
-//
-// Some other envirnments use this construct, so #ifndef to prevent
-// mulitple definition.
-//
 #define IN
 #define OUT
 #define OPTIONAL
-#endif
 
-//
-// Constants. They may exist in other build structures, so #ifndef them.
-//
-#ifndef TRUE
 //
 //  UEFI specification claims 1 and 0. We are concerned about the 
 //  complier portability so we did it this way.
 //
 #define TRUE  ((BOOLEAN)(1==1))
-#endif
-
-#ifndef FALSE
 #define FALSE ((BOOLEAN)(0==1))
-#endif
 
-#ifndef NULL
 #define NULL  ((VOID *) 0)
-#endif
 
 #define  BIT0     0x00000001
 #define  BIT1     0x00000002
@@ -196,14 +179,10 @@ struct _LIST_ENTRY {
 //
 // Also support coding convention rules for var arg macros
 //
-#ifndef VA_START
-
 typedef CHAR8 *VA_LIST;
 #define VA_START(ap, v) (ap = (VA_LIST) & (v) + _INT_SIZE_OF (v))
 #define VA_ARG(ap, t)   (*(t *) ((ap += _INT_SIZE_OF (t)) - _INT_SIZE_OF (t)))
 #define VA_END(ap)      (ap = (VA_LIST) 0)
-
-#endif
 
 //
 // Macro that returns the byte offset of a field in a data structure. 
@@ -301,6 +280,14 @@ typedef INTN RETURN_STATUS;
 #define RETURN_WARN_DELETE_FAILURE   ENCODE_WARNING (2)
 #define RETURN_WARN_WRITE_FAILURE    ENCODE_WARNING (3)
 #define RETURN_WARN_BUFFER_TOO_SMALL ENCODE_WARNING (4)
+
+//
+// Define macros to build data structure signatures from characters.
+//
+#define SIGNATURE_16(A, B)        ((A) | (B << 8))
+#define SIGNATURE_32(A, B, C, D)  (SIGNATURE_16 (A, B) | (SIGNATURE_16 (C, D) << 16))
+#define SIGNATURE_64(A, B, C, D, E, F, G, H) \
+    (SIGNATURE_32 (A, B, C, D) | ((UINT64) (SIGNATURE_32 (E, F, G, H)) << 32))
 
 #endif
 

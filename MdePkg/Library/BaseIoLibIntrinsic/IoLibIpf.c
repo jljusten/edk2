@@ -66,7 +66,7 @@ InternalGetMemoryMapAddress (
 UINT8
 EFIAPI
 IoRead8 (
-  IN  UINT64                 Port
+  IN  UINTN                  Port
   )
 {
   return MmioRead8 (InternalGetMemoryMapAddress (Port));
@@ -87,7 +87,7 @@ IoRead8 (
 UINT16
 EFIAPI
 IoRead16 (
-  IN  UINT64                 Port
+  IN  UINTN                  Port
   )
 {
   return MmioRead16 (InternalGetMemoryMapAddress (Port));
@@ -108,7 +108,7 @@ IoRead16 (
 UINT32
 EFIAPI
 IoRead32 (
-  IN  UINT64                 Port
+  IN  UINTN                  Port
   )
 {
   return MmioRead32 (InternalGetMemoryMapAddress (Port));
@@ -156,7 +156,7 @@ IoRead64 (
 UINT8
 EFIAPI
 IoWrite8 (
-  IN  UINT64                 Port,
+  IN  UINTN                  Port,
   IN  UINT8                  Data
   )
 {
@@ -181,7 +181,7 @@ IoWrite8 (
 UINT16
 EFIAPI
 IoWrite16 (
-  IN  UINT64                 Port,
+  IN  UINTN                  Port,
   IN  UINT16                 Data
   )
 {
@@ -206,7 +206,7 @@ IoWrite16 (
 UINT32
 EFIAPI
 IoWrite32 (
-  IN  UINT64                 Port,
+  IN  UINTN                  Port,
   IN  UINT32                 Data
   )
 {
@@ -256,7 +256,7 @@ IoWrite64 (
 UINT8
 EFIAPI
 MmioRead8 (
-  IN  UINT64                 Address
+  IN  UINTN                  Address
   )
 {
   UINT8            Data;
@@ -285,7 +285,7 @@ MmioRead8 (
 UINT16
 EFIAPI
 MmioRead16 (
-  IN  UINT64                 Address
+  IN  UINTN                  Address
   )
 {
   UINT16           Data;
@@ -319,7 +319,7 @@ MmioRead16 (
 UINT32
 EFIAPI
 MmioRead32 (
-  IN  UINT64                 Address
+  IN  UINTN                  Address
   )
 {
   UINT32           Data;
@@ -353,7 +353,7 @@ MmioRead32 (
 UINT64
 EFIAPI
 MmioRead64 (
-  IN  UINT64                 Address
+  IN  UINTN                  Address
   )
 {
   UINT64           Data;
@@ -391,7 +391,7 @@ MmioRead64 (
 UINT8
 EFIAPI
 MmioWrite8 (
-  IN  UINT64                 Address,
+  IN  UINTN                  Address,
   IN  UINT8                  Data
   )
 {
@@ -422,7 +422,7 @@ MmioWrite8 (
 UINT16
 EFIAPI
 MmioWrite16 (
-  IN  UINT64                 Address,
+  IN  UINTN                  Address,
   IN  UINT16                 Data
   )
 {
@@ -458,7 +458,7 @@ MmioWrite16 (
 UINT32
 EFIAPI
 MmioWrite32 (
-  IN  UINT64                 Address,
+  IN  UINTN                  Address,
   IN  UINT32                 Data
   )
 {
@@ -494,7 +494,7 @@ MmioWrite32 (
 UINT64
 EFIAPI
 MmioWrite64 (
-  IN  UINT64                 Address,
+  IN  UINTN                  Address,
   IN  UINT64                 Data
   )
 {

@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-# Copyright (c) 2006, Intel Corporation
+# Copyright (c) 2006 - 2008, Intel Corporation
 # All rights reserved. This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -11,7 +11,7 @@
 #
 # Module Name:
 #
-#   DivU64x32.asm
+#   DivU64x32.S
 #
 # Abstract:
 #
@@ -34,8 +34,8 @@ ASM_PFX(InternalMathDivU64x32):
     movl    12(%esp), %ecx
     xorl    %edx, %edx
     divl    %ecx
-    push    %eax
+    push    %eax                    # save quotient on stack
     movl    8(%esp), %eax
     divl    %ecx
-    pop     %edx
+    pop     %edx                    # restore high-order dword of the quotient
     ret

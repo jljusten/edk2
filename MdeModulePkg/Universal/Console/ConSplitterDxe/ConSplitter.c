@@ -32,7 +32,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 //
 // Template for Text In Splitter
 //
-STATIC TEXT_IN_SPLITTER_PRIVATE_DATA  mConIn = {
+TEXT_IN_SPLITTER_PRIVATE_DATA  mConIn = {
   TEXT_IN_SPLITTER_PRIVATE_DATA_SIGNATURE,
   (EFI_HANDLE) NULL,
   {
@@ -139,7 +139,7 @@ GLOBAL_REMOVE_IF_UNREFERENCED EFI_GRAPHICS_OUTPUT_PROTOCOL mGraphicsOutputProtoc
 //
 // Template for Text Out Splitter
 //
-STATIC TEXT_OUT_SPLITTER_PRIVATE_DATA mConOut = {
+TEXT_OUT_SPLITTER_PRIVATE_DATA mConOut = {
   TEXT_OUT_SPLITTER_PRIVATE_DATA_SIGNATURE,
   (EFI_HANDLE) NULL,
   {
@@ -206,7 +206,7 @@ STATIC TEXT_OUT_SPLITTER_PRIVATE_DATA mConOut = {
 //
 // Template for Standard Error Text Out Splitter
 //
-STATIC TEXT_OUT_SPLITTER_PRIVATE_DATA mStdErr = {
+TEXT_OUT_SPLITTER_PRIVATE_DATA mStdErr = {
   TEXT_OUT_SPLITTER_PRIVATE_DATA_SIGNATURE,
   (EFI_HANDLE) NULL,
   {
@@ -2242,7 +2242,7 @@ ConSplitterAddOutputMode (
 }
 
 /**
-  Reconstruct TextOutModeMap to get intersection of modes
+  Reconstruct TextOutModeMap to get intersection of modes.
 
   This routine reconstruct TextOutModeMap to get the intersection
   of modes for all console out devices. Because EFI/UEFI spec require
@@ -2255,8 +2255,6 @@ ConSplitterAddOutputMode (
   @param NewMapStepSize  Mode step size for one console device
   @param MaxMode         Current max text mode
   @param CurrentMode     Current text mode
-
-  @retval None
 
 **/
 VOID

@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <ConPlatform.h>
+#include "ConPlatform.h"
 
 
 EFI_DRIVER_BINDING_PROTOCOL gConPlatformTextInDriverBinding = {
@@ -795,7 +795,9 @@ ConPlatformMatchDevicePaths (
                             TempDevicePath1,
                             DevicePathInst
                             );
-        SafeFreePool (TempDevicePath1);
+        if (TempDevicePath1 != NULL) {
+          FreePool (TempDevicePath1);
+        }
         TempDevicePath1 = TempDevicePath2;
       }
     }

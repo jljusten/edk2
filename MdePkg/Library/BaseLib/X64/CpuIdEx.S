@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-# Copyright (c) 2006, Intel Corporation
+# Copyright (c) 2006 - 2008, Intel Corporation
 # All rights reserved. This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -11,7 +11,7 @@
 #
 # Module Name:
 #
-#   CpuIdEx.Asm
+#   CpuIdEx.S
 #
 # Abstract:
 #
@@ -38,7 +38,7 @@ ASM_PFX(AsmCpuidEx):
     push    %rbx
     movl    %ecx,%eax
     movl    %edx,%ecx
-    push    %rax
+    push    %rax                  # save Index on stack
     cpuid
     mov     0x38(%rsp), %r10
     test    %r10, %r10
@@ -57,6 +57,6 @@ L3:
     jrcxz   L4
     mov     %edx, (%rcx)
 L4: 
-    pop     %rax
+    pop     %rax                  # restore Index to rax as return value
     pop     %rbx
     ret

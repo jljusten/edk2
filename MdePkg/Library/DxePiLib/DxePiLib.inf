@@ -1,7 +1,5 @@
 #/** @file
-# Component description file library instance for PiLib for DXE phase.
-#
-# Library to abstract utility functions that is related to PI Specification.
+# Instance of PI Library for DXE phase.
 #
 # Copyright (c) 2007 - 2008, Intel Corporation.
 #
@@ -23,7 +21,7 @@
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = DxePiLib|DXE_CORE DXE_DRIVER DXE_RUNTIME_DRIVER DXE_SAL_DRIVER DXE_SMM_DRIVER UEFI_APPLICATION UEFI_DRIVER
   EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
+  PI_SPECIFICATION_VERSION       = 0x00010000
 
 
 #

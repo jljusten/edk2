@@ -14,7 +14,7 @@
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
   @par Revision Reference:
-  This PPI is defined in PI Version 1.00.
+  This PPI is introduced in PI Version 1.0.
 
 **/
 
@@ -95,10 +95,6 @@ EFI_STATUS
 /// therein.
 ///  
 struct _EFI_PEI_GUIDED_SECTION_EXTRACTION_PPI {
-  ///  
-  /// Takes the GUIDed section as input and
-  /// produces the section stream data.
-  ///
   EFI_PEI_EXTRACT_GUIDED_SECTION ExtractSection;
 };
 

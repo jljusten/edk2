@@ -22,7 +22,7 @@ Abstract:
 
 #include "Tcp4Main.h"
 
-STATIC UINT8  mTcpOutFlag[] = {
+UINT8  mTcpOutFlag[] = {
   0,                          // TCP_CLOSED
   0,                          // TCP_LISTEN
   TCP_FLG_SYN,                // TCP_SYN_SENT
@@ -122,7 +122,6 @@ TcpRcvWinNow (
   @return The value of the local receive window size used to fill the outing segment.
 
 **/
-STATIC
 UINT16
 TcpComputeWnd (
   IN TCP_CB  *Tcb,
@@ -273,7 +272,7 @@ SetPersistTimer:
 
     DEBUG (
       (EFI_D_WARN,
-      "TcpDataToSend: enter persistent state for TCB %x\n",
+      "TcpDataToSend: enter persistent state for TCB %p\n",
       Tcb)
       );
 
@@ -295,7 +294,6 @@ SetPersistTimer:
   @retval other   Error condition occurred.
 
 **/
-STATIC
 INTN
 TcpTransmitSegment (
   IN TCP_CB  *Tcb,
@@ -580,7 +578,7 @@ TcpGetSegmentSock (
 
   if (Nbuf == NULL) {
     DEBUG ((EFI_D_ERROR, "TcpGetSegmentSock: failed to allocate "
-      "a netbuf for TCB %x\n",Tcb));
+      "a netbuf for TCB %p\n",Tcb));
 
     return NULL;
   }
@@ -681,7 +679,7 @@ TcpRetransmit (
   //
   if (TCP_SEQ_LT (Tcb->SndWl2 + Tcb->SndWnd, Seq)) {
     DEBUG ((EFI_D_WARN, "TcpRetransmit: retransmission cancelled "
-      "because send window too small for TCB %x\n", Tcb));
+      "because send window too small for TCB %p\n", Tcb));
 
     return 0;
   }
@@ -783,7 +781,7 @@ SEND_AGAIN:
   if (Nbuf == NULL) {
     DEBUG (
       (EFI_D_ERROR,
-      "TcpToSendData: failed to get a segment for TCB %x\n",
+      "TcpToSendData: failed to get a segment for TCB %p\n",
       Tcb)
       );
 
@@ -812,7 +810,7 @@ SEND_AGAIN:
           ) {
 
       DEBUG ((EFI_D_INFO, "TcpToSendData: send FIN "
-        "to peer for TCB %x in state %d\n", Tcb, Tcb->State));
+        "to peer for TCB %p in state %d\n", Tcb, Tcb->State));
 
       End++;
     } else {
@@ -832,7 +830,7 @@ SEND_AGAIN:
   //
   if (Seg->End == Seg->Seq) {
     DEBUG ((EFI_D_WARN, "TcpToSendData: created a empty"
-      " segment for TCB %x, free it now\n", Tcb));
+      " segment for TCB %p, free it now\n", Tcb));
 
     NetbufFree (Nbuf);
     return Sent;
@@ -889,7 +887,7 @@ SEND_AGAIN:
       !TCP_FLG_ON (Tcb->CtrlFlag, TCP_CTRL_RTT_ON)) {
 
     DEBUG ((EFI_D_INFO, "TcpToSendData: set RTT measure "
-      "sequence %d for TCB %x\n", Seq, Tcb));
+      "sequence %d for TCB %p\n", Seq, Tcb));
 
     TCP_SET_FLG (Tcb->CtrlFlag, TCP_CTRL_RTT_ON);
     Tcb->RttSeq     = Seq;
@@ -1023,7 +1021,7 @@ TcpToSendAck (
   }
 
   DEBUG ((EFI_D_INFO, "TcpToSendAck: scheduled a delayed"
-    " ACK for TCB %x\n", Tcb));
+    " ACK for TCB %p\n", Tcb));
 
   //
   // schedule a delayed ACK

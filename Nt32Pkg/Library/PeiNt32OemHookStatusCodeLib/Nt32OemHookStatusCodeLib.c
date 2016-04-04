@@ -40,13 +40,11 @@
 //
 // Cache of WinNtThunk protocol
 //
-STATIC
 EFI_WIN_NT_THUNK_PROTOCOL   *mWinNt;
 
 //
 // Cache of standard output handle .
 //
-STATIC
 HANDLE                      mStdOut;
 
 /**
@@ -160,7 +158,7 @@ OemHookStatusCodeReport (
               mStdOut,
               Buffer,
               CharCount,
-              &CharCount,
+              (LPDWORD)&CharCount,
               NULL
               );
 
@@ -218,7 +216,7 @@ OemHookStatusCodeReport (
       CharCount += AsciiSPrint (
                      &Buffer[CharCount - 1],
                      (EFI_STATUS_CODE_DATA_MAX_SIZE - (sizeof (Buffer[0]) * CharCount)),
-                     " %x",
+                     " %p",
                      Data
                      );
     }
@@ -254,7 +252,7 @@ OemHookStatusCodeReport (
             mStdOut,
             Buffer,
             CharCount,
-            &CharCount,
+            (LPDWORD)&CharCount,
             NULL
             );
 

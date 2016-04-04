@@ -21,12 +21,12 @@ Module Name:
 //
 // Module globals
 //
-static EFI_PEI_READ_ONLY_VARIABLE2_PPI mVariablePpi = {
+EFI_PEI_READ_ONLY_VARIABLE2_PPI mVariablePpi = {
   PeiGetVariable,
   PeiGetNextVariableName
 };
 
-static EFI_PEI_PPI_DESCRIPTOR     mPpiListVariable = {
+EFI_PEI_PPI_DESCRIPTOR     mPpiListVariable = {
   (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
   &gEfiPeiReadOnlyVariable2PpiGuid,
   &mVariablePpi
@@ -117,7 +117,6 @@ Returns:
   return (VARIABLE_HEADER *) HEADER_ALIGN ((UINTN) VarStoreHeader + VarStoreHeader->Size);
 }
 
-STATIC
 BOOLEAN
 EFIAPI
 IsValidVariableHeader (
@@ -298,7 +297,6 @@ Returns:
 }
 
 
-STATIC
 VARIABLE_STORE_STATUS
 EFIAPI
 GetVariableStoreStatus (
@@ -342,7 +340,6 @@ Returns:
   }
 }
 
-STATIC
 EFI_STATUS
 CompareWithValidVariable (
   IN  VARIABLE_HEADER               *Variable,
@@ -399,11 +396,10 @@ Returns:
   return EFI_NOT_FOUND;
 }
 
-STATIC
 EFI_STATUS
 EFIAPI
 FindVariable (
-  IN EFI_PEI_SERVICES         **PeiServices,
+  IN CONST EFI_PEI_SERVICES   **PeiServices,
   IN CONST  CHAR16            *VariableName,
   IN CONST  EFI_GUID          *VendorGuid,
   OUT VARIABLE_POINTER_TRACK  *PtrTrack
@@ -582,7 +578,7 @@ Returns:
   VARIABLE_POINTER_TRACK  Variable;
   UINTN                   VarDataSize;
   EFI_STATUS              Status;
-  EFI_PEI_SERVICES        **PeiServices;
+  CONST EFI_PEI_SERVICES  **PeiServices;
 
   PeiServices = GetPeiServicesTablePointer ();
   if (VariableName == NULL || VariableGuid == NULL || DataSize == NULL) {
@@ -659,7 +655,7 @@ Returns:
   VARIABLE_POINTER_TRACK  Variable;
   UINTN                   VarNameSize;
   EFI_STATUS              Status;
-  EFI_PEI_SERVICES        **PeiServices;
+  CONST EFI_PEI_SERVICES  **PeiServices;
 
   PeiServices = GetPeiServicesTablePointer ();
   if (VariableName == NULL || VariableGuid == NULL || VariableNameSize == NULL) {

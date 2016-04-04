@@ -1,7 +1,6 @@
 #/** @file
-# Component description file for Base Library
-#
 # Base Library implementation.
+#
 # Copyright (c) 2007 - 2008, Intel Corporation.
 #
 #  All rights reserved. This program and the accompanying materials
@@ -22,8 +21,6 @@
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = BaseLib 
   EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
-
 
 #
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
@@ -354,7 +351,7 @@
   Ia32/LShiftU64.S | GCC 
   SynchronizationGcc.c  | GCC
 
-  Ia32DivS64x64Remainder.c
+  Ia32/DivS64x64Remainder.c
   Ia32/InternalSwitchStack.c
   Ia32/Non-existing.c
   Unaligned.c
@@ -591,11 +588,11 @@
   Ipf/CpuBreakpointMsc.c | MSFT
   Ipf/Unaligned.c
   Ipf/SwitchStack.s
-  Ipf/longjmp.s
-  Ipf/setjmp.s
+  Ipf/LongJmp.s
+  Ipf/SetJmp.s
   Ipf/PalCallStatic.s
-  Ipf/ia_64gen.h
-  Ipf/asm.h
+  Ipf/Ia64gen.h
+  Ipf/Asm.h
   Math64.c
   Synchronization.c     | INTEL 
   SynchronizationMsc.c  | MSFT 

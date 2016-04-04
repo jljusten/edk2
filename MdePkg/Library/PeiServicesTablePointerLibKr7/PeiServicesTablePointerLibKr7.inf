@@ -1,7 +1,10 @@
 #/** @file
+# Instance of PEI Services Table Pointer Library using KR7 for the table pointer.
 #
-# PEI Services Table Library implementation that retrieves a pointer to the PEI
-# Copyright (c) 2006 - 2007, Intel Corporation.
+# PEI Services Table Pointer Library implementation that retrieves a pointer to the PEI
+# Services Table from KR7 on IPF.
+#
+# Copyright (c) 2006 - 2008, Intel Corporation.
 #
 #  All rights reserved. This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -21,9 +24,7 @@
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = PeiServicesTablePointerLib|SEC PEIM PEI_CORE
   EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
 
-  CONSTRUCTOR                    = PeiServicesTablePointerLibConstructor
 
 #
 #  VALID_ARCHITECTURES           = IPF

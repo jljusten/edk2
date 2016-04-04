@@ -24,37 +24,31 @@ Abstract:
 
 UINT32    mTcpTick = 1000;
 
-STATIC
 VOID
 TcpConnectTimeout (
   IN TCP_CB *Tcb
   );
 
-STATIC
 VOID
 TcpRexmitTimeout (
   IN TCP_CB *Tcb
   );
 
-STATIC
 VOID
 TcpProbeTimeout (
   IN TCP_CB *Tcb
   );
 
-STATIC
 VOID
 TcpKeepaliveTimeout (
   IN TCP_CB *Tcb
   );
 
-STATIC
 VOID
 TcpFinwait2Timeout (
   IN TCP_CB *Tcb
   );
 
-STATIC
 VOID
 Tcp2MSLTimeout (
   IN TCP_CB *Tcb
@@ -98,7 +92,6 @@ TcpClose (
   @return None.
 
 **/
-STATIC
 VOID
 TcpConnectTimeout (
   IN TCP_CB *Tcb
@@ -106,7 +99,7 @@ TcpConnectTimeout (
 {
   if (!TCP_CONNECTED (Tcb->State)) {
     DEBUG ((EFI_D_ERROR, "TcpConnectTimeout: connection closed "
-      "because conenction timer timeout for TCB %x\n", Tcb));
+      "because conenction timer timeout for TCB %p\n", Tcb));
 
     if (EFI_ABORTED == Tcb->Sk->SockError) {
       SOCK_ERROR (Tcb->Sk, EFI_TIMEOUT);
@@ -114,7 +107,7 @@ TcpConnectTimeout (
 
     if (TCP_SYN_RCVD == Tcb->State) {
       DEBUG ((EFI_D_WARN, "TcpConnectTimeout: send reset because "
-        "connection timer timeout for TCB %x\n", Tcb));
+        "connection timer timeout for TCB %p\n", Tcb));
 
       TcpResetConnection (Tcb);
 
@@ -133,7 +126,6 @@ TcpConnectTimeout (
   @return None.
 
 **/
-STATIC
 VOID
 TcpRexmitTimeout (
   IN TCP_CB *Tcb
@@ -142,7 +134,7 @@ TcpRexmitTimeout (
   UINT32  FlightSize;
 
   DEBUG ((EFI_D_WARN, "TcpRexmitTimeout: transmission "
-    "timeout for TCB %x\n", Tcb));
+    "timeout for TCB %p\n", Tcb));
 
   //
   // Set the congestion window. FlightSize is the
@@ -160,7 +152,7 @@ TcpRexmitTimeout (
       !TCP_TIMER_ON (Tcb->EnabledTimer, TCP_TIMER_CONNECT)) {
 
     DEBUG ((EFI_D_ERROR, "TcpRexmitTimeout: connection closed "
-      "because too many timeouts for TCB %x\n", Tcb));
+      "because too many timeouts for TCB %p\n", Tcb));
 
     if (EFI_ABORTED == Tcb->Sk->SockError) {
       SOCK_ERROR (Tcb->Sk, EFI_TIMEOUT);
@@ -188,7 +180,6 @@ TcpRexmitTimeout (
   @return None.
 
 **/
-STATIC
 VOID
 TcpProbeTimeout (
   IN TCP_CB *Tcb
@@ -219,7 +210,6 @@ TcpProbeTimeout (
   @return None.
 
 **/
-STATIC
 VOID
 TcpKeepaliveTimeout (
   IN TCP_CB *Tcb
@@ -253,14 +243,13 @@ TcpKeepaliveTimeout (
   @return None.
 
 **/
-STATIC
 VOID
 TcpFinwait2Timeout (
   IN TCP_CB *Tcb
   )
 {
   DEBUG ((EFI_D_WARN, "TcpFinwait2Timeout: connection closed "
-    "because FIN_WAIT2 timer timeouts for TCB %x\n", Tcb));
+    "because FIN_WAIT2 timer timeouts for TCB %p\n", Tcb));
 
   TcpClose (Tcb);
 }
@@ -274,14 +263,13 @@ TcpFinwait2Timeout (
   @return None.
 
 **/
-STATIC
 VOID
 Tcp2MSLTimeout (
   IN TCP_CB *Tcb
   )
 {
   DEBUG ((EFI_D_WARN, "Tcp2MSLTimeout: connection closed "
-    "because TIME_WAIT timer timeouts for TCB %x\n", Tcb));
+    "because TIME_WAIT timer timeouts for TCB %p\n", Tcb));
 
   TcpClose (Tcb);
 }
@@ -297,7 +285,6 @@ Tcp2MSLTimeout (
   @return None.
 
 **/
-STATIC
 VOID
 TcpUpdateTimer (
   IN TCP_CB *Tcb

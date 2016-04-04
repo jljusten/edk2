@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-# Copyright (c) 2006, Intel Corporation
+# Copyright (c) 2006 - 2008, Intel Corporation
 # All rights reserved. This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -11,7 +11,7 @@
 #
 # Module Name:
 #
-#   MultU64x32.asm
+#   MultU64x32.S
 #
 # Abstract:
 #
@@ -35,7 +35,7 @@
 ASM_PFX(InternalMathMultU64x32):
     movl    12(%esp), %ecx
     movl    %ecx, %eax
-    imull   8(%esp), %ecx
+    imull   8(%esp), %ecx               # overflow not detectable
     mull    0x4(%esp)
     addl    %ecx, %edx
     ret

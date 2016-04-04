@@ -230,11 +230,11 @@ typedef struct {
   @retval EFI_NOT_FOUND  Never reach
 
 **/
-EFI_STATUS
+VOID
 EFIAPI
 PeiCore (
   IN CONST EFI_SEC_PEI_HAND_OFF        *SecCoreData,
-  IN CONST EFI_PEI_PPI_DESCRIPTOR      *PpList,
+  IN CONST EFI_PEI_PPI_DESCRIPTOR      *PpiList,
   IN VOID                              *Data
   );
 
@@ -273,9 +273,6 @@ PeimDispatchReadiness (
 
   @param SecCoreData     Pointer to the data structure containing SEC to PEI handoff data
   @param PrivateData     Pointer to the private data passed in from caller
-
-  @retval EFI_SUCCESS    Successfully dispatched PEIM.
-  @retval EFI_NOT_FOUND  The dispatch failed.
 
 **/
 VOID
@@ -500,7 +497,7 @@ EFI_STATUS
 EFIAPI
 PeiGetBootMode (
   IN CONST EFI_PEI_SERVICES  **PeiServices,
-  IN OUT EFI_BOOT_MODE *BootMode
+  IN OUT   EFI_BOOT_MODE     *BootMode
   );
 
 /**
@@ -539,7 +536,7 @@ InitializeSecurityServices (
   );
 
 /**
-  Verify a Firmware volume
+  Verify a Firmware volume.
 
   @param CurrentFvAddress           Pointer to the current Firmware Volume under consideration
 
@@ -812,7 +809,7 @@ PeiAllocatePool (
 **/
 EFI_STATUS
 PeiLoadImage (
-  IN  EFI_PEI_SERVICES            **PeiServices,
+  IN  CONST EFI_PEI_SERVICES      **PeiServices,
   IN  EFI_PEI_FILE_HANDLE         FileHandle,
   OUT    EFI_PHYSICAL_ADDRESS     *EntryPoint,
   OUT    UINT32                   *AuthenticationState
@@ -1016,7 +1013,7 @@ InitializeImageServices (
   Get Fv image from the FV type file, then install FV INFO ppi, Build FV hob.
 
   @param PeiServices          An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation.
-  @param FileHandle           File handle of a Fv type file.
+  @param FvFileHandle         File handle of a Fv type file.
   @param AuthenticationState  Pointer to attestation authentication state of image.
                               If return 0, means pass security checking.
 
@@ -1026,9 +1023,9 @@ InitializeImageServices (
 **/
 EFI_STATUS
 ProcessFvFile (
-  IN  EFI_PEI_SERVICES      **PeiServices,
-  IN  EFI_PEI_FILE_HANDLE   FvFileHandle,
-  OUT UINT32                *AuthenticationState
+  IN  CONST EFI_PEI_SERVICES **PeiServices,
+  IN  EFI_PEI_FILE_HANDLE    FvFileHandle,
+  OUT UINT32                 *AuthenticationState
   );
 
 #endif

@@ -1,7 +1,7 @@
 /** @file
 Utility functions for expression evaluation.
 
-Copyright (c) 2007, Intel Corporation
+Copyright (c) 2007 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -421,6 +421,14 @@ IdToQuestion (
 
     Question = IdToQuestion2 (Form, QuestionId);
     if (Question != NULL) {
+      //
+      // EFI variable storage may be updated by Callback() asynchronous,
+      // to keep synchronous, always reload the Question Value.
+      //
+      if (Question->Storage->Type == EFI_HII_VARSTORE_EFI_VARIABLE) {
+        GetQuestionValue (FormSet, Form, Question, FALSE);
+      }
+
       return Question;
     }
 
@@ -712,9 +720,15 @@ IfrCatenate (
   Result->Value.string = NewString (StringPtr, FormSet->HiiHandle);
 
 Done:
-  SafeFreePool (String[0]);
-  SafeFreePool (String[1]);
-  SafeFreePool (StringPtr);
+  if (String[0] != NULL) {
+    FreePool (String[0]);
+  }
+  if (String[1] != NULL) {
+    FreePool (String[1]);
+  }  
+  if (StringPtr != NULL) {
+    FreePool (StringPtr);
+  }
 
   return Status;
 }
@@ -770,8 +784,12 @@ IfrMatch (
   Result->Value.b = mUnicodeCollation->MetaiMatch (mUnicodeCollation, String[0], String[1]);
 
 Done:
-  SafeFreePool (String[0]);
-  SafeFreePool (String[1]);
+  if (String[0] != NULL) {
+    FreePool (String[0]);
+  }
+  if (String[1] != NULL) {
+    FreePool (String[1]);
+  }  
 
   return Status;
 }
@@ -855,8 +873,12 @@ IfrFind (
   }
 
 Done:
-  SafeFreePool (String[0]);
-  SafeFreePool (String[1]);
+  if (String[0] != NULL) {
+    FreePool (String[0]);
+  }
+  if (String[1] != NULL) {
+    FreePool (String[1]);
+  }  
 
   return Status;
 }
@@ -1025,8 +1047,12 @@ IfrToken (
   Result->Value.string = NewString (SubString, FormSet->HiiHandle);
 
 Done:
-  SafeFreePool (String[0]);
-  SafeFreePool (String[1]);
+  if (String[0] != NULL) {
+    FreePool (String[0]);
+  }
+  if (String[1] != NULL) {
+    FreePool (String[1]);
+  }  
 
   return Status;
 }
@@ -1129,8 +1155,12 @@ IfrSpan (
   Result->Value.u64 = StringPtr - String[1];
 
 Done:
-  SafeFreePool (String[0]);
-  SafeFreePool (String[1]);
+  if (String[0] != NULL) {
+    FreePool (String[0]);
+  }
+  if (String[1] != NULL) {
+    FreePool (String[1]);
+  }  
 
   return Status;
 }

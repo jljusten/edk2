@@ -16,7 +16,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <PeiMain.h>
+#include "PeiMain.h"
 
 /**
   This service enables PEIMs to ascertain the present value of the boot mode.
@@ -32,7 +32,7 @@ EFI_STATUS
 EFIAPI
 PeiGetBootMode (
   IN  CONST EFI_PEI_SERVICES  **PeiServices,
-  OUT       EFI_BOOT_MODE     *BootMode
+  IN  OUT   EFI_BOOT_MODE     *BootMode
   )
 {
   PEI_CORE_INSTANCE             *PrivateData;    

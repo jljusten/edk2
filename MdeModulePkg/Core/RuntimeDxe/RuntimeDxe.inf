@@ -27,6 +27,8 @@
   ENTRY_POINT                    = RuntimeDriverInitialize
 
 #
+# The following information is for reference only and not required by the build tools.
+#
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
 #
 
@@ -44,7 +46,6 @@
   CacheMaintenanceLib
   UefiBootServicesTableLib
   UefiRuntimeServicesTableLib
-  BaseMemoryLib
   ReportStatusCodeLib
   DebugLib
   UefiDriverEntryPoint

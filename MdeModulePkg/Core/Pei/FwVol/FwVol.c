@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <PeiMain.h>
+#include "PeiMain.h"
 
-STATIC EFI_PEI_NOTIFY_DESCRIPTOR mNotifyOnFvInfoList = {
+EFI_PEI_NOTIFY_DESCRIPTOR mNotifyOnFvInfoList = {
   (EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
   &gEfiPeiFirmwareVolumeInfoPpiGuid,
   FirmwareVolmeInfoPpiNotifyCallback 
@@ -163,7 +163,7 @@ PeiFindFileEx (
   FileHeader  = (EFI_FFS_FILE_HEADER **)FileHandle;
 
   FvLength = FwVolHeader->FvLength;
-  if (FwVolHeader->Attributes & EFI_FVB2_ERASE_POLARITY) {
+  if ((FwVolHeader->Attributes & EFI_FVB2_ERASE_POLARITY) != 0) {
     ErasePolarity = 1;
   } else {
     ErasePolarity = 0;
@@ -387,7 +387,7 @@ FirmwareVolmeInfoPpiNotifyCallback (
         //
         // Process FvFile to install FvInfo ppi and build FvHob
         // 
-        ProcessFvFile (PeiServices, FileHandle, &AuthenticationStatus);
+        ProcessFvFile ((CONST EFI_PEI_SERVICES **) PeiServices, FileHandle, &AuthenticationStatus);
       }
     } while (FileHandle != NULL);
   }
@@ -837,9 +837,9 @@ PeiFfsGetVolumeInfo (
 **/
 EFI_STATUS
 ProcessFvFile (
-  IN  EFI_PEI_SERVICES      **PeiServices,
-  IN  EFI_PEI_FILE_HANDLE   FvFileHandle,
-  OUT UINT32                *AuthenticationState
+  IN  CONST EFI_PEI_SERVICES      **PeiServices,
+  IN  EFI_PEI_FILE_HANDLE         FvFileHandle,
+  OUT UINT32                      *AuthenticationState
   )
 {
   EFI_STATUS            Status;
@@ -871,7 +871,7 @@ ProcessFvFile (
   // Find FvImage in FvFile
   //
   Status = PeiFfsFindSectionData (
-             (CONST EFI_PEI_SERVICES **) PeiServices,
+             PeiServices,
              EFI_SECTION_FIRMWARE_VOLUME_IMAGE,
              FvFileHandle,
              (VOID **)&FvImageHandle

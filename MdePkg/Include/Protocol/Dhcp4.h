@@ -331,7 +331,7 @@ EFI_STATUS
   Builds a DHCP packet, given the options to be appended or deleted or replaced.
 
   @param  This        Pointer to the EFI_DHCP4_PROTOCOL instance.
- @param  SeedPacket  Initial packet to be used as a base for building new packet.
+  @param  SeedPacket  Initial packet to be used as a base for building new packet.
   @param  DeleteCount Number of opcodes in the DeleteList.
   @param  DeleteList  List of opcodes to be deleted from the seed packet.
                       Ignored if DeleteCount is zero.
@@ -411,11 +411,10 @@ EFI_STATUS
   OUT EFI_DHCP4_PACKET_OPTION  *PacketOptionList[]  OPTIONAL
   );
 
-/**
-  @par Protocol Description:
-  This protocol is used to collect configuration information for the EFI IPv4 Protocol drivers
-  and to provide DHCPv4 server and PXE boot server discovery services.
-**/
+///
+/// This protocol is used to collect configuration information for the EFI IPv4 Protocol drivers
+/// and to provide DHCPv4 server and PXE boot server discovery services.
+///
 struct _EFI_DHCP4_PROTOCOL {
   EFI_DHCP4_GET_MODE_DATA      GetModeData;
   EFI_DHCP4_CONFIGURE          Configure;

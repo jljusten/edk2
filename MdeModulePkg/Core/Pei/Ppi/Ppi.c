@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include <PeiMain.h>
+#include "PeiMain.h"
 
 /**
 
@@ -162,7 +162,7 @@ PeiInstallPpi (
     //
     if ((PpiList->Flags & EFI_PEI_PPI_DESCRIPTOR_PPI) == 0) {
       PrivateData->PpiData.PpiListEnd = LastCallbackInstall;
-      DEBUG((EFI_D_ERROR, "ERROR -> InstallPpi: %g %x\n", PpiList->Guid, PpiList->Ppi));
+      DEBUG((EFI_D_ERROR, "ERROR -> InstallPpi: %g %p\n", PpiList->Guid, PpiList->Ppi));
       return  EFI_INVALID_PARAMETER;
     }
 
@@ -401,7 +401,7 @@ PeiNotifyPpi (
     //
     if ((NotifyList->Flags & EFI_PEI_PPI_DESCRIPTOR_NOTIFY_TYPES) == 0) {
         PrivateData->PpiData.NotifyListEnd = LastCallbackNotify;
-        DEBUG((EFI_D_ERROR, "ERROR -> InstallNotify: %g %x\n", NotifyList->Guid, NotifyList->Notify));
+        DEBUG((EFI_D_ERROR, "ERROR -> InstallNotify: %g %p\n", NotifyList->Guid, NotifyList->Notify));
       return  EFI_INVALID_PARAMETER;
     }
 
@@ -569,12 +569,12 @@ DispatchNotify (
           (((INT32 *)SearchGuid)[1] == ((INT32 *)CheckGuid)[1]) &&
           (((INT32 *)SearchGuid)[2] == ((INT32 *)CheckGuid)[2]) &&
           (((INT32 *)SearchGuid)[3] == ((INT32 *)CheckGuid)[3])) {
-        DEBUG ((EFI_D_INFO, "Notify: PPI Guid: %g, Peim notify entry point: %x\n",
+        DEBUG ((EFI_D_INFO, "Notify: PPI Guid: %g, Peim notify entry point: %p\n",
           SearchGuid,
           NotifyDescriptor->Notify
           ));
         NotifyDescriptor->Notify (
-                            GetPeiServicesTablePointer (),
+                            (EFI_PEI_SERVICES **) GetPeiServicesTablePointer (),
                             NotifyDescriptor,
                             (PrivateData->PpiData.PpiListPtrs[Index2].Ppi)->Ppi
                             );

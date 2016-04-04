@@ -997,8 +997,12 @@ CoreLoadImage (
   )
 {
   EFI_STATUS    Status;
+  UINT64        Tick;
 
-  PERF_START (NULL, "LoadImage", NULL, 0);
+  Tick = 0;
+  PERF_CODE (
+    Tick = GetPerformanceCounter ();
+  );
 
   Status = CoreLoadImageCommon (
              BootPolicy,
@@ -1013,7 +1017,8 @@ CoreLoadImage (
              EFI_LOAD_PE_IMAGE_ATTRIBUTE_RUNTIME_REGISTRATION | EFI_LOAD_PE_IMAGE_ATTRIBUTE_DEBUG_IMAGE_INFO_TABLE_REGISTRATION
              );
 
-  PERF_END (NULL, "LoadImage", NULL, 0);
+  PERF_START (*ImageHandle, LOAD_IMAGE_TOK, NULL, Tick);
+  PERF_END (*ImageHandle, LOAD_IMAGE_TOK, NULL, 0);
 
   return Status;
 }
@@ -1197,7 +1202,7 @@ CoreStartImage (
   DEBUG_CODE_BEGIN ();
     if (Image->ExitDataSize != 0 || Image->ExitData != NULL) {
 
-      DEBUG ((DEBUG_LOAD, "StartImage: ExitDataSize %d, ExitData %x", Image->ExitDataSize, Image->ExitData));
+      DEBUG ((DEBUG_LOAD, "StartImage: ExitDataSize %d, ExitData %p", Image->ExitDataSize, Image->ExitData));
       if (Image->ExitData != NULL) {
         DEBUG ((DEBUG_LOAD, " (%hs)", Image->ExitData));
       }
