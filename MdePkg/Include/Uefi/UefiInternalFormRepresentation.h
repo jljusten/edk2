@@ -13,7 +13,7 @@
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
   @par Revision Reference:
-  These definitions are from UEFI2.1.
+  These definitions are from UEFI 2.1 and 2.2.
 
 **/
 
@@ -32,6 +32,7 @@ typedef UINT16  EFI_QUESTION_ID;
 typedef UINT16  EFI_STRING_ID;
 typedef UINT16  EFI_FORM_ID;
 typedef UINT16  EFI_VARSTORE_ID;
+typedef UINT16  EFI_ANIMATION_ID;
 
 typedef UINT16  EFI_DEFAULT_ID;
 
@@ -82,28 +83,69 @@ typedef struct {
 
 //
 // Definitions for Simplified Font Package
-// Section 27.3.2
 //
 
-//
-// Contents of EFI_NARROW_GLYPH.Attributes
-//
+///
+/// Contents of EFI_NARROW_GLYPH.Attributes
+///@{
 #define EFI_GLYPH_NON_SPACING                0x01
 #define EFI_GLYPH_WIDE                       0x02
 #define EFI_GLYPH_HEIGHT                     19
 #define EFI_GLYPH_WIDTH                      8
+///@}
 
+///
+/// The EFI_NARROW_GLYPH has a preferred dimension (w x h) of 8 x 19 pixels.
+///
 typedef struct {
+  ///
+  /// The Unicode representation of the glyph. The term weight is the 
+  /// technical term for a character code.
+  ///
   CHAR16                 UnicodeWeight;
+  ///
+  /// The data element containing the glyph definitions.
+  ///
   UINT8                  Attributes;
+  ///
+  /// The column major glyph representation of the character. Bits 
+  /// with values of one indicate that the corresponding pixel is to be
+  /// on when normally displayed; those with zero are off.
+  ///
   UINT8                  GlyphCol1[EFI_GLYPH_HEIGHT];
 } EFI_NARROW_GLYPH;
 
+///
+/// The EFI_WIDE_GLYPH has a preferred dimension (w x h) of 16 x 19 pixels, which is large enough 
+/// to accommodate logographic characters.
+///
 typedef struct {
+  ///
+  /// The Unicode representation of the glyph. The term weight is the 
+  /// technical term for a character code.
+  ///
   CHAR16                 UnicodeWeight;
+  ///
+  /// The data element containing the glyph definitions.
+  ///
   UINT8                  Attributes;
+  ///
+  /// The column major glyph representation of the character. Bits 
+  /// with values of one indicate that the corresponding pixel is to be 
+  /// on when normally displayed; those with zero are off.
+  ///
   UINT8                  GlyphCol1[EFI_GLYPH_HEIGHT];
+  ///
+  /// The column major glyph representation of the character. Bits 
+  /// with values of one indicate that the corresponding pixel is to be 
+  /// on when normally displayed; those with zero are off.
+  ///
   UINT8                  GlyphCol2[EFI_GLYPH_HEIGHT];
+  ///
+  /// Ensures that sizeof (EFI_WIDE_GLYPH) is twice the 
+  /// sizeof (EFI_NARROW_GLYPH). The contents of Pad must 
+  /// be zero.
+  ///
   UINT8                  Pad[3];
 } EFI_WIDE_GLYPH;
 
@@ -661,6 +703,7 @@ typedef union {
 #define EFI_IFR_STRING_OP              0x1C
 #define EFI_IFR_REFRESH_OP             0x1D
 #define EFI_IFR_DISABLE_IF_OP          0x1E
+#define EFI_IFR_ANIMATION_OP           0x1F
 #define EFI_IFR_TO_LOWER_OP            0x20
 #define EFI_IFR_TO_UPPER_OP            0x21
 #define EFI_IFR_MAP_OP                 0x22
@@ -1228,25 +1271,28 @@ typedef struct _EFI_IFR_TO_BOOLEAN {
   EFI_IFR_OP_HEADER        Header;
 } EFI_IFR_TO_BOOLEAN;
 
-//
-// For EFI_IFR_TO_STRING, when converting from
-// unsigned integers, these flags control the format:
-// 0 = unsigned decimal
-// 1 = signed decimal
-// 2 = hexadecimal (lower-case alpha)
-// 3 = hexadecimal (upper-case alpha)
-//
+///
+/// For EFI_IFR_TO_STRING, when converting from
+/// unsigned integers, these flags control the format:
+/// 0 = unsigned decimal
+/// 1 = signed decimal
+/// 2 = hexadecimal (lower-case alpha)
+/// 3 = hexadecimal (upper-case alpha)
+///@{
 #define EFI_IFR_STRING_UNSIGNED_DEC      0
 #define EFI_IFR_STRING_SIGNED_DEC        1
 #define EFI_IFR_STRING_LOWERCASE_HEX     2
 #define EFI_IFR_STRING_UPPERCASE_HEX     3
-//
-// When converting from a buffer, these flags control the format:
-// 0 = ASCII
-// 8 = Unicode
-//
+///@}
+
+///
+/// When converting from a buffer, these flags control the format:
+/// 0 = ASCII
+/// 8 = Unicode
+///@{
 #define EFI_IFR_STRING_ASCII             0
 #define EFI_IFR_STRING_UNICODE           8
+///@}
 
 typedef struct _EFI_IFR_TO_STRING {
   EFI_IFR_OP_HEADER        Header;
@@ -1594,11 +1640,31 @@ typedef enum {
 } EFI_KEY;
 
 typedef struct {
+  ///
+  /// Used to describe a physical key on a keyboard.
+  ///
   EFI_KEY                 Key;
+  ///
+  /// Unicode character code for the Key.
+  ///
   CHAR16                  Unicode;
+  ///
+  /// Unicode character code for the key with the shift key being held down.
+  ///
   CHAR16                  ShiftedUnicode;
+  ///
+  /// Unicode character code for the key with the Alt-GR being held down.
+  ///
   CHAR16                  AltGrUnicode;
+  ///
+  /// Unicode character code for the key with the Alt-GR and shift keys being held down.
+  ///
   CHAR16                  ShiftedAltGrUnicode;
+  ///
+  /// Modifier keys are defined to allow for special functionality that is not necessarily 
+  /// accomplished by a printable character. Many of these modifier keys are flags to toggle 
+  /// certain state bits on and off inside of a keyboard driver.
+  ///
   UINT16                  Modifier;
   UINT16                  AffectedAttribute;
 } EFI_KEY_DESCRIPTOR;
@@ -1691,6 +1757,293 @@ typedef struct {
 #define EFI_LEFT_LOGO_MODIFIER           0x0027
 #define EFI_RIGHT_LOGO_MODIFIER          0x0028
 #define EFI_MENU_MODIFIER                0x0029
+
+///
+/// Animation IFR opcode
+///
+typedef struct _EFI_IFR_ANIMATION {
+  ///
+  /// Standard opcode header, where Header.OpCode is 
+  /// EFI_IFR_ANIMATION_OP.
+  ///
+  EFI_IFR_OP_HEADER        Header;
+  ///
+  /// Animation identifier in the HII database.
+  ///
+  EFI_ANIMATION_ID         Id;
+} EFI_IFR_ANIMATION;
+
+///
+/// HII animation package header
+///
+typedef struct _EFI_HII_ANIMATION_PACKAGE_HDR {
+  ///
+  /// Standard package header, where Header.Type = EFI_HII_PACKAGE_ANIMATIONS.
+  ///
+  EFI_HII_PACKAGE_HEADER  Header;
+  ///
+  /// Offset, relative to this header, of the animation information. If 
+  /// this is zero, then there are no animation sequences in the package.
+  ///
+  UINT32                  AnimationInfoOffset;
+} EFI_HII_ANIMATION_PACKAGE_HDR;
+
+///
+/// Animation information is encoded as a series of blocks,
+/// with each block prefixed by a single byte header EFI_HII_ANIMATION_BLOCK
+///
+typedef struct _EFI_HII_ANIMATION_BLOCK {
+  UINT8  BlockType;
+  //UINT8  BlockBody[];
+} EFI_HII_ANIMATION_BLOCK;
+
+///
+/// Animation block types
+///
+#define EFI_HII_AIBT_END                 0x00
+#define EFI_HII_AIBT_OVERLAY_IMAGES      0x10
+#define EFI_HII_AIBT_CLEAR_IMAGES        0x11
+#define EFI_HII_AIBT_RESTORE_SCRN        0x12
+#define EFI_HII_AIBT_OVERLAY_IMAGES_LOOP 0x18
+#define EFI_HII_AIBT_CLEAR_IMAGES_LOOP   0x19
+#define EFI_HII_AIBT_RESTORE_SCRN_LOOP   0x1A
+#define EFI_HII_AIBT_DUPLICATE           0x20
+#define EFI_HII_AIBT_SKIP2               0x21
+#define EFI_HII_AIBT_SKIP1               0x22
+#define EFI_HII_AIBT_EXT1                0x30
+#define EFI_HII_AIBT_EXT2                0x31
+#define EFI_HII_AIBT_EXT4                0x32
+
+///
+/// Extended block headers used for variable sized animation records
+/// which need an explicit length.
+///
+
+typedef struct _EFI_HII_AIBT_EXT1_BLOCK  {
+  ///
+  /// Standard animation header, where Header.BlockType = EFI_HII_AIBT_EXT1
+  ///
+  EFI_HII_ANIMATION_BLOCK  Header;
+  ///
+  /// The block type
+  ///
+  UINT8                    BlockType2;
+  ///
+  /// Size of the animation block, in bytes, including the animation block header.
+  ///
+  UINT8                    Length;
+} EFI_HII_AIBT_EXT1_BLOCK;
+
+typedef struct _EFI_HII_AIBT_EXT2_BLOCK {
+  ///
+  /// Standard animation header, where Header.BlockType = EFI_HII_AIBT_EXT2
+  ///
+  EFI_HII_ANIMATION_BLOCK  Header;
+  ///
+  /// The block type
+  ///
+  UINT8                    BlockType2;
+  ///
+  /// Size of the animation block, in bytes, including the animation block header.
+  ///
+  UINT16                   Length;
+} EFI_HII_AIBT_EXT2_BLOCK;
+
+typedef struct _EFI_HII_AIBT_EXT4_BLOCK {
+  ///
+  /// Standard animation header, where Header.BlockType = EFI_HII_AIBT_EXT4
+  ///
+  EFI_HII_ANIMATION_BLOCK  Header;
+  ///
+  /// The block type
+  ///
+  UINT8                    BlockType2;
+  ///
+  /// Size of the animation block, in bytes, including the animation block header.
+  ///
+  UINT32                   Length;
+} EFI_HII_AIBT_EXT4_BLOCK;
+
+typedef struct _EFI_HII_ANIMATION_CELL {
+  ///
+  /// The X offset from the upper left hand corner of the logical 
+  /// window to position the indexed image.
+  ///
+  UINT16                    OffsetX;
+  ///
+  /// The Y offset from the upper left hand corner of the logical 
+  /// window to position the indexed image.
+  ///
+  UINT16                    OffsetY;
+  ///
+  /// The image to display at the specified offset from the upper left 
+  /// hand corner of the logical window.
+  ///
+  EFI_IMAGE_ID              ImageId;
+  ///
+  /// The number of milliseconds to delay after displaying the indexed 
+  /// image and before continuing on to the next linked image.  If value 
+  /// is zero, no delay.
+  ///
+  UINT16                    Delay;
+} EFI_HII_ANIMATION_CELL;
+
+///
+/// An animation block to describe an animation sequence that does not cycle, and
+/// where one image is simply displayed over the previous image.
+///
+typedef struct _EFI_HII_AIBT_OVERLAY_IMAGES {
+  ///
+  /// This is image that is to be reference by the image protocols, if the 
+  /// animation function is not supported or disabled. This image can 
+  /// be one particular image from the animation sequence (if any one 
+  /// of the animation frames has a complete image) or an alternate 
+  /// image that can be displayed alone. If the value is zero, no image 
+  /// is displayed.
+  ///
+  EFI_IMAGE_ID            DftImageId;
+  ///
+  /// The overall width of the set of images (logical window width).
+  ///
+  UINT16                  Width;
+  ///
+  /// The overall height of the set of images (logical window height).
+  ///
+  UINT16                  Height;
+  ///
+  /// The number of EFI_HII_ANIMATION_CELL contained in the 
+  /// animation sequence.
+  ///
+  UINT16                  CellCount;
+  ///
+  /// An array of CellCount animation cells.
+  ///
+  EFI_HII_ANIMATION_CELL  AnimationCell[1];
+} EFI_HII_AIBT_OVERLAY_IMAGES_BLOCK;
+
+///
+/// An animation block to describe an animation sequence that does not cycle,
+/// and where the logical window is cleared to the specified color before 
+/// the next image is displayed.
+///
+typedef struct _EFI_HII_AIBT_CLEAR_IMAGES_BLOCK {
+  ///
+  /// This is image that is to be reference by the image protocols, if the 
+  /// animation function is not supported or disabled. This image can 
+  /// be one particular image from the animation sequence (if any one 
+  /// of the animation frames has a complete image) or an alternate 
+  /// image that can be displayed alone. If the value is zero, no image 
+  /// is displayed.
+  ///
+  EFI_IMAGE_ID       DftImageId;
+  ///
+  /// The overall width of the set of images (logical window width).
+  ///
+  UINT16             Width;
+  ///
+  /// The overall height of the set of images (logical window height).
+  ///
+  UINT16             Height;
+  ///
+  /// The number of EFI_HII_ANIMATION_CELL contained in the 
+  /// animation sequence.
+  ///
+  UINT16             CellCount;
+  ///
+  /// The color to clear the logical window to before displaying the 
+  /// indexed image.
+  ///
+  EFI_HII_RGB_PIXEL  BackgndColor;
+  ///
+  /// An array of CellCount animation cells.
+  ///
+  EFI_HII_ANIMATION_CELL AnimationCell[1];
+} EFI_HII_AIBT_CLEAR_IMAGES_BLOCK;
+
+///
+/// An animation block to describe an animation sequence that does not cycle,
+/// and where the screen is restored to the original state before the next 
+/// image is displayed.
+///
+typedef struct _EFI_HII_AIBT_RESTORE_SCRN_BLOCK {
+  ///
+  /// This is image that is to be reference by the image protocols, if the 
+  /// animation function is not supported or disabled. This image can 
+  /// be one particular image from the animation sequence (if any one 
+  /// of the animation frames has a complete image) or an alternate 
+  /// image that can be displayed alone. If the value is zero, no image 
+  /// is displayed.
+  ///
+  EFI_IMAGE_ID            DftImageId;
+  ///
+  /// The overall width of the set of images (logical window width).
+  ///
+  UINT16                  Width;
+  ///
+  /// The overall height of the set of images (logical window height).
+  ///
+  UINT16                  Height;
+  ///
+  /// The number of EFI_HII_ANIMATION_CELL contained in the 
+  /// animation sequence.
+  ///
+  UINT16                  CellCount;
+  ///
+  /// An array of CellCount animation cells.
+  ///
+  EFI_HII_ANIMATION_CELL  AnimationCell[1];
+} EFI_HII_AIBT_RESTORE_SCRN_BLOCK;
+
+///
+/// An animation block to describe an animation sequence that continuously cycles,
+/// and where one image is simply displayed over the previous image.
+///
+typedef EFI_HII_AIBT_OVERLAY_IMAGES_BLOCK  EFI_HII_AIBT_OVERLAY_IMAGES_LOOP_BLOCK;
+
+///
+/// An animation block to describe an animation sequence that continuously cycles,
+/// and where the logical window is cleared to the specified color before 
+/// the next image is displayed.
+///
+typedef EFI_HII_AIBT_CLEAR_IMAGES_BLOCK    EFI_HII_AIBT_CLEAR_IMAGES_LOOP_BLOCK;
+
+///
+/// An animation block to describe an animation sequence that continuously cycles,
+/// and where the screen is restored to the original state before 
+/// the next image is displayed.
+///
+typedef EFI_HII_AIBT_RESTORE_SCRN_BLOCK    EFI_HII_AIBT_RESTORE_SCRN_LOOP_BLOCK;
+
+///
+/// Assigns a new character value to a previously defined animation sequence.
+///
+typedef struct _EFI_HII_AIBT_DUPLICATE_BLOCK {
+  ///
+  /// The previously defined animation ID with the exact same 
+  /// animation information.
+  ///
+  EFI_ANIMATION_ID  AnimationId;
+} EFI_HII_AIBT_DUPLICATE_BLOCK;
+
+///
+/// Skips animation IDs.
+///
+typedef struct _EFI_HII_AIBT_SKIP1_BLOCK {
+  ///
+  /// The unsigned 8-bit value to add to AnimationIdCurrent.
+  ///
+  UINT8  SkipCount;
+} EFI_HII_AIBT_SKIP1_BLOCK;
+
+///
+/// Skips animation IDs.
+///
+typedef struct _EFI_HII_AIBT_SKIP2_BLOCK {
+  ///
+  /// The unsigned 16-bit value to add to AnimationIdCurrent.
+  ///
+  UINT16  SkipCount;
+} EFI_HII_AIBT_SKIP2_BLOCK;
 
 #pragma pack()
 

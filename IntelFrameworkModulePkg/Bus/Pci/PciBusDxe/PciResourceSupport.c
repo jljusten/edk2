@@ -1229,6 +1229,8 @@ ProgramBar (
   UINT64              Address;
   UINT32              Address32;
 
+  ASSERT (Node->Bar < PCI_MAX_BAR);
+
   //
   // Check VF BAR
   //
@@ -1249,7 +1251,6 @@ ProgramBar (
   //
   Node->PciDev->Allocated = TRUE;
 
-  ASSERT (Node->Bar < PCI_MAX_BAR);
   switch ((Node->PciDev->PciBar[Node->Bar]).BarType) {
 
   case PciBarTypeIo16:
@@ -1318,10 +1319,8 @@ ProgramVfBar (
   UINT64              Address;
   UINT32              Address32;
 
+  ASSERT (Node->Bar < PCI_MAX_BAR);
   ASSERT (Node->Virtual);
-  if (!Node->Virtual) {
-    return EFI_UNSUPPORTED;
-  }
 
   Address = 0;
   PciIo   = &(Node->PciDev->PciIo);
