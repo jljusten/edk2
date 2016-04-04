@@ -12,7 +12,7 @@
 
 **/
 
-#include "BaseLibInternals.h"
+#include "BaseSynchronizationLibInternals.h"
 
 /**
   Performs an atomic increment of an 32-bit unsigned integer.

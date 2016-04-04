@@ -12,18 +12,7 @@
 
 **/
 
-
-
-
-#include "BaseLibInternals.h"
-
-/**
-  Microsoft Visual Studio 7.1 Function Prototypes for read write barrier Intrinsics.
-**/
-
-void    _ReadWriteBarrier (void);
-#pragma intrinsic(_ReadWriteBarrier)
-
+#include "BaseSynchronizationLibInternals.h"
 
 #define SPIN_LOCK_RELEASED          ((UINTN) 1)
 #define SPIN_LOCK_ACQUIRED          ((UINTN) 2)
@@ -76,11 +65,7 @@ InitializeSpinLock (
   )
 {
   ASSERT (SpinLock != NULL);
-
-  _ReadWriteBarrier();
   *SpinLock = SPIN_LOCK_RELEASED;
-  _ReadWriteBarrier();
-
   return SpinLock;
 }
 
@@ -194,23 +179,20 @@ AcquireSpinLockOrFail (
   IN OUT  SPIN_LOCK                 *SpinLock
   )
 {
-  SPIN_LOCK   LockValue;
-  VOID        *Result;
-  
+  SPIN_LOCK    LockValue;
+
   ASSERT (SpinLock != NULL);
 
   LockValue = *SpinLock;
-  ASSERT (LockValue == SPIN_LOCK_ACQUIRED || LockValue == SPIN_LOCK_RELEASED);
+  ASSERT (SPIN_LOCK_ACQUIRED == LockValue || SPIN_LOCK_RELEASED == LockValue);
 
-  _ReadWriteBarrier ();
-  Result = InterlockedCompareExchangePointer (
+  return (BOOLEAN)(
+           InterlockedCompareExchangePointer (
              (VOID**)SpinLock,
              (VOID*)SPIN_LOCK_RELEASED,
              (VOID*)SPIN_LOCK_ACQUIRED
+             ) == (VOID*)SPIN_LOCK_RELEASED
            );
-
-  _ReadWriteBarrier ();
-  return (BOOLEAN) (Result == (VOID*) SPIN_LOCK_RELEASED);
 }
 
 /**
@@ -238,12 +220,9 @@ ReleaseSpinLock (
   ASSERT (SpinLock != NULL);
 
   LockValue = *SpinLock;
-  ASSERT (LockValue == SPIN_LOCK_ACQUIRED || LockValue == SPIN_LOCK_RELEASED);
+  ASSERT (SPIN_LOCK_ACQUIRED == LockValue || SPIN_LOCK_RELEASED == LockValue);
 
-  _ReadWriteBarrier ();
   *SpinLock = SPIN_LOCK_RELEASED;
-  _ReadWriteBarrier ();
-
   return SpinLock;
 }
 

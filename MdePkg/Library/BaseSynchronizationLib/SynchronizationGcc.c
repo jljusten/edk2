@@ -12,10 +12,7 @@
 
 **/
 
-
-
-
-#include "BaseLibInternals.h"
+#include "BaseSynchronizationLibInternals.h"
 
 //
 // GCC inline assembly for Read Write Barrier  
