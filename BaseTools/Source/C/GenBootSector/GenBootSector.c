@@ -1,6 +1,6 @@
 /** @file
 
-Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -39,7 +39,7 @@ Abstract:
 // Utility version information
 //
 #define UTILITY_MAJOR_VERSION 0
-#define UTILITY_MINOR_VERSION 1
+#define UTILITY_MINOR_VERSION 2
 
 #define MAX_DRIVE                             26
 #define PARTITION_TABLE_OFFSET                0x1BE
@@ -542,7 +542,7 @@ Returns:
 
 --*/
 {
-  printf ("%s Version %d.%d Build%s\n", UTILITY_NAME, UTILITY_MAJOR_VERSION, UTILITY_MINOR_VERSION, __BUILD_VERSION);
+  printf ("%s Version %d.%d %s\n", UTILITY_NAME, UTILITY_MAJOR_VERSION, UTILITY_MINOR_VERSION, __BUILD_VERSION);
 }
 
 VOID
@@ -551,7 +551,7 @@ PrintUsage (
   )
 {
   printf ("Usage: GenBootSector [options] --cfg-file CFG_FILE\n\n\
-Copyright (c) 2009 - 2013, Intel Corporation.  All rights reserved.\n\n\
+Copyright (c) 2009 - 2014, Intel Corporation.  All rights reserved.\n\n\
   Utility to retrieve and update the boot sector or MBR.\n\n\
 optional arguments:\n\
   -h, --help            Show this help message and exit\n\
@@ -632,7 +632,7 @@ GetPathInfo (
     //
     // If path is file path, check whether file is valid.
     //
-    f = fopen (PathInfo->Path, "r");
+    f = fopen (LongFilePath (PathInfo->Path), "r");
     if (f == NULL) {
       fprintf (stderr, "error E2003: File was not provided!\n");
       return ErrorPath;

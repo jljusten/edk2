@@ -35,21 +35,25 @@ EFI_EVENT             EfiExitBootServicesEvent = (EFI_EVENT)NULL;
 
 // The current period of the timer interrupt
 UINT64 mTimerPeriod = 0;
+// The latest Timer Tick calculated for mTimerPeriod
+UINT64 mTimerTicks = 0;
+// Number of elapsed period since the last Timer interrupt
+UINT64 mElapsedPeriod = 1;
 
 // Cached copy of the Hardware Interrupt protocol instance
 EFI_HARDWARE_INTERRUPT_PROTOCOL *gInterrupt = NULL;
 
 /**
-  This function registers the handler NotifyFunction so it is called every time 
-  the timer interrupt fires.  It also passes the amount of time since the last 
-  handler call to the NotifyFunction.  If NotifyFunction is NULL, then the 
-  handler is unregistered.  If the handler is registered, then EFI_SUCCESS is 
-  returned.  If the CPU does not support registering a timer interrupt handler, 
-  then EFI_UNSUPPORTED is returned.  If an attempt is made to register a handler 
-  when a handler is already registered, then EFI_ALREADY_STARTED is returned.  
-  If an attempt is made to unregister a handler when a handler is not registered, 
-  then EFI_INVALID_PARAMETER is returned.  If an error occurs attempting to 
-  register the NotifyFunction with the timer interrupt, then EFI_DEVICE_ERROR 
+  This function registers the handler NotifyFunction so it is called every time
+  the timer interrupt fires.  It also passes the amount of time since the last
+  handler call to the NotifyFunction.  If NotifyFunction is NULL, then the
+  handler is unregistered.  If the handler is registered, then EFI_SUCCESS is
+  returned.  If the CPU does not support registering a timer interrupt handler,
+  then EFI_UNSUPPORTED is returned.  If an attempt is made to register a handler
+  when a handler is already registered, then EFI_ALREADY_STARTED is returned.
+  If an attempt is made to unregister a handler when a handler is not registered,
+  then EFI_INVALID_PARAMETER is returned.  If an error occurs attempting to
+  register the NotifyFunction with the timer interrupt, then EFI_DEVICE_ERROR
   is returned.
 
   @param  This             The EFI_TIMER_ARCH_PROTOCOL instance.
@@ -102,17 +106,17 @@ ExitBootServicesEvent (
 
 /**
 
-  This function adjusts the period of timer interrupts to the value specified 
-  by TimerPeriod.  If the timer period is updated, then the selected timer 
-  period is stored in EFI_TIMER.TimerPeriod, and EFI_SUCCESS is returned.  If 
-  the timer hardware is not programmable, then EFI_UNSUPPORTED is returned.  
-  If an error occurs while attempting to update the timer period, then the 
-  timer hardware will be put back in its state prior to this call, and 
-  EFI_DEVICE_ERROR is returned.  If TimerPeriod is 0, then the timer interrupt 
-  is disabled.  This is not the same as disabling the CPU's interrupts.  
-  Instead, it must either turn off the timer hardware, or it must adjust the 
-  interrupt controller so that a CPU interrupt is not generated when the timer 
-  interrupt fires. 
+  This function adjusts the period of timer interrupts to the value specified
+  by TimerPeriod.  If the timer period is updated, then the selected timer
+  period is stored in EFI_TIMER.TimerPeriod, and EFI_SUCCESS is returned.  If
+  the timer hardware is not programmable, then EFI_UNSUPPORTED is returned.
+  If an error occurs while attempting to update the timer period, then the
+  timer hardware will be put back in its state prior to this call, and
+  EFI_DEVICE_ERROR is returned.  If TimerPeriod is 0, then the timer interrupt
+  is disabled.  This is not the same as disabling the CPU's interrupts.
+  Instead, it must either turn off the timer hardware, or it must adjust the
+  interrupt controller so that a CPU interrupt is not generated when the timer
+  interrupt fires.
 
   @param  This             The EFI_TIMER_ARCH_PROTOCOL instance.
   @param  TimerPeriod      The rate to program the timer interrupt in 100 nS units. If
@@ -135,32 +139,51 @@ TimerDriverSetTimerPeriod (
   IN UINT64                   TimerPeriod
   )
 {
+  UINT64      CounterValue;
   UINT64      TimerTicks;
-  
+  EFI_TPL     OriginalTPL;
+
   // Always disable the timer
   ArmArchTimerDisableTimer ();
 
   if (TimerPeriod != 0) {
-    // Convert TimerPeriod to micro sec units
-    TimerTicks = DivU64x32 (TimerPeriod, 10);
+    // mTimerTicks = TimerPeriod in 1ms unit x Frequency.10^-3
+    //             = TimerPeriod.10^-4 x Frequency.10^-3
+    //             = (TimerPeriod x Frequency) x 10^-7
+    TimerTicks = MultU64x32 (TimerPeriod, FixedPcdGet32 (PcdArmArchTimerFreqInHz));
+    TimerTicks = DivU64x32 (TimerTicks, 10000000U);
 
-    TimerTicks = MultU64x32 (TimerTicks, (PcdGet32(PcdArmArchTimerFreqInHz)/1000000));
+    // Raise TPL to update the mTimerTicks and mTimerPeriod to ensure these values
+    // are coherent in the interrupt handler
+    OriginalTPL = gBS->RaiseTPL (TPL_HIGH_LEVEL);
 
-    ArmArchTimerSetTimerVal((UINTN)TimerTicks);
+    mTimerTicks    = TimerTicks;
+    mTimerPeriod   = TimerPeriod;
+    mElapsedPeriod = 1;
+
+    gBS->RestoreTPL (OriginalTPL);
+
+    // Get value of the current physical timer
+    CounterValue = ArmReadCntPct ();
+    // Set the interrupt in Current Time + mTimerTick
+    ArmWriteCntpCval (CounterValue + mTimerTicks);
 
     // Enable the timer
     ArmArchTimerEnableTimer ();
+  } else {
+    // Save the new timer period
+    mTimerPeriod   = TimerPeriod;
+    // Reset the elapsed period
+    mElapsedPeriod = 1;
   }
 
-  // Save the new timer period
-  mTimerPeriod = TimerPeriod;
   return EFI_SUCCESS;
 }
 
 /**
-  This function retrieves the period of timer interrupts in 100 ns units, 
-  returns that value in TimerPeriod, and returns EFI_SUCCESS.  If TimerPeriod 
-  is NULL, then EFI_INVALID_PARAMETER is returned.  If a TimerPeriod of 0 is 
+  This function retrieves the period of timer interrupts in 100 ns units,
+  returns that value in TimerPeriod, and returns EFI_SUCCESS.  If TimerPeriod
+  is NULL, then EFI_INVALID_PARAMETER is returned.  If a TimerPeriod of 0 is
   returned, then the timer is currently disabled.
 
   @param  This             The EFI_TIMER_ARCH_PROTOCOL instance.
@@ -188,12 +211,12 @@ TimerDriverGetTimerPeriod (
 }
 
 /**
-  This function generates a soft timer interrupt. If the platform does not support soft 
-  timer interrupts, then EFI_UNSUPPORTED is returned. Otherwise, EFI_SUCCESS is returned. 
-  If a handler has been registered through the EFI_TIMER_ARCH_PROTOCOL.RegisterHandler() 
-  service, then a soft timer interrupt will be generated. If the timer interrupt is 
-  enabled when this service is called, then the registered handler will be invoked. The 
-  registered handler should not be able to distinguish a hardware-generated timer 
+  This function generates a soft timer interrupt. If the platform does not support soft
+  timer interrupts, then EFI_UNSUPPORTED is returned. Otherwise, EFI_SUCCESS is returned.
+  If a handler has been registered through the EFI_TIMER_ARCH_PROTOCOL.RegisterHandler()
+  service, then a soft timer interrupt will be generated. If the timer interrupt is
+  enabled when this service is called, then the registered handler will be invoked. The
+  registered handler should not be able to distinguish a hardware-generated timer
   interrupt from a software-generated timer interrupt.
 
   @param  This             The EFI_TIMER_ARCH_PROTOCOL instance.
@@ -273,6 +296,8 @@ TimerInterruptHandler (
   )
 {
   EFI_TPL      OriginalTPL;
+  UINT64       CurrentValue;
+  UINT64       CompareValue;
 
   //
   // DXE core uses this callback for the EFI timer tick. The DXE core uses locks
@@ -288,11 +313,29 @@ TimerInterruptHandler (
     gInterrupt->EndOfInterrupt (gInterrupt, Source);
 
     if (mTimerNotifyFunction) {
-      mTimerNotifyFunction (mTimerPeriod);
+      mTimerNotifyFunction (mTimerPeriod * mElapsedPeriod);
     }
 
+    //
     // Reload the Timer
-    TimerDriverSetTimerPeriod (&gTimer, FixedPcdGet32(PcdTimerPeriod));
+    //
+
+    // Get current counter value
+    CurrentValue = ArmReadCntPct ();
+    // Get the counter value to compare with
+    CompareValue = ArmReadCntpCval ();
+
+    // This loop is needed in case we missed interrupts (eg: case when the interrupt handling
+    // has taken longer than mTickPeriod).
+    // Note: Physical Counter is counting up
+    mElapsedPeriod = 0;
+    do {
+      CompareValue += mTimerTicks;
+      mElapsedPeriod++;
+    } while (CompareValue < CurrentValue);
+
+    // Set next compare value
+    ArmWriteCntpCval (CompareValue);
   }
 
   // Enable timer interrupts
