@@ -1,7 +1,7 @@
 /** @file
 *  File managing the MMU for ARMv7 architecture
 *
-*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2013, ARM Limited. All rights reserved.
 *  
 *  This program and the accompanying materials                          
 *  are licensed and made available under the terms and conditions of the BSD License         
@@ -23,6 +23,7 @@
 #include "ArmV7Lib.h"
 #include "ArmLibPrivate.h"
 
+STATIC
 VOID
 PopulateLevel2PageTable (
   IN UINT32                         *SectionEntry,
@@ -120,6 +121,7 @@ PopulateLevel2PageTable (
 
 }
 
+STATIC
 VOID
 FillTranslationTable (
   IN  UINT32                        *TranslationTable,
@@ -194,52 +196,56 @@ FillTranslationTable (
   }
 }
 
-VOID
+RETURN_STATUS
 EFIAPI
 ArmConfigureMmu (
   IN  ARM_MEMORY_REGION_DESCRIPTOR  *MemoryTable,
-  OUT VOID                          **TranslationTableBase OPTIONAL,
-  OUT UINTN                         *TranslationTableSize  OPTIONAL
+  OUT VOID                         **TranslationTableBase OPTIONAL,
+  OUT UINTN                         *TranslationTableSize OPTIONAL
   )
 {
-  UINTN                         TranslationTable;
+  VOID*                         TranslationTable;
   ARM_MEMORY_REGION_ATTRIBUTES  TranslationTableAttribute;
   UINT32                        TTBRAttributes;
 
   // Allocate pages for translation table.
-  TranslationTable = (UINTN)AllocatePages (EFI_SIZE_TO_PAGES(TRANSLATION_TABLE_SECTION_SIZE + TRANSLATION_TABLE_SECTION_ALIGNMENT));
-  TranslationTable = ((UINTN)TranslationTable + TRANSLATION_TABLE_SECTION_ALIGNMENT_MASK) & ~TRANSLATION_TABLE_SECTION_ALIGNMENT_MASK;
+  TranslationTable = AllocatePages (EFI_SIZE_TO_PAGES (TRANSLATION_TABLE_SECTION_SIZE + TRANSLATION_TABLE_SECTION_ALIGNMENT));
+  if (TranslationTable == NULL) {
+    return RETURN_OUT_OF_RESOURCES;
+  }
+  TranslationTable = (VOID*)(((UINTN)TranslationTable + TRANSLATION_TABLE_SECTION_ALIGNMENT_MASK) & ~TRANSLATION_TABLE_SECTION_ALIGNMENT_MASK);
 
   if (TranslationTableBase != NULL) {
-    *TranslationTableBase = (VOID *)TranslationTable;
+    *TranslationTableBase = TranslationTable;
   }
   
   if (TranslationTableSize != NULL) {
     *TranslationTableSize = TRANSLATION_TABLE_SECTION_SIZE;
   }
 
-  ZeroMem ((VOID *)TranslationTable, TRANSLATION_TABLE_SECTION_SIZE);
+  ZeroMem (TranslationTable, TRANSLATION_TABLE_SECTION_SIZE);
 
   ArmCleanInvalidateDataCache ();
   ArmInvalidateInstructionCache ();
-  ArmInvalidateTlb ();
 
   ArmDisableDataCache ();
   ArmDisableInstructionCache();
+  // TLBs are also invalidated when calling ArmDisableMmu()
   ArmDisableMmu ();
 
   // Make sure nothing sneaked into the cache
   ArmCleanInvalidateDataCache ();
   ArmInvalidateInstructionCache ();
 
-  TranslationTableAttribute = (ARM_MEMORY_REGION_ATTRIBUTES)0;
+  // By default, mark the translation table as belonging to a uncached region
+  TranslationTableAttribute = ARM_MEMORY_REGION_ATTRIBUTE_UNCACHED_UNBUFFERED;
   while (MemoryTable->Length != 0) {
     // Find the memory attribute for the Translation Table
-    if ((TranslationTable >= MemoryTable->PhysicalBase) && (TranslationTable <= MemoryTable->PhysicalBase - 1 + MemoryTable->Length)) {
+    if (((UINTN)TranslationTable >= MemoryTable->PhysicalBase) && ((UINTN)TranslationTable <= MemoryTable->PhysicalBase - 1 + MemoryTable->Length)) {
       TranslationTableAttribute = MemoryTable->Attributes;
     }
 
-    FillTranslationTable ((VOID *)TranslationTable, MemoryTable);
+    FillTranslationTable (TranslationTable, MemoryTable);
     MemoryTable++;
   }
 
@@ -254,11 +260,11 @@ ArmConfigureMmu (
       (TranslationTableAttribute == ARM_MEMORY_REGION_ATTRIBUTE_NONSECURE_WRITE_THROUGH)) {
     TTBRAttributes = TTBR_WRITE_THROUGH_NO_ALLOC;
   } else {
-    //TODO: We should raise an error here
-    TTBRAttributes = TTBR_NON_CACHEABLE;
+    ASSERT (0); // No support has been found for the attributes of the memory region that the translation table belongs to.
+    return RETURN_UNSUPPORTED;
   }
 
-  ArmSetTTBR0 ((VOID *)(UINTN)((TranslationTable & ~TRANSLATION_TABLE_SECTION_ALIGNMENT_MASK) | (TTBRAttributes & 0x7F)));
+  ArmSetTTBR0 ((VOID *)(UINTN)(((UINTN)TranslationTable & ~TRANSLATION_TABLE_SECTION_ALIGNMENT_MASK) | (TTBRAttributes & 0x7F)));
     
   ArmSetDomainAccessControl (DOMAIN_ACCESS_CONTROL_NONE(15) |
                              DOMAIN_ACCESS_CONTROL_NONE(14) |
@@ -280,4 +286,5 @@ ArmConfigureMmu (
   ArmEnableInstructionCache();
   ArmEnableDataCache();
   ArmEnableMmu();
+  return RETURN_SUCCESS;
 }
