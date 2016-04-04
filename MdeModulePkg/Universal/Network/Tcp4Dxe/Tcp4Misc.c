@@ -1,7 +1,7 @@
 /** @file
   Misc support routines for tcp.
 
-Copyright (c) 2005 - 2006, Intel Corporation<BR>
+Copyright (c) 2005 - 2009, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -432,7 +432,7 @@ TcpCloneTcb (
   Clone->Sk = SockClone (Tcb->Sk);
   if (Clone->Sk == NULL) {
     DEBUG ((EFI_D_ERROR, "TcpCloneTcb: failed to clone a sock\n"));
-    gBS->FreePool (Clone);
+    FreePool (Clone);
     return NULL;
   }
 
@@ -471,19 +471,19 @@ TcpGetRcvMss (
   IN SOCKET  *Sock
   )
 {
-  EFI_SIMPLE_NETWORK_MODE SnpMode;
+  EFI_IP4_MODE_DATA       Ip4Mode;
   TCP4_PROTO_DATA         *TcpProto;
   EFI_IP4_PROTOCOL        *Ip;
 
   ASSERT (Sock != NULL);
 
   TcpProto = (TCP4_PROTO_DATA *) Sock->ProtoReserved;
-  Ip       = TcpProto->TcpService->IpIo->Ip;
+  Ip       = (EFI_IP4_PROTOCOL *) (TcpProto->TcpService->IpIo->Ip);
   ASSERT (Ip != NULL);
 
-  Ip->GetModeData (Ip, NULL, NULL, &SnpMode);
+  Ip->GetModeData (Ip, &Ip4Mode, NULL, NULL);
 
-  return (UINT16) (SnpMode.MaxPacketSize - 40);
+  return (UINT16) (Ip4Mode.MaxPacketSize - sizeof (TCP_HEAD));
 }
 
 
@@ -1025,7 +1025,7 @@ TcpSetVariableData (
              );
     }
 
-    gBS->FreePool (Tcp4Service->MacString);
+    FreePool (Tcp4Service->MacString);
   }
 
   Tcp4Service->MacString = NewMacString;
@@ -1040,7 +1040,7 @@ TcpSetVariableData (
 
 ON_ERROR:
 
-  gBS->FreePool (Tcp4VariableData);
+  FreePool (Tcp4VariableData);
 
   return Status;
 }
@@ -1067,7 +1067,7 @@ TcpClearVariableData (
          NULL
          );
 
-  gBS->FreePool (Tcp4Service->MacString);
+  FreePool (Tcp4Service->MacString);
   Tcp4Service->MacString = NULL;
 }
 
@@ -1121,7 +1121,7 @@ TcpInstallDevicePath (
                   Sock->DevicePath
                   );
   if (EFI_ERROR (Status)) {
-    gBS->FreePool (Sock->DevicePath);
+    FreePool (Sock->DevicePath);
   }
 
   return Status;

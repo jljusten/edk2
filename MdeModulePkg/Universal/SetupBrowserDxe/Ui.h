@@ -1,7 +1,7 @@
 /** @file
 Private structure, MACRO and function definitions for User Interface related functionalities.
 
-Copyright (c) 2004 - 2008, Intel Corporation
+Copyright (c) 2004 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -14,8 +14,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #ifndef _UI_H_
 #define _UI_H_
-
-#include "Setup.h"
 
 //
 // Globals
@@ -58,7 +56,6 @@ typedef enum {
   CfPrepareToReadKey,
   CfReadKey,
   CfScreenOperation,
-  CfUiPrevious,
   CfUiSelect,
   CfUiReset,
   CfUiLeft,
@@ -109,6 +106,11 @@ typedef struct {
   FORM_BROWSER_FORMSET    *FormSet;
   FORM_BROWSER_FORM       *Form;
   FORM_BROWSER_STATEMENT  *Statement;
+
+  //
+  // Whether the Form is editable
+  //
+  BOOLEAN                 FormEditable;
 } UI_MENU_SELECTION;
 
 #define UI_MENU_OPTION_SIGNATURE  SIGNATURE_32 ('u', 'i', 'm', 'm')
@@ -141,17 +143,30 @@ typedef struct {
 
   BOOLEAN                 GrayOut;
   BOOLEAN                 ReadOnly;
+
+  //
+  // Whether user could change value of this item
+  //
+  BOOLEAN                 IsQuestion;
 } UI_MENU_OPTION;
 
 #define MENU_OPTION_FROM_LINK(a)  CR (a, UI_MENU_OPTION, Link, UI_MENU_OPTION_SIGNATURE)
 
-typedef struct {
-  UINTN           Signature;
-  LIST_ENTRY      MenuLink;
+typedef struct _UI_MENU_LIST UI_MENU_LIST;
 
+struct _UI_MENU_LIST {
+  UINTN           Signature;
+  LIST_ENTRY      Link;
+
+  EFI_GUID        FormSetGuid;
   UINT16          FormId;
   UINT16          QuestionId;
-} UI_MENU_LIST;
+
+  UI_MENU_LIST    *Parent;
+  LIST_ENTRY      ChildListHead;
+};
+
+#define UI_MENU_LIST_FROM_LINK(a)  CR (a, UI_MENU_LIST, Link, UI_MENU_LIST_SIGNATURE)
 
 typedef struct _MENU_REFRESH_ENTRY {
   struct _MENU_REFRESH_ENTRY  *Next;
@@ -173,7 +188,7 @@ typedef struct {
 } SCREEN_OPERATION_T0_CONTROL_FLAG;
 
 
-extern LIST_ENTRY          gMenuList;
+extern LIST_ENTRY          gMenuOption;
 extern MENU_REFRESH_ENTRY  *gMenuRefreshHead;
 extern UI_MENU_SELECTION   *gCurrentSelection;
 extern BOOLEAN             mHiiPackageListUpdated;
@@ -200,42 +215,68 @@ UiInitMenuList (
   );
 
 /**
-  Remove a Menu in list, and return FormId/QuestionId for previous Menu.
-
-  @param  Selection              Menu selection.
-
-**/
-VOID
-UiRemoveMenuListEntry (
-  OUT UI_MENU_SELECTION  *Selection
-  );
-
-/**
-  Free Menu option linked list.
-
-**/
-VOID
-UiFreeMenuList (
-  VOID
-  );
-
-/**
-  Add one menu entry to the linked lst
-
-  @param  Selection              Menu selection.
-
-**/
-VOID
-UiAddMenuListEntry (
-  IN UI_MENU_SELECTION            *Selection
-  );
-
-/**
   Free Menu option linked list.
 
 **/
 VOID
 UiFreeMenu (
+  VOID
+  );
+
+/**
+  Create a menu with specified formset GUID and form ID, and add it as a child
+  of the given parent menu.
+
+  @param  Parent                 The parent of menu to be added.
+  @param  FormSetGuid            The Formset Guid of menu to be added.
+  @param  FormId                 The Form ID of menu to be added.
+
+  @return A pointer to the newly added menu or NULL if memory is insufficient.
+
+**/
+UI_MENU_LIST *
+UiAddMenuList (
+  IN OUT UI_MENU_LIST     *Parent,
+  IN EFI_GUID             *FormSetGuid,
+  IN UINT16               FormId
+  );
+
+/**
+  Search Menu with given FormId in the parent menu and all its child menus.
+
+  @param  Parent                 The parent of menu to search.
+  @param  FormId                 The Form ID of menu to search.
+
+  @return A pointer to menu found or NULL if not found.
+
+**/
+UI_MENU_LIST *
+UiFindChildMenuList (
+  IN UI_MENU_LIST         *Parent,
+  IN UINT16               FormId
+  );
+
+/**
+  Search Menu with given FormSetGuid and FormId in all cached menu list.
+
+  @param  FormSetGuid            The Formset GUID of the menu to search.
+  @param  FormId                 The Form ID of menu to search.
+
+  @return A pointer to menu found or NULL if not found.
+
+**/
+UI_MENU_LIST *
+UiFindMenuList (
+  IN EFI_GUID             *FormSetGuid,
+  IN UINT16               FormId
+  );
+
+/**
+  Free Menu option linked list.
+
+**/
+VOID
+UiFreeRefreshList (
   VOID
   );
 
@@ -248,8 +289,10 @@ UiFreeMenu (
   @param  NumberOfLines          Display lines for this Menu Option.
   @param  MenuItemCount          The index for this Option in the Menu.
 
+  @retval Pointer                Pointer to the added Menu Option.
+
 **/
-VOID
+UI_MENU_OPTION *
 UiAddMenuOption (
   IN CHAR16                  *String,
   IN EFI_HII_HANDLE          Handle,
@@ -300,24 +343,6 @@ FreeBrowserStrings (
 EFI_STATUS
 SetupBrowser (
   IN OUT UI_MENU_SELECTION    *Selection
-  );
-
-/**
-  VSPrint worker function that prints a Value as a decimal number in Buffer.
-
-  @param  Buffer     Location to place ascii decimal number string of Value.
-  @param  Flags      Flags to use in printing decimal string, see file header for
-                     details.
-  @param  Value      Decimal value to convert to a string in Buffer.
-
-  @return Number of characters printed.
-
-**/
-VOID
-ValueToString (
-  IN CHAR16   *Buffer,
-  IN BOOLEAN  Flags,
-  IN INT64    Value
   );
 
 /**
@@ -485,6 +510,40 @@ ValueToOption (
   );
 
 /**
+  Return data element in an Array by its Index.
+
+  @param  Array                  The data array.
+  @param  Type                   Type of the data in this array.
+  @param  Index                  Zero based index for data in this array.
+
+  @retval Value                  The data to be returned
+
+**/
+UINT64
+GetArrayData (
+  IN VOID                     *Array,
+  IN UINT8                    Type,
+  IN UINTN                    Index
+  );
+
+/**
+  Set value of a data element in an Array by its Index.
+
+  @param  Array                  The data array.
+  @param  Type                   Type of the data in this array.
+  @param  Index                  Zero based index for data in this array.
+  @param  Value                  The value to be set.
+
+**/
+VOID
+SetArrayData (
+  IN VOID                     *Array,
+  IN UINT8                    Type,
+  IN UINTN                    Index,
+  IN UINT64                   Value
+  );
+
+/**
   Process a Question's Option (whether selected or un-selected).
 
   @param  Selection              Pointer to UI_MENU_SELECTION.
@@ -523,12 +582,14 @@ ProcessHelpString (
 /**
   Update key's help imformation.
 
+  @param Selection       Tell setup browser the information about the Selection
   @param  MenuOption     The Menu option
   @param  Selected       Whether or not a tag be selected
 
 **/
 VOID
 UpdateKeyHelp (
+  IN  UI_MENU_SELECTION           *Selection,
   IN  UI_MENU_OPTION              *MenuOption,
   IN  BOOLEAN                     Selected
   );
@@ -545,11 +606,11 @@ UpdateKeyHelp (
 **/
 VOID
 ClearLines (
-  UINTN                                       LeftColumn,
-  UINTN                                       RightColumn,
-  UINTN                                       TopRow,
-  UINTN                                       BottomRow,
-  UINTN                                       TextAttribute
+  IN UINTN               LeftColumn,
+  IN UINTN               RightColumn,
+  IN UINTN               TopRow,
+  IN UINTN               BottomRow,
+  IN UINTN               TextAttribute
   );
 
 /**
@@ -557,7 +618,7 @@ ClearLines (
 
   This function handles the Unicode string with NARROW_CHAR
   and WIDE_CHAR control characters. NARROW_HCAR and WIDE_CHAR
-  does not count in the resultant output. If a WIDE_CHAR is 
+  does not count in the resultant output. If a WIDE_CHAR is
   hit, then 2 Unicode character will consume an output storage
   space with size of CHAR16 till a NARROW_CHAR is hit.
 
@@ -568,7 +629,7 @@ ClearLines (
 **/
 UINTN
 GetStringWidth (
-  CHAR16                                      *String
+  IN CHAR16               *String
   );
 
 /**
@@ -617,8 +678,8 @@ GetWidth (
 **/
 VOID
 NewStrCat (
-  CHAR16                                      *Destination,
-  CHAR16                                      *Source
+  IN OUT CHAR16               *Destination,
+  IN     CHAR16               *Source
   );
 
 /**

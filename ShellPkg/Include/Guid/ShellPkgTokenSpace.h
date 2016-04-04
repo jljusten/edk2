@@ -1,7 +1,7 @@
 /** @file
-  GUID for ShellPkg PCD Token Space 
+  GUID for ShellPkg PCD Token Space.
 
-  Copyright (c) 2009, Intel Corporation
+  Copyright (c) 2009, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -15,10 +15,10 @@
 #ifndef _SHELLPKG_TOKEN_SPACE_GUID_H_
 #define _SHELLPKG_TOKEN_SPACE_GUID_H_
 
-#define SHELLPKG_TOKEN_SPACE_GUID \
+#define EFI_SHELLPKG_TOKEN_SPACE_GUID \
 { \
   0x171e9188, 0x31d3, 0x40f5, { 0xb1, 0xc, 0x53, 0x9b, 0x2d, 0xb9, 0x40, 0xcd } \
-};
+}
 
 extern EFI_GUID gEfiShellPkgTokenSpaceGuid;
 

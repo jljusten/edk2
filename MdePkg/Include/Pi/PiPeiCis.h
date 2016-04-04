@@ -129,6 +129,21 @@ struct _EFI_PEI_NOTIFY_DESCRIPTOR {
   EFI_PEIM_NOTIFY_ENTRY_POINT Notify;
 };
 
+///
+/// This data structure is the means by which callable services are installed and
+/// notifications are registered in the PEI phase.
+///
+typedef union {
+  ///
+  /// The typedef structure of the notification descriptor.
+  ///
+  EFI_PEI_NOTIFY_DESCRIPTOR   Notify;
+  ///
+  /// The typedef structure of the PPI descriptor.
+  ///
+  EFI_PEI_PPI_DESCRIPTOR      Ppi;
+} EFI_PEI_DESCRIPTOR;
+
 /**
   This service is the first one provided by the PEI Foundation.  This function 
   installs an interface in the PEI PPI database by GUID.  The purpose of the 
@@ -649,14 +664,13 @@ typedef struct {
   and size.
 
   @param VolumeHandle   Handle of the volume.
+  @param VolumeInfo     Upon exit, points to the volume's information.
 
-  @param VolumeInfo     Upon exit, points to the volume's
-                        information.
-
-  @retval EFI_SUCCESS             File information returned.
-  @retval EFI_INVALID_PARAMETER   If FileHandle does not
-                                  represent a valid file.
-  @retval EFI_INVALID_PARAMETER   If FileInfo is NULL.
+  @retval EFI_SUCCESS             Volume information returned.
+  @retval EFI_INVALID_PARAMETER   If VolumeHandle does not represent a valid volume.
+  @retval EFI_INVALID_PARAMETER   If VolumeHandle is NULL.
+  @retval EFI_SUCCESS             Information successfully returned.
+  @retval EFI_INVALID_PARAMETER   The volume designated by the VolumeHandle is not available.
 
 **/
 typedef
@@ -701,7 +715,7 @@ EFI_STATUS
 // PEI Specification Revision information
 //
 #define PEI_SPECIFICATION_MAJOR_REVISION  1
-#define PEI_SPECIFICATION_MINOR_REVISION  0
+#define PEI_SPECIFICATION_MINOR_REVISION  20
 ///
 /// Inconsistent with specification here: 
 /// In PI1.0 spec, PEI_SERVICES_SIGNATURE is defined as 0x5652455320494550. But 

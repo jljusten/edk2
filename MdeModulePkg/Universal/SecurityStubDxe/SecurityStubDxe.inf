@@ -1,8 +1,7 @@
 #/** @file
-#  Sample SecurityStub driver implements the dummy platform security service.
-#  It always return success without any authentication check.
+#  This driver produces security architectural protocol based on SecurityManagementLib.
 #
-#  Copyright (c) 2006 - 2008, Intel Corporation
+#  Copyright (c) 2006 - 2009, Intel Corporation
 #  All rights reserved. This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution. The full text of the license may be found at
@@ -32,11 +31,13 @@
 
 [Packages]
   MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
 
 [LibraryClasses]
   UefiDriverEntryPoint
   UefiBootServicesTableLib
   DebugLib
+  SecurityManagementLib
 
 [Protocols]
   gEfiSecurityArchProtocolGuid                  ## PRODUCED

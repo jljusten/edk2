@@ -1,7 +1,7 @@
 /** @file
   Tcp driver function.
 
-Copyright (c) 2005 - 2007, Intel Corporation<BR>
+Copyright (c) 2005 - 2009, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -38,8 +38,8 @@ EFI_TCP4_PROTOCOL mTcp4ProtocolTemplate = {
 };
 
 SOCK_INIT_DATA mTcp4DefaultSockData = {
-  SOCK_STREAM,
-  (SOCK_STATE) 0,
+  SockStream,
+  0,
   NULL,
   TCP_BACKLOG,
   TCP_SND_BUF_SIZE,
@@ -303,7 +303,11 @@ Tcp4DriverBindingStart (
   //
   // Create a new IP IO to Consume it
   //
-  TcpServiceData->IpIo = IpIoCreate (This->DriverBindingHandle, ControllerHandle);
+  TcpServiceData->IpIo = IpIoCreate (
+                           This->DriverBindingHandle,
+                           ControllerHandle,
+                           IP_VERSION_4
+                           );
   if (NULL == TcpServiceData->IpIo) {
 
     DEBUG ((EFI_D_ERROR, "Tcp4DriverBindingStart: Have no enough"
@@ -318,8 +322,13 @@ Tcp4DriverBindingStart (
   //
   ZeroMem (&OpenData, sizeof (IP_IO_OPEN_DATA));
 
-  CopyMem (&OpenData.IpConfigData, &mIpIoDefaultIpConfigData, sizeof (OpenData.IpConfigData));
-  OpenData.IpConfigData.DefaultProtocol = EFI_IP_PROTO_TCP;
+  CopyMem (
+    &OpenData.IpConfigData.Ip4CfgData,
+    &mIp4IoDefaultIpConfigData,
+    sizeof (EFI_IP4_CONFIG_DATA)
+    );
+
+  OpenData.IpConfigData.Ip4CfgData.DefaultProtocol = EFI_IP_PROTO_TCP;
 
   OpenData.PktRcvdNotify = Tcp4RxCallback;
   Status                 = IpIoOpen (TcpServiceData->IpIo, &OpenData);
@@ -380,7 +389,7 @@ ON_ERROR:
     IpIoDestroy (TcpServiceData->IpIo);
   }
 
-  gBS->FreePool (TcpServiceData);
+  FreePool (TcpServiceData);
 
   return Status;
 }
@@ -485,7 +494,7 @@ Tcp4DriverBindingStop (
     //
     // Release the TCP service data
     //
-    gBS->FreePool (TcpServiceData);
+    FreePool (TcpServiceData);
   } else {
 
     while (!IsListEmpty (&TcpServiceData->SocketList)) {

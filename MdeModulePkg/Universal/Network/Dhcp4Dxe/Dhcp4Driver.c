@@ -1,6 +1,6 @@
 /** @file
 
-Copyright (c) 2006 - 2008, Intel Corporation.<BR>
+Copyright (c) 2006 - 2009, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -106,16 +106,16 @@ Dhcp4DriverBindingSupported (
   Configure the default UDP child to receive all the DHCP traffics
   on this network interface.
 
-  @param[in]  UdpIo                  The UDP IO port to configure
+  @param[in]  UdpIo                  The UDP IO to configure
   @param[in]  Context                The context to the function
 
-  @retval EFI_SUCCESS            The UDP IO port is successfully configured.
+  @retval EFI_SUCCESS            The UDP IO is successfully configured.
   @retval Others                 Failed to configure the UDP child.
 
 **/
 EFI_STATUS
 DhcpConfigUdpIo (
-  IN UDP_IO_PORT            *UdpIo,
+  IN UDP_IO                 *UdpIo,
   IN VOID                   *Context
   )
 {
@@ -139,7 +139,7 @@ DhcpConfigUdpIo (
   ZeroMem (&UdpConfigData.SubnetMask, sizeof (EFI_IPv4_ADDRESS));
   ZeroMem (&UdpConfigData.RemoteAddress, sizeof (EFI_IPv4_ADDRESS));
 
-  return UdpIo->Udp->Configure (UdpIo->Udp, &UdpConfigData);;
+  return UdpIo->Protocol.Udp4->Configure (UdpIo->Protocol.Udp4, &UdpConfigData);;
 }
 
 
@@ -162,7 +162,7 @@ Dhcp4CloseService (
   DhcpCleanLease (DhcpSb);
 
   if (DhcpSb->UdpIo != NULL) {
-    UdpIoFreePort (DhcpSb->UdpIo);
+    UdpIoFreeIo (DhcpSb->UdpIo);
     DhcpSb->UdpIo = NULL;
   }
 
@@ -237,7 +237,13 @@ Dhcp4CreateService (
     goto ON_ERROR;
   }
 
-  DhcpSb->UdpIo = UdpIoCreatePort (Controller, ImageHandle, DhcpConfigUdpIo, NULL);
+  DhcpSb->UdpIo = UdpIoCreateIo (
+                    Controller,
+                    ImageHandle,
+                    DhcpConfigUdpIo,
+                    UDP_IO_UDP4_VERSION,
+                    NULL
+                    );
 
   if (DhcpSb->UdpIo == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
@@ -310,6 +316,14 @@ Dhcp4DriverBindingStart (
     return Status;
   }
 
+  //
+  // Start the receiving
+  //
+  Status = UdpIoRecvDatagram (DhcpSb->UdpIo, DhcpInput, DhcpSb, 0);
+
+  if (EFI_ERROR (Status)) {
+    goto ON_ERROR;
+  }
   Status = gBS->SetTimer (DhcpSb->Timer, TimerPeriodic, TICKS_PER_SECOND);
 
   if (EFI_ERROR (Status)) {

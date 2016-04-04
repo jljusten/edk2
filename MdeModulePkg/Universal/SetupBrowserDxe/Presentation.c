@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 #include "Setup.h"
-#include "Ui.h"
 
 BOOLEAN            mHiiPackageListUpdated;
 UI_MENU_SELECTION  *gCurrentSelection;
@@ -31,11 +30,11 @@ UI_MENU_SELECTION  *gCurrentSelection;
 **/
 VOID
 ClearLines (
-  UINTN                                       LeftColumn,
-  UINTN                                       RightColumn,
-  UINTN                                       TopRow,
-  UINTN                                       BottomRow,
-  UINTN                                       TextAttribute
+  IN UINTN               LeftColumn,
+  IN UINTN               RightColumn,
+  IN UINTN               TopRow,
+  IN UINTN               BottomRow,
+  IN UINTN               TextAttribute
   )
 {
   CHAR16  *Buffer;
@@ -80,8 +79,8 @@ ClearLines (
 **/
 VOID
 NewStrCat (
-  CHAR16                                      *Destination,
-  CHAR16                                      *Source
+  IN OUT CHAR16               *Destination,
+  IN     CHAR16               *Source
   )
 {
   UINTN Length;
@@ -106,7 +105,7 @@ NewStrCat (
 
   This function handles the Unicode string with NARROW_CHAR
   and WIDE_CHAR control characters. NARROW_HCAR and WIDE_CHAR
-  does not count in the resultant output. If a WIDE_CHAR is 
+  does not count in the resultant output. If a WIDE_CHAR is
   hit, then 2 Unicode character will consume an output storage
   space with size of CHAR16 till a NARROW_CHAR is hit.
 
@@ -117,7 +116,7 @@ NewStrCat (
 **/
 UINTN
 GetStringWidth (
-  CHAR16                                      *String
+  IN CHAR16               *String
   )
 {
   UINTN Index;
@@ -236,7 +235,7 @@ DisplayPageFrame (
 
         ASSERT (RowIdx < BANNER_HEIGHT);
         ASSERT (ColumnIdx < BANNER_COLUMNS);
-        
+
         if (gBannerData->Banner[RowIdx][ColumnIdx] != 0x0000) {
           StrFrontPageBanner = GetToken (
                                 gBannerData->Banner[RowIdx][ColumnIdx],
@@ -406,7 +405,7 @@ EvaluateFormExpressions (
 
 /*
 +------------------------------------------------------------------------------+
-?F2=Previous Page                 Setup Page                                  ?
+?                                 Setup Page                                  ?
 +------------------------------------------------------------------------------+
 
 
@@ -433,9 +432,9 @@ EvaluateFormExpressions (
 
 /**
 
-  
+
   Display form and wait for user to select one menu option, then return it.
-  
+
   @param Selection       On input, Selection tell setup browser the information
                          about the Selection, form and formset to be displayed.
                          On output, Selection return the screen item that is selected
@@ -460,6 +459,7 @@ DisplayForm (
   FORM_BROWSER_STATEMENT *Statement;
   UINT16                 NumberOfLines;
   EFI_STATUS             Status;
+  UI_MENU_OPTION         *MenuOption;
 
   Handle        = Selection->Handle;
   MenuItemCount = 0;
@@ -481,16 +481,6 @@ DisplayForm (
       );
   }
 
-  if (gClassOfVfr == FORMSET_CLASS_PLATFORM_SETUP) {
-    gST->ConOut->SetAttribute (gST->ConOut, KEYHELP_TEXT | KEYHELP_BACKGROUND);
-
-    //
-    // Display the infrastructure strings
-    //
-    if (!IsListEmpty (&gMenuList)) {
-      PrintStringAt (LocalScreen.LeftColumn + 2, LocalScreen.TopRow + 1, gFunctionTwoString);
-    }
-  }
   //
   // Remove Buffer allocated for StringPtr after it has been used.
   //
@@ -504,6 +494,7 @@ DisplayForm (
     return Status;
   }
 
+  Selection->FormEditable = FALSE;
   Link = GetFirstNode (&Selection->Form->StatementListHead);
   while (!IsNull (&Selection->Form->StatementListHead, Link)) {
     Statement = FORM_BROWSER_STATEMENT_FROM_LINK (Link);
@@ -540,8 +531,15 @@ DisplayForm (
       // We are NOT!! removing this StringPtr buffer via FreePool since it is being used in the menuoptions, we will do
       // it in UiFreeMenu.
       //
-      UiAddMenuOption (StringPtr, Selection->Handle, Statement, NumberOfLines, MenuItemCount);
+      MenuOption = UiAddMenuOption (StringPtr, Selection->Handle, Statement, NumberOfLines, MenuItemCount);
       MenuItemCount++;
+
+      if (MenuOption->IsQuestion && !MenuOption->ReadOnly) {
+        //
+        // At least one item is not readonly, this Form is considered as editable
+        //
+        Selection->FormEditable = TRUE;
+      }
     }
 
     Link = GetNextNode (&Selection->Form->StatementListHead, Link);
@@ -563,8 +561,6 @@ InitializeBrowserStrings (
   VOID
   )
 {
-  gFunctionOneString    = GetToken (STRING_TOKEN (FUNCTION_ONE_STRING), gHiiHandle);
-  gFunctionTwoString    = GetToken (STRING_TOKEN (FUNCTION_TWO_STRING), gHiiHandle);
   gFunctionNineString   = GetToken (STRING_TOKEN (FUNCTION_NINE_STRING), gHiiHandle);
   gFunctionTenString    = GetToken (STRING_TOKEN (FUNCTION_TEN_STRING), gHiiHandle);
   gEnterString          = GetToken (STRING_TOKEN (ENTER_STRING), gHiiHandle);
@@ -594,6 +590,7 @@ InitializeBrowserStrings (
   gAdjustNumber         = GetToken (STRING_TOKEN (ADJUST_NUMBER), gHiiHandle);
   gSaveChanges          = GetToken (STRING_TOKEN (SAVE_CHANGES), gHiiHandle);
   gOptionMismatch       = GetToken (STRING_TOKEN (OPTION_MISMATCH), gHiiHandle);
+  gFormSuppress         = GetToken (STRING_TOKEN (FORM_SUPPRESSED), gHiiHandle);
   return ;
 }
 
@@ -607,8 +604,6 @@ FreeBrowserStrings (
   VOID
   )
 {
-  FreePool (gFunctionOneString);
-  FreePool (gFunctionTwoString);
   FreePool (gFunctionNineString);
   FreePool (gFunctionTenString);
   FreePool (gEnterString);
@@ -637,6 +632,7 @@ FreeBrowserStrings (
   FreePool (gAdjustNumber);
   FreePool (gSaveChanges);
   FreePool (gOptionMismatch);
+  FreePool (gFormSuppress);
   return ;
 }
 
@@ -644,12 +640,14 @@ FreeBrowserStrings (
 /**
   Update key's help imformation.
 
+  @param Selection       Tell setup browser the information about the Selection
   @param  MenuOption     The Menu option
   @param  Selected       Whether or not a tag be selected
 
 **/
 VOID
 UpdateKeyHelp (
+  IN  UI_MENU_SELECTION           *Selection,
   IN  UI_MENU_OPTION              *MenuOption,
   IN  BOOLEAN                     Selected
   )
@@ -688,9 +686,10 @@ UpdateKeyHelp (
 
     if (!Selected) {
       if (gClassOfVfr == FORMSET_CLASS_PLATFORM_SETUP) {
-        PrintStringAt (StartColumnOfHelp, TopRowOfHelp, gFunctionOneString);
-        PrintStringAt (SecCol, TopRowOfHelp, gFunctionNineString);
-        PrintStringAt (ThdCol, TopRowOfHelp, gFunctionTenString);
+        if (Selection->FormEditable) {
+          PrintStringAt (SecCol, TopRowOfHelp, gFunctionNineString);
+          PrintStringAt (ThdCol, TopRowOfHelp, gFunctionTenString);
+        }
         PrintStringAt (ThdCol, BottomRowOfHelp, gEscapeString);
       }
 
@@ -744,9 +743,10 @@ UpdateKeyHelp (
     ClearLines (LeftColumnOfHelp, RightColumnOfHelp, TopRowOfHelp, BottomRowOfHelp, KEYHELP_TEXT | KEYHELP_BACKGROUND);
 
     if (gClassOfVfr == FORMSET_CLASS_PLATFORM_SETUP) {
-      PrintStringAt (StartColumnOfHelp, TopRowOfHelp, gFunctionOneString);
-      PrintStringAt (SecCol, TopRowOfHelp, gFunctionNineString);
-      PrintStringAt (ThdCol, TopRowOfHelp, gFunctionTenString);
+      if (Selection->FormEditable) {
+        PrintStringAt (SecCol, TopRowOfHelp, gFunctionNineString);
+        PrintStringAt (ThdCol, TopRowOfHelp, gFunctionTenString);
+      }
       PrintStringAt (ThdCol, BottomRowOfHelp, gEscapeString);
     }
 
@@ -764,9 +764,10 @@ UpdateKeyHelp (
 
     if (!Selected) {
       if (gClassOfVfr == FORMSET_CLASS_PLATFORM_SETUP) {
-        PrintStringAt (StartColumnOfHelp, TopRowOfHelp, gFunctionOneString);
-        PrintStringAt (SecCol, TopRowOfHelp, gFunctionNineString);
-        PrintStringAt (ThdCol, TopRowOfHelp, gFunctionTenString);
+        if (Selection->FormEditable) {
+          PrintStringAt (SecCol, TopRowOfHelp, gFunctionNineString);
+          PrintStringAt (ThdCol, TopRowOfHelp, gFunctionTenString);
+        }
         PrintStringAt (ThdCol, BottomRowOfHelp, gEscapeString);
       }
 
@@ -855,17 +856,15 @@ SetupBrowser (
   EFI_BROWSER_ACTION_REQUEST      ActionRequest;
   EFI_HANDLE                      NotifyHandle;
   EFI_HII_VALUE                   *HiiValue;
+  EFI_IFR_TYPE_VALUE              *TypeValue;
   FORM_BROWSER_STATEMENT          *Statement;
   EFI_HII_CONFIG_ACCESS_PROTOCOL  *ConfigAccess;
+  FORM_BROWSER_FORMSET            *FormSet;
   EFI_INPUT_KEY                   Key;
-  CHAR16                          YesResponse;
-  CHAR16                          NoResponse;
 
   gMenuRefreshHead = NULL;
   gResetRequired = FALSE;
-  gNvUpdateRequired = FALSE;
-
-  UiInitMenuList ();
+  FormSet = Selection->FormSet;
 
   //
   // Register notify for Form package update
@@ -882,12 +881,63 @@ SetupBrowser (
     return Status;
   }
 
-  do {
-    //
-    // Displays the Header and Footer borders
-    //
-    DisplayPageFrame ();
+  //
+  // Before display the formset, invoke ConfigAccess.Callback() with EFI_BROWSER_ACTION_FORM_OPEN
+  //
+  ConfigAccess = Selection->FormSet->ConfigAccess;
+  if ((ConfigAccess != NULL) && (Selection->Action != UI_ACTION_REFRESH_FORMSET)) {
+    ActionRequest = EFI_BROWSER_ACTION_REQUEST_NONE;
+    mHiiPackageListUpdated = FALSE;
+    Status = ConfigAccess->Callback (
+                             ConfigAccess,
+                             EFI_BROWSER_ACTION_FORM_OPEN,
+                             0,
+                             EFI_IFR_TYPE_UNDEFINED,
+                             NULL,
+                             &ActionRequest
+                             );
 
+    if (!EFI_ERROR (Status)) {
+      switch (ActionRequest) {
+      case EFI_BROWSER_ACTION_REQUEST_RESET:
+        gResetRequired = TRUE;
+        break;
+
+      case EFI_BROWSER_ACTION_REQUEST_SUBMIT:
+        //
+        // Till now there is no uncommitted data, so ignore this request
+        //
+        break;
+
+      case EFI_BROWSER_ACTION_REQUEST_EXIT:
+        Selection->Action = UI_ACTION_EXIT;
+        break;
+
+      default:
+        break;
+      }
+    }
+
+    if (mHiiPackageListUpdated) {
+      //
+      // IFR is updated during callback, force to reparse the IFR binary
+      //
+      mHiiPackageListUpdated = FALSE;
+      Selection->Action = UI_ACTION_REFRESH_FORMSET;
+      goto Done;
+    }
+  }
+
+  //
+  // Initialize current settings of Questions in this FormSet
+  //
+  Status = InitializeCurrentSetting (Selection->FormSet);
+  if (EFI_ERROR (Status)) {
+    Selection->Action = UI_ACTION_EXIT;
+    goto Done;
+  }
+
+  do {
     //
     // Initialize Selection->Form
     //
@@ -911,12 +961,52 @@ SetupBrowser (
     }
 
     //
+    // Check Form is suppressed.
+    //
+    if (Selection->Form->SuppressExpression != NULL) {
+      Status = EvaluateExpression (Selection->FormSet, Selection->Form, Selection->Form->SuppressExpression);
+      if (EFI_ERROR (Status)) {
+        return Status;
+      }
+
+      if (Selection->Form->SuppressExpression->Result.Value.b) {
+        //
+        // Form is suppressed. 
+        //
+        do {
+          CreateDialog (4, TRUE, 0, NULL, &Key, gEmptyString, gFormSuppress, gPressEnter, gEmptyString);
+        } while (Key.UnicodeChar != CHAR_CARRIAGE_RETURN);
+
+        return EFI_NOT_FOUND;
+      }
+    }
+    
+    //
+    // Reset FormPackage update flag
+    //
+    mHiiPackageListUpdated = FALSE;
+
+    //
     // Load Questions' Value for display
     //
-    Status = LoadFormConfig (Selection->FormSet, Selection->Form);
+    Status = LoadFormSetConfig (Selection, Selection->FormSet);
     if (EFI_ERROR (Status)) {
       return Status;
     }
+
+    //
+    // IFR is updated during callback of read value, force to reparse the IFR binary
+    //
+    if (mHiiPackageListUpdated) {
+      Selection->Action = UI_ACTION_REFRESH_FORMSET;
+      mHiiPackageListUpdated = FALSE;
+      goto Done;
+    }
+
+    //
+    // Displays the Header and Footer borders
+    //
+    DisplayPageFrame ();
 
     //
     // Display form
@@ -943,24 +1033,30 @@ SetupBrowser (
       if (((Statement->QuestionFlags & EFI_IFR_FLAG_CALLBACK) == EFI_IFR_FLAG_CALLBACK) && (Statement->Operand != EFI_IFR_PASSWORD_OP)) {
         ActionRequest = EFI_BROWSER_ACTION_REQUEST_NONE;
 
+        if (ConfigAccess == NULL) {
+          return EFI_UNSUPPORTED;
+        }
+
         HiiValue = &Statement->HiiValue;
+        TypeValue = &HiiValue->Value;
         if (HiiValue->Type == EFI_IFR_TYPE_STRING) {
           //
           // Create String in HII database for Configuration Driver to retrieve
           //
           HiiValue->Value.string = NewString ((CHAR16 *) Statement->BufferValue, Selection->FormSet->HiiHandle);
+        } else if (HiiValue->Type == EFI_IFR_TYPE_BUFFER) {
+          //
+          // For OrderedList, passing in the value buffer to Callback()
+          //
+          TypeValue = (EFI_IFR_TYPE_VALUE *) Statement->BufferValue;
         }
 
-        ConfigAccess = Selection->FormSet->ConfigAccess;
-        if (ConfigAccess == NULL) {
-          return EFI_UNSUPPORTED;
-        }
         Status = ConfigAccess->Callback (
                                  ConfigAccess,
                                  EFI_BROWSER_ACTION_CHANGING,
                                  Statement->QuestionId,
                                  HiiValue->Type,
-                                 &HiiValue->Value,
+                                 TypeValue,
                                  &ActionRequest
                                  );
 
@@ -989,6 +1085,17 @@ SetupBrowser (
           default:
             break;
           }
+        } else if (Status != EFI_UNSUPPORTED) {
+          //
+          // Callback return error status other than EFI_UNSUPPORTED
+          //
+          if (Statement->Operand == EFI_IFR_REF_OP) {
+            //
+            // Cross reference will not be taken
+            //
+            Selection->FormId = Selection->Form->FormId;
+            Selection->QuestionId = 0;
+          }
         }
       }
 
@@ -999,37 +1106,55 @@ SetupBrowser (
         //
         // Force to reparse IFR binary of target Formset
         //
+        mHiiPackageListUpdated = FALSE;
         Selection->Action = UI_ACTION_REFRESH_FORMSET;
-
-        //
-        // Uncommitted data will be lost after IFR binary re-pasing, so confirm on whether to save
-        //
-        if (gNvUpdateRequired) {
-          Status      = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-
-          YesResponse = gYesResponse[0];
-          NoResponse  = gNoResponse[0];
-
-          do {
-            CreateDialog (3, TRUE, 0, NULL, &Key, gEmptyString, gSaveChanges, gEmptyString);
-          } while
-          (
-            (Key.ScanCode != SCAN_ESC) &&
-            ((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) != (NoResponse | UPPER_LOWER_CASE_OFFSET)) &&
-            ((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) != (YesResponse | UPPER_LOWER_CASE_OFFSET))
-          );
-
-          if ((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) == (YesResponse | UPPER_LOWER_CASE_OFFSET)) {
-            //
-            // If the user hits the YesResponse key
-            //
-            SubmitForm (Selection->FormSet, Selection->Form);
-          }
-        }
       }
     }
   } while (Selection->Action == UI_ACTION_REFRESH_FORM);
 
+  //
+  // Before exit the formset, invoke ConfigAccess.Callback() with EFI_BROWSER_ACTION_FORM_CLOSE
+  //
+  if ((ConfigAccess != NULL) && (Selection->Action == UI_ACTION_EXIT)) {
+    ActionRequest = EFI_BROWSER_ACTION_REQUEST_NONE;
+    Status = ConfigAccess->Callback (
+                             ConfigAccess,
+                             EFI_BROWSER_ACTION_FORM_CLOSE,
+                             0,
+                             EFI_IFR_TYPE_UNDEFINED,
+                             NULL,
+                             &ActionRequest
+                             );
+
+    if (!EFI_ERROR (Status)) {
+      switch (ActionRequest) {
+      case EFI_BROWSER_ACTION_REQUEST_RESET:
+        gResetRequired = TRUE;
+        break;
+
+      case EFI_BROWSER_ACTION_REQUEST_SUBMIT:
+        SubmitForm (Selection->FormSet, Selection->Form);
+        break;
+
+      case EFI_BROWSER_ACTION_REQUEST_EXIT:
+        gNvUpdateRequired = FALSE;
+        break;
+
+      default:
+        break;
+      }
+    }
+  }
+
+  //
+  // Record the old formset
+  //
+  if (gOldFormSet != NULL) {
+    DestroyFormSet (gOldFormSet);
+  }
+  gOldFormSet = FormSet;
+
+Done:
   //
   // Unregister notify for Form package update
   //

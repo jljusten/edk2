@@ -83,7 +83,7 @@ GetImageReadFunction (
 
   Private = PEI_CORE_INSTANCE_FROM_PS_THIS (GetPeiServicesTablePointer ());
 
-  if (!Private->PeiMemoryInstalled) {
+  if (!Private->PeiMemoryInstalled || (Private->HobList.HandoffInformationTable->BootMode == BOOT_ON_S3_RESUME)) {
     ImageContext->ImageRead = PeiImageRead;
   } else {
     MemoryBuffer = AllocatePages (0x400 / EFI_PAGE_SIZE + 1);
@@ -145,7 +145,7 @@ LoadAndRelocatePeCoffImage (
   //
   // Allocate Memory for the image
   //
-  if (Private->PeiMemoryInstalled) {
+  if ((Private->PeiMemoryInstalled) && (Private->HobList.HandoffInformationTable->BootMode != BOOT_ON_S3_RESUME)) {
     ImageContext.ImageAddress = (EFI_PHYSICAL_ADDRESS)(UINTN) AllocatePages (EFI_SIZE_TO_PAGES ((UINT32) ImageContext.ImageSize));
     ASSERT (ImageContext.ImageAddress != 0);
     
@@ -179,7 +179,7 @@ LoadAndRelocatePeCoffImage (
   //
   // Flush the instruction cache so the image data is written before we execute it
   //
-  if (Private->PeiMemoryInstalled) {
+  if ((Private->PeiMemoryInstalled) && (Private->HobList.HandoffInformationTable->BootMode != BOOT_ON_S3_RESUME)) {
     InvalidateInstructionCacheRange ((VOID *)(UINTN)ImageContext.ImageAddress, (UINTN)ImageContext.ImageSize);
   }
 
@@ -223,7 +223,6 @@ PeiLoadImageLoadImage (
   UINT64                      ImageSize;
   EFI_PHYSICAL_ADDRESS        ImageEntryPoint;
   UINT16                      Machine;
-  PEI_CORE_INSTANCE           *Private;
   EFI_SECTION_TYPE            SearchType1;
   EFI_SECTION_TYPE            SearchType2;
 
@@ -238,6 +237,7 @@ PeiLoadImageLoadImage (
     SearchType1 = EFI_SECTION_PE32;
     SearchType2 = EFI_SECTION_TE;
   }
+
   //
   // Try to find a first exe section (if PcdPeiCoreImageLoaderSearchTeSectionFirst 
   // is true, TE will be searched first).
@@ -265,8 +265,6 @@ PeiLoadImageLoadImage (
     }
   }
   
-  Private = PEI_CORE_INSTANCE_FROM_PS_THIS (PeiServices);
-
   //
   // If memory is installed, perform the shadow operations
   //

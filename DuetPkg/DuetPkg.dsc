@@ -44,6 +44,7 @@
   UefiUsbLib|MdePkg/Library/UefiUsbLib/UefiUsbLib.inf
   HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
+  SecurityManagementLib|MdeModulePkg/Library/DxeSecurityManagementLib/DxeSecurityManagementLib.inf
   
   #
   # To save size, use NULL library for DebugLib and ReportStatusCodeLib.
@@ -133,7 +134,7 @@
   MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
 
 
-  DuetPkg/DataHubGenDxe/DataHubGen.inf
+  DuetPkg/SmbiosGenDxe/SmbiosGen.inf
   #DuetPkg/FvbRuntimeService/DUETFwh.inf
   DuetPkg/EfiLdr/EfiLdr.inf {
     <LibraryClasses>
@@ -144,7 +145,7 @@
     <LibraryClasses>
       PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
   }
-  UefiCpuPkg/CpuIoDxe/CpuIo.inf
+  UefiCpuPkg/CpuIo2Dxe/CpuIo2Dxe.inf
   DuetPkg/CpuDxe/Cpu.inf
   PcAtChipsetPkg/8259InterruptControllerDxe/8259.inf
   PcAtChipsetPkg/KbcResetDxe/Reset.inf

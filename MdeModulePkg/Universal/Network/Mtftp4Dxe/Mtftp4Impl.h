@@ -48,20 +48,18 @@ typedef struct _MTFTP4_PROTOCOL MTFTP4_PROTOCOL;
 ///
 /// Some constant value of Mtftp service.
 ///
-typedef enum {
-  MTFTP4_SERVICE_SIGNATURE   = SIGNATURE_32 ('T', 'F', 'T', 'P'),
-  MTFTP4_PROTOCOL_SIGNATURE  = SIGNATURE_32 ('t', 'f', 't', 'p'),
+#define MTFTP4_SERVICE_SIGNATURE    SIGNATURE_32 ('T', 'F', 'T', 'P')
+#define MTFTP4_PROTOCOL_SIGNATURE   SIGNATURE_32 ('t', 'f', 't', 'p')
 
-  MTFTP4_DEFAULT_SERVER_PORT = 69,
-  MTFTP4_DEFAULT_TIMEOUT     = 3,
-  MTFTP4_DEFAULT_RETRY       = 5,
-  MTFTP4_DEFAULT_BLKSIZE     = 512,
-  MTFTP4_TIME_TO_GETMAP      = 5,
+#define MTFTP4_DEFAULT_SERVER_PORT  69
+#define MTFTP4_DEFAULT_TIMEOUT      3
+#define MTFTP4_DEFAULT_RETRY        5
+#define MTFTP4_DEFAULT_BLKSIZE      512
+#define MTFTP4_TIME_TO_GETMAP       5
 
-  MTFTP4_STATE_UNCONFIGED    = 0,
-  MTFTP4_STATE_CONFIGED,
-  MTFTP4_STATE_DESTORY
-} MTFTP4_SERVICE_CONST_VALUE;
+#define MTFTP4_STATE_UNCONFIGED     0
+#define MTFTP4_STATE_CONFIGED       1
+#define MTFTP4_STATE_DESTORY        2
 
 ///
 /// Mtftp service block
@@ -85,7 +83,7 @@ struct _MTFTP4_SERVICE {
   // This UDP child is used to keep the connection between the UDP
   // and MTFTP, so MTFTP will be notified when UDP is uninstalled.
   //
-  UDP_IO_PORT                   *ConnectUdp;
+  UDP_IO                        *ConnectUdp;
 };
 
 
@@ -131,7 +129,7 @@ struct _MTFTP4_PROTOCOL {
   UINT16                        ListeningPort;
   UINT16                        ConnectedPort;
   IP4_ADDR                      Gateway;
-  UDP_IO_PORT                   *UnicastPort;
+  UDP_IO                        *UnicastPort;
 
   //
   // Timeout and retransmit status
@@ -148,7 +146,7 @@ struct _MTFTP4_PROTOCOL {
   IP4_ADDR                      McastIp;
   UINT16                        McastPort;
   BOOLEAN                       Master;
-  UDP_IO_PORT                   *McastUdpPort;
+  UDP_IO                        *McastUdpPort;
 };
 
 /**

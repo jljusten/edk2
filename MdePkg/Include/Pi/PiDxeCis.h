@@ -655,7 +655,7 @@ EFI_STATUS
 // DXE Services Table
 //
 #define DXE_SERVICES_SIGNATURE  0x565245535f455844ULL
-#define DXE_SERVICES_REVISION   ((1<<16) | (00))
+#define DXE_SERVICES_REVISION   ((1<<16) | (20))
 
 typedef struct {
   ///
@@ -694,5 +694,20 @@ typedef struct {
 } DXE_SERVICES;
 
 typedef DXE_SERVICES EFI_DXE_SERVICES;
+
+
+/**
+  Function prototype for invoking a function on an Application Processor.
+
+  This definition is used by the UEFI MP Serices Protocol, and the
+  PI SMM System Table.
+
+  @param[in,out] Buffer  Pointer to private data buffer.
+**/
+typedef
+VOID
+(EFIAPI *EFI_AP_PROCEDURE)(
+  IN OUT VOID  *Buffer
+  );
 
 #endif

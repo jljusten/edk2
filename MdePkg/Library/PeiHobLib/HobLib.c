@@ -1,7 +1,7 @@
 /** @file
   Provide Hob Library functions for Pei phase.
 
-Copyright (c) 2007 - 2008, Intel Corporation<BR>
+Copyright (c) 2007 - 2009, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -489,7 +489,12 @@ BuildCvHob (
   IN UINT64                      Length
   )
 {
-  ASSERT (FALSE);
+  EFI_HOB_UEFI_CAPSULE  *Hob;
+
+  Hob = InternalPeiCreateHob (EFI_HOB_TYPE_UEFI_CAPSULE, sizeof (EFI_HOB_UEFI_CAPSULE));
+
+  Hob->BaseAddress  = BaseAddress;
+  Hob->Length       = Length;
 }
 
 /**

@@ -1,5 +1,5 @@
 /** @file
-Private MACRO, structure and function definitions for Setup Browser module. 
+Private MACRO, structure and function definitions for Setup Browser module.
 
 Copyright (c) 2007 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
@@ -28,6 +28,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/HiiConfigRouting.h>
 #include <Protocol/HiiDatabase.h>
 #include <Protocol/HiiString.h>
+#include <Protocol/UserManager.h>
 
 #include <Guid/MdeModuleHii.h>
 #include <Guid/HiiPlatformSetupFormset.h>
@@ -71,10 +72,8 @@ extern UINT8  SetupBrowserStrings[];
 // Definition for function key setting
 //
 #define NONE_FUNCTION_KEY_SETTING     0
-#define DEFAULT_FUNCTION_KEY_SETTING  (FUNCTION_ONE | FUNCTION_TWO | FUNCTION_NINE | FUNCTION_TEN)
+#define DEFAULT_FUNCTION_KEY_SETTING  (FUNCTION_NINE | FUNCTION_TEN)
 
-#define FUNCTION_ONE                  (1 << 0)
-#define FUNCTION_TWO                  (1 << 1)
 #define FUNCTION_NINE                 (1 << 2)
 #define FUNCTION_TEN                  (1 << 3)
 
@@ -347,6 +346,7 @@ typedef struct {
 
   EFI_HII_VALUE         HiiValue;         // Edit copy for checkbox, numberic, oneof
   UINT8                 *BufferValue;     // Edit copy for string, password, orderedlist
+  UINT8                 ValueType;        // Data type for orderedlist value array
 
   //
   // OpCode specific members
@@ -402,6 +402,7 @@ typedef struct {
 
   LIST_ENTRY        ExpressionListHead;   // List of Expressions (FORM_EXPRESSION)
   LIST_ENTRY        StatementListHead;    // List of Statements and Questions (FORM_BROWSER_STATEMENT)
+  FORM_EXPRESSION   *SuppressExpression;  // nesting inside of SuppressIf
 } FORM_BROWSER_FORM;
 
 #define FORM_BROWSER_FORM_FROM_LINK(a)  CR (a, FORM_BROWSER_FORM, Link, FORM_BROWSER_FORM_SIGNATURE)
@@ -442,8 +443,68 @@ typedef struct {
   LIST_ENTRY                      StorageListHead;      // Storage list (FORMSET_STORAGE)
   LIST_ENTRY                      DefaultStoreListHead; // DefaultStore list (FORMSET_DEFAULTSTORE)
   LIST_ENTRY                      FormListHead;         // Form list (FORM_BROWSER_FORM)
+  LIST_ENTRY                      ExpressionListHead;   // List of Expressions (FORM_EXPRESSION)
 } FORM_BROWSER_FORMSET;
 
+#define BROWSER_CONTEXT_SIGNATURE  SIGNATURE_32 ('B', 'C', 'T', 'X')
+
+typedef struct {
+  UINTN                 Signature;
+  LIST_ENTRY            Link;
+
+  //
+  // Globals defined in Setup.c
+  //
+  BANNER_DATA           *BannerData;
+  UINTN                 ClassOfVfr;
+  UINTN                 FunctionKeySetting;
+  BOOLEAN               ResetRequired;
+  BOOLEAN               NvUpdateRequired;
+  UINT16                Direction;
+  EFI_SCREEN_DESCRIPTOR ScreenDimensions;
+  CHAR16                *FunctionNineString;
+  CHAR16                *FunctionTenString;
+  CHAR16                *EnterString;
+  CHAR16                *EnterCommitString;
+  CHAR16                *EnterEscapeString;
+  CHAR16                *EscapeString;
+  CHAR16                *SaveFailed;
+  CHAR16                *MoveHighlight;
+  CHAR16                *MakeSelection;
+  CHAR16                *DecNumericInput;
+  CHAR16                *HexNumericInput;
+  CHAR16                *ToggleCheckBox;
+  CHAR16                *PromptForData;
+  CHAR16                *PromptForPassword;
+  CHAR16                *PromptForNewPassword;
+  CHAR16                *ConfirmPassword;
+  CHAR16                *ConfirmError;
+  CHAR16                *PassowordInvalid;
+  CHAR16                *PressEnter;
+  CHAR16                *EmptyString;
+  CHAR16                *AreYouSure;
+  CHAR16                *YesResponse;
+  CHAR16                *NoResponse;
+  CHAR16                *MiniString;
+  CHAR16                *PlusString;
+  CHAR16                *MinusString;
+  CHAR16                *AdjustNumber;
+  CHAR16                *SaveChanges;
+  CHAR16                *OptionMismatch;
+  CHAR16                *FormSuppress;
+  CHAR16                PromptBlockWidth;
+  CHAR16                OptionBlockWidth;
+  CHAR16                HelpBlockWidth;
+  FORM_BROWSER_FORMSET  *OldFormSet;
+
+  //
+  // Globals defined in Ui.c
+  //
+  LIST_ENTRY           MenuOption;
+  VOID                 *MenuRefreshHead;
+} BROWSER_CONTEXT;
+
+#define BROWSER_CONTEXT_FROM_LINK(a)  CR (a, BROWSER_CONTEXT, Link, BROWSER_CONTEXT_SIGNATURE)
 
 extern EFI_HII_DATABASE_PROTOCOL         *mHiiDatabase;
 extern EFI_HII_STRING_PROTOCOL           *mHiiString;
@@ -458,14 +519,12 @@ extern BOOLEAN               gNvUpdateRequired;
 extern EFI_HII_HANDLE        gHiiHandle;
 extern UINT16                gDirection;
 extern EFI_SCREEN_DESCRIPTOR gScreenDimensions;
-extern BOOLEAN               gUpArrow;
-extern BOOLEAN               gDownArrow;
+
+extern FORM_BROWSER_FORMSET  *gOldFormSet;
 
 //
 // Browser Global Strings
 //
-extern CHAR16            *gFunctionOneString;
-extern CHAR16            *gFunctionTwoString;
 extern CHAR16            *gFunctionNineString;
 extern CHAR16            *gFunctionTenString;
 extern CHAR16            *gEnterString;
@@ -495,6 +554,7 @@ extern CHAR16            *gMinusString;
 extern CHAR16            *gAdjustNumber;
 extern CHAR16            *gSaveChanges;
 extern CHAR16            *gOptionMismatch;
+extern CHAR16            *gFormSuppress;
 
 extern CHAR16            gPromptBlockWidth;
 extern CHAR16            gOptionBlockWidth;
@@ -503,6 +563,7 @@ extern CHAR16            gHelpBlockWidth;
 extern EFI_GUID          gZeroGuid;
 extern EFI_GUID          gTianoHiiIfrGuid;
 
+#include "Ui.h"
 //
 // Global Procedure Defines
 //
@@ -880,6 +941,9 @@ ExtractFormDefault (
 /**
   Initialize Question's Edit copy from Storage.
 
+  @param  Selection              Selection contains the information about 
+                                 the Selection, form and formset to be displayed.
+                                 Selection action may be updated in retrieve callback.
   @param  FormSet                FormSet data structure.
   @param  Form                   Form data structure.
 
@@ -888,8 +952,26 @@ ExtractFormDefault (
 **/
 EFI_STATUS
 LoadFormConfig (
-  IN FORM_BROWSER_FORMSET             *FormSet,
-  IN FORM_BROWSER_FORM                *Form
+  IN OUT UI_MENU_SELECTION    *Selection,
+  IN FORM_BROWSER_FORMSET     *FormSet,
+  IN FORM_BROWSER_FORM        *Form
+  );
+
+/**
+  Initialize Question's Edit copy from Storage for the whole Formset.
+
+  @param  Selection              Selection contains the information about 
+                                 the Selection, form and formset to be displayed.
+                                 Selection action may be updated in retrieve callback.
+  @param  FormSet                FormSet data structure.
+
+  @retval EFI_SUCCESS            The function completed successfully.
+
+**/
+EFI_STATUS
+LoadFormSetConfig (
+  IN OUT UI_MENU_SELECTION    *Selection,
+  IN     FORM_BROWSER_FORMSET *FormSet
   );
 
 /**
@@ -965,6 +1047,26 @@ GetIfrBinaryData (
   );
 
 /**
+  Save globals used by previous call to SendForm(). SendForm() may be called from 
+  HiiConfigAccess.Callback(), this will cause SendForm() be reentried.
+  So, save globals of previous call to SendForm() and restore them upon exit.
+
+**/
+VOID
+SaveBrowserContext (
+  VOID
+  );
+
+/**
+  Restore globals used by previous call to SendForm().
+
+**/
+VOID
+RestoreBrowserContext (
+  VOID
+  );
+
+/**
   This is the routine which an external caller uses to direct the browser
   where to obtain it's information.
 
@@ -983,7 +1085,7 @@ GetIfrBinaryData (
                          ScreenDimenions - This allows the browser to be called so that it occupies a
                          portion of the physical screen instead of dynamically determining the screen dimensions.
                          ActionRequest   - Points to the action recommended by the form.
-  @param ScreenDimensions Points to recommended form dimensions, including any non-content area, in 
+  @param ScreenDimensions Points to recommended form dimensions, including any non-content area, in
                           characters.
   @param ActionRequest       Points to the action recommended by the form.
 

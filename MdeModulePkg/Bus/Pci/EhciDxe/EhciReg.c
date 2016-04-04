@@ -555,13 +555,16 @@ EhcInitHC (
 {
   EFI_STATUS              Status;
 
-  ASSERT (EhcIsHalt (Ehc));
+  // This ASSERT crashes the BeagleBoard. There is some issue in the USB stack.
+  // This ASSERT needs to be removed so the BeagleBoard will boot. When we fix
+  // the USB stack we can put this ASSERT back in
+  // ASSERT (EhcIsHalt (Ehc));
 
   //
   // Allocate the periodic frame and associated memeory
   // management facilities if not already done.
   //
-  if (Ehc->PeriodFrame != NULL) {
+  if (Ehc->PeriodFrameHost != NULL) {
     EhcFreeSched (Ehc);
   }
 

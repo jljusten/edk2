@@ -25,8 +25,13 @@
 #
 ################################################################################
 [FD.Fv_Recovery]
-BaseAddress   = 0x0|gEfiUnixPkgTokenSpaceGuid.PcdUnixFdBaseAddress  #The base address of the FLASH Device.
-Size          = 0x002a0000                                           #The size in bytes of the FLASH Device
+#
+# In OS X PEIMs are really XIP, so we need to make this address match the malloced 
+# buffer for the FD (0x41000000). If this address does not match the FV will get
+# relocated in place (works, but not a great idea).
+#
+BaseAddress   = 0x41000000|gEfiUnixPkgTokenSpaceGuid.PcdUnixFdBaseAddress   #The base address of the FLASH Device.
+Size          = 0x002a0000|gEfiUnixPkgTokenSpaceGuid.PcdUnixFirmwareFdSize  #The size in bytes of the FLASH Device
 ErasePolarity = 1
 BlockSize     = 0x10000
 NumBlocks     = 0x2a
@@ -204,12 +209,13 @@ INF  MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
 INF  MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
 INF  MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
 INF  MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
-INF  IntelFrameworkModulePkg/Bus/Pci/PciBusDxe/PciBusDxe.inf
+INF  MdeModulePkg/Bus/Pci/PciBusDxe/PciBusDxe.inf
 INF  MdeModulePkg/Bus/Scsi/ScsiBusDxe/ScsiBusDxe.inf
 INF  MdeModulePkg/Bus/Scsi/ScsiDiskDxe/ScsiDiskDxe.inf
 INF  IntelFrameworkModulePkg/Bus/Pci/IdeBusDxe/IdeBusDxe.inf
 INF  UnixPkg/UnixBusDriverDxe/UnixBusDriver.inf
  
+INF  MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf
 INF  UnixPkg/UnixBlockIoDxe/UnixBlockIo.inf
 INF  UnixPkg/UnixSerialIoDxe/UnixSerialIo.inf
 INF  UnixPkg/UnixUgaDxe/UnixUga.inf
@@ -302,7 +308,7 @@ FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
 
 [Rule.Common.PEI_CORE]
   FILE PEI_CORE = $(NAMED_GUID) {
-    PE32     PE32           |.efi
+    PE32     PE32    Align=32       |.efi
     UI       STRING ="$(MODULE_NAME)" Optional         
     VERSION  STRING ="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)    
   }
@@ -310,7 +316,7 @@ FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
 [Rule.Common.PEIM]
   FILE PEIM = $(NAMED_GUID) {
      PEI_DEPEX PEI_DEPEX Optional        |.depex
-     PE32      PE32                      |.efi
+     PE32      PE32   Align=32       |.efi
      UI       STRING="$(MODULE_NAME)" Optional         
      VERSION  STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)   
   }

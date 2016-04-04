@@ -1,8 +1,8 @@
 /** @file
-  Ihis library is only intended to be used by UEFI network stack modules.
-  It provides the IpIo layer on the EFI IP4 Protocol.
+  This library is only intended to be used by UEFI network stack modules.
+  It provides the combined IpIo layer on the EFI IP4 Protocol and EFI IP6 protocol.
 
-Copyright (c) 2005 - 2008, Intel Corporation.<BR>
+Copyright (c) 2005 - 2009, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -17,6 +17,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define _IP_IO_H_
 
 #include <Protocol/Ip4.h>
+#include <Protocol/Ip6.h>
 
 #include <Library/NetLib.h>
 
@@ -77,41 +78,94 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define NET_PROTO_HDR(Buf, Type)  ((Type *) ((Buf)->BlockOp[0].Head))
 
   
-extern EFI_IP4_CONFIG_DATA  mIpIoDefaultIpConfigData;
+extern EFI_IP4_CONFIG_DATA  mIp4IoDefaultIpConfigData;
+extern EFI_IP6_CONFIG_DATA  mIp6IoDefaultIpConfigData;
+
 
 ///
 /// This error will be delivered to the
 /// listening transportation layer protocol
 /// that consumes IpIO.
 ///
-typedef enum {
-  ICMP_ERR_UNREACH_NET      = 0,
-  ICMP_ERR_UNREACH_HOST,
-  ICMP_ERR_UNREACH_PROTOCOL,
-  ICMP_ERR_UNREACH_PORT,
-  ICMP_ERR_MSGSIZE,
-  ICMP_ERR_UNREACH_SRCFAIL,
-  ICMP_ERR_TIMXCEED_INTRANS,
-  ICMP_ERR_TIMXCEED_REASS,
-  ICMP_ERR_QUENCH,
-  ICMP_ERR_PARAMPROB
-} ICMP_ERROR;
+
+#define  ICMP_ERR_UNREACH_NET           0
+#define  ICMP_ERR_UNREACH_HOST          1
+#define  ICMP_ERR_UNREACH_PROTOCOL      2
+#define  ICMP_ERR_UNREACH_PORT          3
+#define  ICMP_ERR_MSGSIZE               4
+#define  ICMP_ERR_UNREACH_SRCFAIL       5
+#define  ICMP_ERR_TIMXCEED_INTRANS      6
+#define  ICMP_ERR_TIMXCEED_REASS        7
+#define  ICMP_ERR_QUENCH                8
+#define  ICMP_ERR_PARAMPROB             9
+
+#define  ICMP6_ERR_UNREACH_NET          0
+#define  ICMP6_ERR_UNREACH_HOST         1
+#define  ICMP6_ERR_UNREACH_PROTOCOL     2
+#define  ICMP6_ERR_UNREACH_PORT         3
+#define  ICMP6_ERR_PACKAGE_TOOBIG       4
+#define  ICMP6_ERR_TIMXCEED_HOPLIMIT    5
+#define  ICMP6_ERR_TIMXCEED_REASS       6
+#define  ICMP6_ERR_PARAMPROB_HEADER     7
+#define  ICMP6_ERR_PARAMPROB_NEXHEADER  8
+#define  ICMP6_ERR_PARAMPROB_IPV6OPTION 9
 
 ///
 /// The helper struct for IpIoGetIcmpErrStatus(). It is for internal use only.
 ///
 typedef struct {
-  BOOLEAN     IsHard;
-  BOOLEAN     Notify;
+  BOOLEAN                   IsHard;
+  BOOLEAN                   Notify;
 } ICMP_ERROR_INFO;
+
+typedef union {
+  EFI_IP4_COMPLETION_TOKEN  Ip4Token;
+  EFI_IP6_COMPLETION_TOKEN  Ip6Token;
+} IP_IO_IP_COMPLETION_TOKEN;
+
+typedef union {
+  EFI_IP4_TRANSMIT_DATA     Ip4TxData;
+  EFI_IP6_TRANSMIT_DATA     Ip6TxData;
+} IP_IO_IP_TX_DATA;
+
+typedef union {
+  EFI_IP4_RECEIVE_DATA      Ip4RxData;
+  EFI_IP6_RECEIVE_DATA      Ip6RxData;
+} IP_IO_IP_RX_DATA;
+
+typedef union {
+  EFI_IP4_OVERRIDE_DATA     Ip4OverrideData;
+  EFI_IP6_OVERRIDE_DATA     Ip6OverrideData;
+} IP_IO_OVERRIDE;
+
+typedef union {
+  EFI_IP4_CONFIG_DATA       Ip4CfgData;
+  EFI_IP6_CONFIG_DATA       Ip6CfgData;
+} IP_IO_IP_CONFIG_DATA;
+
+typedef union {
+  EFI_IP4_HEADER            *Ip4Hdr;
+  EFI_IP6_HEADER            *Ip6Hdr;
+} IP_IO_IP_HEADER;
+
+typedef union {
+  IP4_ADDR                  SubnetMask;
+  UINT8                     PrefixLength;
+} IP_IO_IP_MASK;
 
 ///
 /// The IP session for an IP receive packet.
 ///
 typedef struct _EFI_NET_SESSION_DATA {
-  IP4_ADDR        Source;     ///< Source IP of the received packet
-  IP4_ADDR        Dest;       ///< Destination IP of the received packet
-  EFI_IP4_HEADER  *IpHdr;     ///< IP4 header of the received packet
+  EFI_IP_ADDRESS        Source;     ///< Source IP of the received packet
+  EFI_IP_ADDRESS        Dest;       ///< Destination IP of the received packet
+  IP_IO_IP_HEADER       IpHdr;      ///< IP header of the received packet
+  UINT32                IpHdrLen;   ///< IP header length of the received packet. 
+                                    ///< For IPv6, it includes the IP6 header 
+                                    ///< length and extension header length. For
+                                    ///< IPv4, it includes the IP4 header length
+                                    ///< and options length.
+  UINT8                 IpVersion;  ///< The IP version of the received packet
 } EFI_NET_SESSION_DATA;
 
 /**
@@ -129,7 +183,7 @@ typedef
 VOID
 (*PKT_RCVD_NOTIFY) (
   IN EFI_STATUS           Status, 
-  IN ICMP_ERROR           IcmpErr,
+  IN UINT8                IcmpErr,
   IN EFI_NET_SESSION_DATA *NetSession,
   IN NET_BUF              *Pkt,
   IN VOID                 *Context
@@ -141,7 +195,7 @@ VOID
   @param[in] Status        Result of the sending
   @param[in] Context       The data provided by user for the received packet when
                            the callback is registered in IP_IO_OPEN_DATA::SndContext.
-  @param[in] Sender        A pointer to EFI_IP4_PROTOCOL for sender
+  @param[in] Sender        A pointer to EFI_IP4_PROTOCOL or EFI_IP6_PROTOCOL
   @param[in] NotifyData    Context data specified when calling IpIoSend()
   
 **/
@@ -155,8 +209,8 @@ VOID
   );
 
 ///
-/// This data structure wraps Ip4 instances. The IpIo Library uses it for all
-/// Ip4 operations.
+/// This data structure wraps Ip4/Ip6 instances. The IpIo Library uses it for all
+/// Ip4/Ip6 operations.
 ///
 typedef struct _IP_IO {
   ///
@@ -175,7 +229,7 @@ typedef struct _IP_IO {
   //
   // The IP instance consumed by this IP_IO
   //
-  EFI_IP4_PROTOCOL              *Ip;
+  VOID                          *Ip;
   BOOLEAN                       IsConfigured;
 
   ///
@@ -186,7 +240,7 @@ typedef struct _IP_IO {
   ///
   /// Token and event used to get data from IP
   ///
-  EFI_IP4_COMPLETION_TOKEN      RcvToken;
+  IP_IO_IP_COMPLETION_TOKEN     RcvToken; 
 
   ///
   /// List entry used to link the token passed to IP_IO
@@ -200,6 +254,7 @@ typedef struct _IP_IO {
   VOID                          *SndContext;     ///< See IP_IO_OPEN_DATA::SndContext
   PKT_RCVD_NOTIFY               PktRcvdNotify;   ///< See IP_IO_OPEN_DATA::PktRcvdNotify
   PKT_SENT_NOTIFY               PktSentNotify;   ///< See IP_IO_OPEN_DATA::PktSentNotify
+  UINT8                         IpVersion;
 } IP_IO;
 
 ///
@@ -207,11 +262,11 @@ typedef struct _IP_IO {
 /// It is used by IpIoOpen().
 ///
 typedef struct _IP_IO_OPEN_DATA {
-  EFI_IP4_CONFIG_DATA IpConfigData;    ///< Configuration of the IP instance
-  VOID                *RcvdContext;    ///< Context data used by receive callback
-  VOID                *SndContext;     ///< Context data used by send callback
-  PKT_RCVD_NOTIFY     PktRcvdNotify;   ///< Receive callback
-  PKT_SENT_NOTIFY     PktSentNotify;   ///< Send callback
+  IP_IO_IP_CONFIG_DATA IpConfigData;    ///< Configuration of the IP instance
+  VOID                 *RcvdContext;    ///< Context data used by receive callback
+  VOID                 *SndContext;     ///< Context data used by send callback
+  PKT_RCVD_NOTIFY      PktRcvdNotify;   ///< Receive callback
+  PKT_SENT_NOTIFY      PktSentNotify;   ///< Send callback
 } IP_IO_OPEN_DATA;
 
 ///
@@ -225,37 +280,38 @@ typedef struct _IP_IO_SEND_ENTRY {
   IP_IO                     *IpIo;
   VOID                      *Context;
   VOID                      *NotifyData;
-  EFI_IP4_PROTOCOL          *Ip;
+  VOID                      *Ip;
   NET_BUF                   *Pkt;
-  EFI_IP4_COMPLETION_TOKEN  *SndToken;
+  IP_IO_IP_COMPLETION_TOKEN SndToken;
 } IP_IO_SEND_ENTRY;
-
-typedef EFI_IP4_OVERRIDE_DATA IP_IO_OVERRIDE;
 
 ///
 /// The IP_IO_IP_INFO is used in IpIoSend() to override the default IP instance
 /// in IP_IO.
 ///
 typedef struct _IP_IO_IP_INFO {
-  IP4_ADDR                  Addr;
-  IP4_ADDR                  SubnetMask;
+  EFI_IP_ADDRESS            Addr;
+  IP_IO_IP_MASK             PreMask;
   LIST_ENTRY                Entry;
   EFI_HANDLE                ChildHandle;
-  EFI_IP4_PROTOCOL          *Ip;
-  EFI_IP4_COMPLETION_TOKEN  DummyRcvToken;
+  VOID                      *Ip;
+  IP_IO_IP_COMPLETION_TOKEN DummyRcvToken;
   INTN                      RefCnt;
+  UINT8                     IpVersion;
 } IP_IO_IP_INFO;
 
 /**
   Create a new IP_IO instance.
   
-  This function uses IP4 service binding protocol in Controller to create an IP4
-  child (aka IP4 instance).
+  This function uses IP4/IP6 service binding protocol in Controller to create
+  an IP4/IP6 child (aka IP4/IP6 instance).
 
   @param[in]  Image             The image handle of the driver or application that
                                 consumes IP_IO.
-  @param[in]  Controller        The controller handle that has IP4 service binding
-                                protocol installed.
+  @param[in]  Controller        The controller handle that has IP4 or IP6 service
+                                binding protocol installed.
+  @param[in]  IpVersion         The version of the IP protocol to use, either
+                                IPv4 or IPv6.                            
 
   @return Pointer to a newly created IP_IO instance, or NULL if failed.
 
@@ -264,7 +320,8 @@ IP_IO *
 EFIAPI
 IpIoCreate (
   IN EFI_HANDLE Image,
-  IN EFI_HANDLE Controller
+  IN EFI_HANDLE Controller,
+  IN UINT8      IpVersion
   );
 
 /**
@@ -361,7 +418,7 @@ IpIoSend (
   IN     IP_IO_IP_INFO  *Sender        OPTIONAL,
   IN     VOID           *Context       OPTIONAL,
   IN     VOID           *NotifyData    OPTIONAL,
-  IN     IP4_ADDR       Dest,
+  IN     EFI_IP_ADDRESS *Dest,
   IN     IP_IO_OVERRIDE *OverrideData  OPTIONAL
   );
 
@@ -399,15 +456,15 @@ IpIoAddIp (
   );
 
 /**
-  Configure the IP instance of this IpInfo and start the receiving if Ip4ConfigData
+  Configure the IP instance of this IpInfo and start the receiving if IpConfigData
   is not NULL.
 
   @param[in, out]  IpInfo          Pointer to the IP_IO_IP_INFO instance.
-  @param[in, out]  Ip4ConfigData   The IP4 configure data used to configure the IP
-                                   instance. If NULL, the IP instance is reset. If
-                                   UseDefaultAddress is set to TRUE, and the configure
+  @param[in, out]  IpConfigData    The IP4 or IP6 configure data used to configure 
+                                   the IP instance. If NULL, the IP instance is reset.
+                                   If UseDefaultAddress is set to TRUE, and the configure
                                    operation succeeds, the default address information
-                                   is written back in this Ip4ConfigData.
+                                   is written back in this IpConfigData.
 
   @retval          EFI_SUCCESS     The IP instance of this IpInfo is configured successfully,
                                    or there is no need to reconfigure it.
@@ -418,7 +475,7 @@ EFI_STATUS
 EFIAPI
 IpIoConfigIp (
   IN OUT IP_IO_IP_INFO        *IpInfo,
-  IN OUT EFI_IP4_CONFIG_DATA  *Ip4ConfigData OPTIONAL
+  IN OUT VOID                 *IpConfigData OPTIONAL
   );
 
 /**
@@ -448,6 +505,8 @@ IpIoRemoveIp (
   specified Src. The IpIo was added previously by IpIoAddIp().
 
   @param[in, out]  IpIo              Pointer to the pointer of the IP_IO instance.
+  @param[in]       IpVersion         The version of the IP protocol to use, either
+                                     IPv4 or IPv6.
   @param[in]       Src               The local IP address.
 
   @return Pointer to the IP protocol can be used for sending purpose and its local
@@ -457,8 +516,9 @@ IpIoRemoveIp (
 IP_IO_IP_INFO *
 EFIAPI
 IpIoFindSender (
-  IN OUT IP_IO     **IpIo,
-  IN     IP4_ADDR  Src
+  IN OUT IP_IO           **IpIo,
+  IN     UINT8           IpVersion,
+  IN     EFI_IP_ADDRESS  *Src
   );
 
 /**
@@ -468,6 +528,9 @@ IpIoFindSender (
   are not NULL, this routine will fill them.
 
   @param[in]   IcmpError             IcmpError Type.
+  @param[in]   IpVersion             The version of the IP protocol to use,
+                                     either IPv4 or IPv6.
+  
   @param[out]  IsHard                Whether it is a hard error.
   @param[out]  Notify                Whether it need to notify SockError.
 
@@ -477,9 +540,42 @@ IpIoFindSender (
 EFI_STATUS
 EFIAPI
 IpIoGetIcmpErrStatus (
-  IN  ICMP_ERROR  IcmpError,
+  IN  UINT8       IcmpError,
+  IN  UINT8       IpVersion,
   OUT BOOLEAN     *IsHard  OPTIONAL,
   OUT BOOLEAN     *Notify  OPTIONAL
   );
 
+/**
+  Refresh the remote peer's Neighbor Cache entries.
+
+  This function is called when the caller needs the IpIo to refresh the existing
+  IPv6 neighbor cache entries since the neighbor is considered reachable by the 
+  node has recently received a confirmation that packets sent recently to the 
+  neighbor were received by its IP layer. 
+
+  @param[in]   IpIo                  Pointer to an IP_IO instance
+  @param[in]   Neighbor              The IP address of the neighbor
+  @param[in]   Timeout               Time in 100-ns units that this entry will
+                                     remain in the neighbor cache. A value of 
+                                     zero means that the entry is permanent. 
+                                     A value of non-zero means that the entry is 
+                                     dynamic and will be deleted after Timeout.
+
+  @retval      EFI_SUCCESS           The operation is completed successfully.
+  @retval      EFI_NOT_STARTED       The IpIo is not configured.
+  @retval      EFI_INVALID_PARAMETER Neighbor Address is invalid.
+  @retval      EFI_NOT_FOUND         The neighbor cache entry is not in the 
+                                     neighbor table.  
+  @retval      EFI_OUT_OF_RESOURCES  Failed due to resource limit.
+
+**/
+EFI_STATUS
+IpIoRefreshNeighbor (
+  IN IP_IO           *IpIo,
+  IN EFI_IP_ADDRESS  *Neighbor,
+  IN UINT32          Timeout  
+  );
+
 #endif
+

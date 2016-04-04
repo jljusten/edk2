@@ -572,7 +572,9 @@ PeCoffLoaderRelocateImage (
       // Use PE32 offset
       //
       Adjust = (UINT64)BaseAddress - Hdr.Pe32->OptionalHeader.ImageBase;
-      Hdr.Pe32->OptionalHeader.ImageBase = (UINT32)BaseAddress;
+      if (Adjust != 0) {
+        Hdr.Pe32->OptionalHeader.ImageBase = (UINT32)BaseAddress;
+      }
 
       NumberOfRvaAndSizes = Hdr.Pe32->OptionalHeader.NumberOfRvaAndSizes;
       RelocDir  = &Hdr.Pe32->OptionalHeader.DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC];
@@ -581,7 +583,9 @@ PeCoffLoaderRelocateImage (
       // Use PE32+ offset
       //
       Adjust = (UINT64) BaseAddress - Hdr.Pe32Plus->OptionalHeader.ImageBase;
-      Hdr.Pe32Plus->OptionalHeader.ImageBase = (UINT64)BaseAddress;
+      if (Adjust != 0) {
+        Hdr.Pe32Plus->OptionalHeader.ImageBase = (UINT64)BaseAddress;
+      }
 
       NumberOfRvaAndSizes = Hdr.Pe32Plus->OptionalHeader.NumberOfRvaAndSizes;
       RelocDir  = &Hdr.Pe32Plus->OptionalHeader.DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC];
@@ -612,7 +616,9 @@ PeCoffLoaderRelocateImage (
   } else {
     Hdr.Te             = (EFI_TE_IMAGE_HEADER *)(UINTN)(ImageContext->ImageAddress);
     Adjust             = (UINT64) (BaseAddress - Hdr.Te->StrippedSize + sizeof (EFI_TE_IMAGE_HEADER) - Hdr.Te->ImageBase);
-    Hdr.Te->ImageBase  = (UINT64) (BaseAddress - Hdr.Te->StrippedSize + sizeof (EFI_TE_IMAGE_HEADER));
+    if (Adjust != 0) {
+      Hdr.Te->ImageBase  = (UINT64) (BaseAddress - Hdr.Te->StrippedSize + sizeof (EFI_TE_IMAGE_HEADER));
+    }
 
     //
     // Find the relocation block
@@ -635,115 +641,120 @@ PeCoffLoaderRelocateImage (
   }
 
   //
-  // Run the relocation information and apply the fixups
+  // If Adjust is not zero, then apply fix ups to the image
   //
-  FixupData = ImageContext->FixupData;
-  while (RelocBase < RelocBaseEnd) {
-
-    Reloc     = (UINT16 *) ((CHAR8 *) RelocBase + sizeof (EFI_IMAGE_BASE_RELOCATION));
-    RelocEnd  = (UINT16 *) ((CHAR8 *) RelocBase + RelocBase->SizeOfBlock);
-    
+  if (Adjust != 0) {
     //
-    // Make sure RelocEnd is in the Image range.
+    // Run the relocation information and apply the fixups
     //
-    if ((CHAR8 *) RelocEnd < (CHAR8 *)((UINTN) ImageContext->ImageAddress) ||
-        (CHAR8 *) RelocEnd > (CHAR8 *)((UINTN)ImageContext->ImageAddress + (UINTN)ImageContext->ImageSize)) {
-      ImageContext->ImageError = IMAGE_ERROR_FAILED_RELOCATION;
-      return RETURN_LOAD_ERROR;
-    }
+    FixupData = ImageContext->FixupData;
+    while (RelocBase < RelocBaseEnd) {
 
-    if (!(ImageContext->IsTeImage)) {
-      FixupBase = PeCoffLoaderImageAddress (ImageContext, RelocBase->VirtualAddress);
-      if (FixupBase == NULL) {
+      Reloc     = (UINT16 *) ((CHAR8 *) RelocBase + sizeof (EFI_IMAGE_BASE_RELOCATION));
+      RelocEnd  = (UINT16 *) ((CHAR8 *) RelocBase + RelocBase->SizeOfBlock);
+      
+      //
+      // Make sure RelocEnd is in the Image range.
+      //
+      if ((CHAR8 *) RelocEnd < (CHAR8 *)((UINTN) ImageContext->ImageAddress) ||
+          (CHAR8 *) RelocEnd > (CHAR8 *)((UINTN)ImageContext->ImageAddress + (UINTN)ImageContext->ImageSize)) {
+        ImageContext->ImageError = IMAGE_ERROR_FAILED_RELOCATION;
         return RETURN_LOAD_ERROR;
       }
-    } else {
-      FixupBase = (CHAR8 *)(UINTN)(ImageContext->ImageAddress +
-                    RelocBase->VirtualAddress +
-                    sizeof(EFI_TE_IMAGE_HEADER) -
-                    Hdr.Te->StrippedSize
-                    );
-    }    
 
-    //
-    // Run this relocation record
-    //
-    while (Reloc < RelocEnd) {
-
-      Fixup = FixupBase + (*Reloc & 0xFFF);
-      switch ((*Reloc) >> 12) {
-      case EFI_IMAGE_REL_BASED_ABSOLUTE:
-        break;
-
-      case EFI_IMAGE_REL_BASED_HIGH:
-        Fixup16   = (UINT16 *) Fixup;
-        *Fixup16 = (UINT16) (*Fixup16 + ((UINT16) ((UINT32) Adjust >> 16)));
-        if (FixupData != NULL) {
-          *(UINT16 *) FixupData = *Fixup16;
-          FixupData             = FixupData + sizeof (UINT16);
+      if (!(ImageContext->IsTeImage)) {
+        FixupBase = PeCoffLoaderImageAddress (ImageContext, RelocBase->VirtualAddress);
+        if (FixupBase == NULL) {
+          return RETURN_LOAD_ERROR;
         }
-        break;
+      } else {
+        FixupBase = (CHAR8 *)(UINTN)(ImageContext->ImageAddress +
+                      RelocBase->VirtualAddress +
+                      sizeof(EFI_TE_IMAGE_HEADER) -
+                      Hdr.Te->StrippedSize
+                      );
+      }    
 
-      case EFI_IMAGE_REL_BASED_LOW:
-        Fixup16   = (UINT16 *) Fixup;
-        *Fixup16  = (UINT16) (*Fixup16 + (UINT16) Adjust);
-        if (FixupData != NULL) {
-          *(UINT16 *) FixupData = *Fixup16;
-          FixupData             = FixupData + sizeof (UINT16);
+      //
+      // Run this relocation record
+      //
+      while (Reloc < RelocEnd) {
+
+        Fixup = FixupBase + (*Reloc & 0xFFF);
+        switch ((*Reloc) >> 12) {
+        case EFI_IMAGE_REL_BASED_ABSOLUTE:
+          break;
+
+        case EFI_IMAGE_REL_BASED_HIGH:
+          Fixup16   = (UINT16 *) Fixup;
+          *Fixup16 = (UINT16) (*Fixup16 + ((UINT16) ((UINT32) Adjust >> 16)));
+          if (FixupData != NULL) {
+            *(UINT16 *) FixupData = *Fixup16;
+            FixupData             = FixupData + sizeof (UINT16);
+          }
+          break;
+
+        case EFI_IMAGE_REL_BASED_LOW:
+          Fixup16   = (UINT16 *) Fixup;
+          *Fixup16  = (UINT16) (*Fixup16 + (UINT16) Adjust);
+          if (FixupData != NULL) {
+            *(UINT16 *) FixupData = *Fixup16;
+            FixupData             = FixupData + sizeof (UINT16);
+          }
+          break;
+
+        case EFI_IMAGE_REL_BASED_HIGHLOW:
+          Fixup32   = (UINT32 *) Fixup;
+          *Fixup32  = *Fixup32 + (UINT32) Adjust;
+          if (FixupData != NULL) {
+            FixupData             = ALIGN_POINTER (FixupData, sizeof (UINT32));
+            *(UINT32 *)FixupData  = *Fixup32;
+            FixupData             = FixupData + sizeof (UINT32);
+          }
+          break;
+
+        case EFI_IMAGE_REL_BASED_DIR64:
+          Fixup64 = (UINT64 *) Fixup;
+          *Fixup64 = *Fixup64 + (UINT64) Adjust;
+          if (FixupData != NULL) {
+            FixupData = ALIGN_POINTER (FixupData, sizeof(UINT64));
+            *(UINT64 *)(FixupData) = *Fixup64;
+            FixupData = FixupData + sizeof(UINT64);
+          }
+          break;
+
+        default:
+          //
+          // The common code does not handle some of the stranger IPF relocations
+          // PeCoffLoaderRelocateImageEx () adds support for these complex fixups
+          // on IPF and is a No-Op on other architectures.
+          //
+          Status = PeCoffLoaderRelocateImageEx (Reloc, Fixup, &FixupData, Adjust);
+          if (RETURN_ERROR (Status)) {
+            ImageContext->ImageError = IMAGE_ERROR_FAILED_RELOCATION;
+            return Status;
+          }
         }
-        break;
 
-      case EFI_IMAGE_REL_BASED_HIGHLOW:
-        Fixup32   = (UINT32 *) Fixup;
-        *Fixup32  = *Fixup32 + (UINT32) Adjust;
-        if (FixupData != NULL) {
-          FixupData             = ALIGN_POINTER (FixupData, sizeof (UINT32));
-          *(UINT32 *)FixupData  = *Fixup32;
-          FixupData             = FixupData + sizeof (UINT32);
-        }
-        break;
-
-      case EFI_IMAGE_REL_BASED_DIR64:
-        Fixup64 = (UINT64 *) Fixup;
-        *Fixup64 = *Fixup64 + (UINT64) Adjust;
-        if (FixupData != NULL) {
-          FixupData = ALIGN_POINTER (FixupData, sizeof(UINT64));
-          *(UINT64 *)(FixupData) = *Fixup64;
-          FixupData = FixupData + sizeof(UINT64);
-        }
-        break;
-
-      default:
         //
-        // The common code does not handle some of the stranger IPF relocations
-        // PeCoffLoaderRelocateImageEx () adds support for these complex fixups
-        // on IPF and is a No-Op on other architectures.
+        // Next relocation record
         //
-        Status = PeCoffLoaderRelocateImageEx (Reloc, Fixup, &FixupData, Adjust);
-        if (RETURN_ERROR (Status)) {
-          ImageContext->ImageError = IMAGE_ERROR_FAILED_RELOCATION;
-          return Status;
-        }
+        Reloc += 1;
       }
 
       //
-      // Next relocation record
+      // Next reloc block
       //
-      Reloc += 1;
+      RelocBase = (EFI_IMAGE_BASE_RELOCATION *) RelocEnd;
     }
 
     //
-    // Next reloc block
+    // Adjust the EntryPoint to match the linked-to address
     //
-    RelocBase = (EFI_IMAGE_BASE_RELOCATION *) RelocEnd;
-  }
-
-  //
-  // Adjust the EntryPoint to match the linked-to address
-  //
-  if (ImageContext->DestinationAddress != 0) {
-     ImageContext->EntryPoint -= (UINT64) ImageContext->ImageAddress;
-     ImageContext->EntryPoint += (UINT64) ImageContext->DestinationAddress;
+    if (ImageContext->DestinationAddress != 0) {
+       ImageContext->EntryPoint -= (UINT64) ImageContext->ImageAddress;
+       ImageContext->EntryPoint += (UINT64) ImageContext->DestinationAddress;
+    }
   }
   
   // Applies additional environment specific actions to relocate fixups 

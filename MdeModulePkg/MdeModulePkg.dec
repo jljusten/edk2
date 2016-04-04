@@ -68,6 +68,10 @@
   #
   UefiHiiServicesLib|Include/Library/UefiHiiServicesLib.h
 
+  ##  @libraryclass    Provides a set of interfaces to abstract the policy of security measurement.
+  #
+  SecurityManagementLib|MdeModulePkg/Include/Library/SecurityManagementLib.h
+
 [Guids.common]
   ## MdeModule package token space guid
   # Include/Guid/MdeModulePkgTokenSpace.h
@@ -123,6 +127,9 @@
 
   ## Include/Guid/NicIp4ConfigNvData.h
   gEfiNicIp4ConfigVariableGuid   = {0xd8944553, 0xc4dd, 0x41f4, { 0x9b, 0x30, 0xe1, 0x39, 0x7c, 0xfb, 0x26, 0x7b }}
+
+  ## Include/Guid/StatusCodeCallbackGuid.h
+  gStatusCodeCallbackGuid   = {0xe701458c, 0x4900, 0x4ca5, {0xb7, 0x72, 0x3d, 0x37, 0x94, 0x9f, 0x79, 0x27}}
 
 [Protocols.common]
   ## Load File protocol provides capability to load and unload EFI image into memory and execute it.
@@ -225,6 +232,19 @@
   #  If FALSE, DXE IPL will not support UEFI decompression to save space.
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSupportUefiDecompress|TRUE|BOOLEAN|0x0001200c
 
+  ## This PCD specifies whether PciBus supports the hot plug device.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPciBusHotplugDeviceSupport|TRUE|BOOLEAN|0x0001003d
+
+  ## This PCD specifies whether the Single Root I/O virtualization support.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSrIovSupport|TRUE|BOOLEAN|0x10000044
+
+  ## This PCD specifies whether the Alternative Routing-ID support.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAriSupport|TRUE|BOOLEAN|0x10000045
+
+  ## This PCD specifies whether the Multi Root I/O virtualization support.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMrIovSupport|FALSE|BOOLEAN|0x10000046
+
+
 [PcdsFeatureFlag.IA32]
   ##
   # This feature flag specifies whether DxeIpl switches to long mode to enter DXE phase.
@@ -292,6 +312,12 @@
 
   ## FFS filename to find the ACPI tables
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiTableStorageFile|{ 0x25, 0x4e, 0x37, 0x7e, 0x01, 0x8e, 0xee, 0x4f, 0x87, 0xf2, 0x39, 0xc, 0x23, 0xc6, 0x6, 0xcd }|VOID*|16
+
+  ## Single root I/O virtualization virtual function memory BAR alignment
+  #  BITN set indicates 2 of n+12 power
+  #  BIT0 set indicates 4KB alignment
+  #  BIT1 set indicates 8KB alignment
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSrIovSystemPageSize|0x1|UINT32|0x10000047
 
 [PcdsFixedAtBuild,PcdsPatchableInModule]
   ## Maximun number of performance log entries during PEI phase.

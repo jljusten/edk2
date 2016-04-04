@@ -1,7 +1,7 @@
 /** @file
   Provides interface to shell functionality for shell commands and applications.
 
-Copyright (c) 2006 - 2009, Intel Corporation
+Copyright (c) 2006 - 2009, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -24,6 +24,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/FileHandleLib.h>
 #include <Library/PrintLib.h>
 #include <Library/UefiLib.h>
+#include <Library/HiiLib.h>
 
 #include <Protocol/EfiShellEnvironment2.h>
 #include <Protocol/EfiShellInterface.h>
@@ -52,6 +53,30 @@ STATIC EFI_SHELL_PROTOCOL            *mEfiShellProtocol;
 STATIC EFI_SHELL_PARAMETERS_PROTOCOL *mEfiShellParametersProtocol;
 STATIC EFI_HANDLE                    mEfiShellEnvironment2Handle;
 STATIC FILE_HANDLE_FUNCTION_MAP      FileFunctionMap;
+STATIC UINTN                         mTotalParameterCount;
+STATIC CHAR16                        *mPostReplaceFormat;
+STATIC CHAR16                        *mPostReplaceFormat2;
+/**
+  Check if a Unicode character is a hexadecimal character.
+
+  This internal function checks if a Unicode character is a 
+  decimal character.  The valid hexadecimal character is 
+  L'0' to L'9', L'a' to L'f', or L'A' to L'F'.
+
+
+  @param  Char  The character to check against.
+
+  @retval TRUE  If the Char is a hexadecmial character.
+  @retval FALSE If the Char is not a hexadecmial character.
+
+**/
+BOOLEAN
+EFIAPI
+ShellInternalIsHexaDecimalDigitCharacter (
+  IN      CHAR16                    Char
+  ) {
+  return (BOOLEAN) ((Char >= L'0' && Char <= L'9') || (Char >= L'A' && Char <= L'F') || (Char >= L'a' && Char <= L'f'));
+}
 
 /**
   helper function to find ShellEnvironment2 for constructor
@@ -60,8 +85,7 @@ EFI_STATUS
 EFIAPI
 ShellFindSE2 (
   IN EFI_HANDLE        ImageHandle
-  )
-{
+  ) {
   EFI_STATUS  Status;
   EFI_HANDLE  *Buffer;
   UINTN       BufferSize;
@@ -89,15 +113,19 @@ ShellFindSE2 (
                                 &BufferSize,
                                 Buffer
                                 );
-    ASSERT(Status == EFI_BUFFER_TOO_SMALL);
-    Buffer = (EFI_HANDLE*)AllocatePool(BufferSize);
-    ASSERT(Buffer != NULL);
-    Status = gBS->LocateHandle (ByProtocol,
-                                &gEfiShellEnvironment2Guid,
-                                NULL, // ignored for ByProtocol
-                                &BufferSize,
-                                Buffer
-                                );
+    //
+    // maybe it's not there???
+    //
+    if (Status == EFI_BUFFER_TOO_SMALL) {
+      Buffer = (EFI_HANDLE*)AllocatePool(BufferSize);
+      ASSERT(Buffer != NULL);
+      Status = gBS->LocateHandle (ByProtocol,
+                                  &gEfiShellEnvironment2Guid,
+                                  NULL, // ignored for ByProtocol
+                                  &BufferSize,
+                                  Buffer
+                                  );
+    }
     if (!EFI_ERROR (Status)) {
       //
       // now parse the list of returned handles
@@ -130,8 +158,19 @@ EFIAPI
 ShellLibConstructorWorker (
   IN EFI_HANDLE        ImageHandle,
   IN EFI_SYSTEM_TABLE  *SystemTable
-){
+  ) {
   EFI_STATUS Status;
+
+  ASSERT(PcdGet16 (PcdShellLibMaxPrintBufferSize) < PcdGet32 (PcdMaximumUnicodeStringLength));
+  mPostReplaceFormat = AllocateZeroPool (PcdGet16 (PcdShellLibMaxPrintBufferSize));
+  ASSERT (mPostReplaceFormat != NULL);
+  mPostReplaceFormat2 = AllocateZeroPool (PcdGet16 (PcdShellLibMaxPrintBufferSize));
+  ASSERT (mPostReplaceFormat2 != NULL);
+
+  //
+  // Set the parameter count to an invalid number
+  //
+  mTotalParameterCount = (UINTN)(-1);
 
   //
   // UEFI 2.0 shell interfaces (used preferentially)
@@ -226,8 +265,7 @@ EFIAPI
 ShellLibConstructor (
   IN EFI_HANDLE        ImageHandle,
   IN EFI_SYSTEM_TABLE  *SystemTable
-  )
-{
+  ) {
 
 
   mEfiShellEnvironment2       = NULL;
@@ -235,6 +273,8 @@ ShellLibConstructor (
   mEfiShellParametersProtocol = NULL;
   mEfiShellInterface          = NULL;
   mEfiShellEnvironment2Handle = NULL;
+  mPostReplaceFormat          = NULL;
+  mPostReplaceFormat2         = NULL;
 
   //
   // verify that auto initialize is not set false
@@ -254,7 +294,7 @@ EFIAPI
 ShellLibDestructor (
   IN EFI_HANDLE        ImageHandle,
   IN EFI_SYSTEM_TABLE  *SystemTable
-  ){
+  ) {
   if (mEfiShellEnvironment2 != NULL) {
     gBS->CloseProtocol(mEfiShellEnvironment2Handle==NULL?ImageHandle:mEfiShellEnvironment2Handle,
                        &gEfiShellEnvironment2Guid,
@@ -284,6 +324,16 @@ ShellLibDestructor (
     mEfiShellParametersProtocol = NULL;
   }
   mEfiShellEnvironment2Handle = NULL;
+
+  if (mPostReplaceFormat != NULL) {
+    FreePool(mPostReplaceFormat);
+  }
+  if (mPostReplaceFormat2 != NULL) {
+    FreePool(mPostReplaceFormat2);
+  }
+  mPostReplaceFormat          = NULL;
+  mPostReplaceFormat2         = NULL;
+
   return (EFI_SUCCESS);
 }
 
@@ -340,8 +390,7 @@ EFI_FILE_INFO*
 EFIAPI
 ShellGetFileInfo (
   IN EFI_FILE_HANDLE            FileHandle
-  )
-{
+  ) {
   return (FileFunctionMap.GetFileInfo(FileHandle));
 }
 
@@ -368,8 +417,7 @@ EFIAPI
 ShellSetFileInfo (
   IN EFI_FILE_HANDLE  	        FileHandle,
   IN EFI_FILE_INFO              *FileInfo
-  )
-{
+  ) {
   return (FileFunctionMap.SetFileInfo(FileHandle, FileInfo));
 }  
   
@@ -411,8 +459,7 @@ ShellOpenFileByDevicePath(
   OUT EFI_FILE_HANDLE               	*FileHandle,
   IN UINT64                          	OpenMode,
   IN UINT64                          	Attributes
-  )
-{
+  ) {
   CHAR16      *FileName;
   EFI_STATUS  Status;
   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *EfiSimpleFileSystemProtocol;
@@ -562,8 +609,7 @@ ShellOpenFileByName(
   OUT EFI_FILE_HANDLE           *FileHandle,
   IN UINT64                     OpenMode,
   IN UINT64                    	Attributes
-  )
-{
+  ) {
   EFI_HANDLE                    DeviceHandle;
   EFI_DEVICE_PATH_PROTOCOL      *FilePath;
   EFI_STATUS                    Status;
@@ -581,11 +627,12 @@ ShellOpenFileByName(
     Status = mEfiShellProtocol->OpenFileByName(FileName,
                                                FileHandle,
                                                OpenMode);
-    if (!EFI_ERROR(Status)){
-      FileInfo = FileHandleGetInfo(*FileHandle);
+    if (!EFI_ERROR(Status) && ((OpenMode & EFI_FILE_MODE_CREATE) != 0)){
+      FileInfo = FileFunctionMap.GetFileInfo(*FileHandle);
       ASSERT(FileInfo != NULL);
       FileInfo->Attribute = Attributes;
-      Status = FileHandleSetInfo(*FileHandle, FileInfo);
+      Status = FileFunctionMap.SetFileInfo(*FileHandle, FileInfo);
+      FreePool(FileInfo);
     }
     return (Status);
   } 
@@ -638,16 +685,22 @@ EFIAPI
 ShellCreateDirectory(
   IN CONST CHAR16             *DirectoryName,
   OUT EFI_FILE_HANDLE         *FileHandle
-  )
-{
-  //
-  // this is a pass thru to the open file function with sepcific open mode and attributes
-  //
-  return (ShellOpenFileByName(DirectoryName,
-                              FileHandle,
-                              EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE,
-                              EFI_FILE_DIRECTORY
-                              ));
+  ) {
+  if (mEfiShellProtocol != NULL) {
+    //
+    // Use UEFI Shell 2.0 method
+    //
+    return (mEfiShellProtocol->CreateFile(DirectoryName,
+                          EFI_FILE_DIRECTORY,
+                          FileHandle
+                          ));
+  } else {
+    return (ShellOpenFileByName(DirectoryName,
+                                FileHandle,
+                                EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE,
+                                EFI_FILE_DIRECTORY
+                                ));
+  }
 }
 
 /**
@@ -685,8 +738,7 @@ ShellReadFile(
   IN EFI_FILE_HANDLE            FileHandle,
   IN OUT UINTN                  *BufferSize,
   OUT VOID                      *Buffer
-  )
-{
+  ) {
   return (FileFunctionMap.ReadFile(FileHandle, BufferSize, Buffer));
 }
 
@@ -721,8 +773,7 @@ ShellWriteFile(
   IN EFI_FILE_HANDLE            FileHandle,
   IN OUT UINTN                  *BufferSize,
   IN VOID                       *Buffer
-  )
-{
+  ) {
   return (FileFunctionMap.WriteFile(FileHandle, BufferSize, Buffer));
 }
 
@@ -741,8 +792,7 @@ EFI_STATUS
 EFIAPI
 ShellCloseFile (
   IN EFI_FILE_HANDLE            *FileHandle
-  )
-{
+  ) {
   return (FileFunctionMap.CloseFile(*FileHandle));
 }
 
@@ -764,8 +814,7 @@ EFI_STATUS
 EFIAPI
 ShellDeleteFile (
   IN EFI_FILE_HANDLE		*FileHandle
-  )
-{
+  ) {
   return (FileFunctionMap.DeleteFile(*FileHandle));
 }
 
@@ -793,8 +842,7 @@ EFIAPI
 ShellSetFilePosition (
   IN EFI_FILE_HANDLE   	FileHandle,
   IN UINT64           	Position
-  )
-{
+  ) {
   return (FileFunctionMap.SetFilePosition(FileHandle, Position));
 }
 
@@ -818,8 +866,7 @@ EFIAPI
 ShellGetFilePosition (
   IN EFI_FILE_HANDLE            FileHandle,
   OUT UINT64                    *Position
-  )
-{
+  ) {
   return (FileFunctionMap.GetFilePosition(FileHandle, Position));
 }
 /**
@@ -840,8 +887,7 @@ EFI_STATUS
 EFIAPI
 ShellFlushFile (
   IN EFI_FILE_HANDLE            FileHandle
-  )
-{
+  ) {
   return (FileFunctionMap.FlushFile(FileHandle));
 }
 
@@ -868,8 +914,7 @@ EFIAPI
 ShellFindFirstFile (
   IN EFI_FILE_HANDLE            DirHandle,
   OUT EFI_FILE_INFO             **Buffer
-  )
-{
+  ) {
   //
   // pass to file handle lib
   //
@@ -900,8 +945,7 @@ ShellFindNextFile(
   IN EFI_FILE_HANDLE             DirHandle,
   OUT EFI_FILE_INFO              *Buffer,
   OUT BOOLEAN                    *NoFile
-  )
-{
+  ) {
   //
   // pass to file handle lib
   //
@@ -927,8 +971,7 @@ EFIAPI
 ShellGetFileSize (
   IN EFI_FILE_HANDLE            FileHandle,
   OUT UINT64                    *Size
-  )
-{
+  ) {
   return (FileFunctionMap.GetFileSize(FileHandle, Size));
 }
 /**
@@ -1225,7 +1268,8 @@ EFIAPI
 InternalShellConvertFileListType (
   IN LIST_ENTRY                 *FileList,
   IN OUT LIST_ENTRY             *ListHead
-  ){
+  )
+{
   SHELL_FILE_ARG                *OldInfo;
   LIST_ENTRY                    *Link;
   EFI_SHELL_FILE_INFO_NO_CONST  *NewInfo;
@@ -1345,9 +1389,15 @@ ShellOpenFileMetaArg (
       }
       InitializeListHead(&((*ListHead)->Link));
     }    
-    return (mEfiShellProtocol->OpenFileList(Arg, 
+    Status = mEfiShellProtocol->OpenFileList(Arg, 
                                            OpenMode, 
-                                           ListHead));
+                                           ListHead);
+    if (EFI_ERROR(Status)) {
+      mEfiShellProtocol->RemoveDupInFileList(ListHead);
+    } else {
+      Status = mEfiShellProtocol->RemoveDupInFileList(ListHead);
+    }
+    return (Status);
   } 
 
   //
@@ -1434,6 +1484,79 @@ ShellCloseFileMetaArg (
   }
 }
 
+/**
+  Find a file by searching the CWD and then the path.
+
+  if FileName is NULL then ASSERT.
+
+  if the return value is not NULL then the memory must be caller freed.
+
+  @param FileName               Filename string.
+
+  @retval NULL                  the file was not found
+  @return !NULL                 the full path to the file.
+**/
+CHAR16 *
+EFIAPI
+ShellFindFilePath (
+  IN CONST CHAR16 *FileName
+  )
+{
+  CONST CHAR16      *Path;
+  EFI_FILE_HANDLE   Handle;
+  EFI_STATUS        Status;
+  CHAR16            *RetVal;
+  CHAR16            *TestPath;
+  CONST CHAR16      *Walker;
+  UINTN             Size;
+
+  RetVal = NULL;
+
+  Path = ShellGetEnvironmentVariable(L"cwd");
+  if (Path != NULL) {
+    Size = StrSize(Path);
+    Size += StrSize(FileName);
+    TestPath = AllocateZeroPool(Size);
+    StrCpy(TestPath, Path);
+    StrCat(TestPath, FileName);
+    Status = ShellOpenFileByName(TestPath, &Handle, EFI_FILE_MODE_READ, 0);
+    if (!EFI_ERROR(Status)){
+      RetVal = StrnCatGrow(&RetVal, NULL, TestPath, 0);
+      ShellCloseFile(&Handle);
+      FreePool(TestPath);
+      return (RetVal);
+    }
+    FreePool(TestPath);
+  }
+  Path = ShellGetEnvironmentVariable(L"path");
+  if (Path != NULL) {
+    Size = StrSize(Path);
+    Size += StrSize(FileName);
+    TestPath = AllocateZeroPool(Size);
+    Walker = (CHAR16*)Path; 
+    do {
+      CopyMem(TestPath, Walker, StrSize(Walker));
+      if (StrStr(TestPath, L";") != NULL) {
+        *(StrStr(TestPath, L";")) = CHAR_NULL;
+      }
+      StrCat(TestPath, FileName);
+      if (StrStr(Walker, L";") != NULL) {
+        Walker = StrStr(Walker, L";") + 1;
+      } else {
+        Walker = NULL;
+      }
+      Status = ShellOpenFileByName(TestPath, &Handle, EFI_FILE_MODE_READ, 0);
+      if (!EFI_ERROR(Status)){
+        RetVal = StrnCatGrow(&RetVal, NULL, TestPath, 0);
+        ShellCloseFile(&Handle);
+        break;
+      }
+    } while (Walker != NULL && Walker[0] != CHAR_NULL);
+    FreePool(TestPath);
+  }
+  return (RetVal);
+}
+
 typedef struct {
   LIST_ENTRY     Link;
   CHAR16         *Name;
@@ -1463,8 +1586,7 @@ InternalIsOnCheckList (
   IN CONST CHAR16               *Name,
   IN CONST SHELL_PARAM_ITEM     *CheckList,
   OUT ParamType                 *Type
-  )
-{
+  ) {
   SHELL_PARAM_ITEM              *TempListItem;
 
   //
@@ -1499,6 +1621,7 @@ InternalIsOnCheckList (
       return (TRUE);
     }
   }
+
   return (FALSE);
 }
 /**
@@ -1512,13 +1635,21 @@ InternalIsOnCheckList (
 BOOLEAN
 EFIAPI
 InternalIsFlag (
-  IN CONST CHAR16               *Name
+  IN CONST CHAR16               *Name,
+  IN BOOLEAN                    AlwaysAllowNumbers
   )
 {
   //
   // ASSERT that Name isn't NULL
   //
   ASSERT(Name != NULL);
+
+  //
+  // If we accept numbers then dont return TRUE. (they will be values)
+  //
+  if (((Name[0] == L'-' || Name[0] == L'+') && ShellInternalIsHexaDecimalDigitCharacter(Name[1])) && AlwaysAllowNumbers == TRUE) {
+    return (FALSE);
+  }
 
   //
   // If the Name has a / or - as the first character return TRUE
@@ -1556,6 +1687,7 @@ InternalIsFlag (
                                 the invalid command line argument was returned in
                                 ProblemParam if provided.
 **/
+STATIC
 EFI_STATUS
 EFIAPI
 InternalCommandLineParse (
@@ -1564,25 +1696,19 @@ InternalCommandLineParse (
   OUT CHAR16                    **ProblemParam OPTIONAL,
   IN BOOLEAN                    AutoPageBreak,
   IN CONST CHAR16               **Argv,
-  IN UINTN                      Argc
-  )
-{
+  IN UINTN                      Argc,
+  IN BOOLEAN                    AlwaysAllowNumbers
+  ) {
   UINTN                         LoopCounter;
-  UINTN                         Count;
   ParamType                     CurrentItemType;
   SHELL_PARAM_PACKAGE           *CurrentItemPackage;
-  BOOLEAN                       GetItemValue;
+  UINTN                         GetItemValue;
+  UINTN                         ValueSize;
 
   CurrentItemPackage = NULL;
-
-  //
-  // ASSERTs
-  //
-  ASSERT(CheckList  != NULL);
-  ASSERT(Argv       != NULL);
-
-  Count = 0;
-  GetItemValue = FALSE;
+  mTotalParameterCount = 0;
+  GetItemValue = 0;
+  ValueSize = 0;
 
   //
   // If there is only 1 item we dont need to do anything
@@ -1591,6 +1717,12 @@ InternalCommandLineParse (
     *CheckPackage = NULL;
     return (EFI_SUCCESS);
   }
+
+  //
+  // ASSERTs
+  //
+  ASSERT(CheckList  != NULL);
+  ASSERT(Argv       != NULL);
 
   //
   // initialize the linked list
@@ -1608,6 +1740,13 @@ InternalCommandLineParse (
       //
     } else if (InternalIsOnCheckList(Argv[LoopCounter], CheckList, &CurrentItemType) == TRUE) {
       //
+      // We might have leftover if last parameter didnt have optional value
+      //
+      if (GetItemValue != 0) {
+        GetItemValue = 0;
+        InsertHeadList(*CheckPackage, &CurrentItemPackage->Link);
+      }
+      //
       // this is a flag
       //
       CurrentItemPackage = AllocatePool(sizeof(SHELL_PARAM_PACKAGE));
@@ -1622,28 +1761,49 @@ InternalCommandLineParse (
       //
       // Does this flag require a value
       //
-      if (CurrentItemPackage->Type == TypeValue) {
+      switch (CurrentItemPackage->Type) {
         //
-        // trigger the next loop to populate the value of this item
-        //
-        GetItemValue = TRUE; 
-      } else {
-        //
-        // this item has no value expected; we are done
-        //
-        InsertHeadList(*CheckPackage, &CurrentItemPackage->Link);
+        // possibly trigger the next loop(s) to populate the value of this item
+        //        
+        case TypeValue:
+          GetItemValue = 1; 
+          ValueSize = 0;
+          break;
+        case TypeDoubleValue:
+          GetItemValue = 2;
+          ValueSize = 0;
+          break;
+        case TypeMaxValue:
+          GetItemValue = (UINTN)(-1);
+          ValueSize = 0;
+          break;
+        default:
+          //
+          // this item has no value expected; we are done
+          //
+          InsertHeadList(*CheckPackage, &CurrentItemPackage->Link);
+          ASSERT(GetItemValue == 0);
+          break;
       }
-    } else if (GetItemValue == TRUE && InternalIsFlag(Argv[LoopCounter]) == FALSE) {
+    } else if (GetItemValue != 0 && InternalIsFlag(Argv[LoopCounter], AlwaysAllowNumbers) == FALSE) {
       ASSERT(CurrentItemPackage != NULL);
       //
-      // get the item VALUE for the previous flag
+      // get the item VALUE for a previous flag
       //
-      GetItemValue = FALSE;
-      CurrentItemPackage->Value = AllocateZeroPool(StrSize(Argv[LoopCounter]));
+      CurrentItemPackage->Value = ReallocatePool(ValueSize, ValueSize + StrSize(Argv[LoopCounter]) + sizeof(CHAR16), CurrentItemPackage->Value);
       ASSERT(CurrentItemPackage->Value != NULL);
-      StrCpy(CurrentItemPackage->Value, Argv[LoopCounter]);
-      InsertHeadList(*CheckPackage, &CurrentItemPackage->Link);
-    } else if (InternalIsFlag(Argv[LoopCounter]) == FALSE) {
+      if (ValueSize == 0) {
+        StrCpy(CurrentItemPackage->Value, Argv[LoopCounter]);
+      } else {
+        StrCat(CurrentItemPackage->Value, L" ");
+        StrCat(CurrentItemPackage->Value, Argv[LoopCounter]);
+      }
+      ValueSize += StrSize(Argv[LoopCounter]) + sizeof(CHAR16);
+      GetItemValue--;
+      if (GetItemValue == 0) {
+        InsertHeadList(*CheckPackage, &CurrentItemPackage->Link);
+      }
+    } else if (InternalIsFlag(Argv[LoopCounter], AlwaysAllowNumbers) == FALSE) {
       //
       // add this one as a non-flag
       //
@@ -1654,7 +1814,7 @@ InternalCommandLineParse (
       CurrentItemPackage->Value = AllocatePool(StrSize(Argv[LoopCounter]));
       ASSERT(CurrentItemPackage->Value != NULL);
       StrCpy(CurrentItemPackage->Value, Argv[LoopCounter]);
-      CurrentItemPackage->OriginalPosition = Count++;
+      CurrentItemPackage->OriginalPosition = mTotalParameterCount++;
       InsertHeadList(*CheckPackage, &CurrentItemPackage->Link);
     } else if (ProblemParam) {
       //
@@ -1671,6 +1831,10 @@ InternalCommandLineParse (
       *CheckPackage = NULL;
       return (EFI_VOLUME_CORRUPTED);
     }
+  }
+  if (GetItemValue != 0) {
+    GetItemValue = 0;
+    InsertHeadList(*CheckPackage, &CurrentItemPackage->Link);
   }
   //
   // support for AutoPageBreak
@@ -1708,13 +1872,13 @@ InternalCommandLineParse (
 **/
 EFI_STATUS
 EFIAPI
-ShellCommandLineParse (
+ShellCommandLineParseEx (
   IN CONST SHELL_PARAM_ITEM     *CheckList,
   OUT LIST_ENTRY                **CheckPackage,
   OUT CHAR16                    **ProblemParam OPTIONAL,
-  IN BOOLEAN                    AutoPageBreak
-  )
-{
+  IN BOOLEAN                    AutoPageBreak,
+  IN BOOLEAN                    AlwaysAllowNumbers
+  ) {
   // 
   // ASSERT that CheckList and CheckPackage aren't NULL
   //
@@ -1730,7 +1894,8 @@ ShellCommandLineParse (
                                      ProblemParam, 
                                      AutoPageBreak, 
                                      (CONST CHAR16**) mEfiShellParametersProtocol->Argv,
-                                     mEfiShellParametersProtocol->Argc ));
+                                     mEfiShellParametersProtocol->Argc,
+                                     AlwaysAllowNumbers));
   }
 
   // 
@@ -1742,7 +1907,8 @@ ShellCommandLineParse (
                                    ProblemParam, 
                                    AutoPageBreak, 
                                    (CONST CHAR16**) mEfiShellInterface->Argv,
-                                   mEfiShellInterface->Argc ));
+                                   mEfiShellInterface->Argc,
+                                   AlwaysAllowNumbers));
 }
 
 /**
@@ -1761,8 +1927,7 @@ VOID
 EFIAPI
 ShellCommandLineFreeVarList (
   IN LIST_ENTRY                 *CheckPackage
-  )
-{
+  ) {
   LIST_ENTRY                    *Node;
 
   //
@@ -1776,7 +1941,7 @@ ShellCommandLineFreeVarList (
   // for each node in the list
   //
   for ( Node = GetFirstNode(CheckPackage)
-      ; Node != CheckPackage 
+      ; IsListEmpty(CheckPackage) == FALSE
       ; Node = GetFirstNode(CheckPackage)
       ){
     //
@@ -1827,8 +1992,7 @@ EFIAPI
 ShellCommandLineGetFlag (
   IN CONST LIST_ENTRY           *CheckPackage,
   IN CHAR16                     *KeyString
-  )
-{
+  ) {
   LIST_ENTRY                    *Node;
 
   //
@@ -1886,8 +2050,7 @@ EFIAPI
 ShellCommandLineGetValue (
   IN CONST LIST_ENTRY           *CheckPackage,
   IN CHAR16                     *KeyString
-  )
-{
+  ) {
   LIST_ENTRY                    *Node;
 
   //
@@ -1946,8 +2109,7 @@ EFIAPI
 ShellCommandLineGetRawValue (
   IN CONST LIST_ENTRY           *CheckPackage,
   IN UINT32                     Position
-  )
-{
+  ) {
   LIST_ENTRY                    *Node;
 
   //
@@ -1973,6 +2135,70 @@ ShellCommandLineGetRawValue (
   }
   return (NULL);
 }
+
+/**
+  returns the number of command line value parameters that were parsed.  
+  
+  this will not include flags.
+
+  @retval (UINTN)-1     No parsing has ocurred
+  @return other         The number of value parameters found
+**/
+UINTN
+EFIAPI
+ShellCommandLineGetCount(
+  VOID
+  )
+{
+  return (mTotalParameterCount);
+}
+
+/**
+  Determins if a parameter is duplicated.
+
+  If Param is not NULL then it will point to a callee allocated string buffer 
+  with the parameter value if a duplicate is found.
+
+  If CheckPackage is NULL, then ASSERT.
+
+  @param[in] CheckPackage       The package of parsed command line arguments.
+  @param[out] Param             Upon finding one, a pointer to the duplicated parameter.
+
+  @retval EFI_SUCCESS           No parameters were duplicated.
+  @retval EFI_DEVICE_ERROR      A duplicate was found.
+  **/
+EFI_STATUS
+EFIAPI
+ShellCommandLineCheckDuplicate (
+  IN CONST LIST_ENTRY              *CheckPackage,
+  OUT CHAR16                       **Param
+  )
+{
+  LIST_ENTRY                    *Node1;
+  LIST_ENTRY                    *Node2;
+  
+  ASSERT(CheckPackage != NULL);
+
+  for ( Node1 = GetFirstNode(CheckPackage) 
+      ; !IsNull (CheckPackage, Node1) 
+      ; Node1 = GetNextNode(CheckPackage, Node1) 
+      ){
+    for ( Node2 = GetNextNode(CheckPackage, Node1) 
+        ; !IsNull (CheckPackage, Node2) 
+        ; Node2 = GetNextNode(CheckPackage, Node2) 
+        ){
+      if (StrCmp(((SHELL_PARAM_PACKAGE*)Node1)->Name, ((SHELL_PARAM_PACKAGE*)Node2)->Name) == 0) {
+        if (Param != NULL) {
+          *Param = NULL;
+          *Param = StrnCatGrow(Param, NULL, ((SHELL_PARAM_PACKAGE*)Node1)->Name, 0);
+        }
+        return (EFI_DEVICE_ERROR);
+      }
+    }
+  }
+  return (EFI_SUCCESS);
+}
+
 /**
   This is a find and replace function.  it will return the NewString as a copy of 
   SourceString with each instance of FindTarget replaced with ReplaceWith.
@@ -2004,7 +2230,8 @@ CopyReplace(
   IN UINTN                            NewSize,
   IN CONST CHAR16                     *FindTarget,
   IN CONST CHAR16                     *ReplaceWith
-  ){
+  ) 
+{
   UINTN Size;
   if ( (SourceString == NULL)
     || (NewString    == NULL)
@@ -2015,8 +2242,8 @@ CopyReplace(
     ){
     return (EFI_INVALID_PARAMETER);
   }
-  NewString = SetMem16(NewString, NewSize, L'\0');
-  while (*SourceString != L'\0') {
+  NewString = SetMem16(NewString, NewSize, CHAR_NULL);
+  while (*SourceString != CHAR_NULL) {
     if (StrnCmp(SourceString, FindTarget, StrLen(FindTarget)) == 0) {
       SourceString += StrLen(FindTarget);
       Size = StrSize(NewString);
@@ -2034,6 +2261,38 @@ CopyReplace(
     }
   }
   return (EFI_SUCCESS);
+}
+
+/**
+  Internal worker function to output a string.
+
+  This function will output a string to the correct StdOut.
+
+  @param[in] String       The string to print out.
+
+  @retval EFI_SUCCESS     The operation was sucessful.
+  @retval !EFI_SUCCESS    The operation failed.
+**/
+EFI_STATUS
+EFIAPI
+InternalPrintTo (
+  IN CONST CHAR16 *String
+  )
+{
+  UINTN Size;
+  Size = StrSize(String) - sizeof(CHAR16);
+  if (mEfiShellParametersProtocol != NULL) {
+    return (mEfiShellParametersProtocol->StdOut->Write(mEfiShellParametersProtocol->StdOut, &Size, (VOID*)String));
+  }
+  if (mEfiShellInterface          != NULL) {
+    //
+    // Divide in half for old shell.  Must be string length not size.
+    //
+    Size /= 2;
+    return (         mEfiShellInterface->StdOut->Write(mEfiShellInterface->StdOut,          &Size, (VOID*)String));
+  }
+  ASSERT(FALSE);
+  return (EFI_UNSUPPORTED);
 }
 
 /**
@@ -2060,57 +2319,44 @@ CopyReplace(
   @param[in] Row        the row to print at
   @param[in] Col        the column to print at
   @param[in] Format     the format string
+  @param[in] Marker     the marker for the variable argument list
 
   @return the number of characters printed to the screen
 **/
 
 UINTN
 EFIAPI
-ShellPrintEx(
+InternalShellPrintWorker(
   IN INT32                Col OPTIONAL,
   IN INT32                Row OPTIONAL,
   IN CONST CHAR16         *Format,
-  ...
-  ){
-  VA_LIST           Marker;
-  UINTN             BufferSize;
-  CHAR16            *PostReplaceFormat;
-  CHAR16            *PostReplaceFormat2;
+  VA_LIST                 Marker
+  ) 
+{
   UINTN             Return;
-
   EFI_STATUS        Status;
   UINTN             NormalAttribute;
   CHAR16            *ResumeLocation;
   CHAR16            *FormatWalker;
-
-  VA_START (Marker, Format);
   
-  BufferSize = (PcdGet32 (PcdUefiLibMaxPrintBufferSize) + 1) * sizeof (CHAR16);
-  PostReplaceFormat = AllocateZeroPool (BufferSize);
-  ASSERT (PostReplaceFormat != NULL);
-  PostReplaceFormat2 = AllocateZeroPool (BufferSize);
-  ASSERT (PostReplaceFormat2 != NULL);
-
   //
   // Back and forth each time fixing up 1 of our flags...
   //
-  Status = CopyReplace(Format,             PostReplaceFormat,  BufferSize, L"%N", L"%%N");
+  Status = CopyReplace(Format,             mPostReplaceFormat,  PcdGet16 (PcdShellLibMaxPrintBufferSize), L"%N", L"%%N");
   ASSERT_EFI_ERROR(Status);
-  Status = CopyReplace(PostReplaceFormat,  PostReplaceFormat2, BufferSize, L"%E", L"%%E");
+  Status = CopyReplace(mPostReplaceFormat,  mPostReplaceFormat2, PcdGet16 (PcdShellLibMaxPrintBufferSize), L"%E", L"%%E");
   ASSERT_EFI_ERROR(Status);
-  Status = CopyReplace(PostReplaceFormat2, PostReplaceFormat,  BufferSize, L"%H", L"%%H");
+  Status = CopyReplace(mPostReplaceFormat2, mPostReplaceFormat,  PcdGet16 (PcdShellLibMaxPrintBufferSize), L"%H", L"%%H");
   ASSERT_EFI_ERROR(Status);
-  Status = CopyReplace(PostReplaceFormat,  PostReplaceFormat2, BufferSize, L"%B", L"%%B");
+  Status = CopyReplace(mPostReplaceFormat,  mPostReplaceFormat2, PcdGet16 (PcdShellLibMaxPrintBufferSize), L"%B", L"%%B");
   ASSERT_EFI_ERROR(Status);
-  Status = CopyReplace(PostReplaceFormat2, PostReplaceFormat,  BufferSize, L"%V", L"%%V");
+  Status = CopyReplace(mPostReplaceFormat2, mPostReplaceFormat,  PcdGet16 (PcdShellLibMaxPrintBufferSize), L"%V", L"%%V");
   ASSERT_EFI_ERROR(Status);
 
   //
   // Use the last buffer from replacing to print from...
   //
-  Return = UnicodeVSPrint (PostReplaceFormat2, BufferSize, PostReplaceFormat, Marker);
-
-  FreePool(PostReplaceFormat);
+  Return = UnicodeVSPrint (mPostReplaceFormat2, PcdGet16 (PcdShellLibMaxPrintBufferSize), mPostReplaceFormat, Marker);
 
   if (Col != -1 && Row != -1) {
     Status = gST->ConOut->SetCursorPosition(gST->ConOut, Col, Row);
@@ -2118,19 +2364,19 @@ ShellPrintEx(
   }
 
   NormalAttribute = gST->ConOut->Mode->Attribute;
-  FormatWalker = PostReplaceFormat2;
-  while (*FormatWalker != L'\0') {
+  FormatWalker = mPostReplaceFormat2;
+  while (*FormatWalker != CHAR_NULL) {
     //
     // Find the next attribute change request
     //
     ResumeLocation = StrStr(FormatWalker, L"%");
     if (ResumeLocation != NULL) {
-      *ResumeLocation = L'\0';
+      *ResumeLocation = CHAR_NULL;
     }
     //
     // print the current FormatWalker string
     //
-    Status = gST->ConOut->OutputString(gST->ConOut, FormatWalker);
+    Status = InternalPrintTo(FormatWalker);
     ASSERT_EFI_ERROR(Status);
     //
     // update the attribute
@@ -2153,7 +2399,12 @@ ShellPrintEx(
           gST->ConOut->SetAttribute(gST->ConOut, EFI_TEXT_ATTR(EFI_GREEN, ((NormalAttribute&(BIT4|BIT5|BIT6))>>4)));
           break;
         default:
-          ASSERT(FALSE);
+          //
+          // Print a simple '%' symbol
+          //
+          Status = InternalPrintTo(L"%");
+          ASSERT_EFI_ERROR(Status);
+          ResumeLocation = ResumeLocation - 1;
           break;
       }
     } else {
@@ -2170,7 +2421,298 @@ ShellPrintEx(
     FormatWalker = ResumeLocation + 2;
   }
 
-  FreePool(PostReplaceFormat2);
-
   return (Return);
+}
+
+/**
+  Print at a specific location on the screen.
+
+  This function will move the cursor to a given screen location and print the specified string.
+  
+  If -1 is specified for either the Row or Col the current screen location for BOTH 
+  will be used.
+
+  If either Row or Col is out of range for the current console, then ASSERT.
+  If Format is NULL, then ASSERT.
+
+  In addition to the standard %-based flags as supported by UefiLib Print() this supports 
+  the following additional flags:
+    %N       -   Set output attribute to normal
+    %H       -   Set output attribute to highlight
+    %E       -   Set output attribute to error
+    %B       -   Set output attribute to blue color
+    %V       -   Set output attribute to green color
+
+  Note: The background color is controlled by the shell command cls.
+
+  @param[in] Row        the row to print at
+  @param[in] Col        the column to print at
+  @param[in] Format     the format string
+
+  @return the number of characters printed to the screen
+**/
+
+UINTN
+EFIAPI
+ShellPrintEx(
+  IN INT32                Col OPTIONAL,
+  IN INT32                Row OPTIONAL,
+  IN CONST CHAR16         *Format,
+  ...
+  ) 
+{
+  VA_LIST           Marker;
+  EFI_STATUS        Status;
+  VA_START (Marker, Format);
+  Status = InternalShellPrintWorker(Col, Row, Format, Marker);
+  VA_END(Marker);
+  return(Status);
+}
+
+/**
+  Print at a specific location on the screen.
+
+  This function will move the cursor to a given screen location and print the specified string.
+  
+  If -1 is specified for either the Row or Col the current screen location for BOTH 
+  will be used.
+
+  If either Row or Col is out of range for the current console, then ASSERT.
+  If Format is NULL, then ASSERT.
+
+  In addition to the standard %-based flags as supported by UefiLib Print() this supports 
+  the following additional flags:
+    %N       -   Set output attribute to normal
+    %H       -   Set output attribute to highlight
+    %E       -   Set output attribute to error
+    %B       -   Set output attribute to blue color
+    %V       -   Set output attribute to green color
+
+  Note: The background color is controlled by the shell command cls.
+
+  @param[in] Row                the row to print at
+  @param[in] Col                the column to print at
+  @param[in] HiiFormatStringId  the format string Id for getting from Hii
+  @param[in] HiiFormatHandle    the format string Handle for getting from Hii
+
+  @return the number of characters printed to the screen
+**/
+UINTN
+EFIAPI
+ShellPrintHiiEx(
+  IN INT32                Col OPTIONAL,
+  IN INT32                Row OPTIONAL,
+  IN CONST EFI_STRING_ID  HiiFormatStringId,
+  IN CONST EFI_HANDLE     HiiFormatHandle,
+  ...
+  )
+{
+  VA_LIST           Marker;
+  CHAR16            *HiiFormatString;
+  UINTN             RetVal;
+
+  VA_START (Marker, HiiFormatHandle);
+  HiiFormatString = HiiGetString(HiiFormatHandle, HiiFormatStringId, NULL);
+  ASSERT(HiiFormatString != NULL);
+
+  RetVal = InternalShellPrintWorker(Col, Row, HiiFormatString, Marker);
+
+  FreePool(HiiFormatString);
+  VA_END(Marker);
+
+  return (RetVal);
+}
+
+/**
+  Function to determine if a given filename represents a file or a directory.
+
+  @param[in] DirName      Path to directory to test.
+
+  @retval EFI_SUCCESS     The Path represents a directory
+  @retval EFI_NOT_FOUND   The Path does not represent a directory
+  @return other           The path failed to open
+**/
+EFI_STATUS
+EFIAPI
+ShellIsDirectory(
+  IN CONST CHAR16 *DirName
+  )
+{
+  EFI_STATUS        Status;
+  EFI_FILE_HANDLE   Handle;
+
+  ASSERT(DirName != NULL);
+
+  Handle = NULL;
+
+  Status = ShellOpenFileByName(DirName, &Handle, EFI_FILE_MODE_READ, 0);
+  if (EFI_ERROR(Status)) {
+    return (Status);
+  }
+
+  if (FileHandleIsDirectory(Handle) == EFI_SUCCESS) {
+    ShellCloseFile(&Handle);
+    return (EFI_SUCCESS);
+  }
+  ShellCloseFile(&Handle);
+  return (EFI_NOT_FOUND);
+}
+
+/**
+  Function to determine if a given filename represents a file.
+
+  @param[in] Name         Path to file to test.
+
+  @retval EFI_SUCCESS     The Path represents a file.
+  @retval EFI_NOT_FOUND   The Path does not represent a file.
+  @retval other           The path failed to open.
+**/
+EFI_STATUS
+EFIAPI
+ShellIsFile(
+  IN CONST CHAR16 *Name
+  )
+{
+  EFI_STATUS        Status;
+  EFI_FILE_HANDLE   Handle;
+
+  ASSERT(Name != NULL);
+
+  Handle = NULL;
+
+  Status = ShellOpenFileByName(Name, &Handle, EFI_FILE_MODE_READ, 0);
+  if (EFI_ERROR(Status)) {
+    return (Status);
+  }
+
+  if (FileHandleIsDirectory(Handle) != EFI_SUCCESS) {
+    ShellCloseFile(&Handle);
+    return (EFI_SUCCESS);
+  }
+  ShellCloseFile(&Handle);
+  return (EFI_NOT_FOUND);
+}
+
+/**
+  Function to determine whether a string is decimal or hex representation of a number 
+  and return the number converted from the string.
+
+  @param[in] String   String representation of a number
+
+  @retval all         the number
+**/
+UINTN
+EFIAPI
+ShellStrToUintn(
+  IN CONST CHAR16 *String
+  )
+{
+  CONST CHAR16  *Walker;
+  for (Walker = String; Walker != NULL && *Walker != CHAR_NULL && *Walker == L' '; Walker = Walker + 1);
+  if (StrnCmp(Walker, L"0x", 2) == 0 || StrnCmp(Walker, L"0X", 2) == 0){
+    return (StrHexToUintn(Walker));
+  }
+  return (StrDecimalToUintn(Walker));
+}
+
+/**
+  Safely append with automatic string resizing given length of Destination and
+  desired length of copy from Source.
+
+  append the first D characters of Source to the end of Destination, where D is
+  the lesser of Count and the StrLen() of Source. If appending those D characters
+  will fit within Destination (whose Size is given as CurrentSize) and
+  still leave room for a null terminator, then those characters are appended,
+  starting at the original terminating null of Destination, and a new terminating
+  null is appended.
+
+  If appending D characters onto Destination will result in a overflow of the size
+  given in CurrentSize the string will be grown such that the copy can be performed
+  and CurrentSize will be updated to the new size.
+
+  If Source is NULL, there is nothing to append, just return the current buffer in
+  Destination.
+
+  if Destination is NULL, then ASSERT()
+  if Destination's current length (including NULL terminator) is already more then
+  CurrentSize, then ASSERT()
+
+  @param[in,out] Destination   The String to append onto
+  @param[in,out] CurrentSize   on call the number of bytes in Destination.  On
+                                return possibly the new size (still in bytes).  if NULL
+                                then allocate whatever is needed.
+  @param[in]      Source        The String to append from
+  @param[in]      Count         Maximum number of characters to append.  if 0 then
+                                all are appended.
+
+  @return Destination           return the resultant string.
+**/
+CHAR16*
+EFIAPI
+StrnCatGrow (
+  IN OUT CHAR16           **Destination,
+  IN OUT UINTN            *CurrentSize,
+  IN     CONST CHAR16     *Source,
+  IN     UINTN            Count
+  )
+{
+  UINTN DestinationStartSize;
+  UINTN NewSize;
+
+  //
+  // ASSERTs
+  //
+  ASSERT(Destination != NULL);
+
+  //
+  // If there's nothing to do then just return Destination
+  //
+  if (Source == NULL) {
+    return (*Destination);
+  }
+
+  //
+  // allow for un-initialized pointers, based on size being 0
+  //
+  if (CurrentSize != NULL && *CurrentSize == 0) {
+    *Destination = NULL;
+  }
+
+  //
+  // allow for NULL pointers address as Destination
+  //
+  if (*Destination != NULL) {
+    ASSERT(CurrentSize != 0);
+    DestinationStartSize = StrSize(*Destination);
+    ASSERT(DestinationStartSize <= *CurrentSize);
+  } else {
+    DestinationStartSize = 0;
+//    ASSERT(*CurrentSize == 0);
+  }
+
+  //
+  // Append all of Source?
+  //
+  if (Count == 0) {
+    Count = StrLen(Source);
+  }
+
+  //
+  // Test and grow if required
+  //
+  if (CurrentSize != NULL) {
+    NewSize = *CurrentSize;
+    while (NewSize < (DestinationStartSize + (Count*sizeof(CHAR16)))) {
+      NewSize += 2 * Count * sizeof(CHAR16);
+    }
+    *Destination = ReallocatePool(*CurrentSize, NewSize, *Destination);
+    *CurrentSize = NewSize;
+  } else {
+    *Destination = AllocateZeroPool((Count+1)*sizeof(CHAR16));
+  }
+
+  //
+  // Now use standard StrnCat on a big enough buffer
+  //
+  return StrnCat(*Destination, Source, Count);
 }

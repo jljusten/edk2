@@ -1,7 +1,7 @@
 /** @file
   Implementation of Mtftp drivers.
   
-Copyright (c) 2006 - 2007, Intel Corporation<BR>
+Copyright (c) 2006 - 2009, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -107,7 +107,7 @@ Mtftp4DriverBindingSupported (
   Just leave the Udp child unconfigured. When UDP is unloaded, 
     MTFTP will be informed with DriverBinding Stop.
 
-  @param  UdpIo                  The UDP port to configure
+  @param  UdpIo                  The UDP_IO to configure
   @param  Context                The opaque parameter to the callback
 
   @retval EFI_SUCCESS            It always return EFI_SUCCESS directly.
@@ -115,7 +115,7 @@ Mtftp4DriverBindingSupported (
 **/
 EFI_STATUS
 Mtftp4ConfigNullUdp (
-  IN UDP_IO_PORT            *UdpIo,
+  IN UDP_IO                 *UdpIo,
   IN VOID                   *Context
   )
 {
@@ -180,7 +180,7 @@ Mtftp4CreateService (
                   );
 
   if (EFI_ERROR (Status)) {
-    gBS->FreePool (MtftpSb);
+    FreePool (MtftpSb);
     return Status;
   }
 
@@ -197,16 +197,22 @@ Mtftp4CreateService (
                   );
   if (EFI_ERROR (Status)) {
     gBS->CloseEvent (MtftpSb->Timer);
-    gBS->FreePool (MtftpSb);
+    FreePool (MtftpSb);
     return Status;
   }
 
-  MtftpSb->ConnectUdp = UdpIoCreatePort (Controller, Image, Mtftp4ConfigNullUdp, NULL);
+  MtftpSb->ConnectUdp = UdpIoCreateIo (
+                          Controller,
+                          Image,
+                          Mtftp4ConfigNullUdp,
+                          UDP_IO_UDP4_VERSION,
+                          NULL
+                          );
 
   if (MtftpSb->ConnectUdp == NULL) {
     gBS->CloseEvent (MtftpSb->TimerToGetMap);
     gBS->CloseEvent (MtftpSb->Timer);
-    gBS->FreePool (MtftpSb);
+    FreePool (MtftpSb);
     return EFI_DEVICE_ERROR;
   }
 
@@ -226,7 +232,7 @@ Mtftp4CleanService (
   IN MTFTP4_SERVICE     *MtftpSb
   )
 {
-  UdpIoFreePort (MtftpSb->ConnectUdp);
+  UdpIoFreeIo (MtftpSb->ConnectUdp);
   gBS->CloseEvent (MtftpSb->TimerToGetMap);
   gBS->CloseEvent (MtftpSb->Timer);
 }
@@ -305,7 +311,7 @@ Mtftp4DriverBindingStart (
 
 ON_ERROR:
   Mtftp4CleanService (MtftpSb);
-  gBS->FreePool (MtftpSb);
+  FreePool (MtftpSb);
 
   return Status;
 }
@@ -384,7 +390,7 @@ Mtftp4DriverBindingStop (
 
     Mtftp4CleanService (MtftpSb);
 
-    gBS->FreePool (MtftpSb);
+    FreePool (MtftpSb);
   } else {
 
     while (!IsListEmpty (&MtftpSb->Children)) {
@@ -467,15 +473,16 @@ Mtftp4ServiceBindingCreateChild (
 
   Mtftp4InitProtocol (MtftpSb, Instance);
 
-  Instance->UnicastPort = UdpIoCreatePort (
+  Instance->UnicastPort = UdpIoCreateIo (
                             MtftpSb->Controller,
                             MtftpSb->Image,
                             Mtftp4ConfigNullUdp,
+                            UDP_IO_UDP4_VERSION,
                             Instance
                             );
 
   if (Instance->UnicastPort == NULL) {
-    gBS->FreePool (Instance);
+    FreePool (Instance);
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -530,8 +537,8 @@ Mtftp4ServiceBindingCreateChild (
 ON_ERROR:
 
   if (EFI_ERROR (Status)) {
-    UdpIoFreePort (Instance->UnicastPort);
-    gBS->FreePool (Instance);
+    UdpIoFreeIo (Instance->UnicastPort);
+    FreePool (Instance);
   }
 
   return Status;
@@ -623,13 +630,13 @@ Mtftp4ServiceBindingDestroyChild (
   OldTpl = gBS->RaiseTPL (TPL_CALLBACK);
 
   Mtftp4CleanOperation (Instance, EFI_DEVICE_ERROR);
-  UdpIoFreePort (Instance->UnicastPort);
+  UdpIoFreeIo (Instance->UnicastPort);
 
   RemoveEntryList (&Instance->Link);
   MtftpSb->ChildrenNum--;
 
   gBS->RestoreTPL (OldTpl);
 
-  gBS->FreePool (Instance);
+  FreePool (Instance);
   return EFI_SUCCESS;
 }

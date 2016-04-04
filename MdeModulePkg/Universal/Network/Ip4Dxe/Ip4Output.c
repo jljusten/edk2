@@ -1,7 +1,7 @@
 /** @file
   Transmit the IP4 packet.
   
-Copyright (c) 2005 - 2006, Intel Corporation.<BR>
+Copyright (c) 2005 - 2009, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -83,7 +83,7 @@ Ip4PrependHead (
   PacketHead->Dst       = HTONL (Head->Dst);
   PacketHead->Checksum  = (UINT16) (~NetblockChecksum ((UINT8 *) PacketHead, HeadLen));
 
-  Packet->Ip            = PacketHead;
+  Packet->Ip.Ip4        = PacketHead;
   return EFI_SUCCESS;
 }
 
@@ -292,8 +292,28 @@ Ip4Output (
   }
 
   //
+  // TODO: currently Option/OptLen are not included into encryption scope.
+  //
+  Status = Ip4IpSecProcessPacket (
+             IpSb, 
+             Head, 
+             &Packet, 
+             Option, 
+             OptLen, 
+             EfiIPsecOutBound,
+             Context
+             );
+
+  if (EFI_ERROR(Status)) {
+    return Status;
+  }
+
+  //
   // OK, selected the source and route, fragment the packet then send
   // them. Tag each fragment other than the first one as spawn from it.
+
+  //
+  // IPsec payload has been appended, so use IpSb->SnpMode.MaxPacketSize here.
   //
   Mtu            = IpSb->SnpMode.MaxPacketSize;
   HeadLen        = sizeof (IP4_HEAD) + ((OptLen + 3) & (~0x03));

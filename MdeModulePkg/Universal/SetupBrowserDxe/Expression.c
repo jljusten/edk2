@@ -1,7 +1,7 @@
 /** @file
 Utility functions for expression evaluation.
 
-Copyright (c) 2007 - 2008, Intel Corporation
+Copyright (c) 2007 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include "Ui.h"
 #include "Setup.h"
 
 //
@@ -30,7 +29,7 @@ EFI_HII_VALUE *mExpressionEvaluationStackPointer = NULL;
 // Unicode collation protocol interface
 //
 EFI_UNICODE_COLLATION_PROTOCOL *mUnicodeCollation = NULL;
-
+EFI_USER_MANAGER_PROTOCOL      *mUserManager = NULL;
 
 /**
   Grow size of the stack.
@@ -512,7 +511,7 @@ InitializeUnicodeCollationProtocol (
 **/
 VOID
 IfrStrToUpper (
-  CHAR16                   *String
+  IN CHAR16                   *String
   )
 {
   while (*String != 0) {
@@ -635,7 +634,7 @@ IfrToUint (
     if (String == NULL) {
       return EFI_NOT_FOUND;
     }
-    
+
     IfrStrToUpper (String);
     StringPtr = StrStr (String, L"0X");
     if (StringPtr != NULL) {
@@ -724,7 +723,7 @@ Done:
   }
   if (String[1] != NULL) {
     FreePool (String[1]);
-  }  
+  }
   if (StringPtr != NULL) {
     FreePool (StringPtr);
   }
@@ -788,7 +787,7 @@ Done:
   }
   if (String[1] != NULL) {
     FreePool (String[1]);
-  }  
+  }
 
   return Status;
 }
@@ -877,7 +876,7 @@ Done:
   }
   if (String[1] != NULL) {
     FreePool (String[1]);
-  }  
+  }
 
   return Status;
 }
@@ -1051,7 +1050,7 @@ Done:
   }
   if (String[1] != NULL) {
     FreePool (String[1]);
-  }  
+  }
 
   return Status;
 }
@@ -1159,7 +1158,7 @@ Done:
   }
   if (String[1] != NULL) {
     FreePool (String[1]);
-  }  
+  }
 
   return Status;
 }
@@ -1297,6 +1296,108 @@ CompareHiiValue (
   return Result;
 }
 
+/**
+  Check if current user has the privilege specified by the permissions GUID.
+
+  @param[in] Guid  A GUID specifying setup access permissions.
+
+  @retval TRUE     Current user has the privilege.
+  @retval FALSE    Current user does not have the privilege.
+**/
+BOOLEAN
+CheckUserPrivilege (
+  IN EFI_GUID *Guid
+  )
+{
+  EFI_STATUS                   Status;
+  EFI_USER_PROFILE_HANDLE      UserProfileHandle;
+  EFI_USER_INFO_HANDLE         UserInfoHandle;
+  EFI_USER_INFO                *UserInfo;
+  EFI_GUID                     *UserPermissionsGuid;
+  UINTN                        UserInfoSize;
+  UINTN                        AccessControlDataSize;
+  EFI_USER_INFO_ACCESS_CONTROL *AccessControl;
+  UINTN                        RemainSize;
+
+  if (mUserManager == NULL) {
+    Status = gBS->LocateProtocol (
+                    &gEfiUserManagerProtocolGuid,
+                    NULL,
+                    (VOID **) &mUserManager
+                    );
+    if (EFI_ERROR (Status)) {
+      ///
+      /// If the system does not support user management, then it is assumed that
+      /// all users have admin privilege and evaluation of each EFI_IFR_SECURITY
+      /// op-code is always TRUE.
+      ///
+      return TRUE;
+    }
+  }
+
+  Status = mUserManager->Current (mUserManager, &UserProfileHandle);
+  ASSERT_EFI_ERROR (Status);
+
+  ///
+  /// Enumerate all user information of the current user profile
+  /// to look for any EFI_USER_INFO_ACCESS_SETUP record.
+  ///
+  
+  for (UserInfoHandle = NULL;;) {
+    Status = mUserManager->GetNextInfo (mUserManager, UserProfileHandle, &UserInfoHandle);
+    if (EFI_ERROR (Status)) {
+      break;
+    }
+
+    UserInfoSize = 0;
+    Status = mUserManager->GetInfo (mUserManager, UserProfileHandle, UserInfoHandle, NULL, &UserInfoSize);
+    if (Status != EFI_BUFFER_TOO_SMALL) {
+      continue;
+    }
+
+    UserInfo = (EFI_USER_INFO *) AllocatePool (UserInfoSize);
+    if (UserInfo == NULL) {
+      break;
+    }
+
+    Status = mUserManager->GetInfo (mUserManager, UserProfileHandle, UserInfoHandle, UserInfo, &UserInfoSize);
+    if (EFI_ERROR (Status) ||
+        UserInfo->InfoType != EFI_USER_INFO_ACCESS_POLICY_RECORD ||
+        UserInfo->InfoSize <= sizeof (EFI_USER_INFO)) {
+      FreePool (UserInfo);
+      continue;
+    }
+
+    RemainSize = UserInfo->InfoSize - sizeof (EFI_USER_INFO);
+    AccessControl = (EFI_USER_INFO_ACCESS_CONTROL *)(UserInfo + 1);
+    while (RemainSize >= sizeof (EFI_USER_INFO_ACCESS_CONTROL)) {
+      if (RemainSize < AccessControl->Size || AccessControl->Size <= sizeof (EFI_USER_INFO_ACCESS_CONTROL)) {
+        break;
+      }
+      if (AccessControl->Type == EFI_USER_INFO_ACCESS_SETUP) {
+        ///
+        /// Check if current user has the privilege specified by the permissions GUID.
+        ///
+
+        UserPermissionsGuid = (EFI_GUID *)(AccessControl + 1);
+        AccessControlDataSize = AccessControl->Size - sizeof (EFI_USER_INFO_ACCESS_CONTROL);
+        while (AccessControlDataSize >= sizeof (EFI_GUID)) {
+          if (CompareGuid (Guid, UserPermissionsGuid)) {
+            FreePool (UserInfo);
+            return TRUE;
+          }
+          UserPermissionsGuid++;
+          AccessControlDataSize -= sizeof (EFI_GUID);
+        }
+      }
+      RemainSize -= AccessControl->Size;
+      AccessControl = (EFI_USER_INFO_ACCESS_CONTROL *)((UINT8 *)AccessControl + AccessControl->Size);
+    }
+
+    FreePool (UserInfo);
+  }
+  return FALSE;
+}
 
 /**
   Evaluate the result of a HII expression.
@@ -1427,6 +1528,10 @@ EvaluateExpression (
       }
 
       Value = &Question->HiiValue;
+      break;
+
+    case EFI_IFR_SECURITY_OP:
+      Value->Value.b = CheckUserPrivilege (&OpCode->Guid);
       break;
 
     case EFI_IFR_QUESTION_REF3_OP:
@@ -1836,7 +1941,7 @@ EvaluateExpression (
         break;
 
       case EFI_IFR_NOT_EQUAL_OP:
-        Value->Value.b = (BOOLEAN) ((Result == 0) ? TRUE : FALSE);
+        Value->Value.b = (BOOLEAN) ((Result != 0) ? TRUE : FALSE);
         break;
 
       case EFI_IFR_GREATER_EQUAL_OP:

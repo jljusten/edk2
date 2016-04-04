@@ -1,7 +1,7 @@
 /** @file
 Entry and initialization module for the browser.
 
-Copyright (c) 2007 - 2008, Intel Corporation
+Copyright (c) 2007 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -13,8 +13,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 #include "Setup.h"
-#include "Ui.h"
-
 
 SETUP_DRIVER_PRIVATE_DATA  mPrivateData = {
   SETUP_DRIVER_SIGNATURE,
@@ -29,6 +27,9 @@ EFI_HII_DATABASE_PROTOCOL         *mHiiDatabase;
 EFI_HII_STRING_PROTOCOL           *mHiiString;
 EFI_HII_CONFIG_ROUTING_PROTOCOL   *mHiiConfigRouting;
 
+UINTN           gBrowserContextCount = 0;
+LIST_ENTRY      gBrowserContextList = INITIALIZE_LIST_HEAD_VARIABLE (gBrowserContextList);
+
 BANNER_DATA           *gBannerData;
 EFI_HII_HANDLE        gFrontPageHandle;
 UINTN                 gClassOfVfr;
@@ -38,14 +39,10 @@ BOOLEAN               gNvUpdateRequired;
 EFI_HII_HANDLE        gHiiHandle;
 UINT16                gDirection;
 EFI_SCREEN_DESCRIPTOR gScreenDimensions;
-BOOLEAN               gUpArrow;
-BOOLEAN               gDownArrow;
 
 //
 // Browser Global Strings
 //
-CHAR16            *gFunctionOneString;
-CHAR16            *gFunctionTwoString;
 CHAR16            *gFunctionNineString;
 CHAR16            *gFunctionTenString;
 CHAR16            *gEnterString;
@@ -75,6 +72,7 @@ CHAR16            *gMinusString;
 CHAR16            *gAdjustNumber;
 CHAR16            *gSaveChanges;
 CHAR16            *gOptionMismatch;
+CHAR16            *gFormSuppress;
 
 CHAR16            *mUnknownString = L"!";
 
@@ -86,6 +84,8 @@ EFI_GUID  gZeroGuid = {0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0}};
 EFI_GUID  gSetupBrowserGuid = {
   0xab368524, 0xb60c, 0x495b, {0xa0, 0x9, 0x12, 0xe8, 0x5b, 0x1a, 0xea, 0x32}
 };
+
+FORM_BROWSER_FORMSET  *gOldFormSet;
 
 FUNCTIION_KEY_SETTING gFunctionKeySettingTable[] = {
   //
@@ -190,7 +190,7 @@ FUNCTIION_KEY_SETTING gFunctionKeySettingTable[] = {
   @param FormId          This field specifies which EFI_IFR_FORM to render as the first
                          displayable page. If this field has a value of 0x0000, then
                          the forms browser will render the specified forms in their encoded order.
-  @param ScreenDimensions Points to recommended form dimensions, including any non-content area, in 
+  @param ScreenDimensions Points to recommended form dimensions, including any non-content area, in
                           characters.
   @param ActionRequest   Points to the action recommended by the form.
 
@@ -216,6 +216,11 @@ SendForm (
   UINTN                         Index;
   FORM_BROWSER_FORMSET          *FormSet;
 
+  //
+  // Save globals used by SendForm()
+  //
+  SaveBrowserContext ();
+
   Status = EFI_SUCCESS;
   ZeroMem (&gScreenDimensions, sizeof (EFI_SCREEN_DESCRIPTOR));
 
@@ -236,7 +241,8 @@ SendForm (
     if ((gScreenDimensions.RightColumn < ScreenDimensions->RightColumn) ||
         (gScreenDimensions.BottomRow < ScreenDimensions->BottomRow)
         ) {
-      return EFI_INVALID_PARAMETER;
+      Status = EFI_INVALID_PARAMETER;
+      goto Done;
     } else {
       //
       // Local dimension validation.
@@ -255,7 +261,8 @@ SendForm (
         ) {
         CopyMem (&gScreenDimensions, (VOID *) ScreenDimensions, sizeof (EFI_SCREEN_DESCRIPTOR));
       } else {
-        return EFI_INVALID_PARAMETER;
+        Status = EFI_INVALID_PARAMETER;
+        goto Done;
       }
     }
   }
@@ -287,6 +294,9 @@ SendForm (
       Selection->FormId = FormId;
     }
 
+    gOldFormSet = NULL;
+    gNvUpdateRequired = FALSE;
+
     do {
       FormSet = AllocateZeroPool (sizeof (FORM_BROWSER_FORMSET));
       ASSERT (FormSet != NULL);
@@ -302,15 +312,6 @@ SendForm (
       Selection->FormSet = FormSet;
 
       //
-      // Initialize current settings of Questions in this FormSet
-      //
-      Status = InitializeCurrentSetting (FormSet);
-      if (EFI_ERROR (Status)) {
-        DestroyFormSet (FormSet);
-        break;
-      }
-
-      //
       // Display this formset
       //
       gCurrentSelection = Selection;
@@ -318,13 +319,17 @@ SendForm (
       Status = SetupBrowser (Selection);
 
       gCurrentSelection = NULL;
-      DestroyFormSet (FormSet);
 
       if (EFI_ERROR (Status)) {
         break;
       }
 
     } while (Selection->Action == UI_ACTION_REFRESH_FORMSET);
+
+    if (gOldFormSet != NULL) {
+      DestroyFormSet (gOldFormSet);
+      gOldFormSet = NULL;
+    }
 
     FreePool (Selection);
   }
@@ -340,6 +345,12 @@ SendForm (
 
   gST->ConOut->SetAttribute (gST->ConOut, EFI_TEXT_ATTR (EFI_LIGHTGRAY, EFI_BLACK));
   gST->ConOut->ClearScreen (gST->ConOut);
+
+Done:
+  //
+  // Restore globals used by SendForm()
+  //
+  RestoreBrowserContext ();
 
   return Status;
 }
@@ -1128,7 +1139,7 @@ GetQuestionValue (
       if (EFI_ERROR (Status)) {
         return Status;
       }
-      
+
       LengthStr = StrLen (Value);
       Status    = EFI_SUCCESS;
       if (IsString) {
@@ -1529,7 +1540,7 @@ SetQuestionValue (
         TemString += UnicodeValueToString (TemString, PREFIX_ZERO | RADIX_HEX, *TemBuffer, 2);
       }
     }
-    
+
     //
     // Convert to lower char.
     //
@@ -1893,7 +1904,7 @@ GetQuestionDefault (
     //
     // Take first oneof option as oneof's default value
     //
-    if (ValueToOption (Question, HiiValue) == NULL) {    
+    if (ValueToOption (Question, HiiValue) == NULL) {
       Link = GetFirstNode (&Question->OptionListHead);
       if (!IsNull (&Question->OptionListHead, Link)) {
         Option = QUESTION_OPTION_FROM_LINK (Link);
@@ -1911,7 +1922,7 @@ GetQuestionDefault (
     while (!IsNull (&Question->OptionListHead, Link)) {
       Option = QUESTION_OPTION_FROM_LINK (Link);
 
-      Question->BufferValue[Index] = Option->Value.Value.u8;
+      SetArrayData (Question->BufferValue, Question->ValueType, Index, Option->Value.Value.u64);
 
       Index++;
       if (Index >= Question->MaxContainers) {
@@ -1987,10 +1998,12 @@ ExtractFormDefault (
   return EFI_SUCCESS;
 }
 
-
 /**
   Initialize Question's Edit copy from Storage.
 
+  @param  Selection              Selection contains the information about 
+                                 the Selection, form and formset to be displayed.
+                                 Selection action may be updated in retrieve callback.
   @param  FormSet                FormSet data structure.
   @param  Form                   Form data structure.
 
@@ -1999,14 +2012,19 @@ ExtractFormDefault (
 **/
 EFI_STATUS
 LoadFormConfig (
-  IN FORM_BROWSER_FORMSET             *FormSet,
-  IN FORM_BROWSER_FORM                *Form
+  IN OUT UI_MENU_SELECTION    *Selection,
+  IN FORM_BROWSER_FORMSET     *FormSet,
+  IN FORM_BROWSER_FORM        *Form
   )
 {
-  EFI_STATUS              Status;
-  LIST_ENTRY              *Link;
-  FORM_BROWSER_STATEMENT  *Question;
-
+  EFI_STATUS                  Status;
+  LIST_ENTRY                  *Link;
+  FORM_BROWSER_STATEMENT      *Question;
+  UINT8                       *BufferValue;
+  UINTN                       StorageWidth;
+  EFI_HII_VALUE               *HiiValue;
+  EFI_BROWSER_ACTION_REQUEST  ActionRequest;
+  
   Link = GetFirstNode (&Form->StatementListHead);
   while (!IsNull (&Form->StatementListHead, Link)) {
     Question = FORM_BROWSER_STATEMENT_FROM_LINK (Link);
@@ -2018,6 +2036,87 @@ LoadFormConfig (
     if (EFI_ERROR (Status)) {
       return Status;
     }
+    
+    //
+    // Check whether EfiVarstore with CallBack can be got.
+    //
+    if ((Question->QuestionId != 0) && (Question->Storage != NULL) &&
+        (Question->Storage->Type == EFI_HII_VARSTORE_EFI_VARIABLE) && 
+        ((Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) == EFI_IFR_FLAG_CALLBACK)) {
+      //
+      // ConfigAccess can't be NULL.
+      //
+      if (FormSet->ConfigAccess == NULL) {
+        return EFI_UNSUPPORTED;
+      }
+      //
+      // Check QuestionValue does exist.
+      //
+      StorageWidth = Question->StorageWidth;
+      if (Question->BufferValue != NULL) {
+        BufferValue  = Question->BufferValue;
+      } else {
+        BufferValue = (UINT8 *) &Question->HiiValue.Value;
+      }
+      Status = gRT->GetVariable (
+                       Question->VariableName,
+                       &Question->Storage->Guid,
+                       NULL,
+                       &StorageWidth,
+                       BufferValue
+                       );
+
+      if (!EFI_ERROR (Status)) {
+        ActionRequest = EFI_BROWSER_ACTION_REQUEST_NONE;
+        HiiValue = &Question->HiiValue;
+        BufferValue = (UINT8 *) &Question->HiiValue.Value;
+        if (HiiValue->Type == EFI_IFR_TYPE_STRING) {
+          //
+          // Create String in HII database for Configuration Driver to retrieve
+          //
+          HiiValue->Value.string = NewString ((CHAR16 *) Question->BufferValue, FormSet->HiiHandle);
+        } else if (HiiValue->Type == EFI_IFR_TYPE_BUFFER) {
+          BufferValue = Question->BufferValue;
+        }
+
+        Status = FormSet->ConfigAccess->Callback (
+                                 FormSet->ConfigAccess,
+                                 EFI_BROWSER_ACTION_RETRIEVE,
+                                 Question->QuestionId,
+                                 HiiValue->Type,
+                                 (EFI_IFR_TYPE_VALUE *) BufferValue,
+                                 &ActionRequest
+                                 );
+
+        if (HiiValue->Type == EFI_IFR_TYPE_STRING) {
+          //
+          // Clean the String in HII Database
+          //
+          DeleteString (HiiValue->Value.string, FormSet->HiiHandle);
+        }
+
+        if (!EFI_ERROR (Status)) {
+          switch (ActionRequest) {
+          case EFI_BROWSER_ACTION_REQUEST_RESET:
+            gResetRequired = TRUE;
+            break;
+
+          case EFI_BROWSER_ACTION_REQUEST_SUBMIT:
+            //
+            // Till now there is no uncommitted data, so ignore this request
+            //
+            break;
+
+          case EFI_BROWSER_ACTION_REQUEST_EXIT:
+            Selection->Action = UI_ACTION_EXIT;
+            break;
+
+          default:
+            break;
+          }
+        }
+      }
+    }
 
     Link = GetNextNode (&Form->StatementListHead, Link);
   }
@@ -2025,6 +2124,44 @@ LoadFormConfig (
   return EFI_SUCCESS;
 }
 
+/**
+  Initialize Question's Edit copy from Storage for the whole Formset.
+
+  @param  Selection              Selection contains the information about 
+                                 the Selection, form and formset to be displayed.
+                                 Selection action may be updated in retrieve callback.
+  @param  FormSet                FormSet data structure.
+
+  @retval EFI_SUCCESS            The function completed successfully.
+
+**/
+EFI_STATUS
+LoadFormSetConfig (
+  IN OUT UI_MENU_SELECTION    *Selection,
+  IN     FORM_BROWSER_FORMSET *FormSet
+  )
+{
+  EFI_STATUS            Status;
+  LIST_ENTRY            *Link;
+  FORM_BROWSER_FORM     *Form;
+
+  Link = GetFirstNode (&FormSet->FormListHead);
+  while (!IsNull (&FormSet->FormListHead, Link)) {
+    Form = FORM_BROWSER_FORM_FROM_LINK (Link);
+
+    //
+    // Initialize local copy of Value for each Form
+    //
+    Status = LoadFormConfig (Selection, FormSet, Form);
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+
+    Link = GetNextNode (&FormSet->FormListHead, Link);
+  }
+
+  return EFI_SUCCESS;
+}
 
 /**
   Fill storage's edit copy with settings requested from Configuration Driver.
@@ -2089,6 +2226,54 @@ LoadStorage (
 
 
 /**
+  Copy uncommitted data from source Storage to destination Storage.
+
+  @param  Dst                    Target Storage for uncommitted data.
+  @param  Src                    Source Storage for uncommitted data.
+
+  @retval EFI_SUCCESS            The function completed successfully.
+  @retval EFI_INVALID_PARAMETER  Source and destination Storage is not the same type.
+
+**/
+EFI_STATUS
+CopyStorage (
+  IN OUT FORMSET_STORAGE     *Dst,
+  IN FORMSET_STORAGE         *Src
+  )
+{
+  LIST_ENTRY          *Link;
+  NAME_VALUE_NODE     *Node;
+
+  if ((Dst->Type != Src->Type) || (Dst->Size != Src->Size)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  switch (Src->Type) {
+  case EFI_HII_VARSTORE_BUFFER:
+    CopyMem (Dst->EditBuffer, Src->EditBuffer, Src->Size);
+    break;
+
+  case EFI_HII_VARSTORE_NAME_VALUE:
+    Link = GetFirstNode (&Src->NameValueListHead);
+    while (!IsNull (&Src->NameValueListHead, Link)) {
+      Node = NAME_VALUE_NODE_FROM_LINK (Link);
+
+      SetValueByName (Dst, Node->Name, Node->EditValue);
+
+      Link = GetNextNode (&Src->NameValueListHead, Link);
+    }
+    break;
+
+  case EFI_HII_VARSTORE_EFI_VARIABLE:
+  default:
+    break;
+  }
+
+  return EFI_SUCCESS;
+}
+
+
+/**
   Get current setting of Questions.
 
   @param  FormSet                FormSet data structure.
@@ -2102,7 +2287,10 @@ InitializeCurrentSetting (
   )
 {
   LIST_ENTRY              *Link;
+  LIST_ENTRY              *Link2;
   FORMSET_STORAGE         *Storage;
+  FORMSET_STORAGE         *StorageSrc;
+  FORMSET_STORAGE         *OldStorage;
   FORM_BROWSER_FORM       *Form;
   EFI_STATUS              Status;
 
@@ -2125,7 +2313,35 @@ InitializeCurrentSetting (
   while (!IsNull (&FormSet->StorageListHead, Link)) {
     Storage = FORMSET_STORAGE_FROM_LINK (Link);
 
-    Status = LoadStorage (FormSet, Storage);
+    OldStorage = NULL;
+    if (gOldFormSet != NULL) {
+      //
+      // Try to find the Storage in backup formset gOldFormSet
+      //
+      Link2 = GetFirstNode (&gOldFormSet->StorageListHead);
+      while (!IsNull (&gOldFormSet->StorageListHead, Link2)) {
+        StorageSrc = FORMSET_STORAGE_FROM_LINK (Link2);
+
+        if (StorageSrc->VarStoreId == Storage->VarStoreId) {
+          OldStorage = StorageSrc;
+          break;
+        }
+
+        Link2 = GetNextNode (&gOldFormSet->StorageListHead, Link2);
+      }
+    }
+
+    if (OldStorage == NULL) {
+      //
+      // Storage is not found in backup formset, request it from ConfigDriver
+      //
+      Status = LoadStorage (FormSet, Storage);
+    } else {
+      //
+      // Storage found in backup formset, use it
+      //
+      Status = CopyStorage (Storage, OldStorage);
+    }
 
     //
     // Now Edit Buffer is filled with default values(lower priority) and current
@@ -2146,9 +2362,11 @@ InitializeCurrentSetting (
   Fetch the Ifr binary data of a FormSet.
 
   @param  Handle                 PackageList Handle
-  @param  FormSetGuid            GUID of a formset. If not specified (NULL or zero
-                                 GUID), take the first FormSet found in package
-                                 list.
+  @param  FormSetGuid            On input, GUID or class GUID of a formset. If not
+                                 specified (NULL or zero GUID), take the first
+                                 FormSet with class GUID EFI_HII_PLATFORM_SETUP_FORMSET_GUID
+                                 found in package list.
+                                 On output, GUID of the formset found(if not NULL).
   @param  BinaryLength           The length of the FormSet IFR binary.
   @param  BinaryData             The buffer designed to receive the FormSet.
 
@@ -2174,25 +2392,25 @@ GetIfrBinaryData (
   UINT8                        *OpCodeData;
   UINT32                       Offset;
   UINT32                       Offset2;
-  BOOLEAN                      ReturnDefault;
   UINT32                       PackageListLength;
   EFI_HII_PACKAGE_HEADER       PackageHeader;
   UINT8                        Index;
   UINT8                        NumberOfClassGuid;
-  BOOLEAN                      IsSetupClassGuid;
+  BOOLEAN                      ClassGuidMatch;
   EFI_GUID                     *ClassGuid;
+  EFI_GUID                     *ComparingGuid;
 
   OpCodeData = NULL;
   Package = NULL;
-  ZeroMem (&PackageHeader, sizeof (EFI_HII_PACKAGE_HEADER));;
+  ZeroMem (&PackageHeader, sizeof (EFI_HII_PACKAGE_HEADER));
 
   //
-  // if FormSetGuid is NULL or zero GUID, return first FormSet in the package list
+  // if FormSetGuid is NULL or zero GUID, return first Setup FormSet in the package list
   //
   if (FormSetGuid == NULL || CompareGuid (FormSetGuid, &gZeroGuid)) {
-    ReturnDefault = TRUE;
+    ComparingGuid = &gEfiHiiPlatformSetupFormsetGuid;
   } else {
-    ReturnDefault = FALSE;
+    ComparingGuid = FormSetGuid;
   }
 
   //
@@ -2211,7 +2429,7 @@ GetIfrBinaryData (
     return Status;
   }
   ASSERT (HiiPackageList != NULL);
-  
+
   //
   // Get Form package from this HII package List
   //
@@ -2219,6 +2437,7 @@ GetIfrBinaryData (
   Offset2 = 0;
   CopyMem (&PackageListLength, &HiiPackageList->PackageLength, sizeof (UINT32));
 
+  ClassGuidMatch = FALSE;
   while (Offset < PackageListLength) {
     Package = ((UINT8 *) HiiPackageList) + Offset;
     CopyMem (&PackageHeader, Package, sizeof (EFI_HII_PACKAGE_HEADER));
@@ -2233,30 +2452,24 @@ GetIfrBinaryData (
 
         if (((EFI_IFR_OP_HEADER *) OpCodeData)->OpCode == EFI_IFR_FORM_SET_OP) {
           //
-          // Check whether return default FormSet
+          // Try to compare against formset GUID
           //
-          if (ReturnDefault) {
-            //
-            // Check ClassGuid of formset OpCode
-            //
-            IsSetupClassGuid  = FALSE;
-            NumberOfClassGuid = (UINT8) (((EFI_IFR_FORM_SET *) OpCodeData)->Flags & 0x3);
-            ClassGuid         = (EFI_GUID *) (OpCodeData + sizeof (EFI_IFR_FORM_SET));
-            for (Index = 0; Index < NumberOfClassGuid; Index++) {
-              if (CompareGuid (ClassGuid + Index, &gEfiHiiPlatformSetupFormsetGuid)) {
-                IsSetupClassGuid = TRUE;
-                break;
-              }
-            }
-            if (IsSetupClassGuid) {
-              break;
-            }
+          if (CompareGuid (ComparingGuid, (EFI_GUID *)(OpCodeData + sizeof (EFI_IFR_OP_HEADER)))) {
+            break;
           }
 
           //
-          // FormSet GUID is specified, check it
+          // Try to compare against formset class GUID
           //
-          if (CompareGuid (FormSetGuid, (EFI_GUID *)(OpCodeData + sizeof (EFI_IFR_OP_HEADER)))) {
+          NumberOfClassGuid = (UINT8) (((EFI_IFR_FORM_SET *) OpCodeData)->Flags & 0x3);
+          ClassGuid         = (EFI_GUID *) (OpCodeData + sizeof (EFI_IFR_FORM_SET));
+          for (Index = 0; Index < NumberOfClassGuid; Index++) {
+            if (CompareGuid (ComparingGuid, ClassGuid + Index)) {
+              ClassGuidMatch = TRUE;
+              break;
+            }
+          }
+          if (ClassGuidMatch) {
             break;
           }
         }
@@ -2283,9 +2496,9 @@ GetIfrBinaryData (
     return EFI_NOT_FOUND;
   }
 
-  if (ReturnDefault && FormSetGuid != NULL) {
+  if (ClassGuidMatch && (FormSetGuid != NULL)) {
     //
-    // Return the default FormSet GUID
+    // Return the FormSet GUID
     //
     CopyMem (FormSetGuid, &((EFI_IFR_FORM_SET *) OpCodeData)->Guid, sizeof (EFI_GUID));
   }
@@ -2312,9 +2525,11 @@ GetIfrBinaryData (
   Initialize the internal data structure of a FormSet.
 
   @param  Handle                 PackageList Handle
-  @param  FormSetGuid            GUID of a formset. If not specified (NULL or zero
-                                 GUID), take the first FormSet found in package
-                                 list.
+  @param  FormSetGuid            On input, GUID or class GUID of a formset. If not
+                                 specified (NULL or zero GUID), take the first
+                                 FormSet with class GUID EFI_HII_PLATFORM_SETUP_FORMSET_GUID
+                                 found in package list.
+                                 On output, GUID of the formset found(if not NULL).
   @param  FormSet                FormSet data structure.
 
   @retval EFI_SUCCESS            The function completed successfully.
@@ -2387,14 +2602,6 @@ InitializeFormSet (
       //
       // Function key prompt can not be displayed if the function key has been disabled.
       //
-      if ((gFunctionKeySetting & FUNCTION_ONE) != FUNCTION_ONE) {
-        gFunctionOneString = GetToken (STRING_TOKEN (EMPTY_STRING), gHiiHandle);
-      }
-
-      if ((gFunctionKeySetting & FUNCTION_TWO) != FUNCTION_TWO) {
-        gFunctionTwoString = GetToken (STRING_TOKEN (EMPTY_STRING), gHiiHandle);
-      }
-
       if ((gFunctionKeySetting & FUNCTION_NINE) != FUNCTION_NINE) {
         gFunctionNineString = GetToken (STRING_TOKEN (EMPTY_STRING), gHiiHandle);
       }
@@ -2406,4 +2613,167 @@ InitializeFormSet (
   }
 
   return Status;
+}
+
+
+/**
+  Save globals used by previous call to SendForm(). SendForm() may be called from 
+  HiiConfigAccess.Callback(), this will cause SendForm() be reentried.
+  So, save globals of previous call to SendForm() and restore them upon exit.
+
+**/
+VOID
+SaveBrowserContext (
+  VOID
+  )
+{
+  BROWSER_CONTEXT  *Context;
+
+  gBrowserContextCount++;
+  if (gBrowserContextCount == 1) {
+    //
+    // This is not reentry of SendForm(), no context to save
+    //
+    return;
+  }
+
+  Context = AllocatePool (sizeof (BROWSER_CONTEXT));
+  ASSERT (Context != NULL);
+
+  Context->Signature = BROWSER_CONTEXT_SIGNATURE;
+
+  //
+  // Save FormBrowser context
+  //
+  Context->BannerData           = gBannerData;
+  Context->ClassOfVfr           = gClassOfVfr;
+  Context->FunctionKeySetting   = gFunctionKeySetting;
+  Context->ResetRequired        = gResetRequired;
+  Context->NvUpdateRequired     = gNvUpdateRequired;
+  Context->Direction            = gDirection;
+  Context->FunctionNineString   = gFunctionNineString;
+  Context->FunctionTenString    = gFunctionTenString;
+  Context->EnterString          = gEnterString;
+  Context->EnterCommitString    = gEnterCommitString;
+  Context->EnterEscapeString    = gEnterEscapeString;
+  Context->EscapeString         = gEscapeString;
+  Context->SaveFailed           = gSaveFailed;
+  Context->MoveHighlight        = gMoveHighlight;
+  Context->MakeSelection        = gMakeSelection;
+  Context->DecNumericInput      = gDecNumericInput;
+  Context->HexNumericInput      = gHexNumericInput;
+  Context->ToggleCheckBox       = gToggleCheckBox;
+  Context->PromptForData        = gPromptForData;
+  Context->PromptForPassword    = gPromptForPassword;
+  Context->PromptForNewPassword = gPromptForNewPassword;
+  Context->ConfirmPassword      = gConfirmPassword;
+  Context->ConfirmError         = gConfirmError;
+  Context->PassowordInvalid     = gPassowordInvalid;
+  Context->PressEnter           = gPressEnter;
+  Context->EmptyString          = gEmptyString;
+  Context->AreYouSure           = gAreYouSure;
+  Context->YesResponse          = gYesResponse;
+  Context->NoResponse           = gNoResponse;
+  Context->MiniString           = gMiniString;
+  Context->PlusString           = gPlusString;
+  Context->MinusString          = gMinusString;
+  Context->AdjustNumber         = gAdjustNumber;
+  Context->SaveChanges          = gSaveChanges;
+  Context->OptionMismatch       = gOptionMismatch;
+  Context->FormSuppress         = gFormSuppress;
+  Context->PromptBlockWidth     = gPromptBlockWidth;
+  Context->OptionBlockWidth     = gOptionBlockWidth;
+  Context->HelpBlockWidth       = gHelpBlockWidth;
+  Context->OldFormSet           = gOldFormSet;
+  Context->MenuRefreshHead      = gMenuRefreshHead;
+
+  CopyMem (&Context->ScreenDimensions, &gScreenDimensions, sizeof (gScreenDimensions));
+  CopyMem (&Context->MenuOption, &gMenuOption, sizeof (gMenuOption));
+
+  //
+  // Insert to FormBrowser context list
+  //
+  InsertHeadList (&gBrowserContextList, &Context->Link);
+}
+
+
+/**
+  Restore globals used by previous call to SendForm().
+
+**/
+VOID
+RestoreBrowserContext (
+  VOID
+  )
+{
+  LIST_ENTRY       *Link;
+  BROWSER_CONTEXT  *Context;
+
+  ASSERT (gBrowserContextCount != 0);
+  gBrowserContextCount--;
+  if (gBrowserContextCount == 0) {
+    //
+    // This is not reentry of SendForm(), no context to restore
+    //
+    return;
+  }
+
+  ASSERT (!IsListEmpty (&gBrowserContextList));
+
+  Link = GetFirstNode (&gBrowserContextList);
+  Context = BROWSER_CONTEXT_FROM_LINK (Link);
+
+  //
+  // Restore FormBrowser context
+  //
+  gBannerData           = Context->BannerData;
+  gClassOfVfr           = Context->ClassOfVfr;
+  gFunctionKeySetting   = Context->FunctionKeySetting;
+  gResetRequired        = Context->ResetRequired;
+  gNvUpdateRequired     = Context->NvUpdateRequired;
+  gDirection            = Context->Direction;
+  gFunctionNineString   = Context->FunctionNineString;
+  gFunctionTenString    = Context->FunctionTenString;
+  gEnterString          = Context->EnterString;
+  gEnterCommitString    = Context->EnterCommitString;
+  gEnterEscapeString    = Context->EnterEscapeString;
+  gEscapeString         = Context->EscapeString;
+  gSaveFailed           = Context->SaveFailed;
+  gMoveHighlight        = Context->MoveHighlight;
+  gMakeSelection        = Context->MakeSelection;
+  gDecNumericInput      = Context->DecNumericInput;
+  gHexNumericInput      = Context->HexNumericInput;
+  gToggleCheckBox       = Context->ToggleCheckBox;
+  gPromptForData        = Context->PromptForData;
+  gPromptForPassword    = Context->PromptForPassword;
+  gPromptForNewPassword = Context->PromptForNewPassword;
+  gConfirmPassword      = Context->ConfirmPassword;
+  gConfirmError         = Context->ConfirmError;
+  gPassowordInvalid     = Context->PassowordInvalid;
+  gPressEnter           = Context->PressEnter;
+  gEmptyString          = Context->EmptyString;
+  gAreYouSure           = Context->AreYouSure;
+  gYesResponse          = Context->YesResponse;
+  gNoResponse           = Context->NoResponse;
+  gMiniString           = Context->MiniString;
+  gPlusString           = Context->PlusString;
+  gMinusString          = Context->MinusString;
+  gAdjustNumber         = Context->AdjustNumber;
+  gSaveChanges          = Context->SaveChanges;
+  gOptionMismatch       = Context->OptionMismatch;
+  gFormSuppress         = Context->FormSuppress;
+  gPromptBlockWidth     = Context->PromptBlockWidth;
+  gOptionBlockWidth     = Context->OptionBlockWidth;
+  gHelpBlockWidth       = Context->HelpBlockWidth;
+  gOldFormSet           = Context->OldFormSet;
+  gMenuRefreshHead      = Context->MenuRefreshHead;
+
+  CopyMem (&gScreenDimensions, &Context->ScreenDimensions, sizeof (gScreenDimensions));
+  CopyMem (&gMenuOption, &Context->MenuOption, sizeof (gMenuOption));
+
+  //
+  // Remove from FormBrowser context list
+  //
+  RemoveEntryList (&Context->Link);
+  gBS->FreePool (Context);
 }

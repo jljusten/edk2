@@ -1,7 +1,7 @@
 /** @file
   The driver binding and service binding protocol for IP4 driver.
   
-Copyright (c) 2005 - 2006, Intel Corporation.<BR>
+Copyright (c) 2005 - 2009, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -290,6 +290,7 @@ Ip4CreateService (
 
   InsertHeadList (&IpSb->Interfaces, &IpSb->DefaultInterface->Link);
 
+  IpSb->MaxPacketSize = IpSb->SnpMode.MaxPacketSize - sizeof (IP4_HEAD);
   IpSb->MacString = NULL;
 
   *Service = IpSb;
@@ -297,7 +298,7 @@ Ip4CreateService (
 
 ON_ERROR:
   Ip4CleanService (IpSb);
-  gBS->FreePool (IpSb);
+  FreePool (IpSb);
 
   return Status;
 }
@@ -487,7 +488,7 @@ UNINSTALL_PROTOCOL:
 
 FREE_SERVICE:
   Ip4CleanService (IpSb);
-  gBS->FreePool (IpSb);
+  FreePool (IpSb);
 
   return Status;
 }
@@ -685,7 +686,7 @@ Ip4DriverBindingStop (
            ServiceBinding
            );
 
-    gBS->FreePool (IpSb);
+    FreePool (IpSb);
   } else if (NumberOfChildren == 0) {
     IpSb->InDestory = TRUE;
 
@@ -713,7 +714,7 @@ Ip4DriverBindingStop (
            ServiceBinding
            );
 
-    gBS->FreePool (IpSb);
+    FreePool (IpSb);
   } else {
 
     while (!IsListEmpty (&IpSb->Children)) {
@@ -833,7 +834,7 @@ ON_ERROR:
 
     Ip4CleanProtocol (IpInstance);
 
-    gBS->FreePool (IpInstance);
+    FreePool (IpInstance);
   }
 
   return Status;
@@ -970,7 +971,7 @@ Ip4ServiceBindingDestroyChild (
 
   gBS->RestoreTPL (OldTpl);
 
-  gBS->FreePool (IpInstance);
+  FreePool (IpInstance);
   return EFI_SUCCESS;
 
 ON_ERROR:

@@ -1,7 +1,7 @@
 /** @file
   Library used for sorting routines.
 
-Copyright (c) 2009, Intel Corporation
+Copyright (c) 2009, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -50,7 +50,8 @@ QuickSortWorker (
   IN CONST UINTN                        ElementSize,
   IN       SORT_COMPARE                 CompareFunction,
   IN VOID                               *Buffer
-  ){
+  )
+{
   VOID        *Pivot;
   UINTN       LoopCount;
   UINTN       NextSwapLocation;
@@ -149,7 +150,8 @@ PerformQuickSort (
   IN CONST UINTN                        Count,
   IN CONST UINTN                        ElementSize,
   IN       SORT_COMPARE                 CompareFunction
-  ){
+  )
+{
   VOID  *Buffer;
 
   ASSERT(BufferToSort     != NULL);
@@ -168,3 +170,41 @@ PerformQuickSort (
   FreePool(Buffer);
   return;
 }
+
+/**
+  Not supported in Base version.
+  
+  ASSERT and return 0.
+**/
+INTN
+DevicePathCompare (
+  IN  VOID             *Buffer1,
+  IN  VOID             *Buffer2
+  )
+{
+  ASSERT(FALSE);
+  return 0;
+}
+
+/**
+  Function to compare 2 strings without regard to case of the characters.
+
+  @param[in] Buffer1            Pointer to String to compare.
+  @param[in] Buffer2            Pointer to second String to compare.
+
+  @retval 0                     Buffer1 equal to Buffer2.
+  @return < 0                   Buffer1 is less than Buffer2.
+  @return > 0                   Buffer1 is greater than Buffer2.                 
+**/
+INTN
+EFIAPI
+StringNoCaseCompare (
+  IN  VOID             *Buffer1,
+  IN  VOID             *Buffer2
+  )
+{
+  ASSERT(FALSE);
+  return 0;
+}
+
+

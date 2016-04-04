@@ -22,7 +22,7 @@
   PLATFORM_NAME                  = Ovmf
   PLATFORM_GUID                  = 5a9e7754-d81b-49ea-85ad-69eaa7b1539b
   PLATFORM_VERSION               = 0.1
-  DSC_ SPECIFICATION             = 0x00010005
+  DSC_SPECIFICATION              = 0x00010005
   OUTPUT_DIRECTORY               = Build/OvmfIa32
   SUPPORTED_ARCHITECTURES        = IA32
   BUILD_TARGETS                  = DEBUG|RELEASE
@@ -75,6 +75,8 @@
   DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
   NvVarsFileLib|OvmfPkg/Library/NvVarsFileLib/NvVarsFileLib.inf
   FileHandleLib|ShellPkg/Library/BaseFileHandleLib/BaseFileHandleLib.inf
+  UefiCpuLib|UefiCpuPkg/Library/BaseUefiCpuLib/BaseUefiCpuLib.inf
+  SecurityManagementLib|MdeModulePkg/Library/DxeSecurityManagementLib/DxeSecurityManagementLib.inf
 
 [LibraryClasses.common.SEC]
   DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
@@ -266,11 +268,11 @@
   IntelFrameworkModulePkg/Universal/DataHubDxe/DataHubDxe.inf
   MdeModulePkg/Universal/EbcDxe/EbcDxe.inf
   PcAtChipsetPkg/8259InterruptControllerDxe/8259.inf
-  UefiCpuPkg/CpuIoDxe/CpuIo.inf
+  UefiCpuPkg/CpuIo2Dxe/CpuIo2Dxe.inf
   UefiCpuPkg/CpuDxe/CpuDxe.inf
   PcAtChipsetPkg/8254TimerDxe/8254Timer.inf
   PcAtChipsetPkg/PciHostBridgeDxe/PciHostBridgeDxe.inf
-  IntelFrameworkModulePkg/Bus/Pci/PciBusDxe/PciBusDxe.inf
+  MdeModulePkg/Bus/Pci/PciBusDxe/PciBusDxe.inf
   PcAtChipsetPkg/KbcResetDxe/Reset.inf
   MdeModulePkg/Universal/Metronome/Metronome.inf {
     <LibraryClasses>

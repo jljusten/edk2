@@ -1,7 +1,7 @@
 /** @file
   The DHCP4 protocol implementation.
   
-Copyright (c) 2006 - 2008, Intel Corporation.<BR>
+Copyright (c) 2006 - 2009, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -31,36 +31,30 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define DHCP_SERVER_PORT                  67
 #define DHCP_CLIENT_PORT                  68
 
-typedef enum {
-  //
-  // BOOTP header "op" field
-  //
-  BOOTP_REQUEST           = 1,
-  BOOTP_REPLY             = 2
-} DHCP_OP_TYPE;
+//
+// BOOTP header "op" field
+//
+#define BOOTP_REQUEST           1
+#define BOOTP_REPLY             2
 
-typedef enum {
-  //
-  // DHCP message types
-  //
-  DHCP_MSG_DISCOVER       = 1,
-  DHCP_MSG_OFFER          = 2,
-  DHCP_MSG_REQUEST        = 3,
-  DHCP_MSG_DECLINE        = 4,
-  DHCP_MSG_ACK            = 5,
-  DHCP_MSG_NAK            = 6,
-  DHCP_MSG_RELEASE        = 7,
-  DHCP_MSG_INFORM         = 8
-} DHCP_MSG_TYPE;
+//
+// DHCP message types
+//
+#define DHCP_MSG_DISCOVER       1
+#define DHCP_MSG_OFFER          2
+#define DHCP_MSG_REQUEST        3
+#define DHCP_MSG_DECLINE        4
+#define DHCP_MSG_ACK            5
+#define DHCP_MSG_NAK            6
+#define DHCP_MSG_RELEASE        7
+#define DHCP_MSG_INFORM         8
 
-typedef enum {
-  //
-  // DHCP notify user type
-  //
-  DHCP_NOTIFY_COMPLETION  = 1,
-  DHCP_NOTIFY_RENEWREBIND,
-  DHCP_NOTIFY_ALL
-} DHCP_NOTIFY_TYPE;
+//
+// DHCP notify user type
+//
+#define DHCP_NOTIFY_COMPLETION  1
+#define DHCP_NOTIFY_RENEWREBIND 2
+#define DHCP_NOTIFY_ALL         3
 
 #define DHCP_IS_BOOTP(Parameter)  (((Parameter) == NULL) || ((Parameter)->DhcpType == 0))
 
@@ -140,7 +134,7 @@ DhcpOnTimerTick (
   state machine.
 
   @param  UdpPacket             The UDP packets received.
-  @param  Points                The local/remote UDP access points
+  @param  EndPoint              The local/remote UDP access point
   @param  IoStatus              The status of the UDP receive
   @param  Context               The opaque parameter to the function.
 
@@ -148,7 +142,7 @@ DhcpOnTimerTick (
 VOID
 DhcpInput (
   NET_BUF                   *UdpPacket,
-  UDP_POINTS                *Points,
+  UDP_END_POINT             *EndPoint,
   EFI_STATUS                IoStatus,
   VOID                      *Context
   );
@@ -183,7 +177,7 @@ DhcpCleanLease (
   Release the net buffer when packet is sent.
 
   @param  UdpPacket             The UDP packets received.
-  @param  Points                The local/remote UDP access points
+  @param  EndPoint              The local/remote UDP access point
   @param  IoStatus              The status of the UDP receive
   @param  Context               The opaque parameter to the function.
 
@@ -191,7 +185,7 @@ DhcpCleanLease (
 VOID
 DhcpOnPacketSent (
   NET_BUF                   *Packet,
-  UDP_POINTS                *Points,
+  UDP_END_POINT             *EndPoint,
   EFI_STATUS                IoStatus,
   VOID                      *Context
   );

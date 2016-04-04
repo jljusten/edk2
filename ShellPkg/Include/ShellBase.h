@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
+#if !defined(__SHELL_BASE__)
+#define __SHELL_BASE__
+
 typedef enum {
 ///
 /// The operation completed successfully.
@@ -135,8 +138,10 @@ SHELL_INCOMPATIBLE_VERSION  = 25,
 SHELL_SECURITY_VIOLATION    = 26,
 
 ///
-/// A CRC error was detected.
+/// The function was performed and resulted in an unequal
+/// comparison..
 ///
-SHELL_CRC_ERROR             = 27
+SHELL_NOT_EQUAL             = 27
 }SHELL_STATUS;
 
+#endif //__SHELL_BASE__

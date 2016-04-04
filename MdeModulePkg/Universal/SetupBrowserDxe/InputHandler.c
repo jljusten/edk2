@@ -1,7 +1,7 @@
 /** @file
 Implementation for handling user input from the User Interfaces.
 
-Copyright (c) 2004 - 2007, Intel Corporation
+Copyright (c) 2004 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include "Ui.h"
 #include "Setup.h"
 
 
@@ -387,7 +386,7 @@ GetNumericInput (
 
     InputText[0] = LEFT_NUMERIC_DELIMITER;
     SetUnicodeMem (InputText + 1, InputWidth, L' ');
-    ASSERT (InputWidth + 2 < MAX_NUMERIC_INPUT_WIDTH); 
+    ASSERT (InputWidth + 2 < MAX_NUMERIC_INPUT_WIDTH);
     InputText[InputWidth + 1] = RIGHT_NUMERIC_DELIMITER;
     InputText[InputWidth + 2] = L'\0';
 
@@ -456,12 +455,12 @@ TheKey2:
               //
               // Year
               //
-              UnicodeSPrint (FormattedNumber, 21 * sizeof (CHAR16), L"%04d", EditValue);
+              UnicodeSPrint (FormattedNumber, 21 * sizeof (CHAR16), L"%04d", (UINT16) EditValue);
             } else {
               //
               // Month/Day
               //
-              UnicodeSPrint (FormattedNumber, 21 * sizeof (CHAR16), L"%02d", EditValue);
+              UnicodeSPrint (FormattedNumber, 21 * sizeof (CHAR16), L"%02d", (UINT8) EditValue);
             }
 
             if (MenuOption->Sequence == 0) {
@@ -470,7 +469,7 @@ TheKey2:
               FormattedNumber[EraseLen - 1] = DATE_SEPARATOR;
             }
           } else if (Question->Operand == EFI_IFR_TIME_OP) {
-            UnicodeSPrint (FormattedNumber, 21 * sizeof (CHAR16), L"%02d", EditValue);
+            UnicodeSPrint (FormattedNumber, 21 * sizeof (CHAR16), L"%02d", (UINT8) EditValue);
 
             if (MenuOption->Sequence == 0) {
               FormattedNumber[EraseLen - 2] = TIME_SEPARATOR;
@@ -707,6 +706,7 @@ GetSelectionInputPopUp (
   LIST_ENTRY              *Link;
   BOOLEAN                 OrderedList;
   UINT8                   *ValueArray;
+  UINT8                   ValueType;
   EFI_HII_VALUE           HiiValue;
   EFI_HII_VALUE           *HiiValueArray;
   UINTN                   OptionCount;
@@ -717,6 +717,7 @@ GetSelectionInputPopUp (
   DimensionsWidth   = gScreenDimensions.RightColumn - gScreenDimensions.LeftColumn;
 
   ValueArray        = NULL;
+  ValueType         = 0;
   CurrentOption     = NULL;
   ShowDownArrow     = FALSE;
   ShowUpArrow       = FALSE;
@@ -727,6 +728,7 @@ GetSelectionInputPopUp (
   Question = MenuOption->ThisTag;
   if (Question->Operand == EFI_IFR_ORDERED_LIST_OP) {
     ValueArray = Question->BufferValue;
+    ValueType = Question->ValueType;
     OrderedList = TRUE;
   } else {
     OrderedList = FALSE;
@@ -737,7 +739,7 @@ GetSelectionInputPopUp (
   //
   if (OrderedList) {
     for (Index = 0; Index < Question->MaxContainers; Index++) {
-      if (ValueArray[Index] == 0) {
+      if (GetArrayData (ValueArray, ValueType, Index) == 0) {
         break;
       }
     }
@@ -763,8 +765,8 @@ GetSelectionInputPopUp (
   Link = GetFirstNode (&Question->OptionListHead);
   for (Index = 0; Index < OptionCount; Index++) {
     if (OrderedList) {
-      HiiValueArray[Index].Type = EFI_IFR_TYPE_NUM_SIZE_8;
-      HiiValueArray[Index].Value.u8 = ValueArray[Index];
+      HiiValueArray[Index].Type = ValueType;
+      HiiValueArray[Index].Value.u64 = GetArrayData (ValueArray, ValueType, Index);
     } else {
       OneOfOption = QUESTION_OPTION_FROM_LINK (Link);
       CopyMem (&HiiValueArray[Index], &OneOfOption->Value, sizeof (EFI_HII_VALUE));
@@ -1060,11 +1062,11 @@ TheKey:
         // Restore link list order for orderedlist
         //
         if (OrderedList) {
-          HiiValue.Type = EFI_IFR_TYPE_NUM_SIZE_8;
+          HiiValue.Type = ValueType;
           HiiValue.Value.u64 = 0;
           for (Index = 0; Index < Question->MaxContainers; Index++) {
-            HiiValue.Value.u8 = ValueArray[Index];
-            if (HiiValue.Value.u8 != 0) {
+            HiiValue.Value.u64 = GetArrayData (ValueArray, ValueType, Index);
+            if (HiiValue.Value.u64 == 0) {
               break;
             }
 
@@ -1097,7 +1099,7 @@ TheKey:
         while (!IsNull (&Question->OptionListHead, Link)) {
           OneOfOption = QUESTION_OPTION_FROM_LINK (Link);
 
-          Question->BufferValue[Index] = OneOfOption->Value.Value.u8;
+          SetArrayData (ValueArray, ValueType, Index, OneOfOption->Value.Value.u64);
 
           Index++;
           if (Index > Question->MaxContainers) {

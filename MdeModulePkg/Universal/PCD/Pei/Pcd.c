@@ -1,7 +1,7 @@
 /** @file 
   All Pcd Ppi services are implemented here.
   
-Copyright (c) 2006 - 2008, Intel Corporation                                                         
+Copyright (c) 2006 - 2009, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -14,6 +14,10 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "Service.h"
 
+///
+/// Instance of PCD_PPI protocol is EDKII native implementation.
+/// This protocol instance support dynamic and dynamicEx type PCDs.
+///
 PCD_PPI mPcdPpiInstance = {
   PeiPcdSetSku,
 
@@ -53,16 +57,49 @@ PCD_PPI mPcdPpiInstance = {
   PeiPcdGetNextTokenSpace
 };
 
-EFI_PEI_PPI_DESCRIPTOR  mPpiPCD = {
-  (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
-  &gPcdPpiGuid,
-  &mPcdPpiInstance
+///
+/// Instance of EFI_PEI_PCD_PPI which is defined in PI 1.2 Vol 3.
+/// This PPI instance only support dyanmicEx type PCD.
+///
+EFI_PEI_PCD_PPI  mEfiPcdPpiInstance = {
+  PeiPcdSetSku,
+  
+  PeiPcdGet8Ex,
+  PeiPcdGet16Ex,
+  PeiPcdGet32Ex,
+  PeiPcdGet64Ex,
+  PeiPcdGetPtrEx,
+  PeiPcdGetBoolEx,
+  PeiPcdGetSizeEx,
+  PeiPcdSet8Ex,
+  PeiPcdSet16Ex,
+  PeiPcdSet32Ex,
+  PeiPcdSet64Ex,
+  PeiPcdSetPtrEx,
+  PeiPcdSetBoolEx,
+  (EFI_PEI_PCD_PPI_CALLBACK_ON_SET) PeiRegisterCallBackOnSet,
+  (EFI_PEI_PCD_PPI_CANCEL_CALLBACK) PcdUnRegisterCallBackOnSet,
+  PeiPcdGetNextToken,
+  PeiPcdGetNextTokenSpace
+};
+
+EFI_PEI_PPI_DESCRIPTOR  mPpiList[] = {
+  {
+    EFI_PEI_PPI_DESCRIPTOR_PPI,
+    &gPcdPpiGuid,
+    &mPcdPpiInstance
+  },
+  {
+    (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
+    &gEfiPeiPcdPpiGuid,
+    &mEfiPcdPpiInstance
+  }
 };
 
 /**
   Main entry for PCD PEIM driver.
   
-  This routine initialize the PCD database for PEI phase and install PCD_PPI.
+  This routine initialize the PCD database for PEI phase and install PCD_PPI/EFI_PEI_PCD_PPI.
 
   @param  FileHandle  Handle of the file being invoked.
   @param  PeiServices Describes the list of possible PEI Services.
@@ -77,9 +114,17 @@ PcdPeimInit (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
+  EFI_STATUS Status;
+  
   BuildPcdDatabase ();
 
-  return PeiServicesInstallPpi (&mPpiPCD);
+  //
+  // Install PCD_PPI and EFI_PEI_PCD_PPI.
+  //
+  Status = PeiServicesInstallPpi (&mPpiList[0]);
+  ASSERT_EFI_ERROR (Status);
+  
+  return Status;
 }
 
 /**

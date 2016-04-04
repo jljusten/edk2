@@ -1,7 +1,7 @@
 /** @file
   Helper functions for configuring or getting the parameters relating to iSCSI.
 
-Copyright (c) 2004 - 2008, Intel Corporation.<BR>
+Copyright (c) 2004 - 2009, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -168,9 +168,9 @@ IScsiUpdateDeviceList (
       gRT->SetVariable (MacString, &mIScsiCHAPAuthInfoGuid, 0, 0, NULL);
     }
 
-    gBS->FreePool (DeviceList);
+    FreePool (DeviceList);
   } else if (Status != EFI_NOT_FOUND) {
-    gBS->FreePool (Handles);
+    FreePool (Handles);
     return Status;
   }
   //
@@ -197,8 +197,8 @@ IScsiUpdateDeviceList (
         DeviceList
         );
 
-  gBS->FreePool (DeviceList);
-  gBS->FreePool (Handles);
+  FreePool (DeviceList);
+  FreePool (Handles);
 
   return Status;
 }
@@ -400,7 +400,7 @@ IScsiFormExtractConfig (
                                Results,
                                Progress
                                );
-  gBS->FreePool (IfrNvData);
+  FreePool (IfrNvData);
   return Status;
 }
 
@@ -544,7 +544,7 @@ IScsiFormCallback (
   case KEY_LOCAL_IP:
     IScsiUnicodeStrToAsciiStr (IfrNvData->LocalIp, Ip4String);
     Status = IScsiAsciiStrToIp (Ip4String, &HostIp.v4);
-    if (EFI_ERROR (Status) || !Ip4IsUnicast (NTOHL (HostIp.Addr[0]), 0)) {
+    if (EFI_ERROR (Status) || !NetIp4IsUnicast (NTOHL (HostIp.Addr[0]), 0)) {
       CreatePopUp (EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE, &Key, L"Invalid IP address!", NULL);
       Status = EFI_INVALID_PARAMETER;
     } else {
@@ -568,7 +568,7 @@ IScsiFormCallback (
   case KEY_GATE_WAY:
     IScsiUnicodeStrToAsciiStr (IfrNvData->Gateway, Ip4String);
     Status = IScsiAsciiStrToIp (Ip4String, &Gateway.v4);
-    if (EFI_ERROR (Status) || ((Gateway.Addr[0] != 0) && !Ip4IsUnicast (NTOHL (Gateway.Addr[0]), 0))) {
+    if (EFI_ERROR (Status) || ((Gateway.Addr[0] != 0) && !NetIp4IsUnicast (NTOHL (Gateway.Addr[0]), 0))) {
       CreatePopUp (EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE, &Key, L"Invalid Gateway!", NULL);
       Status = EFI_INVALID_PARAMETER;
     } else {
@@ -580,7 +580,7 @@ IScsiFormCallback (
   case KEY_TARGET_IP:
     IScsiUnicodeStrToAsciiStr (IfrNvData->TargetIp, Ip4String);
     Status = IScsiAsciiStrToIp (Ip4String, &HostIp.v4);
-    if (EFI_ERROR (Status) || !Ip4IsUnicast (NTOHL (HostIp.Addr[0]), 0)) {
+    if (EFI_ERROR (Status) || !NetIp4IsUnicast (NTOHL (HostIp.Addr[0]), 0)) {
       CreatePopUp (EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE, &Key, L"Invalid IP address!", NULL);
       Status = EFI_INVALID_PARAMETER;
     } else {
@@ -678,7 +678,7 @@ IScsiFormCallback (
       //
       if (!Private->Current->SessionConfigData.TargetInfoFromDhcp) {
         CopyMem (&HostIp.v4, &Private->Current->SessionConfigData.TargetIp, sizeof (HostIp.v4));
-        if (!Ip4IsUnicast (NTOHL (HostIp.Addr[0]), 0)) {
+        if (!NetIp4IsUnicast (NTOHL (HostIp.Addr[0]), 0)) {
           CreatePopUp (EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE, &Key, L"Target IP is invalid!", NULL);
           Status = EFI_INVALID_PARAMETER;
           break;
@@ -873,7 +873,7 @@ IScsiConfigUpdateForm (
 
     mNumberOfIScsiDevices--;
     RemoveEntryList (&ConfigFormEntry->Link);
-    gBS->FreePool (ConfigFormEntry);
+    FreePool (ConfigFormEntry);
   }
   //
   // Allocate space for creation of Buffer
@@ -1055,7 +1055,7 @@ IScsiConfigFormUnload (
          &mCallbackInfo->ConfigAccess,
          NULL
          );
-  gBS->FreePool (mCallbackInfo);
+  FreePool (mCallbackInfo);
 
   return EFI_SUCCESS;
 }

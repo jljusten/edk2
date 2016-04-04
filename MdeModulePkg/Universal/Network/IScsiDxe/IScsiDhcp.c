@@ -1,7 +1,7 @@
 /** @file
   iSCSI DHCP related configuration routines.
 
-Copyright (c) 2004 - 2007, 2009, Intel Corporation.<BR>
+Copyright (c) 2004 - 2009, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -38,7 +38,7 @@ IScsiDhcpExtractRootPath (
   CHAR8                 *TmpStr;
   ISCSI_ROOT_PATH_FIELD Fields[RP_FIELD_IDX_MAX];
   ISCSI_ROOT_PATH_FIELD *Field;
-  RP_FIELD_IDX          FieldIndex;
+  UINT32                FieldIndex;
   UINT8                 Index;
 
   //
@@ -162,7 +162,7 @@ IScsiDhcpExtractRootPath (
 
 ON_EXIT:
 
-  gBS->FreePool (TmpStr);
+  FreePool (TmpStr);
 
   return Status;
 }
@@ -217,7 +217,7 @@ IScsiDhcpSelectOffer (
 
   Status = This->Parse (This, Packet, &OptionCount, OptionList);
   if (EFI_ERROR (Status)) {
-    gBS->FreePool (OptionList);
+    FreePool (OptionList);
     return EFI_NOT_READY;
   }
 
@@ -239,7 +239,7 @@ IScsiDhcpSelectOffer (
     Status = EFI_NOT_READY;
   }
 
-  gBS->FreePool (OptionList);
+  FreePool (OptionList);
 
   return Status;
 }
@@ -295,7 +295,7 @@ IScsiParseDhcpAck (
 
   Status = Dhcp4->Parse (Dhcp4, Dhcp4ModeData.ReplyPacket, &OptionCount, OptionList);
   if (EFI_ERROR (Status)) {
-    gBS->FreePool (OptionList);
+    FreePool (OptionList);
     return EFI_DEVICE_ERROR;
   }
 
@@ -330,7 +330,7 @@ IScsiParseDhcpAck (
     }
   }
 
-  gBS->FreePool (OptionList);
+  FreePool (OptionList);
 
   return Status;
 }
@@ -432,7 +432,7 @@ IScsiDoDhcp (
 ON_EXIT:
 
   if (ParaList != NULL) {
-    gBS->FreePool (ParaList);
+    FreePool (ParaList);
   }
 
   if (Dhcp4 != NULL) {

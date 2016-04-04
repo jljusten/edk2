@@ -1,8 +1,9 @@
 /** @file
   PCD DXE driver manage all PCD entry initialized in PEI phase and DXE phase, and
-  produce the implementation of PCD protocol.
+  produce the implementation of native PCD protocol and EFI_PCD_PROTOCOL defined in
+  PI 1.2 Vol3.
 
-Copyright (c) 2006 - 2007, Intel Corporation
+Copyright (c) 2006 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -27,6 +28,10 @@ EFI_GUID *TmpTokenSpaceBuffer[PEI_EXMAPPING_TABLE_SIZE + DXE_EXMAPPING_TABLE_SIZ
 ///
 EFI_LOCK mPcdDatabaseLock = EFI_INITIALIZE_LOCK_VARIABLE(TPL_NOTIFY);
 
+///
+/// PCD_PROTOCOL the EDKII native implementation which support dynamic 
+/// type and dynamicEx type PCDs.
+///
 PCD_PROTOCOL mPcdInstance = {
   DxePcdSetSku,
 
@@ -66,11 +71,32 @@ PCD_PROTOCOL mPcdInstance = {
   DxePcdGetNextTokenSpace
 };
 
+///
+/// EFI_PCD_PROTOCOL is defined in PI 1.2 Vol 3 which only support dynamicEx type
+/// PCD.
+///
+EFI_PCD_PROTOCOL mEfiPcdInstance = {
+  DxePcdSetSku,
+  DxePcdGet8Ex,
+  DxePcdGet16Ex,
+  DxePcdGet32Ex,
+  DxePcdGet64Ex,
+  DxePcdGetPtrEx,
+  DxePcdGetBoolEx,
+  DxePcdGetSizeEx,
+  DxePcdSet8Ex,
+  DxePcdSet16Ex,
+  DxePcdSet32Ex,
+  DxePcdSet64Ex,
+  DxePcdSetPtrEx,
+  DxePcdSetBoolEx,
+  (EFI_PCD_PROTOCOL_CALLBACK_ON_SET) DxeRegisterCallBackOnSet,
+  (EFI_PCD_PROTOCOL_CANCEL_CALLBACK) DxeUnRegisterCallBackOnSet,
+  DxePcdGetNextToken,
+  DxePcdGetNextTokenSpace
+};
 
-//
-// Static global to reduce the code size
-//
-EFI_HANDLE mNewHandle = NULL;
+EFI_HANDLE mPcdHandle = NULL;
 
 /**
   Main entry for PCD DXE driver.
@@ -90,8 +116,8 @@ PcdDxeInit (
   IN EFI_SYSTEM_TABLE     *SystemTable
   )
 {
-  EFI_STATUS          Status;
-
+  EFI_STATUS Status;
+  
   //
   // Make sure the Pcd Protocol is not already installed in the system
   //
@@ -100,16 +126,20 @@ PcdDxeInit (
 
   BuildPcdDxeDataBase ();
 
-  Status = gBS->InstallProtocolInterface (
-                  &mNewHandle,
-                  &gPcdProtocolGuid,
-                  EFI_NATIVE_INTERFACE,
-                  &mPcdInstance
+  //
+  // Install PCD_PROTOCOL to handle dynamic type PCD
+  // Install EFI_PCD_PROTOCOL to handle dynamicEx type PCD
+  //
+  Status = gBS->InstallMultipleProtocolInterfaces (
+                  &mPcdHandle,
+                  &gPcdProtocolGuid,     &mPcdInstance,
+                  &gEfiPcdProtocolGuid,  &mEfiPcdInstance,
+                  NULL
                   );
-
+                 
   ASSERT_EFI_ERROR (Status);
 
-  return EFI_SUCCESS;
+  return Status;
 
 }
 

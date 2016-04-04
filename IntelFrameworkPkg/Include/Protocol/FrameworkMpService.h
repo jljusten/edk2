@@ -47,6 +47,8 @@
 #ifndef _FRAMEWORK_MP_SERVICE_PROTOCOL_H_
 #define _FRAMEWORK_MP_SERVICE_PROTOCOL_H_
 
+#include <FrameworkDxe.h>
+
 ///
 /// Global ID for the FRAMEWORK_EFI_MP_SERVICES_PROTOCOL
 ///
@@ -143,7 +145,7 @@ typedef struct {
   /// @par IPF:
   ///   Lower 32 bits of self test state parameter. For definition of self test 
   ///   state parameter, please refer to Intel(R) Itanium(R) Architecture Software 
-  ///   Developer’s Manual, Volume 2: System Architecture.
+  ///   Developer's Manual, Volume 2: System Architecture.
   ///
   EFI_MP_HEALTH_FLAGS  Flags;
   ///
@@ -191,7 +193,7 @@ typedef struct {
   ///
   /// @par IPF:
   ///   Bit format of this field is the same as the definition of self-test state 
-  ///   parameter, in Intel?Itanium?Architecture Software Developer’s Manual, 
+  ///   parameter, in Intel(R) Itanium(R) Architecture Software Developer's Manual, 
   ///   Volume 2: System Architecture.
   ///
   EFI_MP_HEALTH        Health;
@@ -475,7 +477,7 @@ EFI_STATUS
                                      If the value is not zero, the BSP waits until 
                                      the AP finishes or timeout expires. If timeout 
                                      expires, EFI_TIMEOUT is returned, and the 
-                                     BSP will then check the AP’s status periodically, 
+                                     BSP will then check the AP's status periodically, 
                                      with time interval of 16 microseconds.
                                      - IPF:
                                      If WaitEvent is NULL, this parameter is ignored.
@@ -644,7 +646,7 @@ EFI_STATUS
 ///
 /// Framework MP Services Protocol structure
 ///
-typedef struct _FRAMEWORK_EFI_MP_SERVICES_PROTOCOL {
+struct _FRAMEWORK_EFI_MP_SERVICES_PROTOCOL {
   EFI_MP_SERVICES_GET_GENERAL_MP_INFO              GetGeneralMPInfo;
   EFI_MP_SERVICES_GET_PROCESSOR_CONTEXT            GetProcessorContext;
   FRAMEWORK_EFI_MP_SERVICES_STARTUP_ALL_APS        StartupAllAPs;

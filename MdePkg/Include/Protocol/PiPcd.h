@@ -285,10 +285,10 @@ EFI_STATUS
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PCD_PROTOCOL_SET_POINTER_EX)(
+(EFIAPI *EFI_PCD_PROTOCOL_SET_EX_POINTER)(
   IN CONST  EFI_GUID  *Guid,
   IN        UINTN     TokenNumber,
-  IN        UINTN     SizeOfValue,
+  IN        UINTN     *SizeOfValue,
   IN        VOID      *Buffer
 );
 

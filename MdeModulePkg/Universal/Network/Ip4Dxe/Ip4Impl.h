@@ -1,7 +1,7 @@
 /** @file
   Ip4 internal functions and type defintions.
   
-Copyright (c) 2005 - 2007, Intel Corporation.<BR>                                                         
+Copyright (c) 2005 - 2009, Intel Corporation.<BR>                                                         
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -17,6 +17,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <Uefi.h>
 
+#include <Protocol/IpSec.h>
 #include <Protocol/Ip4.h>
 #include <Protocol/Ip4Config.h>
 #include <Protocol/Arp.h>
@@ -43,33 +44,30 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "Ip4Input.h"
 #include "Ip4Output.h"
 
+#define IP4_PROTOCOL_SIGNATURE  SIGNATURE_32 ('I', 'P', '4', 'P')
+#define IP4_SERVICE_SIGNATURE   SIGNATURE_32 ('I', 'P', '4', 'S')
 
+//
+// The state of IP4 protocol. It starts from UNCONFIGED. if it is
+// successfully configured, it goes to CONFIGED. if configure NULL
+// is called, it becomes UNCONFIGED again. If (partly) destoried, it
+// becomes DESTORY.
+//
+#define IP4_STATE_UNCONFIGED    0
+#define IP4_STATE_CONFIGED      1
+#define IP4_STATE_DESTORY       2
 
-typedef enum {
-  IP4_PROTOCOL_SIGNATURE = SIGNATURE_32 ('I', 'P', '4', 'P'),
-  IP4_SERVICE_SIGNATURE  = SIGNATURE_32 ('I', 'P', '4', 'S'),
+//
+// The state of IP4 service. It starts from UNSTARTED. It transits
+// to STARTED if autoconfigure is started. If default address is
+// configured, it becomes CONFIGED. and if partly destoried, it goes
+// to DESTORY.
+//
+#define IP4_SERVICE_UNSTARTED   0
+#define IP4_SERVICE_STARTED     1
+#define IP4_SERVICE_CONFIGED    2
+#define IP4_SERVICE_DESTORY     3
 
-  //
-  // The state of IP4 protocol. It starts from UNCONFIGED. if it is
-  // successfully configured, it goes to CONFIGED. if configure NULL
-  // is called, it becomes UNCONFIGED again. If (partly) destoried, it
-  // becomes DESTORY.
-  //
-  IP4_STATE_UNCONFIGED   = 0,
-  IP4_STATE_CONFIGED,
-  IP4_STATE_DESTORY,
-
-  //
-  // The state of IP4 service. It starts from UNSTARTED. It transits
-  // to STARTED if autoconfigure is started. If default address is
-  // configured, it becomes CONFIGED. and if partly destoried, it goes
-  // to DESTORY.
-  //
-  IP4_SERVICE_UNSTARTED  = 0,
-  IP4_SERVICE_STARTED,
-  IP4_SERVICE_CONFIGED,
-  IP4_SERVICE_DESTORY
-} IP4_IMPL_ENUM_TYPES;
 
 ///
 /// IP4_TXTOKEN_WRAP wraps the upper layer's transmit token.
@@ -83,10 +81,22 @@ typedef enum {
 typedef struct {
   IP4_PROTOCOL              *IpInstance;
   EFI_IP4_COMPLETION_TOKEN  *Token;
+  EFI_EVENT                 IpSecRecycleSignal;
   NET_BUF                   *Packet;
   BOOLEAN                   Sent;
   INTN                      Life;
 } IP4_TXTOKEN_WRAP;
+
+///
+/// IP4_IPSEC_WRAP wraps the packet received from MNP layer. The packet
+/// will be released after it has been processed by the receiver. Upon then,
+/// the IP4_IPSEC_WRAP will be released, and the IpSecRecycleSignal will be signaled
+/// to notice IPsec to free the resources.
+///
+typedef struct {
+  EFI_EVENT                 IpSecRecycleSignal;
+  NET_BUF                   *Packet;
+} IP4_IPSEC_WRAP;
 
 ///
 /// IP4_RXDATA_WRAP wraps the data IP4 child delivers to the
@@ -113,7 +123,7 @@ struct _IP4_PROTOCOL {
   INTN                      State;
 
   IP4_SERVICE               *Service;
-  LIST_ENTRY                Link; // Link to all the IP protocol from the service
+  LIST_ENTRY                Link;       // Link to all the IP protocol from the service
 
   //
   // User's transmit/receive tokens, and received/deliverd packets
@@ -139,7 +149,7 @@ struct _IP4_PROTOCOL {
   //
   // IGMP data for this instance
   //
-  IP4_ADDR                  *Groups;  // stored in network byte order
+  IP4_ADDR                  *Groups;    // stored in network byte order
   UINT32                    GroupCount;
 
   EFI_IP4_CONFIG_DATA       ConfigData;
@@ -197,6 +207,8 @@ struct _IP4_SERVICE {
   // NIC this IP4_SERVICE works on.
   //
   CHAR16                          *MacString;
+  UINT32                          MaxPacketSize;
+  UINT32                          OldMaxPacketSize; ///< The MTU before IPsec enable.
 };
 
 #define IP4_INSTANCE_FROM_PROTOCOL(Ip4) \
@@ -338,4 +350,33 @@ Ip4SentPacketTicking (
   IN NET_MAP_ITEM           *Item,
   IN VOID                   *Context
   );
+
+/**
+  The callback function for the net buffer which wraps the user's
+  transmit token. Although it seems this function is pretty simple,
+  there are some subtle things.
+  When user requests the IP to transmit a packet by passing it a
+  token, the token is wrapped in an IP4_TXTOKEN_WRAP and the data
+  is wrapped in an net buffer. the net buffer's Free function is
+  set to Ip4FreeTxToken. The Token and token wrap are added to the
+  IP child's TxToken map. Then the buffer is passed to Ip4Output for
+  transmission. If something error happened before that, the buffer
+  is freed, which in turn will free the token wrap. The wrap may
+  have been added to the TxToken map or not, and the user's event
+  shouldn't be fired because we are still in the EfiIp4Transmit. If
+  the buffer has been sent by Ip4Output, it should be removed from
+  the TxToken map and user's event signaled. The token wrap and buffer
+  are bound together. Check the comments in Ip4Output for information
+  about IP fragmentation.
+
+  @param[in]  Context                The token's wrap
+
+**/
+VOID
+Ip4FreeTxToken (
+  IN VOID                   *Context
+  );
+
+extern EFI_IPSEC_PROTOCOL   *mIpSec;
+
 #endif

@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "Ip4Impl.h"
 
+EFI_IPSEC_PROTOCOL    *mIpSec = NULL;
+
 /**
   Gets the current operational settings for this instance of the EFI IPv4 Protocol driver.
   
@@ -404,6 +406,8 @@ EfiIp4GetModeData (
     Ip4ModeData->RouteTable    = NULL;
     Ip4ModeData->RouteCount    = 0;
 
+    Ip4ModeData->MaxPacketSize = IpSb->MaxPacketSize;
+
     //
     // return the current station address for this IP child. So,
     // the user can get the default address through this. Some
@@ -678,7 +682,7 @@ Ip4AutoConfigCallBackDpc (
   Ip4SetVariableData (IpSb);
 
 ON_EXIT:
-  gBS->FreePool (Data);
+  FreePool (Data);
 }
 
 /**
@@ -1041,13 +1045,13 @@ Ip4CleanProtocol (
   }
 
   if (IpInstance->EfiRouteTable != NULL) {
-    gBS->FreePool (IpInstance->EfiRouteTable);
+    FreePool (IpInstance->EfiRouteTable);
     IpInstance->EfiRouteTable = NULL;
     IpInstance->EfiRouteCount = 0;
   }
 
   if (IpInstance->Groups != NULL) {
-    gBS->FreePool (IpInstance->Groups);
+    FreePool (IpInstance->Groups);
     IpInstance->Groups      = NULL;
     IpInstance->GroupCount  = 0;
   }
@@ -1333,12 +1337,12 @@ Ip4Groups (
     }
 
     if (EFI_ERROR (Ip4JoinGroup (IpInstance, NTOHL (Group)))) {
-      gBS->FreePool (Members);
+      FreePool (Members);
       return EFI_DEVICE_ERROR;
     }
 
     if (IpInstance->Groups != NULL) {
-      gBS->FreePool (IpInstance->Groups);
+      FreePool (IpInstance->Groups);
     }
 
     IpInstance->Groups = Members;
@@ -1366,7 +1370,7 @@ Ip4Groups (
       if (IpInstance->GroupCount == 0) {
         ASSERT (Index == 1);
 
-        gBS->FreePool (IpInstance->Groups);
+        FreePool (IpInstance->Groups);
         IpInstance->Groups = NULL;
       }
 
@@ -1765,6 +1769,13 @@ Ip4FreeTxToken (
   Wrap = (IP4_TXTOKEN_WRAP *) Context;
 
   //
+  // Signal IpSecRecycleEvent to inform IPsec free the memory
+  //
+  if (Wrap->IpSecRecycleSignal != NULL) {
+    gBS->SignalEvent (Wrap->IpSecRecycleSignal);
+  }
+
+  //
   // Find the token in the instance's map. EfiIp4Transmit put the
   // token to the map. If that failed, NetMapFindKey will return NULL.
   //
@@ -1783,7 +1794,7 @@ Ip4FreeTxToken (
     DispatchDpc ();
   }
 
-  gBS->FreePool (Wrap);
+  FreePool (Wrap);
 }
 
 
@@ -1947,12 +1958,12 @@ EfiIp4Transmit (
   }
 
   Head.Fragment = IP4_HEAD_FRAGMENT_FIELD (DontFragment, FALSE, 0);
-  HeadLen       = sizeof (IP4_HEAD) + ((TxData->OptionsLength + 3) &~0x03);
+  HeadLen       = (TxData->OptionsLength + 3) & (~0x03);
 
   //
   // If don't fragment and fragment needed, return error
   //
-  if (DontFragment && (TxData->TotalDataLength + HeadLen > IpSb->SnpMode.MaxPacketSize)) {
+  if (DontFragment && (TxData->TotalDataLength + HeadLen > IpSb->MaxPacketSize)) {
     Status = EFI_BAD_BUFFER_SIZE;
     goto ON_EXIT;
   }
@@ -1962,7 +1973,7 @@ EfiIp4Transmit (
   // a IP4_TXTOKEN_WRAP and the data in a netbuf
   //
   Status = EFI_OUT_OF_RESOURCES;
-  Wrap   = AllocatePool (sizeof (IP4_TXTOKEN_WRAP));
+  Wrap   = AllocateZeroPool (sizeof (IP4_TXTOKEN_WRAP));
   if (Wrap == NULL) {
     goto ON_EXIT;
   }
@@ -1981,7 +1992,7 @@ EfiIp4Transmit (
                         );
 
   if (Wrap->Packet == NULL) {
-    gBS->FreePool (Wrap);
+    FreePool (Wrap);
     goto ON_EXIT;
   }
 

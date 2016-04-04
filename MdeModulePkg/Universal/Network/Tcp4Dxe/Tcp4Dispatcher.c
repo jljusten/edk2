@@ -1,7 +1,7 @@
 /** @file
   Tcp request dispatcher implementation.
 
-Copyright (c) 2005 - 2006, Intel Corporation<BR>
+Copyright (c) 2005 - 2009, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -234,7 +234,7 @@ Tcp4FlushPcb (
            &gEfiDevicePathProtocolGuid,
            Sock->DevicePath
            );
-    gBS->FreePool (Sock->DevicePath);
+    FreePool (Sock->DevicePath);
 
     TcpSetVariableData (TcpProto->TcpService);
   }
@@ -279,7 +279,7 @@ Tcp4AttachPcb (
   Tcb->IpInfo = IpIoAddIp (IpIo);
   if (Tcb->IpInfo == NULL) {
 
-    gBS->FreePool (Tcb);
+    FreePool (Tcb);
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -317,7 +317,7 @@ Tcp4DetachPcb (
 
   IpIoRemoveIp (ProtoData->TcpService->IpIo, Tcb->IpInfo);
 
-  gBS->FreePool (Tcb);
+  FreePool (Tcb);
 
   ProtoData->TcpPcb = NULL;
 }
@@ -357,7 +357,7 @@ Tcp4ConfigurePcb (
   //
   // Add Ip for send pkt to the peer
   //
-  CopyMem (&IpCfgData, &mIpIoDefaultIpConfigData, sizeof (IpCfgData));
+  CopyMem (&IpCfgData, &mIp4IoDefaultIpConfigData, sizeof (IpCfgData));
   IpCfgData.DefaultProtocol   = EFI_IP_PROTO_TCP;
   IpCfgData.UseDefaultAddress = CfgData->AccessPoint.UseDefaultAddress;
   IpCfgData.StationAddress    = CfgData->AccessPoint.StationAddress;
@@ -592,7 +592,7 @@ OnExit:
 EFI_STATUS
 Tcp4Dispatcher (
   IN SOCKET                  *Sock,
-  IN SOCK_REQUEST            Request,
+  IN UINT8                   Request,
   IN VOID                    *Data    OPTIONAL
   )
 {
@@ -605,7 +605,7 @@ Tcp4Dispatcher (
 
   switch (Request) {
   case SOCK_POLL:
-    Ip = ProtoData->TcpService->IpIo->Ip;
+    Ip = (EFI_IP4_PROTOCOL *) (ProtoData->TcpService->IpIo->Ip);
     Ip->Poll (Ip);
     break;
 
