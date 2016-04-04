@@ -67,6 +67,7 @@ PCI_HOST_BRIDGE_INSTANCE mPciHostBridgeInstanceTemplate = {
 //
 // Implementation
 //
+
 /**
   Entry point of this driver
 
@@ -200,7 +201,7 @@ InitializePciHostBridge (
                                           required here. This notification can be used to perform any chipsetspecific
                                           programming.
 
-   @param[in] PciResAlloc         The instance pointer of EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL
+   @param[in] This                The instance pointer of EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL
    @param[in] Phase               The phase during enumeration
 
    @retval EFI_NOT_READY          This phase cannot be entered at this time. For example, this error
@@ -309,7 +310,7 @@ NotifyPhase(
             //
             // Get the number of '1' in Alignment.
             //
-            BitsOfAlignment = HighBitSet64 (RootBridgeInstance->ResAllocNode[Index].Alignment) + 1;
+            BitsOfAlignment = (UINTN) (HighBitSet64 (RootBridgeInstance->ResAllocNode[Index].Alignment) + 1);
                                   
             switch (Index) {
 
@@ -485,7 +486,7 @@ NotifyPhase(
    For D945 implementation, there is only one root bridge in PCI host bridge.
 
    @param[in]       This              The instance pointer of EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL
-   @param[in][out]  RootBridgeHandle  Returns the device handle of the next PCI root bridge.
+   @param[in, out]  RootBridgeHandle  Returns the device handle of the next PCI root bridge.
    
    @retval EFI_SUCCESS            If parameter RootBridgeHandle = NULL, then return the first Rootbridge handle of the
                                   specific Host bridge and return EFI_SUCCESS. 
@@ -835,7 +836,7 @@ SubmitResources(
   PCI_HOST_BRIDGE_INSTANCE              *HostBridgeInstance;
   PCI_ROOT_BRIDGE_INSTANCE              *RootBridgeInstance;
   UINT8                                 *Temp;
-  EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR     *ptr;
+  EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR     *Ptr;
   UINT64                                AddrLen;
   UINT64                                Alignment;
   
@@ -862,30 +863,30 @@ SubmitResources(
     RootBridgeInstance = DRIVER_INSTANCE_FROM_LIST_ENTRY (List);
     if (RootBridgeHandle == RootBridgeInstance->Handle) {
       while ( *Temp == 0x8A) {
-        ptr = (EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *) Temp ;
+        Ptr = (EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *) Temp ;
 
         //
         // Check Address Length
         //
-        if (ptr->AddrLen > 0xffffffff) {
+        if (Ptr->AddrLen > 0xffffffff) {
           return EFI_INVALID_PARAMETER;
         }
 
         //
         // Check address range alignment
         //
-        if (ptr->AddrRangeMax >= 0xffffffff || ptr->AddrRangeMax != (GetPowerOfTwo64 (ptr->AddrRangeMax + 1) - 1)) {
+        if (Ptr->AddrRangeMax >= 0xffffffff || Ptr->AddrRangeMax != (GetPowerOfTwo64 (Ptr->AddrRangeMax + 1) - 1)) {
           return EFI_INVALID_PARAMETER;
         }
         
-        switch (ptr->ResType) {
+        switch (Ptr->ResType) {
 
         case 0:
             
           //
           // Check invalid Address Sapce Granularity
           //
-          if (ptr->AddrSpaceGranularity != 32) {
+          if (Ptr->AddrSpaceGranularity != 32) {
             return EFI_INVALID_PARAMETER;
           }
             
@@ -893,14 +894,14 @@ SubmitResources(
           // check the memory resource request is supported by PCI root bridge
           //
           if (RootBridgeInstance->RootBridgeAttrib == EFI_PCI_HOST_BRIDGE_COMBINE_MEM_PMEM &&
-               ptr->SpecificFlag == 0x06) {
+               Ptr->SpecificFlag == 0x06) {
             return EFI_INVALID_PARAMETER;
           }
             
-          AddrLen = ptr->AddrLen;
-          Alignment = ptr->AddrRangeMax;
-          if (ptr->AddrSpaceGranularity == 32) {
-            if (ptr->SpecificFlag == 0x06) {
+          AddrLen = Ptr->AddrLen;
+          Alignment = Ptr->AddrRangeMax;
+          if (Ptr->AddrSpaceGranularity == 32) {
+            if (Ptr->SpecificFlag == 0x06) {
               //
               // Apply from GCD
               //
@@ -913,8 +914,8 @@ SubmitResources(
             }
           }
 
-          if (ptr->AddrSpaceGranularity == 64) {
-            if (ptr->SpecificFlag == 0x06) {
+          if (Ptr->AddrSpaceGranularity == 64) {
+            if (Ptr->SpecificFlag == 0x06) {
               RootBridgeInstance->ResAllocNode[TypePMem64].Status = ResSubmitted;
             } else {
               RootBridgeInstance->ResAllocNode[TypeMem64].Status = ResSubmitted;
@@ -923,8 +924,8 @@ SubmitResources(
           break;
 
         case 1:
-          AddrLen = (UINTN)ptr->AddrLen;
-          Alignment = (UINTN)ptr->AddrRangeMax;
+          AddrLen = (UINTN) Ptr->AddrLen;
+          Alignment = (UINTN) Ptr->AddrRangeMax;
           RootBridgeInstance->ResAllocNode[TypeIo].Length  = AddrLen;
           RootBridgeInstance->ResAllocNode[TypeIo].Alignment = Alignment;
           RootBridgeInstance->ResAllocNode[TypeIo].Status  = ResRequested;
@@ -982,7 +983,7 @@ GetProposedResources(
   UINTN                                 Number; 
   VOID                                  *Buffer; 
   UINT8                                 *Temp;
-  EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR     *ptr;
+  EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR     *Ptr;
   UINT64                                ResStatus;
     
   Buffer = NULL;
@@ -1017,7 +1018,7 @@ GetProposedResources(
       Temp = Buffer;
       for (Index = 0; Index < TypeBus; Index ++) {
         if (RootBridgeInstance->ResAllocNode[Index].Status != ResNone) {
-          ptr = (EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *) Temp ;
+          Ptr = (EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *) Temp ;
           ResStatus = RootBridgeInstance->ResAllocNode[Index].Status;
           
           switch (Index) {
@@ -1026,81 +1027,81 @@ GetProposedResources(
             //
             // Io
             //
-            ptr->Desc = 0x8A;
-            ptr->Len  = 0x2B;
-            ptr->ResType = 1;
-            ptr->GenFlag = 0; 
-            ptr->SpecificFlag = 0;
-            ptr->AddrRangeMin = RootBridgeInstance->ResAllocNode[Index].Base;
-            ptr->AddrRangeMax = 0;
-            ptr->AddrTranslationOffset = \
+            Ptr->Desc = 0x8A;
+            Ptr->Len  = 0x2B;
+            Ptr->ResType = 1;
+            Ptr->GenFlag = 0; 
+            Ptr->SpecificFlag = 0;
+            Ptr->AddrRangeMin = RootBridgeInstance->ResAllocNode[Index].Base;
+            Ptr->AddrRangeMax = 0;
+            Ptr->AddrTranslationOffset = \
                  (ResStatus == ResAllocated) ? EFI_RESOURCE_SATISFIED : EFI_RESOURCE_LESS;
-            ptr->AddrLen = RootBridgeInstance->ResAllocNode[Index].Length;
+            Ptr->AddrLen = RootBridgeInstance->ResAllocNode[Index].Length;
             break;
 
           case TypeMem32:
             //
             // Memory 32
             // 
-            ptr->Desc = 0x8A;
-            ptr->Len  = 0x2B;
-            ptr->ResType = 0;
-            ptr->GenFlag = 0; 
-            ptr->SpecificFlag = 0;
-            ptr->AddrSpaceGranularity = 32;
-            ptr->AddrRangeMin = RootBridgeInstance->ResAllocNode[Index].Base;
-            ptr->AddrRangeMax = 0;
-            ptr->AddrTranslationOffset = \
+            Ptr->Desc = 0x8A;
+            Ptr->Len  = 0x2B;
+            Ptr->ResType = 0;
+            Ptr->GenFlag = 0; 
+            Ptr->SpecificFlag = 0;
+            Ptr->AddrSpaceGranularity = 32;
+            Ptr->AddrRangeMin = RootBridgeInstance->ResAllocNode[Index].Base;
+            Ptr->AddrRangeMax = 0;
+            Ptr->AddrTranslationOffset = \
                  (ResStatus == ResAllocated) ? EFI_RESOURCE_SATISFIED : EFI_RESOURCE_LESS;              
-            ptr->AddrLen = RootBridgeInstance->ResAllocNode[Index].Length;
+            Ptr->AddrLen = RootBridgeInstance->ResAllocNode[Index].Length;
             break;
 
           case TypePMem32:
             //
             // Prefetch memory 32
             //
-            ptr->Desc = 0x8A;
-            ptr->Len  = 0x2B;
-            ptr->ResType = 0;
-            ptr->GenFlag = 0; 
-            ptr->SpecificFlag = 6;
-            ptr->AddrSpaceGranularity = 32;
-            ptr->AddrRangeMin = 0;
-            ptr->AddrRangeMax = 0;
-            ptr->AddrTranslationOffset = EFI_RESOURCE_NONEXISTENT;       
-            ptr->AddrLen = 0;
+            Ptr->Desc = 0x8A;
+            Ptr->Len  = 0x2B;
+            Ptr->ResType = 0;
+            Ptr->GenFlag = 0; 
+            Ptr->SpecificFlag = 6;
+            Ptr->AddrSpaceGranularity = 32;
+            Ptr->AddrRangeMin = 0;
+            Ptr->AddrRangeMax = 0;
+            Ptr->AddrTranslationOffset = EFI_RESOURCE_NONEXISTENT;       
+            Ptr->AddrLen = 0;
             break;
 
           case TypeMem64:
             //
             // Memory 64
             //
-            ptr->Desc = 0x8A;
-            ptr->Len  = 0x2B;
-            ptr->ResType = 0;
-            ptr->GenFlag = 0; 
-            ptr->SpecificFlag = 0;
-            ptr->AddrSpaceGranularity = 64;
-            ptr->AddrRangeMin = 0;
-            ptr->AddrRangeMax = 0;
-            ptr->AddrTranslationOffset = EFI_RESOURCE_NONEXISTENT;       
-            ptr->AddrLen = 0;
+            Ptr->Desc = 0x8A;
+            Ptr->Len  = 0x2B;
+            Ptr->ResType = 0;
+            Ptr->GenFlag = 0; 
+            Ptr->SpecificFlag = 0;
+            Ptr->AddrSpaceGranularity = 64;
+            Ptr->AddrRangeMin = 0;
+            Ptr->AddrRangeMax = 0;
+            Ptr->AddrTranslationOffset = EFI_RESOURCE_NONEXISTENT;       
+            Ptr->AddrLen = 0;
             break;
 
           case TypePMem64:
             //
             // Prefetch memory 64
             //
-            ptr->Desc = 0x8A;
-            ptr->Len  = 0x2B;
-            ptr->ResType = 0;
-            ptr->GenFlag = 0; 
-            ptr->SpecificFlag = 6;
-            ptr->AddrSpaceGranularity = 64;
-            ptr->AddrRangeMin = 0;
-            ptr->AddrRangeMax = 0;
-            ptr->AddrTranslationOffset = EFI_RESOURCE_NONEXISTENT;       
-            ptr->AddrLen = 0;
+            Ptr->Desc = 0x8A;
+            Ptr->Len  = 0x2B;
+            Ptr->ResType = 0;
+            Ptr->GenFlag = 0; 
+            Ptr->SpecificFlag = 6;
+            Ptr->AddrSpaceGranularity = 64;
+            Ptr->AddrRangeMin = 0;
+            Ptr->AddrRangeMax = 0;
+            Ptr->AddrTranslationOffset = EFI_RESOURCE_NONEXISTENT;       
+            Ptr->AddrLen = 0;
             break;
           };
           
@@ -1120,110 +1121,6 @@ GetProposedResources(
   }
   
   return EFI_INVALID_PARAMETER;
-}
-
-/**
-  Update attribute for PCI root bridge for specifc device.
-
-  @param RootBridge      Point to PCI root bridge.
-  @param PciAddress      The specific device PCI address
-**/
-STATIC
-VOID
-UpdateRootBridgeAttributes (
-  IN  PCI_ROOT_BRIDGE_INSTANCE                     *RootBridge,
-  IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_PCI_ADDRESS  PciAddress
-  )
-{
-  EFI_STATUS                 Status;
-  PCI_TYPE01                 PciConfigurationHeader;
-  UINT64                     Attributes;
-
-  //
-  // Read the PCI Configuration Header for the device
-  //
-  Status = RootBridge->Io.Pci.Read (
-    &RootBridge->Io,
-    EfiPciWidthUint16,
-    EFI_PCI_ADDRESS(
-      PciAddress.Bus,
-      PciAddress.Device,
-      PciAddress.Function,
-      0
-      ),
-    sizeof (PciConfigurationHeader) / sizeof (UINT16),
-    &PciConfigurationHeader
-    );
-  if (EFI_ERROR (Status)) {
-    return;
-  }
-
-  Attributes = RootBridge->Attributes;
-
-  //
-  // Look for devices with the VGA Palette Snoop enabled in the COMMAND register of the PCI Config Header
-  //
-  if (PciConfigurationHeader.Hdr.Command & 0x20) {
-    Attributes |= EFI_PCI_ATTRIBUTE_VGA_PALETTE_IO;
-  }
-
-  //
-  // If the device is a PCI-PCI Bridge, then look at the Subordinate Bus Number
-  //
-  if (IS_PCI_BRIDGE(&PciConfigurationHeader)) {
-    //
-    // Look at the PPB Configuration for legacy decoding attributes
-    //
-    if (PciConfigurationHeader.Bridge.BridgeControl & 0x04) {
-      Attributes |= EFI_PCI_ATTRIBUTE_ISA_IO;
-      Attributes |= EFI_PCI_ATTRIBUTE_ISA_MOTHERBOARD_IO;
-    }
-    if (PciConfigurationHeader.Bridge.BridgeControl & 0x08) {
-      Attributes |= EFI_PCI_ATTRIBUTE_VGA_PALETTE_IO;
-      Attributes |= EFI_PCI_ATTRIBUTE_VGA_MEMORY;
-      Attributes |= EFI_PCI_ATTRIBUTE_VGA_IO;
-    }
-  } else {
-    //
-    // See if the PCI device is an IDE controller
-    //
-    if (PciConfigurationHeader.Hdr.ClassCode[2] == 0x01 &&
-        PciConfigurationHeader.Hdr.ClassCode[1] == 0x01    ) {
-      if (PciConfigurationHeader.Hdr.ClassCode[0] & 0x80) {
-        Attributes |= EFI_PCI_ATTRIBUTE_IDE_PRIMARY_IO;
-        Attributes |= EFI_PCI_ATTRIBUTE_IDE_SECONDARY_IO;
-      }
-      if (PciConfigurationHeader.Hdr.ClassCode[0] & 0x01) {
-        Attributes |= EFI_PCI_ATTRIBUTE_IDE_PRIMARY_IO;
-      }
-      if (PciConfigurationHeader.Hdr.ClassCode[0] & 0x04) {
-        Attributes |= EFI_PCI_ATTRIBUTE_IDE_SECONDARY_IO;
-      }
-    }
-
-    //
-    // See if the PCI device is a legacy VGA controller
-    //
-    if (PciConfigurationHeader.Hdr.ClassCode[2] == 0x00 &&
-        PciConfigurationHeader.Hdr.ClassCode[1] == 0x01    ) {
-      Attributes |= EFI_PCI_ATTRIBUTE_VGA_PALETTE_IO;
-      Attributes |= EFI_PCI_ATTRIBUTE_VGA_MEMORY;
-      Attributes |= EFI_PCI_ATTRIBUTE_VGA_IO;
-    }
-
-    //
-    // See if the PCI device is a standard VGA controller
-    //
-    if (PciConfigurationHeader.Hdr.ClassCode[2] == 0x03 &&
-        PciConfigurationHeader.Hdr.ClassCode[1] == 0x00    ) {
-      Attributes |= EFI_PCI_ATTRIBUTE_VGA_PALETTE_IO;
-      Attributes |= EFI_PCI_ATTRIBUTE_VGA_MEMORY;
-      Attributes |= EFI_PCI_ATTRIBUTE_VGA_IO;
-    }
-  }
-
-  RootBridge->Attributes = Attributes;
-  RootBridge->Supports = Attributes;
 }
 
 /**
@@ -1256,7 +1153,7 @@ UpdateRootBridgeAttributes (
 EFI_STATUS
 EFIAPI
 PreprocessController (
-  IN  struct _EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL  *This,
+  IN  EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL          *This,
   IN  EFI_HANDLE                                                RootBridgeHandle,
   IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_PCI_ADDRESS               PciAddress,
   IN  EFI_PCI_CONTROLLER_RESOURCE_ALLOCATION_PHASE              Phase
@@ -1275,14 +1172,17 @@ PreprocessController (
   while (List != &HostBridgeInstance->Head) {
     RootBridgeInstance = DRIVER_INSTANCE_FROM_LIST_ENTRY (List);
     if (RootBridgeHandle == RootBridgeInstance->Handle) {
-      UpdateRootBridgeAttributes (
-        RootBridgeInstance,
-        PciAddress
-        );
-      return EFI_SUCCESS;
+      break;
     }
     List = List->ForwardLink;
   }
+  if (List == &HostBridgeInstance->Head) {
+    return EFI_INVALID_PARAMETER;
+  }
 
-  return EFI_INVALID_PARAMETER;
+  if (Phase < EfiPciBeforeChildBusEnumeration || Phase > EfiPciBeforeResourceCollection) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  return EFI_SUCCESS;
 }

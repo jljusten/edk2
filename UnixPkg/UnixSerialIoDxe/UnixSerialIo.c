@@ -108,7 +108,8 @@ ConvertBaud2Unix (
 {
   switch (BaudRate) {
   case 0:
-    return B0;
+    return 0; // Don't use B0 as it is also used in EFI #includes as a name so termios.h #define 
+              // can break the build.
   case 50:
     return B50;
   case 75:
@@ -271,6 +272,7 @@ Returns:
   EFI_OPEN_PROTOCOL_INFORMATION_ENTRY *OpenInfoBuffer;
   UINTN                               EntryCount;
   UINTN                               Index;
+  BOOLEAN                             RemainingDevicePathContainsFlowControl; 
 
   //
   // Check RemainingDevicePath validation
@@ -356,6 +358,11 @@ Returns:
       return Status;
     }
 
+    //
+    // See if RemainingDevicePath has a Flow Control device path node
+    //
+    RemainingDevicePathContainsFlowControl = ContainsFlowControl (RemainingDevicePath);
+
     for (Index = 0; Index < EntryCount; Index++) {
       if ((OpenInfoBuffer[Index].Attributes & EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER) != 0) {
         Status = gBS->OpenProtocol (
@@ -366,9 +373,10 @@ Returns:
                         Handle,
                         EFI_OPEN_PROTOCOL_GET_PROTOCOL
                         );
-        if (!EFI_ERROR (Status) &&
-            (ContainsFlowControl (RemainingDevicePath) ^ ContainsFlowControl (DevicePath))) {
-          Status = EFI_UNSUPPORTED;
+        if (!EFI_ERROR (Status)) {
+          if (RemainingDevicePathContainsFlowControl ^ ContainsFlowControl (DevicePath)) {
+            Status = EFI_UNSUPPORTED;
+          }
         }
         break;
       }

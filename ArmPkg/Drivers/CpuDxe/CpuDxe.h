@@ -111,8 +111,8 @@ CpuSetMemoryAttributes (
 
 EFI_STATUS
 InitializeExceptions (
-	IN EFI_CPU_ARCH_PROTOCOL    *Cpu
-	);
+  IN EFI_CPU_ARCH_PROTOCOL    *Cpu
+  );
 
 EFI_STATUS
 SyncCacheConfig (

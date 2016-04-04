@@ -161,8 +161,7 @@ PopBool (
 /**
   This is the POSTFIX version of the dependency evaluator.  This code does
   not need to handle Before or After, as it is not valid to call this
-  routine in this case. The SOR is just ignored and is a nop in the grammer.
-  POSTFIX means all the math is done on top of the stack.
+  routine in this case. POSTFIX means all the math is done on top of the stack.
 
   @param  DriverEntry           DriverEntry element to update.
 
@@ -194,11 +193,14 @@ SmmIsSchedulable (
     return FALSE;
   }
 
+  DEBUG ((DEBUG_DISPATCH, "Evaluate SMM DEPEX for FFS(%g)\n", &DriverEntry->FileName));
+  
   if (DriverEntry->Depex == NULL) {
     //
     // A NULL Depex means that the SMM driver is not built correctly.  
     // All SMM drivers must have a valid depex expressiion.
     //
+    DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Depex is empty)\n"));
     ASSERT (FALSE);
     return FALSE;
   }
@@ -218,6 +220,7 @@ SmmIsSchedulable (
     // past the end of the dependency expression.
     //
     if (((UINTN)Iterator - (UINTN)DriverEntry->Depex) >= DriverEntry->DepexSize) {
+      DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Attempt to fetch past end of depex)\n"));
       return FALSE;
     }
 
@@ -233,19 +236,8 @@ SmmIsSchedulable (
       // If the code flow arrives at this point, there was a BEFORE or AFTER
       // that were not the first opcodes.
       //
+      DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected BEFORE or AFTER opcode)\n"));
       ASSERT (FALSE);
-    case EFI_DEP_SOR:
-      //
-      // These opcodes can only appear once as the first opcode.  If it is found
-      // at any other location, then the dependency expression evaluates to FALSE
-      //
-      if (Iterator != DriverEntry->Depex) {
-        return FALSE;
-      }
-      //
-      // Otherwise, it is the first opcode and should be treated as a NOP.
-      //
-      break;
 
     case EFI_DEP_PUSH:
       //
@@ -263,12 +255,15 @@ SmmIsSchedulable (
       }
 
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  PUSH GUID(%g) = FALSE\n", &DriverGuid));
         Status = PushBool (FALSE);
       } else {
+        DEBUG ((DEBUG_DISPATCH, "  PUSH GUID(%g) = TRUE\n", &DriverGuid));
         *Iterator = EFI_DEP_REPLACE_TRUE;
         Status = PushBool (TRUE);
       }
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
 
@@ -276,75 +271,96 @@ SmmIsSchedulable (
       break;
 
     case EFI_DEP_AND:
+      DEBUG ((DEBUG_DISPATCH, "  AND\n"));
       Status = PopBool (&Operator);
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
 
       Status = PopBool (&Operator2);
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
 
       Status = PushBool ((BOOLEAN)(Operator && Operator2));
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
       break;
 
     case EFI_DEP_OR:
+      DEBUG ((DEBUG_DISPATCH, "  OR\n"));
       Status = PopBool (&Operator);
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
 
       Status = PopBool (&Operator2);
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
 
       Status = PushBool ((BOOLEAN)(Operator || Operator2));
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
       break;
 
     case EFI_DEP_NOT:
+      DEBUG ((DEBUG_DISPATCH, "  NOT\n"));
       Status = PopBool (&Operator);
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
 
       Status = PushBool ((BOOLEAN)(!Operator));
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
       break;
 
     case EFI_DEP_TRUE:
+      DEBUG ((DEBUG_DISPATCH, "  TRUE\n"));
       Status = PushBool (TRUE);
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
       break;
 
     case EFI_DEP_FALSE:
+      DEBUG ((DEBUG_DISPATCH, "  FALSE\n"));
       Status = PushBool (FALSE);
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
       break;
 
     case EFI_DEP_END:
+      DEBUG ((DEBUG_DISPATCH, "  END\n"));
       Status = PopBool (&Operator);
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
+      DEBUG ((DEBUG_DISPATCH, "  RESULT = %a\n", Operator ? "TRUE" : "FALSE"));
       return Operator;
 
     case EFI_DEP_REPLACE_TRUE:
+      CopyMem (&DriverGuid, Iterator + 1, sizeof (EFI_GUID));
+      DEBUG ((DEBUG_DISPATCH, "  PUSH GUID(%g) = TRUE\n", &DriverGuid));
       Status = PushBool (TRUE);
       if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unexpected error)\n"));
         return FALSE;
       }
 
@@ -352,6 +368,7 @@ SmmIsSchedulable (
       break;
 
     default:
+      DEBUG ((DEBUG_DISPATCH, "  RESULT = FALSE (Unknown opcode)\n"));
       goto Done;
     }
 

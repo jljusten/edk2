@@ -14,8 +14,8 @@
 .text
 .p2align 2
 
-.globl ASM_PFX(SetJump)
-.globl ASM_PFX(InternalLongJump)
+GCC_ASM_EXPORT(SetJump)
+GCC_ASM_EXPORT(InternalLongJump)
 
 #/**
 #  Saves the current CPU context that can be restored with a call to LongJump() and returns 0.#

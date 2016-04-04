@@ -177,6 +177,8 @@ Returns:
                   &Private->UgaDraw,
                   &gEfiSimpleTextInProtocolGuid,
                   &Private->SimpleTextIn,
+                  &gEfiSimplePointerProtocolGuid,
+                  &Private->SimplePointer,
                   NULL
                   );
 
@@ -264,6 +266,8 @@ Returns:
                   &Private->UgaDraw,
                   &gEfiSimpleTextInProtocolGuid,
                   &Private->SimpleTextIn,
+                  &gEfiSimplePointerProtocolGuid,
+                  &Private->SimplePointer,
                   NULL
                   );
   if (!EFI_ERROR (Status)) {

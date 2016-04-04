@@ -12,25 +12,25 @@
 #
 #------------------------------------------------------------------------------
 
-	.text
-	.align 2
-	.globl ASM_PFX(__ashrdi3)
+  .text
+  .align 2
+  GCC_ASM_EXPORT(__ashrdi3)
 
 ASM_PFX(__ashrdi3):
-	cmp	r2, #31
-	bls	L2
-	cmp	r2, #63
-	subls	r2, r2, #32
-	mov	ip, r1, asr #31
-	movls	r2, r1, asr r2
-	movhi	r2, ip
-	mov	r0, r2
-	mov	r1, ip
-	bx	lr
+  cmp  r2, #31
+  bls  L2
+  cmp  r2, #63
+  subls  r2, r2, #32
+  mov  ip, r1, asr #31
+  movls  r2, r1, asr r2
+  movhi  r2, ip
+  mov  r0, r2
+  mov  r1, ip
+  bx  lr
 L2:
-	cmp	r2, #0
-	rsbne	r3, r2, #32
-	movne	r3, r1, asl r3
-	movne	r1, r1, asr r2
-	orrne	r0, r3, r0, lsr r2
-	bx	lr
+  cmp  r2, #0
+  rsbne  r3, r2, #32
+  movne  r3, r1, asl r3
+  movne  r1, r1, asr r2
+  orrne  r0, r3, r0, lsr r2
+  bx  lr

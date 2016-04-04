@@ -1,7 +1,7 @@
 /** @file
   EFI PCAT ISA ACPI Driver for a Generic PC Platform
 
-Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -171,7 +171,11 @@ PcatIsaAcpiDriverBindingStart (
   EFI_STATUS           Status;
   EFI_PCI_IO_PROTOCOL  *PciIo;
   PCAT_ISA_ACPI_DEV    *PcatIsaAcpiDev;
-    
+  UINT64               Supports;
+  BOOLEAN              Enabled;
+
+  Enabled = FALSE;
+  Supports = 0;
   PcatIsaAcpiDev = NULL;
   //
   // Open the PCI I/O Protocol Interface
@@ -189,10 +193,30 @@ PcatIsaAcpiDriverBindingStart (
     goto Done;
   }
 
+  //
+  // Get supported PCI attributes
+  //
+  Status = PciIo->Attributes (
+                    PciIo,
+                    EfiPciIoAttributeOperationSupported,
+                    0,
+                    &Supports
+                    );
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+
+  Supports &= (EFI_PCI_IO_ATTRIBUTE_ISA_IO | EFI_PCI_IO_ATTRIBUTE_ISA_IO_16);
+  if (Supports == 0 || Supports == (EFI_PCI_IO_ATTRIBUTE_ISA_IO | EFI_PCI_IO_ATTRIBUTE_ISA_IO_16)) {
+    Status = EFI_UNSUPPORTED;
+    goto Done;
+  }  
+
+  Enabled = TRUE;
   Status = PciIo->Attributes (
                     PciIo, 
                     EfiPciIoAttributeOperationEnable, 
-                    EFI_PCI_DEVICE_ENABLE | EFI_PCI_IO_ATTRIBUTE_ISA_IO | EFI_PCI_IO_ATTRIBUTE_ISA_MOTHERBOARD_IO, 
+                    EFI_PCI_DEVICE_ENABLE | Supports | EFI_PCI_IO_ATTRIBUTE_ISA_MOTHERBOARD_IO, 
                     NULL 
                     );
   if (EFI_ERROR (Status)) {
@@ -218,6 +242,11 @@ PcatIsaAcpiDriverBindingStart (
   PcatIsaAcpiDev->Signature = PCAT_ISA_ACPI_DEV_SIGNATURE;
   PcatIsaAcpiDev->Handle    = Controller;
   PcatIsaAcpiDev->PciIo     = PciIo;
+
+  //
+  // Initialize PcatIsaAcpiDeviceList
+  //
+  InitializePcatIsaAcpiDeviceList ();
   
   //
   // IsaAcpi interface
@@ -242,11 +271,11 @@ PcatIsaAcpiDriverBindingStart (
 
 Done:
   if (EFI_ERROR (Status)) {
-    if (PciIo) {
+    if (PciIo != NULL && Enabled) {
       PciIo->Attributes (
                PciIo, 
                EfiPciIoAttributeOperationDisable, 
-               EFI_PCI_DEVICE_ENABLE | EFI_PCI_IO_ATTRIBUTE_ISA_IO | EFI_PCI_IO_ATTRIBUTE_ISA_MOTHERBOARD_IO,
+               EFI_PCI_DEVICE_ENABLE | Supports | EFI_PCI_IO_ATTRIBUTE_ISA_MOTHERBOARD_IO,
                NULL 
                );
     }
@@ -292,6 +321,7 @@ PcatIsaAcpiDriverBindingStop (
   EFI_STATUS             Status;
   EFI_ISA_ACPI_PROTOCOL  *IsaAcpi;
   PCAT_ISA_ACPI_DEV      *PcatIsaAcpiDev;
+  UINT64                 Supports;
   
   //
   // Get the ISA ACPI Protocol Interface
@@ -313,10 +343,25 @@ PcatIsaAcpiDriverBindingStop (
   //
   PcatIsaAcpiDev = PCAT_ISA_ACPI_DEV_FROM_THIS (IsaAcpi);
 
+  //
+  // Get supported PCI attributes
+  //
+  Status = PcatIsaAcpiDev->PciIo->Attributes (
+                                    PcatIsaAcpiDev->PciIo,
+                                    EfiPciIoAttributeOperationSupported,
+                                    0,
+                                    &Supports
+                                    );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  Supports &= (EFI_PCI_IO_ATTRIBUTE_ISA_IO | EFI_PCI_IO_ATTRIBUTE_ISA_IO_16);
+
   PcatIsaAcpiDev->PciIo->Attributes (
                            PcatIsaAcpiDev->PciIo, 
                            EfiPciIoAttributeOperationDisable, 
-                           EFI_PCI_DEVICE_ENABLE | EFI_PCI_IO_ATTRIBUTE_ISA_IO | EFI_PCI_IO_ATTRIBUTE_ISA_MOTHERBOARD_IO,
+                           EFI_PCI_DEVICE_ENABLE | Supports | EFI_PCI_IO_ATTRIBUTE_ISA_MOTHERBOARD_IO,
                            NULL 
                            );
  

@@ -1,7 +1,7 @@
 ## @file
 #  EFI/Framework Open Virtual Machine Firmware (OVMF) platform
 #
-#  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -30,13 +30,17 @@
 
 [PcdsFixedAtBuild]
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfMemFvBase|0x0|UINT32|0
-  gUefiOvmfPkgTokenSpaceGuid.PcdOvmfMemFvSize|0x0|UINT32|0
+  gUefiOvmfPkgTokenSpaceGuid.PcdOvmfMemFvSize|0x0|UINT32|1
 
 [PcdsDynamic]
-  gUefiOvmfPkgTokenSpaceGuid.PcdEmuVariableEvent|0|UINT64|0
+  gUefiOvmfPkgTokenSpaceGuid.PcdEmuVariableEvent|0|UINT64|2
 
 [LibraryClasses]
   ##  @libraryclass  Save and restore variables using a file
   #
   NvVarsFileLib|Include/Library/NvVarsFileLib.h
+
+  ##  @libraryclass  Serialize (and deserialize) variables
+  #
+  SerializeVariablesLib|Include/Library/SerializeVariablesLib.h
 

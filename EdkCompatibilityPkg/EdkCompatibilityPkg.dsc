@@ -2,7 +2,7 @@
 # EDK Compatibility Package Build File
 #
 #
-# Copyright (c) 2008 - 2010, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2008 - 2011, Intel Corporation. All rights reserved.<BR>
 #
 #    This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -51,6 +51,7 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   BaseMemoryLib|MdePkg/Library/BaseMemoryLib/BaseMemoryLib.inf
   UefiDriverEntryPoint|MdePkg/Library/UefiDriverEntryPoint/UefiDriverEntryPoint.inf
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  DebugPrintErrorLevelLib|MdePkg/Library/BaseDebugPrintErrorLevelLib/BaseDebugPrintErrorLevelLib.inf  
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
   TimerLib|MdePkg/Library/BaseTimerLibNullTemplate/BaseTimerLibNullTemplate.inf
@@ -68,6 +69,8 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   CacheMaintenanceLib|MdePkg/Library/BaseCacheMaintenanceLib/BaseCacheMaintenanceLib.inf
   CpuLib|MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
   DebugAgentLib|MdeModulePkg/Library/DebugAgentLibNull/DebugAgentLibNull.inf
+  LocalApicLib|UefiCpuPkg/Library/BaseXApicX2ApicLib/BaseXApicX2ApicLib.inf
+  DxeServicesLib|MdePkg/Library/DxeServicesLib/DxeServicesLib.inf
 
 [LibraryClasses.common.PEIM]
   MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
@@ -255,7 +258,6 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   EdkCompatibilityPkg/Compatibility/LegacyRegion2OnLegacyRegionThunk/LegacyRegion2OnLegacyRegionThunk.inf
   EdkCompatibilityPkg/Compatibility/PiSmbiosRecordOnDataHubSmbiosRecordThunk/PiSmbiosRecordOnDataHubSmbiosRecordThunk.inf
   EdkCompatibilityPkg/Compatibility/CpuIo2OnCpuIoThunk/CpuIo2OnCpuIoThunk.inf
-  EdkCompatibilityPkg/Compatibility/BootScriptSaveOnS3SaveStateThunk/BootScriptSaveOnS3SaveStateThunk.inf
 
   #
   # User needs to turn on the compatibility switches for VFRC and EDK II build tool for Framework HII modules 
@@ -283,6 +285,8 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   EdkCompatibilityPkg/Compatibility/SmmAccess2OnSmmAccessThunk/SmmAccess2OnSmmAccessThunk.inf
   EdkCompatibilityPkg/Compatibility/SmmControl2OnSmmControlThunk/SmmControl2OnSmmControlThunk.inf
   EdkCompatibilityPkg/Compatibility/PiSmmStatusCodeOnFrameworkSmmStatusCodeThunk/PiSmmStatusCodeOnFrameworkSmmStatusCodeThunk.inf
+  EdkCompatibilityPkg/Compatibility/FrameworkSmmStatusCodeOnPiSmmStatusCodeThunk/FrameworkSmmStatusCodeOnPiSmmStatusCodeThunk.inf
+  EdkCompatibilityPkg/Compatibility/BootScriptSaveOnS3SaveStateThunk/BootScriptSaveOnS3SaveStateThunk.inf
 
 [Components.IPF]
   EdkCompatibilityPkg/Foundation/Cpu/Itanium/CpuIa64Lib/CpuIA64Lib.inf

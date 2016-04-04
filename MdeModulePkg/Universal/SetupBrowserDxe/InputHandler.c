@@ -1,7 +1,7 @@
 /** @file
 Implementation for handling user input from the User Interfaces.
 
-Copyright (c) 2004 - 2009, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -270,6 +270,12 @@ GetNumericInput (
   Minimum       = Question->Minimum;
   Maximum       = Question->Maximum;
 
+  //
+  // Only two case, user can enter to this function: Enter and +/- case.
+  // In Enter case, gDirection = 0; in +/- case, gDirection = SCAN_LEFT/SCAN_WRIGHT
+  //
+  ManualInput        = (BOOLEAN)(gDirection == 0 ? TRUE : FALSE);
+
   if ((Question->Operand == EFI_IFR_DATE_OP) || (Question->Operand == EFI_IFR_TIME_OP)) {
     DateOrTime = TRUE;
   } else {
@@ -344,12 +350,6 @@ GetNumericInput (
     }
   }
 
-  if (Step == 0) {
-    ManualInput = TRUE;
-  } else {
-    ManualInput = FALSE;
-  }
-
   if ((Question->Operand == EFI_IFR_NUMERIC_OP) &&
       ((Question->Flags & EFI_IFR_DISPLAY) == EFI_IFR_DISPLAY_UINT_HEX)) {
     HexInput = TRUE;
@@ -357,41 +357,96 @@ GetNumericInput (
     HexInput = FALSE;
   }
 
+  //
+  // Enter from "Enter" input, clear the old word showing.
+  //
   if (ManualInput) {
-    if (HexInput) {
-      InputWidth = Question->StorageWidth * 2;
-    } else {
-      switch (Question->StorageWidth) {
-      case 1:
-        InputWidth = 3;
-        break;
+    if (Question->Operand == EFI_IFR_NUMERIC_OP) {
+      if (HexInput) {
+        InputWidth = Question->StorageWidth * 2;
+      } else {
+        switch (Question->StorageWidth) {
+        case 1:
+          InputWidth = 3;
+          break;
 
-      case 2:
-        InputWidth = 5;
-        break;
+        case 2:
+          InputWidth = 5;
+          break;
 
-      case 4:
-        InputWidth = 10;
-        break;
+        case 4:
+          InputWidth = 10;
+          break;
 
-      case 8:
-        InputWidth = 20;
-        break;
+        case 8:
+          InputWidth = 20;
+          break;
 
-      default:
-        InputWidth = 0;
-        break;
+        default:
+          InputWidth = 0;
+          break;
+        }
+      }
+
+      InputText[0] = LEFT_NUMERIC_DELIMITER;
+      SetUnicodeMem (InputText + 1, InputWidth, L' ');
+      ASSERT (InputWidth + 2 < MAX_NUMERIC_INPUT_WIDTH);
+      InputText[InputWidth + 1] = RIGHT_NUMERIC_DELIMITER;
+      InputText[InputWidth + 2] = L'\0';
+
+      PrintAt (Column, Row, InputText);
+      Column++;
+    }
+
+    if (Question->Operand == EFI_IFR_DATE_OP) {
+      if (MenuOption->Sequence == 2) {
+        InputWidth = 4;
+      } else {
+        InputWidth = 2;
+      }
+
+      if (MenuOption->Sequence == 0) {
+        InputText[0] = LEFT_NUMERIC_DELIMITER;
+        SetUnicodeMem (InputText + 1, InputWidth, L' ');
+      } else {
+        SetUnicodeMem (InputText, InputWidth, L' ');
+      }
+
+      if (MenuOption->Sequence == 2) {
+        InputText[InputWidth + 1] = RIGHT_NUMERIC_DELIMITER;
+      } else {
+        InputText[InputWidth + 1] = DATE_SEPARATOR;
+      }
+      InputText[InputWidth + 2] = L'\0';
+
+      PrintAt (Column, Row, InputText);
+      if (MenuOption->Sequence == 0) {
+        Column++;
       }
     }
 
-    InputText[0] = LEFT_NUMERIC_DELIMITER;
-    SetUnicodeMem (InputText + 1, InputWidth, L' ');
-    ASSERT (InputWidth + 2 < MAX_NUMERIC_INPUT_WIDTH);
-    InputText[InputWidth + 1] = RIGHT_NUMERIC_DELIMITER;
-    InputText[InputWidth + 2] = L'\0';
+    if (Question->Operand == EFI_IFR_TIME_OP) {
+      InputWidth = 2;
 
-    PrintAt (Column, Row, InputText);
-    Column++;
+      if (MenuOption->Sequence == 0) {
+        InputText[0] = LEFT_NUMERIC_DELIMITER;
+        SetUnicodeMem (InputText + 1, InputWidth, L' ');
+      } else {
+        SetUnicodeMem (InputText, InputWidth, L' ');
+      }
+
+      if (MenuOption->Sequence == 2) {
+        InputText[InputWidth + 1] = RIGHT_NUMERIC_DELIMITER;
+      } else {
+        InputText[InputWidth + 1] = TIME_SEPARATOR;
+      }
+      InputText[InputWidth + 2] = L'\0';
+
+      PrintAt (Column, Row, InputText);
+      if (MenuOption->Sequence == 0) {
+        Column++;
+      }
+    }
   }
 
   //
@@ -425,7 +480,7 @@ TheKey2:
       switch (Key.ScanCode) {
       case SCAN_LEFT:
       case SCAN_RIGHT:
-        if (DateOrTime) {
+        if (DateOrTime && !ManualInput) {
           //
           // By setting this value, we will return back to the caller.
           // We need to do this since an auto-refresh will destroy the adjustment
@@ -435,7 +490,7 @@ TheKey2:
           gDirection = SCAN_DOWN;
         }
 
-        if (!ManualInput) {
+        if ((Step != 0) && !ManualInput) {
           if (Key.ScanCode == SCAN_LEFT) {
             if (EditValue > Step) {
               EditValue = EditValue - Step;
@@ -485,11 +540,11 @@ TheKey2:
             PrintFormattedNumber (Question, FormattedNumber, 21 * sizeof (CHAR16));
           }
 
-          gST->ConOut->SetAttribute (gST->ConOut, FIELD_TEXT | FIELD_BACKGROUND);
+          gST->ConOut->SetAttribute (gST->ConOut, PcdGet8 (PcdBrowserFieldTextColor) | FIELD_BACKGROUND);
           for (Loop = 0; Loop < EraseLen; Loop++) {
             PrintAt (MenuOption->OptCol + Loop, MenuOption->Row, L" ");
           }
-          gST->ConOut->SetAttribute (gST->ConOut, FIELD_TEXT_HIGHLIGHT | FIELD_BACKGROUND_HIGHLIGHT);
+          gST->ConOut->SetAttribute (gST->ConOut, PcdGet8 (PcdBrowserFieldTextHighlightColor) | PcdGet8 (PcdBrowserFieldBackgroundHighlightColor));
 
           if (MenuOption->Sequence == 0) {
             PrintCharAt (MenuOption->OptCol, Row, LEFT_NUMERIC_DELIMITER);

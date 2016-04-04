@@ -80,7 +80,7 @@ class FfsInfStatement(FfsInfStatementClassObject):
         #
 
         PathClassObj = PathClass(self.InfFileName, GenFdsGlobalVariable.WorkSpaceDir)
-        ErrorCode, ErrorInfo = PathClassObj.Validate()
+        ErrorCode, ErrorInfo = PathClassObj.Validate(".inf")
         if ErrorCode != 0:
             EdkLogger.error("GenFds", ErrorCode, ExtraData=ErrorInfo)
         
@@ -161,6 +161,14 @@ class FfsInfStatement(FfsInfStatementClassObject):
         #
 
         self.__InfParse__(Dict)
+        
+        #
+        # Allow binary type module not specify override rule in FDF file.
+        # 
+        if len(self.BinFileList) >0 and not self.InDsc:
+            if self.Rule == None or self.Rule == "":
+                self.Rule = "BINARY"
+                
         #
         # Get the rule of how to generate Ffs file
         #
@@ -343,7 +351,7 @@ class FfsInfStatement(FfsInfStatementClassObject):
         if len(PlatformArchList) == 0:
             self.InDsc = False
             PathClassObj = PathClass(self.InfFileName, GenFdsGlobalVariable.WorkSpaceDir)
-            ErrorCode, ErrorInfo = PathClassObj.Validate()
+            ErrorCode, ErrorInfo = PathClassObj.Validate(".inf")
             if ErrorCode != 0:
                 EdkLogger.error("GenFds", ErrorCode, ExtraData=ErrorInfo)
         if len(ArchList) == 1:

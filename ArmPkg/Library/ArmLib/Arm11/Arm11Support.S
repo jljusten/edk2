@@ -12,27 +12,29 @@
 #
 #------------------------------------------------------------------------------
 
+#include <AsmMacroIoLib.h>
+
 .text
 .align 2
-.globl ASM_PFX(ArmCleanInvalidateDataCache)
-.globl ASM_PFX(ArmCleanDataCache)
-.globl ASM_PFX(ArmInvalidateDataCache)
-.globl ASM_PFX(ArmInvalidateInstructionCache)
-.globl ASM_PFX(ArmInvalidateDataCacheEntryByMVA)
-.globl ASM_PFX(ArmCleanDataCacheEntryByMVA)
-.globl ASM_PFX(ArmCleanInvalidateDataCacheEntryByMVA)
-.globl ASM_PFX(ArmEnableMmu)
-.globl ASM_PFX(ArmDisableMmu)
-.globl ASM_PFX(ArmMmuEnabled)
-.globl ASM_PFX(ArmEnableDataCache)
-.globl ASM_PFX(ArmDisableDataCache)
-.globl ASM_PFX(ArmEnableInstructionCache)
-.globl ASM_PFX(ArmDisableInstructionCache)
-.globl ASM_PFX(ArmEnableBranchPrediction)
-.globl ASM_PFX(ArmDisableBranchPrediction)
-.globl ASM_PFX(ArmDataMemoryBarrier)
-.globl ASM_PFX(ArmDataSyncronizationBarrier) 
-.globl ASM_PFX(ArmInstructionSynchronizationBarrier)
+GCC_ASM_EXPORT(ArmCleanInvalidateDataCache)
+GCC_ASM_EXPORT(ArmCleanDataCache)
+GCC_ASM_EXPORT(ArmInvalidateDataCache)
+GCC_ASM_EXPORT(ArmInvalidateInstructionCache)
+GCC_ASM_EXPORT(ArmInvalidateDataCacheEntryByMVA)
+GCC_ASM_EXPORT(ArmCleanDataCacheEntryByMVA)
+GCC_ASM_EXPORT(ArmCleanInvalidateDataCacheEntryByMVA)
+GCC_ASM_EXPORT(ArmEnableMmu)
+GCC_ASM_EXPORT(ArmDisableMmu)
+GCC_ASM_EXPORT(ArmMmuEnabled)
+GCC_ASM_EXPORT(ArmEnableDataCache)
+GCC_ASM_EXPORT(ArmDisableDataCache)
+GCC_ASM_EXPORT(ArmEnableInstructionCache)
+GCC_ASM_EXPORT(ArmDisableInstructionCache)
+GCC_ASM_EXPORT(ArmEnableBranchPrediction)
+GCC_ASM_EXPORT(ArmDisableBranchPrediction)
+GCC_ASM_EXPORT(ArmDataMemoryBarrier)
+GCC_ASM_EXPORT(ArmDataSyncronizationBarrier)
+GCC_ASM_EXPORT(ArmInstructionSynchronizationBarrier)
 
 
 .set DC_ON, (0x1<<2)
@@ -97,14 +99,14 @@ ASM_PFX(ArmDisableMmu):
   bx      LR
 
 ASM_PFX(ArmEnableDataCache):
-  ldr     R1,=DC_ON
+  LoadConstantToReg(DC_ON, R1)  @ldr     R1,=DC_ON
   mrc     p15,0,R0,c1,c0,0      @Read control register configuration data
   orr     R0,R0,R1              @Set C bit
   mcr     p15,0,r0,c1,c0,0      @Write control register configuration data
   bx      LR
     
 ASM_PFX(ArmDisableDataCache):
-  ldr     R1,=DC_ON
+  LoadConstantToReg(DC_ON, R1)  @ldr     R1,=DC_ON
   mrc     p15,0,R0,c1,c0,0      @Read control register configuration data
   bic     R0,R0,R1              @Clear C bit
   mcr     p15,0,r0,c1,c0,0      @Write control register configuration data

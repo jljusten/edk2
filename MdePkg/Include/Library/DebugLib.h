@@ -8,7 +8,7 @@
   of size reduction when compiler optimization is disabled. If MDEPKG_NDEBUG is
   defined, then debug and assert related macros wrapped by it are the NULL implementations.
 
-Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials are licensed and made available under 
 the terms and conditions of the BSD License that accompanies this distribution.  
 The full text of the license may be found at
@@ -42,7 +42,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define DEBUG_POOL      0x00000010  // Alloc & Free's
 #define DEBUG_PAGE      0x00000020  // Alloc & Free's
 #define DEBUG_INFO      0x00000040  // Verbose
-#define DEBUG_DISPATCH  0x00000080  // PEI/DXE Dispatchers
+#define DEBUG_DISPATCH  0x00000080  // PEI/DXE/SMM Dispatchers
 #define DEBUG_VARIABLE  0x00000100  // Variable
 #define DEBUG_BM        0x00000400  // Boot Manager
 #define DEBUG_BLKIO     0x00001000  // BlkIo Driver
@@ -50,6 +50,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define DEBUG_UNDI      0x00010000  // UNDI Driver
 #define DEBUG_LOADFILE  0x00020000  // UNDI Driver
 #define DEBUG_EVENT     0x00080000  // Event messages
+#define DEBUG_GCD       0x00100000  // Global Coherency Database changes
+#define DEBUG_CACHE     0x00200000  // Memory range cachability changes
 #define DEBUG_ERROR     0x80000000  // Error
 
 //
@@ -75,9 +77,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 /**
   Prints a debug message to the debug output device if the specified error level is enabled.
 
-  If any bit in ErrorLevel is also set in PcdDebugPrintErrorLevel, then print 
-  the message specified by Format and the associated variable argument list to 
-  the debug output device.
+  If any bit in ErrorLevel is also set in DebugPrintErrorLevelLib function 
+  GetDebugPrintErrorLevel (), then print the message specified by Format and the 
+  associated variable argument list to the debug output device.
 
   If Format is NULL, then ASSERT().
 

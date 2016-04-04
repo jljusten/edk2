@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-# Copyright (c) 2006 - 2008, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -55,7 +55,7 @@ ASM_PFX(ThunkAttr): .space  4
     orb     $2, %al
     outb    %al, $0x92                  # deactivate A20M#
 2:
-    movl    %ss, %eax
+    movw    %ss, %ax
     .byte   0x67, 0x66, 0x8d, 0x6c, 0x24, 0x34, 0x66
     mov     %ebp, 0xffffffd8(%esi)
     mov     0xfffffff8(%esi), %ebx
@@ -160,14 +160,14 @@ ASM_PFX(InternalAsmThunk16):
     movsl                               # copy RegSet
     movl    40(%esp), %eax              # eax <- address of transition code
     movl    %edx, %esi                  # esi <- 16-bit stack segment
-    lea     0x5e(%eax), %edx
+    lea     0x5f(%eax), %edx
     movl    %eax, %ecx
     andl    $0xf, %ecx
     shll    $12, %eax
     lea     0x6(%ecx), %ecx
     movw    %cx, %ax
     stosl                               # [edi] <- return address of user code
-    sgdtl   0xffffffa2(%edx)
+    sgdtl   0xffffffa1(%edx)
     sidtl   0x24(%esp)
     movl    %cr0, %eax
     movl    %eax, (%edx)                # save CR0 in SavedCr0

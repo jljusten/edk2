@@ -1995,6 +1995,7 @@ Returns:
     Info->FileSize      = FileInfo.nFileSizeLow;
     Info->PhysicalSize  = Info->FileSize;
 
+    PrivateFile->WinNtThunk->FileTimeToLocalFileTime(&FileInfo.ftCreationTime, &FileInfo.ftCreationTime);
     PrivateFile->WinNtThunk->FileTimeToSystemTime (&FileInfo.ftCreationTime, &SystemTime);
     Info->CreateTime.Year   = SystemTime.wYear;
     Info->CreateTime.Month  = (UINT8) SystemTime.wMonth;
@@ -2003,6 +2004,7 @@ Returns:
     Info->CreateTime.Minute = (UINT8) SystemTime.wMinute;
     Info->CreateTime.Second = (UINT8) SystemTime.wSecond;
 
+    PrivateFile->WinNtThunk->FileTimeToLocalFileTime(&FileInfo.ftLastAccessTime, &FileInfo.ftLastAccessTime);
     PrivateFile->WinNtThunk->FileTimeToSystemTime (&FileInfo.ftLastAccessTime, &SystemTime);
     Info->LastAccessTime.Year   = SystemTime.wYear;
     Info->LastAccessTime.Month  = (UINT8) SystemTime.wMonth;
@@ -2011,6 +2013,7 @@ Returns:
     Info->LastAccessTime.Minute = (UINT8) SystemTime.wMinute;
     Info->LastAccessTime.Second = (UINT8) SystemTime.wSecond;
 
+    PrivateFile->WinNtThunk->FileTimeToLocalFileTime(&FileInfo.ftLastWriteTime, &FileInfo.ftLastWriteTime);
     PrivateFile->WinNtThunk->FileTimeToSystemTime (&FileInfo.ftLastWriteTime, &SystemTime);
     Info->ModificationTime.Year   = SystemTime.wYear;
     Info->ModificationTime.Month  = (UINT8) SystemTime.wMonth;
@@ -2347,12 +2350,12 @@ Returns:
   // Set file system information.
   //
   if (CompareGuid (InformationType, &gEfiFileSystemInfoGuid)) {
-    if (BufferSize < SIZE_OF_EFI_FILE_SYSTEM_INFO + StrSize (PrivateRoot->VolumeLabel)) {
+    NewFileSystemInfo = (EFI_FILE_SYSTEM_INFO *) Buffer;
+    if (BufferSize < SIZE_OF_EFI_FILE_SYSTEM_INFO + StrSize (NewFileSystemInfo->VolumeLabel)) {
       Status = EFI_BAD_BUFFER_SIZE;
       goto Done;
     }
 
-    NewFileSystemInfo = (EFI_FILE_SYSTEM_INFO *) Buffer;
 
     FreePool (PrivateRoot->VolumeLabel);
     PrivateRoot->VolumeLabel = AllocatePool (StrSize (NewFileSystemInfo->VolumeLabel));
@@ -2628,8 +2631,8 @@ Returns:
         FreePool (TempFileName);
       }
     } else {
+      Status    = EFI_ACCESS_DENIED;
 Reopen: ;
-      Status    = EFI_DEVICE_ERROR;
 
       NtStatus  = PrivateFile->WinNtThunk->SetFileAttributes (OldFileName, OldAttr);
 
@@ -2730,6 +2733,13 @@ Reopen: ;
       goto Done;
     }
 
+    if (!PrivateFile->WinNtThunk->LocalFileTimeToFileTime (
+                                    &NewCreationFileTime,
+                                    &NewCreationFileTime
+                                    )) {
+      goto Done;
+    }
+
     NewLastAccessSystemTime.wYear         = NewFileInfo->LastAccessTime.Year;
     NewLastAccessSystemTime.wMonth        = NewFileInfo->LastAccessTime.Month;
     NewLastAccessSystemTime.wDay          = NewFileInfo->LastAccessTime.Day;
@@ -2745,6 +2755,13 @@ Reopen: ;
       goto Done;
     }
 
+    if (!PrivateFile->WinNtThunk->LocalFileTimeToFileTime (
+                                    &NewLastAccessFileTime,
+                                    &NewLastAccessFileTime
+                                    )) {
+      goto Done;
+    }
+
     NewLastWriteSystemTime.wYear          = NewFileInfo->ModificationTime.Year;
     NewLastWriteSystemTime.wMonth         = NewFileInfo->ModificationTime.Month;
     NewLastWriteSystemTime.wDay           = NewFileInfo->ModificationTime.Day;
@@ -2755,6 +2772,13 @@ Reopen: ;
 
     if (!PrivateFile->WinNtThunk->SystemTimeToFileTime (
                                     &NewLastWriteSystemTime,
+                                    &NewLastWriteFileTime
+                                    )) {
+      goto Done;
+    }
+
+    if (!PrivateFile->WinNtThunk->LocalFileTimeToFileTime (
+                                    &NewLastWriteFileTime,
                                     &NewLastWriteFileTime
                                     )) {
       goto Done;
@@ -2805,6 +2829,7 @@ Reopen: ;
   NtStatus = PrivateFile->WinNtThunk->SetFileAttributes (NewFileName, NewAttr);
 
   if (!NtStatus) {
+    Status    = EFI_DEVICE_ERROR;
     goto Reopen;
   }
 

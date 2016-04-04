@@ -66,6 +66,7 @@
 
 [Protocols]
   gEfiSimpleTextInProtocolGuid                  # PROTOCOL BY_START
+  gEfiSimplePointerProtocolGuid                 # PROTOCOL BY_START
   gEfiUnixUgaIoProtocolGuid                     # PROTOCOL BY_START
   gEfiUgaDrawProtocolGuid                       # PROTOCOL BY_START
   gEfiUnixIoProtocolGuid                        # PROTOCOL TO_START

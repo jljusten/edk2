@@ -12,34 +12,51 @@
 #
 #------------------------------------------------------------------------------
 
-.globl ASM_PFX(ArmInvalidateInstructionCache)
-.globl ASM_PFX(ArmInvalidateDataCacheEntryByMVA)
-.globl ASM_PFX(ArmCleanDataCacheEntryByMVA)
-.globl ASM_PFX(ArmCleanInvalidateDataCacheEntryByMVA)
-.globl ASM_PFX(ArmInvalidateDataCacheEntryBySetWay)
-.globl ASM_PFX(ArmCleanDataCacheEntryBySetWay)
-.globl ASM_PFX(ArmCleanInvalidateDataCacheEntryBySetWay)
-.globl ASM_PFX(ArmDrainWriteBuffer)
-.globl ASM_PFX(ArmEnableMmu)
-.globl ASM_PFX(ArmDisableMmu)
-.globl ASM_PFX(ArmMmuEnabled)
-.globl ASM_PFX(ArmEnableDataCache)
-.globl ASM_PFX(ArmDisableDataCache)
-.globl ASM_PFX(ArmEnableInstructionCache)
-.globl ASM_PFX(ArmDisableInstructionCache)
-.globl ASM_PFX(ArmEnableBranchPrediction)
-.globl ASM_PFX(ArmDisableBranchPrediction)
-.globl ASM_PFX(ArmV7AllDataCachesOperation)
-.globl ASM_PFX(ArmDataMemoryBarrier)
-.globl ASM_PFX(ArmDataSyncronizationBarrier) 
-.globl ASM_PFX(ArmInstructionSynchronizationBarrier)
-
 .text
 .align 2
 
+GCC_ASM_EXPORT (ArmInvalidateInstructionCache)
+GCC_ASM_EXPORT (ArmInvalidateDataCacheEntryByMVA)
+GCC_ASM_EXPORT (ArmCleanDataCacheEntryByMVA)
+GCC_ASM_EXPORT (ArmCleanInvalidateDataCacheEntryByMVA)
+GCC_ASM_EXPORT (ArmInvalidateDataCacheEntryBySetWay)
+GCC_ASM_EXPORT (ArmCleanDataCacheEntryBySetWay)
+GCC_ASM_EXPORT (ArmCleanInvalidateDataCacheEntryBySetWay)
+GCC_ASM_EXPORT (ArmDrainWriteBuffer)
+GCC_ASM_EXPORT (ArmEnableMmu)
+GCC_ASM_EXPORT (ArmDisableMmu)
+GCC_ASM_EXPORT (ArmDisableCachesAndMmu)
+GCC_ASM_EXPORT (ArmMmuEnabled)
+GCC_ASM_EXPORT (ArmEnableDataCache)
+GCC_ASM_EXPORT (ArmDisableDataCache)
+GCC_ASM_EXPORT (ArmEnableInstructionCache)
+GCC_ASM_EXPORT (ArmDisableInstructionCache)
+GCC_ASM_EXPORT (ArmEnableSWPInstruction)
+GCC_ASM_EXPORT (ArmEnableBranchPrediction)
+GCC_ASM_EXPORT (ArmDisableBranchPrediction)
+GCC_ASM_EXPORT (ArmV7AllDataCachesOperation)
+GCC_ASM_EXPORT (ArmDataMemoryBarrier)
+GCC_ASM_EXPORT (ArmDataSyncronizationBarrier)
+GCC_ASM_EXPORT (ArmInstructionSynchronizationBarrier)
+GCC_ASM_EXPORT (ArmWriteNsacr)
+GCC_ASM_EXPORT (ArmWriteScr)
+GCC_ASM_EXPORT (ArmWriteVMBar)
+GCC_ASM_EXPORT (ArmWriteVBar)
+GCC_ASM_EXPORT (ArmWriteCPACR)
+GCC_ASM_EXPORT (ArmEnableVFP)
+GCC_ASM_EXPORT (ArmCallWFI)
+GCC_ASM_EXPORT (ArmWriteAuxCr)
+GCC_ASM_EXPORT (ArmReadAuxCr)
+GCC_ASM_EXPORT (ArmReadCbar)
+GCC_ASM_EXPORT (ArmInvalidateInstructionAndDataTlb)
+GCC_ASM_EXPORT (ArmReadMpidr)
+
 .set DC_ON, (0x1<<2)
 .set IC_ON, (0x1<<12)
-
+.set CTRL_M_BIT,  (1 << 0)
+.set CTRL_C_BIT,  (1 << 2)
+.set CTRL_B_BIT,  (1 << 7)
+.set CTRL_I_BIT,  (1 << 12)
 
 
 ASM_PFX(ArmInvalidateDataCacheEntryByMVA):
@@ -47,7 +64,6 @@ ASM_PFX(ArmInvalidateDataCacheEntryByMVA):
   dsb
   isb
   bx      lr
-
 
 ASM_PFX(ArmCleanDataCacheEntryByMVA):
   mcr     p15, 0, r0, c7, c10, 1  @clean single data cache line     
@@ -64,25 +80,24 @@ ASM_PFX(ArmCleanInvalidateDataCacheEntryByMVA):
 
 
 ASM_PFX(ArmInvalidateDataCacheEntryBySetWay):
-  mcr     p15, 0, r0, c7, c6, 2        @ Invalidate this line		
+  mcr     p15, 0, r0, c7, c6, 2        @ Invalidate this line    
   dsb
   isb
   bx      lr
 
 
 ASM_PFX(ArmCleanInvalidateDataCacheEntryBySetWay):
-  mcr     p15, 0, r0, c7, c14, 2       @ Clean and Invalidate this line		
+  mcr     p15, 0, r0, c7, c14, 2       @ Clean and Invalidate this line    
   dsb
   isb
   bx      lr
 
 
 ASM_PFX(ArmCleanDataCacheEntryBySetWay):
-  mcr     p15, 0, r0, c7, c10, 2       @ Clean this line		
+  mcr     p15, 0, r0, c7, c10, 2       @ Clean this line    
   dsb
   isb
   bx      lr
-
 
 ASM_PFX(ArmInvalidateInstructionCache):
   mcr     p15,0,R0,c7,c5,0      @Invalidate entire instruction cache
@@ -98,21 +113,32 @@ ASM_PFX(ArmEnableMmu):
   isb
   bx      LR
 
-ASM_PFX(ArmMmuEnabled):
-  mrc     p15,0,R0,c1,c0,0
-  and     R0,R0,#1
-  bx      LR
 
 ASM_PFX(ArmDisableMmu):
   mrc     p15,0,R0,c1,c0,0
   bic     R0,R0,#1
   mcr     p15,0,R0,c1,c0,0      @Disable MMU
 
-	mcr 		p15,0,R0,c8,c7,0      @Invalidate TLB
+  mcr     p15,0,R0,c8,c7,0      @Invalidate TLB
   mcr     p15,0,R0,c7,c5,6      @Invalidate Branch predictor array
   dsb
   isb
   bx      LR
+
+ASM_PFX(ArmDisableCachesAndMmu):
+  mrc   p15, 0, r0, c1, c0, 0           @ Get control register
+  bic   r0, r0, #CTRL_M_BIT             @ Disable MMU
+  bic   r0, r0, #CTRL_C_BIT             @ Disable D Cache
+  bic   r0, r0, #CTRL_I_BIT             @ Disable I Cache
+  mcr   p15, 0, r0, c1, c0, 0           @ Write control register
+  dsb
+  isb
+  bx      LR
+
+ASM_PFX(ArmMmuEnabled):
+  mrc     p15,0,R0,c1,c0,0
+  and     R0,R0,#1
+  bx      LR  
 
 ASM_PFX(ArmEnableDataCache):
   ldr     R1,=DC_ON
@@ -147,6 +173,13 @@ ASM_PFX(ArmDisableInstructionCache):
   bic     R0,R0,R1              @Clear I bit.
   mcr     p15,0,r0,c1,c0,0      @Write control register configuration data
   dsb
+  isb
+  bx      LR
+
+ASM_PFX(ArmEnableSWPInstruction):
+  mrc     p15, 0, r0, c1, c0, 0
+  orr     r0, r0, #0x00000400
+  mcr     p15, 0, r0, c1, c0, 0
   isb
   bx      LR
 
@@ -233,5 +266,59 @@ ASM_PFX(ArmInstructionSynchronizationBarrier):
   isb
   bx      LR
  
+ASM_PFX(ArmWriteNsacr):
+  mcr     p15, 0, r0, c1, c1, 2
+  bx      lr
+
+ASM_PFX(ArmWriteScr):
+  mcr     p15, 0, r0, c1, c1, 0
+  bx      lr
+
+ASM_PFX(ArmWriteAuxCr):
+  mcr     p15, 0, r0, c1, c0, 1
+  bx      lr
+
+ASM_PFX(ArmReadAuxCr):
+  mrc     p15, 0, r0, c1, c0, 1
+  bx      lr  
+
+ASM_PFX(ArmWriteVMBar):
+  mcr     p15, 0, r0, c12, c0, 1
+  bx      lr
+
+ASM_PFX(ArmWriteVBar):
+  mcr     p15, 0, r0, c12, c0, 0 
+  bx      lr
+
+ASM_PFX(ArmWriteCPACR):
+  mcr     p15, 0, r0, c1, c0, 2
+  bx      lr
+
+ASM_PFX(ArmEnableVFP):
+  // Enable VFP registers
+  mrc     p15, 0, r0, c1, c0, 2
+  orr     r0, r0, #0x00f00000   // Enable VPF access (V* instructions)
+  mcr     p15, 0, r0, c1, c0, 2
+  mov     r0, #0x40000000       // Set EN bit in FPEXC
+  mcr     p10,#0x7,r0,c8,c0,#0  // msr     FPEXC,r0 in ARM assembly
+  bx      lr
+
+ASM_PFX(ArmCallWFI):
+  wfi
+  bx      lr
+
+//Note: Return 0 in Uniprocessor implementation
+ASM_PFX(ArmReadCbar):
+  mrc     p15, 4, r0, c15, c0, 0  //Read Configuration Base Address Register
+  bx      lr
+
+ASM_PFX(ArmInvalidateInstructionAndDataTlb):
+  mcr     p15, 0, r0, c8, c7, 0      @ Invalidate Inst TLB and Data TLB
+  dsb
+  bx lr
+
+ASM_PFX(ArmReadMpidr):
+  mrc     p15, 0, r0, c0, c0, 5       @ read MPIDR
+  bx      lr
 
 ASM_FUNCTION_REMOVE_IF_UNREFERENCED

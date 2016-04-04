@@ -20,7 +20,7 @@
   FILE_GUID                      = FE5CEA76-4F72-49e8-986F-2CD899DFFE5D
   MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
-  ENTRY_POINT                    = InitializeFaultTolerantWrite
+  ENTRY_POINT                    = FaultTolerantWriteInitialize
 
 #
 # The following information is for reference only and not required by the build tools.
@@ -32,6 +32,7 @@
   FtwMisc.c
   UpdateWorkingBlock.c
   FaultTolerantWrite.c
+  FaultTolerantWriteDxe.c
   FaultTolerantWrite.h
 
 [Packages]

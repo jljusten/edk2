@@ -16,7 +16,7 @@
 
 .text
 .p2align 2
-.globl _GetInterruptState
+GCC_ASM_EXPORT (GetInterruptState)
 
 #/**
 #  Retrieves the current CPU interrupt state.
@@ -35,7 +35,7 @@
 #  VOID
 # );
 #
-_GetInterruptState:
+ASM_PFX(GetInterruptState):
     mrs    R0, CPSR
     tst    R0, #0x80  @Check if IRQ is enabled.
     moveq  R0, #1

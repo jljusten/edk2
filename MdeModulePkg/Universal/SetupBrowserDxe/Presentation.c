@@ -1,7 +1,7 @@
 /** @file
 Utility functions for UI presentation.
 
-Copyright (c) 2004 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -259,7 +259,7 @@ DisplayPageFrame (
           //
           // Handle left column
           //
-          PrintStringAt (LocalScreen.LeftColumn, Line, StrFrontPageBanner);
+          PrintStringAt (LocalScreen.LeftColumn + BANNER_LEFT_COLUMN_INDENT, Line, StrFrontPageBanner);
           break;
 
         case 1:
@@ -716,14 +716,14 @@ UpdateKeyHelp (
           ARROW_LEFT,
           gMoveHighlight
           );
-        PrintStringAt (SecCol, BottomRowOfHelp, gAdjustNumber);
+        PrintStringAt (SecCol, BottomRowOfHelp, gEnterString);
+        PrintStringAt (StartColumnOfHelp, TopRowOfHelp, gAdjustNumber);
       } else {
         PrintAt (StartColumnOfHelp, BottomRowOfHelp, L"%c%c%s", ARROW_UP, ARROW_DOWN, gMoveHighlight);
         if (Statement->Operand == EFI_IFR_NUMERIC_OP && Statement->Step != 0) {
-          PrintStringAt (SecCol, BottomRowOfHelp, gAdjustNumber);
-        } else {
-          PrintStringAt (SecCol, BottomRowOfHelp, gEnterString);
-        }
+          PrintStringAt (StartColumnOfHelp, TopRowOfHelp, gAdjustNumber);
+        } 
+        PrintStringAt (SecCol, BottomRowOfHelp, gEnterString);
       }
     } else {
       PrintStringAt (SecCol, BottomRowOfHelp, gEnterCommitString);
@@ -731,7 +731,9 @@ UpdateKeyHelp (
       //
       // If it is a selected numeric with manual input, display different message
       //
-      if ((Statement->Operand == EFI_IFR_NUMERIC_OP) && (Statement->Step == 0)) {
+      if ((Statement->Operand == EFI_IFR_NUMERIC_OP) || 
+          (Statement->Operand == EFI_IFR_DATE_OP) ||
+          (Statement->Operand == EFI_IFR_TIME_OP)) {
         PrintStringAt (
           SecCol,
           TopRowOfHelp,
@@ -771,6 +773,7 @@ UpdateKeyHelp (
   case EFI_IFR_TEXT_OP:
   case EFI_IFR_ACTION_OP:
   case EFI_IFR_RESET_BUTTON_OP:
+  case EFI_IFR_SUBTITLE_OP:
     ClearLines (LeftColumnOfHelp, RightColumnOfHelp, TopRowOfHelp, BottomRowOfHelp, KEYHELP_TEXT | KEYHELP_BACKGROUND);
 
     if (!Selected) {
@@ -783,7 +786,7 @@ UpdateKeyHelp (
       }
 
       PrintAt (StartColumnOfHelp, BottomRowOfHelp, L"%c%c%s", ARROW_UP, ARROW_DOWN, gMoveHighlight);
-      if (Statement->Operand != EFI_IFR_TEXT_OP) {
+      if (Statement->Operand != EFI_IFR_TEXT_OP && Statement->Operand != EFI_IFR_SUBTITLE_OP) {
         PrintStringAt (SecCol, BottomRowOfHelp, gEnterString);
       }
     } else {
@@ -1103,12 +1106,7 @@ SetupBrowser (
 
         HiiValue = &Statement->HiiValue;
         TypeValue = &HiiValue->Value;
-        if (HiiValue->Type == EFI_IFR_TYPE_STRING) {
-          //
-          // Create String in HII database for Configuration Driver to retrieve
-          //
-          HiiValue->Value.string = NewString ((CHAR16 *) Statement->BufferValue, Selection->FormSet->HiiHandle);
-        } else if (HiiValue->Type == EFI_IFR_TYPE_BUFFER) {
+        if (HiiValue->Type == EFI_IFR_TYPE_BUFFER) {
           //
           // For OrderedList, passing in the value buffer to Callback()
           //
@@ -1123,13 +1121,6 @@ SetupBrowser (
                                  TypeValue,
                                  &ActionRequest
                                  );
-
-        if (HiiValue->Type == EFI_IFR_TYPE_STRING) {
-          //
-          // Clean the String in HII Database
-          //
-          DeleteString (HiiValue->Value.string, Selection->FormSet->HiiHandle);
-        }
 
         if (!EFI_ERROR (Status)) {
           switch (ActionRequest) {

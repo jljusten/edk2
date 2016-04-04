@@ -1,7 +1,7 @@
 /** @file
   CPU DXE Module.
 
-  Copyright (c) 2008 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2008 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -110,6 +110,23 @@ EFI_CPU_ARCH_PROTOCOL  gCpu = {
 // etc.
 //
 UINT32 mErrorCodeFlag = 0x00027d00;
+
+//
+// Local function prototypes
+//
+
+/**
+  Set Interrupt Descriptor Table Handler Address.
+
+  @param Index        The Index of the interrupt descriptor table handle.
+  @param Handler      Handler address.
+
+**/
+VOID
+SetInterruptDescriptorTableHandlerAddress (
+  IN UINTN Index,
+  IN VOID  *Handler  OPTIONAL
+  );
 
 //
 // CPU Arch Protocol Functions
@@ -504,6 +521,7 @@ CpuRegisterInterruptHandler (
     return EFI_ALREADY_STARTED;
   }
 
+  SetInterruptDescriptorTableHandlerAddress ((UINTN)InterruptType, NULL);
   ExternalVectorTable[InterruptType] = InterruptHandler;
   return EFI_SUCCESS;
 }
@@ -594,8 +612,6 @@ CpuSetMemoryAttributes (
     return EFI_UNSUPPORTED;
   }
 
-  DEBUG((EFI_D_ERROR, "CpuAp: SetMemorySpaceAttributes(BA=%08x, Len=%08x, Attr=%08x)\n", BaseAddress, Length, Attributes));
-
   //
   // If this function is called because GCD SetMemorySpaceAttributes () is called
   // by RefreshGcdMemoryAttributes (), then we are just synchronzing GCD memory
@@ -634,14 +650,11 @@ CpuSetMemoryAttributes (
   //
   // call MTRR libary function
   //
-  DEBUG((EFI_D_ERROR, "  MtrrSetMemoryAttribute()\n"));
-  Status = MtrrSetMemoryAttribute(
+  Status = MtrrSetMemoryAttribute (
              BaseAddress,
              Length,
              CacheType
              );
-
-  MtrrDebugPrintAllMtrrs ();
 
   return (EFI_STATUS) Status;
 }
@@ -1004,6 +1017,37 @@ RefreshGcdMemoryAttributes (
   mIsFlushingGCD = FALSE;
 }
 
+/**
+  Set Interrupt Descriptor Table Handler Address.
+
+  @param Index        The Index of the interrupt descriptor table handle.
+  @param Handler      Handler address.
+
+**/
+VOID
+SetInterruptDescriptorTableHandlerAddress (
+  IN UINTN Index,
+  IN VOID  *Handler  OPTIONAL
+  )
+{
+  UINTN                     UintnHandler;
+
+  if (Handler != NULL) {
+    UintnHandler = (UINTN) Handler;
+  } else {
+    UintnHandler = ((UINTN) AsmIdtVector00) + (8 * Index);
+  }
+
+  gIdtTable[Index].Bits.OffsetLow   = (UINT16)UintnHandler;
+  gIdtTable[Index].Bits.Reserved_0  = 0;
+  gIdtTable[Index].Bits.GateType    = IA32_IDT_GATE_TYPE_INTERRUPT_32;
+  gIdtTable[Index].Bits.OffsetHigh  = (UINT16)(UintnHandler >> 16);
+#if defined (MDE_CPU_X64)
+  gIdtTable[Index].Bits.OffsetUpper = (UINT32)(UintnHandler >> 32);
+  gIdtTable[Index].Bits.Reserved_1  = 0;
+#endif
+}
+
 
 /**
   Initialize Interrupt Descriptor Table for interrupt handling.
@@ -1014,47 +1058,59 @@ InitInterruptDescriptorTable (
   VOID
   )
 {
-  EFI_STATUS       Status;
-  VOID             *IdtPtrAlignmentBuffer;
-  IA32_DESCRIPTOR  *IdtPtr;
-  UINTN            Index;
-  UINTN            CurrentHandler;
-  IA32_DESCRIPTOR  Idtr;
+  EFI_STATUS                Status;
+  IA32_DESCRIPTOR           OldIdtPtr;
+  IA32_IDT_GATE_DESCRIPTOR  *OldIdt;
+  UINTN                     OldIdtSize;
+  VOID                      *IdtPtrAlignmentBuffer;
+  IA32_DESCRIPTOR           *IdtPtr;
+  UINTN                     Index;
+  UINT16                    CurrentCs;
+  VOID                      *IntHandler;
 
   SetMem (ExternalVectorTable, sizeof(ExternalVectorTable), 0);
 
   //
-  // Intialize IDT
-  //
-  CurrentHandler = (UINTN)AsmIdtVector00;
-  for (Index = 0; Index < INTERRUPT_VECTOR_NUMBER; Index ++, CurrentHandler += 0x08) {
-    gIdtTable[Index].Bits.OffsetLow   = (UINT16)CurrentHandler;
-    gIdtTable[Index].Bits.Reserved_0  = 0;
-    gIdtTable[Index].Bits.GateType    = IA32_IDT_GATE_TYPE_INTERRUPT_32;
-    gIdtTable[Index].Bits.OffsetHigh  = (UINT16)(CurrentHandler >> 16);
-#if defined (MDE_CPU_X64)
-    gIdtTable[Index].Bits.OffsetUpper = (UINT32)(CurrentHandler >> 32);
-    gIdtTable[Index].Bits.Reserved_1  = 0;
-#endif
-  }
-
-  //
   // Get original IDT address and size.
   //
-  AsmReadIdtr ((IA32_DESCRIPTOR *) &Idtr);
+  AsmReadIdtr ((IA32_DESCRIPTOR *) &OldIdtPtr);
+
+  if ((OldIdtPtr.Base != 0) && ((OldIdtPtr.Limit & 7) == 7)) {
+    OldIdt = (IA32_IDT_GATE_DESCRIPTOR*) OldIdtPtr.Base;
+    OldIdtSize = (OldIdtPtr.Limit + 1) / sizeof (IA32_IDT_GATE_DESCRIPTOR);
+  } else {
+    OldIdt = NULL;
+    OldIdtSize = 0;
+  }
 
   //
-  // Copy original IDT entry.
+  // Intialize IDT
   //
-  CopyMem (&gIdtTable[0], (VOID *) Idtr.Base, Idtr.Limit + 1);
-  
-  //
-  // Update all IDT enties to use cuurent CS value
-  //
-  for (Index = 0; Index < INTERRUPT_VECTOR_NUMBER; Index ++, CurrentHandler += 0x08) {
-    gIdtTable[Index].Bits.Selector    = AsmReadCs();
+  CurrentCs = AsmReadCs();
+  for (Index = 0; Index < INTERRUPT_VECTOR_NUMBER; Index ++) {
+    //
+    // If the old IDT had a handler for this interrupt, then
+    // preserve it.
+    //
+    if (Index < OldIdtSize) {
+      IntHandler = 
+        (VOID*) (
+          OldIdt[Index].Bits.OffsetLow +
+          (OldIdt[Index].Bits.OffsetHigh << 16)
+#if defined (MDE_CPU_X64)
+            + (((UINTN) OldIdt[Index].Bits.OffsetUpper) << 32)
+#endif
+          );
+    } else {
+      IntHandler = NULL;
+    }
+
+    gIdtTable[Index].Bits.Selector    = CurrentCs;
+    gIdtTable[Index].Bits.Reserved_0  = 0;
+    gIdtTable[Index].Bits.GateType    = IA32_IDT_GATE_TYPE_INTERRUPT_32;
+    SetInterruptDescriptorTableHandlerAddress (Index, IntHandler);
   }
-  
+
   //
   // Load IDT Pointer
   //

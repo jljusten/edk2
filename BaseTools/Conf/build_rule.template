@@ -1,6 +1,6 @@
 #
 #  Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
-#  Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
+#  Portions copyright (c) 2008 - 2010, Apple Inc. All rights reserved.<BR>
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution.  The full text of the license may be found at
@@ -8,8 +8,6 @@
 
 #  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-#
-#  Filename: build_rule.template
 #
 
 ## Syntax
@@ -295,7 +293,7 @@
         $(DEBUG_DIR)(+)$(MODULE_NAME).efi
 
     <Command.MSFT, Command.INTEL, Command.RVCT, Command.ARMGCC>  
-        GenFw -e $(MODULE_TYPE) -o ${dst} ${src}
+        "$(GENFW)" -e $(MODULE_TYPE) -o ${dst} ${src} $(GENFW_FLAGS)
         $(CP) ${dst} $(OUTPUT_DIR)
         $(CP) ${dst} $(BIN_DIR)
         -$(CP) $(DEBUG_DIR)(+)*.map $(OUTPUT_DIR)
@@ -304,7 +302,7 @@
         $(OBJCOPY) --only-keep-debug ${src} $(BIN_DIR)(+)$(MODULE_NAME).debug
         $(OBJCOPY) --strip-unneeded ${src}
         $(OBJCOPY) --add-gnu-debuglink=$(BIN_DIR)(+)$(MODULE_NAME).debug ${src}
-        GenFw -e $(MODULE_TYPE) -o ${dst} ${src}
+        "$(GENFW)" -e $(MODULE_TYPE) -o ${dst} ${src} $(GENFW_FLAGS)
         $(CP) ${dst} $(OUTPUT_DIR)
         $(CP) ${dst} $(BIN_DIR)
         -$(CP) $(DEBUG_DIR)(+)*.map $(OUTPUT_DIR)
@@ -314,7 +312,7 @@
         "$(MTOC)" -subsystem $(MODULE_TYPE)  $(MTOC_FLAGS)  ${src}  $(DEBUG_DIR)(+)$(MODULE_NAME).pecoff
         # create symbol file for GDB debug
         -$(DSYMUTIL) ${src}
-        GenFw -e $(MODULE_TYPE) -o ${dst} $(DEBUG_DIR)(+)$(MODULE_NAME).pecoff 
+        "$(GENFW)" -e $(MODULE_TYPE) -o ${dst} $(DEBUG_DIR)(+)$(MODULE_NAME).pecoff $(GENFW_FLAGS)
         $(CP) ${dst} $(OUTPUT_DIR)
         $(CP) ${dst} $(BIN_DIR)
         -$(CP) $(DEBUG_DIR)(+)*.map $(OUTPUT_DIR)
@@ -345,12 +343,13 @@
         $(MAKE_FILE)
 
     <Command.MSFT, Command.INTEL>
-        Trim --asl-file -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i ${src}
+        Trim --asl-file -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i -i $(INC_LIST) ${src}
         "$(ASLPP)" $(ASLPP_FLAGS) $(INC) /I${s_path} $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i > $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iii
-        "$(ASL)" $(ASL_FLAGS) $(ASL_OUTFLAGS)${dst} $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iii
+        Trim --source-code -l -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iiii $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iii 
+        "$(ASL)" $(ASL_FLAGS) $(ASL_OUTFLAGS)${dst} $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iiii
 
     <Command.GCC>
-        Trim --asl-file -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i ${src}
+        Trim --asl-file -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i -i $(INC_LIST) ${src}
         "$(ASLPP)" $(ASLPP_FLAGS) $(INC) -I${s_path} $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i > $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iii
         "$(ASL)" $(ASL_FLAGS) $(ASL_OUTFLAGS)${dst} $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iii
 
@@ -365,14 +364,14 @@
         $(MAKE_FILE)
 
     <Command.MSFT, Command.INTEL>
-        "$(ASLCC)" /Fo$(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj $(CC_FLAGS) $(ASLCC_FLAGS) $(INC) ${src}
+        "$(ASLCC)" /Fo$(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj $(ASLCC_FLAGS) $(INC) ${src}
         "$(ASLDLINK)" /OUT:$(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(ASLDLINK_FLAGS) $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
-        GenFw -o ${dst} -c $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll
+        "$(GENFW)" -o ${dst} -c $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(GENFW_FLAGS)
 
     <Command.GCC>
         "$(ASLCC)" -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj $(CC_FLAGS) $(ASLCC_FLAGS) $(INC) ${src}
         "$(ASLDLINK)" -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(ASLDLINK_FLAGS) $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
-        GenFw -o ${dst} -c $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll
+        "$(GENFW)" -o ${dst} -c $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(GENFW_FLAGS)
 
 [Acpi-Table-Code-File]
     <InputFile>
@@ -385,20 +384,20 @@
         $(MAKE_FILE)
 
     <Command.MSFT, Command.INTEL>
-        "$(ASLCC)" /Fo$(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj $(CC_FLAGS) $(ASLCC_FLAGS) $(INC) ${src}
+        "$(ASLCC)" /Fo$(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj $(ASLCC_FLAGS) $(INC) ${src}
         "$(ASLDLINK)" /OUT:$(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(ASLDLINK_FLAGS) $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
-        GenFw -o ${dst} -c $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll
+        "$(GENFW)" -o ${dst} -c $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(GENFW_FLAGS)
 
     <Command.GCC>
         "$(ASLCC)" -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj $(CC_FLAGS) $(ASLCC_FLAGS) $(INC) ${src}
         "$(ASLDLINK)" -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(ASLDLINK_FLAGS) $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
-        GenFw -o ${dst} -c $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll
+        "$(GENFW)" -o ${dst} -c $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(GENFW_FLAGS)
         
     <Command.XCODE>        
         "$(ASLCC)" -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj  $(ASLCC_FLAGS) $(INC) ${src}
         "$(ASLDLINK)" -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(ASLDLINK_FLAGS) $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
         "$(MTOC)" -subsystem $(MODULE_TYPE)  $(MTOC_FLAGS) $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.efi
-        GenFw -o ${dst} -c $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.efi
+        "$(GENFW)" -o ${dst} -c $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.efi $(GENFW_FLAGS)
       
       
 [Masm16-Code-File]
@@ -438,7 +437,7 @@
         $(OUTPUT_DIR)(+)${s_base}.mcb
 
     <Command>
-        GenFw -o ${dst} -m ${src}
+        "$(GENFW)" -o ${dst} -m ${src} $(GENFW_FLAGS)
 
 [Microcode-Binary-File]
     <InputFile>
@@ -451,7 +450,7 @@
         $(OUTPUT_DIR)(+)$(MODULE_NAME).bin
 
     <Command>
-        GenFw -o ${dst} -j $(MICROCODE_BINARY_FILES)
+        "$(GENFW)" -o ${dst} -j $(MICROCODE_BINARY_FILES) $(GENFW_FLAGS)
         -$(CP) ${dst} $(BIN_DIR)
 
 [EFI-Image-File]
@@ -514,13 +513,21 @@
     <InputFile>
         *.hpk
 
-    <OutputFile>
+    <OutputFile.MSFT, OutputFile.INTEL, OutputFile.GCC>
         $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.lib
 
+    <OutputFile.XCODE, OutputFile.RVCT, OutputFile.ARMGCC>
+        $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc
+
     <Command.MSFT, Command.INTEL>
-        GenFw -o $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc -g $(MODULE_GUID) --hiipackage $(HII_BINARY_PACKAGES)
+        "$(GENFW)" -o $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc -g $(MODULE_GUID) --hiipackage $(HII_BINARY_PACKAGES) $(GENFW_FLAGS)
         "$(RC)" /Fo${dst} $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc
 
     <Command.GCC>
-        GenFw -o $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc -g $(MODULE_GUID) --hiibinpackage $(HII_BINARY_PACKAGES)
+        "$(GENFW)" -o $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc -g $(MODULE_GUID) --hiibinpackage $(HII_BINARY_PACKAGES) $(GENFW_FLAGS)
         "$(RC)" $(RC_FLAGS) $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc ${dst}
+        
+    <Command.XCODE, Command.RVCT, Command.ARMGCC>  
+        GenFw -o $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc -g $(MODULE_GUID) --hiibinpackage $(HII_BINARY_PACKAGES)
+        
+        

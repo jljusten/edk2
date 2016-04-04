@@ -4,7 +4,7 @@
 #  Developer's UEFI Emulation. DUET provides an EFI/UEFI IA32/X64 environment on legacy BIOS,
 #  to help developing and debugging native EFI/UEFI drivers.
 #
-#  Copyright (c) 2010 - 2010, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2010 - 2011, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -98,12 +98,15 @@
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
   HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
   ExtractGuidedSectionLib|MdePkg/Library/DxeExtractGuidedSectionLib/DxeExtractGuidedSectionLib.inf
+  SerialPortLib|PcAtChipsetPkg/Library/SerialIoLib/SerialIoLib.inf
+  MtrrLib|UefiCpuPkg/Library/MtrrLib/MtrrLib.inf
   
   #
   # To save size, use NULL library for DebugLib and ReportStatusCodeLib.
   # If need status code output, do library instance overriden as below DxeMain.inf does
   #
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  DebugPrintErrorLevelLib|MdePkg/Library/BaseDebugPrintErrorLevelLib/BaseDebugPrintErrorLevelLib.inf  
   ReportStatusCodeLib|MdePkg/Library/BaseReportStatusCodeLibNull/BaseReportStatusCodeLibNull.inf
 
 [LibraryClasses.common.DXE_CORE]
@@ -122,7 +125,7 @@
 
 [PcdsFeatureFlag]
   gEfiMdeModulePkgTokenSpaceGuid.PcdTurnOffUsbLegacySupport|TRUE
-
+  gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange|FALSE
 
 ###################################################################################################
 #
@@ -166,7 +169,6 @@
     <LibraryClasses>
       DebugLib|IntelFrameworkModulePkg/Library/PeiDxeDebugLibReportStatusCode/PeiDxeDebugLibReportStatusCode.inf
       ReportStatusCodeLib|DuetPkg/Library/DxeCoreReportStatusCodeLibFromHob/DxeCoreReportStatusCodeLibFromHob.inf
-      SerialPortLib|PcAtChipsetPkg/Library/SerialIoLib/SerialIoLib.inf
   }
 
   MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
@@ -205,7 +207,7 @@
   }
   MdeModulePkg/Universal/EbcDxe/EbcDxe.inf
   UefiCpuPkg/CpuIo2Dxe/CpuIo2Dxe.inf
-  DuetPkg/CpuDxe/Cpu.inf
+  UefiCpuPkg/CpuDxe/CpuDxe.inf
   PcAtChipsetPkg/8259InterruptControllerDxe/8259.inf
   DuetPkg/AcpiResetDxe/Reset.inf
   DuetPkg/LegacyMetronome/Metronome.inf
@@ -217,9 +219,12 @@
   IntelFrameworkModulePkg/Bus/Pci/VgaMiniPortDxe/VgaMiniPortDxe.inf
   IntelFrameworkModulePkg/Universal/Console/VgaClassDxe/VgaClassDxe.inf
 
-  # IDE Support
-  IntelFrameworkModulePkg/Bus/Pci/IdeBusDxe/IdeBusDxe.inf
-  PcAtChipsetPkg/Bus/Pci/IdeControllerDxe/IdeControllerDxe.inf
+  # IDE/AHCI Support
+  DuetPkg/SataControllerDxe/SataControllerDxe.inf
+  MdeModulePkg/Bus/Ata/AtaAtapiPassThru/AtaAtapiPassThru.inf
+  MdeModulePkg/Bus/Ata/AtaBusDxe/AtaBusDxe.inf
+  MdeModulePkg/Bus/Scsi/ScsiBusDxe/ScsiBusDxe.inf
+  MdeModulePkg/Bus/Scsi/ScsiDiskDxe/ScsiDiskDxe.inf
 
   # Usb Support
   MdeModulePkg/Bus/Pci/UhciDxe/UhciDxe.inf

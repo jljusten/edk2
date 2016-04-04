@@ -1,7 +1,7 @@
 /*++
 
 Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
-Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
+Portions copyright (c) 2008 - 2010, Apple Inc. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -48,18 +48,21 @@ char *gGdbWorkingFileName = NULL;
 //
 // Globals
 //
-
-UNIX_PEI_LOAD_FILE_PPI                    mSecUnixLoadFilePpi          = { SecUnixPeiLoadFile };
-
-PEI_UNIX_AUTOSCAN_PPI                     mSecUnixAutoScanPpi          = { SecUnixPeiAutoScan };
-
-PEI_UNIX_THUNK_PPI                        mSecUnixThunkPpi          = { SecUnixUnixThunkAddress };
-
+#if defined(__APPLE__) || defined(MDE_CPU_X64)
+UNIX_PEI_LOAD_FILE_PPI                    mSecUnixLoadFilePpi        = { GasketSecUnixPeiLoadFile };
+PEI_UNIX_AUTOSCAN_PPI                     mSecUnixAutoScanPpi        = { GasketSecUnixPeiAutoScan };
+PEI_UNIX_THUNK_PPI                        mSecUnixThunkPpi           = { GasketSecUnixUnixThunkAddress };
+EFI_PEI_PROGRESS_CODE_PPI                 mSecStatusCodePpi          = { GasketSecPeiReportStatusCode };
+UNIX_FWH_PPI                              mSecFwhInformationPpi      = { GasketSecUnixFdAddress };
+TEMPORARY_RAM_SUPPORT_PPI                 mSecTemporaryRamSupportPpi = { GasketSecTemporaryRamSupport };
+#else
+UNIX_PEI_LOAD_FILE_PPI                    mSecUnixLoadFilePpi        = { SecUnixPeiLoadFile };
+PEI_UNIX_AUTOSCAN_PPI                     mSecUnixAutoScanPpi        = { SecUnixPeiAutoScan };
+PEI_UNIX_THUNK_PPI                        mSecUnixThunkPpi           = { SecUnixUnixThunkAddress };
 EFI_PEI_PROGRESS_CODE_PPI                 mSecStatusCodePpi          = { SecPeiReportStatusCode };
-
 UNIX_FWH_PPI                              mSecFwhInformationPpi      = { SecUnixFdAddress };
-
-TEMPORARY_RAM_SUPPORT_PPI                 mSecTemporaryRamSupportPpi = {SecTemporaryRamSupport};
+TEMPORARY_RAM_SUPPORT_PPI                 mSecTemporaryRamSupportPpi = { SecTemporaryRamSupport };
+#endif
 
 EFI_PEI_PPI_DESCRIPTOR  gPrivateDispatchTable[] = {
   {
@@ -140,7 +143,7 @@ MapFile (
   IN OUT  EFI_PHYSICAL_ADDRESS  *BaseAddress,
   OUT UINT64                    *Length
   );
-  
+
 EFI_STATUS
 EFIAPI
 SecNt32PeCoffRelocateImage (
@@ -234,7 +237,7 @@ Returns:
   //  Set InitialStackMemory to zero so UnixOpenFile will allocate a new mapping
   //
   InitialStackMemorySize  = STACK_SIZE;
-  InitialStackMemory = (UINTN)MapMemory(0, 
+  InitialStackMemory = (UINTN)MapMemory(0,
           (UINT32) InitialStackMemorySize,
           PROT_READ | PROT_WRITE | PROT_EXEC,
           MAP_ANONYMOUS | MAP_PRIVATE);
@@ -246,7 +249,7 @@ Returns:
   printf ("  SEC passing in %u KB of temp RAM at 0x%08lx to PEI\n",
     (unsigned int)(InitialStackMemorySize / 1024),
     (unsigned long)InitialStackMemory);
-    
+
   for (StackPointer = (UINTN*) (UINTN) InitialStackMemory;
      StackPointer < (UINTN*)(UINTN)((UINTN) InitialStackMemory + (UINT64) InitialStackMemorySize);
      StackPointer ++) {
@@ -276,17 +279,17 @@ Returns:
     // Open the FD and remmeber where it got mapped into our processes address space
     //
     Status = MapFile (
-		      FileName,
-		      &gFdInfo[Index].Address,
-		      &gFdInfo[Index].Size
-		      );
+          FileName,
+          &gFdInfo[Index].Address,
+          &gFdInfo[Index].Size
+          );
     if (EFI_ERROR (Status)) {
       printf ("ERROR : Can not open Firmware Device File %s (%x).  Exiting.\n", FileName, (unsigned int)Status);
       exit (1);
     }
 
     printf ("  FD loaded from %s at 0x%08lx",
-	    FileName, (unsigned long)gFdInfo[Index].Address);
+      FileName, (unsigned long)gFdInfo[Index].Address);
 
     if (PeiCoreFile == NULL) {
       //
@@ -416,15 +419,15 @@ Returns:
       /* Read entry address.  */
       lseek (fd, FileSize - 0x20, SEEK_SET);
       if (read (fd, &EntryAddress, 4) != 4)
-	{
-	  close (fd);
-	  return EFI_DEVICE_ERROR;
-	}      
+  {
+    close (fd);
+    return EFI_DEVICE_ERROR;
+  }
     }
 #endif
 
   res = MapMemory(fd, FileSize, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE);
-  
+
   close (fd);
 
   if (res == MAP_FAILED)
@@ -490,7 +493,7 @@ Returns:
 
   } else if (ReportStatusCodeExtractDebugInfo (Data, &ErrorLevel, &Marker, &Format)) {
     //
-    // Process DEBUG () macro 
+    // Process DEBUG () macro
     //
     AsciiBSPrint (PrintBuffer, BYTES_PER_RECORD, Format, Marker);
     printf ("%s", PrintBuffer);
@@ -540,6 +543,8 @@ Returns:
   EFI_PHYSICAL_ADDRESS        PeiImageAddress;
   EFI_SEC_PEI_HAND_OFF        *SecCoreData;
   UINTN                       PeiStackSize;
+  EFI_PEI_PPI_DESCRIPTOR      *DispatchTable;
+  UINTN                       DispatchTableSize;
 
   //
   // Compute Top Of Memory for Stack and PEI Core Allocations
@@ -555,17 +560,17 @@ Returns:
   // |           |
   // |  Stack    |
   // |-----------| <---- TemporaryRamBase
-  // 
+  //
   TopOfStack  = (VOID *)(LargestRegion + PeiStackSize);
   TopOfMemory = LargestRegion + PeiStackSize;
 
   //
   // Reservet space for storing PeiCore's parament in stack.
-  // 
+  //
   TopOfStack  = (VOID *)((UINTN)TopOfStack - sizeof (EFI_SEC_PEI_HAND_OFF) - CPU_STACK_ALIGNMENT);
   TopOfStack  = ALIGN_POINTER (TopOfStack, CPU_STACK_ALIGNMENT);
 
-  
+
   //
   // Bind this information into the SEC hand-off state
   //
@@ -573,7 +578,7 @@ Returns:
   SecCoreData->DataSize               = sizeof(EFI_SEC_PEI_HAND_OFF);
   SecCoreData->BootFirmwareVolumeBase = (VOID*)BootFirmwareVolumeBase;
   SecCoreData->BootFirmwareVolumeSize = PcdGet32 (PcdUnixFirmwareFdSize);
-  SecCoreData->TemporaryRamBase       = (VOID*)(UINTN)LargestRegion; 
+  SecCoreData->TemporaryRamBase       = (VOID*)(UINTN)LargestRegion;
   SecCoreData->TemporaryRamSize       = STACK_SIZE;
   SecCoreData->StackBase              = SecCoreData->TemporaryRamBase;
   SecCoreData->StackSize              = PeiStackSize;
@@ -592,14 +597,28 @@ Returns:
   if (EFI_ERROR (Status)) {
     return ;
   }
-  
+
+  DispatchTableSize = sizeof (gPrivateDispatchTable);
+  DispatchTableSize += OverrideDispatchTableExtraSize ();
+
+  DispatchTable = malloc (DispatchTableSize);
+  if (DispatchTable == NULL) {
+    return;
+  }
+
+  //
+  // Allow an override for extra PPIs to be passed up to PEI
+  // This is an easy way to enable OS specific customizations
+  //
+  OverrideDispatchTable (&gPrivateDispatchTable[0], sizeof (gPrivateDispatchTable), DispatchTable, DispatchTableSize);
+
   //
   // Transfer control to the PEI Core
   //
   PeiSwitchStacks (
     (SWITCH_STACK_ENTRY_POINT) (UINTN) PeiCoreEntryPoint,
     SecCoreData,
-    (VOID *) (UINTN) ((EFI_PEI_PPI_DESCRIPTOR *) &gPrivateDispatchTable),
+    (VOID *)DispatchTable,
     NULL,
     TopOfStack
     );
@@ -645,8 +664,8 @@ Returns:
 
   *MemoryBase = 0;
   res = MapMemory(0, gSystemMemory[Index].Size,
-		  PROT_READ | PROT_WRITE | PROT_EXEC,
-		  MAP_PRIVATE | MAP_ANONYMOUS);
+      PROT_READ | PROT_WRITE | PROT_EXEC,
+      MAP_PRIVATE | MAP_ANONYMOUS);
   if (res == MAP_FAILED)
     return EFI_DEVICE_ERROR;
   *MemorySize = gSystemMemory[Index].Size;
@@ -716,13 +735,13 @@ Returns:
   if (EFI_ERROR (Status)) {
     return Status;
   }
-  
-  
+
+
   //
   // Allocate space in UNIX (not emulator) memory. Extra space is for alignment
   //
   ImageContext.ImageAddress = (EFI_PHYSICAL_ADDRESS) (UINTN) MapMemory (
-    0, 
+    0,
     (UINT32) (ImageContext.ImageSize + (ImageContext.SectionAlignment * 2)),
     PROT_READ | PROT_WRITE | PROT_EXEC,
     MAP_ANONYMOUS | MAP_PRIVATE
@@ -730,7 +749,7 @@ Returns:
   if (ImageContext.ImageAddress == 0) {
     return EFI_OUT_OF_RESOURCES;
   }
-    
+
   //
   // Align buffer on section boundry
   //
@@ -742,12 +761,12 @@ Returns:
   if (EFI_ERROR (Status)) {
     return Status;
   }
-	
+
   Status = PeCoffLoaderRelocateImage (&ImageContext);
   if (EFI_ERROR (Status)) {
     return Status;
   }
-	
+
 
   SecPeCoffRelocateImageExtraAction (&ImageContext);
 
@@ -823,7 +842,7 @@ Returns:
 
   if (Index == 0) {
     //
-    // FD 0 has XIP code and well known PCD values 
+    // FD 0 has XIP code and well known PCD values
     // If the memory buffer could not be allocated at the FD build address
     // the Fixup is the difference.
     //
@@ -911,16 +930,16 @@ AddHandle (
 
 Routine Description:
   Store the ModHandle in an array indexed by the Pdb File name.
-  The ModHandle is needed to unload the image. 
+  The ModHandle is needed to unload the image.
 
 Arguments:
-  ImageContext - Input data returned from PE Laoder Library. Used to find the 
+  ImageContext - Input data returned from PE Laoder Library. Used to find the
                  .PDB file name of the PE Image.
-  ModHandle    - Returned from LoadLibraryEx() and stored for call to 
+  ModHandle    - Returned from LoadLibraryEx() and stored for call to
                  FreeLibrary().
 
 Returns:
-  EFI_SUCCESS - ModHandle was stored. 
+  EFI_SUCCESS - ModHandle was stored.
 
 --*/
 {
@@ -940,9 +959,9 @@ Returns:
       return EFI_SUCCESS;
     }
   }
-  
+
   //
-  // No free space in mImageContextModHandleArray so grow it by 
+  // No free space in mImageContextModHandleArray so grow it by
   // IMAGE_CONTEXT_TO_MOD_HANDLE entires. realloc will
   // copy the old values to the new locaiton. But it does
   // not zero the new memory area.
@@ -955,9 +974,9 @@ Returns:
     ASSERT (FALSE);
     return EFI_OUT_OF_RESOURCES;
   }
-  
+
   memset (mImageContextModHandleArray + PreviousSize, 0, MAX_IMAGE_CONTEXT_TO_MOD_HANDLE_ARRAY_SIZE * sizeof (IMAGE_CONTEXT_TO_MOD_HANDLE));
- 
+
   return AddHandle (ImageContext, ModHandle);
 }
 
@@ -972,7 +991,7 @@ Routine Description:
   Return the ModHandle and delete the entry in the array.
 
 Arguments:
-  ImageContext - Input data returned from PE Laoder Library. Used to find the 
+  ImageContext - Input data returned from PE Laoder Library. Used to find the
                  .PDB file name of the PE Image.
 
 Returns:
@@ -993,7 +1012,7 @@ Returns:
 
   Array = mImageContextModHandleArray;
   for (Index = 0; Index < mImageContextModHandleArraySize; Index++, Array++) {
-    if ((Array->ImageContext == ImageContext)) {
+    if (Array->ImageContext == ImageContext) {
       //
       // If you find a match return it and delete the entry
       //
@@ -1008,7 +1027,7 @@ Returns:
 
 
 //
-// Target for gdb breakpoint in a script that uses gGdbWorkingFileName to source a 
+// Target for gdb breakpoint in a script that uses gGdbWorkingFileName to source a
 // add-symbol-file command. Hey what can you say scripting in gdb is not that great....
 //
 // Put .gdbinit in the CWD where you do gdb SecMain.dll for source level debug
@@ -1050,13 +1069,13 @@ IsPdbFile (
   if ((Len < 5)|| (PdbFileName[Len - 4] != '.')) {
     return FALSE;
   }
-  
+
   if ((PdbFileName[Len - 3] == 'P' || PdbFileName[Len - 3] == 'p') &&
       (PdbFileName[Len - 2] == 'D' || PdbFileName[Len - 2] == 'd') &&
       (PdbFileName[Len - 1] == 'B' || PdbFileName[Len - 1] == 'b')) {
     return TRUE;
   }
-  
+
   return FALSE;
 }
 
@@ -1068,13 +1087,20 @@ PrintLoadAddress (
   IN PE_COFF_LOADER_IMAGE_CONTEXT          *ImageContext
   )
 {
-  fprintf (stderr,
-     "0x%08lx Loading %s with entry point 0x%08lx\n",
-     (unsigned long)(ImageContext->ImageAddress + ImageContext->SizeOfHeaders),
-     ImageContext->PdbPointer,   
-     (unsigned long)ImageContext->EntryPoint
-     );
-     
+  if (ImageContext->PdbPointer == NULL) {
+    fprintf (stderr,
+      "0x%08lx Loading NO DEBUG with entry point 0x%08lx\n",
+      (unsigned long)(ImageContext->ImageAddress),
+      (unsigned long)ImageContext->EntryPoint
+      );
+  } else {
+    fprintf (stderr,
+      "0x%08lx Loading %s with entry point 0x%08lx\n",
+      (unsigned long)(ImageContext->ImageAddress + ImageContext->SizeOfHeaders),
+      ImageContext->PdbPointer,
+      (unsigned long)ImageContext->EntryPoint
+      );
+  }
   // Keep output synced up
   fflush (stderr);
 }
@@ -1086,8 +1112,20 @@ SecPeCoffRelocateImageExtraAction (
   IN OUT PE_COFF_LOADER_IMAGE_CONTEXT         *ImageContext
   )
 {
-    
+
 #ifdef __APPLE__
+  BOOLEAN EnabledOnEntry;
+
+   //
+   // Make sure writting of the file is an atomic operation
+   //
+   if (UnixInterruptEanbled ()) {
+     UnixDisableInterrupt ();
+     EnabledOnEntry = TRUE;
+   } else {
+     EnabledOnEntry = FALSE;
+   }
+
   PrintLoadAddress (ImageContext);
 
   //
@@ -1096,7 +1134,7 @@ SecPeCoffRelocateImageExtraAction (
   // .dSYM files for the PE/COFF images that can be used by gdb for source level debugging.
   //
   FILE  *GdbTempFile;
-  
+
   //
   // In the Mach-O to PE/COFF conversion the size of the PE/COFF headers is not accounted for.
   // Thus we need to skip over the PE/COFF header when giving load addresses for our symbol table.
@@ -1105,27 +1143,27 @@ SecPeCoffRelocateImageExtraAction (
     //
     // Now we have a database of the images that are currently loaded
     //
-    
+
     //
-    // 'symbol-file' will clear out currnet symbol mappings in gdb. 
-    // you can do a 'add-symbol-file filename address' for every image we loaded to get source 
-    // level debug in gdb. Note Sec, being a true application will work differently. 
+    // 'symbol-file' will clear out currnet symbol mappings in gdb.
+    // you can do a 'add-symbol-file filename address' for every image we loaded to get source
+    // level debug in gdb. Note Sec, being a true application will work differently.
     //
-    // We add the PE/COFF header size into the image as the mach-O does not have a header in 
-    // loaded into system memory. 
-    // 
+    // We add the PE/COFF header size into the image as the mach-O does not have a header in
+    // loaded into system memory.
+    //
     // This gives us a data base of gdb commands and after something is unloaded that entry will be
-    // removed. We don't yet have the scheme of how to comunicate with gdb, but we have the 
+    // removed. We don't yet have the scheme of how to comunicate with gdb, but we have the
     // data base of info ready to roll.
     //
-    // We could use qXfer:libraries:read, but OS X GDB does not currently support it. 
-    //  <library-list> 
+    // We could use qXfer:libraries:read, but OS X GDB does not currently support it.
+    //  <library-list>
     //    <library name="/lib/libc.so.6">   // ImageContext->PdbPointer
     //      <segment address="0x10000000"/> // ImageContext->ImageAddress + ImageContext->SizeOfHeaders
-    //    </library> 
-    //  </library-list> 
+    //    </library>
+    //  </library-list>
     //
-    
+
     //
     // Write the file we need for the gdb script
     //
@@ -1133,37 +1171,52 @@ SecPeCoffRelocateImageExtraAction (
     if (GdbTempFile != NULL) {
       fprintf (GdbTempFile, "add-symbol-file %s 0x%08lx\n", ImageContext->PdbPointer, (long unsigned int)(ImageContext->ImageAddress + ImageContext->SizeOfHeaders));
       fclose (GdbTempFile);
-      
+
       //
-      // Target for gdb breakpoint in a script that uses gGdbWorkingFileName to set a breakpoint. 
+      // Target for gdb breakpoint in a script that uses gGdbWorkingFileName to set a breakpoint.
       // Hey what can you say scripting in gdb is not that great....
       //
       SecGdbScriptBreak ();
+    } else {
+      ASSERT (FALSE);
     }
 
     AddHandle (ImageContext, ImageContext->PdbPointer);
+
+    if (EnabledOnEntry) {
+      UnixEnableInterrupt ();
+    }
+
     
   }
-  
+
 #else
-  
+
   void        *Handle = NULL;
   void        *Entry = NULL;
- 
-  fprintf (stderr, 
+
+  if (ImageContext->PdbPointer == NULL) {
+    return;
+  }
+
+  if (!IsPdbFile (ImageContext->PdbPointer)) {
+    return;
+  }
+
+  fprintf (stderr,
      "Loading %s 0x%08lx - entry point 0x%08lx\n",
      ImageContext->PdbPointer,
      (unsigned long)ImageContext->ImageAddress,
      (unsigned long)ImageContext->EntryPoint);
 
   Handle = dlopen (ImageContext->PdbPointer, RTLD_NOW);
-  
+
   if (Handle) {
     Entry = dlsym (Handle, "_ModuleEntryPoint");
   } else {
-    printf("%s\n", dlerror());  
+    printf("%s\n", dlerror());
   }
-  
+
   if (Entry != NULL) {
     ImageContext->EntryPoint = (UINTN)Entry;
     printf("Change %s Entrypoint to :0x%08lx\n", ImageContext->PdbPointer, (unsigned long)Entry);
@@ -1189,12 +1242,20 @@ SecPeCoffLoaderUnloadImageExtraAction (
 
 #ifdef __APPLE__
   FILE  *GdbTempFile;
-  
+  BOOLEAN EnabledOnEntry;
+
   if (Handle != NULL) {
     //
     // Need to skip .PDB files created from VC++
     //
-    if (!IsPdbFile (ImageContext->PdbPointer)) {      
+    if (!IsPdbFile (ImageContext->PdbPointer)) {
+       if (UnixInterruptEanbled ()) {
+         UnixDisableInterrupt ();
+         EnabledOnEntry = TRUE;
+       } else {
+         EnabledOnEntry = FALSE;
+       }
+       
       //
       // Write the file we need for the gdb script
       //
@@ -1202,16 +1263,22 @@ SecPeCoffLoaderUnloadImageExtraAction (
       if (GdbTempFile != NULL) {
         fprintf (GdbTempFile, "remove-symbol-file %s\n", ImageContext->PdbPointer);
         fclose (GdbTempFile);
-  
+
         //
-        // Target for gdb breakpoint in a script that uses gGdbWorkingFileName to set a breakpoint. 
+        // Target for gdb breakpoint in a script that uses gGdbWorkingFileName to set a breakpoint.
         // Hey what can you say scripting in gdb is not that great....
         //
         SecGdbScriptBreak ();
+      } else {
+        ASSERT (FALSE);
+      }
+      
+      if (EnabledOnEntry) {
+        UnixEnableInterrupt ();
       }
     }
   }
-  
+
 #else
   //
   // Don't want to confuse gdb with symbols for something that got unloaded
@@ -1242,32 +1309,32 @@ SecTemporaryRamSupport (
 {
   //
   // Migrate the whole temporary memory to permenent memory.
-  // 
+  //
   CopyMem (
-    (VOID*)(UINTN)PermanentMemoryBase, 
-    (VOID*)(UINTN)TemporaryMemoryBase, 
+    (VOID*)(UINTN)PermanentMemoryBase,
+    (VOID*)(UINTN)TemporaryMemoryBase,
     CopySize
     );
 
   //
   // SecSwitchStack function must be invoked after the memory migration
-  // immediatly, also we need fixup the stack change caused by new call into 
+  // immediatly, also we need fixup the stack change caused by new call into
   // permenent memory.
-  // 
+  //
   SecSwitchStack (
     (UINT32) TemporaryMemoryBase,
     (UINT32) PermanentMemoryBase
     );
 
   //
-  // We need *not* fix the return address because currently, 
+  // We need *not* fix the return address because currently,
   // The PeiCore is excuted in flash.
   //
 
   //
   // Simulate to invalid temporary memory, terminate temporary memory
-  // 
+  //
   //ZeroMem ((VOID*)(UINTN)TemporaryMemoryBase, CopySize);
-  
+
   return EFI_SUCCESS;
 }

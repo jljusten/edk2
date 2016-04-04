@@ -1,7 +1,7 @@
 /** @file
   Header file for boot maintenance module.
 
-Copyright (c) 2004 - 2009, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -189,15 +189,14 @@ typedef enum _FILE_EXPLORER_DISPLAY_CONTEXT {
 #define CON_MODE_VAR_OFFSET             VAR_OFFSET (ConsoleOutMode)
 #define CON_DEVICE_VAR_OFFSET           VAR_OFFSET (ConsoleCheck)
 #define OPTION_ORDER_VAR_OFFSET         VAR_OFFSET (OptionOrder)
-#define DRIVER_OPTION_ORDER_VAR_OFFSET  VAR_OFFSET (DriverOptionToBeDeleted)
-#define BOOT_OPTION_DEL_VAR_OFFSET      VAR_OFFSET (BootOptionDel)
-#define DRIVER_OPTION_DEL_VAR_OFFSET    VAR_OFFSET (DriverOptionDel)
+#define OPTION_DEL_VAR_OFFSET           VAR_OFFSET (OptionDel)
 #define DRIVER_ADD_OPTION_VAR_OFFSET    VAR_OFFSET (DriverAddHandleOptionalData)
 #define COM_BAUD_RATE_VAR_OFFSET        VAR_OFFSET (COMBaudRate)
 #define COM_DATA_RATE_VAR_OFFSET        VAR_OFFSET (COMDataRate)
 #define COM_STOP_BITS_VAR_OFFSET        VAR_OFFSET (COMStopBits)
 #define COM_PARITY_VAR_OFFSET           VAR_OFFSET (COMParity)
 #define COM_TERMINAL_VAR_OFFSET         VAR_OFFSET (COMTerminalType)
+#define COM_FLOWCONTROL_VAR_OFFSET      VAR_OFFSET (COMFlowControl)
 #define LEGACY_FD_VAR_OFFSET            VAR_OFFSET (LegacyFD)
 #define LEGACY_HD_VAR_OFFSET            VAR_OFFSET (LegacyHD)
 #define LEGACY_CD_VAR_OFFSET            VAR_OFFSET (LegacyCD)
@@ -228,15 +227,14 @@ typedef enum _FILE_EXPLORER_DISPLAY_CONTEXT {
 #define CON_MODE_QUESTION_ID            QUESTION_ID (ConsoleOutMode)
 #define CON_DEVICE_QUESTION_ID          QUESTION_ID (ConsoleCheck)
 #define OPTION_ORDER_QUESTION_ID        QUESTION_ID (OptionOrder)
-#define DRIVER_OPTION_ORDER_QUESTION_ID QUESTION_ID (DriverOptionToBeDeleted)
-#define BOOT_OPTION_DEL_QUESTION_ID     QUESTION_ID (BootOptionDel)
-#define DRIVER_OPTION_DEL_QUESTION_ID   QUESTION_ID (DriverOptionDel)
+#define OPTION_DEL_QUESTION_ID          QUESTION_ID (OptionDel)
 #define DRIVER_ADD_OPTION_QUESTION_ID   QUESTION_ID (DriverAddHandleOptionalData)
 #define COM_BAUD_RATE_QUESTION_ID       QUESTION_ID (COMBaudRate)
 #define COM_DATA_RATE_QUESTION_ID       QUESTION_ID (COMDataRate)
 #define COM_STOP_BITS_QUESTION_ID       QUESTION_ID (COMStopBits)
 #define COM_PARITY_QUESTION_ID          QUESTION_ID (COMParity)
 #define COM_TERMINAL_QUESTION_ID        QUESTION_ID (COMTerminalType)
+#define COM_FLOWCONTROL_QUESTION_ID     QUESTION_ID (COMFlowControl)
 #define LEGACY_FD_QUESTION_ID           QUESTION_ID (LegacyFD)
 #define LEGACY_HD_QUESTION_ID           QUESTION_ID (LegacyHD)
 #define LEGACY_CD_QUESTION_ID           QUESTION_ID (LegacyCD)
@@ -256,13 +254,23 @@ typedef struct {
 } COM_ATTR;
 
 #pragma pack(1)
+///
+/// For each legacy boot option in BBS table, a corresponding Boot#### variables is created.
+/// The structure saves the mapping relationship between #### and the index in the BBS table.
+///
+typedef struct {
+  UINT16    BootOptionNumber;
+  UINT16    BbsIndex;
+  UINT16    BbsType;
+} BOOT_OPTION_BBS_MAPPING;
+
 typedef struct {
   BBS_TYPE  BbsType;
   ///
   /// Length = sizeof (UINT16) + SIZEOF (Data)
   ///
   UINT16    Length;
-  UINT16    *Data;
+  UINT16    Data[1];
 } BM_LEGACY_DEV_ORDER_CONTEXT;
 #pragma pack()
 
@@ -276,6 +284,8 @@ typedef struct {
   UINT8                     DataBitsIndex;
   UINT8                     ParityIndex;
   UINT8                     StopBitsIndex;
+
+  UINT8                     FlowControl;
 
   UINT8                     IsConIn;
   UINT8                     IsConOut;
@@ -308,10 +318,10 @@ typedef struct {
 } BM_LOAD_CONTEXT;
 
 typedef struct {
-  BBS_TABLE *BbsTable;
-  UINTN     Index;
-  UINTN     BbsCount;
-  UINT16    *Description;
+  BBS_TABLE *BbsEntry;
+  UINT16    BbsIndex;
+  UINT16    BbsCount;
+  CHAR16    *Description;
 } BM_LEGACY_DEVICE_CONTEXT;
 
 typedef struct {
@@ -751,7 +761,7 @@ ChangeVariableDevicePath (
 **/
 EFI_STATUS
 ChangeTerminalDevicePath (
-  IN OUT EFI_DEVICE_PATH_PROTOCOL  *DevicePath,
+  IN OUT EFI_DEVICE_PATH_PROTOCOL  **DevicePath,
   IN BOOLEAN                   ChangeTerminal
   );
 
@@ -1557,7 +1567,8 @@ extern STRING_DEPOSITORY          *DriverOptionHelpStrDepository;
 extern STRING_DEPOSITORY          *TerminalStrDepository;
 extern EFI_DEVICE_PATH_PROTOCOL   EndDevicePath[];
 extern EFI_GUID                   EfiLegacyDevOrderGuid;
-
+extern UINT16                     mFlowControlType[2];
+extern UINT32                     mFlowControlValue[2];
 //
 // Shared IFR form update data
 //

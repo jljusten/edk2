@@ -4,7 +4,7 @@
 #
 # The Emulation Platform can be used to debug individual modules, prior to creating
 #       a real platform. This also provides an example for how an DSC is created.
-# Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 #
 #    This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -102,8 +102,10 @@
   # Misc
   #
   DebugLib|IntelFrameworkModulePkg/Library/PeiDxeDebugLibReportStatusCode/PeiDxeDebugLibReportStatusCode.inf
+  DebugPrintErrorLevelLib|MdePkg/Library/BaseDebugPrintErrorLevelLib/BaseDebugPrintErrorLevelLib.inf
   PerformanceLib|MdePkg/Library/BasePerformanceLibNull/BasePerformanceLibNull.inf
   DebugAgentLib|MdeModulePkg/Library/DebugAgentLibNull/DebugAgentLibNull.inf
+  SecDispatchTableLib|UnixPkg/Library/SecDispatchTableLib/SecDispatchTableLib.inf
 
 [LibraryClasses.common.USER_DEFINED]
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
@@ -166,6 +168,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|FALSE
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeUseSerial|FALSE
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreImageLoaderSearchTeSectionFirst|FALSE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange|FALSE
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdStatusCodeUseOEM|TRUE
 
 [PcdsFixedAtBuild]
@@ -198,12 +201,13 @@
   gEfiUnixPkgTokenSpaceGuid.PcdUnixCpuSpeed|L"3000"
   gEfiUnixPkgTokenSpaceGuid.PcdUnixMemorySize|L"128!128"
   gEfiUnixPkgTokenSpaceGuid.PcdUnixSerialPort|L"/dev/ttyS0!/dev/ttyS1"
+  gEfiUnixPkgTokenSpaceGuid.PcdUnixNetworkInterface|L"en0"
 
 [PcdsDynamicHii.common.DEFAULT]
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutColumn|L"Setup"|gEfiUnixSystemConfigGuid|0x0|80
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow|L"Setup"|gEfiUnixSystemConfigGuid|0x4|25
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdPlatformBootTimeOut|L"Timeout"|gEfiGlobalVariableGuid|0x0|10
-
+  
 ###################################################################################################
 #
 # Components Section - list of the modules and components that will be processed by compilation
@@ -222,7 +226,7 @@
 #       generated for it, but the binary will not be put into any firmware volume.
 #
 ###################################################################################################
-[Components.common]
+[Components]
   ##
   #  SEC Phase modules
   ##
@@ -294,14 +298,18 @@
   UnixPkg/UnixBlockIoDxe/UnixBlockIo.inf
   UnixPkg/UnixSerialIoDxe/UnixSerialIo.inf
   UnixPkg/UnixUgaDxe/UnixUga.inf
+  UnixPkg/UnixGopDxe/UnixGop.inf
+  
   UnixPkg/UnixConsoleDxe/UnixConsole.inf
   UnixPkg/UnixSimpleFileSystemDxe/UnixSimpleFileSystem.inf
   MdeModulePkg/Application/HelloWorld/HelloWorld.inf
 
   #
   # Network stack drivers
-  # To test network drivers, need network Io driver(SnpNt32Io.dll), please refer to NETWORK-IO Subproject.
   #
+!if $(NETWORK_SUPPORT)
+  UnixPkg/UnixSnpDxe/UnixSnpDxe.inf
+!endif
   MdeModulePkg/Universal/Network/DpcDxe/DpcDxe.inf
   MdeModulePkg/Universal/Network/ArpDxe/ArpDxe.inf
   MdeModulePkg/Universal/Network/Dhcp4Dxe/Dhcp4Dxe.inf
@@ -322,5 +330,7 @@
       PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   }
 
-  #FatPkg/EnhancedFatDxe/Fat.inf
+!if $(COMPILE_BINS)
+  FatPkg/EnhancedFatDxe/Fat.inf
+!endif
 

@@ -1,7 +1,7 @@
 ## @file
 # EFI/PI Reference Module Package for All Architectures
 #
-# Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
 #
 #    This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -68,6 +68,7 @@
   NetLib|MdeModulePkg/Library/DxeNetLib/DxeNetLib.inf
   IpIoLib|MdeModulePkg/Library/DxeIpIoLib/DxeIpIoLib.inf
   UdpIoLib|MdeModulePkg/Library/DxeUdpIoLib/DxeUdpIoLib.inf
+  TcpIoLib|MdeModulePkg/Library/DxeTcpIoLib/DxeTcpIoLib.inf
   DpcLib|MdeModulePkg/Library/DxeDpcLib/DxeDpcLib.inf
   SecurityManagementLib|MdeModulePkg/Library/DxeSecurityManagementLib/DxeSecurityManagementLib.inf
   TimerLib|MdePkg/Library/BaseTimerLibNullTemplate/BaseTimerLibNullTemplate.inf
@@ -79,10 +80,12 @@
   # Misc
   #
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  DebugPrintErrorLevelLib|MdePkg/Library/BaseDebugPrintErrorLevelLib/BaseDebugPrintErrorLevelLib.inf  
   ReportStatusCodeLib|MdePkg/Library/BaseReportStatusCodeLibNull/BaseReportStatusCodeLibNull.inf  
   PeCoffExtraActionLib|MdePkg/Library/BasePeCoffExtraActionLibNull/BasePeCoffExtraActionLibNull.inf
   PerformanceLib|MdePkg/Library/BasePerformanceLibNull/BasePerformanceLibNull.inf
   DebugAgentLib|MdeModulePkg/Library/DebugAgentLibNull/DebugAgentLibNull.inf
+  PlatformHookLib|MdeModulePkg/Library/BasePlatformHookLibNull/BasePlatformHookLibNull.inf
 
 [LibraryClasses.EBC.PEIM]
   IoLib|MdePkg/Library/PeiIoLibCpuIo/PeiIoLibCpuIo.inf
@@ -130,6 +133,15 @@
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
   DebugLib|MdePkg/Library/UefiDebugLibStdErr/UefiDebugLibStdErr.inf
 
+[LibraryClasses.ARM]
+  #
+  # It is not possible to prevent the ARM compiler for generic intrinsic functions.
+  # This library provides the instrinsic functions generate by a given compiler.
+  # [LibraryClasses.ARM] and NULL mean link this library into all ARM images.
+  #
+  NULL|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
+
+
 [PcdsFeatureFlag]
   gEfiMdePkgTokenSpaceGuid.PcdDriverDiagnostics2Disable|TRUE
   gEfiMdePkgTokenSpaceGuid.PcdComponentName2Disable|TRUE
@@ -174,6 +186,7 @@
   MdeModulePkg/Bus/Pci/EhciDxe/EhciDxe.inf
   MdeModulePkg/Bus/Pci/UhciDxe/UhciDxe.inf
   MdeModulePkg/Bus/Ata/AtaBusDxe/AtaBusDxe.inf
+  MdeModulePkg/Bus/Ata/AtaAtapiPassThru/AtaAtapiPassThru.inf
   MdeModulePkg/Bus/Scsi/ScsiBusDxe/ScsiBusDxe.inf
   MdeModulePkg/Bus/Scsi/ScsiDiskDxe/ScsiDiskDxe.inf
   MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
@@ -210,6 +223,8 @@
   MdeModulePkg/Library/PeiReportStatusCodeLib/PeiReportStatusCodeLib.inf
   MdeModulePkg/Library/DxeReportStatusCodeLib/DxeReportStatusCodeLib.inf
   MdeModulePkg/Library/RuntimeDxeReportStatusCodeLib/RuntimeDxeReportStatusCodeLib.inf
+  MdeModulePkg/Library/BaseSerialPortLib16550/BaseSerialPortLib16550.inf
+  MdeModulePkg/Library/BasePlatformHookLibNull/BasePlatformHookLibNull.inf
 
   MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
   MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
@@ -256,6 +271,7 @@
   MdeModulePkg/Universal/Variable/Pei/VariablePei.inf
   MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
   MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
+  MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteSmm.inf
 
   MdeModulePkg/Universal/Acpi/AcpiPlatformDxe/AcpiPlatformDxe.inf
   MdeModulePkg/Universal/Acpi/AcpiTableDxe/AcpiTableDxe.inf
@@ -277,6 +293,12 @@
 [Components.IA32, Components.X64]
   MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf
   MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf
+  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableSmm.inf
+  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableSmmRuntimeDxe.inf
   MdeModulePkg/Library/SmmReportStatusCodeLib/SmmReportStatusCodeLib.inf
   MdeModulePkg/Universal/StatusCodeHandler/Smm/StatusCodeHandlerSmm.inf
   MdeModulePkg/Universal/ReportStatusCodeRouter/Smm/ReportStatusCodeRouterSmm.inf
+  MdeModulePkg/Library/SmmCorePerformanceLib/SmmCorePerformanceLib.inf
+  MdeModulePkg/Library/SmmPerformanceLib/SmmPerformanceLib.inf
+  MdeModulePkg/Library/DxeSmmPerformanceLib/DxeSmmPerformanceLib.inf
+

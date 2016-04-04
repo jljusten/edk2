@@ -15,15 +15,20 @@
 
     EXPORT  Cp15IdCode
     EXPORT  Cp15CacheInfo
-    EXPORT  ArmEnableInterrupts
-    EXPORT  ArmDisableInterrupts
+    EXPORT  ArmIsMPCore
+    EXPORT  ArmEnableAsynchronousAbort
+    EXPORT  ArmDisableAsynchronousAbort
+    EXPORT  ArmEnableIrq
+    EXPORT  ArmDisableIrq
     EXPORT  ArmGetInterruptState
     EXPORT  ArmEnableFiq
     EXPORT  ArmDisableFiq
+    EXPORT  ArmEnableInterrupts
+    EXPORT  ArmDisableInterrupts
     EXPORT  ArmGetFiqState
     EXPORT  ArmInvalidateTlb
-    EXPORT  ArmSetTranslationTableBaseAddress
-    EXPORT  ArmGetTranslationTableBaseAddress
+    EXPORT  ArmSetTTBR0
+    EXPORT  ArmGetTTBR0BaseAddress
     EXPORT  ArmSetDomainAccessControl
     EXPORT  ArmUpdateTranslationTableEntry
     EXPORT  CPSRMaskInsert
@@ -44,35 +49,67 @@ Cp15CacheInfo
   mrc     p15,0,R0,c0,c0,1
   bx      LR
 
-ArmEnableInterrupts
+ArmIsMPCore
+  mrc     p15,0,R0,c0,c0,5
+  // Get Multiprocessing extension (bit31) & U bit (bit30)
+  and     R0, R0, #0xC0000000
+  // if bit30 == 0 then the processor is part of a multiprocessor system)
+  and     R0, R0, #0x80000000
+  bx      LR
+
+ArmEnableAsynchronousAbort
+  cpsie   a
+  isb
+  bx      LR
+
+ArmDisableAsynchronousAbort
+  cpsid   a
+  isb
+  bx      LR
+
+ArmEnableIrq
   cpsie   i
-	bx      LR
+  isb
+  bx      LR
 
-ArmDisableInterrupts
+ArmDisableIrq
   cpsid   i
-	bx      LR
-
-ArmGetInterruptState
-	mrs     R0,CPSR
-	tst     R0,#0x80	    ;Check if IRQ is enabled.
-	moveq   R0,#1
-	movne   R0,#0
-	bx      LR
+  isb
+  bx      LR
 
 ArmEnableFiq
   cpsie   f
-	bx      LR
+  isb
+  bx      LR
 
 ArmDisableFiq
   cpsid   f
-	bx      LR
+  isb
+  bx      LR
+
+ArmEnableInterrupts
+  cpsie   if
+  isb
+  bx      LR
+
+ArmDisableInterrupts
+  cpsid   if
+  isb
+  bx      LR
+
+ArmGetInterruptState
+  mrs     R0,CPSR
+  tst     R0,#0x80      ;Check if IRQ is enabled.
+  moveq   R0,#1
+  movne   R0,#0
+  bx      LR
 
 ArmGetFiqState
-	mrs     R0,CPSR
-	tst     R0,#0x40	    ;Check if FIQ is enabled.
-	moveq   R0,#1
-	movne   R0,#0
-	bx      LR
+  mrs     R0,CPSR
+  tst     R0,#0x40      ;Check if FIQ is enabled.
+  moveq   R0,#1
+  movne   R0,#0
+  bx      LR
   
 ArmInvalidateTlb
   mov     r0,#0
@@ -82,13 +119,15 @@ ArmInvalidateTlb
   isb
   bx      lr
 
-ArmSetTranslationTableBaseAddress
+ArmSetTTBR0
   mcr     p15,0,r0,c2,c0,0
   isb
   bx      lr
 
-ArmGetTranslationTableBaseAddress
+ArmGetTTBR0BaseAddress
   mrc     p15,0,r0,c2,c0,0
+  ldr    r1, = 0xFFFFC000
+  and     r0, r0, r1
   isb
   bx      lr
 
@@ -150,7 +189,4 @@ ReadCLIDR
   mrc p15,1,r0,c0,c0,1 ; Read CP15 Cache Level ID Register
   bx  lr
   
-
 END
-
-

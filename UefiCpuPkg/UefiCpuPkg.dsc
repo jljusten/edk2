@@ -1,7 +1,7 @@
 ## @file
 #  UefiCpuPkg Package
 #
-#  Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -32,6 +32,7 @@
   BaseMemoryLib|MdePkg/Library/BaseMemoryLib/BaseMemoryLib.inf
   CpuLib|MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  DebugPrintErrorLevelLib|MdePkg/Library/BaseDebugPrintErrorLevelLib/BaseDebugPrintErrorLevelLib.inf
   DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
   IoLib|MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
   MtrrLib|UefiCpuPkg/Library/MtrrLib/MtrrLib.inf
@@ -68,9 +69,13 @@
 [Components]
   UefiCpuPkg/CpuIo2Dxe/CpuIo2Dxe.inf
   UefiCpuPkg/CpuIoPei/CpuIoPei.inf
+  UefiCpuPkg/Library/SecPeiDxeTimerLibUefiCpu/SecPeiDxeTimerLibUefiCpu.inf
 
 [Components.IA32, Components.X64]
   UefiCpuPkg/CpuDxe/CpuDxe.inf
   UefiCpuPkg/CpuIo2Smm/CpuIo2Smm.inf
   UefiCpuPkg/Library/BaseUefiCpuLib/BaseUefiCpuLib.inf
   UefiCpuPkg/Library/MtrrLib/MtrrLib.inf
+  UefiCpuPkg/Library/BaseXApicX2ApicLib/BaseXApicX2ApicLib.inf
+  UefiCpuPkg/Library/BaseXApicLib/BaseXApicLib.inf
+

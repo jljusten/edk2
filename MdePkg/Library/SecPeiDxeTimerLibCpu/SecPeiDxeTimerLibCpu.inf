@@ -7,6 +7,9 @@
 #  used by SMM drivers and runtime drivers, ACPI timer is recommended for SMM
 #  drivers and runtime drivers.
 #
+# Note that for IA-32 and x64, this library only supports xAPIC mode. If x2APIC
+# support is desired, the SecPeiDxeTimerLibUefiCpu library can be used.
+#
 # Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials

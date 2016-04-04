@@ -58,6 +58,7 @@ DataHubLogData (
   DATA_HUB_FILTER_DRIVER  *FilterEntry;
   LIST_ENTRY              *Link;
   LIST_ENTRY              *Head;
+  EFI_TIME                LogTime;
 
   Private = DATA_HUB_INSTANCE_FROM_THIS (This);
 
@@ -69,10 +70,18 @@ DataHubLogData (
   //
   RecordSize  = sizeof (EFI_DATA_RECORD_HEADER) + RawDataSize;
   TotalSize   = sizeof (EFI_DATA_ENTRY) + RecordSize;
+  
+  //
+  // First try to get log time at TPL level <= TPL_CALLBACK.
+  //
+  ZeroMem (&LogTime, sizeof (LogTime));
+  if (EfiGetCurrentTpl() <= TPL_CALLBACK) {
+    gRT->GetTime (&LogTime, NULL);
+  }
 
   //
   // The Logging action is the critical section, so it is locked.
-  //  The MTC asignment & update, time, and logging must be an
+  //  The MTC asignment & update and logging must be an
   //  atomic operation, so use the lock.
   //
   Status = EfiAcquireLockOrFail (&Private->DataLock);
@@ -110,7 +119,7 @@ DataHubLogData (
   //
   Record->LogMonotonicCount = ++Private->GlobalMonotonicCount;
 
-  gRT->GetTime (&Record->LogTime, NULL);
+  CopyMem (&Record->LogTime, &LogTime, sizeof (LogTime));
 
   //
   // Insert log into the internal linked list.
@@ -286,85 +295,96 @@ DataHubGetNextRecord (
   DATA_HUB_INSTANCE       *Private;
   DATA_HUB_FILTER_DRIVER  *FilterDriver;
   UINT64                  ClassFilter;
-  UINT64                  FilterMonotonicCount;
 
   Private               = DATA_HUB_INSTANCE_FROM_THIS (This);
 
   FilterDriver          = NULL;
-  FilterMonotonicCount  = 0;
   ClassFilter = EFI_DATA_RECORD_CLASS_DEBUG |
     EFI_DATA_RECORD_CLASS_ERROR |
     EFI_DATA_RECORD_CLASS_DATA |
     EFI_DATA_RECORD_CLASS_PROGRESS_CODE;
 
-  if (FilterDriverEvent != NULL) {
-    //
-    // For events the beginning is the last unread record. This info is
-    // stored in the instance structure, so we must look up the event
-    // to get the data.
-    //
-    FilterDriver = FindFilterDriverByEvent (
-                    &Private->FilterDriverListHead,
-                    *FilterDriverEvent
-                    );
-    if (FilterDriver == NULL) {
-      return EFI_INVALID_PARAMETER;
+  //
+  // If FilterDriverEvent is NULL, then return the next record
+  //
+  if (FilterDriverEvent == NULL) {
+    *Record = GetNextDataRecord (&Private->DataListHead, ClassFilter, MonotonicCount);
+    if (*Record == NULL) {
+      return EFI_NOT_FOUND;
     }
-    //
-    // Use the Class filter the event was created with.
-    //
-    ClassFilter = FilterDriver->ClassFilter;
-
-    if (*MonotonicCount == 0) {
-      //
-      // Use the MTC from the Filter Driver.
-      //
-      FilterMonotonicCount = FilterDriver->GetNextMonotonicCount;
-       
-      //
-      // The GetNextMonotonicCount field remembers the last value from the previous time.
-      // But we already processed this vaule, so we need to find the next one.
-      //
-      *Record = GetNextDataRecord (&Private->DataListHead, ClassFilter, &FilterMonotonicCount);
-      if (FilterMonotonicCount != 0) {
-        *MonotonicCount = FilterMonotonicCount;
-      }
-      
-      if ((FilterDriver->GetNextMonotonicCount != 0) && (FilterMonotonicCount == 0)) {
-        //
-        // If there is no new record to get exit now.
-        //
-        *MonotonicCount = 0;
-        return EFI_NOT_FOUND;
-      }
-    }
+    return EFI_SUCCESS;
+  }
+    
+  //
+  // For events the beginning is the last unread record. This info is
+  // stored in the instance structure, so we must look up the event
+  // to get the data.
+  //
+  FilterDriver = FindFilterDriverByEvent (
+                  &Private->FilterDriverListHead,
+                  *FilterDriverEvent
+                  );
+  if (FilterDriver == NULL) {
+    return EFI_INVALID_PARAMETER;
   }
   //
-  // Return the record
+  // Use the Class filter the event was created with.
+  //
+  ClassFilter = FilterDriver->ClassFilter;
+
+  //
+  // Retrieve the next record or the first record.
+  //   
+  if (*MonotonicCount != 0 || FilterDriver->GetNextMonotonicCount == 0) { 
+    *Record = GetNextDataRecord (&Private->DataListHead, ClassFilter, MonotonicCount);
+    if (*Record == NULL) {
+      return EFI_NOT_FOUND;
+    }
+    
+    if (*MonotonicCount != 0) {
+      //
+      // If this was not the last record then update the count associated with the filter 
+      //
+      FilterDriver->GetNextMonotonicCount = *MonotonicCount;
+    } else {
+      //
+      // Save the MonotonicCount of the last record which has been read
+      //
+      FilterDriver->GetNextMonotonicCount = (*Record)->LogMonotonicCount;
+    }
+    return EFI_SUCCESS;
+  }
+  
+  //
+  // This is a request to read the first record that has not been read yet.  
+  // Set MonotoicCount to the last record successfuly read
+  //
+  *MonotonicCount = FilterDriver->GetNextMonotonicCount;
+  
+  //
+  // Retrieve the last record successfuly read again, but do not return it since
+  // it has already been returned before.
   //
   *Record = GetNextDataRecord (&Private->DataListHead, ClassFilter, MonotonicCount);
   if (*Record == NULL) {
     return EFI_NOT_FOUND;
   }
+  
+  if (*MonotonicCount != 0) {
+    //
+    // Update the count associated with the filter 
+    //
+    FilterDriver->GetNextMonotonicCount = *MonotonicCount;
 
-  if (FilterDriver != NULL) {
     //
-    // If we have a filter driver update the records that have been read.
-    // If MonotonicCount is zero No more reacords left.
-    //
-    if (*MonotonicCount == 0) {
-      //
-      // Save the current Record MonotonicCount.
-      //
-      FilterDriver->GetNextMonotonicCount = (*Record)->LogMonotonicCount;
-    } else {
-      //
-      // Point to next undread record
-      //
-      FilterDriver->GetNextMonotonicCount = *MonotonicCount;
+    // Retrieve the record after the last record successfuly read 
+    //  
+    *Record = GetNextDataRecord (&Private->DataListHead, ClassFilter, MonotonicCount);
+    if (*Record == NULL) {
+      return EFI_NOT_FOUND;
     }
   }
-
+  
   return EFI_SUCCESS;
 }
 

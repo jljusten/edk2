@@ -77,7 +77,9 @@ TcpInitTcbLocal (
   //
   // First window size is never scaled
   //
-  Tcb->RcvWndScale = 0;
+  Tcb->RcvWndScale  = 0;
+
+  Tcb->ProbeTimerOn = FALSE;
 }
 
 
@@ -655,7 +657,7 @@ TcpResetConnection (
   Nhead->Ack      = HTONL (Tcb->RcvNxt);
   Nhead->SrcPort  = Tcb->LocalEnd.Port;
   Nhead->DstPort  = Tcb->RemoteEnd.Port;
-  Nhead->HeadLen  = (sizeof (TCP_HEAD) >> 2);
+  Nhead->HeadLen  = (UINT8) (sizeof (TCP_HEAD) >> 2);
   Nhead->Res      = 0;
   Nhead->Wnd      = HTONS (0xFFFF);
   Nhead->Checksum = 0;

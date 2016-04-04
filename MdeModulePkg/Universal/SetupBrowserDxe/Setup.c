@@ -269,7 +269,8 @@ SendForm (
 
   gOptionBlockWidth = (CHAR16) ((gScreenDimensions.RightColumn - gScreenDimensions.LeftColumn) / 3);
   gHelpBlockWidth   = gOptionBlockWidth;
-  gPromptBlockWidth = gOptionBlockWidth;
+  gPromptBlockWidth = (CHAR16) (gOptionBlockWidth + LEFT_SKIPPED_COLUMNS);
+  gOptionBlockWidth = (CHAR16) (gOptionBlockWidth - LEFT_SKIPPED_COLUMNS);
 
   //
   // Initialize the strings for the browser, upon exit of the browser, the strings will be freed
@@ -2076,7 +2077,11 @@ LoadFormConfig (
     if (EFI_ERROR (Status)) {
       return Status;
     }
-    
+
+    if ((Question->Operand == EFI_IFR_STRING_OP) || (Question->Operand == EFI_IFR_PASSWORD_OP)) {
+      HiiSetString (FormSet->HiiHandle, Question->HiiValue.Value.string, (CHAR16*)Question->BufferValue, NULL);
+    }
+
     //
     // Check whether EfiVarstore with CallBack can be got.
     //
@@ -2108,12 +2113,7 @@ LoadFormConfig (
         ActionRequest = EFI_BROWSER_ACTION_REQUEST_NONE;
         HiiValue = &Question->HiiValue;
         BufferValue = (UINT8 *) &Question->HiiValue.Value;
-        if (HiiValue->Type == EFI_IFR_TYPE_STRING) {
-          //
-          // Create String in HII database for Configuration Driver to retrieve
-          //
-          HiiValue->Value.string = NewString ((CHAR16 *) Question->BufferValue, FormSet->HiiHandle);
-        } else if (HiiValue->Type == EFI_IFR_TYPE_BUFFER) {
+        if (HiiValue->Type == EFI_IFR_TYPE_BUFFER) {
           BufferValue = Question->BufferValue;
         }
 
@@ -2125,14 +2125,6 @@ LoadFormConfig (
                                  (EFI_IFR_TYPE_VALUE *) BufferValue,
                                  &ActionRequest
                                  );
-
-        if (HiiValue->Type == EFI_IFR_TYPE_STRING) {
-          //
-          // Clean the String in HII Database
-          //
-          DeleteString (HiiValue->Value.string, FormSet->HiiHandle);
-        }
-
         if (!EFI_ERROR (Status)) {
           switch (ActionRequest) {
           case EFI_BROWSER_ACTION_REQUEST_RESET:

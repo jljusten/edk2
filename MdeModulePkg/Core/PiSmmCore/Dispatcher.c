@@ -2,7 +2,7 @@
   SMM Driver Dispatcher.
 
   Step #1 - When a FV protocol is added to the system every driver in the FV
-            is added to the mDiscoveredList. The SOR, Before, and After Depex are
+            is added to the mDiscoveredList. The Before, and After Depex are
             pre-processed as drivers are added to the mDiscoveredList. If an Apriori
             file exists in the FV those drivers are addeded to the
             mScheduledQueue. The mFvHandleList is used to make sure a
@@ -26,9 +26,8 @@
   is the state diagram for the DXE dispatcher
 
   Depex - Dependency Expresion.
-  SOR   - Schedule On Request - Don't schedule if this bit is set.
 
-  Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials are licensed and made available 
   under the terms and conditions of the BSD License which accompanies this 
   distribution.  The full text of the license may be found at        
@@ -588,7 +587,7 @@ SmmLoadImage (
 
 
     DEBUG ((DEBUG_INFO | DEBUG_LOAD,
-           "Loading driver at 0x%11p EntryPoint=0x%11p ",
+           "Loading SMM driver at 0x%11p EntryPoint=0x%11p ",
            (VOID *)(UINTN) ImageContext.ImageAddress,
            FUNCTION_ENTRY_POINT (ImageContext.EntryPoint)));
 
@@ -644,10 +643,8 @@ SmmLoadImage (
 
 /**
   Preprocess dependency expression and update DriverEntry to reflect the
-  state of  Before, After, and SOR dependencies. If DriverEntry->Before
-  or DriverEntry->After is set it will never be cleared. If SOR is set
-  it will be cleared by SmmSchedule(), and then the driver can be
-  dispatched.
+  state of  Before and After dependencies. If DriverEntry->Before
+  or DriverEntry->After is set it will never be cleared. 
 
   @param  DriverEntry           DriverEntry element to update .
 
@@ -662,11 +659,7 @@ SmmPreProcessDepex (
   UINT8  *Iterator;
 
   Iterator = DriverEntry->Depex;
-  if (*Iterator == EFI_DEP_SOR) {
-    DriverEntry->Unrequested = TRUE;
-  } else {
-    DriverEntry->Dependent = TRUE;
-  }
+  DriverEntry->Dependent = TRUE;
 
   if (*Iterator == EFI_DEP_BEFORE) {
     DriverEntry->Before = TRUE;
@@ -735,57 +728,14 @@ SmmGetDepexSectionAndPreProccess (
     }
   } else {
     //
-    // Set Before, After, and Unrequested state information based on Depex
-    // Driver will be put in Dependent or Unrequested state
+    // Set Before and After state information based on Depex
+    // Driver will be put in Dependent state
     //
     SmmPreProcessDepex (DriverEntry);
     DriverEntry->DepexProtocolError = FALSE;
   }
 
   return Status;
-}
-
-/**
-  Check every driver and locate a matching one. If the driver is found, the Unrequested
-  state flag is cleared.
-
-  @param  FirmwareVolumeHandle  The handle of the Firmware Volume that contains
-                                the firmware  file specified by DriverName.
-  @param  DriverName            The Driver name to put in the Dependent state.
-
-  @retval EFI_SUCCESS           The DriverName was found and it's SOR bit was
-                                cleared
-  @retval EFI_NOT_FOUND         The DriverName does not exist or it's SOR bit was
-                                not set.
-
-**/
-EFI_STATUS
-SmmSchedule (
-  IN  EFI_HANDLE  FirmwareVolumeHandle,
-  IN  EFI_GUID    *DriverName
-  )
-{
-  LIST_ENTRY            *Link;
-  EFI_SMM_DRIVER_ENTRY  *DriverEntry;
-
-  //
-  // Check every driver
-  //
-  for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
-    DriverEntry = CR(Link, EFI_SMM_DRIVER_ENTRY, Link, EFI_SMM_DRIVER_ENTRY_SIGNATURE);
-    if (DriverEntry->FvHandle == FirmwareVolumeHandle &&
-        DriverEntry->Unrequested &&
-        CompareGuid (DriverName, &DriverEntry->FileName)) {
-      //
-      // Move the driver from the Unrequested to the Dependent state
-      //
-      DriverEntry->Unrequested  = FALSE;
-      DriverEntry->Dependent    = TRUE;
-
-      return EFI_SUCCESS;
-    }
-  }
-  return EFI_NOT_FOUND;
 }
 
 /**
@@ -851,22 +801,11 @@ SmmDispatcher (
         // Update the driver state to reflect that it's been loaded
         //
         if (EFI_ERROR (Status)) {
-
-          if (Status == EFI_SECURITY_VIOLATION) {
-            //
-            // Take driver from Scheduled to Untrused state
-            //
-            DriverEntry->Untrusted = TRUE;
-          } else {
-            //
-            // The SMM Driver could not be loaded, and do not attempt to load or start it again.
-            // Take driver from Scheduled to Initialized.
-            //
-            // This case include the Never Trusted state if EFI_ACCESS_DENIED is returned
-            //
-            DriverEntry->Initialized  = TRUE;
-          }
-
+          //
+          // The SMM Driver could not be loaded, and do not attempt to load or start it again.
+          // Take driver from Scheduled to Initialized.
+          //
+          DriverEntry->Initialized  = TRUE;
           DriverEntry->Scheduled = FALSE;
           RemoveEntryList (&DriverEntry->ScheduledLink);
 
@@ -974,12 +913,17 @@ SmmInsertOnScheduledQueueWhileProcessingBeforeAndAfter (
   //
   for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
     DriverEntry = CR(Link, EFI_SMM_DRIVER_ENTRY, Link, EFI_SMM_DRIVER_ENTRY_SIGNATURE);
-    if (DriverEntry->Before && DriverEntry->Dependent) {
+    if (DriverEntry->Before && DriverEntry->Dependent && DriverEntry != InsertedDriverEntry) {
+      DEBUG ((DEBUG_DISPATCH, "Evaluate SMM DEPEX for FFS(%g)\n", &DriverEntry->FileName));
+      DEBUG ((DEBUG_DISPATCH, "  BEFORE FFS(%g) = ", &DriverEntry->BeforeAfterGuid));
       if (CompareGuid (&InsertedDriverEntry->FileName, &DriverEntry->BeforeAfterGuid)) {
         //
         // Recursively process BEFORE
         //
+        DEBUG ((DEBUG_DISPATCH, "TRUE\n  END\n  RESULT = TRUE\n"));
         SmmInsertOnScheduledQueueWhileProcessingBeforeAndAfter (DriverEntry);
+      } else {
+        DEBUG ((DEBUG_DISPATCH, "FALSE\n  END\n  RESULT = FALSE\n"));
       }
     }
   }
@@ -998,12 +942,17 @@ SmmInsertOnScheduledQueueWhileProcessingBeforeAndAfter (
   //
   for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
     DriverEntry = CR(Link, EFI_SMM_DRIVER_ENTRY, Link, EFI_SMM_DRIVER_ENTRY_SIGNATURE);
-    if (DriverEntry->After && DriverEntry->Dependent) {
+    if (DriverEntry->After && DriverEntry->Dependent && DriverEntry != InsertedDriverEntry) {
+      DEBUG ((DEBUG_DISPATCH, "Evaluate SMM DEPEX for FFS(%g)\n", &DriverEntry->FileName));
+      DEBUG ((DEBUG_DISPATCH, "  AFTER FFS(%g) = ", &DriverEntry->BeforeAfterGuid));
       if (CompareGuid (&InsertedDriverEntry->FileName, &DriverEntry->BeforeAfterGuid)) {
         //
         // Recursively process AFTER
         //
+        DEBUG ((DEBUG_DISPATCH, "TRUE\n  END\n  RESULT = TRUE\n"));
         SmmInsertOnScheduledQueueWhileProcessingBeforeAndAfter (DriverEntry);
+      } else {
+        DEBUG ((DEBUG_DISPATCH, "FALSE\n  END\n  RESULT = FALSE\n"));
       }
     }
   }
@@ -1110,7 +1059,7 @@ SmmFvToDevicePath (
 /**
   Add an entry to the mDiscoveredList. Allocate memory to store the DriverEntry,
   and initilize any state variables. Read the Depex from the FV and store it
-  in DriverEntry. Pre-process the Depex to set the SOR, Before and After state.
+  in DriverEntry. Pre-process the Depex to set the Before and After state.
   The Discovered list is never free'ed and contains booleans that represent the
   other possible SMM driver states.
 
@@ -1340,6 +1289,8 @@ SmmDriverDispatchHandler (
           DriverEntry->Dependent = FALSE;
           DriverEntry->Scheduled = TRUE;
           InsertTailList (&mScheduledQueue, &DriverEntry->ScheduledLink);
+          DEBUG ((DEBUG_DISPATCH, "Evaluate SMM DEPEX for FFS(%g)\n", &DriverEntry->FileName));
+          DEBUG ((DEBUG_DISPATCH, "  RESULT = TRUE (Apriori)\n"));
           break;
         }
       }

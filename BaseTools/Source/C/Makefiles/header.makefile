@@ -39,19 +39,20 @@ CPPFLAGS = $(INCLUDE)
 CFLAGS = -MD -fshort-wchar -fno-strict-aliasing -fno-merge-constants -nostdlib -Wall -Werror -c -g
 LFLAGS =
 
+ifeq ($(ARCH), IA32)
 #
-# Snow Leopard  is a 32-bit and 64-bit environment. uname -m returns -i386, but gcc defaults 
-#  to x86_64. So make sure tools match uname -m
+# Snow Leopard  is a 32-bit and 64-bit environment. uname -m returns i386, but gcc defaults 
+#  to x86_64. So make sure tools match uname -m. You can manual have a 64-bit kernal on Snow Leopard
+#  so only do this is uname -m returns i386.
 #
 uname_s = $(shell uname -s)
-uname_m = $(shell uname -m)
 ifeq ($(uname_s),Darwin)
-ifeq ($(uname_m),i386)
   CFLAGS   += -arch i386
   CPPFLAGS += -arch i386
   LFLAGS   += -arch i386
 endif
 endif
+
   
 .PHONY: all
 .PHONY: install

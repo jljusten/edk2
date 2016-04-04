@@ -40,6 +40,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/UgaDraw.h>
 #include <Protocol/HiiFont.h>
 #include <Protocol/HiiImage.h>
+#include <Protocol/UsbIo.h>
 
 #include <Guid/MemoryTypeInformation.h>
 #include <Guid/FileInfo.h>
@@ -109,6 +110,15 @@ BdsLibGetImageHeader (
   IN  CHAR16                      *FileName,
   OUT EFI_IMAGE_DOS_HEADER        *DosHeader,
   OUT EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION   Hdr
+  );
+
+/**
+  This routine adjust the memory information for different memory type and 
+  save them into the variables for next boot.
+**/
+VOID
+BdsSetMemoryTypeInformationVariable (
+  VOID
   );
 
 #endif // _BDS_LIB_H_

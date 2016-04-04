@@ -14,25 +14,25 @@
 
 .text
 .align 2
-.globl ASM_PFX(ArmCleanInvalidateDataCache)
-.globl ASM_PFX(ArmCleanDataCache)
-.globl ASM_PFX(ArmInvalidateDataCache)
-.globl ASM_PFX(ArmInvalidateInstructionCache)
-.globl ASM_PFX(ArmInvalidateDataCacheEntryByMVA)
-.globl ASM_PFX(ArmCleanDataCacheEntryByMVA)
-.globl ASM_PFX(ArmCleanInvalidateDataCacheEntryByMVA)
-.globl ASM_PFX(ArmEnableMmu)
-.globl ASM_PFX(ArmDisableMmu)
-.globl ASM_PFX(ArmMmuEnabled)
-.globl ASM_PFX(ArmEnableDataCache)
-.globl ASM_PFX(ArmDisableDataCache)
-.globl ASM_PFX(ArmEnableInstructionCache)
-.globl ASM_PFX(ArmDisableInstructionCache)
-.globl ASM_PFX(ArmEnableBranchPrediction)
-.globl ASM_PFX(ArmDisableBranchPrediction)
-.globl ASM_PFX(ArmDataMemoryBarrier)
-.globl ASM_PFX(ArmDataSyncronizationBarrier) 
-.globl ASM_PFX(ArmInstructionSynchronizationBarrier)
+GCC_ASM_EXPORT(ArmCleanInvalidateDataCache)
+GCC_ASM_EXPORT(ArmCleanDataCache)
+GCC_ASM_EXPORT(ArmInvalidateDataCache)
+GCC_ASM_EXPORT(ArmInvalidateInstructionCache)
+GCC_ASM_EXPORT(ArmInvalidateDataCacheEntryByMVA)
+GCC_ASM_EXPORT(ArmCleanDataCacheEntryByMVA)
+GCC_ASM_EXPORT(ArmCleanInvalidateDataCacheEntryByMVA)
+GCC_ASM_EXPORT(ArmEnableMmu)
+GCC_ASM_EXPORT(ArmDisableMmu)
+GCC_ASM_EXPORT(ArmMmuEnabled)
+GCC_ASM_EXPORT(ArmEnableDataCache)
+GCC_ASM_EXPORT(ArmDisableDataCache)
+GCC_ASM_EXPORT(ArmEnableInstructionCache)
+GCC_ASM_EXPORT(ArmDisableInstructionCache)
+GCC_ASM_EXPORT(ArmEnableBranchPrediction)
+GCC_ASM_EXPORT(ArmDisableBranchPrediction)
+GCC_ASM_EXPORT(ArmDataMemoryBarrier)
+GCC_ASM_EXPORT(ArmDataSyncronizationBarrier)
+GCC_ASM_EXPORT(ArmInstructionSynchronizationBarrier)
 
 
 .set DC_ON, (1<<2)
@@ -58,18 +58,18 @@ ASM_PFX(ArmEnableInstructionCache):
   orr    r0,r0,r1             @Set I bit
   mcr    p15,0,r0,c1,c0,0     @Write control register configuration data
   bx     LR
-	
+  
 ASM_PFX(ArmDisableInstructionCache):
   ldr    r1,=IC_ON
   mrc    p15,0,r0,c1,c0,0     @Read control register configuration data
   bic    r0,r0,r1             @Clear I bit.
   mcr    p15,0,r0,c1,c0,0     @Write control register configuration data
   bx     LR
-	
+  
 ASM_PFX(ArmInvalidateInstructionCache):
   mov     r0,#0
   mcr     p15,0,r0,c7,c5,0     @Invalidate entire Instruction cache. 
-	                       @Also flushes the branch target cache.
+                         @Also flushes the branch target cache.
   mov     r0,#0
   mcr     p15,0,r0,c7,c10,4    @Data write buffer
   bx      LR
@@ -99,7 +99,7 @@ ASM_PFX(ArmEnableDataCache):
   orr     R0,R0,R1              @Set C bit
   mcr     p15,0,r0,c1,c0,0      @Write control register configuration data
   bx      LR
-	
+  
 ASM_PFX(ArmDisableDataCache):
   ldr     R1,=DC_ON
   mrc     p15,0,R0,c1,c0,0      @Read control register configuration data
@@ -111,7 +111,7 @@ ASM_PFX(ArmCleanDataCache):
   mrc     p15,0,r15,c7,c10,3
   bne     ASM_PFX(ArmCleanDataCache)
   mov     R0,#0
-  mcr     p15,0,R0,c7,c10,4	@Drain write buffer
+  mcr     p15,0,R0,c7,c10,4  @Drain write buffer
   bx      LR
     
 ASM_PFX(ArmInvalidateDataCache):
@@ -125,7 +125,7 @@ ASM_PFX(ArmCleanInvalidateDataCache):
   mrc     p15,0,r15,c7,c14,3
   bne     ASM_PFX(ArmCleanInvalidateDataCache)
   mov     R0,#0
-  mcr     p15,0,R0,c7,c10,4	      @Drain write buffer
+  mcr     p15,0,R0,c7,c10,4        @Drain write buffer
   bx      LR
 
 ASM_PFX(ArmEnableBranchPrediction):

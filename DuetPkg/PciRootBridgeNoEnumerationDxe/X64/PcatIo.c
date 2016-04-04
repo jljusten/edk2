@@ -26,6 +26,7 @@ BOOLEAN                  mPciOptionRomTableInstalled = FALSE;
 EFI_PCI_OPTION_ROM_TABLE mPciOptionRomTable          = {0, NULL};
 
 EFI_STATUS
+EFIAPI
 PcatRootBridgeIoIoRead (
   IN     EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL        *This,
   IN     EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH  Width,
@@ -44,6 +45,7 @@ PcatRootBridgeIoIoRead (
 }
 
 EFI_STATUS
+EFIAPI
 PcatRootBridgeIoIoWrite (
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL        *This,
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH  Width,
@@ -112,11 +114,11 @@ PcatRootBridgeIoPciRW (
 
   InStride    = 1 << (Width & 0x03);
   OutStride   = InStride;
-  if (Width >= EfiCpuIoWidthFifoUint8 && Width <= EfiCpuIoWidthFifoUint64) {
+  if (Width >= EfiPciWidthFifoUint8 && Width <= EfiPciWidthFifoUint64) {
     InStride = 0;
   }
 
-  if (Width >= EfiCpuIoWidthFillUint8 && Width <= EfiCpuIoWidthFillUint64) {
+  if (Width >= EfiPciWidthFillUint8 && Width <= EfiPciWidthFillUint64) {
     OutStride = 0;
   }
 

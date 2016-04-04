@@ -37,9 +37,11 @@
 #   None
 #
 #------------------------------------------------------------------------------
-ASM_GLOBAL ASM_PFX(GasketPeiSwitchStacks)
-ASM_PFX(GasketPeiSwitchStacks):
-//  movq    %rdx, %rdx   
+ASM_GLOBAL ASM_PFX(PeiSwitchStacks)
+ASM_PFX(PeiSwitchStacks):
+    pushq   %rbp            // stack frame is for the debugger
+    movq    %rsp, %rbp
+
     movq    %r8,  %rsp
     
     movq    %rdi, %rax
@@ -50,7 +52,7 @@ ASM_PFX(GasketPeiSwitchStacks):
     # Reserve space for register parameters (rcx, rdx, r8 & r9) on the stack,
     # in case the callee wishes to spill them.
     #
-	  subq    40, %rsp  // 32-byte shadow space plus alignment pad
+    subq    $32, %rsp  // 32-byte shadow space plus alignment pad
     call    *%rax
 
 
@@ -72,8 +74,11 @@ ASM_PFX(GasketPeiSwitchStacks):
 #   None
 #
 #------------------------------------------------------------------------------
-ASM_GLOBAL ASM_PFX(PeiSwitchStacks)
-ASM_PFX(PeiSwitchStacks):
+ASM_GLOBAL ASM_PFX(UnixPeiSwitchStacks)
+ASM_PFX(UnixPeiSwitchStacks):
+    pushq   %rbp            // stack frame is for the debugger
+    movq    %rsp, %rbp
+
     mov     %rdi, %rax
     mov     %rsi, %rdi
     mov     %rdx, %rsi
@@ -100,12 +105,16 @@ ASM_PFX(PeiSwitchStacks):
 #------------------------------------------------------------------------------    
 ASM_GLOBAL ASM_PFX(SecSwitchStack)
 ASM_PFX(SecSwitchStack):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
 
   mov     %rsp, %rax
   sub     %rdi, %rax
   add     %rsi, %rax
   mov    (%rip), %r10
   mov    %r10, (%rax) 
+  
+  popq   %rbp
   ret
   
   

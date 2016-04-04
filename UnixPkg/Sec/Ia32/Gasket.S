@@ -129,6 +129,31 @@ _GasketUintnUintnUintnUintn:
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
+.globl _GasketUintnUintnUintnUintnUintn
+_GasketUintnUintnUintnUintnUintn:
+  pushl %ebp
+  movl  %esp, %ebp
+  subl  $50, %esp           # sub extra 0x10 from the stack for the AND
+  and   $-16, %esp          # stack needs to end in 0xFFFFFFF0 before call
+  movl  8(%ebp), %eax
+  movl  %eax, -12(%ebp)
+  movl  28(%ebp), %eax
+  movl  %eax, 16(%esp)
+  movl  24(%ebp), %eax
+  movl  %eax, 12(%esp)
+  movl  20(%ebp), %eax
+  movl  %eax, 8(%esp)
+  movl  16(%ebp), %eax
+  movl  %eax, 4(%esp)
+  movl  12(%ebp), %eax
+  movl  %eax, (%esp)
+  movl  -12(%ebp), %eax
+  call  *%eax
+  leave
+  ret
+
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 .globl _GasketUintn10Args
 _GasketUintn10Args:
   pushl %ebp
@@ -239,24 +264,81 @@ _GasketUintnUint16:
   
 .globl _ReverseGasketUint64
 _ReverseGasketUint64:
-	pushl	%ebp
-	movl	%esp, %ebp
-	subl	$40, %esp
-	movl	12(%ebp), %eax
-	movl	%eax, -16(%ebp)
-	movl	16(%ebp), %eax
-	movl	%eax, -12(%ebp)
-	movl	-16(%ebp), %eax
-	movl	-12(%ebp), %edx
-	movl	%eax, (%esp)
-	movl	%edx, 4(%esp)
-	movl	8(%ebp), %eax
-	call	*%eax
-	leave
-	ret
+  pushl  %ebp
+  movl  %esp, %ebp
+  subl  $40, %esp
+  movl  12(%ebp), %eax
+  movl  %eax, -16(%ebp)
+  movl  16(%ebp), %eax
+  movl  %eax, -12(%ebp)
+  movl  -16(%ebp), %eax
+  movl  -12(%ebp), %edx
+  movl  %eax, (%esp)
+  movl  %edx, 4(%esp)
+  movl  8(%ebp), %eax
+  call  *%eax
+  leave
+  ret
   
   
-  .subsections_via_symbols
+.globl _ReverseGasketUint64Uint64
+_ReverseGasketUint64Uint64:
+  pushl   %ebp
+  movl    %esp, %ebp
+  subl    $56, %esp
+  movl    12(%ebp), %eax
+  movl    %eax, -32(%ebp)
+  movl    16(%ebp), %eax
+  movl    %eax, -28(%ebp)
+  movl    20(%ebp), %eax
+  movl    %eax, -40(%ebp)
+  movl    24(%ebp), %eax
+  movl    %eax, -36(%ebp)
+  movl    8(%ebp), %eax
+  movl    %eax, -12(%ebp)
+  movl    -40(%ebp), %eax
+  movl    -36(%ebp), %edx
+  movl    %eax, 8(%esp)
+  movl    %edx, 12(%esp)
+  movl    -32(%ebp), %eax
+  movl    -28(%ebp), %edx
+  movl    %eax, (%esp)
+  movl    %edx, 4(%esp)
+  movl    -12(%ebp), %eax
+  call    *%eax
+  leave
+  ret
+
+  
+// Sec PPI Callbacks
+
+.globl _GasketSecUnixPeiLoadFile
+_GasketSecUnixPeiLoadFile:
+  jmp    _SecUnixPeiLoadFile
+
+
+.globl _GasketSecUnixPeiAutoScan
+_GasketSecUnixPeiAutoScan:
+  jmp    _SecUnixPeiAutoScan
+
+
+.globl _GasketSecUnixUnixThunkAddress
+_GasketSecUnixUnixThunkAddress:
+  jmp    _SecUnixUnixThunkAddress
+
+
+.globl _GasketSecPeiReportStatusCode
+_GasketSecPeiReportStatusCode:
+  jmp    _SecPeiReportStatusCode
+
+
+.globl _GasketSecUnixFdAddress
+_GasketSecUnixFdAddress:
+  jmp    _SecUnixFdAddress
+
+
+.globl _GasketSecTemporaryRamSupport
+_GasketSecTemporaryRamSupport:
+  jmp    _SecTemporaryRamSupport
   
   #endif
-  

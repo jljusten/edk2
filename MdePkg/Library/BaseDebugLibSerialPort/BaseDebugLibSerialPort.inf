@@ -2,7 +2,7 @@
 #  Instance of Debug Library based on Serial Port Library.
 #  It uses Print Library to produce formatted output strings.
 #
-#  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -21,6 +21,7 @@
   MODULE_TYPE                    = BASE
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = DebugLib 
+  CONSTRUCTOR                    = BaseDebugLibSerialPortConstructor
 
 #
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
@@ -38,9 +39,9 @@
   PcdLib
   PrintLib
   BaseLib
+  DebugPrintErrorLevelLib
 
 [Pcd]
-  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel
   gEfiMdePkgTokenSpaceGuid.PcdDebugClearMemoryValue
   gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask
 

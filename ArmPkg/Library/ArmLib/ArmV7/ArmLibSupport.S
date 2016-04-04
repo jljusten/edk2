@@ -12,26 +12,35 @@
 #
 #------------------------------------------------------------------------------
 
-.globl ASM_PFX(Cp15IdCode)
-.globl ASM_PFX(Cp15CacheInfo)
-.globl ASM_PFX(ArmEnableInterrupts)
-.globl ASM_PFX(ArmDisableInterrupts)
-.globl ASM_PFX(ArmGetInterruptState)
-.globl ASM_PFX(ArmEnableFiq)
-.globl ASM_PFX(ArmDisableFiq)
-.globl ASM_PFX(ArmGetFiqState)
-.globl ASM_PFX(ArmInvalidateTlb)
-.globl ASM_PFX(ArmSetTranslationTableBaseAddress)
-.globl ASM_PFX(ArmGetTranslationTableBaseAddress)
-.globl ASM_PFX(ArmSetDomainAccessControl)
-.globl ASM_PFX(ArmUpdateTranslationTableEntry)
-.globl ASM_PFX(CPSRMaskInsert)
-.globl ASM_PFX(CPSRRead)
-.globl ASM_PFX(ReadCCSIDR)
-.globl ASM_PFX(ReadCLIDR)
+#include <AsmMacroIoLib.h>
 
 .text
 .align 2
+
+GCC_ASM_EXPORT(Cp15IdCode)
+GCC_ASM_EXPORT(Cp15CacheInfo)
+GCC_ASM_EXPORT(ArmIsMPCore)
+GCC_ASM_EXPORT(ArmEnableAsynchronousAbort)
+GCC_ASM_EXPORT(ArmDisableAsynchronousAbort)
+GCC_ASM_EXPORT(ArmEnableIrq)
+GCC_ASM_EXPORT(ArmDisableIrq)
+GCC_ASM_EXPORT(ArmGetInterruptState)
+GCC_ASM_EXPORT(ArmEnableFiq)
+GCC_ASM_EXPORT(ArmDisableFiq)
+GCC_ASM_EXPORT(ArmEnableInterrupts)
+GCC_ASM_EXPORT(ArmDisableInterrupts)
+GCC_ASM_EXPORT(ArmGetFiqState)
+GCC_ASM_EXPORT(ArmInvalidateTlb)
+GCC_ASM_EXPORT(ArmSetTTBR0)
+GCC_ASM_EXPORT(ArmGetTTBR0BaseAddress)
+GCC_ASM_EXPORT(ArmSetDomainAccessControl)
+GCC_ASM_EXPORT(ArmUpdateTranslationTableEntry)
+GCC_ASM_EXPORT(CPSRMaskInsert)
+GCC_ASM_EXPORT(CPSRRead)
+GCC_ASM_EXPORT(ReadCCSIDR)
+GCC_ASM_EXPORT(ReadCLIDR)
+
+
 
 #------------------------------------------------------------------------------
 
@@ -43,35 +52,67 @@ ASM_PFX(Cp15CacheInfo):
   mrc     p15,0,R0,c0,c0,1
   bx      LR
 
-ASM_PFX(ArmEnableInterrupts):
-  cpsie   i
-	bx      LR
+ASM_PFX(ArmIsMPCore):
+  mrc     p15,0,R0,c0,c0,5
+  // Get Multiprocessing extension (bit31) & U bit (bit30)
+  and     R0, R0, #0xC0000000
+  // if bit30 == 0 then the processor is part of a multiprocessor system)
+  and     R0, R0, #0x80000000
+  bx      LR
 
-ASM_PFX(ArmDisableInterrupts):
+ASM_PFX(ArmEnableAsynchronousAbort):
+  cpsie   a
+  isb
+  bx      LR
+
+ASM_PFX(ArmDisableAsynchronousAbort):
+  cpsid   a
+  isb
+  bx      LR
+
+ASM_PFX(ArmEnableIrq):
+  cpsie   i
+  isb
+  bx      LR
+
+ASM_PFX(ArmDisableIrq):
   cpsid   i
-	bx      LR
+  isb
+  bx      LR
 
 ASM_PFX(ArmGetInterruptState):
-	mrs     R0,CPSR
-	tst     R0,#0x80	    @Check if IRQ is enabled.
-	moveq   R0,#1
-	movne   R0,#0
-	bx      LR
+  mrs     R0,CPSR
+  tst     R0,#0x80      @Check if IRQ is enabled.
+  moveq   R0,#1
+  movne   R0,#0
+  bx      LR
 
 ASM_PFX(ArmEnableFiq):
   cpsie   f
-	bx      LR
+  isb
+  bx      LR
 
 ASM_PFX(ArmDisableFiq):
   cpsid   f
-	bx      LR
+  isb
+  bx      LR
+
+ASM_PFX(ArmEnableInterrupts):
+  cpsie   if
+  isb
+  bx      LR
+
+ASM_PFX(ArmDisableInterrupts):
+  cpsid   if
+  isb
+  bx      LR
 
 ASM_PFX(ArmGetFiqState):
-	mrs     R0,CPSR
-	tst     R0,#0x40	    @Check if FIQ is enabled.
-	moveq   R0,#1
-	movne   R0,#0
-	bx      LR
+  mrs     R0,CPSR
+  tst     R0,#0x40      @Check if FIQ is enabled.
+  moveq   R0,#1
+  movne   R0,#0
+  bx      LR
 
 ASM_PFX(ArmInvalidateTlb):
   mov     r0,#0
@@ -81,13 +122,15 @@ ASM_PFX(ArmInvalidateTlb):
   isb
   bx      lr
 
-ASM_PFX(ArmSetTranslationTableBaseAddress):
+ASM_PFX(ArmSetTTBR0):
   mcr     p15,0,r0,c2,c0,0
   isb
   bx      lr
 
-ASM_PFX(ArmGetTranslationTableBaseAddress):
+ASM_PFX(ArmGetTTBR0BaseAddress):
   mrc     p15,0,r0,c2,c0,0
+  LoadConstantToReg(0xFFFFC000, r1)
+  and     r0, r0, r1
   isb
   bx      lr
 

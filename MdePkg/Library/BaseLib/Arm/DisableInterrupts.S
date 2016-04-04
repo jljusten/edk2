@@ -16,7 +16,7 @@
 
 .text
 .p2align 2
-.globl ASM_PFX(DisableInterrupts)
+GCC_ASM_EXPORT(DisableInterrupts)
 
 #/**
 #  Disables CPU interrupts.

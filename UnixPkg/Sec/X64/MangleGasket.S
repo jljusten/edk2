@@ -9,7 +9,7 @@
 # to get the correct binding (does not work from assembly). So we have 4 functions
 # that do an indirect call, while the others call POSIX APIs directly
 #
-# movq	_gUnixRmDir@GOTPCREL(%rip), %rax 
+# movq  _gUnixRmDir@GOTPCREL(%rip), %rax 
 #
 #
 # UNIX Arg passing: RCX, RDX,  R8,  R9
@@ -34,7 +34,7 @@
 // EFI ABI code will sub 40 (0x28) from %rsp before calling a function
 //  This is the 32 (0x20) byte to spill registers and 8 bytes to align stack on 16 byte boundry.
 //
-	.text
+  .text
 
 // 32 byte shadow to spill rcx-r9, 8 bytes to align stack on 16 byte boundry
 // Any call with 0 - 4 arguments allocates 40 bytes on the stack.
@@ -47,715 +47,1072 @@
 
 
 
-	.text
+  .text
 
 
-.globl _Gasketrmdir
-_Gasketrmdir:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(Gasketrmdir)
+ASM_PFX(Gasketrmdir):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
 
-  movq    %rcx, %rdi    // Swizzle args 
-
-	movq	_gUnixRmDir@GOTPCREL(%rip), %rax  // Get function name mangled by C
-	movq	(%rax), %rax
-	call	*%rax
-    
-	pushq	  %rdi          // restore state
-	pushq	  %rsi
-	ret
-
-
-.globl _Gasketopendir
-_Gasketopendir:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+  pushq    %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq    %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
 
-	movq	_gUnixOpenDir@GOTPCREL(%rip), %rax  // Get function name mangled by C
-	movq	(%rax), %rax
-	call	*%rax
-	
-	popq  %rdi             // restore state
-	popq  %rsi
+  movq  ASM_PFX(gUnixRmDir)@GOTPCREL(%rip), %rax  // Get function name mangled by C
+  movq  (%rax), %rax
+  call  *%rax
+
+
+  popq  %rdi          // restore state
+  popq  %rsi
+  popq  %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(Gasketopendir)
+ASM_PFX(Gasketopendir):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq    %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq    %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  movq  ASM_PFX(gUnixOpenDir)@GOTPCREL(%rip), %rax  // Get function name mangled by C
+  movq  (%rax), %rax
+  call  *%rax
+  
+  popq  %rdi             // restore state
+  popq  %rsi
+  popq  %rbp
   ret
 
 
 
-.globl _Gasketstat
-_Gasketstat:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(Gasketstat)
+ASM_PFX(Gasketstat):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq    %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq    %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
 
-	movq	_gUnixStat@GOTPCREL(%rip), %rax   // Get function name mangled by C
-	movq	(%rax), %rax
-	call	*%rax
-	
-	popq  %rdi            // restore state
-	popq  %rsi
+  movq  ASM_PFX(gUnixStat)@GOTPCREL(%rip), %rax   // Get function name mangled by C
+  movq  (%rax), %rax
+  call  *%rax
+  
+
+  popq  %rdi            // restore state
+  popq  %rsi
+  popq  %rbp
   ret
-	
-	
-.globl _Gasketstatfs
-_Gasketstatfs:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+  
+  
+ASM_GLOBAL ASM_PFX(Gasketstatfs)
+ASM_PFX(Gasketstatfs):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq    %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq    %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
 
-	movq	_gUnixStatFs@GOTPCREL(%rip), %rax   // Get function name mangled by C
-	movq	(%rax), %rax
-	call	*%rax
-	
-	popq  %rdi            // restore state
-	popq  %rsi
+  movq  ASM_PFX(gUnixStatFs)@GOTPCREL(%rip), %rax   // Get function name mangled by C
+  movq  (%rax), %rax
+  call  *%rax
+  
+  popq  %rdi            // restore state
+  popq  %rsi
+  popq  %rbp
   ret
-	
-.globl _Gasketrewinddir
-_Gasketrewinddir:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+  
+ASM_GLOBAL ASM_PFX(Gasketrewinddir)
+ASM_PFX(Gasketrewinddir):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq    %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq    %rdi
+  
+  movq    %rcx, %rdi    // Swizzle args 
+
+  movq  ASM_PFX(gUnixRewinddir)@GOTPCREL(%rip), %rax   // Get function name mangled by C
+  movq  (%rax), %rax
+  call  *%rax
+  
+  popq  %rdi            // restore state
+  popq  %rsi
+  popq  %rbp
+  ret
+  
+ASM_GLOBAL ASM_PFX(Gasketreaddir)
+ASM_PFX(Gasketreaddir):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq    %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq    %rdi
+  
+  movq    %rcx, %rdi    // Swizzle args 
+
+  movq  ASM_PFX(gUnixReaddir)@GOTPCREL(%rip), %rax   // Get function name mangled by C
+  movq  (%rax), %rax
+  call  *%rax
+  
+  popq  %rdi            // restore state
+  popq  %rsi
+  popq  %rbp
+  ret
+  
+
+ASM_GLOBAL ASM_PFX(GasketmsSleep)
+ASM_PFX(GasketmsSleep):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq    %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq    %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
 
-	movq	_gUnixRewinddir@GOTPCREL(%rip), %rax   // Get function name mangled by C
-	movq	(%rax), %rax
-	call	*%rax
-	
-	popq  %rdi            // restore state
-	popq  %rsi
+  call  ASM_PFX(msSleep)
+  
+  popq  %rdi            // restore state
+  popq  %rsi
+  popq  %rbp
   ret
-	
-.globl _Gasketreaddir
-_Gasketreaddir:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
+  
+  
+ASM_GLOBAL ASM_PFX(Gasketexit)
+ASM_PFX(Gasketexit):
   movq    %rcx, %rdi    // Swizzle args 
-
-	movq	_gUnixReaddir@GOTPCREL(%rip), %rax   // Get function name mangled by C
-	movq	(%rax), %rax
-	call	*%rax
-	
-	popq  %rdi            // restore state
-	popq  %rsi
-  ret
-	
-
-.globl _GasketmsSleep
-_GasketmsSleep:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-
-	call	_msSleep
-	
-	popq  %rdi            // restore state
-	popq  %rsi
-  ret
-	
-	
-.globl _Gasketexit
-_Gasketexit:
-  movq    %rcx, %rdi    // Swizzle args 
-	call	_exit           // Less to do as we will never return to EFI ABI world
+  call  ASM_PFX(exit)           // Less to do as we will never return to EFI ABI world
 LDEAD_LOOP:
-  jmp  LDEAD_LOOP:      // _exit should never return
+  jmp  LDEAD_LOOP       // _exit should never return
 
 
 
-.globl _GasketSetTimer
-_GasketSetTimer:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(GasketSetTimer)
+ASM_PFX(GasketSetTimer):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
 
-  movq    %rcx, %rdi    // Swizzle args 
-  movq    %rdx, %rsi     
-
-	call	_SetTimer
-	
-	popq  %rdi            // restore state
-	popq  %rsi
-  ret
-
-	
-.globl _GasketGetLocalTime
-_GasketGetLocalTime:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-
-	call	_GetLocalTime
-	
-	popq  %rdi            // restore state
-	popq  %rsi
-  ret
-
-	
-
-.globl _Gasketgmtime
-_Gasketgmtime:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-
-	call	_localtime
-	
-	popq  %rdi            // restore state
-	popq  %rsi
-  ret
-
-
-
-.globl _GasketGetTimeZone
-_GasketGetTimeZone:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-	call	_GetTimeZone
-	
-	popq  %rdi            // restore state
-	popq  %rsi
-  ret
-
-	
-.globl _GasketGetDayLight
-_GasketGetDayLight:
-LFB26:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-	call	_GetDayLight
-	
-	popq  %rdi            // restore state
-	popq  %rsi
-  ret
-
-
-.globl _Gasketpoll
-_Gasketpoll:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+  pushq    %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq    %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
-  movq    %r8,  %rdx
 
-	call	  _poll
-	
-	popq  %rdi            // restore state
-	popq  %rsi
+  call  ASM_PFX(SetTimer)
+  
+  popq  %rdi            // restore state
+  popq  %rsi
+  popq  %rbp
   ret
 
+  
+ASM_GLOBAL ASM_PFX(GasketGetLocalTime)
+ASM_PFX(GasketGetLocalTime):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
 
-
-.globl _Gasketread
-_Gasketread:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
-  movq    %rdx, %rsi     
-  movq    %r8,  %rdx
 
-	call	  _read
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call  ASM_PFX(GetLocalTime)
+
+  popq  %rdi            // restore state
+  popq  %rsi
+  popq  %rbp
+  ret
+
+  
+
+ASM_GLOBAL ASM_PFX(Gasketgmtime)
+ASM_PFX(Gasketgmtime):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  call  ASM_PFX(localtime)
+
+  popq  %rdi            // restore state
+  popq  %rsi
+  popq  %rbp
   ret
 
 
-.globl _Gasketwrite
-_Gasketwrite:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+
+ASM_GLOBAL ASM_PFX(GasketGetTimeZone)
+ASM_PFX(GasketGetTimeZone):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  call  ASM_PFX(GetTimeZone)
+
+  popq  %rdi            // restore state
+  popq  %rsi
+  popq  %rbp
+  ret
+
+  
+ASM_GLOBAL ASM_PFX(GasketGetDayLight)
+ASM_PFX(GasketGetDayLight):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  call  ASM_PFX(GetDayLight)
+
+  popq  %rdi            // restore state
+  popq  %rsi
+  popq  %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(Gasketpoll)
+ASM_PFX(Gasketpoll):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
   movq    %r8,  %rdx
 
-	call	  _write
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(poll)
+
+  popq  %rdi            // restore state
+  popq  %rsi
+  popq  %rbp
   ret
 
 
-.globl _Gasketgetenv
-_Gasketgetenv:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
 
-  movq    %rcx, %rdi    // Swizzle args 
+ASM_GLOBAL ASM_PFX(Gasketread)
+ASM_PFX(Gasketread):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
 
-	call	  _getenv
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _Gasketopen
-_Gasketopen:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
   movq    %r8,  %rdx
 
-	call	  _open
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(read)
+
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
-.globl _Gasketlseek
-_Gasketlseek:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(Gasketwrite)
+ASM_PFX(Gasketwrite):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
   movq    %r8,  %rdx
 
-	call	  _lseek
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(write)
+
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
-.globl _Gasketftruncate
-_Gasketftruncate:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(Gasketgetenv)
+ASM_PFX(Gasketgetenv):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  call    ASM_PFX(getenv)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(Gasketopen)
+ASM_PFX(Gasketopen):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
   movq    %r8,  %rdx
 
-	call	  _ftruncate
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(open)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
-.globl _Gasketclose
-_Gasketclose:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(Gasketlseek)
+ASM_PFX(Gasketlseek):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
 
-  movq    %rcx, %rdi    // Swizzle args 
-
-	call	  _close
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-
-.globl _Gasketmkdir
-_Gasketmkdir:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-  movq    %rdx, %rsi     
-
-	call	  _mkdir
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _Gasketunlink
-_Gasketunlink:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-
-	call	  _unlink
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _GasketGetErrno
-_GasketGetErrno:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-	call	_GetErrno
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-.globl _Gasketclosedir
-_Gasketclosedir:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-
-	call	  _closedir
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _Gasketrename
-_Gasketrename:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-  movq    %rdx, %rsi     
-
-	call	  _rename
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _Gasketmktime
-_Gasketmktime:
-LFB42:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-  movq    %rdx, %rsi     
-
-	call	  _mktime
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _Gasketfsync
-_Gasketfsync:
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-  movq    %rdx, %rsi     
-
-	call	  _fsync
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _Gasketchmod
-_Gasketchmod:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-  movq    %rdx, %rsi     
-
-	call	  _chmod
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _Gasketutime
-_Gasketutime:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-  movq    %rdx, %rsi     
-
-	call	  _utime
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _Gaskettcflush
-_Gaskettcflush:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-  movq    %rdx, %rsi     
-
-	call	  _tcflush
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-	call	
-
-
-.globl _GasketUgaCreate
-_GasketUgaCreate:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-  movq    %rdx, %rsi     
-
-	call	  _UgaCreate
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _Gasketperror
-_Gasketperror:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-  movq    %rdx, %rsi     
-
-	call	  _perror
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _Gasketioctl
-_Gasketioctl:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
   movq    %r8,  %rdx
 
-	call	  _UnixIoCtl1
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(lseek)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
-.globl _Gasketfcntl
-_Gasketfcntl:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(Gasketftruncate)
+ASM_PFX(Gasketftruncate):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
   movq    %r8,  %rdx
 
-	call	  _UnixFctl1
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(ftruncate)
+
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(Gasketclose)
+ASM_PFX(Gasketclose):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  call    ASM_PFX(close)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
 
-.globl _Gasketcfsetispeed
-_Gasketcfsetispeed:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(Gasketmkdir)
+ASM_PFX(Gasketmkdir):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
 
-	call	  _cfsetispeed
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(mkdir)
+
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
+ASM_GLOBAL ASM_PFX(Gasketunlink)
+ASM_PFX(Gasketunlink):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
 
-.globl _Gasketcfsetospeed
-_Gasketcfsetospeed:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  call    ASM_PFX(unlink)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(GasketGetErrno)
+ASM_PFX(GasketGetErrno):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  call  ASM_PFX(GetErrno)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+ASM_GLOBAL ASM_PFX(Gasketclosedir)
+ASM_PFX(Gasketclosedir):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  call    ASM_PFX(closedir)
+
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(Gasketrename)
+ASM_PFX(Gasketrename):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
 
-	call	  _cfsetospeed
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(rename)
+
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
-.globl _Gaskettcgetattr
-_Gaskettcgetattr:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(Gasketmktime)
+ASM_PFX(Gasketmktime):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+
+  call    ASM_PFX(mktime)
+
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(Gasketfsync)
+ASM_PFX(Gasketfsync):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+
+  call    ASM_PFX(fsync)
+
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(Gasketchmod)
+ASM_PFX(Gasketchmod):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+
+  call    ASM_PFX(chmod)
+
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(Gasketutime)
+ASM_PFX(Gasketutime):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+
+  call    ASM_PFX(utime)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(Gaskettcflush)
+ASM_PFX(Gaskettcflush):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+
+  call    ASM_PFX(tcflush)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(GasketUgaCreate)
+ASM_PFX(GasketUgaCreate):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+
+  call    ASM_PFX(UgaCreate)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(Gasketperror)
+ASM_PFX(Gasketperror):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+
+  call    ASM_PFX(perror)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(Gasketioctl)
+ASM_PFX(Gasketioctl):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
   movq    %r8,  %rdx
 
-	call	  _tcgetattr
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(UnixIoCtl1)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
-.globl _Gaskettcsetattr
-_Gaskettcsetattr:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(Gasketfcntl)
+ASM_PFX(Gasketfcntl):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
   movq    %r8,  %rdx
 
-	call	  _tcsetattr
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(UnixFcntl1)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
-.globl _GasketUnixPeCoffGetEntryPoint
-_GasketUnixPeCoffGetEntryPoint:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+
+ASM_GLOBAL ASM_PFX(Gasketcfsetispeed)
+ASM_PFX(Gasketcfsetispeed):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
 
-	call	  _SecPeCoffGetEntryPoint
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(cfsetispeed)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
 
-.globl _GasketUnixPeCoffRelocateImageExtraAction
-_GasketUnixPeCoffRelocateImageExtraAction:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(Gasketcfsetospeed)
+ASM_PFX(Gasketcfsetospeed):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
 
-	call	  _SecPeCoffRelocateImageExtraAction
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(cfsetospeed)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
-.globl _GasketUnixPeCoffUnloadImageExtraAction
-_GasketUnixPeCoffUnloadImageExtraAction:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(Gaskettcgetattr)
+ASM_PFX(Gaskettcgetattr):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
 
-  movq    %rcx, %rdi    // Swizzle args 
-
-	call	  _SecPeCoffLoaderUnloadImageExtraAction
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _GasketUgaClose
-_GasketUgaClose:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
-
-  movq    %rcx, %rdi    // Swizzle args 
-
-	call	  _UgaClose
-	
-	popq    %rdi          // restore state
-	popq    %rsi
-  ret
-
-
-.globl _GasketUgaSize
-_GasketUgaSize:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
   movq    %r8,  %rdx
 
-	call	  _UgaSize
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(tcgetattr)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
-.globl _GasketUgaCheckKey
-_GasketUgaCheckKey:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(Gaskettcsetattr)
+ASM_PFX(Gaskettcsetattr):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+  movq    %r8,  %rdx
 
-	call	  _UgaCheckKey
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(tcsetattr)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
-.globl _GasketUgaGetKey
-_GasketUgaGetKey:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+ASM_GLOBAL ASM_PFX(GasketUnixPeCoffGetEntryPoint)
+ASM_PFX(GasketUnixPeCoffGetEntryPoint):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
 
-	call	  _UgaGetKey
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(SecPeCoffGetEntryPoint)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
   ret
 
 
-.globl _GasketUgaBlt
-_GasketUgaBlt:
-	pushq	  %rsi          // %rsi & %rdi are volatie in Unix and callee-save in EFI ABI
-	pushq	  %rdi
+
+ASM_GLOBAL ASM_PFX(GasketUnixPeCoffRelocateImageExtraAction)
+ASM_PFX(GasketUnixPeCoffRelocateImageExtraAction):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  call    ASM_PFX(SecPeCoffRelocateImageExtraAction)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(GasketUnixPeCoffUnloadImageExtraAction)
+ASM_PFX(GasketUnixPeCoffUnloadImageExtraAction):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  call    ASM_PFX(SecPeCoffLoaderUnloadImageExtraAction)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+
+
+
+ASM_GLOBAL ASM_PFX(Gasketsocket)
+ASM_PFX(Gasketsocket):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+  movq    %r8,  %rdx
+
+  call    ASM_PFX(socket)
+  
+
+  popq  %rdi            // restore state
+  popq  %rsi
+  popq  %rbp
+  ret
+
+
+
+ASM_GLOBAL ASM_PFX(Gasketgetifaddrs)
+ASM_PFX(Gasketgetifaddrs):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  call    ASM_PFX(getifaddrs)
+  
+
+  popq  %rbp
+  popq  %rsi
+  popq  %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(Gasketfreeifaddrs)
+ASM_PFX(Gasketfreeifaddrs):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  call    ASM_PFX(freeifaddrs)
+  
+
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(GasketUgaClose)
+ASM_PFX(GasketUgaClose):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  call    ASM_PFX(UgaClose)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+
+
+ASM_GLOBAL ASM_PFX(GasketUgaSize)
+ASM_PFX(GasketUgaSize):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+  movq    %r8,  %rdx
+
+  call    ASM_PFX(UgaSize)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(GasketUgaCheckKey)
+ASM_PFX(GasketUgaCheckKey):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  call    ASM_PFX(UgaCheckKey)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(GasketUgaGetKey)
+ASM_PFX(GasketUgaGetKey):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+
+  call    ASM_PFX(UgaGetKey)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+ASM_GLOBAL ASM_PFX(GasketUgaKeySetState)
+ASM_PFX(GasketUgaKeySetState):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+
+  call    ASM_PFX(UgaKeySetState)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(GasketUgaRegisterKeyNotify)
+ASM_PFX(GasketUgaRegisterKeyNotify):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+  movq    %r8,  %rdx
+
+  call    ASM_PFX(UgaRegisterKeyNotify)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+
+
+
+ASM_GLOBAL ASM_PFX(GasketUgaBlt)
+ASM_PFX(GasketUgaBlt):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
 
   movq    %rcx, %rdi    // Swizzle args 
   movq    %rdx, %rsi     
   movq    %r8,  %rdx
   movq    %r9,  %rcx
 
-	call	  _UgaBlt
-	
-	popq    %rdi          // restore state
-	popq    %rsi
+  call    ASM_PFX(UgaBlt)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
 
 
+ASM_GLOBAL ASM_PFX(GasketUgaCheckPointer)
+ASM_PFX(GasketUgaCheckPointer):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+
+  call    ASM_PFX(UgaCheckPointer)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(GasketUgaGetPointerState)
+ASM_PFX(GasketUgaGetPointerState):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+
+  call    ASM_PFX(UgaGetPointerState)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(GasketUnixEnableInterrupt)
+ASM_PFX(GasketUnixEnableInterrupt):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  call    ASM_PFX(UnixEnableInterrupt)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+ASM_GLOBAL ASM_PFX(GasketUnixDisableInterrupt)
+ASM_PFX(GasketUnixDisableInterrupt):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  call    ASM_PFX(UnixDisableInterrupt)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
 
 //
 // UNIX ABI to EFI ABI call
@@ -763,22 +1120,175 @@ _GasketUgaBlt:
 // UINTN
 // ReverseGasketUint64 (
 //   void *Api,
-//   UINTN Arg1,
-//   UINTN Arg2,
-//   UINTN Arg3
+//   UINTN Arg1
 //   );
-.globl _ReverseGasketUint64
-_ReverseGasketUint64:
+ASM_GLOBAL ASM_PFX(ReverseGasketUint64)
+ASM_PFX(ReverseGasketUint64):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
   movq    %rdi, %rax    // Swizzle args 
-  movq    %rsi, %r9     
-//  movq    %rdx, %rdx
-  movq    %rcx, %r8
+  movq    %rsi, %rcx     
+
+  subq  $32, %rsp        // 32-byte shadow space
+  call  *%rax
+  addq  $32, %rsp
+
+  popq   %rbp          
+  ret
+
+//
+// UNIX ABI to EFI ABI call
+//
+// UINTN
+// ReverseGasketUint64Uint64 (
+//   void *Api,
+//   UINTN Arg1
+//   UINTN Arg2
+//   );
+ASM_GLOBAL ASM_PFX(ReverseGasketUint64Uint64)
+ASM_PFX(ReverseGasketUint64Uint64):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  movq    %rdi, %rax    // Swizzle args 
+  movq    %rsi, %rcx     
+
+  subq  $32, %rsp        // 32-byte shadow space
+  call  *%rax
+  addq  $32, %rsp
+
+  popq   %rbp          
+  ret
+  
+
+// Sec PPI Callbacks
+
+ASM_GLOBAL ASM_PFX(GasketSecUnixPeiLoadFile)
+ASM_PFX(GasketSecUnixPeiLoadFile):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+  movq    %r8,  %rdx
   movq    %r9,  %rcx
 
-	subq  40, %rsp              // 32-byte shadow space plus alignment pad
-	call	*%rax
-  addq  40, %rsp
+  call    ASM_PFX(SecUnixPeiLoadFile)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
 
-	ret
-	
+
+
+ASM_GLOBAL ASM_PFX(GasketSecUnixPeiAutoScan)
+ASM_PFX(GasketSecUnixPeiAutoScan):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+  movq    %r8,  %rdx
+
+  call    ASM_PFX(SecUnixPeiAutoScan)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+ASM_GLOBAL ASM_PFX(GasketSecUnixUnixThunkAddress)
+ASM_PFX(GasketSecUnixUnixThunkAddress):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  call    ASM_PFX(SecUnixUnixThunkAddress)
+  
+
+  popq    %rdi
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(GasketSecPeiReportStatusCode)
+ASM_PFX(GasketSecPeiReportStatusCode):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+  movq    %r8,  %rdx
+  movq    %r9,  %rcx
+  movq    $0,   %r8     // BugBug: This should come from the stack
+  movq    $0,   %r9     //         But we can cheat since they are optional for bringup....
+
+  call    ASM_PFX(SecPeiReportStatusCode)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+ASM_GLOBAL ASM_PFX(GasketSecUnixFdAddress)
+ASM_PFX(GasketSecUnixFdAddress):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+  movq    %r8,  %rdx
+  movq    %r9,  %rcx
+
+  call    ASM_PFX(SecUnixFdAddress)
+
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+
+
+ASM_GLOBAL ASM_PFX(GasketSecTemporaryRamSupport)
+ASM_PFX(GasketSecTemporaryRamSupport):
+  pushq   %rbp            // stack frame is for the debugger
+  movq    %rsp, %rbp
+
+  pushq   %rsi          // %rsi & %rdi are volatile in Unix and callee-save in EFI ABI
+  pushq   %rdi
+
+  movq    %rcx, %rdi    // Swizzle args 
+  movq    %rdx, %rsi     
+  movq    %r8,  %rdx
+  movq    %r9,  %rcx
+
+  call    ASM_PFX(SecTemporaryRamSupport)
+  
+  popq    %rdi          // restore state
+  popq    %rsi
+  popq    %rbp
+  ret
+
+
+
+
 

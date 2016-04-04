@@ -16,7 +16,7 @@
 
 .text
 .p2align 2
-.globl ASM_PFX(CpuSleep)
+GCC_ASM_EXPORT(CpuSleep)
 
 #/**
 #  Places the CPU in a sleep state until an interrupt is received.

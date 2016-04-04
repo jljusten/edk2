@@ -268,6 +268,7 @@ RegisterPciDevice (
                                        &PlatformOpRomSize
                                        );
       if (!EFI_ERROR (Status)) {
+        PciIoDevice->EmbeddedRom    = FALSE;
         PciIoDevice->RomSize        = PlatformOpRomSize;
         PciIoDevice->PciIo.RomSize  = PlatformOpRomSize;
         PciIoDevice->PciIo.RomImage = PlatformOpRomBuffer;
@@ -293,6 +294,7 @@ RegisterPciDevice (
                                        &PlatformOpRomSize
                                        );
       if (!EFI_ERROR (Status)) {
+        PciIoDevice->EmbeddedRom    = FALSE;
         PciIoDevice->RomSize        = PlatformOpRomSize;
         PciIoDevice->PciIo.RomSize  = PlatformOpRomSize;
         PciIoDevice->PciIo.RomImage = PlatformOpRomBuffer;
@@ -694,7 +696,7 @@ StartPciDevicesOnBridge (
       //
       // If it is a PPB
       //
-      if (!IsListEmpty (&PciIoDevice->ChildList)) {
+      if (IS_PCI_BRIDGE (&PciIoDevice->Pci)) {
         Status = StartPciDevicesOnBridge (
                    Controller,
                    PciIoDevice,
@@ -746,7 +748,7 @@ StartPciDevicesOnBridge (
         (*NumberOfChildren)++;
       }
 
-      if (!IsListEmpty (&PciIoDevice->ChildList)) {
+      if (IS_PCI_BRIDGE (&PciIoDevice->Pci)) {
         Status = StartPciDevicesOnBridge (
                    Controller,
                    PciIoDevice,

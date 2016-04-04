@@ -39,7 +39,19 @@ AddMemoryRangeHob (
   EFI_PHYSICAL_ADDRESS        MemoryLimit
   );
 
-EFI_STATUS
+VOID
+AddUntestedMemoryBaseSizeHob (
+  EFI_PHYSICAL_ADDRESS        MemoryBase,
+  UINT64                      MemorySize
+  );
+
+VOID
+AddUntestedMemoryRangeHob (
+  EFI_PHYSICAL_ADDRESS        MemoryBase,
+  EFI_PHYSICAL_ADDRESS        MemoryLimit
+  );
+
+EFI_PHYSICAL_ADDRESS
 MemDetect (
   VOID
   );

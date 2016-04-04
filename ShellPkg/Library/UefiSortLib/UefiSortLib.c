@@ -1,7 +1,7 @@
 /** @file
   Library used for sorting routines.
 
-  Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved. <BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -71,7 +71,7 @@ QuickSortWorker (
 
   if ( Count < 2
     || ElementSize  < 1
-    ){
+   ){
     return;
   }
 
@@ -89,7 +89,7 @@ QuickSortWorker (
   for ( LoopCount = 0
       ; LoopCount < Count -1
       ; LoopCount++
-      ){
+     ){
     //
     // if the element is less than the pivot
     //
@@ -118,19 +118,23 @@ QuickSortWorker (
   // Now recurse on 2 paritial lists.  neither of these will have the 'pivot' element
   // IE list is sorted left half, pivot element, sorted right half...
   //
-  QuickSortWorker(
-    BufferToSort,
-    NextSwapLocation,
-    ElementSize,
-    CompareFunction,
-    Buffer);
+  if (NextSwapLocation >= 2) {
+    QuickSortWorker(
+      BufferToSort,
+      NextSwapLocation,
+      ElementSize,
+      CompareFunction,
+      Buffer);
+  }
 
-  QuickSortWorker(
-    (UINT8 *)BufferToSort + (NextSwapLocation+1) * ElementSize,
-    Count - NextSwapLocation - 1,
-    ElementSize,
-    CompareFunction,
-    Buffer);
+  if ((Count - NextSwapLocation - 1) >= 2) {
+    QuickSortWorker(
+      (UINT8 *)BufferToSort + (NextSwapLocation+1) * ElementSize,
+      Count - NextSwapLocation - 1,
+      ElementSize,
+      CompareFunction,
+      Buffer);
+  }
 
   return;
 }
@@ -181,7 +185,7 @@ PerformQuickSort (
 }
 
 /**
-  function to compare 2 device paths for use in QuickSort
+  Function to compare 2 device paths for use in QuickSort.
 
   @param[in] Buffer1            pointer to Device Path poiner to compare
   @param[in] Buffer2            pointer to second DevicePath pointer to compare
@@ -191,6 +195,7 @@ PerformQuickSort (
   @return > 0                   Buffer1 is greater than Buffer2
 **/
 INTN
+EFIAPI
 DevicePathCompare (
   IN  CONST VOID             *Buffer1,
   IN  CONST VOID             *Buffer2
@@ -291,3 +296,24 @@ StringNoCaseCompare (
 }
 
 
+/**
+  Function to compare 2 strings.
+
+  @param[in] Buffer1            Pointer to String to compare (CHAR16**).
+  @param[in] Buffer2            Pointer to second String to compare (CHAR16**).
+
+  @retval 0                     Buffer1 equal to Buffer2.
+  @return < 0                   Buffer1 is less than Buffer2.
+  @return > 0                   Buffer1 is greater than Buffer2.
+**/
+INTN
+EFIAPI
+StringCompare (
+  IN  CONST VOID                *Buffer1,
+  IN  CONST VOID                *Buffer2
+  )
+{
+  return (StrCmp(
+    *(CHAR16**)Buffer1,
+    *(CHAR16**)Buffer2));
+}

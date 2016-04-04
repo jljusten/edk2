@@ -1,7 +1,7 @@
 ## @file
 #  EFI/Framework Open Virtual Machine Firmware (OVMF) platform
 #
-#  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -30,9 +30,10 @@
   FLASH_DEFINITION               = OvmfPkg/OvmfPkgIa32X64.fdf
 
 [BuildOptions]
-  GCC:*_*_*_CC_FLAGS             = -DMDEPKG_NDEBUG
-  INTEL:*_*_*_CC_FLAGS           = /D MDEPKG_NDEBUG
-  MSFT:*_*_*_CC_FLAGS            = /D MDEPKG_NDEBUG
+  GCC:RELEASE_*_*_CC_FLAGS             = -DMDEPKG_NDEBUG
+  INTEL:RELEASE_*_*_CC_FLAGS           = /D MDEPKG_NDEBUG
+  MSFT:RELEASE_*_*_CC_FLAGS            = /D MDEPKG_NDEBUG
+  GCC:*_*_*_CC_FLAGS                   = -mno-mmx -mno-sse
 
 ################################################################################
 #
@@ -51,7 +52,7 @@
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   TimerLib|OvmfPkg/Library/AcpiTimerLib/AcpiTimerLib.inf
   PrintLib|MdePkg/Library/BasePrintLib/BasePrintLib.inf
-  BaseMemoryLib|MdePkg/Library/BaseMemoryLib/BaseMemoryLib.inf
+  BaseMemoryLib|MdePkg/Library/BaseMemoryLibRepStr/BaseMemoryLibRepStr.inf
   BaseLib|MdePkg/Library/BaseLib/BaseLib.inf
   SynchronizationLib|MdePkg/Library/BaseSynchronizationLib/BaseSynchronizationLib.inf
   CpuLib|MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
@@ -85,21 +86,34 @@
   IpIoLib|MdeModulePkg/Library/DxeIpIoLib/DxeIpIoLib.inf
   UdpIoLib|MdeModulePkg/Library/DxeUdpIoLib/DxeUdpIoLib.inf
   DpcLib|MdeModulePkg/Library/DxeDpcLib/DxeDpcLib.inf
+  UefiUsbLib|MdePkg/Library/UefiUsbLib/UefiUsbLib.inf
+  SerializeVariablesLib|OvmfPkg/Library/SerializeVariablesLib/SerializeVariablesLib.inf
+
+!ifdef $(SOURCE_DEBUG_ENABLE)
+  PeCoffExtraActionLib|SourceLevelDebugPkg/Library/PeCoffExtraActionLibDebug/PeCoffExtraActionLibDebug.inf
+  DebugCommunicationLib|SourceLevelDebugPkg/Library/DebugCommunicationLibSerialPort/DebugCommunicationLibSerialPort.inf
+!else
   PeCoffExtraActionLib|MdePkg/Library/BasePeCoffExtraActionLibNull/BasePeCoffExtraActionLibNull.inf
   DebugAgentLib|MdeModulePkg/Library/DebugAgentLibNull/DebugAgentLibNull.inf
-  ResetSystemLib|PcAtChipsetPkg/Library/ResetSystemLib/ResetSystemLib.inf
+!endif
+
+  ResetSystemLib|OvmfPkg/Library/ResetSystemLib/ResetSystemLib.inf
+  LocalApicLib|UefiCpuPkg/Library/BaseXApicLib/BaseXApicLib.inf
+  DebugPrintErrorLevelLib|MdePkg/Library/BaseDebugPrintErrorLevelLib/BaseDebugPrintErrorLevelLib.inf  
 
 [LibraryClasses.common.SEC]
   DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
   ReportStatusCodeLib|MdeModulePkg/Library/PeiReportStatusCodeLib/PeiReportStatusCodeLib.inf
   ExtractGuidedSectionLib|MdePkg/Library/BaseExtractGuidedSectionLib/BaseExtractGuidedSectionLib.inf
+!ifdef $(SOURCE_DEBUG_ENABLE)
+  DebugAgentLib|SourceLevelDebugPkg/Library/DebugAgent/SecPeiDebugAgentLib.inf
+!endif
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
   PeiServicesLib|MdePkg/Library/PeiServicesLib/PeiServicesLib.inf
   PeiServicesTablePointerLib|MdePkg/Library/PeiServicesTablePointerLibIdt/PeiServicesTablePointerLibIdt.inf
   MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
 
 [LibraryClasses.common.PEI_CORE]
-  BaseMemoryLib|MdePkg/Library/BaseMemoryLibOptPei/BaseMemoryLibOptPei.inf
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
   PeiServicesTablePointerLib|MdePkg/Library/PeiServicesTablePointerLibIdt/PeiServicesTablePointerLibIdt.inf
   PeiServicesLib|MdePkg/Library/PeiServicesLib/PeiServicesLib.inf
@@ -112,7 +126,6 @@
   PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
 
 [LibraryClasses.common.PEIM]
-  BaseMemoryLib|MdePkg/Library/BaseMemoryLibOptPei/BaseMemoryLibOptPei.inf
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
   PeiServicesTablePointerLib|MdePkg/Library/PeiServicesTablePointerLibIdt/PeiServicesTablePointerLibIdt.inf
   PeiServicesLib|MdePkg/Library/PeiServicesLib/PeiServicesLib.inf
@@ -125,9 +138,11 @@
   PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
   PeiResourcePublicationLib|MdePkg/Library/PeiResourcePublicationLib/PeiResourcePublicationLib.inf
   ExtractGuidedSectionLib|MdePkg/Library/PeiExtractGuidedSectionLib/PeiExtractGuidedSectionLib.inf
+!ifdef $(SOURCE_DEBUG_ENABLE)
+  DebugAgentLib|SourceLevelDebugPkg/Library/DebugAgent/SecPeiDebugAgentLib.inf
+!endif
 
 [LibraryClasses.common.DXE_CORE]
-  BaseMemoryLib|MdePkg/Library/BaseMemoryLibOptDxe/BaseMemoryLibOptDxe.inf
   HobLib|MdePkg/Library/DxeCoreHobLib/DxeCoreHobLib.inf
   DxeCoreEntryPoint|MdePkg/Library/DxeCoreEntryPoint/DxeCoreEntryPoint.inf
   MemoryAllocationLib|MdeModulePkg/Library/DxeCoreMemoryAllocationLib/DxeCoreMemoryAllocationLib.inf
@@ -135,9 +150,11 @@
   DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   ExtractGuidedSectionLib|MdePkg/Library/DxeExtractGuidedSectionLib/DxeExtractGuidedSectionLib.inf
+!ifdef $(SOURCE_DEBUG_ENABLE)
+  DebugAgentLib|SourceLevelDebugPkg/Library/DebugAgent/DxeDebugAgentLib.inf
+!endif
 
 [LibraryClasses.common.DXE_RUNTIME_DRIVER]
-  BaseMemoryLib|MdePkg/Library/BaseMemoryLibOptDxe/BaseMemoryLibOptDxe.inf
   HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
   DxeCoreEntryPoint|MdePkg/Library/DxeCoreEntryPoint/DxeCoreEntryPoint.inf
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
@@ -148,7 +165,6 @@
   DxeServicesTableLib|MdePkg/Library/DxeServicesTableLib/DxeServicesTableLib.inf
 
 [LibraryClasses.common.UEFI_DRIVER]
-  BaseMemoryLib|MdePkg/Library/BaseMemoryLibOptDxe/BaseMemoryLibOptDxe.inf
   HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
   DxeCoreEntryPoint|MdePkg/Library/DxeCoreEntryPoint/DxeCoreEntryPoint.inf
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
@@ -158,7 +174,6 @@
   UefiScsiLib|MdePkg/Library/UefiScsiLib/UefiScsiLib.inf
 
 [LibraryClasses.common.DXE_DRIVER]
-  BaseMemoryLib|MdePkg/Library/BaseMemoryLibOptDxe/BaseMemoryLibOptDxe.inf
   HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
   PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
@@ -173,7 +188,6 @@
   PlatformBdsLib|OvmfPkg/Library/PlatformBdsLib/PlatformBdsLib.inf
 
 [LibraryClasses.common.UEFI_APPLICATION]
-  BaseMemoryLib|MdePkg/Library/BaseMemoryLibOptDxe/BaseMemoryLibOptDxe.inf
   HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
   DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
@@ -188,6 +202,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeUseMemory|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSupportUefiDecompress|FALSE
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|TRUE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange|FALSE
 
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutGopSupport|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutUgaSupport|FALSE
@@ -196,9 +211,6 @@
 
 [PcdsFixedAtBuild]
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeMemorySize|1
-  gEfiSioTokenSpaceGuid.PcdSerialRegisterBase|0x3F8
-  gEfiSioTokenSpaceGuid.PcdSerialLineControl|0x07
-  gEfiSioTokenSpaceGuid.PcdSerialBoudRate|115200
 
   gEfiMdePkgTokenSpaceGuid.PcdMaximumGuidedExtractHandler|0x10
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxFvSupported|6
@@ -214,7 +226,13 @@
 
   gEfiMdePkgTokenSpaceGuid.PcdReportStatusCodePropertyMask|0x07
   gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x8000004F
+!ifdef $(SOURCE_DEBUG_ENABLE)
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x17
+!else
   gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x2F
+!endif
+
+  gEfiSourceLevelDebugPkgTokenSpaceGuid.PcdDebugLoadImageMethod|0x2
 
 ################################################################################
 #
@@ -224,7 +242,7 @@
 
 [PcdsDynamicDefault]
   gEfiMdeModulePkgTokenSpaceGuid.PcdEmuVariableNvStoreReserved|0
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase|0
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase64|0
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingBase|0
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareBase|0
 
@@ -325,6 +343,7 @@
   PcAtChipsetPkg/Bus/Pci/IdeControllerDxe/IdeControllerDxe.inf
   MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
   MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
+  MdeModulePkg/Universal/MemoryTest/NullMemoryTestDxe/NullMemoryTestDxe.inf
 
   OptionRomPkg/CirrusLogic5430Dxe/CirrusLogic5430Dxe.inf
 
@@ -362,4 +381,13 @@
   MdeModulePkg/Universal/Network/UefiPxeBcDxe/UefiPxeBcDxe.inf
   MdeModulePkg/Universal/Network/IScsiDxe/IScsiDxe.inf
 !endif
-  
+
+  #
+  # Usb Support
+  #
+  MdeModulePkg/Bus/Pci/UhciDxe/UhciDxe.inf
+  MdeModulePkg/Bus/Pci/EhciDxe/EhciDxe.inf
+  MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
+  MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
+  MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
+

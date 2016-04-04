@@ -23,6 +23,7 @@ import glob
 import time
 import platform
 import traceback
+import encodings.ascii 
 
 from struct import *
 from threading import *
@@ -304,7 +305,7 @@ class BuildUnit:
 
     ## str() method
     #
-    #   It just returns the string representaion of self.BuildObject
+    #   It just returns the string representation of self.BuildObject
     #
     #   @param  self        The object pointer
     #
@@ -735,7 +736,7 @@ class Build():
         self.LoadFixAddress = 0
         self.UniFlag        = UniFlag
 
-        # print dot charater during doing some time-consuming work
+        # print dot character during doing some time-consuming work
         self.Progress = Utils.Progressor()
 
         # parse target.txt, tools_def.txt, and platform file
@@ -942,7 +943,7 @@ class Build():
 
     ## Build a module or platform
     #
-    # Create autogen code and makfile for a module or platform, and the launch
+    # Create autogen code and makefile for a module or platform, and the launch
     # "make" command to build it
     #
     #   @param  Target                      The target of build command
@@ -998,7 +999,7 @@ class Build():
                 EdkLogger.error("build", FILE_DELETE_FAILURE, ExtraData=str(X))
         return True
 
-    ## Rebase module image and Get function address for the inpug module list.
+    ## Rebase module image and Get function address for the input module list.
     #
     def _RebaseModule (self, MapBuffer, BaseAddress, ModuleList, AddrIsOffset = True, ModeIsSmm = False):
         if ModeIsSmm:
@@ -1267,9 +1268,9 @@ class Build():
         if len (SmmModuleList) > 0:
             MapBuffer.write('SMM_CODE_PAGE_NUMBER      = 0x%x\n' % (SmmSize/0x1000))
         
-        PeiBaseAddr = TopMemoryAddress - RtSize - BtSize
+        PeiBaseAddr = TopMemoryAddress - RtSize - BtSize 
         BtBaseAddr  = TopMemoryAddress - RtSize
-        RtBaseAddr  = TopMemoryAddress - ReservedRuntimeMemorySize
+        RtBaseAddr  = TopMemoryAddress - ReservedRuntimeMemorySize 
 
         self._RebaseModule (MapBuffer, PeiBaseAddr, PeiModuleList, TopMemoryAddress == 0)
         self._RebaseModule (MapBuffer, BtBaseAddr, BtModuleList, TopMemoryAddress == 0)
@@ -1785,7 +1786,8 @@ def Main():
     else:
         GlobalData.gIsWindows = False
 
-    EdkLogger.quiet(time.strftime("%H:%M:%S, %b.%d %Y ", time.localtime()) + "[%s]\n" % platform.platform())
+    EdkLogger.quiet("Build environment: %s" % platform.platform())
+    EdkLogger.quiet(time.strftime("Build start time: %H:%M:%S, %b.%d %Y\n", time.localtime()));
     ReturnCode = 0
     MyBuild = None
     try:
@@ -1917,8 +1919,9 @@ def Main():
         MyBuild.BuildReport.GenerateReport(BuildDuration)
         MyBuild.Db.Close()
     EdkLogger.SetLevel(EdkLogger.QUIET)
-    EdkLogger.quiet("\n- %s -\n%s [%s]" % (Conclusion, time.strftime("%H:%M:%S, %b.%d %Y", time.localtime()), BuildDuration))
-
+    EdkLogger.quiet("\n- %s -" % Conclusion)
+    EdkLogger.quiet(time.strftime("Build end time: %H:%M:%S, %b.%d %Y", time.localtime()))
+    EdkLogger.quiet("Build total time: %s\n" % BuildDuration)
     return ReturnCode
 
 if __name__ == '__main__':

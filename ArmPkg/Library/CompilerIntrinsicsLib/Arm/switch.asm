@@ -14,16 +14,16 @@
 
 
 
-    EXPORT	__ARM_switch8
+    EXPORT  __ARM_switch8
 
-    AREA	ArmSwitch, CODE, READONLY
-	
+    AREA  ArmSwitch, CODE, READONLY
+  
 __ARM_switch8
-	LDRB	  r12,[lr,#-1]
-	CMP		  r3,r12
-	LDRBCC	r3,[lr,r3]
-	LDRBCS	r3,[lr,r12]
-	ADD		  r12,lr,r3,LSL #1
-	BX		  r12
+  LDRB    r12,[lr,#-1]
+  CMP      r3,r12
+  LDRBCC  r3,[lr,r3]
+  LDRBCS  r3,[lr,r12]
+  ADD      r12,lr,r3,LSL #1
+  BX      r12
   
     END

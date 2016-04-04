@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2007, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -84,7 +84,7 @@ CreateEndOpCode (
     return EFI_BUFFER_TOO_SMALL;
   }
 
-  End.Header.Length  = sizeof (EFI_IFR_END);
+  End.Header.Length  = (UINT8) sizeof (EFI_IFR_END);
   End.Header.OpCode  = EFI_IFR_END_OP;
   End.Header.Scope   = 0;
 
@@ -116,7 +116,7 @@ CreateDefaultOpCode (
   }
 
   Default.Header.OpCode = EFI_IFR_DEFAULT_OP;
-  Default.Header.Length = sizeof (EFI_IFR_DEFAULT);
+  Default.Header.Length = (UINT8) sizeof (EFI_IFR_DEFAULT);
   Default.Header.Scope  = 0;
   Default.Type          = Type;
   Default.DefaultId     = EFI_HII_DEFAULT_CLASS_STANDARD;
@@ -153,7 +153,7 @@ CreateActionOpCode (
   }
 
   Action.Header.OpCode          = EFI_IFR_ACTION_OP;
-  Action.Header.Length          = sizeof (EFI_IFR_ACTION);
+  Action.Header.Length          = (UINT8) sizeof (EFI_IFR_ACTION);
   Action.Header.Scope           = 0;
   Action.Question.QuestionId    = QuestionId;
   Action.Question.Header.Prompt = Prompt;
@@ -188,7 +188,7 @@ CreateSubTitleOpCode (
   }
 
   Subtitle.Header.OpCode    = EFI_IFR_SUBTITLE_OP;
-  Subtitle.Header.Length    = sizeof (EFI_IFR_SUBTITLE);
+  Subtitle.Header.Length    = (UINT8) sizeof (EFI_IFR_SUBTITLE);
   Subtitle.Header.Scope     = Scope;
   Subtitle.Statement.Prompt = Prompt;
   Subtitle.Statement.Help   = Help;
@@ -220,7 +220,7 @@ CreateTextOpCode (
   }
 
   Text.Header.OpCode    = EFI_IFR_TEXT_OP;
-  Text.Header.Length    = sizeof (EFI_IFR_TEXT);
+  Text.Header.Length    = (UINT8) sizeof (EFI_IFR_TEXT);
   Text.Header.Scope     = 0;
   Text.Statement.Prompt = Prompt;
   Text.Statement.Help   = Help;
@@ -257,7 +257,7 @@ CreateGotoOpCode (
   }
 
   Goto.Header.OpCode          = EFI_IFR_REF_OP;
-  Goto.Header.Length          = sizeof (EFI_IFR_REF);
+  Goto.Header.Length          = (UINT8) sizeof (EFI_IFR_REF);
   Goto.Header.Scope           = 0;
   Goto.Question.Header.Prompt = Prompt;
   Goto.Question.Header.Help   = Help;
@@ -297,7 +297,7 @@ CreateOneOfOptionOpCode (
 
   for (Index = 0; Index < OptionCount; Index++) {
     OneOfOption.Header.OpCode = EFI_IFR_ONE_OF_OPTION_OP;
-    OneOfOption.Header.Length = sizeof (EFI_IFR_ONE_OF_OPTION);
+    OneOfOption.Header.Length = (UINT8) sizeof (EFI_IFR_ONE_OF_OPTION);
     OneOfOption.Header.Scope  = 0;
 
     OneOfOption.Option        = OptionsList[Index].StringToken;
@@ -345,7 +345,7 @@ CreateOneOfOpCode (
   }
 
   OneOf.Header.OpCode                   = EFI_IFR_ONE_OF_OP;
-  OneOf.Header.Length                   = sizeof (EFI_IFR_ONE_OF);
+  OneOf.Header.Length                   = (UINT8) sizeof (EFI_IFR_ONE_OF);
   OneOf.Header.Scope                    = 1;
   OneOf.Question.Header.Prompt          = Prompt;
   OneOf.Question.Header.Help            = Help;
@@ -394,9 +394,7 @@ CreateOrderedListOpCode (
     return EFI_INVALID_PARAMETER;
   }
 
-  if ((OrderedListFlags != 0) &&
-      (OrderedListFlags != EFI_IFR_UNIQUE_SET) &&
-      (OrderedListFlags != EFI_IFR_NO_EMPTY_SET)) {
+  if ((OrderedListFlags & (~(EFI_IFR_UNIQUE_SET | EFI_IFR_NO_EMPTY_SET))) != 0) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -406,7 +404,7 @@ CreateOrderedListOpCode (
   }
 
   OrderedList.Header.OpCode                   = EFI_IFR_ORDERED_LIST_OP;
-  OrderedList.Header.Length                   = sizeof (EFI_IFR_ORDERED_LIST);
+  OrderedList.Header.Length                   = (UINT8) sizeof (EFI_IFR_ORDERED_LIST);
   OrderedList.Header.Scope                    = 1;
   OrderedList.Question.Header.Prompt          = Prompt;
   OrderedList.Question.Header.Help            = Help;
@@ -454,7 +452,7 @@ CreateCheckBoxOpCode (
   }
 
   CheckBox.Header.OpCode                   = EFI_IFR_CHECKBOX_OP;
-  CheckBox.Header.Length                   = sizeof (EFI_IFR_CHECKBOX);
+  CheckBox.Header.Length                   = (UINT8) sizeof (EFI_IFR_CHECKBOX);
   CheckBox.Header.Scope                    = 0;
   CheckBox.Question.QuestionId             = QuestionId;
   CheckBox.Question.VarStoreId             = VarStoreId;
@@ -506,7 +504,7 @@ CreateNumericOpCode (
   }
 
   Numeric.Header.OpCode                   = EFI_IFR_NUMERIC_OP;
-  Numeric.Header.Length                   = sizeof (EFI_IFR_NUMERIC);
+  Numeric.Header.Length                   = (UINT8) sizeof (EFI_IFR_NUMERIC);
   Numeric.Header.Scope                    = 1;
   Numeric.Question.QuestionId             = QuestionId;
   Numeric.Question.VarStoreId             = VarStoreId;
@@ -587,7 +585,7 @@ CreateStringOpCode (
   }
 
   String.Header.OpCode                   = EFI_IFR_STRING_OP;
-  String.Header.Length                   = sizeof (EFI_IFR_STRING);
+  String.Header.Length                   = (UINT8) sizeof (EFI_IFR_STRING);
   String.Header.Scope                    = 0;
   String.Question.Header.Prompt          = Prompt;
   String.Question.Header.Help            = Help;
@@ -624,7 +622,7 @@ CreateBannerOpCode (
   }
 
   Banner.Header.OpCode  = EFI_IFR_GUID_OP;
-  Banner.Header.Length  = sizeof (EFI_IFR_GUID_BANNER);
+  Banner.Header.Length  = (UINT8) sizeof (EFI_IFR_GUID_BANNER);
   Banner.Header.Scope   = 0;
   EfiCopyMem (&Banner.Guid, &mIfrVendorGuid, sizeof (EFI_IFR_GUID));
   Banner.ExtendOpCode   = EFI_IFR_EXTEND_OP_BANNER;

@@ -542,11 +542,13 @@ DestroyStorage (
 /**
   Free resources of a Statement.
 
+  @param  FormSet                Pointer of the FormSet
   @param  Statement              Pointer of the Statement
 
 **/
 VOID
 DestroyStatement (
+  IN     FORM_BROWSER_FORMSET    *FormSet,
   IN OUT FORM_BROWSER_STATEMENT  *Statement
   )
 {
@@ -608,18 +610,23 @@ DestroyStatement (
   if (Statement->BufferValue != NULL) {
     FreePool (Statement->BufferValue);
   }
+  if (Statement->Operand == EFI_IFR_STRING_OP || Statement->Operand == EFI_IFR_PASSWORD_OP) {
+    DeleteString(Statement->HiiValue.Value.string, FormSet->HiiHandle);
+  }
 }
 
 
 /**
   Free resources of a Form.
 
+  @param  FormSet                Pointer of the FormSet
   @param  Form                   Pointer of the Form.
 
 **/
 VOID
 DestroyForm (
-  IN OUT FORM_BROWSER_FORM  *Form
+  IN     FORM_BROWSER_FORMSET  *FormSet,
+  IN OUT FORM_BROWSER_FORM     *Form
   )
 {
   LIST_ENTRY              *Link;
@@ -645,7 +652,7 @@ DestroyForm (
     Statement = FORM_BROWSER_STATEMENT_FROM_LINK (Link);
     RemoveEntryList (&Statement->Link);
 
-    DestroyStatement (Statement);
+    DestroyStatement (FormSet, Statement);
   }
 
   //
@@ -731,7 +738,7 @@ DestroyFormSet (
       Form = FORM_BROWSER_FORM_FROM_LINK (Link);
       RemoveEntryList (&Form->Link);
 
-      DestroyForm (Form);
+      DestroyForm (FormSet, Form);
     }
   }
 
@@ -1063,11 +1070,11 @@ ParseOpCodes (
           break;
 
         case EFI_IFR_TYPE_DATE:
-          ExpressionOpCode->ValueWidth = sizeof (EFI_IFR_DATE);
+          ExpressionOpCode->ValueWidth = (UINT8) sizeof (EFI_IFR_DATE);
           break;
 
         case EFI_IFR_TYPE_TIME:
-          ExpressionOpCode->ValueWidth = sizeof (EFI_IFR_TIME);
+          ExpressionOpCode->ValueWidth = (UINT8) sizeof (EFI_IFR_TIME);
           break;
 
         case EFI_IFR_TYPE_OTHER:
@@ -1499,7 +1506,7 @@ ParseOpCodes (
         CurrentStatement->Minimum = ((EFI_IFR_NUMERIC *) OpCodeData)->data.u8.MinValue;
         CurrentStatement->Maximum = ((EFI_IFR_NUMERIC *) OpCodeData)->data.u8.MaxValue;
         CurrentStatement->Step    = ((EFI_IFR_NUMERIC *) OpCodeData)->data.u8.Step;
-        CurrentStatement->StorageWidth = sizeof (UINT8);
+        CurrentStatement->StorageWidth = (UINT16) sizeof (UINT8);
         Value->Type = EFI_IFR_TYPE_NUM_SIZE_8;
         break;
 
@@ -1507,7 +1514,7 @@ ParseOpCodes (
         CopyMem (&CurrentStatement->Minimum, &((EFI_IFR_NUMERIC *) OpCodeData)->data.u16.MinValue, sizeof (UINT16));
         CopyMem (&CurrentStatement->Maximum, &((EFI_IFR_NUMERIC *) OpCodeData)->data.u16.MaxValue, sizeof (UINT16));
         CopyMem (&CurrentStatement->Step,    &((EFI_IFR_NUMERIC *) OpCodeData)->data.u16.Step,     sizeof (UINT16));
-        CurrentStatement->StorageWidth = sizeof (UINT16);
+        CurrentStatement->StorageWidth = (UINT16) sizeof (UINT16);
         Value->Type = EFI_IFR_TYPE_NUM_SIZE_16;
         break;
 
@@ -1515,7 +1522,7 @@ ParseOpCodes (
         CopyMem (&CurrentStatement->Minimum, &((EFI_IFR_NUMERIC *) OpCodeData)->data.u32.MinValue, sizeof (UINT32));
         CopyMem (&CurrentStatement->Maximum, &((EFI_IFR_NUMERIC *) OpCodeData)->data.u32.MaxValue, sizeof (UINT32));
         CopyMem (&CurrentStatement->Step,    &((EFI_IFR_NUMERIC *) OpCodeData)->data.u32.Step,     sizeof (UINT32));
-        CurrentStatement->StorageWidth = sizeof (UINT32);
+        CurrentStatement->StorageWidth = (UINT16) sizeof (UINT32);
         Value->Type = EFI_IFR_TYPE_NUM_SIZE_32;
         break;
 
@@ -1523,7 +1530,7 @@ ParseOpCodes (
         CopyMem (&CurrentStatement->Minimum, &((EFI_IFR_NUMERIC *) OpCodeData)->data.u64.MinValue, sizeof (UINT64));
         CopyMem (&CurrentStatement->Maximum, &((EFI_IFR_NUMERIC *) OpCodeData)->data.u64.MaxValue, sizeof (UINT64));
         CopyMem (&CurrentStatement->Step,    &((EFI_IFR_NUMERIC *) OpCodeData)->data.u64.Step,     sizeof (UINT64));
-        CurrentStatement->StorageWidth = sizeof (UINT64);
+        CurrentStatement->StorageWidth = (UINT16) sizeof (UINT64);
         Value->Type = EFI_IFR_TYPE_NUM_SIZE_64;
         break;
 
@@ -1558,7 +1565,7 @@ ParseOpCodes (
       ASSERT(CurrentStatement != NULL);
 
       CurrentStatement->Flags = ((EFI_IFR_CHECKBOX *) OpCodeData)->Flags;
-      CurrentStatement->StorageWidth = sizeof (BOOLEAN);
+      CurrentStatement->StorageWidth = (UINT16) sizeof (BOOLEAN);
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_BOOLEAN;
 
       InitializeRequestElement (FormSet, CurrentStatement);
@@ -1580,6 +1587,7 @@ ParseOpCodes (
 
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_STRING;
       CurrentStatement->BufferValue = AllocateZeroPool (CurrentStatement->StorageWidth + sizeof (CHAR16));
+      CurrentStatement->HiiValue.Value.string = NewString ((CHAR16*) CurrentStatement->BufferValue, FormSet->HiiHandle);
 
       InitializeRequestElement (FormSet, CurrentStatement);
       break;
@@ -1598,6 +1606,7 @@ ParseOpCodes (
 
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_STRING;
       CurrentStatement->BufferValue = AllocateZeroPool ((CurrentStatement->StorageWidth + sizeof (CHAR16)));
+      CurrentStatement->HiiValue.Value.string = NewString ((CHAR16*) CurrentStatement->BufferValue, FormSet->HiiHandle);
 
       InitializeRequestElement (FormSet, CurrentStatement);
       break;
@@ -1610,7 +1619,7 @@ ParseOpCodes (
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_DATE;
 
       if ((CurrentStatement->Flags & EFI_QF_DATE_STORAGE) == QF_DATE_STORAGE_NORMAL) {
-        CurrentStatement->StorageWidth = sizeof (EFI_HII_DATE);
+        CurrentStatement->StorageWidth = (UINT16) sizeof (EFI_HII_DATE);
 
         InitializeRequestElement (FormSet, CurrentStatement);
       } else {
@@ -1630,7 +1639,7 @@ ParseOpCodes (
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_TIME;
 
       if ((CurrentStatement->Flags & QF_TIME_STORAGE) == QF_TIME_STORAGE_NORMAL) {
-        CurrentStatement->StorageWidth = sizeof (EFI_IFR_TIME);
+        CurrentStatement->StorageWidth = (UINT16) sizeof (EFI_IFR_TIME);
 
         InitializeRequestElement (FormSet, CurrentStatement);
       } else {

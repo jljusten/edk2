@@ -1,7 +1,7 @@
 /** @file
 Implementation for EFI_HII_DATABASE_PROTOCOL.
 
-Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -86,7 +86,7 @@ GenerateHiiDatabaseRecord (
   // Backup the number of Hii handles
   //
   Private->HiiHandleCount++;
-  HiiHandle->Key = Private->HiiHandleCount;
+  HiiHandle->Key = (UINTN) Private->HiiHandleCount;
   //
   // Insert the handle to hii handle list of the whole database.
   //
@@ -856,7 +856,7 @@ InsertStringPackage (
   //
   // Collect all font block info
   //
-  Status = FindStringBlock (Private, StringPackage, (EFI_STRING_ID) (-1), NULL, NULL, NULL, &StringPackage->MaxStringId);
+  Status = FindStringBlock (Private, StringPackage, (EFI_STRING_ID) (-1), NULL, NULL, NULL, &StringPackage->MaxStringId, NULL);
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -3287,13 +3287,13 @@ HiiExportPackageLists (
   HII_DATABASE_RECORD                 *Node;
   UINTN                               UsedSize;
 
-  if (This == NULL || BufferSize == NULL || Handle == NULL) {
+  if (This == NULL || BufferSize == NULL) {
     return EFI_INVALID_PARAMETER;
   }
   if (*BufferSize > 0 && Buffer == NULL) {
     return EFI_INVALID_PARAMETER;
   }
-  if (!IsHiiHandleValid (Handle)) {
+  if ((Handle != NULL) && (!IsHiiHandleValid (Handle))) {
     return EFI_NOT_FOUND;
   }
 

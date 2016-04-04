@@ -1,7 +1,7 @@
 /** @file
 Private structures definitions in HiiDatabase.
 
-Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -158,6 +158,8 @@ typedef struct _HII_SIMPLE_FONT_PACKAGE_INSTANCE {
 typedef struct _HII_FONT_PACKAGE_INSTANCE {
   UINTN                                 Signature;
   EFI_HII_FONT_PACKAGE_HDR              *FontPkgHdr;
+  UINT16                                Height;
+  UINT16                                BaseLine;
   UINT8                                 *GlyphBlock;
   LIST_ENTRY                            FontEntry;
   LIST_ENTRY                            GlyphInfoList;
@@ -436,6 +438,7 @@ GetSystemFont (
   @param  StringTextOffset        Offset, relative to the found block address, of
                                   the  string text information.
   @param  LastStringId            Output the last string id when StringId = 0 or StringId = -1.
+  @param  StartStringId           The first id in the skip block which StringId in the block.
 
   @retval EFI_SUCCESS             The string text and font is retrieved
                                   successfully.
@@ -453,7 +456,8 @@ FindStringBlock (
   OUT UINT8                           *BlockType, OPTIONAL
   OUT UINT8                           **StringBlockAddr, OPTIONAL
   OUT UINTN                           *StringTextOffset, OPTIONAL
-  OUT EFI_STRING_ID                   *LastStringId OPTIONAL
+  OUT EFI_STRING_ID                   *LastStringId, OPTIONAL
+  OUT EFI_STRING_ID                   *StartStringId OPTIONAL
   );
 
 
@@ -1753,8 +1757,8 @@ HiiGetAltCfg (
 /**
   Compare whether two names of languages are identical.
 
-  @param  Language1              Name of language 1
-  @param  Language2              Name of language 2
+  @param  Language1              Name of language 1 from StringPackage
+  @param  Language2              Name of language 2 to be compared with language 1.
 
   @retval TRUE                   same
   @retval FALSE                  not same

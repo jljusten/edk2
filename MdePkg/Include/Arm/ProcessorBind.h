@@ -110,6 +110,34 @@ typedef INT32   INTN;
   /// Define this macro to unify the usage.
   ///
   #define ASM_GLOBAL .globl
+
+  #if !defined(__APPLE__)
+    ///
+    /// ARM EABI defines that the linker should not manipulate call relocations
+    /// (do bl/blx conversion) unless the target symbol has function type.
+    /// CodeSourcery 2010.09 started requiring the .type to function properly
+    ///
+    #define INTERWORK_FUNC(func__)   .type ASM_PFX(func__), %function
+
+    #define GCC_ASM_EXPORT(func__)  \
+             .global  _CONCATENATE (__USER_LABEL_PREFIX__, func__)    ;\
+             .type ASM_PFX(func__), %function  
+
+    #define GCC_ASM_IMPORT(func__)  \
+             .extern  _CONCATENATE (__USER_LABEL_PREFIX__, func__)
+             
+  #else
+    //
+    // .type not supported by Apple Xcode tools 
+    //
+    #define INTERWORK_FUNC(func__)  
+
+    #define GCC_ASM_EXPORT(func__)  \
+             .globl  _CONCATENATE (__USER_LABEL_PREFIX__, func__)    \
+  
+    #define GCC_ASM_IMPORT(name)  
+
+  #endif
 #endif
 
 /**
@@ -125,3 +153,5 @@ typedef INT32   INTN;
 #define FUNCTION_ENTRY_POINT(FunctionPointer) (VOID *)(UINTN)(FunctionPointer)
 
 #endif
+
+

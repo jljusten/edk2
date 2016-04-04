@@ -26,7 +26,7 @@ FV = FVMAIN_COMPACT
 
 0x000EE000|0x12000
 FV = SECFV
-  
+
 ################################################################################
 
 [FD.MEMFD]
@@ -173,7 +173,11 @@ INF  MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
 INF  MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
 INF  MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
 INF  MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+
+!ifndef $(SOURCE_DEBUG_ENABLE)
 INF  MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
+!endif
+
 INF  IntelFrameworkModulePkg/Universal/BdsDxe/BdsDxe.inf
 INF  MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
 INF  MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
@@ -186,6 +190,7 @@ INF  IntelFrameworkModulePkg/Bus/Pci/IdeBusDxe/IdeBusDxe.inf
 INF  PcAtChipsetPkg/Bus/Pci/IdeControllerDxe/IdeControllerDxe.inf
 INF  MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
 INF  MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
+INF  MdeModulePkg/Universal/MemoryTest/NullMemoryTestDxe/NullMemoryTestDxe.inf
 
 INF  PcAtChipsetPkg/IsaAcpiDxe/IsaAcpi.inf
 INF  IntelFrameworkModulePkg/Bus/Isa/IsaBusDxe/IsaBusDxe.inf
@@ -212,7 +217,6 @@ FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
   FILE DRIVER = 5D695E11-9B3F-4b83-B25F-4A8D5D69BE07 {
     SECTION PE32 = Intel3.5/EFIX64/E3507X2.EFI
   }
-
   INF  MdeModulePkg/Universal/Network/SnpDxe/SnpDxe.inf
   INF  MdeModulePkg/Universal/Network/DpcDxe/DpcDxe.inf
   INF  MdeModulePkg/Universal/Network/MnpDxe/MnpDxe.inf
@@ -227,7 +231,16 @@ FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
   INF  MdeModulePkg/Universal/Network/UefiPxeBcDxe/UefiPxeBcDxe.inf
   INF  MdeModulePkg/Universal/Network/IScsiDxe/IScsiDxe.inf
 !endif
-  
+
+#
+# Usb Support
+#
+INF  MdeModulePkg/Bus/Pci/UhciDxe/UhciDxe.inf
+INF  MdeModulePkg/Bus/Pci/EhciDxe/EhciDxe.inf
+INF  MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
+INF  MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
+INF  MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
+
 ################################################################################
 
 [FV.FVMAIN_COMPACT]

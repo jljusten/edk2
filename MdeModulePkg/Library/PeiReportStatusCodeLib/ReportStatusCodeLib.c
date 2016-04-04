@@ -1,7 +1,7 @@
 /** @file
   Instance of Report Status Code Library for PEI Phase.
 
-  Copyright (c) 2006 - 2009, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -458,7 +458,7 @@ ReportStatusCodeEx (
   )
 {
   EFI_STATUS_CODE_DATA  *StatusCodeData;
-  UINT64                Buffer[MAX_EXTENDED_DATA_SIZE / sizeof (UINT64)];
+  UINT64                Buffer[(MAX_EXTENDED_DATA_SIZE / sizeof (UINT64)) + 1];
 
   //
   // If ExtendedData is NULL and ExtendedDataSize is not zero, then ASSERT().
@@ -470,11 +470,16 @@ ReportStatusCodeEx (
   ASSERT (!((ExtendedData != NULL) && (ExtendedDataSize == 0)));
 
   if (ExtendedDataSize > (MAX_EXTENDED_DATA_SIZE - sizeof (EFI_STATUS_CODE_DATA))) {
+    //
+    // The local variable Buffer not large enough to hold the extended data associated
+    // with the status code being reported.
+    //
+    DEBUG ((EFI_D_ERROR, "Status code extended data is too large to be reported!\n"));
     return EFI_OUT_OF_RESOURCES;
   }
-  StatusCodeData = (EFI_STATUS_CODE_DATA  *)Buffer;
-  StatusCodeData->HeaderSize = sizeof (EFI_STATUS_CODE_DATA);
-  StatusCodeData->Size = (UINT16)ExtendedDataSize;
+  StatusCodeData = (EFI_STATUS_CODE_DATA  *) Buffer;
+  StatusCodeData->HeaderSize = (UINT16) sizeof (EFI_STATUS_CODE_DATA);
+  StatusCodeData->Size = (UINT16) ExtendedDataSize;
   if (ExtendedDataGuid == NULL) {
     ExtendedDataGuid = &gEfiStatusCodeSpecificDataGuid;
   }

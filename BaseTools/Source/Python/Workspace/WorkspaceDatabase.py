@@ -18,6 +18,7 @@ import sqlite3
 import os
 import os.path
 import pickle
+import uuid
 
 import Common.EdkLogger as EdkLogger
 import Common.GlobalData as GlobalData
@@ -73,6 +74,8 @@ class DscBuildData(PlatformBuildClassObject):
         TAB_DSC_DEFINES_MAKEFILE_NAME           :   "_MakefileName",
         TAB_DSC_DEFINES_BS_BASE_ADDRESS         :   "_BsBaseAddress",
         TAB_DSC_DEFINES_RT_BASE_ADDRESS         :   "_RtBaseAddress",
+        #TAB_DSC_DEFINES_RFC_LANGUAGES           :   "_RFCLanguages",
+        #TAB_DSC_DEFINES_ISO_LANGUAGES           :   "_ISOLanguages",
     }
 
     # used to compose dummy library class name for those forced library instances
@@ -99,6 +102,10 @@ class DscBuildData(PlatformBuildClassObject):
         RecordList = self._RawData[MODEL_META_DATA_DEFINE, self._Arch]
         for Record in RecordList:
             GlobalData.gEdkGlobal[Record[0]] = Record[1]
+        
+        RecordList = self._RawData[MODEL_META_DATA_GLOBAL_DEFINE, self._Arch]
+        for Record in RecordList:
+            GlobalData.gGlobalDefines[Record[0]] = Record[1]
 
     ## XXX[key] = value
     def __setitem__(self, key, value):
@@ -135,6 +142,9 @@ class DscBuildData(PlatformBuildClassObject):
         self._Pcds              = None
         self._BuildOptions      = None
         self._LoadFixAddress    = None
+        self._RFCLanguages      = None
+        self._ISOLanguages      = None
+        self._VpdToolGuid       = None
 
     ## Get architecture
     def _GetArch(self):
@@ -188,6 +198,45 @@ class DscBuildData(PlatformBuildClassObject):
                     self._SkuName = Record[1]
             elif Name == TAB_FIX_LOAD_TOP_MEMORY_ADDRESS:
                 self._LoadFixAddress = Record[1]
+            elif Name == TAB_DSC_DEFINES_RFC_LANGUAGES:
+                if not Record[1] or Record[1][0] != '"' or Record[1][-1] != '"' or len(Record[1]) == 1:
+                    EdkLogger.error('build', FORMAT_NOT_SUPPORTED, 'language code for RFC_LANGUAGES must have double quotes around it, for example: RFC_LANGUAGES = "en-us;zh-hans"',
+                                    File=self.MetaFile, Line=Record[-1])
+                LanguageCodes = Record[1][1:-1]
+                if not LanguageCodes:
+                    EdkLogger.error('build', FORMAT_NOT_SUPPORTED, 'one or more RFC4646 format language code must be provided for RFC_LANGUAGES statement',
+                                    File=self.MetaFile, Line=Record[-1])                
+                LanguageList = GetSplitValueList(LanguageCodes, TAB_SEMI_COLON_SPLIT)
+                # check whether there is empty entries in the list
+                if None in LanguageList:
+                    EdkLogger.error('build', FORMAT_NOT_SUPPORTED, 'one or more empty language code is in RFC_LANGUAGES statement',
+                                    File=self.MetaFile, Line=Record[-1])                      
+                self._RFCLanguages = LanguageList
+            elif Name == TAB_DSC_DEFINES_ISO_LANGUAGES:
+                if not Record[1] or Record[1][0] != '"' or Record[1][-1] != '"' or len(Record[1]) == 1:
+                    EdkLogger.error('build', FORMAT_NOT_SUPPORTED, 'language code for ISO_LANGUAGES must have double quotes around it, for example: ISO_LANGUAGES = "engchn"',
+                                    File=self.MetaFile, Line=Record[-1])
+                LanguageCodes = Record[1][1:-1]
+                if not LanguageCodes:
+                    EdkLogger.error('build', FORMAT_NOT_SUPPORTED, 'one or more ISO639-2 format language code must be provided for ISO_LANGUAGES statement',
+                                    File=self.MetaFile, Line=Record[-1])                    
+                if len(LanguageCodes)%3:
+                    EdkLogger.error('build', FORMAT_NOT_SUPPORTED, 'bad ISO639-2 format for ISO_LANGUAGES',
+                                    File=self.MetaFile, Line=Record[-1])
+                LanguageList = []
+                for i in range(0, len(LanguageCodes), 3):
+                    LanguageList.append(LanguageCodes[i:i+3])
+                self._ISOLanguages = LanguageList               
+            elif Name == TAB_DSC_DEFINES_VPD_TOOL_GUID:
+                #
+                # try to convert GUID to a real UUID value to see whether the GUID is format 
+                # for VPD_TOOL_GUID is correct.
+                #
+                try:
+                    uuid.UUID(Record[1])
+                except:
+                    EdkLogger.error("build", FORMAT_INVALID, "Invalid GUID format for VPD_TOOL_GUID", File=self.MetaFile)
+                self._VpdToolGuid = Record[1]                   
         # set _Header to non-None in order to avoid database re-querying
         self._Header = 'DUMMY'
 
@@ -267,6 +316,8 @@ class DscBuildData(PlatformBuildClassObject):
     def _SetSkuName(self, Value):
         if Value in self.SkuIds:
             self._SkuName = Value
+            # Needs to re-retrieve the PCD information
+            self._Pcds = None
 
     def _GetFdfFile(self):
         if self._FlashDefinition == None:
@@ -321,6 +372,33 @@ class DscBuildData(PlatformBuildClassObject):
                 self._LoadFixAddress = ''
         return self._LoadFixAddress
 
+    ## Retrieve RFCLanguage filter
+    def _GetRFCLanguages(self):
+        if self._RFCLanguages == None:
+            if self._Header == None:
+                self._GetHeaderInfo()
+            if self._RFCLanguages == None:
+                self._RFCLanguages = []
+        return self._RFCLanguages
+
+    ## Retrieve ISOLanguage filter
+    def _GetISOLanguages(self):
+        if self._ISOLanguages == None:
+            if self._Header == None:
+                self._GetHeaderInfo()
+            if self._ISOLanguages == None:
+                self._ISOLanguages = []
+        return self._ISOLanguages
+
+    ## Retrieve the GUID string for VPD tool
+    def _GetVpdToolGuid(self):
+        if self._VpdToolGuid == None:
+            if self._Header == None:
+                self._GetHeaderInfo()
+            if self._VpdToolGuid == None:
+                self._VpdToolGuid = ''
+        return self._VpdToolGuid
+      
     ## Retrieve [SkuIds] section information
     def _GetSkuIds(self):
         if self._SkuIds == None:
@@ -418,6 +496,7 @@ class DscBuildData(PlatformBuildClassObject):
                             '',
                             MaxDatumSize,
                             {},
+                            False,
                             None
                             )
                     Module.Pcds[PcdCName, TokenSpaceGuid] = Pcd
@@ -560,13 +639,10 @@ class DscBuildData(PlatformBuildClassObject):
             PcdDict[Arch, PcdCName, TokenSpaceGuid] = Setting
         # Remove redundant PCD candidates
         for PcdCName, TokenSpaceGuid in PcdSet:
-            ValueList = ['', '', '']
             Setting = PcdDict[self._Arch, PcdCName, TokenSpaceGuid]
             if Setting == None:
                 continue
-            TokenList = Setting.split(TAB_VALUE_SPLIT)
-            ValueList[0:len(TokenList)] = TokenList
-            PcdValue, DatumType, MaxDatumSize = ValueList
+            PcdValue, DatumType, MaxDatumSize = AnalyzePcdData(Setting)
             Pcds[PcdCName, TokenSpaceGuid] = PcdClassObject(
                                                 PcdCName,
                                                 TokenSpaceGuid,
@@ -576,6 +652,7 @@ class DscBuildData(PlatformBuildClassObject):
                                                 '',
                                                 MaxDatumSize,
                                                 {},
+                                                False,
                                                 None
                                                 )
         return Pcds
@@ -593,22 +670,20 @@ class DscBuildData(PlatformBuildClassObject):
         # PCD settings for certain ARCH and SKU
         #
         PcdDict = tdict(True, 4)
-        PcdSet = set()
+        PcdList = []
         # Find out all possible PCD candidates for self._Arch
         RecordList = self._RawData[Type, self._Arch]
         for TokenSpaceGuid, PcdCName, Setting, Arch, SkuName, Dummy3, Dummy4 in RecordList:
-            PcdSet.add((PcdCName, TokenSpaceGuid))
+            PcdList.append((PcdCName, TokenSpaceGuid))
             PcdDict[Arch, SkuName, PcdCName, TokenSpaceGuid] = Setting
         # Remove redundant PCD candidates, per the ARCH and SKU
-        for PcdCName, TokenSpaceGuid in PcdSet:
-            ValueList = ['', '', '']
+        for PcdCName, TokenSpaceGuid in PcdList:
             Setting = PcdDict[self._Arch, self.SkuName, PcdCName, TokenSpaceGuid]
             if Setting == None:
                 continue
-            TokenList = Setting.split(TAB_VALUE_SPLIT)
-            ValueList[0:len(TokenList)] = TokenList
-            PcdValue, DatumType, MaxDatumSize = ValueList
-
+                      
+            PcdValue, DatumType, MaxDatumSize = AnalyzePcdData(Setting)
+                
             SkuInfo = SkuInfoClass(self.SkuName, self.SkuIds[self.SkuName], '', '', '', '', '', PcdValue)
             Pcds[PcdCName, TokenSpaceGuid] = PcdClassObject(
                                                 PcdCName,
@@ -619,6 +694,7 @@ class DscBuildData(PlatformBuildClassObject):
                                                 '',
                                                 MaxDatumSize,
                                                 {self.SkuName : SkuInfo},
+                                                False,
                                                 None
                                                 )
         return Pcds
@@ -644,13 +720,10 @@ class DscBuildData(PlatformBuildClassObject):
             PcdDict[Arch, SkuName, PcdCName, TokenSpaceGuid] = Setting
         # Remove redundant PCD candidates, per the ARCH and SKU
         for PcdCName, TokenSpaceGuid in PcdSet:
-            ValueList = ['', '', '', '']
             Setting = PcdDict[self._Arch, self.SkuName, PcdCName, TokenSpaceGuid]
             if Setting == None:
                 continue
-            TokenList = Setting.split(TAB_VALUE_SPLIT)
-            ValueList[0:len(TokenList)] = TokenList
-            VariableName, VariableGuid, VariableOffset, DefaultValue = ValueList
+            VariableName, VariableGuid, VariableOffset, DefaultValue = AnalyzeHiiPcdData(Setting)
             SkuInfo = SkuInfoClass(self.SkuName, self.SkuIds[self.SkuName], VariableName, VariableGuid, VariableOffset, DefaultValue)
             Pcds[PcdCName, TokenSpaceGuid] = PcdClassObject(
                                                 PcdCName,
@@ -661,6 +734,7 @@ class DscBuildData(PlatformBuildClassObject):
                                                 '',
                                                 '',
                                                 {self.SkuName : SkuInfo},
+                                                False,
                                                 None
                                                 )
         return Pcds
@@ -678,23 +752,26 @@ class DscBuildData(PlatformBuildClassObject):
         # PCD settings for certain ARCH and SKU
         #
         PcdDict = tdict(True, 4)
-        PcdSet = set()
+        PcdList = []
         # Find out all possible PCD candidates for self._Arch
         RecordList = self._RawData[Type, self._Arch]
         for TokenSpaceGuid, PcdCName, Setting, Arch, SkuName, Dummy3, Dummy4 in RecordList:
-            PcdSet.add((PcdCName, TokenSpaceGuid))
+            PcdList.append((PcdCName, TokenSpaceGuid))
             PcdDict[Arch, SkuName, PcdCName, TokenSpaceGuid] = Setting
         # Remove redundant PCD candidates, per the ARCH and SKU
-        for PcdCName, TokenSpaceGuid in PcdSet:
-            ValueList = ['', '']
+        for PcdCName, TokenSpaceGuid in PcdList:
             Setting = PcdDict[self._Arch, self.SkuName, PcdCName, TokenSpaceGuid]
             if Setting == None:
                 continue
-            TokenList = Setting.split(TAB_VALUE_SPLIT)
-            ValueList[0:len(TokenList)] = TokenList
-            VpdOffset, MaxDatumSize = ValueList
+            #
+            # For the VOID* type, it can have optional data of MaxDatumSize and InitialValue
+            # For the Integer & Boolean type, the optional data can only be InitialValue.
+            # At this point, we put all the data into the PcdClssObject for we don't know the PCD's datumtype
+            # until the DEC parser has been called.
+            # 
+            VpdOffset, MaxDatumSize, InitialValue = AnalyzeVpdPcdData(Setting)
 
-            SkuInfo = SkuInfoClass(self.SkuName, self.SkuIds[self.SkuName], '', '', '', '', VpdOffset)
+            SkuInfo = SkuInfoClass(self.SkuName, self.SkuIds[self.SkuName], '', '', '', '', VpdOffset, InitialValue)
             Pcds[PcdCName, TokenSpaceGuid] = PcdClassObject(
                                                 PcdCName,
                                                 TokenSpaceGuid,
@@ -704,6 +781,7 @@ class DscBuildData(PlatformBuildClassObject):
                                                 '',
                                                 MaxDatumSize,
                                                 {self.SkuName : SkuInfo},
+                                                False,
                                                 None
                                                 )
         return Pcds
@@ -733,7 +811,7 @@ class DscBuildData(PlatformBuildClassObject):
     #
     def AddPcd(self, Name, Guid, Value):
         if (Name, Guid) not in self.Pcds:
-            self.Pcds[Name, Guid] = PcdClassObject(Name, Guid, '', '', '', '', '', {}, None)
+            self.Pcds[Name, Guid] = PcdClassObject(Name, Guid, '', '', '', '', '', {}, False, None)
         self.Pcds[Name, Guid].DefaultValue = Value
 
     Arch                = property(_GetArch, _SetArch)
@@ -752,7 +830,9 @@ class DscBuildData(PlatformBuildClassObject):
     BsBaseAddress       = property(_GetBsBaseAddress)
     RtBaseAddress       = property(_GetRtBaseAddress)
     LoadFixAddress      = property(_GetLoadFixAddress)
-
+    RFCLanguages        = property(_GetRFCLanguages)
+    ISOLanguages        = property(_GetISOLanguages)
+    VpdToolGuid         = property(_GetVpdToolGuid)   
     SkuIds              = property(_GetSkuIds)
     Modules             = property(_GetModules)
     LibraryInstances    = property(_GetLibraryInstances)
@@ -760,7 +840,7 @@ class DscBuildData(PlatformBuildClassObject):
     Pcds                = property(_GetPcds)
     BuildOptions        = property(_GetBuildOptions)
 
-## Platform build information from DSC file
+## Platform build information from DEC file
 #
 #  This class is used to retrieve information stored in database and convert them
 # into PackageBuildClassObject form for easier use for AutoGen.
@@ -789,6 +869,7 @@ class DecBuildData(PackageBuildClassObject):
         TAB_DEC_DEFINES_PACKAGE_NAME                : "_PackageName",
         TAB_DEC_DEFINES_PACKAGE_GUID                : "_Guid",
         TAB_DEC_DEFINES_PACKAGE_VERSION             : "_Version",
+        TAB_DEC_DEFINES_PKG_UNI_FILE                : "_PkgUniFile",
     }
 
 
@@ -830,6 +911,7 @@ class DecBuildData(PackageBuildClassObject):
         self._PackageName       = None
         self._Guid              = None
         self._Version           = None
+        self._PkgUniFile        = None
         self._Protocols         = None
         self._Ppis              = None
         self._Guids             = None
@@ -1043,7 +1125,6 @@ class DecBuildData(PackageBuildClassObject):
             PcdSet.add((PcdCName, TokenSpaceGuid))
 
         for PcdCName, TokenSpaceGuid in PcdSet:
-            ValueList = ['', '', '']
             #
             # limit the ARCH to self._Arch, if no self._Arch found, tdict
             # will automatically turn to 'common' ARCH and try again
@@ -1051,9 +1132,9 @@ class DecBuildData(PackageBuildClassObject):
             Setting = PcdDict[self._Arch, PcdCName, TokenSpaceGuid]
             if Setting == None:
                 continue
-            TokenList = Setting.split(TAB_VALUE_SPLIT)
-            ValueList[0:len(TokenList)] = TokenList
-            DefaultValue, DatumType, TokenNumber = ValueList
+
+            DefaultValue, DatumType, TokenNumber = AnalyzePcdData(Setting)
+                                       
             Pcds[PcdCName, TokenSpaceGuid, self._PCD_TYPE_STRING_[Type]] = PcdClassObject(
                                                                             PcdCName,
                                                                             TokenSpaceGuid,
@@ -1063,6 +1144,7 @@ class DecBuildData(PackageBuildClassObject):
                                                                             TokenNumber,
                                                                             '',
                                                                             {},
+                                                                            False,
                                                                             None
                                                                             )
         return Pcds
@@ -1276,18 +1358,16 @@ class InfBuildData(ModuleBuildClassObject):
             if Name in self:
                 self[Name] = Record[1]
             # some special items in [Defines] section need special treatment
-            elif Name in ('EFI_SPECIFICATION_VERSION', 'UEFI_SPECIFICATION_VERSION'):
+            elif Name in ('EFI_SPECIFICATION_VERSION', 'UEFI_SPECIFICATION_VERSION', 'EDK_RELEASE_VERSION', 'PI_SPECIFICATION_VERSION'):
+                if Name in ('EFI_SPECIFICATION_VERSION', 'UEFI_SPECIFICATION_VERSION'):
+                    Name = 'UEFI_SPECIFICATION_VERSION'
                 if self._Specification == None:
                     self._Specification = sdict()
-                self._Specification['UEFI_SPECIFICATION_VERSION'] = Record[1]
-            elif Name == 'EDK_RELEASE_VERSION':
-                if self._Specification == None:
-                    self._Specification = sdict()
-                self._Specification[Name] = Record[1]
-            elif Name == 'PI_SPECIFICATION_VERSION':
-                if self._Specification == None:
-                    self._Specification = sdict()
-                self._Specification[Name] = Record[1]
+                self._Specification[Name] = GetHexVerValue(Record[1])
+                if self._Specification[Name] == None:
+                    EdkLogger.error("build", FORMAT_NOT_SUPPORTED,
+                                    "'%s' format is not supported for %s" % (Record[1], Name),
+                                    File=self.MetaFile, Line=Record[-1])
             elif Name == 'LIBRARY_CLASS':
                 if self._LibraryClass == None:
                     self._LibraryClass = []
@@ -1881,11 +1961,11 @@ class InfBuildData(ModuleBuildClassObject):
     def _GetPcd(self, Type):
         Pcds = {}
         PcdDict = tdict(True, 4)
-        PcdSet = set()
+        PcdList = []
         RecordList = self._RawData[Type, self._Arch, self._Platform]
         for TokenSpaceGuid, PcdCName, Setting, Arch, Platform, Dummy1, LineNo in RecordList:
             PcdDict[Arch, Platform, PcdCName, TokenSpaceGuid] = (Setting, LineNo)
-            PcdSet.add((PcdCName, TokenSpaceGuid))
+            PcdList.append((PcdCName, TokenSpaceGuid))
             # get the guid value
             if TokenSpaceGuid not in self.Guids:
                 Value = GuidValue(TokenSpaceGuid, self.Packages)
@@ -1897,13 +1977,11 @@ class InfBuildData(ModuleBuildClassObject):
                 self.Guids[TokenSpaceGuid] = Value
 
         # resolve PCD type, value, datum info, etc. by getting its definition from package
-        for PcdCName, TokenSpaceGuid in PcdSet:
-            ValueList = ['', '']
+        for PcdCName, TokenSpaceGuid in PcdList:
             Setting, LineNo = PcdDict[self._Arch, self.Platform, PcdCName, TokenSpaceGuid]
             if Setting == None:
                 continue
-            TokenList = Setting.split(TAB_VALUE_SPLIT)
-            ValueList[0:len(TokenList)] = TokenList
+            ValueList = AnalyzePcdData(Setting)
             DefaultValue = ValueList[0]
             Pcd = PcdClassObject(
                     PcdCName,
@@ -1914,6 +1992,7 @@ class InfBuildData(ModuleBuildClassObject):
                     '',
                     '',
                     {},
+                    False,
                     self.Guids[TokenSpaceGuid]
                     )
 
@@ -1927,7 +2006,7 @@ class InfBuildData(ModuleBuildClassObject):
                 #   "FixedAtBuild", "PatchableInModule", "FeatureFlag", "Dynamic", "DynamicEx"
                 #
                 PcdType = self._PCD_TYPE_STRING_[Type]
-                if Type in [MODEL_PCD_DYNAMIC, MODEL_PCD_DYNAMIC_EX]:
+                if Type == MODEL_PCD_DYNAMIC:
                     Pcd.Pending = True
                     for T in ["FixedAtBuild", "PatchableInModule", "FeatureFlag", "Dynamic", "DynamicEx"]:
                         if (PcdCName, TokenSpaceGuid, T) in Package.Pcds:
@@ -1940,6 +2019,64 @@ class InfBuildData(ModuleBuildClassObject):
                     PcdInPackage = Package.Pcds[PcdCName, TokenSpaceGuid, PcdType]
                     Pcd.Type = PcdType
                     Pcd.TokenValue = PcdInPackage.TokenValue
+                    
+                    #
+                    # Check whether the token value exist or not.
+                    #
+                    if Pcd.TokenValue == None or Pcd.TokenValue == "":
+                        EdkLogger.error(
+                                'build',
+                                FORMAT_INVALID,
+                                "No TokenValue for PCD [%s.%s] in [%s]!" % (TokenSpaceGuid, PcdCName, str(Package)),
+                                File =self.MetaFile, Line=LineNo,
+                                ExtraData=None
+                                )                        
+                    #
+                    # Check hexadecimal token value length and format.
+                    #
+                    if Pcd.TokenValue.startswith("0x") or Pcd.TokenValue.startswith("0X"):
+                        if len(Pcd.TokenValue) < 3 or len(Pcd.TokenValue) > 10:
+                            EdkLogger.error(
+                                    'build',
+                                    FORMAT_INVALID,
+                                    "The format of TokenValue [%s] of PCD [%s.%s] in [%s] is invalid:" % (Pcd.TokenValue, TokenSpaceGuid, PcdCName, str(Package)),
+                                    File =self.MetaFile, Line=LineNo,
+                                    ExtraData=None
+                                    )                          
+                        try:
+                            int (Pcd.TokenValue, 16)
+                        except:
+                            EdkLogger.error(
+                                    'build',
+                                    FORMAT_INVALID,
+                                    "The format of TokenValue [%s] of PCD [%s.%s] in [%s] is invalid:" % (Pcd.TokenValue, TokenSpaceGuid, PcdCName, str(Package)),
+                                    File =self.MetaFile, Line=LineNo,
+                                    ExtraData=None
+                                    )
+                            
+                    #
+                    # Check decimal token value length and format.
+                    #                            
+                    else:
+                        try:
+                            TokenValueInt = int (Pcd.TokenValue, 10)
+                            if (TokenValueInt < 0 or TokenValueInt > 4294967295):
+                                EdkLogger.error(
+                                            'build',
+                                            FORMAT_INVALID,
+                                            "The format of TokenValue [%s] of PCD [%s.%s] in [%s] is invalid, as a decimal it should between: 0 - 4294967295!"% (Pcd.TokenValue, TokenSpaceGuid, PcdCName, str(Package)),
+                                            File =self.MetaFile, Line=LineNo,
+                                            ExtraData=None
+                                            )                                
+                        except:
+                            EdkLogger.error(
+                                        'build',
+                                        FORMAT_INVALID,
+                                        "The format of TokenValue [%s] of PCD [%s.%s] in [%s] is invalid, it should be hexadecimal or decimal!"% (Pcd.TokenValue, TokenSpaceGuid, PcdCName, str(Package)),
+                                        File =self.MetaFile, Line=LineNo,
+                                        ExtraData=None
+                                        )
+                    
                     Pcd.DatumType = PcdInPackage.DatumType
                     Pcd.MaxDatumSize = PcdInPackage.MaxDatumSize
                     Pcd.InfDefaultValue = Pcd.DefaultValue
@@ -1949,12 +2086,13 @@ class InfBuildData(ModuleBuildClassObject):
             else:
                 EdkLogger.error(
                             'build',
-                            PARSER_ERROR,
+                            FORMAT_INVALID,
                             "PCD [%s.%s] in [%s] is not found in dependent packages:" % (TokenSpaceGuid, PcdCName, self.MetaFile),
                             File =self.MetaFile, Line=LineNo,
                             ExtraData="\t%s" % '\n\t'.join([str(P) for P in self.Packages])
                             )
             Pcds[PcdCName, TokenSpaceGuid] = Pcd
+
         return Pcds
 
     Arch                    = property(_GetArch, _SetArch)
@@ -1994,7 +2132,7 @@ class InfBuildData(ModuleBuildClassObject):
 
 ## Database
 #
-#   This class defined the build databse for all modules, packages and platform.
+#   This class defined the build database for all modules, packages and platform.
 # It will call corresponding parser for the given file if it cannot find it in
 # the database.
 #

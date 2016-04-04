@@ -25,6 +25,7 @@ Abstract:
 #include "PiDxe.h"
 #include <Guid/EventGroup.h>
 #include <Protocol/SimpleTextIn.h>
+#include <Protocol/SimplePointer.h>
 #include <Protocol/UgaDraw.h>
 #include "Protocol/UnixUgaIo.h"
 #include <Library/DebugLib.h>
@@ -48,6 +49,7 @@ typedef struct {
   EFI_HANDLE                  Handle;
   EFI_UGA_DRAW_PROTOCOL       UgaDraw;
   EFI_SIMPLE_TEXT_INPUT_PROTOCOL SimpleTextIn;
+  EFI_SIMPLE_POINTER_PROTOCOL SimplePointer;
 
   EFI_UNIX_THUNK_PROTOCOL   *UnixThunk;
 
@@ -60,6 +62,8 @@ typedef struct {
   UINT32                      VerticalResolution;
   UINT32                      ColorDepth;
   UINT32                      RefreshRate;
+
+  EFI_SIMPLE_POINTER_MODE     PointerMode;
 
   //
   // UGA Private Data knowing when to start hardware
@@ -77,6 +81,9 @@ typedef struct {
 
 #define UGA_PRIVATE_DATA_FROM_TEXT_IN_THIS(a)  \
          CR(a, UGA_PRIVATE_DATA, SimpleTextIn, UGA_PRIVATE_DATA_SIGNATURE)
+
+#define UGA_PRIVATE_DATA_FROM_POINTER_THIS(a)  \
+         CR(a, UGA_PRIVATE_DATA, SimplePointer, UGA_PRIVATE_DATA_SIGNATURE)
 
 //
 // Global Protocol Variables
@@ -283,6 +290,27 @@ Returns:
 
 EFI_STATUS
 UnixUgaInitializeSimpleTextInForWindow (
+  IN  UGA_PRIVATE_DATA    *Private
+  )
+/*++
+
+Routine Description:
+
+  TODO: Add function description
+
+Arguments:
+
+  Private - TODO: add argument description
+
+Returns:
+
+  TODO: add return values
+
+--*/
+;
+
+EFI_STATUS
+UnixUgaInitializeSimplePointerForWindow (
   IN  UGA_PRIVATE_DATA    *Private
   )
 /*++

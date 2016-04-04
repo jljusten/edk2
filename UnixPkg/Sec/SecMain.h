@@ -1,7 +1,7 @@
 /*++
 
 Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
-Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
+Portions copyright (c) 2008 - 2010, Apple Inc. All rights reserved.<BR>
 This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -30,6 +30,8 @@ Abstract:
 #include <Library/PcdLib.h>
 #include <Library/DebugLib.h>
 #include <Library/ReportStatusCodeLib.h>
+#include <Library/SecDispatchTableLib.h>
+
 
 #define STACK_SIZE                0x20000      
 
@@ -55,6 +57,15 @@ typedef struct {
 EFI_STATUS
 EFIAPI
 SecUnixPeiLoadFile (
+  VOID                  *Pe32Data,  // TODO: add IN/OUT modifier to Pe32Data
+  EFI_PHYSICAL_ADDRESS  *ImageAddress,  // TODO: add IN/OUT modifier to ImageAddress
+  UINT64                *ImageSize,  // TODO: add IN/OUT modifier to ImageSize
+  EFI_PHYSICAL_ADDRESS  *EntryPoint  // TODO: add IN/OUT modifier to EntryPoint
+  );
+
+EFI_STATUS
+EFIAPI
+GasketSecUnixPeiLoadFile (
   VOID                  *Pe32Data,  // TODO: add IN/OUT modifier to Pe32Data
   EFI_PHYSICAL_ADDRESS  *ImageAddress,  // TODO: add IN/OUT modifier to ImageAddress
   UINT64                *ImageSize,  // TODO: add IN/OUT modifier to ImageSize
@@ -86,6 +97,14 @@ SecUnixPeiAutoScan (
   IN  UINTN                 Index,
   OUT EFI_PHYSICAL_ADDRESS  *MemoryBase,
   OUT UINT64                *MemorySize
+  );
+  
+EFI_STATUS
+EFIAPI
+GasketSecUnixPeiAutoScan (
+  IN  UINTN                 Index,
+  OUT EFI_PHYSICAL_ADDRESS  *MemoryBase,
+  OUT UINT64                *MemorySize
   )
 /*++
 
@@ -109,6 +128,12 @@ Returns:
 VOID *
 EFIAPI
 SecUnixUnixThunkAddress (
+  VOID
+  );
+  
+VOID *
+EFIAPI
+GasketSecUnixUnixThunkAddress (
   VOID
   )
 /*++
@@ -134,6 +159,13 @@ EFIAPI
 SecUnixUnixFwhAddress (
   IN OUT UINT64                *FwhSize,
   IN OUT EFI_PHYSICAL_ADDRESS  *FwhBase
+  );
+  
+EFI_STATUS
+EFIAPI
+GasketSecUnixUnixFwhAddress (
+  IN OUT UINT64                *FwhSize,
+  IN OUT EFI_PHYSICAL_ADDRESS  *FwhBase
   )
 /*++
 
@@ -156,6 +188,17 @@ Returns:
 EFI_STATUS
 EFIAPI
 SecPeiReportStatusCode (
+  IN CONST EFI_PEI_SERVICES     **PeiServices,
+  IN EFI_STATUS_CODE_TYPE       CodeType,
+  IN EFI_STATUS_CODE_VALUE      Value,
+  IN UINT32                     Instance,
+  IN CONST EFI_GUID             *CallerId,
+  IN CONST EFI_STATUS_CODE_DATA *Data OPTIONAL
+  );
+  
+EFI_STATUS
+EFIAPI
+GasketSecPeiReportStatusCode (
   IN CONST EFI_PEI_SERVICES     **PeiServices,
   IN EFI_STATUS_CODE_TYPE       CodeType,
   IN EFI_STATUS_CODE_VALUE      Value,
@@ -396,6 +439,17 @@ SecUnixFdAddress (
 ;
 
 EFI_STATUS
+EFIAPI
+GasketSecUnixFdAddress (
+  IN     UINTN                 Index,
+  IN OUT EFI_PHYSICAL_ADDRESS  *FdBase,
+  IN OUT UINT64                *FdSize,
+  IN OUT EFI_PHYSICAL_ADDRESS  *FixUp
+  )
+;
+
+
+EFI_STATUS
 GetImageReadFunction (
   IN PE_COFF_LOADER_IMAGE_CONTEXT          *ImageContext,
   IN EFI_PHYSICAL_ADDRESS                  *TopOfMemory
@@ -500,6 +554,15 @@ SecTemporaryRamSupport (
   IN EFI_PHYSICAL_ADDRESS     PermanentMemoryBase,
   IN UINTN                    CopySize
   );
+  
+EFI_STATUS
+EFIAPI
+GasketSecTemporaryRamSupport (
+  IN CONST EFI_PEI_SERVICES   **PeiServices,
+  IN EFI_PHYSICAL_ADDRESS     TemporaryMemoryBase,
+  IN EFI_PHYSICAL_ADDRESS     PermanentMemoryBase,
+  IN UINTN                    CopySize
+  );
 
 
 RETURN_STATUS
@@ -522,7 +585,6 @@ SecPeCoffLoaderUnloadImageExtraAction (
   );
 
 
-
 VOID SetTimer (UINT64 PeriodMs, VOID (*CallBack)(UINT64 DeltaMs));
 void msSleep (unsigned long Milliseconds);
 void GetLocalTime (EFI_TIME *Time);
@@ -530,6 +592,9 @@ void TzSet (void);
 long GetTimeZone(void);
 int GetDayLight(void);
 int GetErrno(void);
+void UnixEnableInterrupt (void);
+void UnixDisableInterrupt (void);
+BOOLEAN UnixInterruptEanbled (void);
 
 
 

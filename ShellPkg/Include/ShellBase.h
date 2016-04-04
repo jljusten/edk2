@@ -12,8 +12,20 @@
 
 **/
 
-#if !defined(__SHELL_BASE__)
+#ifndef __SHELL_BASE__
 #define __SHELL_BASE__
+
+typedef VOID *SHELL_FILE_HANDLE;
+
+#ifndef SHELL_FREE_NON_NULL
+#define SHELL_FREE_NON_NULL(Pointer)  \
+  do {                                \
+    if ((Pointer) != NULL) {          \
+      FreePool((Pointer));            \
+      (Pointer) = NULL;               \
+    }                                 \
+  } while(FALSE)
+#endif //SHELL_FREE_NON_NULL
 
 typedef enum {
 ///
@@ -60,7 +72,7 @@ SHELL_NOT_READY             = 6,
 SHELL_DEVICE_ERROR          = 7,
 
 ///
-/// The device can not be written to.
+/// The device cannot be written to.
 ///
 SHELL_WRITE_PROTECTED       = 8,
 

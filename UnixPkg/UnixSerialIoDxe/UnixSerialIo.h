@@ -21,20 +21,10 @@ Abstract:
 
 #ifndef _UNIXPKG_SERIAL_IO_
 #define _UNIXPKG_SERIAL_IO_
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdio.h>
 
-#ifdef __APPLE__
-#else
-#include <stdlib.h>
-#include <termio.h>
-#endif
+#include <Common/UnixInclude.h>
 
-#include <fcntl.h>
-#include <errno.h>
-
-#include "Uefi.h"
+#include <Uefi.h>
 #include <Protocol/SerialIo.h>
 #include <Protocol/DevicePath.h>
 
@@ -201,10 +191,10 @@ extern EFI_COMPONENT_NAME_PROTOCOL  gUnixSerialIoComponentName;
 #define __MAX_BAUD B4000000
 #endif
 #ifndef CMSPAR
-#define CMSPAR	  010000000000		/* mark or space (stick) parity */
+#define CMSPAR    010000000000    /* mark or space (stick) parity */
 #endif
 #ifndef FIONREAD
-#define FIONREAD	0x541B
+#define FIONREAD  0x541B
 #endif
 //
 // Function Prototypes

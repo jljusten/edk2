@@ -12,9 +12,13 @@
 //
 //------------------------------------------------------------------------------
 
+#include <AsmMacroIoLib.h>
+    
+    INCLUDE AsmMacroIoLib.inc
 
     EXPORT  Cp15IdCode
     EXPORT  Cp15CacheInfo
+    EXPORT  ArmIsMPCore
     EXPORT  ArmEnableInterrupts
     EXPORT  ArmDisableInterrupts
     EXPORT  ArmGetInterruptState
@@ -22,8 +26,8 @@
     EXPORT  ArmDisableFiq
     EXPORT  ArmGetFiqState
     EXPORT  ArmInvalidateTlb
-    EXPORT  ArmSetTranslationTableBaseAddress
-    EXPORT  ArmGetTranslationTableBaseAddress
+    EXPORT  ArmSetTTBR0
+    EXPORT  ArmGetTTBR0BaseAddress
     EXPORT  ArmSetDomainAccessControl
     EXPORT  CPSRMaskInsert
     EXPORT  CPSRRead
@@ -38,61 +42,71 @@ Cp15CacheInfo
   mrc     p15,0,R0,c0,c0,1
   bx      LR
 
+ArmIsMPCore
+  mrc     p15,0,R0,c0,c0,5
+  // Get Multiprocessing extension (bit31) & U bit (bit30)
+  and     R0, R0, #0xC0000000
+  // if bit30 == 0 then the processor is part of a multiprocessor system)
+  and     R0, R0, #0x80000000
+  bx      LR
+
 ArmEnableInterrupts
-	mrs     R0,CPSR
-	bic     R0,R0,#0x80		;Enable IRQ interrupts
-	msr     CPSR_c,R0
-	bx      LR
+  mrs     R0,CPSR
+  bic     R0,R0,#0x80    ;Enable IRQ interrupts
+  msr     CPSR_c,R0
+  bx      LR
 
 ArmDisableInterrupts
-	mrs     R0,CPSR
-	orr     R1,R0,#0x80		;Disable IRQ interrupts
-	msr     CPSR_c,R1
+  mrs     R0,CPSR
+  orr     R1,R0,#0x80    ;Disable IRQ interrupts
+  msr     CPSR_c,R1
   tst     R0,#0x80
   moveq   R0,#1
   movne   R0,#0
-	bx      LR
+  bx      LR
 
 ArmGetInterruptState
-	mrs     R0,CPSR
-	tst     R0,#0x80	    ;Check if IRQ is enabled.
-	moveq   R0,#1
-	movne   R0,#0
-	bx      LR
+  mrs     R0,CPSR
+  tst     R0,#0x80      ;Check if IRQ is enabled.
+  moveq   R0,#1
+  movne   R0,#0
+  bx      LR
 
 ArmEnableFiq
-	mrs     R0,CPSR
-	bic     R0,R0,#0x40		;Enable IRQ interrupts
-	msr     CPSR_c,R0
-	bx      LR
+  mrs     R0,CPSR
+  bic     R0,R0,#0x40    ;Enable IRQ interrupts
+  msr     CPSR_c,R0
+  bx      LR
 
 ArmDisableFiq
-	mrs     R0,CPSR
-	orr     R1,R0,#0x40		;Disable IRQ interrupts
-	msr     CPSR_c,R1
+  mrs     R0,CPSR
+  orr     R1,R0,#0x40    ;Disable IRQ interrupts
+  msr     CPSR_c,R1
   tst     R0,#0x40
   moveq   R0,#1
   movne   R0,#0
-	bx      LR
+  bx      LR
 
 ArmGetFiqState
-	mrs     R0,CPSR
-	tst     R0,#0x40	    ;Check if IRQ is enabled.
-	moveq   R0,#1
-	movne   R0,#0
-	bx      LR
+  mrs     R0,CPSR
+  tst     R0,#0x40      ;Check if IRQ is enabled.
+  moveq   R0,#1
+  movne   R0,#0
+  bx      LR
   
 ArmInvalidateTlb
   mov     r0,#0
   mcr     p15,0,r0,c8,c7,0
   bx      lr
 
-ArmSetTranslationTableBaseAddress
+ArmSetTTBR0
   mcr     p15,0,r0,c2,c0,0
   bx      lr
 
-ArmGetTranslationTableBaseAddress
+ArmGetTTBR0BaseAddress
   mrc     p15,0,r0,c2,c0,0
+  LoadConstantToReg(0xFFFFC000,r1)  // and     r0, r0, #0xFFFFC000
+  and     r0, r0, r1
   bx      lr
 
 ArmSetDomainAccessControl

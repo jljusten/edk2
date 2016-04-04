@@ -4,7 +4,7 @@
 # It also provides the defintions(including PPIs/PROTOCOLs/GUIDs and library classes)
 # and libraries instances, which are used for those modules.
 #
-# Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
 # This program and the accompanying materials are licensed and made available under 
 # the terms and conditions of the BSD License that accompanies this distribution.  
 # The full text of the license may be found at
@@ -38,6 +38,10 @@
   ##  @libraryclass  The helper routines to access UDP service.
   #   This library is only intended to be used by UEFI network stack modules.
   UdpIoLib|Include/Library/UdpIoLib.h
+
+  ##  @libraryclass  The helper routines to access TCP service.
+  #   This library is only intended to be used by UEFI network stack modules.
+  TcpIoLib|Include/Library/TcpIoLib.h
 
   ##  @libraryclass  Defines a set of methods to reset whole system.
   ResetSystemLib|Include/Library/ResetSystemLib.h
@@ -77,6 +81,11 @@
   ##  @libraryclass  Debug Agent is used to provide soft debug capability.
   #
   DebugAgentLib|Include/Library/DebugAgentLib.h
+
+  ##  @libraryclass  Provide platform specific hooks.
+  #
+  PlatformHookLib|Include/Library/PlatformHookLib.h
+  
 [Guids]
   ## MdeModule package token space guid
   # Include/Guid/MdeModulePkgTokenSpace.h
@@ -122,9 +131,14 @@
   #  Include/Guid/VariableFormat.h
   gEfiVariableGuid           = { 0xddcf3616, 0x3275, 0x4164, { 0x98, 0xb6, 0xfe, 0x85, 0x70, 0x7f, 0xfe, 0x7d }}
 
+  ## Guid is defined for SMM variable module to notify SMM variable wrapper module when variable write service was ready.
+  #  Include/Guid/SmmVariableCommon.h
+  gSmmVariableWriteGuid  = { 0x93ba1826, 0xdffb, 0x45dd, { 0x82, 0xa7, 0xe7, 0xdc, 0xaa, 0x3b, 0xbd, 0xf3 }}
+  
   ## Performance protocol guid that also acts as the performance HOB guid and performance variable GUID
   #  Include/Guid/Performance.h
   gPerformanceProtocolGuid       = { 0x76B6BDFA, 0x2ACD, 0x4462, { 0x9E, 0x3F, 0xCB, 0x58, 0xC9, 0x69, 0xD9, 0x37 }}
+  gSmmPerformanceProtocolGuid    = { 0xf866226a, 0xeaa5, 0x4f5a, { 0xa9, 0xa, 0x6c, 0xfb, 0xa5, 0x7c, 0x58, 0x8e } }
 
   ## Guid is defined for CRC32 encapsulation scheme.
   #  Include/Guid/Crc32GuidedSectionExtraction.h
@@ -148,6 +162,10 @@
   #  Include/Guid/LoadModuleAtFixedAddress.h
   gLoadFixedAddressConfigurationTableGuid  = { 0x2CA88B53,0xD296,0x4080, { 0xA4,0xA5,0xCA,0xD9,0xBA,0xE2,0x4B,0x9 } }
 
+  ## GUID used to store the global debug mask value into an EFI Variable
+  # Include/Guid/DebugMask.h  
+  gEfiGenericVariableGuid = { 0x59d1c24f, 0x50f1, 0x401a, {0xb1, 0x01, 0xf3, 0x3e, 0x0d, 0xae, 0xd4, 0x43} }
+  
 [Protocols]
   ## Load File protocol provides capability to load and unload EFI image into memory and execute it.
   #  Include/Protocol/LoadPe32Image.h
@@ -170,10 +188,29 @@
   #  Include/Protocol/FaultTolerantWrite.h
   gEfiFaultTolerantWriteProtocolGuid = { 0x3EBD9E82, 0x2C78, 0x4DE6, { 0x97, 0x86, 0x8D, 0x4B, 0xFC, 0xB7, 0xC8, 0x81 }}
 
+  ## This protocol provides boot-time service to do fault tolerant write capability for block devices in SMM environment.
+  #  Include/Protocol/SmmFaultTolerantWrite.h
+  gEfiSmmFaultTolerantWriteProtocolGuid = { 0x3868fc3b, 0x7e45, 0x43a7, { 0x90, 0x6c, 0x4b, 0xa4, 0x7d, 0xe1, 0x75, 0x4d }}
+  
   ## This protocol is used to abstract the swap operation of boot block and backup block of boot FV.
   #  Include/Protocol/SwapAddressRange.h
   gEfiSwapAddressRangeProtocolGuid = { 0x1259F60D, 0xB754, 0x468E, { 0xA7, 0x89, 0x4D, 0xB8, 0x5D, 0x55, 0xE8, 0x7E }}
+  
+  ## This protocol is used to abstract the swap operation of boot block and backup block of boot FV in SMM environment.
+  #  Include/Protocol/SmmSwapAddressRange.h
+  gEfiSmmSwapAddressRangeProtocolGuid = { 0x67c4f112, 0x3385, 0x4e55, { 0x9c, 0x5b, 0xc0, 0x5b, 0x71, 0x7c, 0x42, 0x28 }}
+  
+  ## This protocol is intended for use as a means to store data in the EFI SMM environment.
+  #  Include/Protocol/SmmVariableProtocol.h
+  gEfiSmmVariableProtocolGuid = { 0xed32d533, 0x99e6, 0x4209, { 0x9c, 0xc0, 0x2d, 0x72, 0xcd, 0xd9, 0x98, 0xa7 }}
 
+  ## This protocol is similar with DXE FVB protocol and used in the UEFI SMM evvironment.
+  #  Include/Protocol/SmmFirmwareVolumeBlock.h
+  gEfiSmmFirmwareVolumeBlockProtocolGuid = { 0xd326d041, 0xbd31, 0x4c01, { 0xb5, 0xa8, 0x62, 0x8b, 0xe8, 0x7f, 0x6, 0x53 }}
+
+  ## This protocol allows the error level mask for DEBUG() macros to be adjusted for DXE Phase modules
+  # Include/Guid/DebugMask.h  
+  gEfiDebugMaskProtocolGuid = { 0x4c8a2451, 0xc207, 0x405b, {0x96, 0x94, 0x99, 0xea, 0x13, 0x25, 0x13, 0x41} }
 [PcdsFeatureFlag]
   ## Indicate whether platform can support update capsule across a system reset
   gEfiMdeModulePkgTokenSpaceGuid.PcdSupportUpdateCapsuleReset|FALSE|BOOLEAN|0x0001001d
@@ -223,7 +260,7 @@
   #  interrupt to access usb device in the case of absence of usb stack. 
   #  DUET platform requires the token to be TRUE.
   gEfiMdeModulePkgTokenSpaceGuid.PcdTurnOffUsbLegacySupport|FALSE|BOOLEAN|0x00010047
-
+  
   ## If TRUE, HiiImageProtocol will be installed.
   #  FALSE is for size reduction.
   gEfiMdeModulePkgTokenSpaceGuid.PcdSupportHiiImageProtocol|TRUE|BOOLEAN|0x00010100
@@ -255,7 +292,7 @@
 
   ## This PCD specifies whether the PCI bus driver probes non-standard, 
   #  such as 2K/1K/512, granularity for PCI to PCI bridge I/O window.
-  gEfiMdeModulePkgTokenSpaceGuid.PcdPciBridgeIoAlignmentProbe|FALSE|BOOLEAN|0x10000047
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPciBridgeIoAlignmentProbe|FALSE|BOOLEAN|0x0001004e
   ## This PCD specifies whether StatusCode is reported via Serial port.
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeUseSerial|TRUE|BOOLEAN|0x00010022
 
@@ -269,6 +306,16 @@
   ## This PCD specified whether ACPI SDT protocol is installed.
   gEfiMdeModulePkgTokenSpaceGuid.PcdInstallAcpiSdtProtocol|FALSE|BOOLEAN|0x0001004d
 
+  ## If TRUE, then unaligned I/O, MMIO, and PCI Configuration cycles through the PCI I/O Protocol are enabled.
+  #  If FALSE, then unaligned I/O, MMIO, and PCI Configuration cycles through the PCI I/O Protocol are disabled.
+  #  The default value for this PCD is to disable support for unaligned PCI I/O Protocol requests.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdUnalignedPciIoEnable|FALSE|BOOLEAN|0x0001003e
+
+  ## This PCD specifies whether TEXT statement is always set to GrayOut statement in HII Form Browser.
+  #  If TRUE,  TEXT statement will always be set to GrayOut.
+  #  If FALSE, TEXT statement will be set to GrayOut only when GrayOut condition is TRUE.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdBrowserGrayOutTextStatement|FALSE|BOOLEAN|0x0001004f
+  
 [PcdsFeatureFlag.IA32, PcdsFeatureFlag.X64]
   ##
   # This feature flag specifies whether DxeIpl switches to long mode to enter DXE phase.
@@ -352,6 +399,11 @@
   ## Smbios version
   gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion|0x0206|UINT16|0x00010055
 
+  ## TFTP BlockSize. Initial value 0 means using default block size which is (MTU-IP_HEADER-UDP_HEADER-TFTP_HEADER)
+  #  to handle all link layers. If the value is non zero, the PCD value will be used as block size.
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdTftpBlockSize|0x0|UINT64|0x30001026
+
 [PcdsFixedAtBuild,PcdsPatchableInModule]
   ## Maximun number of performance log entries during PEI phase.
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxPeiPerformanceLogEntries|40|UINT8|0x0001002f
@@ -359,6 +411,56 @@
   ## RTC Update Timeout Value
   gEfiMdeModulePkgTokenSpaceGuid.PcdRealTimeClockUpdateTimeout|100000|UINT32|0x00010034
 
+  ## If TRUE, then 16550 serial port registers are in MMIO space.  
+  #  If FALSE, then 16550 serial port registers are in I/O space.  Default value.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialUseMmio|FALSE|BOOLEAN|0x00020000
+  
+  ## If TRUE, then the 16550 serial port hardware flow control is enabled.
+  #  If FALSE, then the 16550 serial port hardware flow control is disabled.  Default value.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialUseHardwareFlowControl|FALSE|BOOLEAN|0x00020001
+
+  ## If TRUE, then 16550 serial Tx operations will block if DSR is not asserted (no cable).
+  #  If FALSE, then the 16550 serial Tx operations will not be blocked if DSR is not asserted. Default value.
+  #  This PCD is ignored if PcdSerialUseHardwareFlowControl is FALSE.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialDetectCable|FALSE|BOOLEAN|0x00020006
+    
+  ## Base address of 16550 serial port registers in MMIO or I/O space.  Default is 0x3F8.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterBase|0x03F8|UINT64|0x00020002
+
+  ## Baud rate for the 16550 serial port.  Default is 115200 baud.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialBaudRate|115200|UINT32|0x00020003
+
+  ## Line Control Register (LCR) for the 16550 serial port.  This encodes data bits, parity, and stop bits.  
+  #    BIT1..BIT0 - Data bits.  00b = 5 bits, 01b = 6 bits, 10b = 7 bits, 11b = 8 bits
+  #    BIT2       - Stop Bits.  0 = 1 stop bit.  1 = 1.5 stop bits if 5 data bits selected, otherwise 2 stop bits.
+  #    BIT5..BIT2 - Parity.  xx0b = No Parity, 001b = Odd Parity, 011b = Even Parity, 101b = Mark Parity, 111b=Stick Parity
+  #    BIT7..BIT6 - Reserved.  Must be 0.
+  #
+  # Default is No Parity, 8 Data Bits, 1 Stop Bit.
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialLineControl|0x03|UINT8|0x00020004
+
+  ## FIFO Control Register (FCR) for the 16550 serial port.   
+  #    BIT0       - FIFO Enable.  0 = Disable FIFOs.  1 = Enable FIFOs.
+  #    BIT1       - Clear receive FIFO.  1 = Clear FIFO.
+  #    BIT2       - Clear transmit FIFO.  1 = Clear FIFO.
+  #    BIT7..BIT3 - Reserved.  Must be 0.
+  #
+  # Default is to enable and clear all FIFOs.
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialFifoControl|0x07|UINT8|0x00020005
+
+  ## Maximum address that the DXE Core will allocate the EFI_SYSTEM_TABLE_POINTER
+  #  structure.  The default value for this PCD is 0, which means that the DXE Core
+  #  will allocate the buffer from the EFI_SYSTEM_TABLE_POINTER structure on a 4MB
+  #  boundary as close to the top of memory as feasible.  If this PCD is set to a 
+  #  value other than 0, then the DXE Core will first attempt to allocate the 
+  #  EFI_SYSTEM_TABLE_POINTER structure on a 4MB boundary below the address specified
+  #  by this PCD, and if that allocation fails, retry the allocation on a 4MB
+  #  boundary as close to the top of memory as feasible.
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMaxEfiSystemTablePointerAddress|0x0|UINT64|0x30001027
+  
 [PcdsPatchableInModule,PcdsDynamic]
   ## This PCD defines the Console output column and the default value is 25 according to UEFI spec
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow|25|UINT32|0x40000006
@@ -416,7 +518,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxSizeNonPopulateCapsule|0xa00000|UINT32|0x0001001f
 
   ## Null-terminated Unicode string of the firmware vendor name that is default name filled into the EFI System Table
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor|L"EDK II"|VOID*|0xx00010050
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVendor|L"EDK II"|VOID*|0x00010050
 
   ## Firmware revision that is default value filled into the EFI System Table
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareRevision|0x00010000|UINT32|0x00010051
@@ -432,6 +534,81 @@
   #  The default value in PeiPhase is 1 KBytes.
   #  The default value in DxePhase is 128 KBytes.
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeMemorySize|1|UINT16|0x00010054
+
+  ## This PCD specifies whether to reset system when memory type information changes.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange|TRUE|BOOLEAN|0x00010056
+
+  ## Specify the foreground color for Subtile text in HII Form Browser. The default value is EFI_BLUE.
+  #  Only following values defined in UEFI specification are valid:
+  #  0x00 (EFI_BLACK)
+  #  0x01 (EFI_BLUE)
+  #  0x02 (EFI_GREEN)
+  #  0x03 (EFI_CYAN)
+  #  0x04 (EFI_RED)
+  #  0x05 (EFI_MAGENTA)
+  #  0x06 (EFI_BROWN)
+  #  0x07 (EFI_LIGHTGRAY)
+  #  0x08 (EFI_DARKGRAY) 
+  #  0x09 (EFI_LIGHTBLUE)
+  #  0x0A (EFI_LIGHTGREEN)
+  #  0x0B (EFI_LIGHTCYAN)
+  #  0x0C (EFI_LIGHTRED)
+  #  0x0D (EFI_LIGHTMAGENTA)
+  #  0x0E (EFI_YELLOW)
+  #  0x0F (EFI_WHITE)
+  gEfiMdeModulePkgTokenSpaceGuid.PcdBrowserSubtitleTextColor|0x01|UINT8|0x00010057
+  
+  ## Specify the foreground color for prompt and Question value text in HII Form Browser. The default value is EFI_BLACK.
+  #  Only following values defined in UEFI specification are valid:
+  #  0x00 (EFI_BLACK)
+  #  0x01 (EFI_BLUE)
+  #  0x02 (EFI_GREEN)
+  #  0x03 (EFI_CYAN)
+  #  0x04 (EFI_RED)
+  #  0x05 (EFI_MAGENTA)
+  #  0x06 (EFI_BROWN)
+  #  0x07 (EFI_LIGHTGRAY)
+  #  0x08 (EFI_DARKGRAY) 
+  #  0x09 (EFI_LIGHTBLUE)
+  #  0x0A (EFI_LIGHTGREEN)
+  #  0x0B (EFI_LIGHTCYAN)
+  #  0x0C (EFI_LIGHTRED)
+  #  0x0D (EFI_LIGHTMAGENTA)
+  #  0x0E (EFI_YELLOW)
+  #  0x0F (EFI_WHITE)
+  gEfiMdeModulePkgTokenSpaceGuid.PcdBrowserFieldTextColor|0x00|UINT8|0x00010058
+  
+  ## Specify the foreground color for highlighted prompt and Question value text in HII Form Browser.
+  #  The default value is EFI_LIGHTGRAY. Only following values defined in UEFI specification are valid:
+  #  0x00 (EFI_BLACK)
+  #  0x01 (EFI_BLUE)
+  #  0x02 (EFI_GREEN)
+  #  0x03 (EFI_CYAN)
+  #  0x04 (EFI_RED)
+  #  0x05 (EFI_MAGENTA)
+  #  0x06 (EFI_BROWN)
+  #  0x07 (EFI_LIGHTGRAY)
+  #  0x08 (EFI_DARKGRAY) 
+  #  0x09 (EFI_LIGHTBLUE)
+  #  0x0A (EFI_LIGHTGREEN)
+  #  0x0B (EFI_LIGHTCYAN)
+  #  0x0C (EFI_LIGHTRED)
+  #  0x0D (EFI_LIGHTMAGENTA)
+  #  0x0E (EFI_YELLOW)
+  #  0x0F (EFI_WHITE)
+  gEfiMdeModulePkgTokenSpaceGuid.PcdBrowserFieldTextHighlightColor|0x07|UINT8|0x00010059
+  
+  ## Specify the background color for highlighted prompt and Question value text in HII Form Browser.
+  #  The default value is EFI_BACKGROUND_BLACK. Only following values defined in UEFI specification are valid:
+  #  0x00 (EFI_BACKGROUND_BLACK)
+  #  0x10 (EFI_BACKGROUND_BLUE)
+  #  0x20 (EFI_BACKGROUND_GREEN)
+  #  0x30 (EFI_BACKGROUND_CYAN)
+  #  0x40 (EFI_BACKGROUND_RED)
+  #  0x50 (EFI_BACKGROUND_MAGENTA)
+  #  0x60 (EFI_BACKGROUND_BROWN)
+  #  0x70 (EFI_BACKGROUND_LIGHTGRAY)
+  gEfiMdeModulePkgTokenSpaceGuid.PcdBrowserFieldBackgroundHighlightColor|0x00|UINT8|0x0001005A
 
 [PcdsPatchableInModule]
   ## Specify  memory size with page number for PEI code when 

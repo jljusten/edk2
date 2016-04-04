@@ -31,11 +31,12 @@
 #include <Guid/MemoryTypeInformation.h>
 
 #include "Platform.h"
+#include "Cmos.h"
 
 EFI_MEMORY_TYPE_INFORMATION mDefaultMemoryTypeInformation[] = {
   { EfiACPIMemoryNVS,       0x004 },
   { EfiACPIReclaimMemory,   0x008 },
-  { EfiReservedMemoryType,  0x004 },     
+  { EfiReservedMemoryType,  0x004 },
   { EfiRuntimeServicesData, 0x024 },
   { EfiRuntimeServicesCode, 0x030 },
   { EfiBootServicesCode,    0x180 },
@@ -102,8 +103,40 @@ AddMemoryRangeHob (
   AddMemoryBaseSizeHob (MemoryBase, (UINT64)(MemoryLimit - MemoryBase));
 }
 
+
+VOID
+AddUntestedMemoryBaseSizeHob (
+  EFI_PHYSICAL_ADDRESS        MemoryBase,
+  UINT64                      MemorySize
+  )
+{
+  BuildResourceDescriptorHob (
+    EFI_RESOURCE_SYSTEM_MEMORY,
+      EFI_RESOURCE_ATTRIBUTE_PRESENT |
+      EFI_RESOURCE_ATTRIBUTE_INITIALIZED |
+      EFI_RESOURCE_ATTRIBUTE_UNCACHEABLE |
+      EFI_RESOURCE_ATTRIBUTE_WRITE_COMBINEABLE |
+      EFI_RESOURCE_ATTRIBUTE_WRITE_THROUGH_CACHEABLE |
+      EFI_RESOURCE_ATTRIBUTE_WRITE_BACK_CACHEABLE,
+    MemoryBase,
+    MemorySize
+    );
+}
+
+
+VOID
+AddUntestedMemoryRangeHob (
+  EFI_PHYSICAL_ADDRESS        MemoryBase,
+  EFI_PHYSICAL_ADDRESS        MemoryLimit
+  )
+{
+  AddUntestedMemoryBaseSizeHob (MemoryBase, (UINT64)(MemoryLimit - MemoryBase));
+}
+
+
 VOID
 MemMapInitialization (
+  EFI_PHYSICAL_ADDRESS  TopOfMemory
   )
 {
   //
@@ -129,22 +162,26 @@ MemMapInitialization (
   //
   // Add PCI MMIO space available to PCI resource allocations
   //
-  AddIoMemoryBaseSizeHob (0x80000000, 0xFEC00000 - 0x80000000);
+  if (TopOfMemory < BASE_2GB) {
+    AddIoMemoryBaseSizeHob (BASE_2GB, 0xFEC00000 - BASE_2GB);
+  } else {
+    AddIoMemoryBaseSizeHob (TopOfMemory, 0xFEC00000 - TopOfMemory);
+  }
 
   //
   // Local APIC range
   //
-  AddIoMemoryBaseSizeHob (0xFEC80000, 0x80000);
+  AddIoMemoryBaseSizeHob (0xFEC80000, SIZE_512KB);
 
   //
   // I/O APIC range
   //
-  AddIoMemoryBaseSizeHob (0xFEC00000, 0x80000);
+  AddIoMemoryBaseSizeHob (0xFEC00000, SIZE_512KB);
 
   //
   // Video memory + Legacy BIOS region
   //
-  AddIoMemoryRangeHob (0x0A0000, 0x100000);
+  AddIoMemoryRangeHob (0x0A0000, BASE_1MB);
 }
 
 
@@ -155,12 +192,17 @@ MiscInitialization (
   //
   // Disable A20 Mask
   //
-  IoWrite8 (0x92, (UINT8) (IoRead8 (0x92) | 0x02));
+  IoOr8 (0x92, BIT1);
 
   //
   // Build the CPU hob with 36-bit addressing and 16-bits of IO space.
   //
   BuildCpuHob (36, 16);
+
+  //
+  // Set the PM I/O base address to 0x400
+  //
+  PciAndThenOr32 (PCI_LIB_ADDRESS (0, 1, 3, 0x40), (UINT32) ~0xfc0, 0x400);
 }
 
 
@@ -190,6 +232,27 @@ ReserveEmuVariableNvStore (
 }
 
 
+VOID
+DebugDumpCmos (
+  VOID
+  )
+{
+  UINTN  Loop;
+
+  DEBUG ((EFI_D_INFO, "CMOS:\n"));
+
+  for (Loop = 0; Loop < 0x80; Loop++) {
+    if ((Loop % 0x10) == 0) {
+      DEBUG ((EFI_D_INFO, "%02x:", Loop));
+    }
+    DEBUG ((EFI_D_INFO, " %02x", CmosRead8 (Loop)));
+    if ((Loop % 0x10) == 0xf) {
+      DEBUG ((EFI_D_INFO, "\n"));
+    }
+  }
+}
+
+
 /**
   Perform Platform PEI initialization.
 
@@ -206,15 +269,19 @@ InitializePlatform (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
+  EFI_PHYSICAL_ADDRESS  TopOfMemory;
+
   DEBUG ((EFI_D_ERROR, "Platform PEIM Loaded\n"));
 
-  MemDetect ();
+  DebugDumpCmos ();
+
+  TopOfMemory = MemDetect ();
 
   ReserveEmuVariableNvStore ();
 
   PeiFvInitialization ();
 
-  MemMapInitialization ();
+  MemMapInitialization (TopOfMemory);
 
   MiscInitialization ();
 

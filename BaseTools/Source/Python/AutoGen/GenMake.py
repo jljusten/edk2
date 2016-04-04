@@ -26,7 +26,7 @@ from BuildEngine import *
 import Common.GlobalData as GlobalData
 
 ## Regular expression for finding header file inclusions
-gIncludePattern = re.compile(r"^[ \t]*#?[ \t]*include(?:[ \t]*(?:\\(?:\r\n|\r|\n))*[ \t]*)*(?:[\"<]?[ \t]*)([\w.\\/() \t]+)(?:[ \t]*[\">]?)", re.MULTILINE|re.UNICODE|re.IGNORECASE)
+gIncludePattern = re.compile(r"^[ \t]*#?[ \t]*include(?:[ \t]*(?:\\(?:\r\n|\r|\n))*[ \t]*)*(?:\(?[\"<]?[ \t]*)([-\w.\\/() \t]+)(?:[ \t]*[\">]?\)?)", re.MULTILINE|re.UNICODE|re.IGNORECASE)
 
 ## Regular expression for matching macro used in header file inclusion
 gMacroPattern = re.compile("([_A-Z][_A-Z0-9]*)[ \t]*\((.+)\)", re.UNICODE)
@@ -448,7 +448,7 @@ cleanlib:
                             % (self._AutoGenObject.BuildTarget, self._AutoGenObject.ToolChain, self._AutoGenObject.Arch),
                             ExtraData="[%s]" % str(self._AutoGenObject))
 
-        # convert dependent libaries to build command
+        # convert dependent libraries to build command
         self.ProcessDependentLibrary()
         if len(self._AutoGenObject.Module.ModuleEntryPointList) > 0:
             ModuleEntryPoint = self._AutoGenObject.Module.ModuleEntryPointList[0]
@@ -632,7 +632,7 @@ cleanlib:
         if DepSet == None:
             DepSet = set()
         #
-        # Extract comman files list in the dependency files
+        # Extract common files list in the dependency files
         #
         for File in DepSet:
             self.CommonFileDependency.append(self.PlaceMacro(File.Path, self.Macros))
@@ -728,6 +728,9 @@ cleanlib:
             gDependencyDatabase[self._AutoGenObject.Arch] = {}
         DepDb = gDependencyDatabase[self._AutoGenObject.Arch]
 
+        # add path of given source file into search path list.
+        if File.Dir not in SearchPathList:
+            SearchPathList.append(File.Dir)
         while len(FileStack) > 0:
             F = FileStack.pop()
 
@@ -769,7 +772,7 @@ cleanlib:
                     Inc = os.path.normpath(Inc)
                     for SearchPath in [CurrentFilePath] + SearchPathList:
                         FilePath = os.path.join(SearchPath, Inc)
-                        if not os.path.exists(FilePath) or FilePath in CurrentFileDependencyList:
+                        if not os.path.isfile(FilePath) or FilePath in CurrentFileDependencyList:
                             continue
                         FilePath = PathClass(FilePath)
                         CurrentFileDependencyList.append(FilePath)
@@ -777,7 +780,7 @@ cleanlib:
                             FileStack.append(FilePath)
                         break
                     else:
-                        EdkLogger.debug(EdkLogger.DEBUG_9, "%s included by %s was not found"\
+                        EdkLogger.debug(EdkLogger.DEBUG_9, "%s included by %s was not found "\
                                         "in any given path:\n\t%s" % (Inc, F, "\n\t".join(SearchPathList)))
 
                 if not MacroUsedByIncludedFile:

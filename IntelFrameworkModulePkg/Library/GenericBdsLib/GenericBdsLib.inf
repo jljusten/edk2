@@ -111,9 +111,11 @@
   gEfiOEMBadgingProtocolGuid                    # PROTOCOL CONSUMES
   gEfiHiiFontProtocolGuid                       # PROTOCOL CONSUMES
   gEfiUserManagerProtocolGuid                   # PROTOCOL CONSUMES
+  gEfiUsbIoProtocolGuid                         # PROTOCOL SOMETIMES_CONSUMES
 
 [FeaturePcd]
   gEfiMdePkgTokenSpaceGuid.PcdUgaConsumeSupport
 
 [Pcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdShellFile

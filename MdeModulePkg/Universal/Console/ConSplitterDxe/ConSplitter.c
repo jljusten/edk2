@@ -3043,8 +3043,6 @@ ConSplitterTextOutAddDevice (
   }
 
   if (FeaturePcdGet (PcdConOutUgaSupport)) {
-
-    Status = EFI_DEVICE_ERROR;
     //
     // If UGA is produced by Consplitter
     //
@@ -3135,14 +3133,14 @@ ConSplitterTextOutDeleteDevice (
   TextOutList           = Private->TextOutList;
   while (Index >= 0) {
     if (TextOutList->TextOut == TextOut) {
-      CopyMem (TextOutList, TextOutList + 1, sizeof (TEXT_OUT_AND_GOP_DATA) * Index);
-      CurrentNumOfConsoles--;
       if (TextOutList->UgaDraw != NULL && FeaturePcdGet (PcdUgaConsumeSupport)) {
         Private->CurrentNumberOfUgaDraw--;
       }
       if (TextOutList->GraphicsOutput != NULL) {
         Private->CurrentNumberOfGraphicsOutput--;
       }
+      CopyMem (TextOutList, TextOutList + 1, sizeof (TEXT_OUT_AND_GOP_DATA) * Index);
+      CurrentNumOfConsoles--;
       break;
     }
 
@@ -3651,7 +3649,7 @@ ConSplitterTextInRegisterKeyNotify (
   NewNotify->Signature         = TEXT_IN_EX_SPLITTER_NOTIFY_SIGNATURE;
   NewNotify->KeyNotificationFn = KeyNotificationFunction;
   NewNotify->NotifyHandle      = (EFI_HANDLE) NewNotify;
-  CopyMem (&NewNotify->KeyData, KeyData, sizeof (KeyData));
+  CopyMem (&NewNotify->KeyData, KeyData, sizeof (EFI_KEY_DATA));
 
   //
   // Return the wrong status of registering key notify of

@@ -34,49 +34,49 @@ InternalMemSetMem (
   IN      UINT8                     Value
   )
 **/
-	
+  
 .text
 .align 2
-.globl ASM_PFX(InternalMemSetMem)
+GCC_ASM_EXPORT(InternalMemSetMem)
 
 ASM_PFX(InternalMemSetMem):
-	stmfd	sp!, {r4-r11, lr}
-	tst	  r0, #3
-	movne	r3, #0
-	moveq	r3, #1
-	cmp	  r1, #31
-	movls lr, #0
-	andhi	lr, r3, #1
-	cmp	  lr, #0
-	mov	  r12, r0
-	bne	  L31
+  stmfd  sp!, {r4-r11, lr}
+  tst    r0, #3
+  movne  r3, #0
+  moveq  r3, #1
+  cmp    r1, #31
+  movls lr, #0
+  andhi  lr, r3, #1
+  cmp    lr, #0
+  mov    r12, r0
+  bne    L31
 L32:
-	mov	  r3, #0
-	b	    L43
+  mov    r3, #0
+  b      L43
 L31:
   and   r4, r2, #0xff
   orr   r4, r4, r4, LSL #8
   orr   r4, r4, r4, LSL #16  
-	mov   r5, r4
-	mov   r5, r4
-	mov   r6, r4
-	mov   r7, r4 
-	mov   r8, r4 
-	mov   r9, r4 
-	mov   r10, r4 
-	mov   r11, r4 
-	b	    L32
+  mov   r5, r4
+  mov   r5, r4
+  mov   r6, r4
+  mov   r7, r4 
+  mov   r8, r4 
+  mov   r9, r4 
+  mov   r10, r4 
+  mov   r11, r4 
+  b      L32
 L34:
-	cmp	    lr, #0
-	streqb	r2, [r12], #1
-	subeq	  r1, r1, #1
-	beq	    L43
-	sub	    r1, r1, #32
-	cmp	    r1, #31
-	movls	  lr, r3
-	stmia	  r12!, {r4-r11}
+  cmp      lr, #0
+  streqb  r2, [r12], #1
+  subeq    r1, r1, #1
+  beq      L43
+  sub      r1, r1, #32
+  cmp      r1, #31
+  movls    lr, r3
+  stmia    r12!, {r4-r11}
 L43:
-	cmp	    r1, #0
-	bne	    L34
-	ldmfd	  sp!, {r4-r11, pc}
-	
+  cmp      r1, #0
+  bne      L34
+  ldmfd    sp!, {r4-r11, pc}
+  

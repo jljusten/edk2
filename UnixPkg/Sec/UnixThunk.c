@@ -1,7 +1,7 @@
 /*++
 
 Copyright (c) 2004 - 2009, Intel Corporation. All rights reserved.<BR>
-Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
+Portions copyright (c) 2008 - 2010, Apple Inc. All rights reserved.<BR>
 This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -36,13 +36,16 @@ Abstract:
 #include "Uefi.h"
 #include "Library/UnixLib.h"
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(MDE_CPU_X64)
 #include "Gasket.h"
 #endif
 
 int settimer_initialized;
 struct timeval settimer_timeval;
 void (*settimer_callback)(UINT64 delta);
+
+BOOLEAN gEmulatorInterruptEnabled = FALSE;
+
 
 void
 settimer_handler (int sig)
@@ -57,10 +60,10 @@ settimer_handler (int sig)
   settimer_timeval = timeval;
   
   if (settimer_callback) {
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(MDE_CPU_X64)
    ReverseGasketUint64 (settimer_callback, delta);
 #else
-   (*settimer_callback)(delta);
+    (*settimer_callback)(delta);
 #endif
   }
 }
@@ -78,6 +81,7 @@ SetTimer (UINT64 PeriodMs, VOID (*CallBack)(UINT64 DeltaMs))
     act.sa_handler = settimer_handler;
     act.sa_flags = 0;
     sigemptyset (&act.sa_mask);
+    gEmulatorInterruptEnabled = TRUE;
     if (sigaction (SIGALRM, &act, NULL) != 0) {
       printf ("SetTimer: sigaction error %s\n", strerror (errno));
     }
@@ -97,6 +101,43 @@ SetTimer (UINT64 PeriodMs, VOID (*CallBack)(UINT64 DeltaMs))
   settimer_callback = CallBack;
 }
 
+
+void
+UnixEnableInterrupt (void)
+{
+  sigset_t  sigset;
+
+  gEmulatorInterruptEnabled = TRUE;
+  // Since SetTimer() uses SIGALRM we emulate turning on and off interrupts 
+  // by enabling/disabling SIGALRM.
+  sigemptyset (&sigset);
+  sigaddset (&sigset, SIGALRM);
+  sigprocmask (SIG_UNBLOCK, &sigset, NULL);
+}
+
+
+void
+UnixDisableInterrupt (void)
+{
+  sigset_t  sigset;
+
+  // Since SetTimer() uses SIGALRM we emulate turning on and off interrupts 
+  // by enabling/disabling SIGALRM.
+  sigemptyset (&sigset);
+  sigaddset (&sigset, SIGALRM);
+  sigprocmask (SIG_BLOCK, &sigset, NULL);
+  gEmulatorInterruptEnabled = FALSE;
+}
+
+
+BOOLEAN
+UnixInterruptEanbled (void)
+{
+  return gEmulatorInterruptEnabled;
+}
+
+
+
 void
 msSleep (unsigned long Milliseconds)
 {
@@ -111,7 +152,7 @@ msSleep (unsigned long Milliseconds)
     }
     rq = rm;
   } 
-    
+
 }
 
 void
@@ -130,7 +171,7 @@ GetLocalTime (EFI_TIME *Time)
   Time->Minute = tm->tm_min;
   Time->Second = tm->tm_sec;
   Time->Nanosecond = 0;
-  Time->TimeZone = timezone;
+  Time->TimeZone = GetTimeZone ();
   Time->Daylight = (daylight ? EFI_TIME_ADJUST_DAYLIGHT : 0)
     | (tm->tm_isdst > 0 ? EFI_TIME_IN_DAYLIGHT : 0);
 }
@@ -171,7 +212,7 @@ UgaCreate(struct _EFI_UNIX_UGA_IO_PROTOCOL **UgaIo, CONST CHAR16 *Title);
 
 EFI_UNIX_THUNK_PROTOCOL mUnixThunkTable = {
   EFI_UNIX_THUNK_PROTOCOL_SIGNATURE,
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(MDE_CPU_X64)
 //
 // Mac OS X requires the stack to be 16-byte aligned for IA-32. So on an OS X build
 // we add an assembly wrapper that makes sure the stack ges aligned. 
@@ -219,7 +260,14 @@ EFI_UNIX_THUNK_PROTOCOL mUnixThunkTable = {
   Gaskettcsetattr,
   GasketUnixPeCoffGetEntryPoint,                
   GasketUnixPeCoffRelocateImageExtraAction,     
-  GasketUnixPeCoffUnloadImageExtraAction  
+  GasketUnixPeCoffUnloadImageExtraAction,  
+  
+  GasketUnixEnableInterrupt,
+  GasketUnixDisableInterrupt,
+
+  Gasketgetifaddrs,
+  Gasketfreeifaddrs,
+  Gasketsocket,
 
 #else
   msSleep, /* Sleep */
@@ -263,7 +311,12 @@ EFI_UNIX_THUNK_PROTOCOL mUnixThunkTable = {
   tcsetattr,
   SecPeCoffGetEntryPoint,
   SecPeCoffRelocateImageExtraAction,
-  SecPeCoffLoaderUnloadImageExtraAction
+  SecPeCoffLoaderUnloadImageExtraAction,
+  UnixEnableInterrupt,
+  UnixDisableInterrupt,
+  getifaddrs,
+  freeifaddrs,
+  socket
 #endif
 };
 

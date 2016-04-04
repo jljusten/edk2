@@ -14,9 +14,9 @@
 
 
 
-	.text
-	.align 2
-	.globl ASM_PFX(__aeabi_uldivmod)
+  .text
+  .align 2
+  GCC_ASM_EXPORT(__aeabi_uldivmod)
 
 //        
 //UINT64
