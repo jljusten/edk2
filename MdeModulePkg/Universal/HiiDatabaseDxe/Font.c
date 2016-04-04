@@ -2,7 +2,7 @@
 Implementation for EFI_HII_FONT_PROTOCOL.
 
 
-Copyright (c) 2007 - 2012, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -757,12 +757,12 @@ FindGlyphBlock (
       break;
 
     case EFI_HII_GIBT_EXT1:
-      BlockPtr += *(BlockPtr + sizeof (EFI_HII_GLYPH_BLOCK) + sizeof (UINT8));
+      BlockPtr += *(UINT8*)((UINTN)BlockPtr + sizeof (EFI_HII_GLYPH_BLOCK) + sizeof (UINT8));
       break;
     case EFI_HII_GIBT_EXT2:
       CopyMem (
         &Length16,
-        BlockPtr + sizeof (EFI_HII_GLYPH_BLOCK) + sizeof (UINT8),
+        (UINT8*)((UINTN)BlockPtr + sizeof (EFI_HII_GLYPH_BLOCK) + sizeof (UINT8)),
         sizeof (UINT16)
         );
       BlockPtr += Length16;
@@ -770,7 +770,7 @@ FindGlyphBlock (
     case EFI_HII_GIBT_EXT4:
       CopyMem (
         &Length32,
-        BlockPtr + sizeof (EFI_HII_GLYPH_BLOCK) + sizeof (UINT8),
+        (UINT8*)((UINTN)BlockPtr + sizeof (EFI_HII_GLYPH_BLOCK) + sizeof (UINT8)),
         sizeof (UINT32)
         );
       BlockPtr += Length32;
@@ -793,7 +793,7 @@ FindGlyphBlock (
       BufferLen = BITMAP_LEN_1_BIT (LocalCell.Width, LocalCell.Height);
       if (CharCurrent == CharValue) {
         return WriteOutputParam (
-                 BlockPtr + sizeof (EFI_HII_GIBT_GLYPH_BLOCK) - sizeof (UINT8),
+                 (UINT8*)((UINTN)BlockPtr + sizeof (EFI_HII_GIBT_GLYPH_BLOCK) - sizeof (UINT8)),
                  BufferLen,
                  &LocalCell,
                  GlyphBuffer,
@@ -1040,8 +1040,12 @@ IsSystemFontInfo (
     return TRUE;
   }
 
+  SystemDefault = NULL;
+  DefaultLen    = 0;
+
   Status = GetSystemFont (Private, &SystemDefault, &DefaultLen);
   ASSERT_EFI_ERROR (Status);
+  ASSERT ((SystemDefault != NULL) && (DefaultLen != 0));
 
   //
   // Record the system default info.
@@ -1687,6 +1691,7 @@ HiiStringToImage (
   SysFontFlag   = IsSystemFontInfo (Private, (EFI_FONT_DISPLAY_INFO *) StringInfo, &SystemDefault, NULL);
 
   if (SysFontFlag) {
+    ASSERT (SystemDefault != NULL);
     FontInfo   = NULL;
     Height     = SystemDefault->FontInfo.FontSize;
     BaseLine   = SystemDefault->FontInfo.FontSize;
@@ -2580,6 +2585,7 @@ HiiGetGlyph (
     Foreground = StringInfoOut->ForegroundColor;
     Background = StringInfoOut->BackgroundColor;
   } else {
+    ASSERT (SystemDefault != NULL);
     Foreground = SystemDefault->ForegroundColor;
     Background = SystemDefault->BackgroundColor;
   }
@@ -2723,6 +2729,7 @@ HiiGetFontInfo (
     return EFI_INVALID_PARAMETER;
   }
 
+  StringInfoOutLen = 0;
   FontInfo        = NULL;
   SystemDefault   = NULL;
   LocalFontHandle = NULL;

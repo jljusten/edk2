@@ -215,14 +215,80 @@ ShellCommandLibDestructor (
 }
 
 /**
-  Checks if a command is already on the list.
+  Find a dynamic command protocol instance given a command name string
+
+  @param CommandString  the command name string
+
+  @return instance      the command protocol instance, if dynamic command instance found
+  @retval NULL          no dynamic command protocol instance found for name
+**/
+CONST EFI_SHELL_DYNAMIC_COMMAND_PROTOCOL *
+EFIAPI
+ShellCommandFindDynamicCommand (
+  IN CONST CHAR16 *CommandString
+  )
+{
+  EFI_STATUS                          Status;
+  EFI_HANDLE                          *CommandHandleList;
+  EFI_HANDLE                          *NextCommand;
+  EFI_SHELL_DYNAMIC_COMMAND_PROTOCOL  *DynamicCommand;
+
+  CommandHandleList = GetHandleListByProtocol(&gEfiShellDynamicCommandProtocolGuid);
+  if (CommandHandleList == NULL) {
+    //
+    // not found or out of resources
+    //
+    return NULL; 
+  }
+
+  for (NextCommand = CommandHandleList; *NextCommand != NULL; NextCommand++) {
+    Status = gBS->HandleProtocol(
+      *NextCommand,
+      &gEfiShellDynamicCommandProtocolGuid,
+      (VOID **)&DynamicCommand
+      );
+
+    if (EFI_ERROR(Status)) {
+      continue;
+    }
+
+    if (gUnicodeCollation->StriColl(
+          gUnicodeCollation,
+          (CHAR16*)CommandString,
+          (CHAR16*)DynamicCommand->CommandName) == 0 
+          ){
+        FreePool(CommandHandleList);
+        return (DynamicCommand);
+    }
+  }
+
+  FreePool(CommandHandleList);
+  return (NULL);
+}
+
+/**
+  Checks if a command exists as a dynamic command protocol instance
 
   @param[in] CommandString        The command string to check for on the list.
 **/
 BOOLEAN
 EFIAPI
-ShellCommandIsCommandOnList (
-  IN CONST  CHAR16                      *CommandString
+ShellCommandDynamicCommandExists (
+  IN CONST CHAR16 *CommandString
+  )
+{
+  return (ShellCommandFindDynamicCommand(CommandString) != NULL);
+}
+
+/**
+  Checks if a command is already on the internal command list.
+
+  @param[in] CommandString        The command string to check for on the list.
+**/
+BOOLEAN
+EFIAPI
+ShellCommandIsCommandOnInternalList(
+  IN CONST  CHAR16 *CommandString
   )
 {
   SHELL_COMMAND_INTERNAL_LIST_ENTRY *Node;
@@ -252,7 +318,52 @@ ShellCommandIsCommandOnList (
 }
 
 /**
-  Get the help text for a command.
+  Checks if a command exists, either internally or through the dynamic command protocol.
+
+  @param[in] CommandString        The command string to check for on the list.
+**/
+BOOLEAN
+EFIAPI
+ShellCommandIsCommandOnList(
+  IN CONST  CHAR16                      *CommandString
+  )
+{
+  if (ShellCommandIsCommandOnInternalList(CommandString)) {
+    return TRUE;
+  }
+
+  return ShellCommandDynamicCommandExists(CommandString);
+}
+
+/**
+ Get the help text for a dynamic command.
+
+  @param[in] CommandString        The command name.
+
+  @retval NULL  No help text was found.
+  @return       String of help text. Caller required to free.
+**/
+CHAR16*
+EFIAPI
+ShellCommandGetDynamicCommandHelp(
+  IN CONST  CHAR16                      *CommandString
+  )
+{
+  EFI_SHELL_DYNAMIC_COMMAND_PROTOCOL  *DynamicCommand;
+
+  DynamicCommand = (EFI_SHELL_DYNAMIC_COMMAND_PROTOCOL  *)ShellCommandFindDynamicCommand(CommandString);
+  if (DynamicCommand == NULL) {
+    return (NULL);
+  }
+
+  //
+  // TODO: how to get proper language?
+  //
+  return DynamicCommand->GetHelp(DynamicCommand, "en"); 
+}
+
+/**
+  Get the help text for an internal command.
 
   @param[in] CommandString        The command name.
 
@@ -261,7 +372,7 @@ ShellCommandIsCommandOnList (
 **/
 CHAR16*
 EFIAPI
-ShellCommandGetCommandHelp (
+ShellCommandGetInternalCommandHelp(
   IN CONST  CHAR16                      *CommandString
   )
 {
@@ -290,6 +401,31 @@ ShellCommandGetCommandHelp (
   }
   return (NULL);
 }
+
+/**
+  Get the help text for a command.
+
+  @param[in] CommandString        The command name.
+
+  @retval NULL  No help text was found.
+  @return       String of help text.Caller reuiqred to free.
+**/
+CHAR16*
+EFIAPI
+ShellCommandGetCommandHelp (
+  IN CONST  CHAR16                      *CommandString
+  )
+{
+  CHAR16      *HelpStr;
+  HelpStr = ShellCommandGetInternalCommandHelp(CommandString);
+
+  if (HelpStr == NULL) {
+    HelpStr = ShellCommandGetDynamicCommandHelp(CommandString);
+  }
+
+  return HelpStr;
+}
+
 
 /**
   Registers handlers of type SHELL_RUN_COMMAND and
@@ -505,7 +641,8 @@ ShellCommandRunCommandHandler (
   IN OUT BOOLEAN                *CanAffectLE OPTIONAL
   )
 {
-  SHELL_COMMAND_INTERNAL_LIST_ENTRY *Node;
+  SHELL_COMMAND_INTERNAL_LIST_ENTRY   *Node;
+  EFI_SHELL_DYNAMIC_COMMAND_PROTOCOL  *DynamicCommand;
 
   //
   // assert for NULL parameters
@@ -524,7 +661,7 @@ ShellCommandRunCommandHandler (
           gUnicodeCollation,
           (CHAR16*)CommandString,
           Node->CommandString) == 0
-       ){
+      ){
       if (CanAffectLE != NULL) {
         *CanAffectLE = Node->LastError;
       }
@@ -536,6 +673,20 @@ ShellCommandRunCommandHandler (
       return (RETURN_SUCCESS);
     }
   }
+
+  //
+  // An internal command was not found, try to find a dynamic command
+  //
+  DynamicCommand = (EFI_SHELL_DYNAMIC_COMMAND_PROTOCOL  *)ShellCommandFindDynamicCommand(CommandString);
+  if (DynamicCommand != NULL) {
+    if (RetVal != NULL) {
+      *RetVal = DynamicCommand->Handler(DynamicCommand, gST, gEfiShellParametersProtocol, gEfiShellProtocol);
+    } else {
+      DynamicCommand->Handler(DynamicCommand, gST, gEfiShellParametersProtocol, gEfiShellProtocol);
+    }
+    return (RETURN_SUCCESS);
+  }
+
   return (RETURN_NOT_FOUND);
 }
 
@@ -1241,7 +1392,9 @@ ShellCommandUpdateMapping (
     // Get all Device Paths
     //
     DevicePathList = AllocateZeroPool(sizeof(EFI_DEVICE_PATH_PROTOCOL*) * Count);
-    ASSERT(DevicePathList != NULL);
+    if (DevicePathList == NULL) {
+      return (EFI_OUT_OF_RESOURCES);
+    }
 
     for (Count = 0 ; HandleList[Count] != NULL ; Count++) {
       DevicePathList[Count] = DevicePathFromHandle(HandleList[Count]);
@@ -1257,7 +1410,7 @@ ShellCommandUpdateMapping (
     //
     // Assign new Mappings to remainders
     //
-    for (Count = 0 ; HandleList[Count] != NULL && !EFI_ERROR(Status); Count++) {
+    for (Count = 0 ; !EFI_ERROR(Status) && HandleList[Count] != NULL && !EFI_ERROR(Status); Count++) {
       //
       // Skip ones that already have
       //
@@ -1268,7 +1421,10 @@ ShellCommandUpdateMapping (
       // Get default name
       //
       NewDefaultName = ShellCommandCreateNewMappingName(MappingTypeFileSystem);
-      ASSERT(NewDefaultName != NULL);
+      if (NewDefaultName == NULL) {
+        Status = EFI_OUT_OF_RESOURCES;
+        break;
+      }
 
       //
       // Call shell protocol SetMap function now...
@@ -1345,11 +1501,14 @@ ConvertEfiFileProtocolToShellHandle(
     }
     NewNode             = AllocateZeroPool(sizeof(BUFFER_LIST));
     if (NewNode == NULL) {
+      SHELL_FREE_NON_NULL(Buffer);
       return (NULL);
     }
     Buffer->FileHandle  = (EFI_FILE_PROTOCOL*)Handle;
     Buffer->Path        = StrnCatGrow(&Buffer->Path, NULL, Path, 0);
     if (Buffer->Path == NULL) {
+      SHELL_FREE_NON_NULL(NewNode);
+      SHELL_FREE_NON_NULL(Buffer);
       return (NULL);
     }
     NewNode->Buffer     = Buffer;
@@ -1487,7 +1646,6 @@ FreeBufferList (
       ; BufferListEntry = (BUFFER_LIST *)GetFirstNode(&List->Link)
      ){
     RemoveEntryList(&BufferListEntry->Link);
-    ASSERT(BufferListEntry->Buffer != NULL);
     if (BufferListEntry->Buffer != NULL) {
       FreePool(BufferListEntry->Buffer);
     }

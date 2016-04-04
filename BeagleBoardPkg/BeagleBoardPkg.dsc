@@ -122,6 +122,7 @@
   DebugAgentLib|MdeModulePkg/Library/DebugAgentLibNull/DebugAgentLibNull.inf
   DmaLib|ArmPkg/Library/ArmDmaLib/ArmDmaLib.inf
 
+  NetLib|MdeModulePkg/Library/DxeNetLib/DxeNetLib.inf
   BdsLib|ArmPkg/Library/BdsLib/BdsLib.inf
   FdtLib|EmbeddedPkg/Library/FdtLib/FdtLib.inf
 
@@ -135,8 +136,6 @@
   ExtractGuidedSectionLib|EmbeddedPkg/Library/PrePiExtractGuidedSectionLib/PrePiExtractGuidedSectionLib.inf
   LzmaDecompressLib|IntelFrameworkModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
 
-  # Temp work around for Movt relocation issue. 
-  #PeCoffLib|ArmPkg/Library/BasePeCoffLib/BasePeCoffLib.inf
   PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
   
   HobLib|EmbeddedPkg/Library/PrePiHobLib/PrePiHobLib.inf

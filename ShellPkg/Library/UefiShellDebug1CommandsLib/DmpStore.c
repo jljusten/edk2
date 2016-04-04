@@ -1,6 +1,7 @@
 /** @file
   Main file for DmpStore shell Debug1 function.
-
+   
+  (C) Copyright 2013-2014, Hewlett-Packard Development Company, L.P.
   Copyright (c) 2005 - 2014, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -430,6 +431,11 @@ CascadeProcessVariables (
   //
   ShellStatus = CascadeProcessVariables(Name, Guid, Type, FileHandle, FoundVarName, FoundVarGuid, FoundOne);
 
+  if (ShellGetExecutionBreakFlag() || (ShellStatus == SHELL_ABORTED)) {
+    SHELL_FREE_NON_NULL(FoundVarName);
+    return (SHELL_ABORTED);
+  }
+
   //
   // No matter what happened we process our own variable
   // Only continue if Guid and VariableName are each either NULL or a match
@@ -635,6 +641,9 @@ ShellCommandRunDmpStore (
       ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_PARAM_CONFLICT), gShellDebug1HiiHandle, L"-l or -s", L"-d");
       ShellStatus = SHELL_INVALID_PARAMETER;
     } else {
+      //
+      // Determine the GUID to search for based on -all and -guid parameters
+      //
       if (!ShellCommandLineGetFlag(Package, L"-all")) {
         GuidStr = ShellCommandLineGetValue(Package, L"-guid");
         if (GuidStr != NULL) {
@@ -647,11 +656,15 @@ ShellCommandRunDmpStore (
         } else  {
           Guid = &gEfiGlobalVariableGuid;
         }
-        Name = ShellCommandLineGetRawValue(Package, 1);
       } else {
-        Name  = NULL;
         Guid  = NULL;
       }
+
+      //
+      // Get the Name of the variable to find
+      //
+      Name = ShellCommandLineGetRawValue(Package, 1);
+
       if (ShellStatus == SHELL_SUCCESS) {
         if (ShellCommandLineGetFlag(Package, L"-s")) {
           Type = DmpStoreSave;

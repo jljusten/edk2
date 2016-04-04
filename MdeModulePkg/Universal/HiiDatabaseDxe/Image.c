@@ -2,7 +2,7 @@
 Implementation for EFI_HII_IMAGE_PROTOCOL.
 
 
-Copyright (c) 2007 - 2013, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -79,13 +79,13 @@ GetImageIdOrAddress (
     }
     switch (((EFI_HII_IMAGE_BLOCK *) ImageBlock)->BlockType) {
     case EFI_HII_IIBT_EXT1:
-      Length8 = *(ImageBlock + sizeof (EFI_HII_IMAGE_BLOCK) + sizeof (UINT8));
+      Length8 = *(UINT8*)((UINTN)ImageBlock + sizeof (EFI_HII_IMAGE_BLOCK) + sizeof (UINT8));
       ImageBlock += Length8;
       break;
     case EFI_HII_IIBT_EXT2:
       CopyMem (
         &Length16,
-        ImageBlock + sizeof (EFI_HII_IMAGE_BLOCK) + sizeof (UINT8),
+        (UINT8*)((UINTN)ImageBlock + sizeof (EFI_HII_IMAGE_BLOCK) + sizeof (UINT8)),
         sizeof (UINT16)
         );
       ImageBlock += Length16;
@@ -93,7 +93,7 @@ GetImageIdOrAddress (
     case EFI_HII_IIBT_EXT4:
       CopyMem (
         &Length32,
-        ImageBlock + sizeof (EFI_HII_IMAGE_BLOCK) + sizeof (UINT8),
+        (UINT8*)((UINTN)ImageBlock + sizeof (EFI_HII_IMAGE_BLOCK) + sizeof (UINT8)),
         sizeof (UINT32)
         );
       ImageBlock += Length32;
@@ -920,19 +920,19 @@ HiiGetImage (
     if (BlockType == EFI_HII_IIBT_IMAGE_1BIT || BlockType == EFI_HII_IIBT_IMAGE_1BIT_TRANS) {
       Output1bitPixel (
         Image,
-        (UINT8 *) (ImageBlock + sizeof (EFI_HII_IIBT_IMAGE_1BIT_BLOCK) - sizeof (UINT8)),
+        (UINT8 *) ((UINTN)ImageBlock + sizeof (EFI_HII_IIBT_IMAGE_1BIT_BLOCK) - sizeof (UINT8)),
         (EFI_HII_IMAGE_PALETTE_INFO *) PaletteInfo
         );
     } else if (BlockType == EFI_HII_IIBT_IMAGE_4BIT || BlockType == EFI_HII_IIBT_IMAGE_4BIT_TRANS) {
       Output4bitPixel (
         Image,
-        (UINT8 *) (ImageBlock + sizeof (EFI_HII_IIBT_IMAGE_4BIT_BLOCK) - sizeof (UINT8)),
+        (UINT8 *) ((UINTN)ImageBlock + sizeof (EFI_HII_IIBT_IMAGE_4BIT_BLOCK) - sizeof (UINT8)),
         (EFI_HII_IMAGE_PALETTE_INFO *) PaletteInfo
         );
     } else {
       Output8bitPixel (
         Image,
-        (UINT8 *) (ImageBlock + sizeof (EFI_HII_IIBT_IMAGE_8BIT_BLOCK) - sizeof (UINT8)),
+        (UINT8 *) ((UINTN)ImageBlock + sizeof (EFI_HII_IIBT_IMAGE_8BIT_BLOCK) - sizeof (UINT8)),
         (EFI_HII_IMAGE_PALETTE_INFO *) PaletteInfo
         );
     }
@@ -1237,6 +1237,7 @@ HiiDrawImage (
     return EFI_INVALID_PARAMETER;
   }
 
+  FontInfo = NULL;
   ImageIn = (EFI_IMAGE_INPUT *) Image;
 
   //
@@ -1383,6 +1384,7 @@ HiiDrawImage (
       FreePool (ImageOut);
       return Status;
     }
+    ASSERT (FontInfo != NULL);
     for (Index = 0; Index < Width * Height; Index++) {
       BltBuffer[Index] = FontInfo->BackgroundColor;
     }

@@ -27,7 +27,7 @@
   3) A support protocol is not found, and the data is not available to be read
      without it.  This results in EFI_PROTOCOL_ERROR.
 
-Copyright (c) 2006 - 2012, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -513,6 +513,8 @@ VerifyGuidedSectionGuid (
   VOID                  *Interface;
   EFI_STATUS            Status;
 
+  Interface = NULL;
+
   //
   // Check if there is the Guided Section GUID configuration table recorded the GUID itself.
   //
@@ -901,6 +903,10 @@ CreateChildNode (
           //
           AuthenticationStatus = Stream->AuthenticationStatus;
 
+          if ((GuidedSectionAttributes & EFI_GUIDED_SECTION_AUTH_STATUS_VALID) == EFI_GUIDED_SECTION_AUTH_STATUS_VALID) {
+            AuthenticationStatus |= EFI_AUTH_STATUS_IMAGE_SIGNED | EFI_AUTH_STATUS_NOT_TESTED;
+          }
+
           if (IS_SECTION2 (GuidedHeader)) {
             Status = OpenSectionStreamEx (
                        SECTION2_SIZE (GuidedHeader) - ((EFI_GUID_DEFINED_SECTION2 *) GuidedHeader)->DataOffset,
@@ -1229,6 +1235,7 @@ GetSection (
   EFI_COMMON_SECTION_HEADER                             *Section;
 
 
+  ChildStreamNode = NULL;
   OldTpl = CoreRaiseTpl (TPL_NOTIFY);
   Instance = SectionInstance + 1;
 

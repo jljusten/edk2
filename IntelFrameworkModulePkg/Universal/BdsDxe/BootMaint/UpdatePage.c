@@ -263,7 +263,16 @@ UpdateBootDelPage (
     }
 
     NewLoadContext->Deleted = FALSE;
-    //CallbackData->BmmFakeNvData.BootOptionDel[Index] = FALSE;
+
+    if (CallbackData->BmmFakeNvData.BootOptionDel[Index] && !CallbackData->BmmFakeNvData.BootOptionDelMark[Index]) {
+      //
+      // CallbackData->BmmFakeNvData.BootOptionDel[Index] == TRUE means browser knows this boot option is selected
+      // CallbackData->BmmFakeNvData.BootOptionDelMark[Index] = FALSE means BDS knows the selected boot option has
+      // deleted, browser maintains old useless info. So clear this info here, and later update this info to browser
+      // through HiiSetBrowserData function.
+      //
+      CallbackData->BmmFakeNvData.BootOptionDel[Index] = FALSE;
+    }
 
     HiiCreateCheckBoxOpCode (
       mStartOpCodeHandle,
@@ -272,7 +281,7 @@ UpdateBootDelPage (
       (UINT16) (BOOT_OPTION_DEL_VAR_OFFSET + Index),
       NewMenuEntry->DisplayStringToken,
       NewMenuEntry->HelpStringToken,
-      0,
+      EFI_IFR_FLAG_CALLBACK,
       0,
       NULL
       );
@@ -343,7 +352,16 @@ UpdateDrvDelPage (
 
     NewLoadContext          = (BM_LOAD_CONTEXT *) NewMenuEntry->VariableContext;
     NewLoadContext->Deleted = FALSE;
-    //CallbackData->BmmFakeNvData.DriverOptionDel[Index] = FALSE;
+
+    if (CallbackData->BmmFakeNvData.DriverOptionDel[Index] && !CallbackData->BmmFakeNvData.DriverOptionDelMark[Index]) {
+      //
+      // CallbackData->BmmFakeNvData.BootOptionDel[Index] == TRUE means browser knows this boot option is selected
+      // CallbackData->BmmFakeNvData.BootOptionDelMark[Index] = FALSE means BDS knows the selected boot option has
+      // deleted, browser maintains old useless info. So clear this info here, and later update this info to browser
+      // through HiiSetBrowserData function.
+      //
+      CallbackData->BmmFakeNvData.DriverOptionDel[Index] = FALSE;
+    }
 
     HiiCreateCheckBoxOpCode (
       mStartOpCodeHandle,
@@ -352,7 +370,7 @@ UpdateDrvDelPage (
       (UINT16) (DRIVER_OPTION_DEL_VAR_OFFSET + Index),
       NewMenuEntry->DisplayStringToken,
       NewMenuEntry->HelpStringToken,
-      0,
+      EFI_IFR_FLAG_CALLBACK,
       0,
       NULL
       );
@@ -561,7 +579,7 @@ UpdateOrderPage (
   ASSERT (OptionsOpCodeHandle != NULL);
   
   NewMenuEntry = NULL;
-  for (OptionIndex = 0; (OptionOrder[OptionIndex] != 0 && OptionIndex < MAX_MENU_NUMBER); OptionIndex++) {
+  for (OptionIndex = 0; (OptionIndex < MAX_MENU_NUMBER && OptionOrder[OptionIndex] != 0); OptionIndex++) {
     BootOptionFound = FALSE;
     for (Index = 0; Index < OptionMenu->MenuNumber; Index++) {
       NewMenuEntry   = BOpt_GetMenuEntry (OptionMenu, Index);
@@ -1285,7 +1303,7 @@ UpdateSetLegacyDeviceOrderPage (
         break;
       }
 
-      VarData += sizeof (BBS_TYPE);
+      VarData  = (UINT8 *)((UINTN)VarData + sizeof (BBS_TYPE));
       VarData += *(UINT16 *) VarData;
       DevOrder = (LEGACY_DEV_ORDER_ENTRY *) VarData;
     }
@@ -1315,7 +1333,7 @@ UpdateSetLegacyDeviceOrderPage (
         NULL
         );
 
-      VarDevOrder = *(UINT16 *) ((UINT8 *) DevOrder + sizeof (BBS_TYPE) + sizeof (UINT16) + Index * sizeof (UINT16));
+      VarDevOrder = *(UINT16 *) ((UINTN) DevOrder + sizeof (BBS_TYPE) + sizeof (UINT16) + Index * sizeof (UINT16));
 
       if (0xFF00 == (VarDevOrder & 0xFF00)) {
         LegacyOrder[Index]  = 0xFF;
@@ -1349,6 +1367,14 @@ UpdatePageId (
   UINT16                         NewPageId
   )
 {
+  //
+  // For the question don't impact the page update, just ignore it.
+  //
+  if (((NewPageId >= BOOT_OPTION_DEL_QUESTION_ID) && (NewPageId < BOOT_OPTION_DEL_QUESTION_ID + MAX_MENU_NUMBER)) ||
+      ((NewPageId >= DRIVER_OPTION_DEL_QUESTION_ID) && (NewPageId < DRIVER_OPTION_DEL_QUESTION_ID + MAX_MENU_NUMBER))) {
+    return;
+  }
+
   if ((NewPageId < FILE_OPTION_OFFSET) && (NewPageId >= HANDLE_OPTION_OFFSET)) {
     //
     // If we select a handle to add driver option, advance to the add handle description page.

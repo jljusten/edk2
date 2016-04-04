@@ -65,8 +65,9 @@
   # it has been configured by the CPU DXE
   gArmTokenSpaceGuid.PcdDebuggerExceptionSupport|FALSE|BOOLEAN|0x00000032
 
-  # Define if the Power State Coordination Interface (PSCI) is supported by the Platform Trusted Firmware
-  gArmTokenSpaceGuid.PcdArmPsciSupport|FALSE|BOOLEAN|0x00000033
+  # Define if the spin-table mechanism is used by the secondary cores when booting
+  # Linux (instead of PSCI)
+  gArmTokenSpaceGuid.PcdArmLinuxSpinTable|FALSE|BOOLEAN|0x00000033
 
 [PcdsFixedAtBuild.common]
   gArmTokenSpaceGuid.PcdTrustzoneSupport|FALSE|BOOLEAN|0x00000006
@@ -140,9 +141,12 @@
   # ARM Architectural Timer
   #
   gArmTokenSpaceGuid.PcdArmArchTimerFreqInHz|0|UINT32|0x00000034
-  # ARM Architectural Timer Interrupt(GIC PPI) number
+
+  # ARM Architectural Timer Interrupt(GIC PPI) numbers
   gArmTokenSpaceGuid.PcdArmArchTimerSecIntrNum|29|UINT32|0x00000035
   gArmTokenSpaceGuid.PcdArmArchTimerIntrNum|30|UINT32|0x00000036
+  gArmTokenSpaceGuid.PcdArmArchTimerHypIntrNum|26|UINT32|0x00000040
+  gArmTokenSpaceGuid.PcdArmArchTimerVirtIntrNum|27|UINT32|0x00000041
 
 [PcdsFixedAtBuild.ARM]
   #

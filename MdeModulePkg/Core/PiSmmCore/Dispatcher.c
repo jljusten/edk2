@@ -27,7 +27,8 @@
 
   Depex - Dependency Expresion.
 
-  Copyright (c) 2009 - 2013, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2014, Hewlett-Packard Development Company, L.P.
+  Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials are licensed and made available 
   under the terms and conditions of the BSD License which accompanies this 
   distribution.  The full text of the license may be found at        
@@ -518,7 +519,7 @@ SmmLoadImage (
   // Align buffer on section boundry
   //
   ImageContext.ImageAddress += ImageContext.SectionAlignment - 1;
-  ImageContext.ImageAddress &= ~(ImageContext.SectionAlignment - 1);
+  ImageContext.ImageAddress &= ~((EFI_PHYSICAL_ADDRESS)(ImageContext.SectionAlignment - 1));
 
   //
   // Load the image to our new buffer
@@ -568,6 +569,7 @@ SmmLoadImage (
     return Status;
   }
 
+  ZeroMem (DriverEntry->LoadedImage, sizeof (EFI_LOADED_IMAGE_PROTOCOL));
   //
   // Fill in the remaining fields of the Loaded Image Protocol instance.
   // Note: ImageBase is an SMRAM address that can not be accessed outside of SMRAM if SMRAM window is closed.

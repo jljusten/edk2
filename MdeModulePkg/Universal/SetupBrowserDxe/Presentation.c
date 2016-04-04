@@ -397,8 +397,11 @@ UpdateHotkeyList (
     HotKey = BROWSER_HOT_KEY_FROM_LINK (Link);
 
     CopyKey             = AllocateCopyPool(sizeof (BROWSER_HOT_KEY), HotKey);
+    ASSERT (CopyKey != NULL);
     CopyKey->KeyData    = AllocateCopyPool(sizeof (EFI_INPUT_KEY), HotKey->KeyData);
+    ASSERT (CopyKey->KeyData != NULL);
     CopyKey->HelpString = AllocateCopyPool(StrSize (HotKey->HelpString), HotKey->HelpString);
+    ASSERT (CopyKey->HelpString != NULL);
 
     InsertTailList(&gDisplayFormData.HotKeyListHead, &CopyKey->Link);
 
@@ -814,6 +817,13 @@ UpdateStatementStatusForForm (
     Question = FORM_BROWSER_STATEMENT_FROM_LINK (Link);
     Link = GetNextNode (&Form->StatementListHead, Link);
 
+    //
+    // For password opcode, not set the the value changed flag.
+    //
+    if (Question->Operand == EFI_IFR_PASSWORD_OP) {
+      continue;
+    }
+
     IsQuestionValueChanged(FormSet, Form, Question, GetSetValueWithBuffer);
   }
 }
@@ -902,8 +912,6 @@ ProcessAction (
   IN UINT16        DefaultId
   )
 {
-  EFI_STATUS    Status;
-
   //
   // This is caused by use press ESC, and it should not combine with other action type.
   //
@@ -925,10 +933,7 @@ ProcessAction (
   }
 
   if ((Action & BROWSER_ACTION_SUBMIT) == BROWSER_ACTION_SUBMIT) {
-    Status = SubmitForm (gCurrentSelection->FormSet, gCurrentSelection->Form, gBrowserSettingScope);
-    if (EFI_ERROR (Status)) {
-      PopupErrorMessage(BROWSER_SUBMIT_FAIL, NULL, NULL);
-    }
+    SubmitForm (gCurrentSelection->FormSet, gCurrentSelection->Form, gBrowserSettingScope);
   }
 
   if ((Action & BROWSER_ACTION_RESET) == BROWSER_ACTION_RESET) {
@@ -1183,7 +1188,8 @@ ProcessChangedData (
   IN     BROWSER_SETTING_SCOPE   Scope
   )
 {
-  BOOLEAN  RetValue;
+  BOOLEAN    RetValue;
+  EFI_STATUS Status;
 
   RetValue = TRUE;
   switch (mFormDisplay->ConfirmDataChange()) {
@@ -1192,7 +1198,10 @@ ProcessChangedData (
       break;
   
     case BROWSER_ACTION_SUBMIT:
-      SubmitForm (Selection->FormSet, Selection->Form, Scope);
+      Status = SubmitForm (Selection->FormSet, Selection->Form, Scope);
+      if (EFI_ERROR (Status)) {
+        RetValue = FALSE;
+      }
       break;
 
     case BROWSER_ACTION_NONE:
@@ -1226,15 +1235,7 @@ FindParentFormSet (
   FORM_ENTRY_INFO            *ParentMenu;
 
   CurrentMenu = Selection->CurrentMenu;
-  ParentMenu  = UiFindParentMenu(CurrentMenu);
-
-  //
-  // Find a menu which has different formset guid with current.
-  //
-  while (ParentMenu != NULL && CompareGuid (&CurrentMenu->FormSetGuid, &ParentMenu->FormSetGuid)) {
-    CurrentMenu = ParentMenu;
-    ParentMenu  = UiFindParentMenu(CurrentMenu);
-  }
+  ParentMenu  = UiFindParentMenu(CurrentMenu, FormSetLevel);
 
   if (ParentMenu != NULL) {
     CopyMem (&Selection->FormSetGuid, &ParentMenu->FormSetGuid, sizeof (EFI_GUID));
@@ -1303,7 +1304,7 @@ ProcessGotoOpCode (
       //
       // Not found the EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL protocol.
       //
-      PopupErrorMessage(BROWSER_PROTOCOL_NOT_FOUND, NULL, NULL);
+      PopupErrorMessage(BROWSER_PROTOCOL_NOT_FOUND, NULL, NULL, NULL);
       FreePool (StringPtr);
       return Status;
     }
@@ -1380,7 +1381,7 @@ ProcessGotoOpCode (
         //
         // Form is suppressed. 
         //
-        PopupErrorMessage(BROWSER_FORM_SUPPRESS, NULL, NULL);
+        PopupErrorMessage(BROWSER_FORM_SUPPRESS, NULL, NULL, NULL);
         return EFI_SUCCESS;
       }
     }
@@ -1627,6 +1628,12 @@ DisplayForm (
                                  gCurrentSelection->FormId, gCurrentSelection->QuestionId);
     ASSERT (CurrentMenu != NULL);
   }
+
+  //
+  // Back up the form view history data for this form.
+  //
+  UiCopyMenuList(&gCurrentSelection->Form->FormViewListHead, &mPrivateData.FormBrowserEx2.FormViewHistoryHead);
+
   gCurrentSelection->CurrentMenu = CurrentMenu;
 
   //
@@ -1657,6 +1664,7 @@ DisplayForm (
   //                        and an valid value has return.
   // EFI_SUCCESS:           Success shows form and get user input in UserInput paramenter.
   //
+  ASSERT (gDisplayFormData.BrowserStatus == BROWSER_SUCCESS);
   Status = mFormDisplay->FormDisplay (&gDisplayFormData, &UserInput);
   if (EFI_ERROR (Status) && Status != EFI_NOT_FOUND) {
     FreeDisplayFormData();
@@ -1803,7 +1811,7 @@ IsNvUpdateRequiredForForm (
 BOOLEAN
 FindNextMenu (
   IN OUT UI_MENU_SELECTION        *Selection,
-  IN       BROWSER_SETTING_SCOPE  SettingLevel
+  IN     BROWSER_SETTING_SCOPE     SettingLevel
   )
 {
   FORM_ENTRY_INFO            *CurrentMenu;
@@ -1811,31 +1819,16 @@ FindNextMenu (
   BROWSER_SETTING_SCOPE      Scope;
   
   CurrentMenu = Selection->CurrentMenu;
-  ParentMenu  = NULL;
   Scope       = FormSetLevel;
 
-  if (CurrentMenu != NULL && (ParentMenu = UiFindParentMenu(CurrentMenu)) != NULL) {
-    //
-    // we have a parent, so go to the parent menu
-    //
-    if (CompareGuid (&CurrentMenu->FormSetGuid, &ParentMenu->FormSetGuid)) {
-      if (SettingLevel == FormSetLevel) {
-        //
-        // Find a menu which has different formset guid with current.
-        //
-        while (CompareGuid (&CurrentMenu->FormSetGuid, &ParentMenu->FormSetGuid)) {
-          CurrentMenu = ParentMenu;
-          if ((ParentMenu = UiFindParentMenu(CurrentMenu)) == NULL) {
-            break;
-          }
-        }
+  ParentMenu = UiFindParentMenu(CurrentMenu, SettingLevel);
+  while (ParentMenu != NULL && !ValidateHiiHandle(ParentMenu->HiiHandle)) {
+    ParentMenu = UiFindParentMenu(ParentMenu, SettingLevel);
+  }
 
-        if (ParentMenu != NULL) {
-          Scope = FormSetLevel;
-        }
-      } else {
-        Scope = FormLevel;
-      }
+  if (ParentMenu != NULL) {
+    if (CompareGuid (&CurrentMenu->FormSetGuid, &ParentMenu->FormSetGuid)) {
+      Scope = FormLevel;
     } else {
       Scope = FormSetLevel;
     }
@@ -1846,7 +1839,7 @@ FindNextMenu (
   //
   if ((gBrowserSettingScope == FormLevel && IsNvUpdateRequiredForForm (Selection->Form)) ||
       (gBrowserSettingScope == FormSetLevel && IsNvUpdateRequiredForFormSet(Selection->FormSet) && Scope == FormSetLevel)) {
-    if (!ProcessChangedData(Selection, Scope)) {
+    if (!ProcessChangedData(Selection, gBrowserSettingScope)) {
       return FALSE;
     }
   }
@@ -1977,6 +1970,7 @@ ProcessCallBackFunction (
     if (Action == EFI_BROWSER_ACTION_CHANGING) {
       if (HiiValue->Type == EFI_IFR_TYPE_BUFFER) {
         BackUpBuffer = AllocateCopyPool(Statement->StorageWidth + sizeof(CHAR16), Statement->BufferValue);
+        ASSERT (BackUpBuffer != NULL);
       } else {
         CopyMem (&BackUpValue, &HiiValue->Value, sizeof (EFI_IFR_TYPE_VALUE));
       }
@@ -1991,6 +1985,17 @@ ProcessCallBackFunction (
                              TypeValue,
                              &ActionRequest
                              );
+    //
+    // IFR is updated, force to reparse the IFR binary
+    //
+    if (mHiiPackageListUpdated) {
+      if (BackUpBuffer != NULL) {
+        FreePool (BackUpBuffer);
+      }
+
+      return EFI_SUCCESS;
+    }
+
     if (!EFI_ERROR (Status)) {
       //
       // Need to sync the value between Statement->HiiValue->Value and Statement->BufferValue
@@ -2123,6 +2128,15 @@ ProcessCallBackFunction (
 
     if (BackUpBuffer != NULL) {
       FreePool (BackUpBuffer);
+    }
+
+    //
+    // If Question != NULL, means just process one question
+    // and if code reach here means this question has finished
+    // processing, so just break.
+    //
+    if (Question != NULL) {
+      break;
     }
   }
 
@@ -2267,6 +2281,8 @@ SetupBrowser (
   do {
     //
     // IFR is updated, force to reparse the IFR binary
+    // This check is shared by EFI_BROWSER_ACTION_FORM_CLOSE and 
+    // EFI_BROWSER_ACTION_RETRIEVE, so code place here.
     //
     if (mHiiPackageListUpdated) {
       Selection->Action = UI_ACTION_REFRESH_FORMSET;
@@ -2305,7 +2321,7 @@ SetupBrowser (
         //
         // Form is suppressed. 
         //
-        PopupErrorMessage(BROWSER_FORM_SUPPRESS, NULL, NULL);
+        PopupErrorMessage(BROWSER_FORM_SUPPRESS, NULL, NULL, NULL);
         Status = EFI_NOT_FOUND;
         goto Done;
       }
@@ -2338,7 +2354,7 @@ SetupBrowser (
         }
 
         //
-        // IFR is updated during callback of open form, force to reparse the IFR binary
+        // IFR is updated during callback of EFI_BROWSER_ACTION_FORM_OPEN, force to reparse the IFR binary
         //
         if (mHiiPackageListUpdated) {
           Selection->Action = UI_ACTION_REFRESH_FORMSET;
@@ -2396,6 +2412,15 @@ SetupBrowser (
           ((Statement->QuestionFlags & EFI_IFR_FLAG_CALLBACK) == EFI_IFR_FLAG_CALLBACK) && 
           (Statement->Operand != EFI_IFR_PASSWORD_OP)) {
         Status = ProcessCallBackFunction(Selection, Selection->FormSet, Selection->Form, Statement, EFI_BROWSER_ACTION_CHANGING, FALSE);
+        //
+        // IFR is updated during callback of EFI_BROWSER_ACTION_CHANGING, force to reparse the IFR binary
+        //
+        if (mHiiPackageListUpdated) {
+          Selection->Action = UI_ACTION_REFRESH_FORMSET;
+          mHiiPackageListUpdated = FALSE;
+          break;
+        }
+
         if (Statement->Operand == EFI_IFR_REF_OP) {
           //
           // Process dynamic update ref opcode.
@@ -2423,6 +2448,14 @@ SetupBrowser (
 
         if (!EFI_ERROR (Status) && Statement->Operand != EFI_IFR_REF_OP) {
           ProcessCallBackFunction(Selection, Selection->FormSet, Selection->Form, Statement, EFI_BROWSER_ACTION_CHANGED, FALSE);
+          //
+          // IFR is updated during callback of EFI_BROWSER_ACTION_CHANGED, force to reparse the IFR binary
+          //
+          if (mHiiPackageListUpdated) {
+            Selection->Action = UI_ACTION_REFRESH_FORMSET;
+            mHiiPackageListUpdated = FALSE;
+            break;
+          }
         }
       } else {
         //

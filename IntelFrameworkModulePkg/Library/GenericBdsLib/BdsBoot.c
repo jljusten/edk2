@@ -864,6 +864,7 @@ BdsAddNonExistingLegacyBootOptions (
                 &BootOrderSize
                 );
       if (!EFI_ERROR (Status)) {
+        ASSERT (BootOrder != NULL);
         BbsIndex     = Index;
         OptionNumber = BootOrder[BootOrderSize / sizeof (UINT16) - 1];
       }
@@ -1412,7 +1413,7 @@ BdsSetBootPriority4SameTypeDev (
       break;
     }
 
-    DevOrderPtr = (LEGACY_DEV_ORDER_ENTRY *) ((UINT8 *) DevOrderPtr + sizeof (BBS_TYPE) + DevOrderPtr->Length);
+    DevOrderPtr = (LEGACY_DEV_ORDER_ENTRY *) ((UINTN) DevOrderPtr + sizeof (BBS_TYPE) + DevOrderPtr->Length);
   }
 
   if ((UINT8 *) DevOrderPtr >= (UINT8 *) DevOrder + DevOrderSize) {
@@ -1640,6 +1641,8 @@ BdsRefreshBbsTableForBoot (
       break;
     }
   }
+
+  FreePool (DeviceType);
 
   if (BootOrder != NULL) {
     FreePool (BootOrder);
@@ -3567,6 +3570,8 @@ BdsLibBootNext (
     ASSERT (BootOption != NULL);
     BdsLibConnectDevicePath (BootOption->DevicePath);
     BdsLibBootViaBootOption (BootOption, BootOption->DevicePath, &ExitDataSize, &ExitData);
+    FreePool(BootOption);
+    FreePool(BootNext);
   }
 
 }
@@ -4352,6 +4357,7 @@ BdsLibUpdateFvFileDevicePath (
     NewDevicePath = DevicePathFromHandle (FoundFvHandle);
     EfiInitializeFwVolDevicepathNode (&FvFileNode, FileGuid);
     NewDevicePath = AppendDevicePathNode (NewDevicePath, (EFI_DEVICE_PATH_PROTOCOL *) &FvFileNode);
+    ASSERT (NewDevicePath != NULL);
     *DevicePath = NewDevicePath;
     return EFI_SUCCESS;
   }

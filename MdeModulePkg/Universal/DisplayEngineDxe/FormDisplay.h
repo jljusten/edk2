@@ -73,6 +73,8 @@ extern CHAR16            *mUnknownString;
 #define POPUP_PAD_SPACE_COUNT         5
 #define POPUP_FRAME_WIDTH             2
 
+#define UPPER_LOWER_CASE_OFFSET       0x20
+
 //
 // Display definitions
 //
@@ -169,7 +171,6 @@ typedef enum {
   CfUiPageUp,
   CfUiPageDown,
   CfUiDown,
-  CfUiDefault,
   CfUiNoOperation,
   CfExit,
   CfUiHotKey,

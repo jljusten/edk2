@@ -1,7 +1,7 @@
 /** @file
 Implementation for EFI_HII_DATABASE_PROTOCOL.
 
-Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -2417,8 +2417,14 @@ AddPackages (
   //
   // Initialize Variables
   //
-  StringPkgIsAdd = FALSE;
-  FontPackage = NULL;
+  StringPkgIsAdd        = FALSE;
+  FontPackage           = NULL;
+  StringPackage         = NULL;
+  GuidPackage           = NULL;
+  FormPackage           = NULL;
+  ImagePackage          = NULL;
+  SimpleFontPackage     = NULL;
+  KeyboardLayoutPackage = NULL;
 
   //
   // Process the package list header
@@ -2505,6 +2511,7 @@ AddPackages (
       if (EFI_ERROR (Status)) {
         return Status;
       }
+      ASSERT (StringPackage != NULL);
       Status = InvokeRegisteredFunction (
                  Private,
                  NotifyType,

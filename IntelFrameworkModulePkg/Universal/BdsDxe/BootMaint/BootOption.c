@@ -1679,9 +1679,7 @@ GetLegacyDeviceOrder (
 {
   UINTN                     Index;
   UINTN                     OptionIndex;
-  UINT16                    PageIdList [] = {FORM_SET_FD_ORDER_ID, FORM_SET_HD_ORDER_ID,
-                                             FORM_SET_CD_ORDER_ID, FORM_SET_NET_ORDER_ID,
-                                             FORM_SET_BEV_ORDER_ID};
+  UINT16                    PageIdList[5];
   UINTN                     PageNum;  
   UINTN                     VarSize;
   UINT8                     *VarData;     
@@ -1697,7 +1695,12 @@ GetLegacyDeviceOrder (
   UINTN                     Bit;
   
   ASSERT (CallbackData != NULL);
-  
+
+  PageIdList[0] = FORM_SET_FD_ORDER_ID;
+  PageIdList[1] = FORM_SET_HD_ORDER_ID;
+  PageIdList[2] = FORM_SET_CD_ORDER_ID;
+  PageIdList[3] = FORM_SET_NET_ORDER_ID;
+  PageIdList[4] = FORM_SET_BEV_ORDER_ID;
   OptionMenu  = NULL;
   BbsType     = 0;
   LegacyOrder = NULL;
@@ -1740,16 +1743,13 @@ GetLegacyDeviceOrder (
       LegacyOrder = CallbackData->BmmFakeNvData.LegacyNET;
       OldData     = CallbackData->BmmOldFakeNVData.LegacyNET;
       break;
-    
-    case FORM_SET_BEV_ORDER_ID:
+
+    default:
+      ASSERT (PageIdList[Index] == FORM_SET_BEV_ORDER_ID);
       OptionMenu  = (BM_MENU_OPTION *) &LegacyBEVMenu;
       BbsType     = BBS_BEV_DEVICE;
       LegacyOrder = CallbackData->BmmFakeNvData.LegacyBEV;
       OldData     = CallbackData->BmmOldFakeNVData.LegacyBEV;
-      break;
-      
-    default:
-      DEBUG ((DEBUG_ERROR, "Invalid command ID for updating page!\n"));
       break;
     }
     
@@ -1761,12 +1761,12 @@ GetLegacyDeviceOrder (
           break;
         }
     
-        WorkingVarData += sizeof (BBS_TYPE);
+        WorkingVarData  = (UINT8 *)((UINTN)WorkingVarData + sizeof (BBS_TYPE));
         WorkingVarData += *(UINT16 *) WorkingVarData;
         DevOrder = (LEGACY_DEV_ORDER_ENTRY *) WorkingVarData;
       } 
       for (OptionIndex = 0; OptionIndex < OptionMenu->MenuNumber; OptionIndex++) {
-        VarDevOrder = *(UINT16 *) ((UINT8 *) DevOrder + sizeof (BBS_TYPE) + sizeof (UINT16) + OptionIndex * sizeof (UINT16));
+        VarDevOrder = *(UINT16 *) ((UINTN) DevOrder + sizeof (BBS_TYPE) + sizeof (UINT16) + OptionIndex * sizeof (UINT16));
          if (0xFF00 == (VarDevOrder & 0xFF00)) {
           LegacyOrder[OptionIndex]  = 0xFF;
           Pos                       = (VarDevOrder & 0xFF) / 8;

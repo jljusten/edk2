@@ -123,9 +123,6 @@ typedef enum {
 #define GET_CORE_ID(MpId)     ((MpId) & ARM_CORE_MASK)
 #define GET_CLUSTER_ID(MpId)  (((MpId) & ARM_CLUSTER_MASK) >> 8)
 #define GET_MPID(ClusterId, CoreId)   (((ClusterId) << 8) | (CoreId))
-// Get the position of the core for the Stack Offset (4 Core per Cluster)
-//   Position = (ClusterId * 4) + CoreId
-#define GET_CORE_POS(MpId)    ((((MpId) & ARM_CLUSTER_MASK) >> 6) + ((MpId) & ARM_CORE_MASK))
 #define PRIMARY_CORE_ID       (PcdGet32(PcdArmPrimaryCore) & ARM_CORE_MASK)
 
 ARM_CACHE_TYPE
@@ -583,16 +580,28 @@ ArmEnableVFP (
   VOID
   );
 
+/**
+  Get the Secure Configuration Register value
+
+  @return   Value read from the Secure Configuration Register
+
+**/
 UINT32
 EFIAPI
 ArmReadScr (
   VOID
   );
 
+/**
+  Set the Secure Configuration Register
+
+  @param Value   Value to write to the Secure Configuration Register
+
+**/
 VOID
 EFIAPI
 ArmWriteScr (
-  IN  UINT32   SetWayFormat
+  IN  UINT32   Value
   );
 
 UINT32

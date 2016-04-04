@@ -2329,6 +2329,8 @@ GetBlockElement (
   IFR_BLOCK_DATA       *NextBlockData;
   UINTN                Length;
 
+  TmpBuffer = NULL;
+
   //
   // Init RequestBlockArray
   //
@@ -4339,6 +4341,7 @@ HiiConfigRoutingRouteConfig (
                                );
     }
     if (EFI_ERROR (Status)) {
+      ASSERT (AccessProgress != NULL);
       //
       // AccessProgress indicates the parsing progress on <ConfigResp>.
       // Map it to the progress on <MultiConfigResp> then return it.
@@ -4430,6 +4433,8 @@ HiiBlockToConfig (
   UINT8                               *TemBuffer;
   CHAR16                              *TemString;
   CHAR16                              TemChar;
+
+  TmpBuffer = NULL;
 
   if (This == NULL || Progress == NULL || Config == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -4726,6 +4731,8 @@ HiiConfigToBlock (
   UINT8                               *Value;
   UINTN                               BufferSize;
   UINTN                               MaxBlockSize;
+
+  TmpBuffer = NULL;
 
   if (This == NULL || BlockSize == NULL || Progress == NULL) {
     return EFI_INVALID_PARAMETER;

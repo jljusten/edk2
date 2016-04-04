@@ -307,6 +307,9 @@
   ## Include/Ppi/PostBootScriptTable.h
   gPeiPostScriptTablePpiGuid    =  { 0x88c9d306, 0x900, 0x4eb5, { 0x82, 0x60, 0x3e, 0x2d, 0xbe, 0xda, 0x1f, 0x89}}
 
+  ## Include/Ppi/SerialPortPei.h
+  gPeiSerialPortPpiGuid         =  { 0x490e9d85, 0x8aef, 0x4193, { 0x8e, 0x56, 0xf7, 0x34, 0xa9, 0xff, 0xac, 0x8b}}
+
 [Protocols]
   ## Load File protocol provides capability to load and unload EFI image into memory and execute it.
   #  Include/Protocol/LoadPe32Image.h
@@ -583,7 +586,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdLoadModuleAtFixAddressEnable|0|UINT64|0x30001015
 
   ## Smbios version
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion|0x0207|UINT16|0x00010055
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion|0x0208|UINT16|0x00010055
 
   ## TFTP BlockSize. Initial value 0 means using default block size which is (MTU-IP_HEADER-UDP_HEADER-TFTP_HEADER)
   #  to handle all link layers. If the value is non zero, the PCD value will be used as block size.
@@ -692,6 +695,26 @@
   ## Default Creator Revision for ACPI table creation.
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorRevision|0x01000013|UINT32|0x30001038
 
+  ## UART clock frequency is for the baud rate configuration.
+  # @Prompt Serial Port Clock Rate
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialClockRate|1843200|UINT32|0x00010066
+  
+  ## PCI Serial Device Info. It is an array of Device, Function, and Power Management
+  #  information that describes the path that contains zero or more PCI to PCI briges 
+  #  followed by a PCI serial device.  Each array entry is 4-bytes in length.  The 
+  #  first byte is the PCI Device Number, then second byte is the PCI Function Number, 
+  #  and the last two bytes are the offset to the PCI power management capabilities 
+  #  register used to manage the D0-D3 states.  If a PCI power management capabilities 
+  #  register is not present, then the last two bytes in the offset is set to 0.  The 
+  #  array is terminated by an array entry with a PCI Device Number of 0xFF.  For a 
+  #  non-PCI fixed address serial device, such as an ISA serial device, the value is 0xFF.
+  # @Prompt Pci Serial Device Info
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialPciDeviceInfo|{0xFF}|VOID*|0x00010067
+
+  ## Serial Port Extended Transmit FIFO Size.  The default is 64 bytes. 
+  # @Prompt Pci Port Extended Transmit FIFO Size in Bytes
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialExtendedTxFifoSize|64|UINT32|0x00010068
+  
 [PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
   ## This PCD defines the Console output column and the default value is 25 according to UEFI spec.
   #  This PCD could be set to 0 then console output could be at max column and max row.

@@ -153,7 +153,7 @@ CalculateCrc16 (
   UINTN  BitIndex;
 
   for (Index = 0; Index < DataSize; Index++) {
-    Crc ^= Data[Index];
+    Crc ^= (UINT16)Data[Index];
     for (BitIndex = 0; BitIndex < 8; BitIndex++) {
       if ((Crc & 0x8000) != 0) {
         Crc <<= 1;
@@ -214,10 +214,12 @@ FindAndReportModuleImageInfo (
     if (DosHdr->e_magic == EFI_IMAGE_DOS_SIGNATURE) {
       //
       // DOS image header is present, so read the PE header after the DOS image header.
-      // Check if address overflow firstly.
       //
-      if ((MAX_ADDRESS - (UINTN)DosHdr->e_lfanew) > Pe32Data) {
-        Hdr.Pe32 = (EFI_IMAGE_NT_HEADERS32 *)(Pe32Data + (UINTN)(DosHdr->e_lfanew));
+      Hdr.Pe32 = (EFI_IMAGE_NT_HEADERS32 *)(Pe32Data + (UINTN) ((DosHdr->e_lfanew) & 0x0ffff));
+      //
+      // Make sure PE header address does not overflow and is less than the initial address.
+      //
+      if (((UINTN)Hdr.Pe32 > Pe32Data) && ((UINTN)Hdr.Pe32 < (UINTN)mErrorMsgVersionAlert)) {
         if (Hdr.Pe32->Signature == EFI_IMAGE_NT_SIGNATURE) {
           //
           // It's PE image.
@@ -587,7 +589,7 @@ ReadRemainingBreakPacket (
   //
   // Has received start symbol, try to read the rest part
   //
-  if (DebugPortReadBuffer (Handle, &DebugHeader->Command, sizeof (DEBUG_PACKET_HEADER) - 1, READ_PACKET_TIMEOUT) == 0) {
+  if (DebugPortReadBuffer (Handle, (UINT8 *)DebugHeader + OFFSET_OF (DEBUG_PACKET_HEADER, Command), sizeof (DEBUG_PACKET_HEADER) - OFFSET_OF (DEBUG_PACKET_HEADER, Command), READ_PACKET_TIMEOUT) == 0) {
     //
     // Timeout occur, exit
     //
@@ -745,11 +747,11 @@ SetDebugRegister (
   //
   // Enable Gx, Lx
   //
-  Dr7Value |= 0x3 << (RegisterIndex * 2);
+  Dr7Value |= (UINTN) (0x3 << (RegisterIndex * 2));
   //
   // Set RWx and Lenx
   //
-  Dr7Value &= ~(0xf << (16 + RegisterIndex * 4));
+  Dr7Value &= (UINTN) (~(0xf << (16 + RegisterIndex * 4)));
   Dr7Value |= (UINTN) ((SetHwBreakpoint->Type.Length << 2) | SetHwBreakpoint->Type.Access) << (16 + RegisterIndex * 4);
   //
   // Enable GE, LE
@@ -774,19 +776,19 @@ ClearDebugRegister (
 {
   if ((ClearHwBreakpoint->IndexMask & BIT0) != 0) {
     CpuContext->Dr0 = 0;
-    CpuContext->Dr7 &= ~(0x3 << 0);
+    CpuContext->Dr7 &= (UINTN)(~(0x3 << 0));
   }
   if ((ClearHwBreakpoint->IndexMask & BIT1) != 0) {
     CpuContext->Dr1 = 0;
-    CpuContext->Dr7 &= ~(0x3 << 2);
+    CpuContext->Dr7 &= (UINTN)(~(0x3 << 2));
   }
   if ((ClearHwBreakpoint->IndexMask & BIT2) != 0) {
     CpuContext->Dr2 = 0;
-    CpuContext->Dr7 &= ~(0x3 << 4);
+    CpuContext->Dr7 &= (UINTN)(~(0x3 << 4));
   }
   if ((ClearHwBreakpoint->IndexMask & BIT3) != 0) {
     CpuContext->Dr3 = 0;
-    CpuContext->Dr7 &= ~(0x3 << 6);
+    CpuContext->Dr7 &= (UINTN)(~(0x3 << 6));
   }
 }
 
@@ -1014,7 +1016,7 @@ ReceivePacket (
     //
     Received = DebugPortReadBuffer (
                  Handle,
-                 &DebugHeader->Command,
+                 (UINT8 *)DebugHeader + OFFSET_OF (DEBUG_PACKET_HEADER, Command),
                  OFFSET_OF (DEBUG_PACKET_HEADER, Length) + sizeof (DebugHeader->Length) - sizeof (DebugHeader->StartSymbol),
                  Timeout
                  );
@@ -2104,6 +2106,7 @@ InterruptProcess (
   UINT32                           IssuedViewPoint;
   DEBUG_AGENT_EXCEPTION_BUFFER     *ExceptionBuffer;
 
+  InputCharacter  = 0;
   ProcessorIndex  = 0;
   IssuedViewPoint = 0;
   BreakReceived   = FALSE;
