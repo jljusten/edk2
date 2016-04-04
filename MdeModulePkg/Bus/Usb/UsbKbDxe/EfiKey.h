@@ -24,6 +24,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/DevicePath.h>
 
 #include <Guid/HiiKeyBoardLayout.h>
+#include <Guid/UsbKeyBoardLayout.h>
 
 #include <Library/DebugLib.h>
 #include <Library/ReportStatusCodeLib.h>
@@ -129,7 +130,7 @@ typedef struct {
   EFI_EVENT                         RepeatTimer;
 
   EFI_UNICODE_STRING_TABLE          *ControllerNameTable;
-  
+
   BOOLEAN                           LeftCtrlOn;
   BOOLEAN                           LeftAltOn;
   BOOLEAN                           LeftShiftOn;
@@ -137,10 +138,14 @@ typedef struct {
   BOOLEAN                           RightCtrlOn;
   BOOLEAN                           RightAltOn;
   BOOLEAN                           RightShiftOn;
-  BOOLEAN                           RightLogoOn;  
+  BOOLEAN                           RightLogoOn;
   BOOLEAN                           MenuKeyOn;
   BOOLEAN                           SysReqOn;
   BOOLEAN                           AltGrOn;
+
+  BOOLEAN                         IsSupportPartialKey;
+
+  EFI_KEY_STATE                     KeyState;
   //
   // Notification function list
   //

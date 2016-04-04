@@ -257,6 +257,12 @@ CpuDxeInitialize (
   //
   SyncCacheConfig (&mCpu);
   
+  // If the platform is a MPCore system then install the Configuration Table describing the
+  // secondary core states
+  if (ArmIsMpCore()) {
+    PublishArmProcessorTable();
+  }
+
   //
   // Setup a callback for idle events
   //

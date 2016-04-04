@@ -49,8 +49,9 @@ typedef struct {
 
 /**
   This function will populate the device path protocol parameter based on TheHandle.
-  
-  @param[in,out] DevPath       On a sucessful return the device path to the handle.
+
+  @param[in]      TheHandle     Driver handle.
+  @param[in, out] FilePath      On a sucessful return the device path to the handle.
 
   @retval EFI_SUCCESS           The device path was sucessfully returned.
   @retval other                 A error from gBS->HandleProtocol.
@@ -977,7 +978,7 @@ ShellCommandRunBcfgInstall (
           ShellStatus = BcfgAddInstall1(
             CurrentOperation.Number1,
             CurrentOperation.FileName,
-            CurrentOperation.Description,
+            CurrentOperation.Description==NULL?L"":CurrentOperation.Description,
             CurrentOperation.Order,
             Length / sizeof(CurrentOperation.Order[0]),
             CurrentOperation.Target,

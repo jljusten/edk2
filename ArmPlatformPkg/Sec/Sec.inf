@@ -36,13 +36,14 @@
   ArmPlatformPkg/ArmPlatformPkg.dec
 
 [LibraryClasses]
+  ArmCpuLib
   ArmLib
   ArmPlatformLib
   BaseLib
   DebugLib
   DebugAgentLib
   IoLib
-  PL390GicSecLib
+  ArmGicSecLib
   PrintLib
   SerialPortLib
   
@@ -50,15 +51,28 @@
   gArmPlatformTokenSpaceGuid.PcdSystemMemoryInitializeInSec
   
 [FixedPcd]
+  gArmTokenSpaceGuid.PcdTrustzoneSupport
   gArmTokenSpaceGuid.PcdVFPEnabled
-  gArmPlatformTokenSpaceGuid.PcdMPCoreSupport
   
-  gArmTokenSpaceGuid.PcdNormalFvBaseAddress
+  gArmTokenSpaceGuid.PcdArmScr
+  gArmTokenSpaceGuid.PcdArmNsacr
+  gArmTokenSpaceGuid.PcdArmNonSecModeTransition
+  
+  gArmTokenSpaceGuid.PcdArmPrimaryCoreMask
+  gArmTokenSpaceGuid.PcdArmPrimaryCore
+  
+  gArmTokenSpaceGuid.PcdSecureFvBaseAddress
+  gArmTokenSpaceGuid.PcdSecureFvSize
+  
+  gArmTokenSpaceGuid.PcdFvBaseAddress
   
   gArmPlatformTokenSpaceGuid.PcdCPUCoresSecStackBase
-  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecStackSize
+  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecPrimaryStackSize
+  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecSecondaryStackSize
   gArmPlatformTokenSpaceGuid.PcdCPUCoresSecMonStackBase
   gArmPlatformTokenSpaceGuid.PcdCPUCoreSecMonStackSize
   
   gArmTokenSpaceGuid.PcdGicDistributorBase
   gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase
+  
+  gArmPlatformTokenSpaceGuid.PcdSecGlobalVariableSize  

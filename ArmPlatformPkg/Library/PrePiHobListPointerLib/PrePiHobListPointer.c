@@ -13,17 +13,10 @@
 **/
 
 #include <PiPei.h>
+#include <Library/ArmPlatformGlobalVariableLib.h>
 #include <Library/PrePiHobListPointerLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PcdLib.h>
-
-//
-// Have to use build system to set the original value in case we are running
-// from FLASH and globals don't work. So if you do a GetHobList() and gHobList
-// and gHobList is NULL the PCD default values are used.
-//
-VOID *gHobList = NULL;
-
 
 /**
   Returns the pointer to the HOB list.
@@ -39,11 +32,11 @@ PrePeiGetHobList (
   VOID
   )
 {
-  if (gHobList == NULL) {
-    return (VOID *)*(UINTN*)(PcdGet32 (PcdCPUCoresNonSecStackBase) + (PcdGet32 (PcdCPUCoresNonSecStackSize) / 2) - PcdGet32 (PcdHobListPtrGlobalOffset));
-  } else {
-    return gHobList;
-  }
+  VOID* HobList;
+
+  ArmPlatformGetGlobalVariable (PcdGet32 (PcdHobListPtrGlobalOffset), sizeof(VOID*), &HobList);
+
+  return HobList;
 }
 
 
@@ -60,10 +53,8 @@ PrePeiSetHobList (
   IN  VOID      *HobList
   )
 {
-  gHobList = HobList;
-  
-  //
-  // If this code is running from ROM this could fail
-  //
-  return (gHobList == HobList) ? EFI_SUCCESS: EFI_UNSUPPORTED;
+  ArmPlatformSetGlobalVariable (PcdGet32 (PcdHobListPtrGlobalOffset), sizeof(VOID*), &HobList);
+
+  return EFI_SUCCESS;
 }
+

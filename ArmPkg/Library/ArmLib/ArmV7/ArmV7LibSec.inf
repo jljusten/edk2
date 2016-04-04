@@ -20,14 +20,21 @@
   LIBRARY_CLASS                  = ArmLib
 
 [Sources.common]
-  ArmLibSupport.S    | GCC
-  ArmLibSupport.asm  | RVCT
+  ArmLibSupportV7.S    | GCC
+  ArmLibSupportV7.asm  | RVCT
+
+  ../Common/ArmLibSupport.S    | GCC
+  ../Common/ArmLibSupport.asm  | RVCT
   ../Common/ArmLib.c
   
   ArmV7Support.S    | GCC
   ArmV7Support.asm  | RVCT
 
   ArmV7Lib.c
+  
+  ArmV7ArchTimer.c
+  ArmV7ArchTimerSupport.S    | GCC
+  ArmV7ArchTimerSupport.asm    | RVCT
 
 [Packages]
   ArmPkg/ArmPkg.dec

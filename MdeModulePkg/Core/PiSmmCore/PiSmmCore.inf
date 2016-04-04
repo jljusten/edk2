@@ -1,7 +1,7 @@
 ## @file
 # This module provide an SMM CIS compliant implementation of SMM Core.
 #
-# Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
 #
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
@@ -54,18 +54,20 @@
   UefiBootServicesTableLib    
   MemoryAllocationLib
   PcdLib
-  
+  SmmCorePlatformHookLib
+  PerformanceLib
+
 [Protocols]
   gEfiDxeSmmReadyToLockProtocolGuid             # PROTOCOL ALWAYS_CONSUMED
   gEfiSmmReadyToLockProtocolGuid                # PROTOCOL ALWAYS_PRODUCED
   gEfiSmmCpuIo2ProtocolGuid                     # PROTOCOL ALWAYS_CONSUMED
   gEfiFirmwareVolume2ProtocolGuid               # PROTOCOL ALWAYS_CONSUMED
-  gEfiSecurityArchProtocolGuid                  # PROTOCOL SIMETIMES_CONSUMED
+  gEfiSecurityArchProtocolGuid                  # PROTOCOL SOMETIMES_CONSUMED
   gEfiLoadedImageProtocolGuid                   # PROTOCOL SOMETIMES_PRODUCED
   gEfiDevicePathProtocolGuid                    # PROTOCOL SOMETIMES_CONSUMED
 
 [Pcd]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber    # SIMETIMES_CONSUMED 
+  gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber    # SOMETIMES_CONSUMED 
   gEfiMdeModulePkgTokenSpaceGuid.PcdLoadModuleAtFixAddressEnable       # ALWAYS_CONSUMED
   
 [Guids]

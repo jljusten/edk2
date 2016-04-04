@@ -39,14 +39,13 @@
 [Sources.common]
   CTA9x4.c
   CTA9x4Mem.c
-  CTA9x4Helper.asm   | RVCT
-  CTA9x4Helper.S     | GCC
 
 [FeaturePcd]
   gEmbeddedTokenSpaceGuid.PcdCacheEnable
   gArmPlatformTokenSpaceGuid.PcdNorFlashRemapping
 
 [FixedPcd]
+  gArmTokenSpaceGuid.PcdTrustzoneSupport
   gArmTokenSpaceGuid.PcdSystemMemoryBase
   gArmTokenSpaceGuid.PcdSystemMemorySize
 

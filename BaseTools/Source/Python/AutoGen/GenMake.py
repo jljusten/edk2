@@ -31,7 +31,7 @@ gIncludePattern = re.compile(r"^[ \t]*#?[ \t]*include(?:[ \t]*(?:\\(?:\r\n|\r|\n
 ## Regular expression for matching macro used in header file inclusion
 gMacroPattern = re.compile("([_A-Z][_A-Z0-9]*)[ \t]*\((.+)\)", re.UNICODE)
 
-## pattern for include style in R8.x code
+## pattern for include style in Edk.x code
 gProtocolDefinition = "Protocol/%(HeaderKey)s/%(HeaderKey)s.h"
 gGuidDefinition = "Guid/%(HeaderKey)s/%(HeaderKey)s.h"
 gArchProtocolDefinition = "ArchProtocol/%(HeaderKey)s/%(HeaderKey)s.h"
@@ -462,13 +462,13 @@ cleanlib:
             ArchEntryPoint = ModuleEntryPoint
 
         if self._AutoGenObject.Arch == "EBC":
-            # EBC compiler always use "EfiStart" as entry point. Only applies to R9 modules
+            # EBC compiler always use "EfiStart" as entry point. Only applies to EdkII modules
             ImageEntryPoint = "EfiStart"
         elif self._AutoGenObject.AutoGenVersion < 0x00010005:
-            # R8 modules use entry point specified in INF file
+            # Edk modules use entry point specified in INF file
             ImageEntryPoint = ModuleEntryPoint
         else:
-            # R9 modules always use "_ModuleEntryPoint" as entry point
+            # EdkII modules always use "_ModuleEntryPoint" as entry point
             ImageEntryPoint = "_ModuleEntryPoint"
 
         # tools definitions
@@ -493,7 +493,7 @@ cleanlib:
 
         # convert source files and binary files to build targets
         self.ResultFileList = [str(T.Target) for T in self._AutoGenObject.CodaTargetList]
-        if len(self.ResultFileList) == 0 and len(self._AutoGenObject.SourceFileList) <> 0:
+        if len(self.ResultFileList) == 0 and len(self._AutoGenObject.SourceFileList) <> 0:        
             EdkLogger.error("build", AUTOGEN_ERROR, "Nothing to build",
                             ExtraData="[%s]" % str(self._AutoGenObject))
 
@@ -535,7 +535,7 @@ cleanlib:
                 False
                 )
 
-        # R8 modules need <BaseName>StrDefs.h for string ID
+        # Edk modules need <BaseName>StrDefs.h for string ID
         #if self._AutoGenObject.AutoGenVersion < 0x00010005 and len(self._AutoGenObject.UnicodeFileList) > 0:
         #    BcTargetList = ['strdefs']
         #else:
@@ -614,7 +614,7 @@ cleanlib:
         self.FileDependency = self.GetFileDependency(
                                     SourceFileList,
                                     ForceIncludedFile,
-                                    self._AutoGenObject.IncludePathList
+                                    self._AutoGenObject.IncludePathList + self._AutoGenObject.BuildOptionIncPathList
                                     )
         DepSet = None
         for File in self.FileDependency:
@@ -1253,7 +1253,7 @@ ${END}\t@cd $(BUILD_DIR)
 #
 fds: init
 \t-@cd $(FV_DIR)
-${BEGIN}\tGenFds -f ${fdf_file} -o $(BUILD_DIR) -t $(TOOLCHAIN) -b $(TARGET) -p ${active_platform} -a ${build_architecture_list} ${extra_options}${END}${BEGIN} -r ${fd} ${END}${BEGIN} -i ${fv} ${END}${BEGIN} -D ${macro} ${END}
+${BEGIN}\tGenFds -f ${fdf_file} -o $(BUILD_DIR) -t $(TOOLCHAIN) -b $(TARGET) -p ${active_platform} -a ${build_architecture_list} ${extra_options}${END}${BEGIN} -r ${fd} ${END}${BEGIN} -i ${fv} ${END}${BEGIN} -C ${cap} ${END}${BEGIN} -D ${macro} ${END}
 
 #
 # run command for emulator platform only
@@ -1312,14 +1312,18 @@ ${END}\t@cd $(BUILD_DIR)\n
         if PlatformInfo.FdfFile != None and PlatformInfo.FdfFile != "":
             FdfFileList = [PlatformInfo.FdfFile]
             # macros passed to GenFds
-            # MacroList.append('"%s=%s"' % ("WORKSPACE", GlobalData.gWorkspace))
-            MacroList.append('"%s=%s"' % ("EFI_SOURCE", GlobalData.gEfiSource))
-            MacroList.append('"%s=%s"' % ("EDK_SOURCE", GlobalData.gEdkSource))
+            MacroList.append('"%s=%s"' % ("EFI_SOURCE", GlobalData.gEfiSource.replace('\\', '\\\\')))
+            MacroList.append('"%s=%s"' % ("EDK_SOURCE", GlobalData.gEdkSource.replace('\\', '\\\\')))
             for MacroName in GlobalData.gGlobalDefines:
                 if GlobalData.gGlobalDefines[MacroName] != "":
-                    MacroList.append('"%s=%s"' % (MacroName, GlobalData.gGlobalDefines[MacroName]))
+                    MacroList.append('"%s=%s"' % (MacroName, GlobalData.gGlobalDefines[MacroName].replace('\\', '\\\\')))
                 else:
                     MacroList.append('"%s"' % MacroName)
+            for MacroName in GlobalData.gCommandLineDefines:
+                if GlobalData.gCommandLineDefines[MacroName] != "":
+                    MacroList.append('"%s=%s"' % (MacroName, GlobalData.gCommandLineDefines[MacroName].replace('\\', '\\\\')))
+                else:
+                    MacroList.append('"%s"' % MacroName)                
         else:
             FdfFileList = []
 
@@ -1365,6 +1369,7 @@ ${END}\t@cd $(BUILD_DIR)\n
             "active_platform"           : str(PlatformInfo),
             "fd"                        : PlatformInfo.FdTargetList,
             "fv"                        : PlatformInfo.FvTargetList,
+            "cap"                       : PlatformInfo.CapTargetList,
             "extra_options"             : ExtraOption,
             "macro"                     : MacroList,
         }

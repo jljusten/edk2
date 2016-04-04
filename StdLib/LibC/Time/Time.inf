@@ -32,6 +32,8 @@
   strptime.c
   TimeEfi.c
   gettimeofday.c
+  timegm.c
+  itimer.c
 
 [Packages]
   StdLib/StdLib.dec
@@ -41,7 +43,6 @@
 
 [LibraryClasses]
   UefiLib
-  TimerLib
   BaseLib
   UefiRuntimeServicesTableLib
 

@@ -1,28 +1,39 @@
 /** @file
-  The header <errno.h> defines several values, all relating to the reporting of
+  The header <errno.h> defines several macros, all relating to the reporting of
   error conditions.
 
-  The enum members expand to integral constant expressions
-  with distinct nonzero values, suitable for use in #if preprocessing
-  directives; and errno which expands to a modifiable lvalue that has type int,
-  the value of which is set to a positive error number by several library
-  functions.
+  The ISO/IEC 9899 specification requires that these be macros.
 
-  The value of errno is zero at program startup, but is never set to zero by
+  The macros expand to integral constant expressions
+  with distinct nonzero values, suitable for use in #if preprocessing
+  directives; the variable errno which expands to a modifiable lvalue that has type int,
+  the value of which is set to a positive error number by several library
+  functions; and the variable EFIerrno which is an extension allowing the return status
+  of the underlying UEFI functions to be returned.
+
+  The value of errno and EFIerrno is zero at program startup.  On program startup, errno
+  is initialized to zero but is never set to zero by
   any library function.  The value of errno may be set to a non-zero value by
   a library function call whether or not there is an error, provided the use
-  of errno is not is not documented in the description of the function in
-  the governing standard: ISO/IEC 9899:1990 with Amendment 1 or ISO/IEC 9899:1999.
+  of errno is not documented in the description of the function in
+  the governing standard: ISO/IEC 9899:1990 with Amendment 1 or ISO/IEC 9899:199409.
 
-Copyright (c) 2010, Intel Corporation. All rights reserved.<BR>
-This program and the accompanying materials are licensed and made available under
-the terms and conditions of the BSD License that accompanies this distribution.
-The full text of the license may be found at
-http://opensource.org/licenses/bsd-license.php.
+  EFIerrno, like errno, should only be checked if it is known that the preceeding function call
+  called a UEFI function.  Functions in which UEFI functions are called dependent upon context
+  or parameter values should guarantee that EFIerrno is set to zero by default, or to the status
+  value returned by any UEFI functions which are called.
 
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+  All macro definitions in this list must begin with the letter 'E'
+  and be followed by a digit or an uppercase letter.
 
+  Copyright (c) 2010 - 2011, Intel Corporation. All rights reserved.<BR>
+  This program and the accompanying materials are licensed and made available under
+  the terms and conditions of the BSD License that accompanies this distribution.
+  The full text of the license may be found at
+  http://opensource.org/licenses/bsd-license.
+
+  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 #ifndef _ERRNO_H
 #define _ERRNO_H
@@ -34,7 +45,9 @@ extern  RETURN_STATUS   EFIerrno;
 
 // Define error number in terms of the ENUM in <sys/errno.h>
 
-#define EMINERRORVAL      __EMINERRORVAL          /* The lowest valid error value */
+#define ERESTART          -1                      /* restart syscall */
+
+#define EMINERRORVAL      __EMINERRORVAL          /*  1   The lowest valid error value */
 
 #define EPERM             __EPERM                 /*  1   Operation not permitted */
 #define ENOENT            __ENOENT                /*  2   No such file or directory */

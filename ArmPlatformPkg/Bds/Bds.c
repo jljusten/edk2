@@ -41,6 +41,12 @@ GetConsoleDevicePathFromVariable (
 
   Status = GetEnvironmentVariable (ConsoleVarName, NULL, NULL, (VOID**)&DevicePathInstances);
   if (EFI_ERROR(Status)) {
+    // In case no default console device path has been defined we assume a driver handles the console (eg: SimpleTextInOutSerial)
+    if ((DefaultConsolePaths == NULL) || (DefaultConsolePaths[0] == L'\0')) {
+      *DevicePaths = NULL;
+      return EFI_SUCCESS;
+    }
+
     Status = gBS->LocateProtocol (&gEfiDevicePathFromTextProtocolGuid, NULL, (VOID **)&EfiDevicePathFromTextProtocol);
     ASSERT_EFI_ERROR(Status);
 
@@ -74,7 +80,7 @@ GetConsoleDevicePathFromVariable (
     // Set the environment variable with this device path multi-instances
     Size = GetDevicePathSize (DevicePathInstances);
     if (Size > 0) {
-      Status = gRT->SetVariable (
+      gRT->SetVariable (
           ConsoleVarName,
           &gEfiGlobalVariableGuid,
           EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
@@ -89,7 +95,7 @@ GetConsoleDevicePathFromVariable (
   if (!EFI_ERROR(Status)) {
     *DevicePaths = DevicePathInstances;
   }
-  return EFI_SUCCESS;
+  return Status;
 }
 
 STATIC
@@ -108,7 +114,7 @@ InitializeConsolePipe (
   EFI_DEVICE_PATH_PROTOCOL* DevicePath;
 
   // Connect all the Device Path Consoles
-  do {
+  while (ConsoleDevicePaths != NULL) {
     DevicePath = GetNextDevicePathInstance (&ConsoleDevicePaths, &Size);
 
     Status = BdsConnectDevicePath (DevicePath, Handle, NULL);
@@ -135,7 +141,7 @@ InitializeConsolePipe (
     if (!EFI_ERROR(Status) && (*Interface == NULL)) {
       Status = gBS->HandleProtocol (*Handle, Protocol, Interface);
     }
-  } while (ConsoleDevicePaths != NULL);
+  }
 
   // No Device Path has been defined for this console interface. We take the first protocol implementation
   if (*Interface == NULL) {
@@ -171,11 +177,11 @@ InitializeConsole (
   // By getting the Console Device Paths from the environment variables before initializing the console pipe, we
   // create the 3 environment variables (ConIn, ConOut, ConErr) that allows to initialize all the console interface
   // of newly installed console drivers
-  Status = GetConsoleDevicePathFromVariable (L"ConOut", (CHAR16*)PcdGetPtr(PcdDefaultConOutPaths),&ConOutDevicePaths);
+  Status = GetConsoleDevicePathFromVariable (L"ConOut", (CHAR16*)PcdGetPtr(PcdDefaultConOutPaths), &ConOutDevicePaths);
   ASSERT_EFI_ERROR (Status);
-  Status = GetConsoleDevicePathFromVariable (L"ConIn", (CHAR16*)PcdGetPtr(PcdDefaultConInPaths),&ConInDevicePaths);
+  Status = GetConsoleDevicePathFromVariable (L"ConIn", (CHAR16*)PcdGetPtr(PcdDefaultConInPaths), &ConInDevicePaths);
   ASSERT_EFI_ERROR (Status);
-  Status = GetConsoleDevicePathFromVariable (L"ConErr", (CHAR16*)PcdGetPtr(PcdDefaultConOutPaths),&ConErrDevicePaths);
+  Status = GetConsoleDevicePathFromVariable (L"ConErr", (CHAR16*)PcdGetPtr(PcdDefaultConOutPaths), &ConErrDevicePaths);
   ASSERT_EFI_ERROR (Status);
 
   // Initialize the Consoles
@@ -203,6 +209,11 @@ DefineDefaultBootEntries (
   EFI_STATUS                          Status;
   EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL* EfiDevicePathFromTextProtocol;
   EFI_DEVICE_PATH*                    BootDevicePath;
+  ARM_BDS_LOADER_ARGUMENTS*           BootArguments;
+  ARM_BDS_LOADER_TYPE                 BootType;
+  EFI_DEVICE_PATH*                    InitrdPath;
+  UINTN                               CmdLineSize;
+  UINTN                               InitrdSize;
 
   //
   // If Boot Order does not exist then create a default entry
@@ -238,11 +249,28 @@ DefineDefaultBootEntries (
 
     // Create the entry is the Default values are correct
     if (BootDevicePath != NULL) {
+      BootType = (ARM_BDS_LOADER_TYPE)PcdGet32 (PcdDefaultBootType);
+
+      if ((BootType == BDS_LOADER_KERNEL_LINUX_ATAG) || (BootType == BDS_LOADER_KERNEL_LINUX_FDT)) {
+        CmdLineSize = AsciiStrSize ((CHAR8*)PcdGetPtr(PcdDefaultBootArgument));
+        InitrdPath = EfiDevicePathFromTextProtocol->ConvertTextToDevicePath ((CHAR16*)PcdGetPtr(PcdDefaultBootInitrdPath));
+        InitrdSize = GetDevicePathSize (InitrdPath);
+
+        BootArguments = (ARM_BDS_LOADER_ARGUMENTS*)AllocatePool (sizeof(ARM_BDS_LOADER_ARGUMENTS) + CmdLineSize + InitrdSize);
+        BootArguments->LinuxArguments.CmdLineSize = CmdLineSize;
+        BootArguments->LinuxArguments.InitrdSize = InitrdSize;
+
+        CopyMem ((VOID*)(BootArguments + 1), (CHAR8*)PcdGetPtr(PcdDefaultBootArgument), CmdLineSize);
+        CopyMem ((VOID*)((UINTN)(BootArguments + 1) + CmdLineSize), InitrdPath, InitrdSize);
+      } else {
+        BootArguments = NULL;
+      }
+
       BootOptionCreate (LOAD_OPTION_ACTIVE | LOAD_OPTION_CATEGORY_BOOT,
         (CHAR16*)PcdGetPtr(PcdDefaultBootDescription),
         BootDevicePath,
-        (BDS_LOADER_TYPE)PcdGet32 (PcdDefaultBootType),
-        (CHAR8*)PcdGetPtr(PcdDefaultBootArgument),
+        BootType,
+        BootArguments,
         &BdsLoadOption
         );
       FreePool (BdsLoadOption);

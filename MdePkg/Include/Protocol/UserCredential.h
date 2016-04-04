@@ -1,5 +1,6 @@
 /** @file
-  UEFI 2.2 User Credential Protocol definition.
+  UEFI 2.2 User Credential Protocol definition.It has been removed from UEFI 2.3.1 and replaced
+  by EFI_USER_CREDENTIAL2_PROTOCOL.
 
   Attached to a device handle, this protocol identifies a single means of identifying the user.
 

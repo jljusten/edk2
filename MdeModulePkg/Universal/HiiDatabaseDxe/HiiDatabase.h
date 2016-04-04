@@ -42,12 +42,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/PrintLib.h>
 
-
-#define HII_DATABASE_NOTIFY_GUID \
-  { \
-    0xc1c76, 0xd79e, 0x42fe, {0x86, 0xb, 0x8b, 0xe8, 0x7b, 0x3e, 0x7a, 0x78} \
-  }
-
 #define MAX_STRING_LENGTH                  1024
 #define MAX_FONT_NAME_LEN                  256
 #define NARROW_BASELINE                    15
@@ -86,9 +80,21 @@ typedef struct {
   LIST_ENTRY          DefaultValueEntry; // Link to its default value array
 } IFR_BLOCK_DATA;
 
+//
+// Get default value from IFR data.
+//
+typedef enum {
+  DEFAULT_VALUE_FROM_DEFAULT = 0,   // Get from the minimum or first one when not set default value.
+  DEFAULT_VALUE_FROM_FLAG,          // Get default value from the defalut flag.
+  DEFAULT_VALUE_FROM_OPCODE         // Get default value from default opcode, highest priority.
+} DEFAULT_VALUE_TYPE;
+
 typedef struct {
   LIST_ENTRY          Entry;
-  UINT8               OpCode;
+  DEFAULT_VALUE_TYPE  Type;
+  BOOLEAN             Cleaned;       // Whether this value is cleaned
+                                     // TRUE  Cleaned, the value can't be used
+                                     // FALSE Not cleaned, the value can  be used.
   UINT16              DefaultId;
   UINT64              Value;
 } IFR_DEFAULT_DATA;

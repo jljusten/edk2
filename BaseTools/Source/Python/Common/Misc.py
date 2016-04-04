@@ -156,7 +156,7 @@ def GuidStructureStringToGuidValueName(GuidValue):
     guidValueString = GuidValue.lower().replace("{", "").replace("}", "").replace(" ", "")
     guidValueList = guidValueString.split(",")
     if len(guidValueList) != 11:
-        EdkLogger.error(None, None, "Invalid GUID value string %s" % GuidValue)
+        EdkLogger.error(None, FORMAT_INVALID, "Invalid GUID value string [%s]" % GuidValue)
     return "%08x_%04x_%04x_%02x%02x_%02x%02x%02x%02x%02x%02x" % (
             int(guidValueList[0], 16),
             int(guidValueList[1], 16),
@@ -252,7 +252,15 @@ def SaveFileOnChange(File, Content, IsBinaryFile=True):
         except:
             EdkLogger.error(None, FILE_OPEN_FAILURE, ExtraData=File)
 
-    CreateDirectory(os.path.dirname(File))
+    DirName = os.path.dirname(File)
+    if not CreateDirectory(DirName):
+        EdkLogger.error(None, FILE_CREATE_FAILURE, "Could not create directory %s" % DirName)
+    else:
+        if DirName == '':
+            DirName = os.getcwd()
+        if not os.access(DirName, os.W_OK):
+            EdkLogger.error(None, PERMISSION_FAILURE, "Do not have write permission on directory %s" % DirName)
+
     try:
         if GlobalData.gIsWindows:
             try:
@@ -267,8 +275,8 @@ def SaveFileOnChange(File, Content, IsBinaryFile=True):
             Fd = open(File, "wb")
             Fd.write(Content)
             Fd.close()
-    except:
-        EdkLogger.error(None, FILE_CREATE_FAILURE, ExtraData=File)
+    except IOError, X:
+        EdkLogger.error(None, FILE_CREATE_FAILURE, ExtraData='IOError %s'%X)
 
     return True
 
@@ -460,7 +468,7 @@ def ValidFile2(AllFiles, File, Ext=None, Workspace='', EfiSource='', EdkSource='
         if FileExt.lower() != Ext.lower():
             return False, File
 
-    # Replace the R8 macros
+    # Replace the Edk macros
     if OverrideDir != '' and OverrideDir != None:
         if OverrideDir.find('$(EFI_SOURCE)') > -1:
             OverrideDir = OverrideDir.replace('$(EFI_SOURCE)', EfiSource)
@@ -472,7 +480,7 @@ def ValidFile2(AllFiles, File, Ext=None, Workspace='', EfiSource='', EdkSource='
         Dir = os.getcwd()
         Dir = Dir[len(Workspace)+1:]
 
-    # First check if File has R8 definition itself
+    # First check if File has Edk definition itself
     if File.find('$(EFI_SOURCE)') > -1 or File.find('$(EDK_SOURCE)') > -1:
         NewFile = File.replace('$(EFI_SOURCE)', EfiSource)
         NewFile = NewFile.replace('$(EDK_SOURCE)', EdkSource)
@@ -498,7 +506,7 @@ def ValidFile2(AllFiles, File, Ext=None, Workspace='', EfiSource='', EdkSource='
 #
 #
 def ValidFile3(AllFiles, File, Workspace='', EfiSource='', EdkSource='', Dir='.', OverrideDir=''):
-    # Replace the R8 macros
+    # Replace the Edk macros
     if OverrideDir != '' and OverrideDir != None:
         if OverrideDir.find('$(EFI_SOURCE)') > -1:
             OverrideDir = OverrideDir.replace('$(EFI_SOURCE)', EfiSource)
@@ -516,7 +524,7 @@ def ValidFile3(AllFiles, File, Workspace='', EfiSource='', EdkSource='', Dir='.'
     NewRelaPath = RelaPath
 
     while(True):
-        # First check if File has R8 definition itself
+        # First check if File has Edk definition itself
         if File.find('$(EFI_SOURCE)') > -1 or File.find('$(EDK_SOURCE)') > -1:
             File = File.replace('$(EFI_SOURCE)', EfiSource)
             File = File.replace('$(EDK_SOURCE)', EdkSource)
@@ -1388,6 +1396,27 @@ class PathClass(object):
         else:
             return self.Path == str(Other)
 
+    ## Override __cmp__ function
+    #
+    # Customize the comparsion operation of two PathClass
+    #
+    # @retval 0     The two PathClass are different
+    # @retval -1    The first PathClass is less than the second PathClass
+    # @retval 1     The first PathClass is Bigger than the second PathClass
+    def __cmp__(self, Other):
+        if type(Other) == type(self):
+            OtherKey = Other.Path
+        else:
+            OtherKey = str(Other)
+            
+        SelfKey = self.Path
+        if SelfKey == OtherKey:
+            return 0
+        elif SelfKey > OtherKey:
+            return 1
+        else:
+            return -1
+
     ## Override __hash__ function
     #
     # Use Path as key in hash table
@@ -1401,6 +1430,9 @@ class PathClass(object):
         if self._Key == None:
             self._Key = self.Path.upper()   # + self.ToolChainFamily + self.TagName + self.ToolCode + self.Target
         return self._Key
+
+    def _GetTimeStamp(self):
+        return os.stat(self.Path)[8]
 
     def Validate(self, Type='', CaseSensitive=True):
         if GlobalData.gCaseInsensitive:
@@ -1436,6 +1468,7 @@ class PathClass(object):
         return ErrorCode, ErrorInfo
 
     Key = property(_GetFileKey)
+    TimeStamp = property(_GetTimeStamp)
 
 ## Parse PE image to get the required PE informaion.
 #
@@ -1453,7 +1486,7 @@ class PeImageClass():
         self.SectionHeaderList = []
         self.ErrorInfo = ''
         try:
-             PeObject = open(PeFile, 'rb')
+            PeObject = open(PeFile, 'rb')
         except:
             self.ErrorInfo = self.FileName + ' can not be found\n'
             return

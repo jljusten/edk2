@@ -21,7 +21,7 @@
   PLATFORM_NAME                  = EmulatorPkg
   PLATFORM_GUID                  = 05FD064D-1073-E844-936C-A0E16317107D
   PLATFORM_VERSION               = 0.3
-  DSC_ SPECIFICATION             = 0x00010005
+  DSC_SPECIFICATION              = 0x00010005
 !if $(BUILD_32)
   OUTPUT_DIRECTORY               = Build/Emulator32
 !else
@@ -99,6 +99,7 @@
   DebugAgentLib|MdeModulePkg/Library/DebugAgentLibNull/DebugAgentLibNull.inf
   PeiServicesTablePointerLib|EmulatorPkg/Library/PeiServicesTablePointerLibMagicPage/PeiServicesTablePointerLibMagicPage.inf
   DebugLib|IntelFrameworkModulePkg/Library/PeiDxeDebugLibReportStatusCode/PeiDxeDebugLibReportStatusCode.inf
+  LockBoxLib|MdeModulePkg/Library/LockBoxNullLib/LockBoxNullLib.inf
 
 
 [LibraryClasses.common.SEC]
@@ -172,9 +173,10 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|FALSE
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeUseSerial|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreImageLoaderSearchTeSectionFirst|FALSE
-  gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange|FALSE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplBuildPageTables|FALSE
 
 [PcdsFixedAtBuild]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange|FALSE
   gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000040
   gEfiMdePkgTokenSpaceGuid.PcdReportStatusCodePropertyMask|0x0f
   gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x1f
@@ -231,20 +233,7 @@
 [PcdsDynamicHii.common.DEFAULT]
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutColumn|L"Setup"|gEmuSystemConfigGuid|0x0|80
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow|L"Setup"|gEmuSystemConfigGuid|0x4|25
-  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdPlatformBootTimeOut|L"Timeout"|gEfiGlobalVariableGuid|0x0|10
 
-
-!ifndef $(SKIP_MAIN_BUILD)
-[Components.X64]
-  MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf {
-    <LibraryClasses>
-      # turn off CR3 write so that DXE IPL will not crash emulator
-      BaseLib|UnixPkg/Library/UnixBaseLib/UnixBaseLib.inf
-  }
-
-[Components.IA32]
-  MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf
-!endif
 
 [Components]
 !ifdef $(UNIX_SEC_BUILD)
@@ -278,6 +267,7 @@
   EmulatorPkg/FirmwareVolumePei/FirmwareVolumePei.inf
   EmulatorPkg/FlashMapPei/FlashMapPei.inf
   EmulatorPkg/ThunkPpiToProtocolPei/ThunkPpiToProtocolPei.inf
+  MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf  
 
   ##
   #  DXE Phase modules
@@ -285,6 +275,8 @@
   MdeModulePkg/Core/Dxe/DxeMain.inf {
     <LibraryClasses>
       DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
+      SerialPortLib|EmulatorPkg/Library/DxeEmuStdErrSerialPortLib/DxeEmuStdErrSerialPortLib.inf
+      DxeEmuLib|EmulatorPkg/Library/DxeEmuLib/DxeEmuLib.inf
       NULL|MdeModulePkg/Library/DxeCrc32GuidedSectionExtractLib/DxeCrc32GuidedSectionExtractLib.inf
       NULL|IntelFrameworkModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
   }

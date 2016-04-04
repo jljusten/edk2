@@ -45,6 +45,13 @@ EFI_BLOCK_IO_MEDIA mMmcMediaTemplate = {
 LIST_ENTRY  mMmcHostPool;
 
 /**
+  Event triggered by the timer to check if any cards have been removed
+  or if new ones have been plugged in
+**/
+
+EFI_EVENT gCheckCardsEvent;
+
+/**
   Initialize the MMC Host Pool to support multiple MMC devices
 **/
 VOID
@@ -109,7 +116,7 @@ MMC_HOST_INSTANCE* CreateMmcHostInstance (
   MmcHostInstance->MmcHost = MmcHost;
 
   // Create DevicePath for the new MMC Host
-  Status = MmcHost->BuildDevicePath(&NewDevicePathNode);
+  Status = MmcHost->BuildDevicePath (MmcHost, &NewDevicePathNode);
   if (EFI_ERROR (Status)) {
     goto FREE_MEDIA;
   }
@@ -125,7 +132,7 @@ MMC_HOST_INSTANCE* CreateMmcHostInstance (
   // Publish BlockIO protocol interface
   Status = gBS->InstallMultipleProtocolInterfaces (
                 &MmcHostInstance->MmcHandle,
-                &gEfiBlockIoProtocolGuid,&(MmcHostInstance->BlockIo),
+                &gEfiBlockIoProtocolGuid,&MmcHostInstance->BlockIo,
                 &gEfiDevicePathProtocolGuid,MmcHostInstance->DevicePath,
                 NULL
                 );
@@ -290,6 +297,11 @@ MmcDriverBindingStart (
   if (MmcHostInstance != NULL) {
     // Add the handle to the pool
     InsertMmcHost (MmcHostInstance);
+
+    MmcHostInstance->Initialized = FALSE;
+
+    // Detect card presence now
+    CheckCardsCallback (NULL, NULL);
   }
 
   return EFI_SUCCESS;
@@ -336,6 +348,48 @@ MmcDriverBindingStop (
   return Status;
 }
 
+VOID
+EFIAPI
+CheckCardsCallback (
+  IN  EFI_EVENT   Event,
+  IN  VOID        *Context
+  )
+{
+  LIST_ENTRY          *CurrentLink;
+  MMC_HOST_INSTANCE   *MmcHostInstance;
+  EFI_STATUS          Status;
+
+  CurrentLink = mMmcHostPool.ForwardLink;
+  while (CurrentLink != NULL && CurrentLink != &mMmcHostPool) {
+    MmcHostInstance = MMC_HOST_INSTANCE_FROM_LINK(CurrentLink);
+    ASSERT(MmcHostInstance != NULL);
+
+    if (MmcHostInstance->MmcHost->IsCardPresent (MmcHostInstance->MmcHost) == !MmcHostInstance->Initialized) {
+      MmcHostInstance->State = MmcHwInitializationState;
+      MmcHostInstance->BlockIo.Media->MediaPresent = !MmcHostInstance->Initialized;
+      MmcHostInstance->Initialized = !MmcHostInstance->Initialized;
+
+      if (MmcHostInstance->BlockIo.Media->MediaPresent) {
+        InitializeMmcDevice (MmcHostInstance);
+      }
+
+      Status = gBS->ReinstallProtocolInterface (
+                    (MmcHostInstance->MmcHandle),
+                    &gEfiBlockIoProtocolGuid,
+                    &(MmcHostInstance->BlockIo),
+                    &(MmcHostInstance->BlockIo)
+                    );
+
+      if (EFI_ERROR(Status)) {
+        Print(L"MMC Card: Error reinstalling BlockIo interface\n");
+      }
+    }
+
+    CurrentLink = CurrentLink->ForwardLink;
+  }
+}
+
+
 EFI_DRIVER_BINDING_PROTOCOL gMmcDriverBinding = {
   MmcDriverBindingSupported,
   MmcDriverBindingStart,
@@ -381,6 +435,21 @@ MmcDxeInitialize (
                 &gEfiDriverDiagnostics2ProtocolGuid,&gMmcDriverDiagnostics2,
                 NULL
                 );
+  ASSERT_EFI_ERROR (Status);
+
+  // Use a timer to detect if a card has been plugged in or removed
+  Status = gBS->CreateEvent (
+                EVT_NOTIFY_SIGNAL | EVT_TIMER,
+                TPL_CALLBACK,
+                CheckCardsCallback,
+                NULL,
+                &gCheckCardsEvent);
+  ASSERT_EFI_ERROR (Status);  
+              
+  Status = gBS->SetTimer(
+                gCheckCardsEvent,
+                TimerPeriodic,
+                (UINT64)(10*1000*200)); // 200 ms
   ASSERT_EFI_ERROR (Status);
 
   return Status;

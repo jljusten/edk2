@@ -2,7 +2,7 @@
 #  Platform PEI driver
 #
 #  This module provides platform specific function to detect boot mode.
-#  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -33,14 +33,17 @@
   Fv.c
   MemDetect.c
   Platform.c
+  Xen.c
 
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
   OvmfPkg/OvmfPkg.dec
 
 [Guids]
   gEfiMemoryTypeInformationGuid
+  gEfiXenInfoGuid
 
 [LibraryClasses]
   DebugLib
@@ -51,6 +54,7 @@
   PeiServicesLib
   PeiServicesTablePointerLib
   PeimEntryPoint
+  MtrrLib
 
 [Pcd]
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfMemFvBase

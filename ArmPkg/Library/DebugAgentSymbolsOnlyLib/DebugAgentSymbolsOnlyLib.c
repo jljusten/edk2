@@ -225,8 +225,10 @@ GetImageContext (
       switch (* (UINT32 *) CodeViewEntryPointer) {
       case CODEVIEW_SIGNATURE_NB10:
         ImageContext->PdbPointer = (CHAR8 *)CodeViewEntryPointer + sizeof (EFI_IMAGE_DEBUG_CODEVIEW_NB10_ENTRY);
+        break;
       case CODEVIEW_SIGNATURE_RSDS:
         ImageContext->PdbPointer = (CHAR8 *)CodeViewEntryPointer + sizeof (EFI_IMAGE_DEBUG_CODEVIEW_RSDS_ENTRY);
+        break;
       case CODEVIEW_SIGNATURE_MTOC:
         ImageContext->PdbPointer = (CHAR8 *)CodeViewEntryPointer + sizeof (EFI_IMAGE_DEBUG_CODEVIEW_MTOC_ENTRY);
         break;
@@ -278,9 +280,9 @@ InitializeDebugAgent (
   // modules
   if (InitFlag == DEBUG_AGENT_INIT_PREMEM_SEC) {
     //
-    // Get the PrePi or PrePeiCore module (defined as SEC type module)
+    // Get the Sec or PrePeiCore module (defined as SEC type module)
     //
-    Status = GetFfsFile ((EFI_FIRMWARE_VOLUME_HEADER*)PcdGet32(PcdSecureFdBaseAddress), EFI_FV_FILETYPE_SECURITY_CORE, &FfsHeader);
+    Status = GetFfsFile ((EFI_FIRMWARE_VOLUME_HEADER*)PcdGet32(PcdSecureFvBaseAddress), EFI_FV_FILETYPE_SECURITY_CORE, &FfsHeader);
     if (!EFI_ERROR(Status)) {
       Status = GetImageContext (FfsHeader,&ImageContext);
       if (!EFI_ERROR(Status)) {
@@ -291,7 +293,7 @@ InitializeDebugAgent (
     //
     // Get the PrePi or PrePeiCore module (defined as SEC type module)
     //
-    Status = GetFfsFile ((EFI_FIRMWARE_VOLUME_HEADER*)PcdGet32(PcdNormalFvBaseAddress), EFI_FV_FILETYPE_SECURITY_CORE, &FfsHeader);
+    Status = GetFfsFile ((EFI_FIRMWARE_VOLUME_HEADER*)PcdGet32(PcdFvBaseAddress), EFI_FV_FILETYPE_SECURITY_CORE, &FfsHeader);
     if (!EFI_ERROR(Status)) {
       Status = GetImageContext (FfsHeader,&ImageContext);
       if (!EFI_ERROR(Status)) {
@@ -302,7 +304,7 @@ InitializeDebugAgent (
     //
     // Get the PeiCore module (defined as PEI_CORE type module)
     //
-    Status = GetFfsFile ((EFI_FIRMWARE_VOLUME_HEADER*)PcdGet32(PcdNormalFvBaseAddress), EFI_FV_FILETYPE_PEI_CORE, &FfsHeader);
+    Status = GetFfsFile ((EFI_FIRMWARE_VOLUME_HEADER*)PcdGet32(PcdFvBaseAddress), EFI_FV_FILETYPE_PEI_CORE, &FfsHeader);
     if (!EFI_ERROR(Status)) {
       Status = GetImageContext (FfsHeader,&ImageContext);
       if (!EFI_ERROR(Status)) {

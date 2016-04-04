@@ -48,7 +48,7 @@ PLATFORMFILE=
 LAST_ARG=
 RUN_EMULATOR=no
 CLEAN_TYPE=none
-UNIXPKG_TOOLS=GCC44
+TARGET_TOOLS=GCC44
 NETWORK_SUPPORT=
 BUILD_NEW_SHELL=
 BUILD_FAT=
@@ -63,8 +63,8 @@ case `uname` in
         echo UnixPkg requires Snow Leopard or later OS
         exit 1
       else
-        TARGET_TOOLS=XCODE32
-        UNIXPKG_TOOLS=XCLANG
+        HOST_TOOLS=XCODE32
+        TARGET_TOOLS=XCLANG
       fi
       BUILD_NEW_SHELL="-D BUILD_NEW_SHELL"
       BUILD_FAT="-D BUILD_FAT"
@@ -79,6 +79,19 @@ case `uname` in
         ;;
       x86_64)
         HOST_PROCESSOR=X64
+        ;;
+    esac
+
+    gcc_version=$(gcc -v 2>&1 | tail -1 | awk '{print $3}')
+    case $gcc_version in
+      4.5.*)
+        TARGET_TOOLS=GCC45
+        ;;
+      4.6.*)
+        TARGET_TOOLS=GCC46
+        ;;
+      *)
+        TARGET_TOOLS=GCC44
         ;;
     esac
     ;;
@@ -121,7 +134,7 @@ do
         PLATFORMFILE=$arg
         ;;
       -t)
-        TARGET_TOOLS=$arg
+        HOST_TOOLS=$arg
         ;;
       *)
         BUILD_OPTIONS="$BUILD_OPTIONS $arg"
@@ -131,9 +144,9 @@ do
   fi
   shift
 done
-if [ -z "$TARGET_TOOLS" ]
+if [ -z "$HOST_TOOLS" ]
 then
-  TARGET_TOOLS=$UNIXPKG_TOOLS
+  HOST_TOOLS=$TARGET_TOOLS
 fi
 
 if [ -z "$PROCESSOR" ]
@@ -145,22 +158,30 @@ case $PROCESSOR in
   IA32)
     ARCH_SIZE=32
     BUILD_OUTPUT_DIR=$WORKSPACE/Build/Emulator32
-    if [ -d /lib32 ]; then
-      export LIB_ARCH_SFX=32
-    fi
+    LIB_NAMES="ld-linux.so.2 crt1.o crti.o crtn.o"
+    LIB_SEARCH_PATHS="/usr/lib/i386-linux-gnu /usr/lib32 /lib32 /usr/lib /lib"
     ;;
   X64)
     ARCH_SIZE=64
     BUILD_OUTPUT_DIR=$WORKSPACE/Build/Emulator
-    if [ -d /lib64 ]; then
-      export LIB_ARCH_SFX=64
-    fi
+    LIB_NAMES="ld-linux-x86-64.so.2 crt1.o crti.o crtn.o"
+    LIB_SEARCH_PATHS="/usr/lib/x86_64-linux-gnu /usr/lib64 /lib64 /usr/lib /lib"
     ;;
 esac
 
+for libname in $LIB_NAMES
+do
+  for dirname in $LIB_SEARCH_PATHS
+  do
+    if [ -e $dirname/$libname ]; then
+      export HOST_DLINK_PATHS="$HOST_DLINK_PATHS $dirname/$libname"
+      break
+    fi
+  done
+done
 
 PLATFORMFILE=$WORKSPACE/EmulatorPkg/EmulatorPkg.dsc
-BUILD_ROOT_ARCH=$BUILD_OUTPUT_DIR/DEBUG_"$UNIXPKG_TOOLS"/$PROCESSOR
+BUILD_ROOT_ARCH=$BUILD_OUTPUT_DIR/DEBUG_"$TARGET_TOOLS"/$PROCESSOR
 
 if  [[ ! -f `which build` || ! -f `which GenFv` ]];
 then
@@ -185,7 +206,7 @@ if [[ "$RUN_EMULATOR" == "yes" ]]; then
       # This .gdbinit script sets a breakpoint that loads symbols for the PE/COFFEE
       # images that get loaded in Host
       #
-      cp $WORKSPACE/EmulatorPkg/Unix/.gdbinit $BUILD_OUTPUT_DIR/DEBUG_"$UNIXPKG_TOOLS"/$PROCESSOR
+      cp $WORKSPACE/EmulatorPkg/Unix/.gdbinit $BUILD_OUTPUT_DIR/DEBUG_"$TARGET_TOOLS"/$PROCESSOR
       ;;
   esac
 
@@ -195,15 +216,15 @@ fi
 
 case $CLEAN_TYPE in
   clean)
-    build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc -a $PROCESSOR -t $TARGET_TOOLS -D UNIX_SEC_BUILD -n 3 clean
-    build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc -a $PROCESSOR -t $UNIXPKG_TOOLS -n 3 clean
+    build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc -a $PROCESSOR -b $BUILDTARGET -t $HOST_TOOLS -D UNIX_SEC_BUILD -n 3 clean
+    build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc -a $PROCESSOR -b $BUILDTARGET -t $TARGET_TOOLS -n 3 clean
     exit $?
     ;;
   cleanall)
     make -C $WORKSPACE/BaseTools clean
-    build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc -a $PROCESSOR -t $TARGET_TOOLS -D UNIX_SEC_BUILD -n 3 clean
-    build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc -a $PROCESSOR -t $UNIXPKG_TOOLS -n 3 clean
-    build -p $WORKSPACE/ShellPkg/ShellPkg.dsc -a IA32 -t $UNIXPKG_TOOLS -n 3 clean
+    build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc -a $PROCESSOR -b $BUILDTARGET -t $HOST_TOOLS -D UNIX_SEC_BUILD -n 3 clean
+    build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc -a $PROCESSOR -b $BUILDTARGET -t $TARGET_TOOLS -n 3 clean
+    build -p $WORKSPACE/ShellPkg/ShellPkg.dsc -a IA32 -b $BUILDTARGET -t $TARGET_TOOLS -n 3 clean
     exit $?
     ;;
 esac
@@ -212,12 +233,12 @@ esac
 #
 # Build the edk2 EmulatorPkg
 #
-if [[ $TARGET_TOOLS == $UNIXPKG_TOOLS ]]; then
-  build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc -a $PROCESSOR -t $UNIXPKG_TOOLS -D BUILD_$ARCH_SIZE -D UNIX_SEC_BUILD $NETWORK_SUPPORT $BUILD_NEW_SHELL $BUILD_FAT -n 3 $1 $2 $3 $4 $5 $6 $7 $8
+if [[ $HOST_TOOLS == $TARGET_TOOLS ]]; then
+  build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc $BUILD_OPTIONS -a $PROCESSOR -b $BUILDTARGET -t $TARGET_TOOLS -D BUILD_$ARCH_SIZE -D UNIX_SEC_BUILD $NETWORK_SUPPORT $BUILD_NEW_SHELL $BUILD_FAT -n 3
 else
-  build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc -a $PROCESSOR -t $TARGET_TOOLS  -D BUILD_$ARCH_SIZE -D UNIX_SEC_BUILD -D SKIP_MAIN_BUILD -n 3 $1 $2 $3 $4 $5 $6 $7 $8  modules
-  build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc -a $PROCESSOR -t $UNIXPKG_TOOLS -D BUILD_$ARCH_SIZE $NETWORK_SUPPORT $BUILD_NEW_SHELL $BUILD_FAT -n 3 $1 $2 $3 $4 $5 $6 $7 $8
-  cp $BUILD_OUTPUT_DIR/DEBUG_"$TARGET_TOOLS"/$PROCESSOR/Host $BUILD_ROOT_ARCH
+  build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc $BUILD_OPTIONS -a $PROCESSOR -b $BUILDTARGET -t $HOST_TOOLS  -D BUILD_$ARCH_SIZE -D UNIX_SEC_BUILD -D SKIP_MAIN_BUILD -n 3 modules
+  build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc $BUILD_OPTIONS -a $PROCESSOR -b $BUILDTARGET -t $TARGET_TOOLS -D BUILD_$ARCH_SIZE $NETWORK_SUPPORT $BUILD_NEW_SHELL $BUILD_FAT -n 3
+  cp $BUILD_OUTPUT_DIR/DEBUG_"$HOST_TOOLS"/$PROCESSOR/Host $BUILD_ROOT_ARCH
 fi
 exit $?
 

@@ -13,7 +13,7 @@
   requiring an update to MajorVersion and MinorVersion.
   The SMBIOS protocol can only be called a TPL < TPL_NOTIFY.
 
-  Copyright (c) 2006 - 2008, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -31,8 +31,8 @@
     { 0x3583ff6, 0xcb36, 0x4940, { 0x94, 0x7e, 0xb9, 0xb3, 0x9f, 0x4a, 0xfa, 0xf7 }}
     
 //
-// SMBIOS type macros which is according to SMBIOS specification.
-//    
+// SMBIOS type macros which is according to SMBIOS 2.7 specification.
+//
 #define EFI_SMBIOS_TYPE_BIOS_INFORMATION                    0
 #define EFI_SMBIOS_TYPE_SYSTEM_INFORMATION                  1
 #define EFI_SMBIOS_TYPE_BASEBOARD_INFORMATION               2
@@ -73,6 +73,9 @@
 #define EFI_SMBIOS_TYPE_MEMORY_CHANNEL                      37
 #define EFI_SMBIOS_TYPE_IPMI_DEVICE_INFORMATION             38
 #define EFI_SMBIOS_TYPE_SYSTEM_POWER_SUPPLY                 39
+#define EFI_SMBIOS_TYPE_ADDITIONAL_INFORMATION              40
+#define EFI_SMBIOS_TYPE_ONBOARD_DEVICES_EXTENDED_INFORMATION 41
+#define EFI_SMBIOS_TYPE_MANAGEMENT_CONTROLLER_HOST_INTERFACE 42
 #define EFI_SMBIOS_TYPE_INACTIVE                            126
 #define EFI_SMBIOS_TYPE_END_OF_TABLE                        127
 #define EFI_SMBIOS_OEM_BEGIN                                128
@@ -133,8 +136,8 @@ typedef struct _EFI_SMBIOS_PROTOCOL EFI_SMBIOS_PROTOCOL;
   
   @param[in]        This                The EFI_SMBIOS_PROTOCOL instance.
   @param[in]        ProducerHandle      The handle of the controller or driver associated with the SMBIOS information. NULL means no handle.
-  @param[in, out]   SmbiosHandle        On entry, if non-zero, the handle of the SMBIOS record. If zero, then a unique handle
-                                        will be assigned to the SMBIOS record. If the SMBIOS handle is already in use
+  @param[in, out]   SmbiosHandle        On entry, the handle of the SMBIOS record to add. If FFFEh, then a unique handle
+                                        will be assigned to the SMBIOS record. If the SMBIOS handle is already in use,
                                         EFI_ALREADY_STARTED is returned and the SMBIOS record is not updated.
   @param[in]        Record              The data for the fixed portion of the SMBIOS record. The format of the record is
                                         determined by EFI_SMBIOS_TABLE_HEADER.Type. The size of the formatted
@@ -167,7 +170,7 @@ EFI_STATUS
   
   @retval EFI_SUCCESS           SmbiosHandle had its StringNumber String updated.
   @retval EFI_INVALID_PARAMETER SmbiosHandle does not exist.
-  @retval EFI_UNSUPPORTED       String was not added since it's longer than 64 significant characters.
+  @retval EFI_UNSUPPORTED       String was not added because it is longer than the SMBIOS Table supports.
   @retval EFI_NOT_FOUND         The StringNumber.is not valid for this SMBIOS record.    
 **/
 typedef
@@ -205,8 +208,8 @@ EFI_STATUS
   
   @param[in]        This            The EFI_SMBIOS_PROTOCOL instance.
   @param[in, out]   SmbiosHandle    On entry, points to the previous handle of the SMBIOS record. On exit, points to the
-                                    next SMBIOS record handle. If it is zero on entry, then the first SMBIOS record
-                                    handle will be returned. If it returns zero on exit, then there are no more SMBIOS records.
+                                    next SMBIOS record handle. If it is FFFEh on entry, then the first SMBIOS record
+                                    handle will be returned. If it returns FFFEh on exit, then there are no more SMBIOS records.
   @param[in]        Type            On entry, it points to the type of the next SMBIOS record to return. If NULL, it
                                     indicates that the next record of any type will be returned. Type is not
                                     modified by the this function.

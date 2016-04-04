@@ -186,7 +186,7 @@ GetNextPotentialVariablePtr (
   //
   // Be careful about pad size for alignment
   //
-  VarHeader = (VARIABLE_HEADER *) (GetVariableDataPtr (Variable) + Variable->DataSize + GET_PAD_SIZE (Variable->DataSize));
+  VarHeader = (VARIABLE_HEADER *) HEADER_ALIGN ((UINTN) GetVariableDataPtr (Variable) + Variable->DataSize + GET_PAD_SIZE (Variable->DataSize));
 
   return VarHeader;
 }
@@ -268,7 +268,7 @@ GetEndPointer (
   //
   // The end of variable store
   //
-  return (VARIABLE_HEADER *) ((UINTN) VolHeader + VolHeader->Size);
+  return (VARIABLE_HEADER *) HEADER_ALIGN ((UINTN) VolHeader + VolHeader->Size);
 }
 
 /**
@@ -990,24 +990,24 @@ UpdateVariable (
   if ((Attributes & EFI_VARIABLE_NON_VOLATILE) != 0) {
     NonVolatileVarableStoreSize = ((VARIABLE_STORE_HEADER *)(UINTN)(Global->NonVolatileVariableBase))->Size;
     if ((((Attributes & EFI_VARIABLE_HARDWARE_ERROR_RECORD) != 0) 
-      && ((VarSize + mVariableModuleGlobal->HwErrVariableTotalSize) > PcdGet32 (PcdHwErrStorageSize)))
+      && ((HEADER_ALIGN (VarSize) + mVariableModuleGlobal->HwErrVariableTotalSize) > PcdGet32 (PcdHwErrStorageSize)))
       || (((Attributes & EFI_VARIABLE_HARDWARE_ERROR_RECORD) == 0) 
-      && ((VarSize + mVariableModuleGlobal->CommonVariableTotalSize) > NonVolatileVarableStoreSize - sizeof (VARIABLE_STORE_HEADER) - PcdGet32 (PcdHwErrStorageSize)))) {
+      && ((HEADER_ALIGN (VarSize) + mVariableModuleGlobal->CommonVariableTotalSize) > NonVolatileVarableStoreSize - sizeof (VARIABLE_STORE_HEADER) - PcdGet32 (PcdHwErrStorageSize)))) {
       Status = EFI_OUT_OF_RESOURCES;
       goto Done;
     }
 
     NextVariable  = (VARIABLE_HEADER *) (UINT8 *) (mVariableModuleGlobal->NonVolatileLastVariableOffset
                       + (UINTN) Global->NonVolatileVariableBase);
-    mVariableModuleGlobal->NonVolatileLastVariableOffset += VarSize;
+    mVariableModuleGlobal->NonVolatileLastVariableOffset += HEADER_ALIGN (VarSize);
 
     if ((Attributes & EFI_VARIABLE_HARDWARE_ERROR_RECORD) != 0) {
-      mVariableModuleGlobal->HwErrVariableTotalSize += VarSize;
+      mVariableModuleGlobal->HwErrVariableTotalSize += HEADER_ALIGN (VarSize);
     } else {
-      mVariableModuleGlobal->CommonVariableTotalSize += VarSize;
+      mVariableModuleGlobal->CommonVariableTotalSize += HEADER_ALIGN (VarSize);
     }
   } else {
-    if ((UINT32) (VarSize + mVariableModuleGlobal->VolatileLastVariableOffset) >
+    if ((UINT32) (HEADER_ALIGN (VarSize) + mVariableModuleGlobal->VolatileLastVariableOffset) >
           ((VARIABLE_STORE_HEADER *) ((UINTN) (Global->VolatileVariableBase)))->Size
           ) {
       Status = EFI_OUT_OF_RESOURCES;
@@ -1016,7 +1016,7 @@ UpdateVariable (
 
     NextVariable    = (VARIABLE_HEADER *) (UINT8 *) (mVariableModuleGlobal->VolatileLastVariableOffset
                         + (UINTN) Global->VolatileVariableBase);
-    mVariableModuleGlobal->VolatileLastVariableOffset += VarSize;
+    mVariableModuleGlobal->VolatileLastVariableOffset += HEADER_ALIGN (VarSize);
   }
 
   NextVariable->StartId     = VARIABLE_DATA;
@@ -1103,8 +1103,8 @@ FindVariable (
   // Start Pointers for the variable.
   // Actual Data Pointer where data can be written.
   //
-  Variable[0] = (VARIABLE_HEADER *) (VariableStoreHeader[0] + 1);
-  Variable[1] = (VARIABLE_HEADER *) (VariableStoreHeader[1] + 1);
+  Variable[0] = (VARIABLE_HEADER *) HEADER_ALIGN (VariableStoreHeader[0] + 1);
+  Variable[1] = (VARIABLE_HEADER *) HEADER_ALIGN (VariableStoreHeader[1] + 1);
 
   if (VariableName[0] != 0 && VendorGuid == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -1113,7 +1113,7 @@ FindVariable (
   // Find the variable by walk through non-volatile and volatile variable store
   //
   for (Index = 0; Index < 2; Index++) {
-    PtrTrack->StartPtr  = (VARIABLE_HEADER *) (VariableStoreHeader[Index] + 1);
+    PtrTrack->StartPtr  = (VARIABLE_HEADER *) HEADER_ALIGN (VariableStoreHeader[Index] + 1);
     PtrTrack->EndPtr    = GetEndPointer (VariableStoreHeader[Index]);
 
     while ((Variable[Index] < GetEndPointer (VariableStoreHeader[Index])) && (Variable[Index] != NULL)) {
@@ -1177,6 +1177,7 @@ EmuGetVariable (
   VARIABLE_POINTER_TRACK  Variable;
   UINTN                   VarDataSize;
   EFI_STATUS              Status;
+  UINT8                   *VariableDataPtr;
 
   if (VariableName == NULL || VendorGuid == NULL || DataSize == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -1201,8 +1202,10 @@ EmuGetVariable (
       Status = EFI_INVALID_PARAMETER;
       goto Done;
     }
-
-    CopyMem (Data, GetVariableDataPtr (Variable.CurrPtr), VarDataSize);
+    VariableDataPtr = GetVariableDataPtr (Variable.CurrPtr);
+    ASSERT (VariableDataPtr != NULL);
+    
+    CopyMem (Data, VariableDataPtr, VarDataSize);
     if (Attributes != NULL) {
       *Attributes = Variable.CurrPtr->Attributes;
     }
@@ -1279,7 +1282,7 @@ EmuGetNextVariableName (
     if (Variable.CurrPtr >= Variable.EndPtr || Variable.CurrPtr == NULL) {
       Variable.Volatile = (BOOLEAN) (Variable.Volatile ^ ((BOOLEAN) 0x1));
       if (Variable.Volatile) {
-        Variable.StartPtr = (VARIABLE_HEADER *) ((UINTN) (Global->VolatileVariableBase + sizeof (VARIABLE_STORE_HEADER)));
+        Variable.StartPtr = (VARIABLE_HEADER *) HEADER_ALIGN ((UINTN) (Global->VolatileVariableBase + sizeof (VARIABLE_STORE_HEADER)));
         Variable.EndPtr = (VARIABLE_HEADER *) GetEndPointer ((VARIABLE_STORE_HEADER *) ((UINTN) Global->VolatileVariableBase));
       } else {
         Status = EFI_NOT_FOUND;
@@ -1553,7 +1556,7 @@ EmuQueryVariableInfo (
   //
   // Point to the starting address of the variables.
   //
-  Variable = (VARIABLE_HEADER *) (VariableStoreHeader + 1);
+  Variable = (VARIABLE_HEADER *) HEADER_ALIGN (VariableStoreHeader + 1);
 
   //
   // Now walk through the related variable store.
@@ -1606,10 +1609,15 @@ InitializeVariableStore (
   IN  BOOLEAN               VolatileStore
   )
 {
+  EFI_STATUS            Status;
   VARIABLE_STORE_HEADER *VariableStore;
   BOOLEAN               FullyInitializeStore;
   EFI_PHYSICAL_ADDRESS  *VariableBase;
   UINTN                 *LastVariableOffset;
+  VARIABLE_STORE_HEADER *VariableStoreHeader;
+  VARIABLE_HEADER       *Variable;
+  VOID                  *VariableData;
+  EFI_HOB_GUID_TYPE     *GuidHob;
 
   FullyInitializeStore = TRUE;
 
@@ -1677,6 +1685,44 @@ InitializeVariableStore (
   VariableStore->State      = VARIABLE_STORE_HEALTHY;
   VariableStore->Reserved   = 0;
   VariableStore->Reserved1  = 0;
+
+  if (!VolatileStore) {
+    //
+    // Get HOB variable store.
+    //
+    GuidHob = GetFirstGuidHob (&gEfiVariableGuid);
+    if (GuidHob != NULL) {
+      VariableStoreHeader = (VARIABLE_STORE_HEADER *) GET_GUID_HOB_DATA (GuidHob);
+      if (CompareGuid (&VariableStoreHeader->Signature, &gEfiVariableGuid) &&
+          (VariableStoreHeader->Format == VARIABLE_STORE_FORMATTED) &&
+          (VariableStoreHeader->State == VARIABLE_STORE_HEALTHY)
+         ) {
+        DEBUG ((EFI_D_INFO, "HOB Variable Store appears to be valid.\n"));
+        //
+        // Flush the HOB variable to Emulation Variable storage.
+        //
+        for ( Variable = (VARIABLE_HEADER *) HEADER_ALIGN (VariableStoreHeader + 1)
+            ; (Variable < GetEndPointer (VariableStoreHeader) && (Variable != NULL))
+            ; Variable = GetNextVariablePtr (Variable)
+            ) {
+          ASSERT (Variable->State == VAR_ADDED);
+          ASSERT ((Variable->Attributes & EFI_VARIABLE_NON_VOLATILE) != 0);
+          VariableData = GetVariableDataPtr (Variable);
+          Status = EmuSetVariable (
+                     GET_VARIABLE_NAME_PTR (Variable),
+                     &Variable->VendorGuid,
+                     Variable->Attributes,
+                     Variable->DataSize,
+                     VariableData,
+                     &mVariableModuleGlobal->VariableGlobal[Physical],
+                     &mVariableModuleGlobal->VolatileLastVariableOffset,
+                     &mVariableModuleGlobal->NonVolatileLastVariableOffset
+                     );
+          ASSERT_EFI_ERROR (Status);
+        }
+      }
+    }
+  }
 
   return EFI_SUCCESS;
 }

@@ -502,6 +502,7 @@ ProcessOptions (
           Character[0] = LEFT_ONEOF_DELIMITER;
           NewStrCat (OptionString[0], Character);
           StringPtr = GetToken (OneOfOption->Text, Selection->Handle);
+          ASSERT (StringPtr != NULL);
           NewStrCat (OptionString[0], StringPtr);
           Character[0] = RIGHT_ONEOF_DELIMITER;
           NewStrCat (OptionString[0], Character);
@@ -599,6 +600,7 @@ ProcessOptions (
         Character[0] = LEFT_ONEOF_DELIMITER;
         NewStrCat (OptionString[0], Character);
         StringPtr = GetToken (OneOfOption->Text, Selection->Handle);
+        ASSERT (StringPtr != NULL);
         NewStrCat (OptionString[0], StringPtr);
         Character[0] = RIGHT_ONEOF_DELIMITER;
         NewStrCat (OptionString[0], Character);
@@ -697,7 +699,7 @@ ProcessOptions (
 
       case 2:
         SetUnicodeMem (OptionString[0], 7, L' ');
-        UnicodeSPrint (OptionString[0] + 7, 21 * sizeof (CHAR16), L"%4d", QuestionValue->Value.date.Year);
+        UnicodeSPrint (OptionString[0] + 7, 21 * sizeof (CHAR16), L"%04d", QuestionValue->Value.date.Year);
         *(OptionString[0] + 11) = RIGHT_NUMERIC_DELIMITER;
         break;
       }
@@ -740,6 +742,7 @@ ProcessOptions (
     if (Selected) {
       StringPtr = AllocateZeroPool ((Maximum + 1) * sizeof (CHAR16));
       ASSERT (StringPtr);
+      CopyMem(StringPtr, Question->BufferValue, Maximum * sizeof (CHAR16));
 
       Status = ReadString (MenuOption, gPromptForData, StringPtr);
       if (!EFI_ERROR (Status)) {

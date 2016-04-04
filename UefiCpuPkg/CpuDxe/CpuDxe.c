@@ -23,9 +23,10 @@ EFI_CPU_INTERRUPT_HANDLER ExternalVectorTable[0x100];
 BOOLEAN                   InterruptState = FALSE;
 EFI_HANDLE                mCpuHandle = NULL;
 BOOLEAN                   mIsFlushingGCD;
-UINT8                     mDefaultMemoryType    = MTRR_CACHE_WRITE_BACK;
 UINT64                    mValidMtrrAddressMask = MTRR_LIB_CACHE_VALID_ADDRESS;
 UINT64                    mValidMtrrBitsMask    = MTRR_LIB_MSR_VALID_MASK;
+IA32_IDT_GATE_DESCRIPTOR  *mOrigIdtEntry        = NULL;
+UINT16                    mOrigIdtEntryCount    = 0;
 
 FIXED_MTRR    mFixedMtrrTable[] = {
   {
@@ -521,7 +522,15 @@ CpuRegisterInterruptHandler (
     return EFI_ALREADY_STARTED;
   }
 
-  SetInterruptDescriptorTableHandlerAddress ((UINTN)InterruptType, NULL);
+  if (InterruptHandler != NULL) {
+    SetInterruptDescriptorTableHandlerAddress ((UINTN)InterruptType, NULL);
+  } else {
+    //
+    // Restore the original IDT handler address if InterruptHandler is NULL.
+    //
+    RestoreInterruptDescriptorTableHandlerAddress ((UINTN)InterruptType);
+  }
+
   ExternalVectorTable[InterruptType] = InterruptHandler;
   return EFI_SUCCESS;
 }
@@ -887,6 +896,7 @@ RefreshGcdMemoryAttributes (
   VARIABLE_MTRR                       VariableMtrr[MTRR_NUMBER_OF_VARIABLE_MTRR];
   MTRR_FIXED_SETTINGS                 MtrrFixedSettings;
   UINT32                              FirmwareVariableMtrrCount;
+  UINT8                               DefaultMemoryType;
 
   if (!IsMtrrSupported ()) {
     return;
@@ -895,8 +905,7 @@ RefreshGcdMemoryAttributes (
   FirmwareVariableMtrrCount = GetFirmwareVariableMtrrCount ();
   ASSERT (FirmwareVariableMtrrCount <= MTRR_NUMBER_OF_VARIABLE_MTRR);
 
-//  mIsFlushingGCD = TRUE;
-  mIsFlushingGCD = FALSE;
+  mIsFlushingGCD = TRUE;
   MemorySpaceMap = NULL;
 
   //
@@ -922,7 +931,8 @@ RefreshGcdMemoryAttributes (
                   );
   ASSERT_EFI_ERROR (Status);
 
-  DefaultAttributes = GetMemorySpaceAttributeFromMtrrType (mDefaultMemoryType);
+  DefaultMemoryType = (UINT8) MtrrGetDefaultMemoryType ();
+  DefaultAttributes = GetMemorySpaceAttributeFromMtrrType (DefaultMemoryType);
 
   //
   // Set default attributes to all spaces.
@@ -954,12 +964,14 @@ RefreshGcdMemoryAttributes (
         );
     }
   }
+
   //
-  // Go for variable MTRRs with Non-WB attribute
+  // Go for variable MTRRs with the attribute except for WB and UC attributes
   //
   for (Index = 0; Index < FirmwareVariableMtrrCount; Index++) {
-    if (VariableMtrr[Index].Valid &&
-        VariableMtrr[Index].Type != MTRR_CACHE_WRITE_BACK) {
+    if (VariableMtrr[Index].Valid &&                          
+        VariableMtrr[Index].Type != MTRR_CACHE_WRITE_BACK &&
+        VariableMtrr[Index].Type != MTRR_CACHE_UNCACHEABLE) {
       Attributes = GetMemorySpaceAttributeFromMtrrType ((UINT8) VariableMtrr[Index].Type);
       SetGcdMemorySpaceAttributes (
         MemorySpaceMap,
@@ -967,6 +979,22 @@ RefreshGcdMemoryAttributes (
         VariableMtrr[Index].BaseAddress,
         VariableMtrr[Index].Length,
         Attributes
+        );
+    }
+  }
+
+  //
+  // Go for variable MTRRs with UC attribute
+  //
+  for (Index = 0; Index < FirmwareVariableMtrrCount; Index++) {
+    if (VariableMtrr[Index].Valid &&
+        VariableMtrr[Index].Type == MTRR_CACHE_UNCACHEABLE) {
+      SetGcdMemorySpaceAttributes (
+        MemorySpaceMap,
+        NumberOfDescriptors,
+        VariableMtrr[Index].BaseAddress,
+        VariableMtrr[Index].Length,
+        EFI_MEMORY_UC
         );
     }
   }
@@ -1063,6 +1091,25 @@ SetInterruptDescriptorTableHandlerAddress (
 #endif
 }
 
+/**
+  Restore original Interrupt Descriptor Table Handler Address.
+
+  @param Index        The Index of the interrupt descriptor table handle.
+
+**/
+VOID
+RestoreInterruptDescriptorTableHandlerAddress (
+  IN UINTN       Index
+  )
+{
+  if (Index < mOrigIdtEntryCount) {
+    gIdtTable[Index].Bits.OffsetLow   = mOrigIdtEntry[Index].Bits.OffsetLow;
+    gIdtTable[Index].Bits.OffsetHigh  = mOrigIdtEntry[Index].Bits.OffsetHigh;
+#if defined (MDE_CPU_X64)
+    gIdtTable[Index].Bits.OffsetUpper = mOrigIdtEntry[Index].Bits.OffsetUpper;
+#endif
+  }
+}
 
 /**
   Initialize Interrupt Descriptor Table for interrupt handling.
@@ -1093,6 +1140,12 @@ InitInterruptDescriptorTable (
   if ((OldIdtPtr.Base != 0) && ((OldIdtPtr.Limit & 7) == 7)) {
     OldIdt = (IA32_IDT_GATE_DESCRIPTOR*) OldIdtPtr.Base;
     OldIdtSize = (OldIdtPtr.Limit + 1) / sizeof (IA32_IDT_GATE_DESCRIPTOR);
+    //
+    // Save original IDT entry and IDT entry count.
+    //
+    mOrigIdtEntry = AllocateCopyPool (OldIdtPtr.Limit + 1, (VOID *) OldIdtPtr.Base);
+    ASSERT (mOrigIdtEntry != NULL);
+    mOrigIdtEntryCount = (UINT16) OldIdtSize;
   } else {
     OldIdt = NULL;
     OldIdtSize = 0;

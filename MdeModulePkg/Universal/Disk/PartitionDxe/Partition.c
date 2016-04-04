@@ -25,7 +25,15 @@ EFI_DRIVER_BINDING_PROTOCOL gPartitionDriverBinding = {
   PartitionDriverBindingSupported,
   PartitionDriverBindingStart,
   PartitionDriverBindingStop,
-  0xa,
+  //
+  // Grub4Dos copies the BPB of the first partition to the MBR. If the 
+  // DriverBindingStart() of the Fat driver gets run before that of Partition 
+  // driver only the first partition can be recognized.
+  // Let the driver binding version of Partition driver be higher than that of
+  // Fat driver to make sure the DriverBindingStart() of the Partition driver
+  // gets run before that of Fat driver so that all the partitions can be recognized.
+  //
+  0xb,
   NULL,
   NULL
 };
@@ -713,6 +721,45 @@ PartitionFlushBlocks (
 }
 
 /**
+  Probe the media status and return EFI_NO_MEDIA or EFI_MEDIA_CHANGED
+  for no media or media change case. Otherwise DefaultStatus is returned.
+
+  @param BlockIo2           Pointer to the BlockIo2 instance.
+  @param MediaId            Id of the media, changes every time the media is replaced.
+  @param DefaultStatus      The default status to return when it's not the no media
+                            or media change case.
+
+  @retval EFI_NO_MEDIA      There is no media.
+  @retval EFI_MEDIA_CHANGED The media was changed.
+  @retval others            The default status to return.
+**/
+EFI_STATUS
+ProbeMediaStatusEx (
+  IN EFI_BLOCK_IO2_PROTOCOL  *BlockIo2,
+  IN UINT32                  MediaId,
+  IN EFI_STATUS              DefaultStatus
+  )
+{
+  EFI_STATUS                 Status;
+
+  //
+  // Read from LBA 0 but passing NULL as buffer pointer to detect the media status.
+  //
+  Status = BlockIo2->ReadBlocksEx (
+                       BlockIo2,
+                       MediaId,
+                       0,
+                       NULL,
+                       0,
+                       NULL
+                       );
+  if ((Status == EFI_NO_MEDIA) || (Status == EFI_MEDIA_CHANGED)) {
+    return Status;
+  }
+  return DefaultStatus;
+}
+
+/**
   Reset the Block Device throught Block I/O2 protocol.
 
   @param  This                 Protocol instance pointer.
@@ -788,18 +835,19 @@ PartitionReadBlocksEx (
   UINT64                  Offset;
   UINT32                  UnderRun;
 
+  Private = PARTITION_DEVICE_FROM_BLOCK_IO2_THIS (This);
+
   if (Token == NULL) {
-    return EFI_INVALID_PARAMETER;
+    return ProbeMediaStatusEx (Private->ParentBlockIo2, MediaId, EFI_INVALID_PARAMETER);
   }
 
-  Private = PARTITION_DEVICE_FROM_BLOCK_IO2_THIS (This);
   if (BufferSize % Private->BlockSize != 0) {
-    return EFI_BAD_BUFFER_SIZE;
+    return ProbeMediaStatusEx (Private->ParentBlockIo2, MediaId, EFI_BAD_BUFFER_SIZE);
   }
 
   Offset = MultU64x32 (Lba, Private->BlockSize) + Private->Start;
   if (Offset + BufferSize > Private->End) {
-    return EFI_INVALID_PARAMETER;
+    return ProbeMediaStatusEx (Private->ParentBlockIo2, MediaId, EFI_INVALID_PARAMETER);
   }
 
   //
@@ -809,7 +857,7 @@ PartitionReadBlocksEx (
   //
   Lba = DivU64x32Remainder (Offset, Private->BlockSize, &UnderRun);
   if (UnderRun != 0) {
-    return EFI_UNSUPPORTED;
+    return ProbeMediaStatusEx (Private->ParentBlockIo2, MediaId, EFI_UNSUPPORTED);
   }
 
   //
@@ -817,7 +865,7 @@ PartitionReadBlocksEx (
   // device, in that case the Block I/O2 couldn't be called.
   //
   if (Private->BlockSize != Private->ParentBlockIo->Media->BlockSize) {
-    return EFI_UNSUPPORTED;
+    return ProbeMediaStatusEx (Private->ParentBlockIo2, MediaId, EFI_UNSUPPORTED);
   }
 
   return Private->ParentBlockIo2->ReadBlocksEx (Private->ParentBlockIo2, MediaId, Lba, Token, BufferSize, Buffer);
@@ -869,18 +917,19 @@ PartitionWriteBlocksEx (
   UINT64                  Offset;
   UINT32                  UnderRun;
 
+  Private = PARTITION_DEVICE_FROM_BLOCK_IO2_THIS (This);
+
   if (Token == NULL) {
-    return EFI_INVALID_PARAMETER;
+    return ProbeMediaStatusEx (Private->ParentBlockIo2, MediaId, EFI_INVALID_PARAMETER);
   }
 
-  Private = PARTITION_DEVICE_FROM_BLOCK_IO2_THIS (This);
   if (BufferSize % Private->BlockSize != 0) {
-    return EFI_BAD_BUFFER_SIZE;
+    return ProbeMediaStatusEx (Private->ParentBlockIo2, MediaId, EFI_BAD_BUFFER_SIZE);
   }
 
   Offset = MultU64x32 (Lba, Private->BlockSize) + Private->Start;
   if (Offset + BufferSize > Private->End) {
-    return EFI_INVALID_PARAMETER;
+    return ProbeMediaStatusEx (Private->ParentBlockIo2, MediaId, EFI_INVALID_PARAMETER);
   }
 
   //
@@ -890,7 +939,7 @@ PartitionWriteBlocksEx (
   //
   Lba = DivU64x32Remainder (Offset, Private->BlockSize, &UnderRun);
   if (UnderRun != 0) {
-    return EFI_UNSUPPORTED;
+    return ProbeMediaStatusEx (Private->ParentBlockIo2, MediaId, EFI_UNSUPPORTED);
   }
 
   //
@@ -898,7 +947,7 @@ PartitionWriteBlocksEx (
   // in that case it couldn't call parent Block I/O2. 
   //
   if (Private->BlockSize != Private->ParentBlockIo->Media->BlockSize) {
-    return EFI_UNSUPPORTED;
+    return ProbeMediaStatusEx (Private->ParentBlockIo2, MediaId, EFI_UNSUPPORTED);
   }
 
   return Private->ParentBlockIo2->WriteBlocksEx (Private->ParentBlockIo2, MediaId, Lba, Token, BufferSize, Buffer);

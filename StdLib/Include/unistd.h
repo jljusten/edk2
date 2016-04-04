@@ -27,7 +27,19 @@
 
 
 __BEGIN_DECLS
+int             dup(int);
 int             rename(const char *, const char *);
+
+/* Functions implemented for compatibility. */
+int             getopt(int, char * const [], const char *);
+extern   char  *optarg;     /* getopt(3) external variables */
+extern   int    optind;
+pid_t           getpgrp(void);
+pid_t           tcgetpgrp(int);
+char           *getpass(const char *);
+int             usleep(useconds_t);
+unsigned int    sleep(unsigned int);
+char           *basename(char *path);
 
 // Networking
 long            gethostid(void);
@@ -37,15 +49,20 @@ int             setdomainname(const char *, size_t);
 int             sethostid(long);
 int             sethostname(const char *, size_t);
 
+/*  Stub functions implemented for porting ease.
+    These functions always fail or return NULL.
+*/
+__aconst char  *getlogin(void);
+pid_t           fork(void);
+uid_t           getuid(void);
+
 // For Future implementation
-__dead   void   _exit(int) __attribute__((__noreturn__));
 ssize_t         pread(int, void *, size_t, off_t);
 ssize_t         pwrite(int, const void *, size_t, off_t);
 int             syscall(int, ...);
-int             dup(int);
-pid_t           fork(void);
 
-// The following *nix functions are not implemented
+#if 0   // The following functions are not implemented
+__dead   void   _exit(int) __attribute__((__noreturn__));
 unsigned int    alarm(unsigned int);
 int             chown(const char *, uid_t, gid_t);
 size_t          confstr(int, char *, size_t);
@@ -60,11 +77,8 @@ gid_t           getegid(void);
 uid_t           geteuid(void);
 gid_t           getgid(void);
 int             getgroups(int, gid_t []);
-__aconst char  *getlogin(void);
-pid_t           getpgrp(void);
 pid_t           getpid(void);
 pid_t           getppid(void);
-uid_t           getuid(void);
 int             link(const char *, const char *);
 long            pathconf(const char *, int);
 int             pause(void);
@@ -73,20 +87,15 @@ int             setgid(gid_t);
 int             setpgid(pid_t, pid_t);
 pid_t           setsid(void);
 int             setuid(uid_t);
-unsigned int    sleep(unsigned int);
 long            sysconf(int);
-pid_t           tcgetpgrp(int);
+
 int             tcsetpgrp(int, pid_t);
 __aconst char  *ttyname(int);
 
-int             getopt(int, char * const [], const char *);
-
-extern   char  *optarg;     /* getopt(3) external variables */
 extern   int    opterr;
-extern   int    optind;
 extern   int    optopt;
-extern   int    optreset;   /* getopt(3) external variable */
-extern   char  *suboptarg;  /* getsubopt(3) external variable */
+extern   int    optreset;
+extern   char  *suboptarg;
 
 int             setegid(gid_t);
 int             seteuid(uid_t);
@@ -97,7 +106,6 @@ int             chroot(const char *);
 int             nice(int);
 __aconst char *crypt(const char *, const char *);
 int             encrypt(char *, int);
-char           *getpass(const char *);
 pid_t           getsid(pid_t);
 
 #ifndef intptr_t
@@ -121,7 +129,6 @@ void            swab(const void *, void *, size_t);
 int             symlink(const char *, const char *);
 void            sync(void);
 useconds_t      ualarm(useconds_t, useconds_t);
-int             usleep(useconds_t);
 pid_t           vfork(void) __RENAME(__vfork14);
 
 /*
@@ -164,6 +171,7 @@ int             undelete(const char *);
 int             rcmd_af(char **, int, const char *, const char *, const char *, int *, int);
 int             rresvport_af(int *, int);
 int             iruserok_sa(const void *, int, int, const char *, const char *);
+#endif  /* Unimplemented functions. */
 
 __END_DECLS
 

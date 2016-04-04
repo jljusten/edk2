@@ -2,7 +2,7 @@
   This EFI_PXE_BASE_CODE_PROTOCOL and EFI_LOAD_FILE_PROTOCOL.
   interfaces declaration.
 
-  Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -43,6 +43,7 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/UefiDriverEntryPoint.h>
 #include <Library/UefiBootServicesTableLib.h>
+#include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/UefiLib.h>
 #include <Library/BaseLib.h>
 #include <Library/NetLib.h>
@@ -75,12 +76,6 @@ typedef struct _PXEBC_VIRTUAL_NIC   PXEBC_VIRTUAL_NIC;
 #define PXEBC_PRIVATE_DATA_FROM_PXEBC(a)      CR (a, PXEBC_PRIVATE_DATA, PxeBc, PXEBC_PRIVATE_DATA_SIGNATURE)
 #define PXEBC_PRIVATE_DATA_FROM_ID(a)         CR (a, PXEBC_PRIVATE_DATA, Id, PXEBC_PRIVATE_DATA_SIGNATURE)
 #define PXEBC_VIRTUAL_NIC_FROM_LOADFILE(a)    CR (a, PXEBC_VIRTUAL_NIC, LoadFile, PXEBC_VIRTUAL_NIC_SIGNATURE)
-
-#define PXEBC_PRIVATE_GUID  \
-  { \
-    0xa4dfac32, 0xfbb4, 0x4907,{0xb3, 0x13, 0x4, 0xe, 0xe2, 0x42, 0x33, 0x20 }  \
-  }
-
 
 typedef union {
   PXEBC_DHCP4_PACKET_CACHE            Dhcp4;
@@ -146,6 +141,8 @@ struct _PXEBC_PRIVATE_DATA {
   EFI_PXE_BASE_CODE_MODE                    Mode;
   EFI_PXE_BASE_CODE_FUNCTION                Function;
   UINT32                                    Ip6Policy;
+  UINT32                                    SolicitTimes;
+  UINT64                                    ElapsedTime;
 
   EFI_UDP4_CONFIG_DATA                      Udp4CfgData;
   EFI_UDP6_CONFIG_DATA                      Udp6CfgData;

@@ -1685,8 +1685,8 @@ FileBufferScrollLeft (
 /**
   Delete a char in line
 
-  @param[in,out] Line   The line to delete in.
-  @param[in] Pos        Position to delete the char at ( start from 0 ).
+  @param[in, out] Line   The line to delete in.
+  @param[in] Pos         Position to delete the char at ( start from 0 ).
 **/
 VOID
 EFIAPI
@@ -1710,8 +1710,8 @@ LineDeleteAt (
 /**
   Concatenate Src into Dest.
 
-  @param[in,out] Dest   Destination string
-  @param[in] Src        Src String.
+  @param[in, out] Dest   Destination string
+  @param[in] Src         Src String.
 **/
 VOID
 EFIAPI
@@ -2956,7 +2956,8 @@ FileBufferSearch (
   BOOLEAN         Found;
 
   Column = 0;
-
+  Position = 0;
+  
   //
   // search if in current line
   //
@@ -2969,20 +2970,20 @@ FileBufferSearch (
     Current = FileBuffer.CurrentLine->Buffer + FileBuffer.CurrentLine->Size;
   }
 
+  Found = FALSE;
+
   CharPos  =  StrStr (Current, Str);
   if (CharPos != NULL) {
-    Position = CharPos - Current;
-  } else {
-    Position = 0;
-  }
+    Position = CharPos - Current + 1;
+    Found   = TRUE;
+  } 
 
   //
   // found
   //
-  if (Position != 0) {
+  if (Found) {
     Column  = (Position - 1) + FileBuffer.FilePosition.Column + Offset;
     Row     = FileBuffer.FilePosition.Row;
-    Found   = TRUE;
   } else {
     //
     // not found so find through next lines
@@ -2995,9 +2996,11 @@ FileBufferSearch (
 //      Position  = StrStr (Line->Buffer, Str);
       CharPos  =  StrStr (Line->Buffer, Str);
       if (CharPos != NULL) {
-        Position = CharPos - Line->Buffer;
-      }
-      if (Position != 0) {
+        Position = CharPos - Line->Buffer + 1;
+        Found   = TRUE;
+      } 
+      
+      if (Found) {
         //
         // found
         //
@@ -3096,14 +3099,14 @@ FileBufferReplace (
     //
     // set replace into it
     //
-    Buffer = FileBuffer.CurrentLine->Buffer + FileBuffer.FilePosition.Column;
+    Buffer = FileBuffer.CurrentLine->Buffer + FileBuffer.FilePosition.Column - 1;
     for (Index = 0; Index < ReplaceLen; Index++) {
       Buffer[Index] = Replace[Index];
     }
   }
 
   if (ReplaceLen < SearchLen) {
-    Buffer = FileBuffer.CurrentLine->Buffer + FileBuffer.FilePosition.Column;
+    Buffer = FileBuffer.CurrentLine->Buffer + FileBuffer.FilePosition.Column - 1;
 
     for (Index = 0; Index < ReplaceLen; Index++) {
       Buffer[Index] = Replace[Index];
@@ -3122,7 +3125,7 @@ FileBufferReplace (
   }
 
   if (ReplaceLen == SearchLen) {
-    Buffer = FileBuffer.CurrentLine->Buffer + FileBuffer.FilePosition.Column;
+    Buffer = FileBuffer.CurrentLine->Buffer + FileBuffer.FilePosition.Column - 1;
     for (Index = 0; Index < ReplaceLen; Index++) {
       Buffer[Index] = Replace[Index];
     }

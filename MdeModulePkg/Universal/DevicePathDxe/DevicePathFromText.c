@@ -971,6 +971,22 @@ DevPathFromTextPciRoot (
 }
 
 /**
+  Converts a text device path node to PCIE root device path structure.
+
+  @param TextDeviceNode  The input Text device path node.
+
+  @return A pointer to the newly-created PCIE root device path structure.
+
+**/
+EFI_DEVICE_PATH_PROTOCOL *
+DevPathFromTextPcieRoot (
+  IN CHAR16 *TextDeviceNode
+  )
+{
+  return ConvertFromTextAcpi (TextDeviceNode, 0x0a08);
+}
+
+/**
   Converts a text device path node to Floppy device path structure.
 
   @param TextDeviceNode  The input Text device path node.
@@ -1280,6 +1296,41 @@ DevPathFromTextFibre (
   Strtoi64 (LunStr, &Fibre->Lun);
 
   return (EFI_DEVICE_PATH_PROTOCOL *) Fibre;
+}
+
+/**
+  Converts a text device path node to FibreEx device path structure.
+
+  @param TextDeviceNode  The input Text device path node.
+
+  @return A pointer to the newly-created FibreEx device path structure.
+
+**/
+EFI_DEVICE_PATH_PROTOCOL *
+DevPathFromTextFibreEx (
+  IN CHAR16 *TextDeviceNode
+  )
+{
+  CHAR16                      *WWNStr;
+  CHAR16                      *LunStr;
+  FIBRECHANNELEX_DEVICE_PATH  *FibreEx;
+
+  WWNStr  = GetNextParamStr (&TextDeviceNode);
+  LunStr  = GetNextParamStr (&TextDeviceNode);
+  FibreEx = (FIBRECHANNELEX_DEVICE_PATH *) CreateDeviceNode (
+                                             MESSAGING_DEVICE_PATH,
+                                             MSG_FIBRECHANNELEX_DP,
+                                             (UINT16) sizeof (FIBRECHANNELEX_DEVICE_PATH)
+                                             );
+
+  FibreEx->Reserved = 0;
+  Strtoi64 (WWNStr, (UINT64 *) (&FibreEx->WWN));
+  Strtoi64 (LunStr, (UINT64 *) (&FibreEx->Lun));
+
+  *(UINT64 *) (&FibreEx->WWN) = SwapBytes64 (*(UINT64 *) (&FibreEx->WWN));
+  *(UINT64 *) (&FibreEx->Lun) = SwapBytes64 (*(UINT64 *) (&FibreEx->Lun));
+
+  return (EFI_DEVICE_PATH_PROTOCOL *) FibreEx;
 }
 
 /**
@@ -1634,6 +1685,74 @@ DevPathFromTextSAS (
 }
 
 /**
+  Converts a text device path node to Serial Attached SCSI Ex device path structure.
+
+  @param TextDeviceNode  The input Text device path node.
+
+  @return A pointer to the newly-created Serial Attached SCSI Ex device path structure.
+
+**/
+EFI_DEVICE_PATH_PROTOCOL *
+DevPathFromTextSasEx (
+  IN CHAR16 *TextDeviceNode
+  )
+{
+  CHAR16            *AddressStr;
+  CHAR16            *LunStr;
+  CHAR16            *RTPStr;
+  CHAR16            *SASSATAStr;
+  CHAR16            *LocationStr;
+  CHAR16            *ConnectStr;
+  CHAR16            *DriveBayStr;
+  UINT16            Info;
+  SASEX_DEVICE_PATH *SasEx;
+
+  AddressStr  = GetNextParamStr (&TextDeviceNode);
+  LunStr      = GetNextParamStr (&TextDeviceNode);
+  RTPStr      = GetNextParamStr (&TextDeviceNode);
+  SASSATAStr  = GetNextParamStr (&TextDeviceNode);
+  LocationStr = GetNextParamStr (&TextDeviceNode);
+  ConnectStr  = GetNextParamStr (&TextDeviceNode);
+  DriveBayStr = GetNextParamStr (&TextDeviceNode);
+  Info        = 0x0000;
+  SasEx       = (SASEX_DEVICE_PATH *) CreateDeviceNode (
+                                        MESSAGING_DEVICE_PATH,
+                                        MSG_SASEX_DP,
+                                        (UINT16) sizeof (SASEX_DEVICE_PATH)
+                                        );
+
+  Strtoi64 (AddressStr, (UINT64 *) &SasEx->SasAddress);
+  Strtoi64 (LunStr,     (UINT64 *) &SasEx->Lun);
+  *(UINT64 *) &SasEx->SasAddress = SwapBytes64 (*(UINT64 *) &SasEx->SasAddress);
+  *(UINT64 *) &SasEx->Lun        = SwapBytes64 (*(UINT64 *) &SasEx->Lun);
+  SasEx->RelativeTargetPort      = (UINT16) Strtoi (RTPStr);
+  if (StrCmp (SASSATAStr, L"NoTopology") != 0) {
+    if (StrCmp (DriveBayStr, L"0") == 0) {
+      Info |= 0x0001;
+    } else {
+      Info |= 0x0002;
+      Info = (UINT16) (Info | (Strtoi (DriveBayStr) << 8));
+    }
+
+    if (StrCmp (SASSATAStr, L"SATA") == 0) {
+      Info |= 0x0010;
+    }
+
+    if (StrCmp (LocationStr, L"External") == 0) {
+      Info |= 0x0020;
+    }
+
+    if (StrCmp (ConnectStr, L"Expanded") == 0) {
+      Info |= 0x0040;
+    }
+  }
+
+  SasEx->DeviceTopology = Info;
+
+  return (EFI_DEVICE_PATH_PROTOCOL *) SasEx;
+}
+
+/**
   Converts a text device path node to Debug Port device path structure.
 
   @param TextDeviceNode  The input Text device path node.
@@ -1736,12 +1855,16 @@ DevPathFromTextIPv4 (
   CHAR16            *ProtocolStr;
   CHAR16            *TypeStr;
   CHAR16            *LocalIPStr;
+  CHAR16            *GatewayIPStr;
+  CHAR16            *SubnetMaskStr;
   IPv4_DEVICE_PATH  *IPv4;
 
   RemoteIPStr           = GetNextParamStr (&TextDeviceNode);
   ProtocolStr           = GetNextParamStr (&TextDeviceNode);
   TypeStr               = GetNextParamStr (&TextDeviceNode);
   LocalIPStr            = GetNextParamStr (&TextDeviceNode);
+  GatewayIPStr          = GetNextParamStr (&TextDeviceNode);
+  SubnetMaskStr         = GetNextParamStr (&TextDeviceNode);
   IPv4                  = (IPv4_DEVICE_PATH *) CreateDeviceNode (
                                                  MESSAGING_DEVICE_PATH,
                                                  MSG_IPv4_DP,
@@ -1757,6 +1880,13 @@ DevPathFromTextIPv4 (
   }
 
   StrToIPv4Addr (&LocalIPStr, &IPv4->LocalIpAddress);
+  if (!IS_NULL (*GatewayIPStr) && !IS_NULL (*SubnetMaskStr)) {
+    StrToIPv4Addr (&GatewayIPStr,  &IPv4->GatewayIpAddress);
+    StrToIPv4Addr (&SubnetMaskStr, &IPv4->SubnetMask);
+  } else {
+    ZeroMem (&IPv4->GatewayIpAddress, sizeof (IPv4->GatewayIpAddress));
+    ZeroMem (&IPv4->SubnetMask,    sizeof (IPv4->SubnetMask));
+  }
 
   IPv4->LocalPort       = 0;
   IPv4->RemotePort      = 0;
@@ -1781,12 +1911,16 @@ DevPathFromTextIPv6 (
   CHAR16            *ProtocolStr;
   CHAR16            *TypeStr;
   CHAR16            *LocalIPStr;
+  CHAR16            *GatewayIPStr;
+  CHAR16            *PrefixLengthStr;
   IPv6_DEVICE_PATH  *IPv6;
 
   RemoteIPStr           = GetNextParamStr (&TextDeviceNode);
   ProtocolStr           = GetNextParamStr (&TextDeviceNode);
   TypeStr               = GetNextParamStr (&TextDeviceNode);
   LocalIPStr            = GetNextParamStr (&TextDeviceNode);
+  PrefixLengthStr       = GetNextParamStr (&TextDeviceNode);
+  GatewayIPStr          = GetNextParamStr (&TextDeviceNode);
   IPv6                  = (IPv6_DEVICE_PATH *) CreateDeviceNode (
                                                  MESSAGING_DEVICE_PATH,
                                                  MSG_IPv6_DP,
@@ -1796,12 +1930,21 @@ DevPathFromTextIPv6 (
   StrToIPv6Addr (&RemoteIPStr, &IPv6->RemoteIpAddress);
   IPv6->Protocol        = (UINT16) NetworkProtocolFromText (ProtocolStr);
   if (StrCmp (TypeStr, L"Static") == 0) {
-    IPv6->StaticIpAddress = TRUE;
+    IPv6->IpAddressOrigin = 0;
+  } else if (StrCmp (TypeStr, L"StatelessAutoConfigure") == 0) {
+    IPv6->IpAddressOrigin = 1;
   } else {
-    IPv6->StaticIpAddress = FALSE;
+    IPv6->IpAddressOrigin = 2;
   }
 
   StrToIPv6Addr (&LocalIPStr, &IPv6->LocalIpAddress);
+  if (!IS_NULL (*GatewayIPStr) && !IS_NULL (*PrefixLengthStr)) {
+    StrToIPv6Addr (&GatewayIPStr, &IPv6->GatewayIpAddress);
+    IPv6->PrefixLength = (UINT8) Strtoi (PrefixLengthStr);
+  } else {
+    ZeroMem (&IPv6->GatewayIpAddress, sizeof (IPv6->GatewayIpAddress));
+    IPv6->PrefixLength = 0;
+  }
 
   IPv6->LocalPort       = 0;
   IPv6->RemotePort      = 0;
@@ -2810,6 +2953,7 @@ GLOBAL_REMOVE_IF_UNREFERENCED DEVICE_PATH_FROM_TEXT_TABLE DevPathFromTextTable[]
   {L"Ctrl", DevPathFromTextCtrl},
   {L"Acpi", DevPathFromTextAcpi},
   {L"PciRoot", DevPathFromTextPciRoot},
+  {L"PcieRoot", DevPathFromTextPcieRoot},
   {L"Floppy", DevPathFromTextFloppy},
   {L"Keyboard", DevPathFromTextKeyboard},
   {L"Serial", DevPathFromTextSerial},
@@ -2820,6 +2964,7 @@ GLOBAL_REMOVE_IF_UNREFERENCED DEVICE_PATH_FROM_TEXT_TABLE DevPathFromTextTable[]
   {L"Ata", DevPathFromTextAta},
   {L"Scsi", DevPathFromTextScsi},
   {L"Fibre", DevPathFromTextFibre},
+  {L"FibreEx", DevPathFromTextFibreEx},
   {L"I1394", DevPathFromText1394},
   {L"USB", DevPathFromTextUsb},
   {L"I2O", DevPathFromTextI2O},
@@ -2831,6 +2976,7 @@ GLOBAL_REMOVE_IF_UNREFERENCED DEVICE_PATH_FROM_TEXT_TABLE DevPathFromTextTable[]
   {L"VenUtf8", DevPathFromTextVenUtf8},
   {L"UartFlowCtrl", DevPathFromTextUartFlowCtrl},
   {L"SAS", DevPathFromTextSAS},
+  {L"SasEx", DevPathFromTextSasEx},
   {L"DebugPort", DevPathFromTextDebugPort},
   {L"MAC", DevPathFromTextMAC},
   {L"IPv4", DevPathFromTextIPv4},

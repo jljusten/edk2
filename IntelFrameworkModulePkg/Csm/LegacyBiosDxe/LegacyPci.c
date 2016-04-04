@@ -2301,7 +2301,7 @@ LegacyBiosInstallRom (
     //   then test if there is enough space for its RT code
     //
     RuntimeAddress = Private->OptionRom;
-    if (RuntimeAddress + *RuntimeImageLength > mEndOpromShadowAddress) {
+    if (RuntimeAddress + *RuntimeImageLength > PcdGet32 (PcdEndOpromShadowAddress)) {
       DEBUG ((EFI_D_ERROR, "return LegacyBiosInstallRom(%d): EFI_OUT_OF_RESOURCES (no more space for OpROM)\n", __LINE__));
       gBS->FreePages (PhysicalAddress, EFI_SIZE_TO_PAGES (ImageSize));
       return EFI_OUT_OF_RESOURCES;
@@ -2312,7 +2312,7 @@ LegacyBiosInstallRom (
     //   test if there is enough space for its INIT code
     //
     InitAddress    = PCI_START_ADDRESS (Private->OptionRom);
-    if (InitAddress + ImageSize > mEndOpromShadowAddress) {
+    if (InitAddress + ImageSize > PcdGet32 (PcdEndOpromShadowAddress)) {
       DEBUG ((EFI_D_ERROR, "return LegacyBiosInstallRom(%d): EFI_OUT_OF_RESOURCES (no more space for OpROM)\n", __LINE__));
       return EFI_OUT_OF_RESOURCES;
     }
@@ -2849,12 +2849,29 @@ LegacyBiosInstallPciRom (
       return EFI_UNSUPPORTED;
     }
   } else {
-    if (*RomImage == NULL) {
+    if ((RomImage == NULL) || (*RomImage == NULL)) {
       //
       // If PciHandle is NULL, and no OpRom is to be associated
       //
       mVgaInstallationInProgress = FALSE;
       return EFI_UNSUPPORTED;
+    }
+
+    if (!Private->VgaInstalled) {
+      //
+      // A return status of EFI_NOT_FOUND is considered valid (No EFI
+      // driver is controlling video.
+      //
+      mVgaInstallationInProgress  = TRUE;
+      Status                      = LegacyBiosInstallVgaRom (Private);
+      if (EFI_ERROR (Status)) {
+        if (Status != EFI_NOT_FOUND) {
+          mVgaInstallationInProgress = FALSE;
+          return Status;
+        }
+      } else {
+        mVgaInstallationInProgress = FALSE;
+      }
     }
 
     LocalRomImage = *RomImage;

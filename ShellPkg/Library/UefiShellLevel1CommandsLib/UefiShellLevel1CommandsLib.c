@@ -16,11 +16,6 @@
 
 STATIC CONST CHAR16 mFileName[] = L"ShellCommands";
 EFI_HANDLE gShellLevel1HiiHandle = NULL;
-CONST EFI_GUID gShellLevel1HiiGuid = \
-  { \
-    0xdec5daa4, 0x6781, 0x4820, { 0x9c, 0x63, 0xa7, 0xb0, 0xe4, 0xf1, 0xdb, 0x31 }
-  };
-
 
 /**
   Return the help text filename.  Only used if no HII information found.
@@ -112,17 +107,17 @@ ShellLevel1CommandsLibDestructor (
 
   If label is used it will be used instead of the count.
 
-  @param[in] Function         The function to use to enumerate through the 
-                              list.  Normally GetNextNode or GetPreviousNode.
-  @param[in] DecrementerTag   The tag to decrement the count at.
-  @param[in] IncrementerTag   The tag to increment the count at.
-  @param[in] Label            A label to look for.
-  @param[in,out] ScriptFile   The pointer to the current script file structure.
-  @param[in] MovePast         TRUE makes function return 1 past the found 
-                              location.
-  @param[in] FindOnly         TRUE to not change the ScriptFile.
-  @param[in] CommandNode      The pointer to the Node to test.
-  @param[in,out] TargetCount  The pointer to the current count.
+  @param[in] Function          The function to use to enumerate through the 
+                               list.  Normally GetNextNode or GetPreviousNode.
+  @param[in] DecrementerTag    The tag to decrement the count at.
+  @param[in] IncrementerTag    The tag to increment the count at.
+  @param[in] Label             A label to look for.
+  @param[in, out] ScriptFile   The pointer to the current script file structure.
+  @param[in] MovePast          TRUE makes function return 1 past the found 
+                               location.
+  @param[in] FindOnly          TRUE to not change the ScriptFile.
+  @param[in] CommandNode       The pointer to the Node to test.
+  @param[in, out] TargetCount  The pointer to the current count.
 **/
 BOOLEAN
 EFIAPI
@@ -150,6 +145,10 @@ TestNodeForMove (
   //
   CommandName   = NULL;
   CommandName   = StrnCatGrow(&CommandName, NULL, CommandNode->Cl, 0);
+  if (CommandName == NULL) {
+    return (FALSE);
+  }
+
   CommandNameWalker = CommandName;
   while(CommandNameWalker[0] == L' ') {
     CommandNameWalker++;
@@ -229,17 +228,17 @@ TestNodeForMove (
 
   If label is used it will be used instead of the count.
 
-  @param[in] Function         The function to use to enumerate through the 
-                              list.  Normally GetNextNode or GetPreviousNode.
-  @param[in] DecrementerTag   The tag to decrement the count at.
-  @param[in] IncrementerTag   The tag to increment the count at.
-  @param[in] Label            A label to look for.
-  @param[in,out] ScriptFile   The pointer to the current script file structure.
-  @param[in] MovePast         TRUE makes function return 1 past the found 
-                              location.
-  @param[in] FindOnly         TRUE to not change the ScriptFile.
-  @param[in] WrapAroundScript TRUE to wrap end-to-begining or vise versa in 
-                              searching.
+  @param[in] Function          The function to use to enumerate through the 
+                               list.  Normally GetNextNode or GetPreviousNode.
+  @param[in] DecrementerTag    The tag to decrement the count at.
+  @param[in] IncrementerTag    The tag to increment the count at.
+  @param[in] Label             A label to look for.
+  @param[in, out] ScriptFile   The pointer to the current script file structure.
+  @param[in] MovePast          TRUE makes function return 1 past the found 
+                               location.
+  @param[in] FindOnly          TRUE to not change the ScriptFile.
+  @param[in] WrapAroundScript  TRUE to wrap end-to-begining or vise versa in 
+                               searching.
 **/
 BOOLEAN
 EFIAPI

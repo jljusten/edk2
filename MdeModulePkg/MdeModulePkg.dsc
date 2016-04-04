@@ -87,6 +87,8 @@
   DebugAgentLib|MdeModulePkg/Library/DebugAgentLibNull/DebugAgentLibNull.inf
   PlatformHookLib|MdeModulePkg/Library/BasePlatformHookLibNull/BasePlatformHookLibNull.inf
   ResetSystemLib|MdeModulePkg/Library/BaseResetSystemLibNull/BaseResetSystemLibNull.inf
+  SmbusLib|MdePkg/Library/DxeSmbusLib/DxeSmbusLib.inf
+  S3BootScriptLib|MdeModulePkg/Library/PiDxeS3BootScriptLib/DxeS3BootScriptLib.inf
 
 [LibraryClasses.EBC.PEIM]
   IoLib|MdePkg/Library/PeiIoLibCpuIo/PeiIoLibCpuIo.inf
@@ -99,6 +101,7 @@
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
   MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
   ExtractGuidedSectionLib|MdePkg/Library/PeiExtractGuidedSectionLib/PeiExtractGuidedSectionLib.inf
+  LockBoxLib|MdeModulePkg/Library/SmmLockBoxLib/SmmLockBoxPeiLib.inf
 
 [LibraryClasses.common.DXE_CORE]
   HobLib|MdePkg/Library/DxeCoreHobLib/DxeCoreHobLib.inf
@@ -119,7 +122,8 @@
 [LibraryClasses.common.SMM_CORE]
   MemoryAllocationLib|MdeModulePkg/Library/PiSmmCoreMemoryAllocationLib/PiSmmCoreMemoryAllocationLib.inf
   SmmServicesTableLib|MdeModulePkg/Library/PiSmmCoreSmmServicesTableLib/PiSmmCoreSmmServicesTableLib.inf
-  
+  SmmCorePlatformHookLib|MdeModulePkg/Library/SmmCorePlatformHookLibNull/SmmCorePlatformHookLibNull.inf  
+
 [LibraryClasses.common.DXE_SMM_DRIVER]
   HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
   DebugLib|MdePkg/Library/UefiDebugLibConOut/UefiDebugLibConOut.inf
@@ -188,6 +192,7 @@
 
   MdeModulePkg/Bus/Pci/PciBusDxe/PciBusDxe.inf
   MdeModulePkg/Bus/Pci/IncompatiblePciDeviceSupportDxe/IncompatiblePciDeviceSupportDxe.inf
+  MdeModulePkg/Bus/Pci/XhciDxe/XhciDxe.inf
   MdeModulePkg/Bus/Pci/EhciDxe/EhciDxe.inf
   MdeModulePkg/Bus/Pci/UhciDxe/UhciDxe.inf
   MdeModulePkg/Bus/Pci/UhciPei/UhciPei.inf
@@ -238,6 +243,8 @@
   MdeModulePkg/Library/DxeDebugPrintErrorLevelLib/DxeDebugPrintErrorLevelLib.inf
   MdeModulePkg/Library/SmmLockBoxLib/SmmLockBoxDxeLib.inf
   MdeModulePkg/Library/SmmLockBoxLib/SmmLockBoxSmmLib.inf
+  MdeModulePkg/Library/PiDxeS3BootScriptLib/DxeS3BootScriptLib.inf
+  MdeModulePkg/Library/PeiDebugPrintHobLib/PeiDebugPrintHobLib.inf
 
   MdeModulePkg/Universal/CapsulePei/CapsulePei.inf
   MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
@@ -319,4 +326,9 @@
   MdeModulePkg/Library/SmmCorePerformanceLib/SmmCorePerformanceLib.inf
   MdeModulePkg/Library/SmmPerformanceLib/SmmPerformanceLib.inf
   MdeModulePkg/Library/DxeSmmPerformanceLib/DxeSmmPerformanceLib.inf
+  MdeModulePkg/Library/SmmLockBoxLib/SmmLockBoxPeiLib.inf
+  MdeModulePkg/Library/SmmCorePlatformHookLibNull/SmmCorePlatformHookLibNull.inf
+  MdeModulePkg/Universal/Acpi/BootScriptExecutorDxe/BootScriptExecutorDxe.inf
+  MdeModulePkg/Universal/Acpi/S3SaveStateDxe/S3SaveStateDxe.inf
+  MdeModulePkg/Universal/Acpi/SmmS3SaveState/SmmS3SaveState.inf
 

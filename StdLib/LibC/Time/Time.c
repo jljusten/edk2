@@ -82,7 +82,6 @@ static void
 localsub(const time_t * const timep, const long   offset, struct tm * const tmp);
 
 clock_t
-EFIAPI
 __getCPS(void)
 {
   return gMD->ClocksPerSecond;
@@ -181,39 +180,9 @@ timesub(
 
 /* ###############  Time Manipulation Functions  ########################## */
 
-/** The clock function determines the processor time used.
-
-    @return   The clock function returns the implementation’s best
-              approximation to the processor time used by the program since the
-              beginning of an implementation-defined era related only to the
-              program invocation.  To determine the time in seconds, the value
-              returned by the clock function should be divided by the value of
-              the macro CLOCKS_PER_SEC.  If the processor time used is not
-              available or its value cannot be represented, the function
-              returns the value (clock_t)(-1).
-
-              On IA32 or X64 platforms, the value returned is the number of
-              CPU TimeStamp Counter ticks since the appliation started.
-**/
-clock_t
-EFIAPI
-clock(void)
-{
-#ifndef NT32dvm
-  clock_t   temp;
-
-  temp = (clock_t)GetPerformanceCounter();
-
-  return temp - gMD->AppStartTime;
-#else
-  return (clock_t)-1;
-#endif  /* NT32dvm */
-}
-
 /**
 **/
 double
-EFIAPI
 difftime(time_t time1, time_t time0)
 {
   return (double)(time1 - time0);
@@ -429,7 +398,7 @@ time2sub(
   return t;
 }
 
-static time_t
+time_t
 time2(struct tm * const tmp, void (* const funcp)(const time_t*, long, struct tm*),
       const long offset, int * const okayp)
 {
@@ -542,7 +511,6 @@ time1(
               represented, the function returns the value (time_t)(-1).
 **/
 time_t
-EFIAPI
 mktime(struct tm *timeptr)
 {
   /* From NetBSD */
@@ -558,14 +526,13 @@ mktime(struct tm *timeptr)
 /** The time function determines the current calendar time.  The encoding of
     the value is unspecified.
 
-    @return   The time function returns the implementation’s best approximation
+    @return   The time function returns the implementation's best approximation
               to the current calendar time.  The value (time_t)(-1) is returned
               if the calendar time is not available.  If timer is not a null
               pointer, the return value is also assigned to the object it
               points to.
 **/
 time_t
-EFIAPI
 time(time_t *timer)
 {
   time_t      CalTime;
@@ -594,6 +561,28 @@ time(time_t *timer)
     *timer = CalTime;
   }
   return CalTime;   // Return calendar time in microseconds
+}
+
+/** The clock function determines the processor time used.
+
+    @return   The clock function returns the implementation's best
+              approximation to the processor time used by the program since the
+              beginning of an implementation-defined era related only to the
+              program invocation.  To determine the time in seconds, the value
+              returned by the clock function should be divided by the value of
+              the macro CLOCKS_PER_SEC.  If the processor time used is not
+              available or its value cannot be represented, the function
+              returns the value (clock_t)(-1).
+**/
+clock_t
+clock(void)
+{
+  clock_t   retval;
+  time_t    temp;
+
+  temp = time(NULL);
+  retval = ((clock_t)((UINT32)temp)) - gMD->AppStartTime;
+  return retval;
 }
 
 /* #################  Time Conversion Functions  ########################## */
@@ -633,7 +622,6 @@ time(time_t *timer)
     @return   The asctime function returns a pointer to the string.
 **/
 char *
-EFIAPI
 asctime(const struct tm *timeptr)
 {
   register const char * wn;
@@ -663,7 +651,6 @@ asctime(const struct tm *timeptr)
 /**
 **/
 char *
-EFIAPI
 ctime(const time_t *timer)
 {
   return asctime(localtime(timer));
@@ -672,7 +659,7 @@ ctime(const time_t *timer)
 /*
 ** gmtsub is to gmtime as localsub is to localtime.
 */
-static void
+void
 gmtsub(
   const time_t * const  timep,
   const long            offset,
@@ -718,7 +705,6 @@ gmtsub(
 /**
 **/
 struct tm *
-EFIAPI
 gmtime(const time_t *timer)
 {
   gmtsub(timer, 0L, &gMD->BDTime);
@@ -771,7 +757,6 @@ localsub(const time_t * const timep, const long   offset, struct tm * const tmp)
 /**
 **/
 struct tm *
-EFIAPI
 localtime(const time_t *timer)
 {
   tzset();

@@ -82,7 +82,7 @@ UpdateFileExplorePage (
 
   HiiUpdateForm (
     CallbackData->FeHiiHandle,
-    &mFileExplorerGuid,
+    &gFileExploreFormSetGuid,
     FORM_FILE_EXPLORER_ID,
     mStartOpCodeHandle, // Label FORM_FILE_EXPLORER_ID
     mEndOpCodeHandle    // LABEL_END
@@ -161,6 +161,10 @@ UpdateFileExplorer (
         // Here boot from file
         //
         BootThisFile (NewFileContext);
+        //
+        // Set proper video resolution and text mode for setup.
+        //
+        ChangeModeForSetup ();
         ExitFileExplorer = TRUE;
         break;
 
@@ -191,7 +195,7 @@ UpdateFileExplorer (
 
         HiiUpdateForm (
           CallbackData->FeHiiHandle,
-          &mFileExplorerGuid,
+          &gFileExploreFormSetGuid,
           FormId,
           mStartOpCodeHandle, // Label FormId
           mEndOpCodeHandle    // LABEL_END
@@ -262,7 +266,7 @@ FileExplorerCallback (
     // Retrieve uncommitted data from Form Browser
     //
     NvRamMap = &Private->FeFakeNvData;
-    HiiGetBrowserData (&mFileExplorerGuid, mFileExplorerStorageName, sizeof (FILE_EXPLORER_NV_DATA), (UINT8 *) NvRamMap);
+    HiiGetBrowserData (&gFileExploreFormSetGuid, mFileExplorerStorageName, sizeof (FILE_EXPLORER_NV_DATA), (UINT8 *) NvRamMap);
 
     if (QuestionId == KEY_VALUE_SAVE_AND_EXIT_BOOT || QuestionId == KEY_VALUE_SAVE_AND_EXIT_DRIVER) {
       //

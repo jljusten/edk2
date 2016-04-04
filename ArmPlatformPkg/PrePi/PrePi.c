@@ -14,19 +14,27 @@
 
 #include <PiPei.h>
 
+#include <Library/ArmCpuLib.h>
 #include <Library/DebugAgentLib.h>
 #include <Library/PrePiLib.h>
-#include <Library/IoLib.h>
 #include <Library/PrintLib.h>
 #include <Library/PeCoffGetEntryPointLib.h>
+#include <Library/PrePiHobListPointerLib.h>
 #include <Library/TimerLib.h>
 #include <Library/PerformanceLib.h>
 
 #include <Ppi/GuidedSectionExtraction.h>
 #include <Guid/LzmaDecompress.h>
+#include <Guid/ArmGlobalVariableHob.h>
 
 #include "PrePi.h"
 #include "LzmaDecompress.h"
+
+#define IS_XIP() (((UINT32)FixedPcdGet32 (PcdFdBaseAddress) > (UINT32)(FixedPcdGet32 (PcdSystemMemoryBase) + FixedPcdGet32 (PcdSystemMemorySize))) || \
+                  ((FixedPcdGet32 (PcdFdBaseAddress) + FixedPcdGet32 (PcdFdSize)) < FixedPcdGet32 (PcdSystemMemoryBase)))
+
+// Not used when PrePi in run in XIP mode
+UINTN mGlobalVariableBase = 0;
 
 VOID
 PrePiCommonExceptionEntry (
@@ -47,18 +55,40 @@ LzmaDecompressLibConstructor (
   );
 
 VOID
+EFIAPI
+BuildGlobalVariableHob (
+  IN EFI_PHYSICAL_ADDRESS         GlobalVariableBase,
+  IN UINT32                       GlobalVariableSize
+  )
+{
+  ARM_HOB_GLOBAL_VARIABLE  *Hob;
+
+  Hob = CreateHob (EFI_HOB_TYPE_GUID_EXTENSION, sizeof (ARM_HOB_GLOBAL_VARIABLE));
+  ASSERT(Hob != NULL);
+
+  CopyGuid (&(Hob->Header.Name), &gArmGlobalVariableGuid);
+  Hob->GlobalVariableBase = GlobalVariableBase;
+  Hob->GlobalVariableSize = GlobalVariableSize;
+}
+
+VOID
 PrePiMain (
   IN  UINTN                     UefiMemoryBase,
+  IN  UINTN                     StacksBase,
+  IN  UINTN                     GlobalVariableBase,
   IN  UINT64                    StartTimeStamp
   )
 {
-  EFI_HOB_HANDOFF_INFO_TABLE**  PrePiHobBase;
+  EFI_HOB_HANDOFF_INFO_TABLE*   HobList;
   EFI_STATUS                    Status;
   CHAR8                         Buffer[100];
   UINTN                         CharCount;
-  UINTN                         UefiMemoryTop;
   UINTN                         StacksSize;
-  UINTN                         StacksBase;
+
+  // If ensure the FD is either part of the System Memory or totally outside of the System Memory (XIP)
+  ASSERT (IS_XIP() || 
+          ((FixedPcdGet32 (PcdFdBaseAddress) >= FixedPcdGet32 (PcdSystemMemoryBase)) &&
+           ((UINT32)(FixedPcdGet32 (PcdFdBaseAddress) + FixedPcdGet32 (PcdFdSize)) <= (UINT32)(FixedPcdGet32 (PcdSystemMemoryBase) + FixedPcdGet32 (PcdSystemMemorySize)))));
 
   // Enable program flow prediction, if supported.
   ArmEnableBranchPrediction ();
@@ -75,30 +105,33 @@ PrePiMain (
   // Initialize the Debug Agent for Source Level Debugging
   InitializeDebugAgent (DEBUG_AGENT_INIT_POSTMEM_SEC, NULL, NULL);
   SaveAndSetDebugTimerInterrupt (TRUE);
-
-  UefiMemoryTop = UefiMemoryBase + FixedPcdGet32 (PcdSystemMemoryUefiRegionSize);
-  StacksSize = PcdGet32 (PcdCPUCoresNonSecStackSize) * PcdGet32 (PcdMPCoreMaxCores);
-  StacksBase = UefiMemoryTop - StacksSize;
-
-  // Check the PcdCPUCoresNonSecStackBase match with the calculated StackBase
-  ASSERT (StacksBase == PcdGet32 (PcdCPUCoresNonSecStackBase));
   
-  PrePiHobBase = (EFI_HOB_HANDOFF_INFO_TABLE**)(PcdGet32 (PcdCPUCoresNonSecStackBase) + (PcdGet32 (PcdCPUCoresNonSecStackSize) / 2) - PcdGet32 (PcdHobListPtrGlobalOffset));
-
   // Declare the PI/UEFI memory region
-  *PrePiHobBase = HobConstructor (
+  HobList = HobConstructor (
     (VOID*)UefiMemoryBase,
     FixedPcdGet32 (PcdSystemMemoryUefiRegionSize),
     (VOID*)UefiMemoryBase,
     (VOID*)StacksBase  // The top of the UEFI Memory is reserved for the stacks
     );
+  PrePeiSetHobList (HobList);
 
   // Initialize MMU and Memory HOBs (Resource Descriptor HOBs)
   Status = MemoryPeim (UefiMemoryBase, FixedPcdGet32 (PcdSystemMemoryUefiRegionSize));
   ASSERT_EFI_ERROR (Status);
 
   // Create the Stacks HOB (reserve the memory for all stacks)
+  if (ArmIsMpCore ()) {
+    StacksSize = PcdGet32 (PcdCPUCorePrimaryStackSize) + (FixedPcdGet32(PcdClusterCount) * 4 * FixedPcdGet32(PcdCPUCoreSecondaryStackSize));
+  } else {
+    StacksSize = PcdGet32 (PcdCPUCorePrimaryStackSize);
+  }
   BuildStackHob (StacksBase, StacksSize);
+
+  // Declare the Global Variable HOB
+  BuildGlobalVariableHob (GlobalVariableBase, FixedPcdGet32 (PcdPeiGlobalVariableSize));
+
+  //TODO: Call CpuPei as a library
+  BuildCpuHob (PcdGet8 (PcdPrePiCpuMemorySize), PcdGet8 (PcdPrePiCpuIoSize));
 
   // Set the Boot Mode
   SetBootMode (ArmPlatformGetBootMode ());
@@ -106,11 +139,6 @@ PrePiMain (
   // Initialize Platform HOBs (CpuHob and FvHob)
   Status = PlatformPeim ();
   ASSERT_EFI_ERROR (Status);
-
-  BuildMemoryTypeInformationHob ();
-
-  InitializeDebugAgent (DEBUG_AGENT_INIT_PREMEM_SEC, NULL, NULL);
-  SaveAndSetDebugTimerInterrupt (TRUE);
 
   // Now, the HOB List has been initialized, we can register performance information
   PERF_START (NULL, "PEI", NULL, StartTimeStamp);
@@ -138,13 +166,15 @@ PrePiMain (
 
 VOID
 CEntryPoint (
-  IN  UINTN                     CoreId,
-  IN  UINTN                     UefiMemoryBase
+  IN  UINTN                     MpId,
+  IN  UINTN                     UefiMemoryBase,
+  IN  UINTN                     StacksBase,
+  IN  UINTN                     GlobalVariableBase
   )
 {
   UINT64   StartTimeStamp;
  
-  if ((CoreId == ARM_PRIMARY_CORE) && PerformanceMeasurementEnabled ()) {
+  if (IS_PRIMARY_CORE(MpId) && PerformanceMeasurementEnabled ()) {
     // Initialize the Timer Library to setup the Timer HW controller
     TimerConstructor ();
     // We cannot call yet the PerformanceLib because the HOB List has not been initialized
@@ -165,16 +195,29 @@ CEntryPoint (
   ArmEnableDataCache ();
   ArmEnableInstructionCache ();
 
+  // Define the Global Variable region when we are not running in XIP
+  if (!IS_XIP()) {
+    if (IS_PRIMARY_CORE(MpId)) {
+      mGlobalVariableBase = GlobalVariableBase;
+      if (ArmIsMpCore()) {
+        ArmCpuSynchronizeSignal (ARM_CPU_EVENT_DEFAULT);
+      }
+    } else {
+      // Wait the Primay core has defined the address of the Global Variable region
+      ArmCpuSynchronizeWait (ARM_CPU_EVENT_DEFAULT);
+    }
+  }
+  
   // Write VBAR - The Vector table must be 32-byte aligned
   ASSERT (((UINT32)PrePiVectorTable & ((1 << 5)-1)) == 0);
   ArmWriteVBar ((UINT32)PrePiVectorTable);
 
   // If not primary Jump to Secondary Main
-  if (CoreId == ARM_PRIMARY_CORE) {
+  if (IS_PRIMARY_CORE(MpId)) {
     // Goto primary Main.
-    PrimaryMain (UefiMemoryBase, StartTimeStamp);
+    PrimaryMain (UefiMemoryBase, StacksBase, GlobalVariableBase, StartTimeStamp);
   } else {
-    SecondaryMain (CoreId);
+    SecondaryMain (MpId);
   }
 
   // DXE Core should always load and never return

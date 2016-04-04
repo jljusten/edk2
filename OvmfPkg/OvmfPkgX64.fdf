@@ -152,7 +152,6 @@ INF  MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
 INF  MdeModulePkg/Core/RuntimeDxe/RuntimeDxe.inf
 INF  MdeModulePkg/Universal/SecurityStubDxe/SecurityStubDxe.inf
 INF  MdeModulePkg/Universal/EbcDxe/EbcDxe.inf
-INF  MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf
 INF  PcAtChipsetPkg/8259InterruptControllerDxe/8259.inf
 INF  UefiCpuPkg/CpuIo2Dxe/CpuIo2Dxe.inf
 INF  UefiCpuPkg/CpuDxe/CpuDxe.inf
@@ -173,11 +172,7 @@ INF  MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
 INF  MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
 INF  MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
 INF  MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
-
-!ifndef $(SOURCE_DEBUG_ENABLE)
 INF  MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
-!endif
-
 INF  IntelFrameworkModulePkg/Universal/BdsDxe/BdsDxe.inf
 INF  MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
 INF  MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
@@ -194,9 +189,16 @@ INF  MdeModulePkg/Universal/MemoryTest/NullMemoryTestDxe/NullMemoryTestDxe.inf
 
 INF  PcAtChipsetPkg/IsaAcpiDxe/IsaAcpi.inf
 INF  IntelFrameworkModulePkg/Bus/Isa/IsaBusDxe/IsaBusDxe.inf
+
+!ifndef $(SOURCE_DEBUG_ENABLE)
 INF  IntelFrameworkModulePkg/Bus/Isa/IsaSerialDxe/IsaSerialDxe.inf
+!endif
+
 INF  IntelFrameworkModulePkg/Bus/Isa/Ps2KeyboardDxe/Ps2keyboardDxe.inf
 INF  IntelFrameworkModulePkg/Bus/Isa/IsaFloppyDxe/IsaFloppyDxe.inf
+
+INF  MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf
+INF  OvmfPkg/SmbiosPlatformDxe/SmbiosPlatformDxe.inf
 
 INF  MdeModulePkg/Universal/Acpi/AcpiTableDxe/AcpiTableDxe.inf
 INF  MdeModulePkg/Universal/Acpi/AcpiPlatformDxe/AcpiPlatformDxe.inf
@@ -248,6 +250,12 @@ INF  MdeModulePkg/Bus/Pci/EhciDxe/EhciDxe.inf
 INF  MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
 INF  MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
 INF  MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
+
+!ifdef $(CSM_ENABLE)
+INF  IntelFrameworkModulePkg/Csm/BiosThunk/VideoDxe/VideoDxe.inf
+INF  IntelFrameworkModulePkg/Csm/LegacyBiosDxe/LegacyBiosDxe.inf
+INF  RuleOverride=CSM OvmfPkg/Csm/Csm16/Csm16.inf
+!endif
 
 ################################################################################
 
@@ -356,6 +364,11 @@ FILE FV_IMAGE = 9E21FD93-9C72-4c15-8C4B-E77F1DB2D792 {
   FILE FREEFORM = $(NAMED_GUID) {
     RAW ACPI               |.acpi
     RAW ASL                |.aml
+  }
+
+[Rule.Common.USER_DEFINED.CSM]
+  FILE FREEFORM = $(NAMED_GUID) {
+    RAW BIN                |.bin
   }
 
 [Rule.Common.SEC.RESET_VECTOR]

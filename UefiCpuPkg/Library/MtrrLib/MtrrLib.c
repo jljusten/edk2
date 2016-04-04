@@ -144,17 +144,21 @@ GetFirmwareVariableMtrrCount (
 /**
   Returns the default MTRR cache type for the system.
 
-  @return  MTRR default type
+  @return  The default MTRR cache type.
 
 **/
-UINT64
-GetMtrrDefaultMemoryType (
+MTRR_MEMORY_CACHE_TYPE
+EFIAPI
+MtrrGetDefaultMemoryType (
   VOID
-)
+  )
 {
-  return (AsmReadMsr64 (MTRR_LIB_IA32_MTRR_DEF_TYPE) & 0xff);
-}
+  if (!IsMtrrSupported ()) {
+    return CacheUncacheable;
+  }
 
+  return (MTRR_MEMORY_CACHE_TYPE) (AsmReadMsr64 (MTRR_LIB_IA32_MTRR_DEF_TYPE) & 0x7);
+}
 
 /**
   Preparation before programming MTRR.
@@ -477,10 +481,12 @@ CombineMemoryAttribute (
   UINT64  MtrrEnd;
   UINT64  EndAddress;
   UINT32  FirmwareVariableMtrrCount;
+  BOOLEAN CoveredByExistingMtrr;
 
   FirmwareVariableMtrrCount = GetFirmwareVariableMtrrCount ();
 
   *OverwriteExistingMtrr = FALSE;
+  CoveredByExistingMtrr = FALSE;
   EndAddress = *Base +*Length - 1;
 
   for (Index = 0; Index < FirmwareVariableMtrrCount; Index++) {
@@ -501,11 +507,12 @@ CombineMemoryAttribute (
     //
     if (Attributes == VariableMtrr[Index].Type) {
       //
-      // if the Mtrr range contain the request range, return RETURN_SUCCESS
+      // if the Mtrr range contain the request range, set a flag, then continue to 
+      // invalidate any MTRR of the same request range with higher priority cache type.
       //
       if (VariableMtrr[Index].BaseAddress <= *Base && MtrrEnd >= EndAddress) {
-        *Length = 0;
-        return RETURN_SUCCESS;
+        CoveredByExistingMtrr = TRUE;
+        continue;
       }
       //
       // invalid this MTRR, and program the combine range
@@ -552,6 +559,10 @@ CombineMemoryAttribute (
     return RETURN_ACCESS_DENIED;
   }
 
+  if (CoveredByExistingMtrr) {
+    *Length = 0;
+  }
+
   return RETURN_SUCCESS;
 }
 
@@ -586,12 +597,17 @@ Power2MaxMemory (
 
 
 /**
-  Check the direction to program variable MTRRs.
+  Determine the MTRR numbers used to program a memory range.
 
-  This function determines which direction of programming the variable
-  MTRRs will use fewer MTRRs.
+  This function first checks the alignment of the base address. If the alignment of the base address <= Length,
+  cover the memory range (BaseAddress, alignment) by a MTRR, then BaseAddress += alignment and Length -= alignment.
+  Repeat the step until alignment > Length.
 
-  @param  Input       Length of Memory to program MTRR
+  Then this function determines which direction of programming the variable MTRRs for the remaining length
+  will use fewer MTRRs.
+
+  @param  BaseAddress Length of Memory to program MTRR
+  @param  Length      Length of Memory to program MTRR
   @param  MtrrNumber  Pointer to the number of necessary MTRRs
 
   @retval TRUE        Positive direction is better.
@@ -599,16 +615,41 @@ Power2MaxMemory (
 
 **/
 BOOLEAN
-GetDirection (
-  IN UINT64      Input,
+GetMtrrNumberAndDirection (
+  IN UINT64      BaseAddress,
+  IN UINT64      Length,
   IN UINTN       *MtrrNumber
   )
 {
   UINT64  TempQword;
+  UINT64  Alignment;
   UINT32  Positive;
   UINT32  Subtractive;
 
-  TempQword   = Input;
+  *MtrrNumber = 0;
+
+  if (BaseAddress != 0) {
+    do {
+      //
+      // Calculate the alignment of the base address.
+      //
+      Alignment = LShiftU64 (1, (UINTN)LowBitSet64 (BaseAddress));
+
+      if (Alignment > Length) {
+        break;
+      }
+
+      (*MtrrNumber)++;
+      BaseAddress += Alignment;
+      Length -= Alignment;
+    } while (TRUE);
+
+    if (Length == 0) {
+      return TRUE;
+    }
+  }
+
+  TempQword   = Length;
   Positive    = 0;
   Subtractive = 0;
 
@@ -617,7 +658,7 @@ GetDirection (
     Positive++;
   } while (TempQword != 0);
 
-  TempQword = Power2MaxMemory (LShiftU64 (Input, 1)) - Input;
+  TempQword = Power2MaxMemory (LShiftU64 (Length, 1)) - Length;
   Subtractive++;
   do {
     TempQword -= Power2MaxMemory (TempQword);
@@ -625,10 +666,10 @@ GetDirection (
   } while (TempQword != 0);
 
   if (Positive <= Subtractive) {
-    *MtrrNumber = Positive;
+    *MtrrNumber += Positive;
     return TRUE;
   } else {
-    *MtrrNumber = Subtractive;
+    *MtrrNumber += Subtractive;
     return FALSE;
   }
 }
@@ -887,7 +928,7 @@ MtrrSetMemoryAttribute (
   UINT64                    TempQword;
   RETURN_STATUS             Status;
   UINT64                    MemoryType;
-  UINT64                    Remainder;
+  UINT64                    Alignment;
   BOOLEAN                   OverLap;
   BOOLEAN                   Positive;
   UINT32                    MsrNum;
@@ -965,18 +1006,6 @@ MtrrSetMemoryAttribute (
   }
 
   //
-  // Check memory base address alignment
-  //
-  DivU64x64Remainder (BaseAddress, Power2MaxMemory (LShiftU64 (Length, 1)), &Remainder);
-  if (Remainder != 0) {
-    DivU64x64Remainder (BaseAddress, Power2MaxMemory (Length), &Remainder);
-    if (Remainder != 0) {
-      Status = RETURN_UNSUPPORTED;
-      goto Done;
-    }
-  }
-
-  //
   // Check for overlap
   //
   UsedMtrr = MtrrGetMemoryAttributeInVariableMtrr (MtrrValidBitsMask, MtrrValidAddressMask, VariableMtrr);
@@ -989,8 +1018,9 @@ MtrrSetMemoryAttribute (
 
     if (Length == 0) {
       //
-      // Combined successfully
+      // Combined successfully, invalidate the now-unused MTRRs
       //
+      InvalidateMtrr(VariableMtrr);
       Status = RETURN_SUCCESS;
       goto Done;
     }
@@ -1010,7 +1040,7 @@ MtrrSetMemoryAttribute (
   // The memory type is the same with the type specified by
   // MTRR_LIB_IA32_MTRR_DEF_TYPE.
   //
-  if ((!OverwriteExistingMtrr) && (Attribute == GetMtrrDefaultMemoryType ())) {
+  if ((!OverwriteExistingMtrr) && (Attribute == MtrrGetDefaultMemoryType ())) {
     //
     // Invalidate the now-unused MTRRs
     //
@@ -1018,22 +1048,75 @@ MtrrSetMemoryAttribute (
     goto Done;
   }
 
+  Positive = GetMtrrNumberAndDirection (BaseAddress, Length, &MtrrNumber);
+
+  if ((UsedMtrr + MtrrNumber) > FirmwareVariableMtrrCount) {
+    Status = RETURN_OUT_OF_RESOURCES;
+    goto Done;
+  }
+
+  //
+  // Invalidate the now-unused MTRRs
+  //
+  InvalidateMtrr(VariableMtrr);
+
+  //
+  // Find first unused MTRR
+  //
+  for (MsrNum = MTRR_LIB_IA32_VARIABLE_MTRR_BASE;
+       MsrNum < VariableMtrrEnd;
+       MsrNum += 2
+      ) {
+    if ((AsmReadMsr64 (MsrNum + 1) & MTRR_LIB_CACHE_MTRR_ENABLED) == 0) {
+      break;
+    }
+  }
+
+  if (BaseAddress != 0) {
+    do {
+      //
+      // Calculate the alignment of the base address.
+      //
+      Alignment = LShiftU64 (1, (UINTN)LowBitSet64 (BaseAddress));
+
+      if (Alignment > Length) {
+        break;
+      }
+
+      //
+      // Find unused MTRR
+      //
+      for (; MsrNum < VariableMtrrEnd; MsrNum += 2) {
+        if ((AsmReadMsr64 (MsrNum + 1) & MTRR_LIB_CACHE_MTRR_ENABLED) == 0) {
+          break;
+        }
+      }
+
+      ProgramVariableMtrr (
+        MsrNum,
+        BaseAddress,
+        Alignment,
+        MemoryType,
+        MtrrValidAddressMask
+        );
+      BaseAddress += Alignment;
+      Length -= Alignment;
+    } while (TRUE);
+
+    if (Length == 0) {
+      goto Done;
+    }
+  }
+
   TempQword = Length;
 
-
-  if (TempQword == Power2MaxMemory (TempQword)) {
-    //
-    // Invalidate the now-unused MTRRs
-    //
-    InvalidateMtrr(VariableMtrr);
+  if (!Positive) {
+    Length = Power2MaxMemory (LShiftU64 (TempQword, 1));
 
     //
-    // Find first unused MTRR
+    // Find unused MTRR
     //
-    for (MsrNum = MTRR_LIB_IA32_VARIABLE_MTRR_BASE;
-         MsrNum < VariableMtrrEnd;
-         MsrNum += 2
-        ) {
+    for (; MsrNum < VariableMtrrEnd; MsrNum += 2) {
       if ((AsmReadMsr64 (MsrNum + 1) & MTRR_LIB_CACHE_MTRR_ENABLED) == 0) {
         break;
       }
@@ -1046,76 +1129,40 @@ MtrrSetMemoryAttribute (
       MemoryType,
       MtrrValidAddressMask
       );
-  } else {
+    BaseAddress += Length;
+    TempQword   = Length - TempQword;
+    MemoryType  = MTRR_CACHE_UNCACHEABLE;
+  }
 
-    Positive = GetDirection (TempQword, &MtrrNumber);
-
-    if ((UsedMtrr + MtrrNumber) > FirmwareVariableMtrrCount) {
-      Status = RETURN_OUT_OF_RESOURCES;
-      goto Done;
-    }
-
+  do {
     //
-    // Invalidate the now-unused MTRRs
+    // Find unused MTRR
     //
-    InvalidateMtrr(VariableMtrr);
-
-    //
-    // Find first unused MTRR
-    //
-    for (MsrNum = MTRR_LIB_IA32_VARIABLE_MTRR_BASE;
-         MsrNum < VariableMtrrEnd;
-         MsrNum += 2
-        ) {
+    for (; MsrNum < VariableMtrrEnd; MsrNum += 2) {
       if ((AsmReadMsr64 (MsrNum + 1) & MTRR_LIB_CACHE_MTRR_ENABLED) == 0) {
         break;
       }
     }
 
+    Length = Power2MaxMemory (TempQword);
     if (!Positive) {
-      Length = Power2MaxMemory (LShiftU64 (TempQword, 1));
-      ProgramVariableMtrr (
-        MsrNum,
-        BaseAddress,
-        Length,
-        MemoryType,
-        MtrrValidAddressMask
-        );
-      BaseAddress += Length;
-      TempQword   = Length - TempQword;
-      MemoryType  = MTRR_CACHE_UNCACHEABLE;
+      BaseAddress -= Length;
     }
 
-    do {
-      //
-      // Find unused MTRR
-      //
-      for (; MsrNum < VariableMtrrEnd; MsrNum += 2) {
-        if ((AsmReadMsr64 (MsrNum + 1) & MTRR_LIB_CACHE_MTRR_ENABLED) == 0) {
-          break;
-        }
-      }
+    ProgramVariableMtrr (
+      MsrNum,
+      BaseAddress,
+      Length,
+      MemoryType,
+      MtrrValidAddressMask
+      );
 
-      Length = Power2MaxMemory (TempQword);
-      if (!Positive) {
-        BaseAddress -= Length;
-      }
+    if (Positive) {
+      BaseAddress += Length;
+    }
+    TempQword -= Length;
 
-      ProgramVariableMtrr (
-        MsrNum,
-        BaseAddress,
-        Length,
-        MemoryType,
-        MtrrValidAddressMask
-        );
-
-      if (Positive) {
-        BaseAddress += Length;
-      }
-      TempQword -= Length;
-
-    } while (TempQword > 0);
-  }
+  } while (TempQword > 0);
 
 Done:
   DEBUG((DEBUG_CACHE, "  Status = %r\n", Status));

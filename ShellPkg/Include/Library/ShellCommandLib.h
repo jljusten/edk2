@@ -159,12 +159,12 @@ ShellCommandRegisterCommandName (
   information is returned. If Sections is NULL, then all help text information
   available is returned.
 
-  @param[in]  CommandString         The pointer to the command name.  This is the name
-                                    found on the command line in the shell.
-  @param[in,out] RetVal             The pointer to the return value from the command handler.
+  @param[in]   CommandString         The pointer to the command name.  This is the name
+                                     found on the command line in the shell.
+  @param[in, out] RetVal             The pointer to the return value from the command handler.
 
-  @param[in,out]  CanAffectLE       Indicates whether this command's return value
-                                    needs to be placed into LASTERROR environment variable.
+  @param[in, out]  CanAffectLE       Indicates whether this command's return value
+                                     needs to be placed into LASTERROR environment variable.
 
   @retval RETURN_SUCCESS            The handler was run.
   @retval RETURN_NOT_FOUND          The CommandString did not match a registered
@@ -340,11 +340,24 @@ ShellCommandSetEchoState (
   Indicate that the current shell or script should exit.
 
   @param[in] ScriptOnly   TRUE if exiting a script; FALSE otherwise.
+  @param[in] ErrorCode    The 64 bit error code to return.
 **/
 VOID
 EFIAPI
 ShellCommandRegisterExit (
-  IN BOOLEAN ScriptOnly
+  IN BOOLEAN      ScriptOnly,
+  IN CONST UINT64 ErrorCode
+  );
+
+/**
+  Retrieve the Exit code.
+
+  @return the value passed into RegisterExit.
+**/
+UINT64
+EFIAPI
+ShellCommandGetExitCode (
+  VOID
   );
 
 /**

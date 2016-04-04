@@ -28,9 +28,9 @@
   SUPPORTED_ARCHITECTURES        = IA32|X64|IPF|EBC
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
-define MSFT_MACRO                = /D EFI_SPECIFICATION_VERSION=0x00020000 /D PI_SPECIFICATION_VERSION=0x00009000 /D TIANO_RELEASE_VERSION=0x00080006 /D PCD_EDKII_GLUE_PciExpressBaseAddress=0xE0000000 /D EFI_DEBUG
-define INTEL_MACRO                = /D EFI_SPECIFICATION_VERSION=0x00020000 /D PI_SPECIFICATION_VERSION=0x00009000 /D TIANO_RELEASE_VERSION=0x00080006 /D PCD_EDKII_GLUE_PciExpressBaseAddress=0xE0000000 /D EFI_DEBUG
-define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_SPECIFICATION_VERSION=0x00009000 -DTIANO_RELEASE_VERSION=0x00080006 -DPCD_EDKII_GLUE_PciExpressBaseAddress=0xE0000000 -DEFI_DEBUG
+DEFINE MSFT_MACRO                = /D EFI_SPECIFICATION_VERSION=0x00020000 /D PI_SPECIFICATION_VERSION=0x00009000 /D TIANO_RELEASE_VERSION=0x00080006 /D PCD_EDKII_GLUE_PciExpressBaseAddress=0xE0000000 /D EFI_DEBUG
+DEFINE INTEL_MACRO                = /D EFI_SPECIFICATION_VERSION=0x00020000 /D PI_SPECIFICATION_VERSION=0x00009000 /D TIANO_RELEASE_VERSION=0x00080006 /D PCD_EDKII_GLUE_PciExpressBaseAddress=0xE0000000 /D EFI_DEBUG
+DEFINE GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_SPECIFICATION_VERSION=0x00009000 -DTIANO_RELEASE_VERSION=0x00080006 -DPCD_EDKII_GLUE_PciExpressBaseAddress=0xE0000000 -DEFI_DEBUG
 
 ################################################################################
 #
@@ -71,6 +71,7 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   DebugAgentLib|MdeModulePkg/Library/DebugAgentLibNull/DebugAgentLibNull.inf
   LocalApicLib|UefiCpuPkg/Library/BaseXApicX2ApicLib/BaseXApicX2ApicLib.inf
   DxeServicesLib|MdePkg/Library/DxeServicesLib/DxeServicesLib.inf
+  LockBoxLib|MdeModulePkg/Library/LockBoxNullLib/LockBoxNullLib.inf
 
 [LibraryClasses.common.PEIM]
   MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
@@ -282,6 +283,7 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   EdkCompatibilityPkg/Foundation/Library/EdkIIGlueLib/Library/DxePerformanceLib/DxePerformanceLib.inf # Use IA32/X64 specific AsmReadTsc (). 
   EdkCompatibilityPkg/Foundation/Library/EdkIIGlueLib/Library/PeiPerformanceLib/PeiPerformanceLib.inf # Use IA32/X64 specific AsmReadTsc ().
   EdkCompatibilityPkg/Compatibility/AcpiVariableHobOnSmramReserveHobThunk/AcpiVariableHobOnSmramReserveHobThunk.inf
+  EdkCompatibilityPkg/Compatibility/BootScriptThunkHelper/BootScriptThunkHelper.inf
   EdkCompatibilityPkg/Compatibility/MpServicesOnFrameworkMpServicesThunk/MpServicesOnFrameworkMpServicesThunk.inf
   EdkCompatibilityPkg/Compatibility/SmmBaseOnSmmBase2Thunk/SmmBaseOnSmmBase2Thunk.inf
   EdkCompatibilityPkg/Compatibility/SmmBaseHelper/SmmBaseHelper.inf

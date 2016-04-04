@@ -27,9 +27,8 @@
 
 
 [FD.BeagleBoard_EFI]
-####BaseAddress   = 0x80208000|gEmbeddedTokenSpaceGuid.PcdEmbeddedFdBaseAddress  #The base address of the FLASH Device.
-BaseAddress   = 0x80008000|gEmbeddedTokenSpaceGuid.PcdEmbeddedFdBaseAddress  #The base address of the FLASH Device.
-Size          = 0x00080000|gEmbeddedTokenSpaceGuid.PcdEmbeddedFdSize         #The size in bytes of the FLASH Device
+BaseAddress   = 0x80008000|gArmTokenSpaceGuid.PcdFdBaseAddress  #The base address of the FLASH Device.
+Size          = 0x00080000|gArmTokenSpaceGuid.PcdFdSize         #The size in bytes of the FLASH Device
 ErasePolarity = 1
 BlockSize     = 0x1
 NumBlocks     = 0x80000
@@ -49,15 +48,8 @@ NumBlocks     = 0x80000
 # RegionType <FV, DATA, or FILE>
 #
 ################################################################################
-!if $(EDK2_SECOND_STAGE_BOOTOLADER) == 1
 0x00000000|0x00080000
-!else
-# 512 bytes of configuration header & 8 bytes of image header
-0x00000000|0x00000208
-
-0x00000208|0x0007FDF8
-!endif
-gEmbeddedTokenSpaceGuid.PcdFlashFvMainBase|gEmbeddedTokenSpaceGuid.PcdFlashFvMainSize
+gArmTokenSpaceGuid.PcdFvBaseAddress|gArmTokenSpaceGuid.PcdFvBaseSize
 FV = FVMAIN_COMPACT
 
 ################################################################################
@@ -105,16 +97,22 @@ READ_LOCK_STATUS   = TRUE
   INF MdeModulePkg/Universal/Variable/EmuRuntimeDxe/EmuVariableRuntimeDxe.inf
   INF EmbeddedPkg/EmbeddedMonotonicCounter/EmbeddedMonotonicCounter.inf
    
-  INF EmbeddedPkg/SimpleTextInOutSerial/SimpleTextInOutSerial.inf
+  INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
+  INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+  INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf  
+  INF EmbeddedPkg/SerialDxe/SerialDxe.inf
+  INF MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf  
 
   INF EmbeddedPkg/ResetRuntimeDxe/ResetRuntimeDxe.inf
   INF EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
   INF EmbeddedPkg/MetronomeDxe/MetronomeDxe.inf
   
+!if $(TARGET) == RELEASE
   #
   # Semi-hosting filesystem
   #
   INF ArmPkg/Filesystem/SemihostFs/SemihostFs.inf
+!endif
   
   #
   # Nand Flash
@@ -124,7 +122,8 @@ READ_LOCK_STATUS   = TRUE
   #
   # MMC/SD
   #
-  INF Omap35xxPkg/MMCHSDxe/MMCHS.inf
+  INF EmbeddedPkg/Universal/MmcDxe/MmcDxe.inf
+  INF Omap35xxPkg/MmcHostDxe/MmcHostDxe.inf
   
   #
   # I2C
@@ -137,6 +136,7 @@ READ_LOCK_STATUS   = TRUE
   INF Omap35xxPkg/Gpio/Gpio.inf
   INF Omap35xxPkg/InterruptDxe/InterruptDxe.inf
   INF Omap35xxPkg/TimerDxe/TimerDxe.inf 
+  INF Omap35xxPkg/LcdGraphicsOutputDxe/LcdGraphicsOutputDxe.inf
 
   #
   # Power IC
@@ -176,7 +176,6 @@ READ_LOCK_STATUS   = TRUE
   INF ArmPlatformPkg/Bds/Bds.inf
 
 
-
 [FV.FVMAIN_COMPACT]
 FvAlignment        = 8
 ERASE_POLARITY     = 1
@@ -195,7 +194,7 @@ READ_STATUS        = TRUE
 READ_LOCK_CAP      = TRUE
 READ_LOCK_STATUS   = TRUE
 
-  INF BeagleBoardPkg/Sec/Sec.inf
+  INF ArmPlatformPkg/PrePi/PeiUniCore.inf
 
   FILE FV_IMAGE = 9E21FD93-9C72-4c15-8C4B-E77F1DB2D792 {
     SECTION GUIDED EE4E5898-3914-4259-9D6E-DC7BD79403CF PROCESSING_REQUIRED = TRUE {
@@ -220,10 +219,10 @@ READ_LOCK_STATUS   = TRUE
 #
 #[Rule.Common.DXE_DRIVER]
 #  FILE DRIVER = $(NAMED_GUID) {
-#    DXE_DEPEX    DXE_DEPEX Optional      |.depex
+#    DXE_DEPEX    DXE_DEPEX               Optional $(INF_OUTPUT)/$(MODULE_NAME).depex
 #    COMPRESS PI_STD {
 #      GUIDED {
-#        PE32     PE32                    |.efi
+#        PE32     PE32                    $(INF_OUTPUT)/$(MODULE_NAME).efi
 #        UI       STRING="$(MODULE_NAME)" Optional
 #        VERSION  STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
 #      }
@@ -234,56 +233,56 @@ READ_LOCK_STATUS   = TRUE
 
 [Rule.Common.SEC]
   FILE SEC = $(NAMED_GUID) RELOCS_STRIPPED {
-    TE  TE    Align = 8      |.efi
+    TE  TE    Align = 32                $(INF_OUTPUT)/$(MODULE_NAME).efi
   }
 
 [Rule.Common.PEI_CORE]
   FILE PEI_CORE = $(NAMED_GUID) {
-    TE     TE           |.efi
+    TE     TE                           $(INF_OUTPUT)/$(MODULE_NAME).efi
     UI     STRING ="$(MODULE_NAME)" Optional         
   }
 
 [Rule.Common.PEIM]
   FILE PEIM = $(NAMED_GUID) {
-     PEI_DEPEX PEI_DEPEX Optional        |.depex
-     PE32      PE32                      |.efi
+     PEI_DEPEX PEI_DEPEX Optional       $(INF_OUTPUT)/$(MODULE_NAME).depex
+     PE32      PE32                     $(INF_OUTPUT)/$(MODULE_NAME).efi
      UI       STRING="$(MODULE_NAME)" Optional         
   }
 
 [Rule.Common.PEIM.TIANOCOMPRESSED]
   FILE PEIM = $(NAMED_GUID) DEBUG_MYTOOLS_IA32 {
-    PEI_DEPEX PEI_DEPEX Optional         |.depex
+    PEI_DEPEX PEI_DEPEX Optional        $(INF_OUTPUT)/$(MODULE_NAME).depex
     GUIDED A31280AD-481E-41B6-95E8-127F4C984779 PROCESSING_REQUIRED = TRUE {
-      PE32      PE32                     |.efi
+      PE32      PE32                    $(INF_OUTPUT)/$(MODULE_NAME).efi
       UI        STRING="$(MODULE_NAME)" Optional
     }
   }
 
 [Rule.Common.DXE_CORE]
   FILE DXE_CORE = $(NAMED_GUID) {
-    PE32     PE32           |.efi
+    PE32     PE32                       $(INF_OUTPUT)/$(MODULE_NAME).efi
     UI       STRING="$(MODULE_NAME)" Optional
   }
 
 
 [Rule.Common.UEFI_DRIVER]
   FILE DRIVER = $(NAMED_GUID) {
-    DXE_DEPEX    DXE_DEPEX Optional      |.depex
-    PE32         PE32                    |.efi
+    DXE_DEPEX    DXE_DEPEX              Optional $(INF_OUTPUT)/$(MODULE_NAME).depex
+    PE32         PE32                   $(INF_OUTPUT)/$(MODULE_NAME).efi
     UI           STRING="$(MODULE_NAME)" Optional
   }
 
 [Rule.Common.DXE_DRIVER]
   FILE DRIVER = $(NAMED_GUID) {
-    DXE_DEPEX    DXE_DEPEX Optional      |.depex
-    PE32         PE32                    |.efi
+    DXE_DEPEX    DXE_DEPEX              Optional $(INF_OUTPUT)/$(MODULE_NAME).depex
+    PE32         PE32                   $(INF_OUTPUT)/$(MODULE_NAME).efi
     UI           STRING="$(MODULE_NAME)" Optional
   }
 
 [Rule.Common.DXE_RUNTIME_DRIVER]
   FILE DRIVER = $(NAMED_GUID) {
-    DXE_DEPEX    DXE_DEPEX Optional      |.depex
-    PE32         PE32                    |.efi
+    DXE_DEPEX    DXE_DEPEX              Optional $(INF_OUTPUT)/$(MODULE_NAME).depex
+    PE32         PE32                   $(INF_OUTPUT)/$(MODULE_NAME).efi
     UI           STRING="$(MODULE_NAME)" Optional
   }
 
@@ -291,5 +290,5 @@ READ_LOCK_STATUS   = TRUE
 [Rule.Common.UEFI_APPLICATION]
   FILE APPLICATION = $(NAMED_GUID) {
     UI     STRING ="$(MODULE_NAME)" Optional         
-    PE32   PE32                    |.efi
+    PE32   PE32                         $(INF_OUTPUT)/$(MODULE_NAME).efi
   }

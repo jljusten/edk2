@@ -40,7 +40,6 @@ Abstract:
 //
 #define UTILITY_MAJOR_VERSION 0
 #define UTILITY_MINOR_VERSION 1
-#define GENFV_UPDATE_TIME           " updated on 2010/2/1"
 
 EFI_GUID  mEfiFirmwareFileSystem2Guid = EFI_FIRMWARE_FILE_SYSTEM2_GUID;
 
@@ -65,7 +64,7 @@ Returns:
 
 --*/
 {
-  fprintf (stdout, "%s Version %d.%d %s\n", UTILITY_NAME, UTILITY_MAJOR_VERSION, UTILITY_MINOR_VERSION, GENFV_UPDATE_TIME);
+  fprintf (stdout, "%s Version %d.%d %s \n", UTILITY_NAME, UTILITY_MAJOR_VERSION, UTILITY_MINOR_VERSION, __BUILD_VERSION);
 }
 
 STATIC
@@ -125,6 +124,11 @@ Returns:
                         Address is the rebase start address for drivers that\n\
                         run in Flash. It supports DEC or HEX digital format.\n\
                         If it is set to zero, no rebase action will be taken\n");
+  fprintf (stdout, "  -F ForceRebase, --force-rebase ForceRebase\n\
+                        If value is TRUE, will always take rebase action\n\
+                        If value is FALSE, will always not take reabse action\n\
+                        If not specified, will take rebase action if rebase address greater than zero, \n\
+                        will not take rebase action if rebase address is zero.\n");
   fprintf (stdout, "  -a AddressFile, --addrfile AddressFile\n\
                         AddressFile is one file used to record the child\n\
                         FV base address when current FV base address is set.\n");
@@ -232,6 +236,7 @@ Returns:
   // Set the default FvGuid
   //
   memcpy (&mFvDataInfo.FvFileSystemGuid, &mEfiFirmwareFileSystem2Guid, sizeof (EFI_GUID));
+  mFvDataInfo.ForceRebase = -1;
    
   //
   // Parse command line
@@ -331,7 +336,7 @@ Returns:
       continue; 
     }
 
-    if ((stricmp (argv[0], "-f") == 0) || (stricmp (argv[0], "--ffsfile") == 0)) {
+    if ((strcmp (argv[0], "-f") == 0) || (stricmp (argv[0], "--ffsfile") == 0)) {
       if (argv[1] == NULL) {
         Error (NULL, 0, 1003, "Invalid option value", "Input Ffsfile can't be null");
         return STATUS_ERROR;
@@ -373,6 +378,26 @@ Returns:
       argv ++;
       continue; 
     }
+  
+    if ((strcmp (argv[0], "-F") == 0) || (stricmp (argv[0], "--force-rebase") == 0)) {
+      if (argv[1] == NULL) {
+        Error (NULL, 0, 1003, "Invalid option value", "Froce rebase flag can't be null");
+        return STATUS_ERROR;
+      }
+
+      if (stricmp (argv[1], "TRUE") == 0) {
+        mFvDataInfo.ForceRebase = 1;
+      } else if (stricmp (argv[1], "FALSE") == 0) {
+        mFvDataInfo.ForceRebase = 0;
+      } else {
+        Error (NULL, 0, 1003, "Invalid option value", "froce rebase flag value must be \"TRUE\" or \"FALSE\"");
+        return STATUS_ERROR;
+      }
+
+      argc -= 2;
+      argv += 2;
+      continue; 
+    } 
 
     if (stricmp (argv[0], "--capheadsize") == 0) {
       //
@@ -598,7 +623,12 @@ Returns:
               );
   } else {
     VerboseMsg ("Create Fv image and its map file");
-    if (mFvDataInfo.BaseAddress != 0) {
+    //
+    // Will take rebase action at below situation:
+    // 1. ForceRebase Flag specified to TRUE;
+    // 2. ForceRebase Flag not specified, BaseAddress greater than zero.
+    //
+    if (((mFvDataInfo.BaseAddress > 0) && (mFvDataInfo.ForceRebase == -1)) || (mFvDataInfo.ForceRebase == 1)) {
       VerboseMsg ("FvImage Rebase Address is 0x%llX", (unsigned long long) mFvDataInfo.BaseAddress);
     }
     //

@@ -22,95 +22,69 @@ BootOptionStart (
   )
 {
   EFI_STATUS                            Status;
-  EFI_DEVICE_PATH*                      FdtDevicePath;
   EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL*   EfiDevicePathFromTextProtocol;
   UINT32                                LoaderType;
+  ARM_BDS_LOADER_OPTIONAL_DATA*         OptionalData;
+  ARM_BDS_LINUX_ARGUMENTS*              LinuxArguments;
+  EFI_DEVICE_PATH_PROTOCOL*             FdtDevicePath;
+  EFI_DEVICE_PATH_PROTOCOL*             DefaultFdtDevicePath;
+  UINTN                                 FdtDevicePathSize;
+  UINTN                                 CmdLineSize;
+  UINTN                                 InitrdSize;
+  EFI_DEVICE_PATH*                      Initrd;
 
-  Status = EFI_UNSUPPORTED;
-  LoaderType = ReadUnaligned32 (&BootOption->OptionalData->LoaderType);
+  if (IS_ARM_BDS_BOOTENTRY (BootOption)) {
+    Status = EFI_UNSUPPORTED;
+    OptionalData = BootOption->OptionalData;
+    LoaderType = ReadUnaligned32 ((CONST UINT32*)&OptionalData->Header.LoaderType);
 
-  if (LoaderType == BDS_LOADER_EFI_APPLICATION) {
-    // Need to connect every drivers to ensure no dependencies are missing for the application
-    BdsConnectAllDrivers();
+    if (LoaderType == BDS_LOADER_EFI_APPLICATION) {
+      // Need to connect every drivers to ensure no dependencies are missing for the application
+      BdsConnectAllDrivers();
 
-    Status = BdsStartEfiApplication (mImageHandle, BootOption->FilePathList);
-  } else if (LoaderType == BDS_LOADER_KERNEL_LINUX_ATAG) {
-    Status = BdsBootLinux (BootOption->FilePathList, BootOption->OptionalData->Arguments, NULL);
-  } else if (LoaderType == BDS_LOADER_KERNEL_LINUX_FDT) {
-    // Convert the FDT path into a Device Path
-    Status = gBS->LocateProtocol (&gEfiDevicePathFromTextProtocolGuid, NULL, (VOID **)&EfiDevicePathFromTextProtocol);
-    ASSERT_EFI_ERROR(Status);
-    FdtDevicePath = EfiDevicePathFromTextProtocol->ConvertTextToDevicePath ((CHAR16*)PcdGetPtr(PcdFdtDevicePath));
+      Status = BdsStartEfiApplication (mImageHandle, BootOption->FilePathList, 0, NULL);
+    } else if (LoaderType == BDS_LOADER_KERNEL_LINUX_ATAG) {
+      LinuxArguments = &(OptionalData->Arguments.LinuxArguments);
+      CmdLineSize = ReadUnaligned16 ((CONST UINT16*)&LinuxArguments->CmdLineSize);
+      InitrdSize = ReadUnaligned16 ((CONST UINT16*)&LinuxArguments->InitrdSize);
 
-    Status = BdsBootLinux (BootOption->FilePathList, BootOption->OptionalData->Arguments, FdtDevicePath);
-    FreePool(FdtDevicePath);
-  }
+      if (InitrdSize > 0) {
+        Initrd = GetAlignedDevicePath ((EFI_DEVICE_PATH*)((UINTN)(LinuxArguments + 1) + CmdLineSize));
+      } else {
+        Initrd = NULL;
+      }
 
-  return Status;
-}
+      Status = BdsBootLinuxAtag (BootOption->FilePathList,
+                                 Initrd, // Initrd
+                                 (CHAR8*)(LinuxArguments + 1)); // CmdLine
+    } else if (LoaderType == BDS_LOADER_KERNEL_LINUX_FDT) {
+      LinuxArguments = &(OptionalData->Arguments.LinuxArguments);
+      CmdLineSize = ReadUnaligned16 ((CONST UINT16*)&LinuxArguments->CmdLineSize);
+      InitrdSize = ReadUnaligned16 ((CONST UINT16*)&LinuxArguments->InitrdSize);
 
-EFI_STATUS
-BootOptionParseLoadOption (
-  IN  EFI_LOAD_OPTION EfiLoadOption,
-  IN  UINTN           EfiLoadOptionSize,
-  OUT BDS_LOAD_OPTION **BdsLoadOption
-  )
-{
-  BDS_LOAD_OPTION *LoadOption;
-  UINTN           FilePathListLength;
-  UINTN           DescriptionLength;
+      if (InitrdSize > 0) {
+        Initrd = GetAlignedDevicePath ((EFI_DEVICE_PATH*)((UINTN)(LinuxArguments + 1) + CmdLineSize));
+      } else {
+        Initrd = NULL;
+      }
 
-  if (EfiLoadOption == NULL) {
-    return EFI_INVALID_PARAMETER;
-  }
+      // Get the default FDT device path
+      Status = gBS->LocateProtocol (&gEfiDevicePathFromTextProtocolGuid, NULL, (VOID **)&EfiDevicePathFromTextProtocol);
+      ASSERT_EFI_ERROR(Status);
+      DefaultFdtDevicePath = EfiDevicePathFromTextProtocol->ConvertTextToDevicePath ((CHAR16*)PcdGetPtr(PcdFdtDevicePath));
 
-  if (EfiLoadOptionSize < sizeof(UINT32) + sizeof(UINT16) + sizeof(CHAR16) + sizeof(EFI_DEVICE_PATH_PROTOCOL)) {
-    return EFI_BAD_BUFFER_SIZE;
-  }
+      // Get the FDT device path
+      FdtDevicePathSize = GetDevicePathSize (DefaultFdtDevicePath);
+      Status = GetEnvironmentVariable ((CHAR16 *)L"Fdt", DefaultFdtDevicePath, &FdtDevicePathSize, (VOID **)&FdtDevicePath);
+      ASSERT_EFI_ERROR(Status);
 
-  LoadOption = (BDS_LOAD_OPTION*)AllocatePool(sizeof(BDS_LOAD_OPTION));
-  if (LoadOption == NULL) {
-    return EFI_OUT_OF_RESOURCES;
-  }
-
-  LoadOption->LoadOption = EfiLoadOption;
-  LoadOption->LoadOptionSize = EfiLoadOptionSize;
-
-  LoadOption->Attributes    = *(UINT32*)EfiLoadOption;
-  FilePathListLength        = *(UINT16*)(EfiLoadOption + sizeof(UINT32));
-  LoadOption->Description   = (CHAR16*)(EfiLoadOption + sizeof(UINT32) + sizeof(UINT16));
-  DescriptionLength         = StrSize (LoadOption->Description);
-  LoadOption->FilePathList  = (EFI_DEVICE_PATH_PROTOCOL*)(EfiLoadOption + sizeof(UINT32) + sizeof(UINT16) + DescriptionLength);
-
-  if ((UINTN)((UINT8*)LoadOption->FilePathList + FilePathListLength - EfiLoadOption) == EfiLoadOptionSize) {
-    LoadOption->OptionalData = NULL;
-  } else {
-    LoadOption->OptionalData = (BDS_LOADER_OPTIONAL_DATA *)((UINT8*)LoadOption->FilePathList + FilePathListLength);
-  }
-
-  *BdsLoadOption = LoadOption;
-  return EFI_SUCCESS;
-}
-
-EFI_STATUS
-BootOptionFromLoadOptionVariable (
-  IN  UINT16            LoadOptionIndex,
-  OUT BDS_LOAD_OPTION **BdsLoadOption
-  )
-{
-  EFI_STATUS  Status;
-  CHAR16      BootVariableName[9];
-  EFI_LOAD_OPTION     EfiLoadOption;
-  UINTN               EfiLoadOptionSize;
-
-  UnicodeSPrint (BootVariableName, 9 * sizeof(CHAR16), L"Boot%04X", LoadOptionIndex);
-
-  Status = GetEnvironmentVariable (BootVariableName, NULL, &EfiLoadOptionSize, (VOID**)&EfiLoadOption);
-  if (!EFI_ERROR(Status)) {
-    Status = BootOptionParseLoadOption (EfiLoadOption,EfiLoadOptionSize,BdsLoadOption);
-    if (!EFI_ERROR(Status)) {
-      (*BdsLoadOption)->LoadOptionIndex = LoadOptionIndex;
+      Status = BdsBootLinuxFdt (BootOption->FilePathList,
+                                Initrd, // Initrd
+                                (CHAR8*)(LinuxArguments + 1),
+                                FdtDevicePath);
     }
+  } else {
+    Status = BdsStartEfiApplication (mImageHandle, BootOption->FilePathList, BootOption->OptionalDataSize, BootOption->OptionalData);
   }
 
   return Status;
@@ -121,11 +95,12 @@ BootOptionList (
   IN OUT LIST_ENTRY *BootOptionList
   )
 {
-  EFI_STATUS        Status;
-  UINTN             Index;
-  UINT16            *BootOrder;
-  UINTN             BootOrderSize;
-  BDS_LOAD_OPTION   *BdsLoadOption;
+  EFI_STATUS                    Status;
+  UINTN                         Index;
+  UINT16*                       BootOrder;
+  UINTN                         BootOrderSize;
+  BDS_LOAD_OPTION*              BdsLoadOption;
+  BDS_LOAD_OPTION_ENTRY*        BdsLoadOptionEntry;
 
   InitializeListHead (BootOptionList);
 
@@ -136,45 +111,15 @@ BootOptionList (
   }
 
   for (Index = 0; Index < BootOrderSize / sizeof (UINT16); Index++) {
-    Status = BootOptionFromLoadOptionVariable (BootOrder[Index],&BdsLoadOption);
+    Status = BootOptionFromLoadOptionIndex (BootOrder[Index], &BdsLoadOption);
     if (!EFI_ERROR(Status)) {
-      InsertTailList (BootOptionList,&BdsLoadOption->Link);
+      BdsLoadOptionEntry = (BDS_LOAD_OPTION_ENTRY*)AllocatePool(sizeof(BDS_LOAD_OPTION_ENTRY));
+      BdsLoadOptionEntry->BdsLoadOption = BdsLoadOption;
+      InsertTailList (BootOptionList,&BdsLoadOptionEntry->Link);
     }
   }
 
   return EFI_SUCCESS;
-}
-
-UINT16
-BootOptionAllocateBootIndex (
-  VOID
-  )
-{
-  EFI_STATUS        Status;
-  UINTN             Index;
-  UINT32            BootIndex;
-  UINT16            *BootOrder;
-  UINTN             BootOrderSize;
-  BOOLEAN           Found;
-
-  // Get the Boot Option Order from the environment variable
-  Status = GetEnvironmentVariable (L"BootOrder", NULL, &BootOrderSize, (VOID**)&BootOrder);
-  if (!EFI_ERROR(Status)) {
-    for (BootIndex = 0; BootIndex <= 0xFFFF; BootIndex++) {
-      Found = FALSE;
-      for (Index = 0; Index < BootOrderSize / sizeof (UINT16); Index++) {
-        if (BootOrder[Index] == BootIndex) {
-          Found = TRUE;
-          break;
-        }
-      }
-      if (!Found) {
-        return BootIndex;
-      }
-    }
-  }
-  // Return the first index
-  return 0;
 }
 
 STATIC
@@ -184,37 +129,34 @@ BootOptionSetFields (
   IN UINT32                     Attributes,
   IN CHAR16*                    BootDescription,
   IN EFI_DEVICE_PATH_PROTOCOL*  DevicePath,
-  IN  BDS_LOADER_TYPE           BootType,
-  IN  CHAR8*                    BootArguments
+  IN ARM_BDS_LOADER_TYPE        BootType,
+  IN ARM_BDS_LOADER_ARGUMENTS*  BootArguments
   )
 {
-  EFI_LOAD_OPTION EfiLoadOption;
-  UINTN           EfiLoadOptionSize;
-  UINTN           BootDescriptionSize;
-  UINTN           BootOptionalDataSize;
-  UINT16          FilePathListLength;
-  EFI_DEVICE_PATH_PROTOCOL* DevicePathNode;
-  UINTN           NodeLength;
-  UINT8*          EfiLoadOptionPtr;
+  EFI_LOAD_OPTION               EfiLoadOption;
+  UINTN                         EfiLoadOptionSize;
+  UINTN                         BootDescriptionSize;
+  UINTN                         BootOptionalDataSize;
+  UINT16                        FilePathListLength;
+  UINT8*                        EfiLoadOptionPtr;
+  UINT8*                        InitrdPathListPtr;
+  UINTN                         OptionalDataSize;
+  ARM_BDS_LINUX_ARGUMENTS*      DestLinuxArguments;
+  ARM_BDS_LINUX_ARGUMENTS*      SrcLinuxArguments;
 
   // If we are overwriting an existent Boot Option then we have to free previously allocated memory
   if (BootOption->LoadOption) {
     FreePool(BootOption->LoadOption);
   }
 
-  BootDescriptionSize = StrSize(BootDescription);
-  BootOptionalDataSize = sizeof(BDS_LOADER_OPTIONAL_DATA) +
-      (BootArguments == NULL ? 0 : AsciiStrSize(BootArguments));
+  BootDescriptionSize = StrSize (BootDescription);
+  BootOptionalDataSize = sizeof(ARM_BDS_LOADER_OPTIONAL_DATA_HEADER);
+  if ((BootType == BDS_LOADER_KERNEL_LINUX_ATAG) || (BootType == BDS_LOADER_KERNEL_LINUX_FDT)) {
+    BootOptionalDataSize += sizeof(ARM_BDS_LINUX_ARGUMENTS) + BootArguments->LinuxArguments.CmdLineSize + BootArguments->LinuxArguments.InitrdSize;
+  }
 
   // Compute the size of the FilePath list
-  FilePathListLength = 0;
-  DevicePathNode = DevicePath;
-  while (!IsDevicePathEndType (DevicePathNode)) {
-    FilePathListLength += DevicePathNodeLength (DevicePathNode);
-    DevicePathNode = NextDevicePathNode (DevicePathNode);
-  }
-  // Add the length of the DevicePath EndType
-  FilePathListLength += DevicePathNodeLength (DevicePathNode);
+  FilePathListLength = GetUnalignedDevicePathSize (DevicePath);
 
   // Allocate the memory for the EFI Load Option
   EfiLoadOptionSize = sizeof(UINT32) + sizeof(UINT16) + BootDescriptionSize + FilePathListLength + BootOptionalDataSize;
@@ -242,28 +184,40 @@ BootOptionSetFields (
 
   // File path fields
   BootOption->FilePathList = (EFI_DEVICE_PATH_PROTOCOL*)EfiLoadOptionPtr;
-  DevicePathNode = DevicePath;
-  while (!IsDevicePathEndType (DevicePathNode)) {
-    NodeLength = DevicePathNodeLength(DevicePathNode);
-    CopyMem (EfiLoadOptionPtr, DevicePathNode, NodeLength);
-    EfiLoadOptionPtr += NodeLength;
-    DevicePathNode = NextDevicePathNode (DevicePathNode);
-  }
-
-  // Set the End Device Path Type
-  SetDevicePathEndNode (EfiLoadOptionPtr);
-  EfiLoadOptionPtr = (UINT8 *)EfiLoadOptionPtr + sizeof(EFI_DEVICE_PATH);
+  CopyMem (EfiLoadOptionPtr, DevicePath, FilePathListLength);
+  EfiLoadOptionPtr += FilePathListLength;
 
   // Optional Data fields, Do unaligned writes
-  WriteUnaligned32 ((UINT32 *)EfiLoadOptionPtr, BootType);
+  BootOption->OptionalData = EfiLoadOptionPtr;
+  WriteUnaligned32 ((UINT32 *)EfiLoadOptionPtr, ARM_BDS_OPTIONAL_DATA_SIGNATURE);
+  WriteUnaligned32 ((UINT32 *)(EfiLoadOptionPtr + 4), BootType);
 
-  CopyMem (&((BDS_LOADER_OPTIONAL_DATA*)EfiLoadOptionPtr)->Arguments, BootArguments, AsciiStrSize(BootArguments));
-  BootOption->OptionalData = (BDS_LOADER_OPTIONAL_DATA *)EfiLoadOptionPtr;
+  OptionalDataSize = sizeof(ARM_BDS_LOADER_OPTIONAL_DATA_HEADER);
+
+  if ((BootType == BDS_LOADER_KERNEL_LINUX_ATAG) || (BootType == BDS_LOADER_KERNEL_LINUX_FDT)) {
+    SrcLinuxArguments = &(BootArguments->LinuxArguments);
+    DestLinuxArguments = &((ARM_BDS_LOADER_OPTIONAL_DATA*)EfiLoadOptionPtr)->Arguments.LinuxArguments;
+
+    WriteUnaligned16 ((UINT16 *)&(DestLinuxArguments->CmdLineSize), SrcLinuxArguments->CmdLineSize);
+    WriteUnaligned16 ((UINT16 *)&(DestLinuxArguments->InitrdSize), SrcLinuxArguments->InitrdSize);
+    OptionalDataSize += sizeof (ARM_BDS_LINUX_ARGUMENTS);
+
+    if (SrcLinuxArguments->CmdLineSize > 0) {
+      CopyMem ((VOID*)(DestLinuxArguments + 1), (VOID*)(SrcLinuxArguments + 1), SrcLinuxArguments->CmdLineSize);
+      OptionalDataSize += SrcLinuxArguments->CmdLineSize;
+    }
+
+    if (SrcLinuxArguments->InitrdSize > 0) {
+      InitrdPathListPtr = (UINT8*)((UINTN)(DestLinuxArguments + 1) + SrcLinuxArguments->CmdLineSize);
+      CopyMem (InitrdPathListPtr, (VOID*)((UINTN)(SrcLinuxArguments + 1) + SrcLinuxArguments->CmdLineSize), SrcLinuxArguments->InitrdSize);
+    }
+  }
+  BootOption->OptionalDataSize = OptionalDataSize;
 
   // If this function is called at the creation of the Boot Device entry (not at the update) the
   // BootOption->LoadOptionSize must be zero then we get a new BootIndex for this entry
   if (BootOption->LoadOptionSize == 0) {
-    BootOption->LoadOptionIndex = BootOptionAllocateBootIndex();
+    BootOption->LoadOptionIndex = BootOptionAllocateBootIndex ();
   }
 
   // Fill the EFI Load option fields
@@ -278,23 +232,26 @@ BootOptionCreate (
   IN  UINT32                    Attributes,
   IN  CHAR16*                   BootDescription,
   IN  EFI_DEVICE_PATH_PROTOCOL* DevicePath,
-  IN  BDS_LOADER_TYPE           BootType,
-  IN  CHAR8*                    BootArguments,
-  OUT BDS_LOAD_OPTION           **BdsLoadOption
+  IN  ARM_BDS_LOADER_TYPE       BootType,
+  IN  ARM_BDS_LOADER_ARGUMENTS* BootArguments,
+  OUT BDS_LOAD_OPTION**         BdsLoadOption
   )
 {
-  EFI_STATUS        Status;
-  BDS_LOAD_OPTION   *BootOption;
-  CHAR16            BootVariableName[9];
-  UINT16            *BootOrder;
-  UINTN             BootOrderSize;
+  EFI_STATUS                    Status;
+  BDS_LOAD_OPTION_ENTRY*        BootOptionEntry;
+  BDS_LOAD_OPTION*              BootOption;
+  CHAR16                        BootVariableName[9];
+  UINT16*                       BootOrder;
+  UINTN                         BootOrderSize;
 
   //
   // Allocate and fill the memory for the BDS Load Option structure
   //
-  BootOption = (BDS_LOAD_OPTION*)AllocateZeroPool(sizeof(BDS_LOAD_OPTION));
+  BootOptionEntry = (BDS_LOAD_OPTION_ENTRY*)AllocatePool (sizeof (BDS_LOAD_OPTION_ENTRY));
+  InitializeListHead (&BootOptionEntry->Link);
+  BootOptionEntry->BdsLoadOption = (BDS_LOAD_OPTION*)AllocateZeroPool (sizeof(BDS_LOAD_OPTION));
 
-  InitializeListHead (&BootOption->Link);
+  BootOption = BootOptionEntry->BdsLoadOption;
   BootOptionSetFields (BootOption, Attributes, BootDescription, DevicePath, BootType, BootArguments);
 
   //
@@ -339,12 +296,12 @@ BootOptionCreate (
 
 EFI_STATUS
 BootOptionUpdate (
-  IN  BDS_LOAD_OPTION *BdsLoadOption,
-  IN  UINT32 Attributes,
-  IN  CHAR16* BootDescription,
+  IN  BDS_LOAD_OPTION*          BdsLoadOption,
+  IN  UINT32                    Attributes,
+  IN  CHAR16*                   BootDescription,
   IN  EFI_DEVICE_PATH_PROTOCOL* DevicePath,
-  IN  BDS_LOADER_TYPE   BootType,
-  IN  CHAR8*            BootArguments
+  IN  ARM_BDS_LOADER_TYPE       BootType,
+  IN  ARM_BDS_LOADER_ARGUMENTS* BootArguments
   )
 {
   EFI_STATUS      Status;
@@ -372,17 +329,11 @@ BootOptionDelete (
   IN  BDS_LOAD_OPTION *BootOption
   )
 {
-  UINTN Index;
-  UINTN BootOrderSize;
-  UINT16* BootOrder;
-  UINTN BootOrderCount;
-  EFI_STATUS  Status;
-
-  // If the Boot Optiono was attached to a list remove it
-  if (!IsListEmpty (&BootOption->Link)) {
-    // Remove the entry from the list
-    RemoveEntryList (&BootOption->Link);
-  }
+  UINTN         Index;
+  UINTN         BootOrderSize;
+  UINT16*       BootOrder;
+  UINTN         BootOrderCount;
+  EFI_STATUS    Status;
 
   // Remove the entry from the BootOrder environment variable
   Status = GetEnvironmentVariable (L"BootOrder", NULL, &BootOrderSize, (VOID**)&BootOrder);

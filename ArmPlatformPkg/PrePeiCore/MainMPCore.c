@@ -12,13 +12,11 @@
 *
 **/
 
-#include <Library/ArmMPCoreMailBoxLib.h>
-#include <Chipset/ArmV7.h>
-#include <Drivers/PL390Gic.h>
+#include <Library/ArmGicLib.h>
+
+#include <Ppi/ArmMpCoreInfo.h>
 
 #include "PrePeiCore.h"
-
-extern EFI_PEI_PPI_DESCRIPTOR *gSecPpiTable;
 
 /*
  * This is the main function for secondary cores. They loop around until a non Null value is written to
@@ -32,26 +30,66 @@ extern EFI_PEI_PPI_DESCRIPTOR *gSecPpiTable;
 VOID
 EFIAPI
 SecondaryMain (
-  IN UINTN CoreId
+  IN UINTN MpId
   )
 {
-  // Function pointer to Secondary Core entry point
-  VOID (*secondary_start)(VOID);
-  UINTN secondary_entry_addr=0;
+  EFI_STATUS              Status;
+  UINTN                   PpiListSize;
+  UINTN                   PpiListCount;
+  EFI_PEI_PPI_DESCRIPTOR  *PpiList;
+  ARM_MP_CORE_INFO_PPI    *ArmMpCoreInfoPpi;
+  UINTN                   Index;
+  UINTN                   ArmCoreCount;
+  ARM_CORE_INFO           *ArmCoreInfoTable;
+  UINT32                  ClusterId;
+  UINT32                  CoreId;
+  VOID                    (*SecondaryStart)(VOID);
+  UINTN                   SecondaryEntryAddr;
 
-  // Clear Secondary cores MailBox
-  ArmClearMPCoreMailbox();
+  ClusterId = GET_CLUSTER_ID(MpId);
+  CoreId    = GET_CORE_ID(MpId);
 
-  while (secondary_entry_addr = ArmGetMPCoreMailbox(), secondary_entry_addr == 0) {
-    ArmCallWFI();
-    // Acknowledge the interrupt and send End of Interrupt signal.
-    PL390GicAcknowledgeSgiFrom(PcdGet32(PcdGicInterruptInterfaceBase),0/*CoreId*/);
+  // Get the gArmMpCoreInfoPpiGuid
+  PpiListSize = 0;
+  ArmPlatformGetPlatformPpiList (&PpiListSize, &PpiList);
+  PpiListCount = PpiListSize / sizeof(EFI_PEI_PPI_DESCRIPTOR);
+  for (Index = 0; Index < PpiListCount; Index++, PpiList++) {
+    if (CompareGuid (PpiList->Guid, &gArmMpCoreInfoPpiGuid) == TRUE) {
+      break;
+    }
   }
 
-  secondary_start = (VOID (*)())secondary_entry_addr;
+  // On MP Core Platform we must implement the ARM MP Core Info PPI
+  ASSERT (Index != PpiListCount);
+
+  ArmMpCoreInfoPpi = PpiList->Ppi;
+  ArmCoreCount = 0;
+  Status = ArmMpCoreInfoPpi->GetMpCoreInfo (&ArmCoreCount, &ArmCoreInfoTable);
+  ASSERT_EFI_ERROR (Status);
+
+  // Find the core in the ArmCoreTable
+  for (Index = 0; Index < ArmCoreCount; Index++) {
+    if ((ArmCoreInfoTable[Index].ClusterId == ClusterId) && (ArmCoreInfoTable[Index].CoreId == CoreId)) {
+      break;
+    }
+  }
+
+  // The ARM Core Info Table must define every core
+  ASSERT (Index != ArmCoreCount);
+
+  // Clear Secondary cores MailBox
+  MmioWrite32 (ArmCoreInfoTable[Index].MailboxClearAddress, ArmCoreInfoTable[Index].MailboxClearValue);
+
+  SecondaryEntryAddr = 0;
+  while (SecondaryEntryAddr = MmioRead32 (ArmCoreInfoTable[Index].MailboxGetAddress), SecondaryEntryAddr == 0) {
+    ArmCallWFI ();
+    // Acknowledge the interrupt and send End of Interrupt signal.
+    ArmGicAcknowledgeSgiFrom (PcdGet32(PcdGicInterruptInterfaceBase), PRIMARY_CORE_ID);
+  }
 
   // Jump to secondary core entry point.
-  secondary_start();
+  SecondaryStart = (VOID (*)())SecondaryEntryAddr;
+  SecondaryStart();
 
   // The secondaries shouldn't reach here
   ASSERT(FALSE);
@@ -64,15 +102,27 @@ PrimaryMain (
   )
 {
   EFI_SEC_PEI_HAND_OFF        SecCoreData;
+  UINTN                       PpiListSize;
+  EFI_PEI_PPI_DESCRIPTOR      *PpiList;
+  UINTN                       TemporaryRamBase;
+  UINTN                       TemporaryRamSize;
 
-  //Enable the GIC Distributor
-  PL390GicEnableDistributor(PcdGet32(PcdGicDistributorBase));
+  CreatePpiList (&PpiListSize, &PpiList);
+
+  // Enable the GIC Distributor
+  ArmGicEnableDistributor(PcdGet32(PcdGicDistributorBase));
 
   // If ArmVe has not been built as Standalone then we need to wake up the secondary cores
-  if (FeaturePcdGet(PcdSendSgiToBringUpSecondaryCores)) {
+  if (FeaturePcdGet (PcdSendSgiToBringUpSecondaryCores)) {
     // Sending SGI to all the Secondary CPU interfaces
-    PL390GicSendSgiTo (PcdGet32(PcdGicDistributorBase), GIC_ICDSGIR_FILTER_EVERYONEELSE, 0x0E);
+    ArmGicSendSgiTo (PcdGet32(PcdGicDistributorBase), ARM_GIC_ICDSGIR_FILTER_EVERYONEELSE, 0x0E);
   }
+
+  // Adjust the Temporary Ram as the new Ppi List (Common + Platform Ppi Lists) is created at
+  // the base of the primary core stack
+  PpiListSize = ALIGN_VALUE(PpiListSize, 0x4);
+  TemporaryRamBase = (UINTN)PcdGet32 (PcdCPUCoresStackBase) + PpiListSize;
+  TemporaryRamSize = (UINTN)PcdGet32 (PcdCPUCorePrimaryStackSize) - PpiListSize;
 
   //
   // Bind this information into the SEC hand-off state
@@ -80,15 +130,15 @@ PrimaryMain (
   // Note also:  HOBs (pei temp ram) MUST be above stack
   //
   SecCoreData.DataSize               = sizeof(EFI_SEC_PEI_HAND_OFF);
-  SecCoreData.BootFirmwareVolumeBase = (VOID *)(UINTN)PcdGet32 (PcdNormalFvBaseAddress);
-  SecCoreData.BootFirmwareVolumeSize = PcdGet32 (PcdNormalFvSize);
-  SecCoreData.TemporaryRamBase       = (VOID *)(UINTN)PcdGet32 (PcdCPUCoresNonSecStackBase); // We consider we run on the primary core (and so we use the first stack)
-  SecCoreData.TemporaryRamSize       = (UINTN)(UINTN)PcdGet32 (PcdCPUCoresNonSecStackSize);
-  SecCoreData.PeiTemporaryRamBase    = (VOID *)((UINTN)(SecCoreData.TemporaryRamBase) + (SecCoreData.TemporaryRamSize / 2));
+  SecCoreData.BootFirmwareVolumeBase = (VOID *)(UINTN)PcdGet32 (PcdFvBaseAddress);
+  SecCoreData.BootFirmwareVolumeSize = PcdGet32 (PcdFvSize);
+  SecCoreData.TemporaryRamBase       = (VOID *)TemporaryRamBase; // We run on the primary core (and so we use the first stack)
+  SecCoreData.TemporaryRamSize       = TemporaryRamSize;
+  SecCoreData.PeiTemporaryRamBase    = SecCoreData.TemporaryRamBase;
   SecCoreData.PeiTemporaryRamSize    = SecCoreData.TemporaryRamSize / 2;
-  SecCoreData.StackBase              = SecCoreData.TemporaryRamBase;
-  SecCoreData.StackSize              = SecCoreData.TemporaryRamSize - SecCoreData.PeiTemporaryRamSize;
+  SecCoreData.StackBase              = (VOID *)((UINTN)(SecCoreData.TemporaryRamBase) + (SecCoreData.TemporaryRamSize/2));
+  SecCoreData.StackSize              = SecCoreData.TemporaryRamSize / 2;
 
   // Jump to PEI core entry point
-  (PeiCoreEntryPoint)(&SecCoreData, (VOID *)&gSecPpiTable);
+  (PeiCoreEntryPoint)(&SecCoreData, PpiList);
 }

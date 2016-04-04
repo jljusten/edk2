@@ -20,58 +20,32 @@
 #include <Drivers/PL341Dmc.h>
 #include <Drivers/SP804Timer.h>
 
+#include <Ppi/ArmMpCoreInfo.h>
+
 #include <ArmPlatform.h>
 
-/**
-  Return if Trustzone is supported by your platform
+ARM_CORE_INFO mRealViewEbMpCoreInfoTable[] = {
+  {
+    // Cluster 0, Core 0
+    0x0, 0x0,
 
-  A non-zero value must be returned if you want to support a Secure World on your platform.
-  ArmPlatformTrustzoneInit() will later set up the secure regions.
-  This function can return 0 even if Trustzone is supported by your processor. In this case,
-  the platform will continue to run in Secure World.
+    // MP Core MailBox Set/Get/Clear Addresses and Clear Value
+    (EFI_PHYSICAL_ADDRESS)ARM_EB_SYS_FLAGS_REG,
+    (EFI_PHYSICAL_ADDRESS)ARM_EB_SYS_FLAGS_SET_REG,
+    (EFI_PHYSICAL_ADDRESS)ARM_EB_SYS_FLAGS_CLR_REG,
+    (UINT64)0xFFFFFFFF
+  },
+  {
+    // Cluster 0, Core 1
+    0x0, 0x1,
 
-  @return   A non-zero value if Trustzone supported.
-
-**/
-UINTN
-ArmPlatformTrustzoneSupported (
-  VOID
-  )
-{
-  // There is no Trustzone controllers (TZPC & TZASC) and no Secure Memory on RTSM
-  return FALSE;
-}
-
-/**
-  Initialize the Secure peripherals and memory regions
-
-  If Trustzone is supported by your platform then this function makes the required initialization
-  of the secure peripherals and memory regions.
-
-**/
-VOID
-ArmPlatformTrustzoneInit (
-  VOID
-  )
-{
-  ASSERT(FALSE);
-}
-
-/**
-  Remap the memory at 0x0
-
-  Some platform requires or gives the ability to remap the memory at the address 0x0.
-  This function can do nothing if this feature is not relevant to your platform.
-
-**/
-VOID
-ArmPlatformBootRemapping (
-  VOID
-  )
-{
-  // Disable memory remapping and return to normal mapping
-  MmioOr32 (ARM_EB_SYSCTRL, BIT8); //EB_SP810_CTRL_BASE
-}
+    // MP Core MailBox Set/Get/Clear Addresses and Clear Value
+    (EFI_PHYSICAL_ADDRESS)ARM_EB_SYS_FLAGS_REG,
+    (EFI_PHYSICAL_ADDRESS)ARM_EB_SYS_FLAGS_SET_REG,
+    (EFI_PHYSICAL_ADDRESS)ARM_EB_SYS_FLAGS_CLR_REG,
+    (UINT64)0xFFFFFFFF
+  }
+};
 
 /**
   Return the current Boot Mode
@@ -88,20 +62,6 @@ ArmPlatformGetBootMode (
 }
 
 /**
-  Initialize controllers that must setup at the early stage
-
-  Some peripherals must be initialized in Secure World.
-  For example, some L2x0 requires to be initialized in Secure World
-
-**/
-VOID
-ArmPlatformSecInitialize (
-  VOID
-  ) {
-  // Do nothing yet
-}
-
-/**
   Initialize controllers that must setup in the normal world
 
   This function is called by the ArmPlatformPkg/PrePi or ArmPlatformPkg/PlatformPei
@@ -113,6 +73,9 @@ ArmPlatformNormalInitialize (
   VOID
   )
 {
+  // Disable memory remapping and return to normal mapping
+  MmioOr32 (ARM_EB_SYSCTRL, BIT8); //EB_SP810_CTRL_BASE
+
   // Configure periodic timer (TIMER0) for 1MHz operation
   MmioOr32 (SP810_CTRL_BASE + SP810_SYS_CTRL_REG, SP810_SYS_CTRL_TIMER0_TIMCLK);
   // Configure 1MHz clock
@@ -136,3 +99,41 @@ ArmPlatformInitializeSystemMemory (
 {
   // We do not need to initialize the System Memory on RTSM
 }
+
+EFI_STATUS
+PrePeiCoreGetMpCoreInfo (
+  OUT UINTN                   *CoreCount,
+  OUT ARM_CORE_INFO           **ArmCoreTable
+  )
+{
+  if ((MmioRead32 (ARM_EB_SYS_PROCID0_REG) & ARM_EB_SYS_PROC_ID_MASK) == ARM_EB_SYS_PROC_ID_CORTEX_A9) {
+    *CoreCount    = sizeof(mRealViewEbMpCoreInfoTable) / sizeof(ARM_CORE_INFO);
+    *ArmCoreTable = mRealViewEbMpCoreInfoTable;
+    return EFI_SUCCESS;
+  } else {
+    return EFI_UNSUPPORTED;
+  }
+}
+
+// Needs to be declared in the file. Otherwise gArmMpCoreInfoPpiGuid is undefined in the contect of PrePeiCore
+EFI_GUID mArmMpCoreInfoPpiGuid = ARM_MP_CORE_INFO_PPI_GUID;
+ARM_MP_CORE_INFO_PPI mMpCoreInfoPpi = { PrePeiCoreGetMpCoreInfo };
+
+EFI_PEI_PPI_DESCRIPTOR      gPlatformPpiTable[] = {
+  {
+    EFI_PEI_PPI_DESCRIPTOR_PPI,
+    &mArmMpCoreInfoPpiGuid,
+    &mMpCoreInfoPpi
+  }
+};
+
+VOID
+ArmPlatformGetPlatformPpiList (
+  OUT UINTN                   *PpiListSize,
+  OUT EFI_PEI_PPI_DESCRIPTOR  **PpiList
+  )
+{
+  *PpiListSize = sizeof(gPlatformPpiTable);
+  *PpiList = gPlatformPpiTable;
+}
+

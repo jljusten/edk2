@@ -341,6 +341,7 @@ FindStringBlock (
       for (Index = 0; Index < StringCount; Index++) {
         BlockSize += AsciiStrSize ((CHAR8 *) StringTextPtr);
         if (CurrentStringId == StringId) {
+          ASSERT (BlockType != NULL && StringBlockAddr != NULL && StringTextOffset != NULL);
           *BlockType        = *BlockHdr;
           *StringBlockAddr  = BlockHdr;
           *StringTextOffset = StringTextPtr - BlockHdr;
@@ -363,6 +364,7 @@ FindStringBlock (
       for (Index = 0; Index < StringCount; Index++) {
         BlockSize += AsciiStrSize ((CHAR8 *) StringTextPtr);
         if (CurrentStringId == StringId) {
+          ASSERT (BlockType != NULL && StringBlockAddr != NULL && StringTextOffset != NULL);
           *BlockType        = *BlockHdr;
           *StringBlockAddr  = BlockHdr;
           *StringTextOffset = StringTextPtr - BlockHdr;
@@ -406,6 +408,7 @@ FindStringBlock (
         GetUnicodeStringTextOrSize (NULL, StringTextPtr, &StringSize);
         BlockSize += StringSize;
         if (CurrentStringId == StringId) {
+          ASSERT (BlockType != NULL && StringBlockAddr != NULL && StringTextOffset != NULL);
           *BlockType        = *BlockHdr;
           *StringBlockAddr  = BlockHdr;
           *StringTextOffset = StringTextPtr - BlockHdr;
@@ -429,6 +432,7 @@ FindStringBlock (
         GetUnicodeStringTextOrSize (NULL, StringTextPtr, &StringSize);
         BlockSize += StringSize;
         if (CurrentStringId == StringId) {
+          ASSERT (BlockType != NULL && StringBlockAddr != NULL && StringTextOffset != NULL);
           *BlockType        = *BlockHdr;
           *StringBlockAddr  = BlockHdr;
           *StringTextOffset = StringTextPtr - BlockHdr;
@@ -572,7 +576,7 @@ FindStringBlock (
   //
   // Get last string ID
   //
-  if (StringId == (EFI_STRING_ID) (-1)) {
+  if (StringId == (EFI_STRING_ID) (-1) && LastStringId != NULL) {
     *LastStringId = (EFI_STRING_ID) (CurrentStringId - 1);
     return EFI_SUCCESS;
   }
@@ -1956,6 +1960,31 @@ HiiGetSecondaryLanguages (
 }
 
 /**
+  Converts the ascii character of the string from uppercase to lowercase.
+  This is a internal function.
+
+  @param ConfigString  String to be converted
+
+**/
+VOID
+EFIAPI
+AsciiHiiToLower (
+  IN CHAR8  *ConfigString
+  )
+{
+  ASSERT (ConfigString != NULL);
+
+  //
+  // Convert all hex digits in range [A-F] in the configuration header to [a-f]
+  //
+  for (; *ConfigString != '\0'; ConfigString++) {
+    if ( *ConfigString >= 'A' && *ConfigString <= 'Z') {
+      *ConfigString = (CHAR8) (*ConfigString - 'A' + 'a');
+    }
+  }
+}
+
+/**
   Compare whether two names of languages are identical.
 
   @param  Language1              Name of language 1 from StringPackage
@@ -1972,18 +2001,39 @@ HiiCompareLanguage (
   )
 {
   UINTN  Index;
+  UINTN  StrLen;
+  CHAR8  *Lan1;
+  CHAR8  *Lan2;
+
+  //
+  // Convert to lower to compare.
+  //
+  StrLen = AsciiStrSize (Language1);
+  Lan1   = AllocateZeroPool (StrLen);
+  ASSERT (Lan1 != NULL);
+  AsciiStrCpy(Lan1, Language1);
+  AsciiHiiToLower (Lan1);
+
+  StrLen = AsciiStrSize (Language2);
+  Lan2   = AllocateZeroPool (StrLen);
+  ASSERT (Lan2 != NULL);
+  AsciiStrCpy(Lan2, Language2);
+  AsciiHiiToLower (Lan2);
 
   //
   // Compare the Primary Language in Language1 to Language2
   //
-  for (Index = 0; Language1[Index] != 0 && Language1[Index] != ';'; Index++) {
-    if (Language1[Index] != Language2[Index]) {
+  for (Index = 0; Lan1[Index] != 0 && Lan1[Index] != ';'; Index++) {
+    if (Lan1[Index] != Lan2[Index]) {
       //
       // Return FALSE if any characters are different.
       //
       return FALSE;
     }
   }
+
+  FreePool (Lan1);
+  FreePool (Lan2);
 
   //
   // Only return TRUE if Language2[Index] is a Null-terminator which means

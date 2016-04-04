@@ -44,24 +44,27 @@
   DebugAgentLib
   IoLib
   PrintLib
+  SerialPortLib
 
 [Ppis]
   gEfiTemporaryRamSupportPpiGuid
+  gArmGlobalVariablePpiGuid
 
 [FeaturePcd]
   gArmPlatformTokenSpaceGuid.PcdSendSgiToBringUpSecondaryCores
 
 [FixedPcd]
-  gArmTokenSpaceGuid.PcdNormalFvBaseAddress
-  gArmTokenSpaceGuid.PcdNormalFvSize
+  gArmTokenSpaceGuid.PcdFvBaseAddress
+  gArmTokenSpaceGuid.PcdFvSize
 
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresNonSecStackBase
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresNonSecStackSize
+  gArmTokenSpaceGuid.PcdArmPrimaryCoreMask
+  gArmTokenSpaceGuid.PcdArmPrimaryCore
+
+  gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase
+  gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize
+  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecondaryStackSize
   
   gArmPlatformTokenSpaceGuid.PcdPeiGlobalVariableSize
   
   gArmTokenSpaceGuid.PcdGicDistributorBase
   gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase
-
-  gArmTokenSpaceGuid.PcdNormalFvBaseAddress
-  gArmTokenSpaceGuid.PcdNormalFvSize

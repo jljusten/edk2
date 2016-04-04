@@ -16,10 +16,6 @@
 
 STATIC CONST CHAR16 mFileName[] = L"Debug1Commands";
 EFI_HANDLE gShellDebug1HiiHandle = NULL;
-CONST EFI_GUID gShellDebug1HiiGuid = \
-  { \
-    0x25f200aa, 0xd3cb, 0x470a, { 0xbf, 0x51, 0xe7, 0xd1, 0x62, 0xd2, 0x2e, 0x6f } \
-  };
 
 /**
   Gets the debug file name.  This will be used if HII is not working.
@@ -226,8 +222,8 @@ CharToUpper (
   Function returns a system configuration table that is stored in the
   EFI System Table based on the provided GUID.
 
-  @param[in]  TableGuid    A pointer to the table's GUID type.
-  @param[in,out] Table     On exit, a pointer to a system configuration table.
+  @param[in]  TableGuid     A pointer to the table's GUID type.
+  @param[in, out] Table     On exit, a pointer to a system configuration table.
 
   @retval EFI_SUCCESS      A configuration table matching TableGuid was found.
   @retval EFI_NOT_FOUND    A configuration table matching TableGuid was not found.
@@ -281,8 +277,8 @@ HexCharToUintn (
 /**
   Convert a string representation of a guid to a Guid value.
 
-  @param[in] StringGuid   The pointer to the string of a guid.
-  @param[in,out] Guid     The pointer to the GUID structure to populate.
+  @param[in] StringGuid    The pointer to the string of a guid.
+  @param[in, out] Guid     The pointer to the GUID structure to populate.
 
   @retval EFI_INVALID_PARAMETER   A parameter was invalid.
   @retval EFI_SUCCESS             The conversion was successful.
@@ -307,6 +303,9 @@ ConvertStringToGuid (
   } 
   TempCopy = NULL;
   TempCopy = StrnCatGrow(&TempCopy, NULL, StringGuid, 0);
+  if (TempCopy == NULL) {
+    return (EFI_OUT_OF_RESOURCES);
+  }
   Walker   = TempCopy;
   TempSpot = StrStr(Walker, L"-");
   if (TempSpot != NULL) {
@@ -368,52 +367,6 @@ ConvertStringToGuid (
   return (EFI_SUCCESS);
 }
 
-CHAR16  TempBufferCatSPrint[1000];
-/** 
-  Appends a formatted Unicode string to a Null-terminated Unicode string
- 
-  This function appends a formatted Unicode string to the Null-terminated 
-  Unicode string specified by String.   String is optional and may be NULL.
-  Storage for the formatted Unicode string returned is allocated using 
-  AllocateZeroPool().  The pointer to the appended string is returned.  The caller
-  is responsible for freeing the returned string.
- 
-  If String is not NULL and not aligned on a 16-bit boundary, then ASSERT().
-  If Format is NULL, then ASSERT().
-  If Format is not aligned on a 16-bit boundary, then ASSERT().
- 
-  @param String   A null-terminated Unicode string.
-  @param FormatString  A null-terminated Unicode format string.
-  @param ...      The variable argument list whose contents are accessed based 
-                  on the format string specified by Format.
-
-  @retval NULL    There was not enough available memory.
-  @return         Null terminated Unicode string is that is the formatted 
-                  string appended to String.
-  @sa CatVSPrint
-**/
-CHAR16*
-EFIAPI
-CatSPrint (
-  IN  CONST CHAR16  *String OPTIONAL,
-  IN  CONST CHAR16  *FormatString,
-  ...
-  )
-{
-  VA_LIST Marker;
-  UINTN   StringLength;
-  if (String != NULL) {
-    StrCpy(TempBufferCatSPrint, String);
-  } else {
-    *TempBufferCatSPrint = CHAR_NULL;
-  }
-  VA_START (Marker, FormatString);
-  StringLength = StrLen(TempBufferCatSPrint);
-
-  UnicodeVSPrint(TempBufferCatSPrint+StrLen(TempBufferCatSPrint), 1000-StringLength, FormatString, Marker);
-  return (AllocateCopyPool(StrSize(TempBufferCatSPrint), TempBufferCatSPrint));
-}
-
 /**
   Clear the line at the specified Row.
   
@@ -472,7 +425,7 @@ IsValidFileNameChar (
   //
   // See if there are any illegal characters within the name
   //
-  if (Ch < 0x20 || Ch == L'\"' || Ch == L'*' || Ch == L'/' || Ch == L'<' || Ch == L'>' || Ch == L'?' || Ch == L'|' || Ch == L' ') {
+  if (Ch < 0x20 || Ch == L'\"' || Ch == L'*' || Ch == L'/' || Ch == L'<' || Ch == L'>' || Ch == L'?' || Ch == L'|') {
     return FALSE;
   }
 

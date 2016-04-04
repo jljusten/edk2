@@ -18,11 +18,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #define DISPLAY_ONLY_MY_ITEM  0x0002
 
-EFI_GUID   mFormSetGuid = FORMSET_GUID;
-EFI_GUID   mInventoryGuid = INVENTORY_GUID;
-EFI_GUID   MyEventGroupGuid = EFI_IFR_REFRESH_ID_OP_GUID;
-
 CHAR16     VariableName[] = L"MyIfrNVData";
+CHAR16     MyEfiVar[] = L"MyEfiVar";
 EFI_HANDLE                      DriverHandle[2] = {NULL, NULL};
 DRIVER_SAMPLE_PRIVATE_DATA      *PrivateData = NULL;
 EFI_EVENT                       mEvent;
@@ -37,10 +34,7 @@ HII_VENDOR_DEVICE_PATH  mHiiVendorDevicePath0 = {
         (UINT8) ((sizeof (VENDOR_DEVICE_PATH)) >> 8)
       }
     },
-    //
-    // {C153B68D-EBFC-488e-B110-662867745B87}
-    //
-    { 0xc153b68d, 0xebfc, 0x488e, { 0xb1, 0x10, 0x66, 0x28, 0x67, 0x74, 0x5b, 0x87 } }
+    DRIVER_SAMPLE_FORMSET_GUID
   },
   {
     END_DEVICE_PATH_TYPE,
@@ -62,10 +56,7 @@ HII_VENDOR_DEVICE_PATH  mHiiVendorDevicePath1 = {
         (UINT8) ((sizeof (VENDOR_DEVICE_PATH)) >> 8)
       }
     },
-    //
-    // {06F37F07-0C48-40e9-8436-0A08A0BB76B0}
-    //
-    { 0x6f37f07, 0xc48, 0x40e9, { 0x84, 0x36, 0xa, 0x8, 0xa0, 0xbb, 0x76, 0xb0 } }
+    DRIVER_SAMPLE_INVENTORY_GUID
   },
   {
     END_DEVICE_PATH_TYPE,
@@ -292,7 +283,7 @@ ValidatePassword (
   BufferSize = sizeof (DRIVER_SAMPLE_CONFIGURATION);
   Status = gRT->GetVariable (
                   VariableName,
-                  &mFormSetGuid,
+                  &gDriverSampleFormSetGuid,
                   NULL,
                   &BufferSize,
                   &PrivateData->Configuration
@@ -385,7 +376,7 @@ SetPassword (
   BufferSize = sizeof (DRIVER_SAMPLE_CONFIGURATION);
   Status = gRT->GetVariable (
                   VariableName,
-                  &mFormSetGuid,
+                  &gDriverSampleFormSetGuid,
                   NULL,
                   &BufferSize,
                   &PrivateData->Configuration
@@ -417,7 +408,7 @@ SetPassword (
   //
   Configuration = AllocateZeroPool (sizeof (DRIVER_SAMPLE_CONFIGURATION));
   ASSERT (Configuration != NULL);
-  if (HiiGetBrowserData (&mFormSetGuid, VariableName, sizeof (DRIVER_SAMPLE_CONFIGURATION), (UINT8 *) Configuration)) {
+  if (HiiGetBrowserData (&gDriverSampleFormSetGuid, VariableName, sizeof (DRIVER_SAMPLE_CONFIGURATION), (UINT8 *) Configuration)) {
     //
     // Update password's clear text in the screen
     //
@@ -427,7 +418,7 @@ SetPassword (
     // Update uncommitted data of Browser
     //
     HiiSetBrowserData (
-       &mFormSetGuid,
+       &gDriverSampleFormSetGuid,
        VariableName,
        sizeof (DRIVER_SAMPLE_CONFIGURATION),
        (UINT8 *) Configuration,
@@ -447,7 +438,7 @@ SetPassword (
   EncodePassword (Password, StrLen (Password) * 2);
   Status = gRT->SetVariable(
                   VariableName,
-                  &mFormSetGuid,
+                  &gDriverSampleFormSetGuid,
                   EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
                   sizeof (DRIVER_SAMPLE_CONFIGURATION),
                   &PrivateData->Configuration
@@ -671,7 +662,6 @@ AppendAltCfgString (
   )
 {
   EFI_STRING                          StringPtr;
-  EFI_STRING                          TmpPtr;
   UINTN                               Length;
   UINT8                               *TmpBuffer;
   UINTN                               Offset;
@@ -692,11 +682,6 @@ AppendAltCfgString (
   }
 
   while (*StringPtr != 0 && StrnCmp (StringPtr, L"OFFSET=", StrLen (L"OFFSET=")) == 0) {
-    //
-    // Back up the header of one <BlockName>
-    //
-    TmpPtr = StringPtr;
-
     StringPtr += StrLen (L"OFFSET=");
     //
     // Get Offset
@@ -833,7 +818,7 @@ ExtractConfig (
   BufferSize = sizeof (DRIVER_SAMPLE_CONFIGURATION);
   Status = gRT->GetVariable (
             VariableName,
-            &mFormSetGuid,
+            &gDriverSampleFormSetGuid,
             NULL,
             &BufferSize,
             &PrivateData->Configuration
@@ -851,7 +836,7 @@ ExtractConfig (
     // Allocate and fill a buffer large enough to hold the <ConfigHdr> template
     // followed by "&OFFSET=0&WIDTH=WWWWWWWWWWWWWWWW" followed by a Null-terminator
     //
-    ConfigRequestHdr = HiiConstructConfigHdr (&mFormSetGuid, VariableName, PrivateData->DriverHandle[0]);
+    ConfigRequestHdr = HiiConstructConfigHdr (&gDriverSampleFormSetGuid, VariableName, PrivateData->DriverHandle[0]);
     Size = (StrLen (ConfigRequestHdr) + 32 + 1) * sizeof (CHAR16);
     ConfigRequest = AllocateZeroPool (Size);
     ASSERT (ConfigRequest != NULL);
@@ -864,8 +849,15 @@ ExtractConfig (
     // Check routing data in <ConfigHdr>.
     // Note: if only one Storage is used, then this checking could be skipped.
     //
-    if (!HiiIsConfigHdrMatch (Request, &mFormSetGuid, NULL)) {
+    if (!HiiIsConfigHdrMatch (Request, &gDriverSampleFormSetGuid, NULL)) {
       return EFI_NOT_FOUND;
+    }
+    //
+    // Check whether request for EFI Varstore. EFI varstore get data
+    // through hii database, not support in this path.
+    //
+    if (HiiIsConfigHdrMatch(Request, &gDriverSampleFormSetGuid, MyEfiVar)) {
+      return EFI_UNSUPPORTED;
     }
     //
     // Set Request to the unified request string.
@@ -988,7 +980,7 @@ ExtractConfig (
                                   Progress
                                   );
     if (!EFI_ERROR (Status)) {
-      ConfigRequestHdr = HiiConstructConfigHdr (&mFormSetGuid, VariableName, PrivateData->DriverHandle[0]);
+      ConfigRequestHdr = HiiConstructConfigHdr (&gDriverSampleFormSetGuid, VariableName, PrivateData->DriverHandle[0]);
       AppendAltCfgString(Results, ConfigRequestHdr);
     }
   }
@@ -1066,8 +1058,16 @@ RouteConfig (
   // Check routing data in <ConfigHdr>.
   // Note: if only one Storage is used, then this checking could be skipped.
   //
-  if (!HiiIsConfigHdrMatch (Configuration, &mFormSetGuid, NULL)) {
+  if (!HiiIsConfigHdrMatch (Configuration, &gDriverSampleFormSetGuid, NULL)) {
     return EFI_NOT_FOUND;
+  }
+
+  //
+  // Check whether request for EFI Varstore. EFI varstore get data
+  // through hii database, not support in this path.
+  //
+  if (HiiIsConfigHdrMatch(Configuration, &gDriverSampleFormSetGuid, MyEfiVar)) {
+    return EFI_UNSUPPORTED;
   }
 
   //
@@ -1076,7 +1076,7 @@ RouteConfig (
   BufferSize = sizeof (DRIVER_SAMPLE_CONFIGURATION);
   Status = gRT->GetVariable (
             VariableName,
-            &mFormSetGuid,
+            &gDriverSampleFormSetGuid,
             NULL,
             &BufferSize,
             &PrivateData->Configuration
@@ -1195,7 +1195,7 @@ RouteConfig (
     //
     Status = gRT->SetVariable(
       VariableName,
-      &mFormSetGuid,
+      &gDriverSampleFormSetGuid,
       EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
       sizeof (DRIVER_SAMPLE_CONFIGURATION),
       &PrivateData->Configuration
@@ -1224,7 +1224,7 @@ RouteConfig (
   //
   Status = gRT->SetVariable(
                   VariableName,
-                  &mFormSetGuid,
+                  &gDriverSampleFormSetGuid,
                   EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
                   sizeof (DRIVER_SAMPLE_CONFIGURATION),
                   &PrivateData->Configuration
@@ -1269,7 +1269,6 @@ DriverCallback (
 {
   DRIVER_SAMPLE_PRIVATE_DATA      *PrivateData;
   EFI_STATUS                      Status;
-  UINT8                           MyVar;
   VOID                            *StartOpCodeHandle;
   VOID                            *OptionsOpCodeHandle;
   EFI_IFR_GUID_LABEL              *StartLabel;
@@ -1277,7 +1276,7 @@ DriverCallback (
   EFI_IFR_GUID_LABEL              *EndLabel;
   EFI_INPUT_KEY                   Key;
   DRIVER_SAMPLE_CONFIGURATION     *Configuration;
-  UINTN                           MyVarSize;
+  MY_EFI_VARSTORE_DATA            *EfiData;
   EFI_FORM_ID                     FormId;
   
   if (((Value == NULL) && (Action != EFI_BROWSER_ACTION_FORM_OPEN) && (Action != EFI_BROWSER_ACTION_FORM_CLOSE))||
@@ -1325,7 +1324,7 @@ DriverCallback (
 
         HiiUpdateForm (
           PrivateData->HiiHandle[0],  // HII handle
-          &mFormSetGuid,              // Formset GUID
+          &gDriverSampleFormSetGuid,  // Formset GUID
           0x3,                        // Form ID
           StartOpCodeHandle,          // Label for where to insert opcodes
           NULL                        // Insert data
@@ -1370,21 +1369,14 @@ DriverCallback (
     
   case EFI_BROWSER_ACTION_RETRIEVE:
     {
-      if (QuestionId == 0x1111) {
-        //
-        // EfiVarstore question takes sample action (print value as debug information) 
-        // after read/write question.
-        //
-        MyVarSize = 1;
-        Status = gRT->GetVariable(
-                        L"MyVar",
-                        &mFormSetGuid,
-                        NULL,
-                        &MyVarSize,
-                        &MyVar
-                        );
-        ASSERT_EFI_ERROR (Status);
-        DEBUG ((DEBUG_INFO, "EfiVarstore question: Tall value is %d with value width %d\n", MyVar, MyVarSize));
+      if (QuestionId == 0x1248) {
+        {
+          if (Type != EFI_IFR_TYPE_REF) {
+            return EFI_INVALID_PARAMETER;
+          }
+        
+          Value->ref.FormId = 0x3;
+        }
       }
     }
     break;
@@ -1420,6 +1412,15 @@ DriverCallback (
   case EFI_BROWSER_ACTION_CHANGING:
   {
     switch (QuestionId) {
+    case 0x1249:
+      {
+        if (Type != EFI_IFR_TYPE_REF) {
+          return EFI_INVALID_PARAMETER;
+        }
+
+        Value->ref.FormId = 0x1234;
+      }
+    break;
     case 0x1234:
       //
       // Initialize the container for dynamic opcodes
@@ -1481,7 +1482,7 @@ DriverCallback (
       PrivateData->Configuration.DynamicOneof = 2;
       Status = gRT->SetVariable(
                       VariableName,
-                      &mFormSetGuid,
+                      &gDriverSampleFormSetGuid,
                       EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
                       sizeof (DRIVER_SAMPLE_CONFIGURATION),
                       &PrivateData->Configuration
@@ -1492,14 +1493,14 @@ DriverCallback (
       //
       Configuration = AllocateZeroPool (sizeof (DRIVER_SAMPLE_CONFIGURATION));
       ASSERT (Configuration != NULL);
-      if (HiiGetBrowserData (&mFormSetGuid, VariableName, sizeof (DRIVER_SAMPLE_CONFIGURATION), (UINT8 *) Configuration)) {
+      if (HiiGetBrowserData (&gDriverSampleFormSetGuid, VariableName, sizeof (DRIVER_SAMPLE_CONFIGURATION), (UINT8 *) Configuration)) {
         Configuration->DynamicOneof = 2;
 
         //
         // Update uncommitted data of Browser
         //
         HiiSetBrowserData (
-          &mFormSetGuid,
+          &gDriverSampleFormSetGuid,
           VariableName,
           sizeof (DRIVER_SAMPLE_CONFIGURATION),
           (UINT8 *) Configuration,
@@ -1578,7 +1579,7 @@ DriverCallback (
 
       HiiUpdateForm (
         PrivateData->HiiHandle[0],  // HII handle
-        &mFormSetGuid,              // Formset GUID
+        &gDriverSampleFormSetGuid,  // Formset GUID
         0x1234,                     // Form ID
         StartOpCodeHandle,          // Label for where to insert opcodes
         EndOpCodeHandle             // Replace data
@@ -1612,7 +1613,7 @@ DriverCallback (
         PrivateData->Configuration.DynamicRefresh++;
       } else if (QuestionId == 0x1247 ) {
         StartLabel->Number       = LABEL_UPDATE3;
-        FormId                   = 0x05;
+        FormId                   = 0x06;
         PrivateData->Configuration.RefreshGuidCount++;
       }
 
@@ -1627,7 +1628,7 @@ DriverCallback (
 
       HiiUpdateForm (
         PrivateData->HiiHandle[0],  // HII handle
-        &mFormSetGuid,              // Formset GUID
+        &gDriverSampleFormSetGuid,              // Formset GUID
         FormId,                        // Form ID
         StartOpCodeHandle,          // Label for where to insert opcodes
         NULL                        // Insert data
@@ -1640,7 +1641,7 @@ DriverCallback (
       //
       Status = gRT->SetVariable(
                       VariableName,
-                      &mFormSetGuid,
+                      &gDriverSampleFormSetGuid,
                       EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
                       sizeof (DRIVER_SAMPLE_CONFIGURATION),
                       &PrivateData->Configuration
@@ -1648,18 +1649,21 @@ DriverCallback (
 
       if (QuestionId == 0x5678) {
         //
-        // Change an EFI Variable storage (MyEfiVar) asynchronous, this will cause
-        // the first statement in Form 3 be suppressed
+        // Update uncommitted data of Browser
         //
-        MyVarSize = 1;
-        MyVar = 111;
-        Status = gRT->SetVariable(
-                        L"MyVar",
-                        &mFormSetGuid,
-                        EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
-                        MyVarSize,
-                        &MyVar
-                        );
+        EfiData = AllocateZeroPool (sizeof (MY_EFI_VARSTORE_DATA));
+        ASSERT (EfiData != NULL);
+        if (HiiGetBrowserData (&gDriverSampleFormSetGuid, MyEfiVar, sizeof (MY_EFI_VARSTORE_DATA), (UINT8 *) EfiData)) {
+          EfiData->Field8 = 111;
+          HiiSetBrowserData (
+            &gDriverSampleFormSetGuid,
+            MyEfiVar,
+            sizeof (MY_EFI_VARSTORE_DATA),
+            (UINT8 *) EfiData,
+            NULL
+            );
+        }
+        FreePool (EfiData);
       }
       break;
 
@@ -1741,21 +1745,6 @@ DriverCallback (
 
       break;
 
-    case 0x1111:
-      //
-      // EfiVarstore question takes sample action (print value as debug information) 
-      // after read/write question.
-      //
-      MyVarSize = 1;
-      Status = gRT->GetVariable(
-                      L"MyVar",
-                      &mFormSetGuid,
-                      NULL,
-                      &MyVarSize,
-                      &MyVar
-                      );
-      ASSERT_EFI_ERROR (Status);
-      DEBUG ((DEBUG_INFO, "EfiVarstore question: Tall value is %d with value width %d\n", MyVar, MyVarSize));
     default:
       break;
     }
@@ -1798,6 +1787,7 @@ DriverSampleInit (
   DRIVER_SAMPLE_CONFIGURATION     *Configuration;
   BOOLEAN                         ActionFlag;
   EFI_STRING                      ConfigRequestHdr;
+  MY_EFI_VARSTORE_DATA            *VarStoreConfig;
 
   //
   // Initialize the local variables.
@@ -1880,7 +1870,7 @@ DriverSampleInit (
   // Publish our HII data
   //
   HiiHandle[0] = HiiAddPackages (
-                   &mFormSetGuid,
+                   &gDriverSampleFormSetGuid,
                    DriverHandle[0],
                    DriverSampleStrings,
                    VfrBin,
@@ -1906,7 +1896,7 @@ DriverSampleInit (
   PrivateData->DriverHandle[1] = DriverHandle[1];
 
   HiiHandle[1] = HiiAddPackages (
-                   &mInventoryGuid,
+                   &gDriverSampleInventoryGuid,
                    DriverHandle[1],
                    DriverSampleStrings,
                    InventoryBin,
@@ -1948,18 +1938,18 @@ DriverSampleInit (
   //
   // Try to read NV config EFI variable first
   //
-  ConfigRequestHdr = HiiConstructConfigHdr (&mFormSetGuid, VariableName, DriverHandle[0]);
+  ConfigRequestHdr = HiiConstructConfigHdr (&gDriverSampleFormSetGuid, VariableName, DriverHandle[0]);
   ASSERT (ConfigRequestHdr != NULL);
 
   BufferSize = sizeof (DRIVER_SAMPLE_CONFIGURATION);
-  Status = gRT->GetVariable (VariableName, &mFormSetGuid, NULL, &BufferSize, Configuration);
+  Status = gRT->GetVariable (VariableName, &gDriverSampleFormSetGuid, NULL, &BufferSize, Configuration);
   if (EFI_ERROR (Status)) {
     //
     // Store zero data Buffer Storage to EFI variable
     //
     Status = gRT->SetVariable(
                     VariableName,
-                    &mFormSetGuid,
+                    &gDriverSampleFormSetGuid,
                     EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
                     sizeof (DRIVER_SAMPLE_CONFIGURATION),
                     Configuration
@@ -1978,7 +1968,44 @@ DriverSampleInit (
     ActionFlag = HiiValidateSettings (ConfigRequestHdr);
     ASSERT (ActionFlag);
   }
+  FreePool (ConfigRequestHdr);
 
+  //
+  // Initialize efi varstore configuration data
+  //
+  VarStoreConfig = &PrivateData->VarStoreConfig;
+  ZeroMem (VarStoreConfig, sizeof (MY_EFI_VARSTORE_DATA));
+
+  ConfigRequestHdr = HiiConstructConfigHdr (&gDriverSampleFormSetGuid, MyEfiVar, DriverHandle[0]);
+  ASSERT (ConfigRequestHdr != NULL);
+
+  BufferSize = sizeof (MY_EFI_VARSTORE_DATA);
+  Status = gRT->GetVariable (MyEfiVar, &gDriverSampleFormSetGuid, NULL, &BufferSize, VarStoreConfig);
+  if (EFI_ERROR (Status)) {
+    //
+    // Store zero data to EFI variable Storage.
+    //
+    Status = gRT->SetVariable(
+                    MyEfiVar,
+                    &gDriverSampleFormSetGuid,
+                    EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
+                    sizeof (MY_EFI_VARSTORE_DATA),
+                    VarStoreConfig
+                    );
+    ASSERT (Status == EFI_SUCCESS);
+    //
+    // EFI variable for NV config doesn't exit, we should build this variable
+    // based on default values stored in IFR
+    //
+    ActionFlag = HiiSetToDefaults (ConfigRequestHdr, EFI_HII_DEFAULT_CLASS_STANDARD);
+    ASSERT (ActionFlag);
+  } else {
+    //
+    // EFI variable does exist and Validate Current Setting
+    //
+    ActionFlag = HiiValidateSettings (ConfigRequestHdr);
+    ASSERT (ActionFlag);
+  }
   FreePool (ConfigRequestHdr);
 
   Status = gBS->CreateEventEx (
@@ -1986,7 +2013,7 @@ DriverSampleInit (
         TPL_NOTIFY,
         DriverSampleInternalEmptyFunction,
         NULL,
-        &MyEventGroupGuid,
+        &gEfiIfrRefreshIdOpGuid,
         &mEvent
         );
   ASSERT_EFI_ERROR (Status);

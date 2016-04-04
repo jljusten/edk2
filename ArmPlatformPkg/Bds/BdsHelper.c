@@ -15,61 +15,8 @@
 #include "BdsInternal.h"
 
 EFI_STATUS
-GetEnvironmentVariable (
-  IN     CONST CHAR16*   VariableName,
-  IN     VOID*           DefaultValue,
-  IN OUT UINTN*          Size,
-  OUT    VOID**          Value
-  )
-{
-  EFI_STATUS  Status;
-  UINTN       VariableSize;
-
-  // Try to get the variable size.
-  *Value = NULL;
-  VariableSize = 0;
-  Status = gRT->GetVariable ((CHAR16 *) VariableName, &gEfiGlobalVariableGuid, NULL, &VariableSize, *Value);
-  if (Status == EFI_NOT_FOUND) {
-    if ((DefaultValue != NULL) && (Size != NULL) && (*Size != 0)) {
-      // If the environment variable does not exist yet then set it with the default value
-      Status = gRT->SetVariable (
-                    (CHAR16*)VariableName,
-                    &gEfiGlobalVariableGuid,
-                    EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
-                    *Size,
-                    DefaultValue
-                    );
-      *Value = DefaultValue;
-    } else {
-      return EFI_NOT_FOUND;
-    }
-  } else if (Status == EFI_BUFFER_TOO_SMALL) {
-    // Get the environment variable value
-    *Value = AllocatePool (VariableSize);
-    if (*Value == NULL) {
-      return EFI_OUT_OF_RESOURCES;
-    }
-
-    Status = gRT->GetVariable ((CHAR16 *)VariableName, &gEfiGlobalVariableGuid, NULL, &VariableSize, *Value);
-    if (EFI_ERROR (Status)) {
-      FreePool(*Value);
-      return EFI_INVALID_PARAMETER;
-    }
-
-    if (Size) {
-      *Size = VariableSize;
-    }
-  } else {
-    *Value = DefaultValue;
-    return Status;
-  }
-
-  return EFI_SUCCESS;
-}
-
-EFI_STATUS
-EditHIInputAscii (
-  IN OUT CHAR8   *CmdLine,
+EditHIInputStr (
+  IN OUT CHAR16  *CmdLine,
   IN     UINTN   MaxCmdLine
   )
 {
@@ -79,9 +26,9 @@ EditHIInputAscii (
   EFI_INPUT_KEY   Key;
   EFI_STATUS      Status;
 
-  AsciiPrint (CmdLine);
+  Print (CmdLine);
 
-  for (CmdLineIndex = AsciiStrLen(CmdLine); CmdLineIndex < MaxCmdLine; ) {
+  for (CmdLineIndex = StrLen (CmdLine); CmdLineIndex < MaxCmdLine; ) {
     Status = gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &WaitIndex);
     ASSERT_EFI_ERROR (Status);
 
@@ -98,23 +45,61 @@ EditHIInputAscii (
 
     if ((Char == CHAR_LINEFEED) || (Char == CHAR_CARRIAGE_RETURN) || (Char == 0x7f)) {
       CmdLine[CmdLineIndex] = '\0';
-      AsciiPrint ("\n\r");
+      Print (L"\n\r");
 
       return EFI_SUCCESS;
-    } else if ((Char == '\b') || (Key.ScanCode == SCAN_LEFT) || (Key.ScanCode == SCAN_DELETE)){
+    } else if ((Key.UnicodeChar == L'\b') || (Key.ScanCode == SCAN_LEFT) || (Key.ScanCode == SCAN_DELETE)){
       if (CmdLineIndex != 0) {
         CmdLineIndex--;
-        AsciiPrint ("\b \b");
+        Print (L"\b \b");
       }
     } else if ((Key.ScanCode == SCAN_ESC) || (Char == 0x1B) || (Char == 0x0)) {
       return EFI_INVALID_PARAMETER;
     } else {
-      CmdLine[CmdLineIndex++] = Char;
-      AsciiPrint ("%c", Char);
+      CmdLine[CmdLineIndex++] = Key.UnicodeChar;
+      Print (L"%c", Key.UnicodeChar);
     }
   }
 
   return EFI_SUCCESS;
+}
+
+EFI_STATUS
+GetHIInputStr (
+  IN OUT CHAR16  *CmdLine,
+  IN     UINTN   MaxCmdLine
+  )
+{
+  EFI_STATUS  Status;
+
+  // For a new input just passed an empty string
+  CmdLine[0] = L'\0';
+
+  Status = EditHIInputStr (CmdLine, MaxCmdLine);
+
+  return Status;
+}
+
+EFI_STATUS
+EditHIInputAscii (
+  IN OUT CHAR8   *CmdLine,
+  IN     UINTN   MaxCmdLine
+  )
+{
+  CHAR16*     Str;
+  EFI_STATUS  Status;
+
+  Str = (CHAR16*)AllocatePool (MaxCmdLine * sizeof(CHAR16));
+  AsciiStrToUnicodeStr (CmdLine, Str);
+
+  Status = EditHIInputStr (Str, MaxCmdLine);
+
+  if (!EFI_ERROR(Status)) {
+    UnicodeStrToAsciiStr (Str, CmdLine);
+  }
+  FreePool (Str);
+
+  return Status;
 }
 
 EFI_STATUS
@@ -134,13 +119,13 @@ GetHIInputInteger (
   OUT UINTN   *Integer
   )
 {
-  CHAR8  CmdLine[255];
+  CHAR16      CmdLine[255];
   EFI_STATUS  Status;
 
   CmdLine[0] = '\0';
-  Status = EditHIInputAscii (CmdLine,255);
+  Status = EditHIInputStr (CmdLine, 255);
   if (!EFI_ERROR(Status)) {
-    *Integer = AsciiStrDecimalToUintn (CmdLine);
+    *Integer = StrDecimalToUintn (CmdLine);
   }
 
   return Status;
@@ -151,36 +136,36 @@ GetHIInputIP (
   OUT EFI_IP_ADDRESS   *Ip
   )
 {
-  CHAR8  CmdLine[255];
-  CHAR8  *Str;
+  CHAR16  CmdLine[255];
+  CHAR16  *Str;
   EFI_STATUS  Status;
 
   CmdLine[0] = '\0';
-  Status = EditHIInputAscii (CmdLine,255);
+  Status = EditHIInputStr (CmdLine,255);
   if (!EFI_ERROR(Status)) {
     Str = CmdLine;
-    Ip->v4.Addr[0] = (UINT8)AsciiStrDecimalToUintn (Str);
+    Ip->v4.Addr[0] = (UINT8)StrDecimalToUintn (Str);
 
-    Str = AsciiStrStr (Str, ".");
+    Str = StrStr (Str, L".");
     if (Str == NULL) {
       return EFI_INVALID_PARAMETER;
     }
 
-    Ip->v4.Addr[1] = (UINT8)AsciiStrDecimalToUintn (++Str);
+    Ip->v4.Addr[1] = (UINT8)StrDecimalToUintn (++Str);
 
-    Str = AsciiStrStr (Str, ".");
+    Str = StrStr (Str, L".");
     if (Str == NULL) {
       return EFI_INVALID_PARAMETER;
     }
 
-    Ip->v4.Addr[2] = (UINT8)AsciiStrDecimalToUintn (++Str);
+    Ip->v4.Addr[2] = (UINT8)StrDecimalToUintn (++Str);
 
-    Str = AsciiStrStr (Str, ".");
+    Str = StrStr (Str, L".");
     if (Str == NULL) {
       return EFI_INVALID_PARAMETER;
     }
 
-    Ip->v4.Addr[3] = (UINT8)AsciiStrDecimalToUintn (++Str);
+    Ip->v4.Addr[3] = (UINT8)StrDecimalToUintn (++Str);
   }
 
   return Status;
@@ -191,18 +176,18 @@ GetHIInputBoolean (
   OUT BOOLEAN *Value
   )
 {
-  CHAR8       CmdBoolean[2];
+  CHAR16      CmdBoolean[2];
   EFI_STATUS  Status;
 
   while(1) {
     Print (L"[y/n] ");
-    Status = GetHIInputAscii (CmdBoolean,2);
+    Status = GetHIInputStr (CmdBoolean, 2);
     if (EFI_ERROR(Status)) {
       return Status;
-    } else if ((CmdBoolean[0] == 'y') || (CmdBoolean[0] == 'Y')) {
+    } else if ((CmdBoolean[0] == L'y') || (CmdBoolean[0] == L'Y')) {
       if (Value) *Value = TRUE;
       return EFI_SUCCESS;
-    } else if ((CmdBoolean[0] == 'n') || (CmdBoolean[0] == 'N')) {
+    } else if ((CmdBoolean[0] == L'n') || (CmdBoolean[0] == L'N')) {
       if (Value) *Value = FALSE;
       return EFI_SUCCESS;
     }
@@ -254,7 +239,7 @@ GenerateDeviceDescriptionName (
     //TODO: Fixme. we must find the best langague
     Status = ComponentName2Protocol->GetDriverName (ComponentName2Protocol,"en",&DriverName);
     if (!EFI_ERROR(Status)) {
-      StrnCpy (Description,DriverName,BOOT_DEVICE_DESCRIPTION_MAX);
+      StrnCpy (Description, DriverName, BOOT_DEVICE_DESCRIPTION_MAX);
     }
   }
 
@@ -269,7 +254,7 @@ GenerateDeviceDescriptionName (
     DevicePathNode = GetLastDevicePathNode (DevicePathProtocol);
     Status = gBS->LocateProtocol (&gEfiDevicePathToTextProtocolGuid, NULL, (VOID **)&DevicePathToTextProtocol);
     ASSERT_EFI_ERROR(Status);
-    DevicePathTxt = DevicePathToTextProtocol->ConvertDevicePathToText(DevicePathNode,TRUE,TRUE);
+    DevicePathTxt = DevicePathToTextProtocol->ConvertDevicePathToText (DevicePathNode, TRUE, TRUE);
     StrnCpy (Description, DevicePathTxt, BOOT_DEVICE_DESCRIPTION_MAX);
     FreePool (DevicePathTxt);
   }
@@ -283,17 +268,12 @@ BdsStartBootOption (
   )
 {
   EFI_STATUS          Status;
-  EFI_LOAD_OPTION     EfiLoadOption;
-  UINTN               EfiLoadOptionSize;
   BDS_LOAD_OPTION     *BdsLoadOption;
 
-  Status = GetEnvironmentVariable (BootOption, NULL, &EfiLoadOptionSize, (VOID**)&EfiLoadOption);
+  Status = BootOptionFromLoadOptionVariable (BootOption, &BdsLoadOption);
   if (!EFI_ERROR(Status)) {
-    Status = BootOptionParseLoadOption (EfiLoadOption, EfiLoadOptionSize, &BdsLoadOption);
-    if (!EFI_ERROR(Status)) {
-      Status = BootOptionStart (BdsLoadOption);
-      FreePool (BdsLoadOption);
-    }
+    Status = BootOptionStart (BdsLoadOption);
+    FreePool (BdsLoadOption);
 
     if (!EFI_ERROR(Status)) {
       Status = EFI_SUCCESS;
@@ -305,3 +285,34 @@ BdsStartBootOption (
   }
   return Status;
 }
+
+UINTN
+GetUnalignedDevicePathSize (
+  IN EFI_DEVICE_PATH* DevicePath
+  )
+{
+  UINTN Size;
+  EFI_DEVICE_PATH* AlignedDevicePath;
+
+  if ((UINTN)DevicePath & 0x1) {
+    AlignedDevicePath = DuplicateDevicePath (DevicePath);
+    Size = GetDevicePathSize (AlignedDevicePath);
+    FreePool (AlignedDevicePath);
+  } else {
+    Size = GetDevicePathSize (DevicePath);
+  }
+  return Size;
+}
+
+EFI_DEVICE_PATH*
+GetAlignedDevicePath (
+  IN EFI_DEVICE_PATH* DevicePath
+  )
+{
+  if ((UINTN)DevicePath & 0x1) {
+    return DuplicateDevicePath (DevicePath);
+  } else {
+    return DevicePath;
+  }
+}
+

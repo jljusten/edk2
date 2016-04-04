@@ -67,21 +67,21 @@ typedef UINT8 SKU_ID;
 
 #define PCD_TYPE_SHIFT        28
 
-#define PCD_TYPE_DATA         (0x0 << PCD_TYPE_SHIFT)
-#define PCD_TYPE_HII          (0x8 << PCD_TYPE_SHIFT)
-#define PCD_TYPE_VPD          (0x4 << PCD_TYPE_SHIFT)
-#define PCD_TYPE_SKU_ENABLED  (0x2 << PCD_TYPE_SHIFT)
-#define PCD_TYPE_STRING       (0x1 << PCD_TYPE_SHIFT)
+#define PCD_TYPE_DATA         (0x0U << PCD_TYPE_SHIFT)
+#define PCD_TYPE_HII          (0x8U << PCD_TYPE_SHIFT)
+#define PCD_TYPE_VPD          (0x4U << PCD_TYPE_SHIFT)
+#define PCD_TYPE_SKU_ENABLED  (0x2U << PCD_TYPE_SHIFT)
+#define PCD_TYPE_STRING       (0x1U << PCD_TYPE_SHIFT)
 
 #define PCD_TYPE_ALL_SET      (PCD_TYPE_DATA | PCD_TYPE_HII | PCD_TYPE_VPD | PCD_TYPE_SKU_ENABLED | PCD_TYPE_STRING)
 
 #define PCD_DATUM_TYPE_SHIFT  24
 
-#define PCD_DATUM_TYPE_POINTER  (0x0 << PCD_DATUM_TYPE_SHIFT)
-#define PCD_DATUM_TYPE_UINT8    (0x1 << PCD_DATUM_TYPE_SHIFT)
-#define PCD_DATUM_TYPE_UINT16   (0x2 << PCD_DATUM_TYPE_SHIFT)
-#define PCD_DATUM_TYPE_UINT32   (0x4 << PCD_DATUM_TYPE_SHIFT)
-#define PCD_DATUM_TYPE_UINT64   (0x8 << PCD_DATUM_TYPE_SHIFT)
+#define PCD_DATUM_TYPE_POINTER  (0x0U << PCD_DATUM_TYPE_SHIFT)
+#define PCD_DATUM_TYPE_UINT8    (0x1U << PCD_DATUM_TYPE_SHIFT)
+#define PCD_DATUM_TYPE_UINT16   (0x2U << PCD_DATUM_TYPE_SHIFT)
+#define PCD_DATUM_TYPE_UINT32   (0x4U << PCD_DATUM_TYPE_SHIFT)
+#define PCD_DATUM_TYPE_UINT64   (0x8U << PCD_DATUM_TYPE_SHIFT)
 
 #define PCD_DATUM_TYPE_ALL_SET  (PCD_DATUM_TYPE_POINTER | \\
                                  PCD_DATUM_TYPE_UINT8   | \\
@@ -310,9 +310,18 @@ gAutoGenHPrologueString = TemplateString("""
 #ifndef _${File}_${Guid}
 #define _${File}_${Guid}
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 """)
 
 gAutoGenHEpilogueString = """
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
 """
 
@@ -917,7 +926,7 @@ def CreateModulePcdCode(Info, AutoGenC, AutoGenH, Pcd):
                             "No generated token number for %s.%s\n" % (Pcd.TokenSpaceGuidCName, Pcd.TokenCName),
                             ExtraData="[%s]" % str(Info))
         TokenNumber = PcdTokenNumber[Pcd.TokenCName, Pcd.TokenSpaceGuidCName]
-    AutoGenH.Append('\n#define %s  %d\n' % (PcdTokenName, TokenNumber))
+    AutoGenH.Append('\n#define %s  %dU\n' % (PcdTokenName, TokenNumber))
 
     EdkLogger.debug(EdkLogger.DEBUG_3, "Creating code for " + Pcd.TokenCName + "." + Pcd.TokenSpaceGuidCName)
     if Pcd.Type not in gItemTypeStringDatabase:
@@ -956,6 +965,14 @@ def CreateModulePcdCode(Info, AutoGenC, AutoGenH, Pcd):
         Value = Pcd.DefaultValue
         Unicode = False
         ValueNumber = 0
+
+        if Pcd.DatumType == 'BOOLEAN':
+            BoolValue = Value.upper()
+            if BoolValue == 'TRUE':
+                Value = '1U'
+            elif BoolValue == 'FALSE':
+                Value = '0U'
+
         if Pcd.DatumType in ['UINT64', 'UINT32', 'UINT16', 'UINT8']:
             try:
                 if Value.upper().startswith('0X'):
@@ -986,6 +1003,8 @@ def CreateModulePcdCode(Info, AutoGenC, AutoGenH, Pcd):
                     EdkLogger.error("build", AUTOGEN_ERROR,
                                     "Too large PCD value for datum type [%s] of PCD %s.%s" % (Pcd.DatumType, Pcd.TokenSpaceGuidCName, Pcd.TokenCName),
                                     ExtraData="[%s]" % str(Info))
+                if not Value.endswith('U'):
+                    Value += 'U'
             elif Pcd.DatumType == 'UINT16':
                 if ValueNumber < 0:
                     EdkLogger.error("build", AUTOGEN_ERROR,
@@ -995,6 +1014,8 @@ def CreateModulePcdCode(Info, AutoGenC, AutoGenH, Pcd):
                     EdkLogger.error("build", AUTOGEN_ERROR,
                                     "Too large PCD value for datum type [%s] of PCD %s.%s" % (Pcd.DatumType, Pcd.TokenSpaceGuidCName, Pcd.TokenCName),
                                     ExtraData="[%s]" % str(Info))
+                if not Value.endswith('U'):
+                    Value += 'U'                    
             elif Pcd.DatumType == 'UINT8':
                 if ValueNumber < 0:
                     EdkLogger.error("build", AUTOGEN_ERROR,
@@ -1004,6 +1025,8 @@ def CreateModulePcdCode(Info, AutoGenC, AutoGenH, Pcd):
                     EdkLogger.error("build", AUTOGEN_ERROR,
                                     "Too large PCD value for datum type [%s] of PCD %s.%s" % (Pcd.DatumType, Pcd.TokenSpaceGuidCName, Pcd.TokenCName),
                                     ExtraData="[%s]" % str(Info))
+                if not Value.endswith('U'):
+                    Value += 'U'
         if Pcd.DatumType == 'VOID*':
             if Pcd.MaxDatumSize == None or Pcd.MaxDatumSize == '':
                 EdkLogger.error("build", AUTOGEN_ERROR,
@@ -1123,7 +1146,7 @@ def CreateLibraryPcdCode(Info, AutoGenC, AutoGenH, Pcd):
         Type = '(VOID *)'
         Array = '[]'
 
-    AutoGenH.Append('#define _PCD_TOKEN_%s  %d\n' % (TokenCName, TokenNumber))
+    AutoGenH.Append('#define _PCD_TOKEN_%s  %dU\n' % (TokenCName, TokenNumber))
 
     PcdItemType = Pcd.Type
     #if PcdItemType in gDynamicPcd:
@@ -1397,6 +1420,8 @@ def CreatePcdDatabasePhaseSpecificAutoGen (Platform, Phase):
                 #
                 if Pcd.DatumType == "UINT64":
                     ValueList.append(Sku.DefaultValue + "ULL")
+                elif Pcd.DatumType in ("UINT32", "UINT16", "UINT8"):
+                    ValueList.append(Sku.DefaultValue + "U")
                 else:
                     ValueList.append(Sku.DefaultValue)
 
@@ -1951,6 +1976,13 @@ def CreateHeaderCode(Info, AutoGenC, AutoGenH):
         if Info.ModuleType in gModuleTypeHeaderFile \
            and gModuleTypeHeaderFile[Info.ModuleType][0] != gBasicHeaderFile:
             AutoGenH.Append("#include <%s>\n" % gModuleTypeHeaderFile[Info.ModuleType][0])
+        #
+        # if either PcdLib in [LibraryClasses] sections or there exist Pcd section, add PcdLib.h 
+        # As if modules only uses FixedPcd, then PcdLib is not needed in [LibraryClasses] section.
+        #
+        if 'PcdLib' in Info.Module.LibraryClasses or Info.Module.Pcds:
+            AutoGenH.Append("#include <Library/PcdLib.h>\n")
+
         AutoGenH.Append('\nextern GUID  gEfiCallerIdGuid;\n\n')
 
         if Info.IsLibrary:
@@ -2015,7 +2047,7 @@ def CreateCode(Info, AutoGenC, AutoGenH, StringH, UniGenCFlag, UniGenBinBuffer):
 
     CreateFooterCode(Info, AutoGenC, AutoGenH)
 
-    # no generation of AutoGen.c for R8 modules without unicode file
+    # no generation of AutoGen.c for Edk modules without unicode file
     if Info.AutoGenVersion < 0x00010005 and len(Info.UnicodeFileList) == 0:
         AutoGenC.String = ''
 

@@ -196,7 +196,7 @@ EblPrintLoadFileInfo (
 
   @param  Argc   Number of command arguments in Argv
   @param  Argv   Array of strings that represent the parsed command line. 
-                 Argv[0] is the comamnd name
+                 Argv[0] is the command name
 
   @return EFI_SUCCESS
 
@@ -279,7 +279,7 @@ EblDeviceCmd (
 
   @param  Argc   Number of command arguments in Argv
   @param  Argv   Array of strings that represent the parsed command line. 
-                 Argv[0] is the comamnd name
+                 Argv[0] is the command name
 
   @return EFI_SUCCESS
 
@@ -353,7 +353,7 @@ EblStartCmd (
 
 /**
   Load a Firmware Volume (FV) into memory from a device. This causes drivers in
-  the FV to be dispatched if the dependancies of the drivers are met.
+  the FV to be dispatched if the dependencies of the drivers are met.
   
   Argv[0] - "loadfv"
   Argv[1] - device name and path
@@ -364,7 +364,7 @@ EblStartCmd (
 
   @param  Argc   Number of command arguments in Argv
   @param  Argv   Array of strings that represent the parsed command line. 
-                 Argv[0] is the comamnd name
+                 Argv[0] is the command name
 
   @return EFI_SUCCESS
 
@@ -414,13 +414,13 @@ EblLoadFvCmd (
 /**
   Perform an EFI connect to connect devices that follow the EFI driver model. 
   If it is a PI system also call the dispatcher in case a new FV was made
-  availible by one of the connect EFI drivers (this is not a common case).
+  available by one of the connect EFI drivers (this is not a common case).
   
   Argv[0] - "connect"
 
   @param  Argc   Number of command arguments in Argv
   @param  Argv   Array of strings that represent the parsed command line. 
-                 Argv[0] is the comamnd name
+                 Argv[0] is the command name
 
   @return EFI_SUCCESS
 
@@ -542,7 +542,7 @@ CHAR8 *gMemMapType[] = {
 
   @param  Argc   Number of command arguments in Argv
   @param  Argv   Array of strings that represent the parsed command line. 
-                 Argv[0] is the comamnd name
+                 Argv[0] is the command name
 
   @return EFI_SUCCESS
 
@@ -628,7 +628,7 @@ EblMemMapCmd (
 
 
 /**
-  Load a file into memory and optionally jump to it. A load addres can be 
+  Load a file into memory and optionally jump to it. A load address can be
   specified or automatically allocated. A quoted command line can optionally
   be passed into the image. 
 
@@ -644,14 +644,14 @@ EblMemMapCmd (
     in "EblCmdX Arg2 Arg3 Arg4" as the arguments.
 
   go fv0:\EblCmdX  *  0x10 "EblCmdX Arg2 Arg3 Arg4"; - load EblCmdX from FS0 
-    to location allocated by this comamnd and call the entry point at offset 0x10 
+    to location allocated by this command and call the entry point at offset 0x10
     passing in "EblCmdX Arg2 Arg3 Arg4" as the arguments.
 
   go fv1:\EblCmdX  0x10000; Load EblCmdX to address 0x10000 and return
 
   @param  Argc   Number of command arguments in Argv
   @param  Argv   Array of strings that represent the parsed command line. 
-                 Argv[0] is the comamnd name
+                 Argv[0] is the command name
 
   @return EFI_SUCCESS
 
@@ -687,7 +687,7 @@ EblGoCmd (
     // * Means allocate the buffer
     Status = EfiReadAllocatePool (File, &Address, &Size);
     
-    // EntryPoint is relatvie to the start of the image 
+    // EntryPoint is relative to the start of the image
     EntryPoint = (EBL_COMMMAND)((UINTN)EntryPoint + (UINTN)Address);
 
   } else {
@@ -732,19 +732,64 @@ EblFileCopyCmd (
   VOID          *Buffer      = NULL;
   UINTN         Size;
   UINTN         Offset;
-  UINTN         Chunk = FILE_COPY_CHUNK;
+  UINTN         Chunk        = FILE_COPY_CHUNK;
+  UINTN         FileNameLen;
+  CHAR8*        DestFileName;
+  CHAR8*        SrcFileName;
+  CHAR8*        SrcPtr;
 
   if (Argc < 3) {
     return EFI_INVALID_PARAMETER;
   }
   
+  DestFileName = Argv[2];
+  FileNameLen = AsciiStrLen (DestFileName);
+
+  // Check if the destination file name looks like a directory
+  if ((DestFileName[FileNameLen-1] == '\\') || (DestFileName[FileNameLen-1] == ':')) {
+    // Set the pointer after the source drive (eg: after fs1:)
+    SrcPtr = AsciiStrStr (Argv[1], ":");
+    if (SrcPtr == NULL) {
+      SrcPtr = Argv[1];
+    } else {
+      SrcPtr++;
+      if (*SrcPtr == '\\') {
+        SrcPtr++;
+      }
+    }
+
+    if (*SrcPtr == '\0') {
+      AsciiPrint("Source file incorrect.\n");
+    }
+
+    // Skip the Source Directories
+    while (1) {
+      SrcFileName = SrcPtr;
+      SrcPtr = AsciiStrStr (SrcPtr,"\\");
+      if (SrcPtr != NULL) {
+        SrcPtr++;
+      } else {
+        break;
+      }
+    }
+
+    if (*SrcFileName == '\0') {
+      AsciiPrint("Source file incorrect (Error 2).\n");
+    }
+
+    // Construct the destination filepath
+    DestFileName = (CHAR8*)AllocatePool (FileNameLen + AsciiStrLen (SrcFileName) + 1);
+    AsciiStrCpy (DestFileName, Argv[2]);
+    AsciiStrCat (DestFileName, SrcFileName);
+  }
+
   Source = EfiOpen(Argv[1], EFI_FILE_MODE_READ, 0);
   if (Source == NULL) {
     AsciiPrint("Source file open error.\n");
     return EFI_NOT_FOUND;
   }
   
-  Destination = EfiOpen(Argv[2], EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
+  Destination = EfiOpen(DestFileName, EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
   if (Destination == NULL) {
     AsciiPrint("Destination file open error.\n");
     return EFI_NOT_FOUND;
@@ -802,6 +847,11 @@ Exit:
     Status = EfiClose(Destination);
     if (EFI_ERROR(Status)) {
       AsciiPrint("Destination close error %r\n", Status);
+    }
+
+    // Case when we have concated the filename to the destination directory
+    if (DestFileName != Argv[2]) {
+      FreePool (DestFileName);
     }
   }
   
@@ -972,7 +1022,7 @@ GLOBAL_REMOVE_IF_UNREFERENCED const EBL_COMMAND_TABLE mCmdDeviceTemplate[] =
   },
   {
     "cp",
-    " file1 file2; copy file",
+    " file1 file2; copy file only.",
     NULL,
     EblFileCopyCmd
   },

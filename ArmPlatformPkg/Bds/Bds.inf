@@ -45,6 +45,7 @@
   UefiDriverEntryPoint
   DebugLib
   PrintLib
+  BaseLib
   
 [Guids]
   gEfiFileSystemInfoGuid
@@ -61,6 +62,7 @@
   gArmPlatformTokenSpaceGuid.PcdFirmwareVendor
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDescription
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDevicePath
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootInitrdPath
   gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument
   gArmPlatformTokenSpaceGuid.PcdDefaultBootType
   gArmPlatformTokenSpaceGuid.PcdFdtDevicePath

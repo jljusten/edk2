@@ -15,11 +15,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "UsbBus.h"
 
-//
-// USB_BUS_PROTOCOL is only used to locate USB_BUS
-//
-EFI_GUID  mUsbBusProtocolGuid = EFI_USB_BUS_PROTOCOL_GUID;
-
 EFI_USB_IO_PROTOCOL mUsbIoProtocol = {
   UsbIoControlTransfer,
   UsbIoBulkTransfer,
@@ -44,7 +39,6 @@ EFI_DRIVER_BINDING_PROTOCOL mUsbBusDriverBinding = {
   NULL,
   NULL
 };
-
 
 /**
   USB_IO function to execute a control transfer. This
@@ -111,7 +105,7 @@ UsbIoControlTransfer (
     // Clear TT buffer when CTRL/BULK split transaction failes
     // Clear the TRANSLATOR TT buffer, not parent's buffer
     //
-    ASSERT (Dev->Translator.TranslatorHubAddress < USB_MAX_DEVICES);
+    ASSERT (Dev->Translator.TranslatorHubAddress < Dev->Bus->MaxDevices);
     if (Dev->Translator.TranslatorHubAddress != 0) {
       UsbHubCtrlClearTTBuffer (
         Dev->Bus->Devices[Dev->Translator.TranslatorHubAddress],
@@ -284,7 +278,7 @@ UsbIoBulkTransfer (
     // Clear TT buffer when CTRL/BULK split transaction failes.
     // Clear the TRANSLATOR TT buffer, not parent's buffer
     //
-    ASSERT (Dev->Translator.TranslatorHubAddress < USB_MAX_DEVICES);
+    ASSERT (Dev->Translator.TranslatorHubAddress < Dev->Bus->MaxDevices);
     if (Dev->Translator.TranslatorHubAddress != 0) {
       UsbHubCtrlClearTTBuffer (
         Dev->Bus->Devices[Dev->Translator.TranslatorHubAddress],
@@ -817,7 +811,6 @@ UsbIoPortReset (
   USB_INTERFACE           *UsbIf;
   USB_INTERFACE           *HubIf;
   USB_DEVICE              *Dev;
-  UINT8                   Address;
   EFI_TPL                 OldTpl;
   EFI_STATUS              Status;
 
@@ -842,27 +835,26 @@ UsbIoPortReset (
   }
 
   //
-  // Reset the device to its current address. The device now has a
-  // address of ZERO, so need to set Dev->Address to zero first for
-  // host to communicate with the device
+  // Reset the device to its current address. The device now has an address
+  // of ZERO after port reset, so need to set Dev->Address to the device again for
+  // host to communicate with it.
   //
-  Address       = Dev->Address;
-  Dev->Address  = 0;
-  Status        = UsbSetAddress (Dev, Address);
+  Status  = UsbSetAddress (Dev, Dev->Address);
 
   gBS->Stall (USB_SET_DEVICE_ADDRESS_STALL);
   
   if (EFI_ERROR (Status)) {
+    //
+    // It may fail due to device disconnection or other reasons.
+    //
     DEBUG (( EFI_D_ERROR, "UsbIoPortReset: failed to set address for device %d - %r\n",
-                Address, Status));
+                Dev->Address, Status));
 
     goto ON_EXIT;
   }
 
-  Dev->Address  = Address;
+  DEBUG (( EFI_D_INFO, "UsbIoPortReset: device is now ADDRESSED at %d\n", Dev->Address));
 
-  DEBUG (( EFI_D_INFO, "UsbIoPortReset: device is now ADDRESSED at %d\n", Address));
-  
   //
   // Reset the current active configure, after this device
   // is in CONFIGURED state.
@@ -872,7 +864,7 @@ UsbIoPortReset (
 
     if (EFI_ERROR (Status)) {
       DEBUG (( EFI_D_ERROR, "UsbIoPortReset: failed to set configure for device %d - %r\n",
-                  Address, Status));
+                  Dev->Address, Status));
     }
   }
 
@@ -914,8 +906,9 @@ UsbBusBuildProtocol (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  UsbBus->Signature   = USB_BUS_SIGNATURE;
-  UsbBus->HostHandle  = Controller;
+  UsbBus->Signature  = USB_BUS_SIGNATURE;
+  UsbBus->HostHandle = Controller;
+  UsbBus->MaxDevices = USB_MAX_DEVICES;
 
   Status = gBS->OpenProtocol (
                   Controller,
@@ -966,6 +959,16 @@ UsbBusBuildProtocol (
     goto CLOSE_HC;
   }
 
+  if (!EFI_ERROR (Status)) {
+    //
+    // The EFI_USB2_HC_PROTOCOL is produced for XHCI support.
+    // Then its max supported devices are 256. Otherwise it's 128.
+    //
+    if (UsbBus->Usb2Hc->MajorRevision == 0x3) {
+      UsbBus->MaxDevices = 256;
+    }
+  }
+
   UsbHcReset (UsbBus, EFI_USB_HC_RESET_GLOBAL);
   UsbHcSetState (UsbBus, EfiUsbHcStateOperational);
 
@@ -974,7 +977,7 @@ UsbBusBuildProtocol (
   //
   Status = gBS->InstallProtocolInterface (
                   &Controller,
-                  &mUsbBusProtocolGuid,
+                  &gEfiCallerIdGuid,
                   EFI_NATIVE_INTERFACE,
                   &UsbBus->BusId
                   );
@@ -1011,6 +1014,7 @@ UsbBusBuildProtocol (
   RootHub->Bus            = UsbBus;
   RootHub->NumOfInterface = 1;
   RootHub->Interfaces[0]  = RootIf;
+  RootHub->Tier           = 0;
   RootIf->Signature       = USB_INTERFACE_SIGNATURE;
   RootIf->Device          = RootHub;
   RootIf->DevicePath      = UsbBus->DevicePath;
@@ -1036,7 +1040,7 @@ FREE_ROOTHUB:
   }
 
 UNINSTALL_USBBUS:
-  gBS->UninstallProtocolInterface (Controller, &mUsbBusProtocolGuid, &UsbBus->BusId);
+  gBS->UninstallProtocolInterface (Controller, &gEfiCallerIdGuid, &UsbBus->BusId);
 
 CLOSE_HC:
   if (UsbBus->Usb2Hc != NULL) {
@@ -1268,7 +1272,7 @@ UsbBusControllerDriverStart (
   //
   Status = gBS->OpenProtocol (
                   Controller,
-                  &mUsbBusProtocolGuid,
+                  &gEfiCallerIdGuid,
                   (VOID **) &UsbBusId,
                   This->DriverBindingHandle,
                   Controller,
@@ -1289,7 +1293,7 @@ UsbBusControllerDriverStart (
     //
     Status = gBS->OpenProtocol (
                     Controller,
-                    &mUsbBusProtocolGuid,
+                    &gEfiCallerIdGuid,
                     (VOID **) &UsbBusId,
                     This->DriverBindingHandle,
                     Controller,
@@ -1408,7 +1412,7 @@ UsbBusControllerDriverStop (
   //
   Status = gBS->OpenProtocol (
                   Controller,
-                  &mUsbBusProtocolGuid,
+                  &gEfiCallerIdGuid,
                   (VOID **) &BusId,
                   This->DriverBindingHandle,
                   Controller,
@@ -1434,7 +1438,8 @@ UsbBusControllerDriverStop (
 
   mUsbRootHubApi.Release (RootIf);
 
-  for (Index = 1; Index < USB_MAX_DEVICES; Index++) {
+  ASSERT (Bus->MaxDevices <= 256);
+  for (Index = 1; Index < Bus->MaxDevices; Index++) {
     if (Bus->Devices[Index] != NULL) {
       UsbRemoveDevice (Bus->Devices[Index]);
     }
@@ -1450,7 +1455,7 @@ UsbBusControllerDriverStop (
   //
   // Uninstall the bus identifier and close USB_HC/USB2_HC protocols
   //
-  gBS->UninstallProtocolInterface (Controller, &mUsbBusProtocolGuid, &Bus->BusId);
+  gBS->UninstallProtocolInterface (Controller, &gEfiCallerIdGuid, &Bus->BusId);
 
   if (Bus->Usb2Hc != NULL) {
     gBS->CloseProtocol (

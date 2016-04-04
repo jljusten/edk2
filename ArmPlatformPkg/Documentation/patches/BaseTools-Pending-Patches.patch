@@ -1,294 +1,297 @@
-diff --git a/BaseTools/Conf/build_rule.template b/BaseTools/Conf/build_rule.template
-index 528bdb9..c201d3e 100644
---- a/BaseTools/Conf/build_rule.template
-+++ b/BaseTools/Conf/build_rule.template
-@@ -242,7 +242,7 @@
+Index: BaseTools/Conf/build_rule.template
+===================================================================
+--- BaseTools/Conf/build_rule.template	(revision 12691)
++++ BaseTools/Conf/build_rule.template	(working copy)
+@@ -129,7 +129,7 @@
+         "$(CC)" $(CC_FLAGS) -o ${dst} $(INC) ${src}
+         "$(SYMRENAME)" $(SYMRENAME_FLAGS) ${dst}
+ 
+-    <Command.ARMGCC>
++    <Command.ARMGCC, Command.ARMLINUXGCC>
+         "$(CC)" $(CC_FLAGS) -o ${dst} $(INC) ${src}
+ 
+ 
+@@ -217,7 +217,7 @@
+     <Command.RVCT>
+         "$(SLINK)" $(SLINK_FLAGS) ${dst} --via $(OBJECT_FILES_LIST)
+     
+-    <Command.RVCTCYGWIN, Command.ARMGCC>
++    <Command.RVCTCYGWIN, Command.ARMGCC, Command.ARMLINUXGCC>
+         # $(OBJECT_FILES_LIST) has wrong paths for cygwin
+         "$(SLINK)" $(SLINK_FLAGS) ${dst} $(OBJECT_FILES)
+ 
+@@ -241,7 +241,7 @@
+         "$(DLINK)" -o ${dst} $(DLINK_FLAGS) -\( $(DLINK_SPATH) @$(STATIC_LIBRARY_FILES_LIST) -\) $(DLINK2_FLAGS)
          "$(OBJCOPY)" $(OBJCOPY_FLAGS) ${dst}
  
-     <Command.ARMGCC>
--        "$(DLINK)" -o ${dst} $(DLINK_FLAGS) -( $(DLINK_SPATH) $(STATIC_LIBRARY_FILES) -) $(DLINK2_FLAGS)
-+        "$(DLINK)" -o ${dst} $(DLINK_FLAGS) -\( $(DLINK_SPATH) $(STATIC_LIBRARY_FILES) -\) $(DLINK2_FLAGS)
+-    <Command.ARMGCC>
++    <Command.ARMGCC, Command.ARMLINUXGCC>
+         "$(DLINK)" -o ${dst} $(DLINK_FLAGS) -\( $(DLINK_SPATH) $(STATIC_LIBRARY_FILES) -\) $(DLINK2_FLAGS)
  
      <Command.RVCT>
-         "$(DLINK)" $(DLINK_FLAGS) -o ${dst} $(DLINK_SPATH) --via $(STATIC_LIBRARY_FILES_LIST) $(DLINK2_FLAGS)
-@@ -272,7 +272,7 @@
+@@ -271,7 +271,7 @@
+     <Command.GCC>
          "$(DLINK)" $(DLINK_FLAGS) -\( $(DLINK_SPATH) @$(STATIC_LIBRARY_FILES_LIST) -\) $(DLINK2_FLAGS)
  
-     <Command.ARMGCC>
--        "$(DLINK)" $(DLINK_FLAGS) -( $(DLINK_SPATH) $(STATIC_LIBRARY_FILES) -) $(DLINK2_FLAGS)
-+        "$(DLINK)" $(DLINK_FLAGS) -\( $(DLINK_SPATH) $(STATIC_LIBRARY_FILES) -\) $(DLINK2_FLAGS)
+-    <Command.ARMGCC>
++    <Command.ARMGCC, Command.ARMLINUXGCC>
+         "$(DLINK)" $(DLINK_FLAGS) -\( $(DLINK_SPATH) $(STATIC_LIBRARY_FILES) -\) $(DLINK2_FLAGS)
  
      <Command.RVCT>
-         "$(DLINK)" $(DLINK_FLAGS) -o ${dst} $(DLINK_SPATH) --via $(STATIC_LIBRARY_FILES_LIST) $(DLINK2_FLAGS)
-@@ -425,7 +425,7 @@
-       "$(PP)" $(PP_FLAGS) $(INC) ${src} > ${d_path}(+)${s_base}.i
-       Trim --source-code -o ${d_path}(+)${s_base}.iii ${d_path}(+)${s_base}.i
-       "$(ASM)" -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj $(ASM_FLAGS) $(INC) ${d_path}(+)${s_base}.iii
--      "$(DLINK)" -o ${dst} $(DLINK_FLAGS) -( $(DLINK_SPATH) $(LIBS) $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj -)
-+      "$(DLINK)" -o ${dst} $(DLINK_FLAGS) -\( $(DLINK_SPATH) $(LIBS) $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj -\)
-      
-     <Command.XCODE>
-       "$(PP)" $(PP_FLAGS) $(INC) ${src} > ${d_path}(+)${s_base}.i
-diff --git a/BaseTools/Conf/tools_def.template b/BaseTools/Conf/tools_def.template
-old mode 100644
-new mode 100755
-index 495f55d..09af677
---- a/BaseTools/Conf/tools_def.template
-+++ b/BaseTools/Conf/tools_def.template
-@@ -164,8 +164,6 @@ DEFINE IPHONE_TOOLS            = /Developer/Platforms/iPhoneOS.platform/Develope
- DEFINE RVCT31_TOOLS_PATH       = c:/Program Files/ARM/RVCT/Programs/3.1/569/win_32-pentium
- DEFINE RVCT31CYGWIN_TOOLS_PATH = /cygdrive/c/Program Files/ARM/RVCT/Programs/3.1/569/win_32-pentium
+@@ -292,7 +292,7 @@
+     <OutputFile>
+         $(DEBUG_DIR)(+)$(MODULE_NAME).efi
  
--DEFINE SOURCERY_TOOLS        = c:/Program Files/CodeSourcery/Sourcery G++ Lite/bin
--DEFINE SOURCERY_CYGWIN_TOOLS = /cygdrive/c/Program Files/CodeSourcery/Sourcery G++ Lite/bin
- 
- #
- # Change to the location clang was built
-@@ -3031,6 +3029,45 @@ RELEASE_ICC11x86_IPF_DLINK_FLAGS              = /NOLOGO /NODEFAULTLIB /LTCG /DLL
- *_ICC11x86_EBC_SLINK_FLAGS                = /lib /NOLOGO /MACHINE:EBC
- *_ICC11x86_EBC_DLINK_FLAGS                = "C:\Program Files (x86)\Intel\EBC\Lib\EbcLib.lib" /NOLOGO /NODEFAULTLIB /MACHINE:EBC /OPT:REF /ENTRY:$(IMAGE_ENTRY_POINT) /SUBSYSTEM:EFI_BOOT_SERVICE_DRIVER /MAP
- 
-+####################################################################################
-+#
-+# ARM RealView 4.0 Tools & Linux
-+#
-+####################################################################################
-+#   ARMCYGWIN         - Tools from ARM in a Cygwin environment
-+
-+*_RVCTLINUX_*_*_FAMILY               = RVCT
-+*_RVCTLINUX_*_*_BUILDRULEFAMILY      = RVCTLINUX
-+
-+#
-+# Use default values, or override in DSC file
-+#
-+*_RVCTLINUX_ARM_ARCHCC_FLAGS    = --thumb --cpu ARM1176JZF-S
-+*_RVCTLINUX_ARM_ARCHASM_FLAGS   = --cpu ARM1176JZF-S
-+*_RVCTLINUX_ARM_ARCHDLINK_FLAGS = 
-+*_RVCTLINUX_ARM_PLATFORM_FLAGS  =
-+
-+DEBUG_RVCTLINUX_ARM_DLINK_FLAGS     = $(DLINKPATH_FLAG) $(ARCHDLINK_FLAGS) --entry $(IMAGE_ENTRY_POINT)  --ro-base 0 --no_scanlib --reloc --no_exceptions --datacompressor off --strict --symbols --map --list $(DEST_DIR_DEBUG)/$(BASE_NAME).map 
-+RELEASE_RVCTLINUX_ARM_DLINK_FLAGS     = $(DLINKPATH_FLAG) $(ARCHDLINK_FLAGS) --entry $(IMAGE_ENTRY_POINT)  --ro-base 0 --no_scanlib --reloc --no_exceptions --datacompressor off --strict --symbols --map --list $(DEST_DIR_DEBUG)/$(BASE_NAME).map
-+
-+*_RVCTLINUX_ARM_ASM_FLAGS       = $(ASMPATH_FLAG) $(ARCHASM_FLAGS) --apcs /interwork
-+*_RVCTLINUX_ARM_PP_FLAGS        = $(CCPATH_FLAG) $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -E
-+*_RVCTLINUX_ARM_VFRPP_FLAGS     = $(CCPATH_FLAG) $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -E  -DVFRCOMPILE --preinclude $(DEST_DIR_DEBUG)/$(MODULE_NAME)StrDefs.h
-+*_RVCTLINUX_ARM_MAKE_PATH       = make
-+*_RVCTLINUX_ARM_SLINK_FLAGS     = $(SLINKPATH_FLAG) --partial -o
-+  DEBUG_RVCTLINUX_ARM_CC_FLAGS  = $(CCPATH_FLAG) $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) --c90 -c -g -O1     --no_autoinline --asm --gnu --apcs /interwork --signed_chars --no_unaligned_access --split_sections --enum_is_int --preinclude AutoGen.h --diag_warning 167
-+RELEASE_RVCTLINUX_ARM_CC_FLAGS  = $(CCPATH_FLAG) $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) --c90 -c --no_autoinline --asm --gnu --apcs /interwork --signed_chars --no_unaligned_access --split_sections --preinclude AutoGen.h --diag_warning 167
-+
-+##################
-+# ARM definitions
-+##################
-+*_RVCTLINUX_ARM_CC_PATH         = ENV(RVCT_TOOLS_PATH)armcc
-+*_RVCTLINUX_ARM_SLINK_PATH      = ENV(RVCT_TOOLS_PATH)armlink
-+*_RVCTLINUX_ARM_DLINK_PATH      = ENV(RVCT_TOOLS_PATH)armlink
-+*_RVCTLINUX_ARM_ASM_PATH        = ENV(RVCT_TOOLS_PATH)armasm
-+*_RVCTLINUX_ARM_PP_PATH         = ENV(RVCT_TOOLS_PATH)armcc
-+*_RVCTLINUX_ARM_VFRPP_PATH      = ENV(RVCT_TOOLS_PATH)armcc
-+*_RVCTLINUX_ARM_FROMELF_PATH    = ENV(RVCT_TOOLS_PATH)fromelf
- 
+-    <Command.MSFT, Command.INTEL, Command.RVCT, Command.ARMGCC>  
++    <Command.MSFT, Command.INTEL, Command.RVCT, Command.ARMGCC, Command.ARMLINUXGCC>  
+         "$(GENFW)" -e $(MODULE_TYPE) -o ${dst} ${src} $(GENFW_FLAGS)
+         $(CP) ${dst} $(OUTPUT_DIR)
+         $(CP) ${dst} $(BIN_DIR)
+@@ -536,7 +536,7 @@
+         "$(GENFW)" -o $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc -g $(MODULE_GUID) --hiibinpackage $(HII_BINARY_PACKAGES) $(GENFW_FLAGS)
+         "$(RC)" $(RC_FLAGS) $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc ${dst}
+         
+-    <Command.XCODE, Command.RVCT, Command.ARMGCC>  
++    <Command.XCODE, Command.RVCT, Command.ARMGCC, Command.ARMLINUXGCC>  
+         GenFw -o $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc -g $(MODULE_GUID) --hiibinpackage $(HII_BINARY_PACKAGES)
+         
+         
+Index: BaseTools/Conf/tools_def.template
+===================================================================
+--- BaseTools/Conf/tools_def.template	(revision 12691)
++++ BaseTools/Conf/tools_def.template	(working copy)
+@@ -467,6 +467,7 @@
+ #   MSFT           - Microsoft
+ #   GCC            - GNU GCC
+ #   INTEL          - INTEL
++#   RVCT           - ARM RealView Toolchain
+ ####################################################################################
  ####################################################################################
  #
-@@ -3463,7 +3500,7 @@ RELEASE_XCLANG_X64_CC_FLAGS   = -ccc-host-triple x86_64-pc-win32-macho -c    -Os
- 
- ####################################################################################
- #
--# ARM Tools
-+# ARM RealView 3.1 Tools
- #
- ####################################################################################
- #   RVCT31         - Tools from ARM
-@@ -3503,7 +3540,7 @@ RELEASE_RVCT31_ARM_CC_FLAGS  = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) --c90    -Ospac
- 
- ####################################################################################
- #
--# ARM Tools & Cygwin
-+# ARM RealView 3.1 Tools & Cygwin
- #
- ####################################################################################
- #   ARMCYGWIN         - Tools from ARM in a Cygwin environment
-@@ -3552,6 +3589,95 @@ RELEASE_RVCT31CYGWIN_ARM_CC_FLAGS  = "$(CCPATH_FLAG)" $(ARCHCC_FLAGS) $(PLATFORM
- 
- ####################################################################################
- #
-+# ARM RealView 4.0 Tools
-+#
-+####################################################################################
-+#   RVCT         - Tools from ARM
-+
-+*_RVCT_*_*_FAMILY          = RVCT
-+
-+#
-+# Use default values, or override in DSC file
-+#
-+*_RVCT_ARM_ARCHCC_FLAGS    = --thumb --cpu ARM1176JZF-S
-+*_RVCT_ARM_ARCHASM_FLAGS   = --cpu ARM1176JZF-S
-+*_RVCT_ARM_ARCHDLINK_FLAGS = 
-+*_RVCT_ARM_PLATFORM_FLAGS  =
-+
-+  DEBUG_RVCT_ARM_DLINK_FLAGS     = $(ARCHDLINK_FLAGS) --entry $(IMAGE_ENTRY_POINT)  --ro-base 0 --no_scanlib --reloc --no_exceptions --datacompressor off --strict --symbols --map --list $(DEST_DIR_DEBUG)/$(BASE_NAME).map 
-+RELEASE_RVCT_ARM_DLINK_FLAGS     = $(ARCHDLINK_FLAGS) --entry $(IMAGE_ENTRY_POINT)  --ro-base 0 --no_scanlib --reloc --no_exceptions --datacompressor off --strict --symbols --map --list $(DEST_DIR_DEBUG)/$(BASE_NAME).map 
-+
-+
-+*_RVCT_ARM_ASM_FLAGS       = $(ARCHASM_FLAGS) --apcs /interwork
-+*_RVCT_ARM_PP_FLAGS        = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -E
-+*_RVCT_ARM_VFRPP_FLAGS     = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -E  -DVFRCOMPILE --preinclude $(DEST_DIR_DEBUG)/$(MODULE_NAME)StrDefs.h
-+*_RVCT_ARM_MAKE_PATH       = nmake /NOLOGO
-+*_RVCT_ARM_SLINK_FLAGS     = --partial -o
-+  DEBUG_RVCT_ARM_CC_FLAGS  = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) --c90 -c -g -O1     --no_autoinline --asm --gnu --apcs /interwork --signed_chars --no_unaligned_access --split_sections --enum_is_int --preinclude AutoGen.h --diag_warning 167
-+RELEASE_RVCT_ARM_CC_FLAGS  = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) --c90 -c    -Ospace --no_autoinline --asm --gnu --apcs /interwork --signed_chars --no_unaligned_access --split_sections --enum_is_int --preinclude AutoGen.h --diag_warning 167
-+
-+##################
-+# ARM definitions
-+##################
-+*_RVCT_ARM_CC_PATH         = ENV(RVCT_TOOLS_PATH)armcc
-+*_RVCT_ARM_SLINK_PATH      = ENV(RVCT_TOOLS_PATH)armlink
-+*_RVCT_ARM_DLINK_PATH      = ENV(RVCT_TOOLS_PATH)armlink
-+*_RVCT_ARM_ASM_PATH        = ENV(RVCT_TOOLS_PATH)armasm
-+*_RVCT_ARM_PP_PATH         = ENV(RVCT_TOOLS_PATH)armcc
-+*_RVCT_ARM_VFRPP_PATH      = ENV(RVCT_TOOLS_PATH)armcc
-+*_RVCT_ARM_FROMELF_PATH    = ENV(RVCT_TOOLS_PATH)fromelf
-+
-+####################################################################################
-+#
-+# ARM RealView 4.0 Tools & Cygwin
-+#
-+####################################################################################
-+#   ARMCYGWIN         - Tools from ARM in a Cygwin environment
-+
-+*_RVCTCYGWIN_*_*_FAMILY               = RVCT
-+*_RVCTCYGWIN_*_*_BUILDRULEFAMILY      = RVCTCYGWIN
-+
-+*_RVCTCYGWIN_ARM_CCPATH_FLAG         = ENV(RVCT_TOOLS_PATH)armcc
-+*_RVCTCYGWIN_ARM_SLINKPATH_FLAG      = ENV(RVCT_TOOLS_PATH)armlink
-+*_RVCTCYGWIN_ARM_DLINKPATH_FLAG      = ENV(RVCT_TOOLS_PATH)armlink
-+*_RVCTCYGWIN_ARM_ASMPATH_FLAG        = ENV(RVCT_TOOLS_PATH)armasm
-+*_RVCTCYGWIN_ARM_PPPATH_FLAG         = ENV(RVCT_TOOLS_PATH)armcc
-+*_RVCTCYGWIN_ARM_VFRPPPATH_FLAG      = ENV(RVCT_TOOLS_PATH)armcc
-+*_RVCTCYGWIN_ARM_FROMELFPATH_FLAG    = ENV(RVCT_TOOLS_PATH)fromelf
-+
-+
-+#
-+# Use default values, or override in DSC file
-+#
-+*_RVCTCYGWIN_ARM_ARCHCC_FLAGS    = --thumb --cpu ARM1176JZF-S
-+*_RVCTCYGWIN_ARM_ARCHASM_FLAGS   = --cpu ARM1176JZF-S
-+*_RVCTCYGWIN_ARM_ARCHDLINK_FLAGS = 
-+*_RVCTCYGWIN_ARM_PLATFORM_FLAGS  =
-+
-+  DEBUG_RVCTCYGWIN_ARM_DLINK_FLAGS     = "$(DLINKPATH_FLAG)" $(ARCHDLINK_FLAGS) --entry $(IMAGE_ENTRY_POINT)  --ro-base 0 --no_scanlib --reloc --no_exceptions --datacompressor off --strict --symbols --map --list `cygpath -m $(DEST_DIR_DEBUG)/$(BASE_NAME).map` 
-+RELEASE_RVCTCYGWIN_ARM_DLINK_FLAGS     = "$(DLINKPATH_FLAG)" $(ARCHDLINK_FLAGS) --entry $(IMAGE_ENTRY_POINT)  --ro-base 0 --no_scanlib --reloc --no_exceptions --datacompressor off --strict --symbols --map --list `cygpath -m $(DEST_DIR_DEBUG)/$(BASE_NAME).map` 
-+
-+*_RVCTCYGWIN_ARM_ASM_FLAGS       = "$(ASMPATH_FLAG)" $(ARCHASM_FLAGS) --apcs /interwork
-+*_RVCTCYGWIN_ARM_PP_FLAGS        = "$(CCPATH_FLAG)" $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -E
-+*_RVCTCYGWIN_ARM_VFRPP_FLAGS     = "$(CCPATH_FLAG)" $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -E  -DVFRCOMPILE --preinclude `cygpath -m $(DEST_DIR_DEBUG)/$(MODULE_NAME)StrDefs.h`
-+*_RVCTCYGWIN_ARM_MAKE_PATH       = make
-+*_RVCTCYGWIN_ARM_SLINK_FLAGS     = "$(SLINKPATH_FLAG)" --partial -o
-+  DEBUG_RVCTCYGWIN_ARM_CC_FLAGS  = "$(CCPATH_FLAG)" $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) --c90 -c -g -O1     --no_autoinline --asm --gnu --apcs /interwork --signed_chars --no_unaligned_access --split_sections --enum_is_int --preinclude AutoGen.h --diag_warning 167
-+RELEASE_RVCTCYGWIN_ARM_CC_FLAGS  = "$(CCPATH_FLAG)" $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) --c90 -c    -Ospace --no_autoinline --asm --gnu --apcs /interwork --signed_chars --no_unaligned_access --split_sections --enum_is_int --preinclude AutoGen.h --diag_warning 167
-+
-+##################
-+# ARM definitions
-+##################
-+*_RVCTCYGWIN_ARM_CC_PATH         = ENV(WORKSPACE)/BaseTools/Bin/CYGWIN_NT-5.1-i686/armcc_wrapper.py
-+*_RVCTCYGWIN_ARM_SLINK_PATH      = ENV(WORKSPACE)/BaseTools/Bin/CYGWIN_NT-5.1-i686/armcc_wrapper.py
-+*_RVCTCYGWIN_ARM_DLINK_PATH      = ENV(WORKSPACE)/BaseTools/Bin/CYGWIN_NT-5.1-i686/armcc_wrapper.py
-+*_RVCTCYGWIN_ARM_ASM_PATH        = ENV(WORKSPACE)/BaseTools/Bin/CYGWIN_NT-5.1-i686/armcc_wrapper.py
-+*_RVCTCYGWIN_ARM_PP_PATH         = ENV(WORKSPACE)/BaseTools/Bin/CYGWIN_NT-5.1-i686/armcc_wrapper.py
-+*_RVCTCYGWIN_ARM_VFRPP_PATH      = ENV(WORKSPACE)/BaseTools/Bin/CYGWIN_NT-5.1-i686/armcc_wrapper.py
-+*_RVCTCYGWIN_ARM_FROMELF_PATH    = ENV(WORKSPACE)/BaseTools/Bin/CYGWIN_NT-5.1-i686/armcc_wrapper.py
-+
-+####################################################################################
-+#
- # ARM GCC (www.codesourcery.com)
- #
- ####################################################################################
-@@ -3560,7 +3686,7 @@ RELEASE_RVCT31CYGWIN_ARM_CC_FLAGS  = "$(CCPATH_FLAG)" $(ARCHCC_FLAGS) $(PLATFORM
- *_ARMGCC_*_*_FAMILY          = GCC
- *_ARMGCC_*_*_BUILDRULEFAMILY = ARMGCC
- 
--*_ARMGCC_*_MAKE_PATH         = DEF(SOURCERY_TOOLS)/cs-make
-+*_ARMGCC_*_MAKE_PATH         = make
- *_ARMGCC_*_MAKE_FLAGS        = --no-print-directory
- 
- ##################
-@@ -3577,22 +3703,22 @@ RELEASE_RVCT31CYGWIN_ARM_CC_FLAGS  = "$(CCPATH_FLAG)" $(ARCHCC_FLAGS) $(PLATFORM
- # ARM definitions
- ##################
- 
--*_ARMGCC_ARM_ASLCC_PATH      = DEF(SOURCERY_TOOLS)/arm-none-eabi-gcc
--*_ARMGCC_ARM_ASLDLINK_PATH   = DEF(SOURCERY_TOOLS)/arm-none-eabi-ld
--*_ARMGCC_ARM_ASLPP_PATH      = DEF(SOURCERY_TOOLS)/arm-none-eabi-gcc
-+*_ARMGCC_ARM_ASLCC_PATH      = ENV(ARMGCC_TOOLS_PATH)arm-none-eabi-gcc
-+*_ARMGCC_ARM_ASLDLINK_PATH   = ENV(ARMGCC_TOOLS_PATH)arm-none-eabi-ld
-+*_ARMGCC_ARM_ASLPP_PATH      = ENV(ARMGCC_TOOLS_PATH)arm-none-eabi-gcc
- 
--*_ARMGCC_ARM_CC_PATH         = DEF(SOURCERY_TOOLS)/arm-none-eabi-gcc
--*_ARMGCC_ARM_SLINK_PATH      = DEF(SOURCERY_TOOLS)/arm-none-eabi-ar
--*_ARMGCC_ARM_DLINK_PATH      = DEF(SOURCERY_TOOLS)/arm-none-eabi-ld
--*_ARMGCC_ARM_ASM_PATH        = DEF(SOURCERY_TOOLS)/arm-none-eabi-as
--*_ARMGCC_ARM_PP_PATH         = DEF(SOURCERY_TOOLS)/arm-none-eabi-gcc
--*_ARMGCC_ARM_VFRPP_PATH      = DEF(SOURCERY_TOOLS)/arm-none-eabi-gcc
-+*_ARMGCC_ARM_CC_PATH         = ENV(ARMGCC_TOOLS_PATH)arm-none-eabi-gcc
-+*_ARMGCC_ARM_SLINK_PATH      = ENV(ARMGCC_TOOLS_PATH)arm-none-eabi-ar
-+*_ARMGCC_ARM_DLINK_PATH      = ENV(ARMGCC_TOOLS_PATH)arm-none-eabi-ld
-+*_ARMGCC_ARM_ASM_PATH        = ENV(ARMGCC_TOOLS_PATH)arm-none-eabi-as
-+*_ARMGCC_ARM_PP_PATH         = ENV(ARMGCC_TOOLS_PATH)arm-none-eabi-gcc
-+*_ARMGCC_ARM_VFRPP_PATH      = ENV(ARMGCC_TOOLS_PATH)arm-none-eabi-gcc
- 
- #
- # Use default values, or override in DSC file
- #
--*_ARMGCC_ARM_ARCHCC_FLAGS    = -march=armv7-a -mthumb
--*_ARMGCC_ARM_ARCHASM_FLAGS   = -march=armv7-a
-+*_ARMGCC_ARM_ARCHCC_FLAGS    = -march=armv7-a -mthumb -mthumb-interwork
-+*_ARMGCC_ARM_ARCHASM_FLAGS   = -march=armv7-a -mthumb-interwork
- *_ARMGCC_ARM_ARCHDLINK_FLAGS =
- *_ARMGCC_ARM_PLATFORM_FLAGS  = -march=armv7-a
- 
-@@ -3603,10 +3729,10 @@ RELEASE_ARMGCC_ARM_ASM_FLAGS   = $(ARCHASM_FLAGS) -mlittle-endian
- *_ARMGCC_ARM_VFRPP_FLAGS = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS)  -x c -E -P -DVFRCOMPILE --include $(DEST_DIR_DEBUG)/$(MODULE_NAME)StrDefs.h
+@@ -4173,11 +4174,69 @@
+ *_ARMGCC_ARM_VFRPP_FLAGS = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -x c -E -P -DVFRCOMPILE --include $(DEST_DIR_DEBUG)/$(MODULE_NAME)StrDefs.h
  
  *_ARMGCC_ARM_SLINK_FLAGS =  -rc
 -*_ARMGCC_ARM_DLINK_FLAGS =  $(ARCHDLINK_FLAGS)  --oformat=elf32-littlearm --emit-relocs -nostdlib -u $(IMAGE_ENTRY_POINT) -e $(IMAGE_ENTRY_POINT) -Map $(DEST_DIR_DEBUG)/$(BASE_NAME).map
-+*_ARMGCC_ARM_DLINK_FLAGS =  $(ARCHDLINK_FLAGS)  --oformat=elf32-littlearm -Ttext=0x0 --emit-relocs -nostdlib -u $(IMAGE_ENTRY_POINT) -e $(IMAGE_ENTRY_POINT) -Map $(DEST_DIR_DEBUG)/$(BASE_NAME).map
++*_ARMGCC_ARM_DLINK_FLAGS =  $(ARCHDLINK_FLAGS) -Ttext=0x0 --oformat=elf32-littlearm --emit-relocs -nostdlib -u $(IMAGE_ENTRY_POINT) -e $(IMAGE_ENTRY_POINT) -Map $(DEST_DIR_DEBUG)/$(BASE_NAME).map
  
--  DEBUG_ARMGCC_ARM_CC_FLAGS = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -mlittle-endian -g -O0 -mabi=aapcs -mapcs -fno-short-enums -save-temps -combine -fsigned-char -fshort-wchar -fno-strict-aliasing -ffunction-sections -fdata-sections -Wall -Werror -Wno-missing-braces -fomit-frame-pointer -c -include AutoGen.h
--RELEASE_ARMGCC_ARM_CC_FLAGS = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -mlittle-endian    -Os -mabi=aapcs -mapcs -fno-short-enums -save-temps -combine -fsigned-char -fshort-wchar -fno-strict-aliasing -ffunction-sections -fdata-sections -Wall -Werror -Wno-missing-braces -fomit-frame-pointer -c -include AutoGen.h
-+  DEBUG_ARMGCC_ARM_CC_FLAGS = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -mword-relocations -mlittle-endian -g -O0 -mabi=aapcs -mapcs -fno-short-enums -save-temps -combine -fsigned-char -fshort-wchar -fno-strict-aliasing -ffunction-sections -fdata-sections -Wall -Werror -Wno-missing-braces -fomit-frame-pointer -c -include AutoGen.h
-+RELEASE_ARMGCC_ARM_CC_FLAGS = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -mword-relocations -mlittle-endian    -Os -mabi=aapcs -mapcs -fno-short-enums -save-temps -combine -fsigned-char -fshort-wchar -fno-strict-aliasing -ffunction-sections -fdata-sections -Wall -Werror -Wno-missing-braces -fomit-frame-pointer -c -include AutoGen.h
+   DEBUG_ARMGCC_ARM_CC_FLAGS = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) DEF(GCC_ARMGCC_CC_FLAGS) -combine -O0
+ RELEASE_ARMGCC_ARM_CC_FLAGS = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) DEF(GCC_ARMGCC_CC_FLAGS) -combine -Wno-unused
  
++####################################################################################
++#
++# ARM GNU/Linux GCC
++#
++####################################################################################
++#  ARMLINUXGCC         - ARM version of the GCC cross compiler
++
++*_ARMLINUXGCC_*_*_FAMILY          = GCC
++*_ARMLINUXGCC_*_*_BUILDRULEFAMILY = ARMLINUXGCC
++
++*_ARMLINUXGCC_*_MAKE_PATH         = make
++*_ARMLINUXGCC_*_MAKE_FLAGS        = --no-print-directory
++
++##################
++# ASL definitions
++##################
++*_ARMLINUXGCC_*_ASL_PATH           = DEF(UNIX_IASL_BIN)
++*_ARMLINUXGCC_*_ASL_FLAGS          = DEF(IASL_FLAGS)
++*_ARMLINUXGCC_*_ASL_OUTFLAGS       = DEF(IASL_OUTFLAGS)
++*_ARMLINUXGCC_*_ASLPP_FLAGS        = -x c -E -P
++*_ARMLINUXGCC_*_ASLCC_FLAGS        = -x c
++*_ARMLINUXGCC_*_ASLDLINK_FLAGS     = DEF(GCC_DLINK_FLAGS_COMMON) --entry _ReferenceAcpiTable
++
++##################
++# ARM definitions
++##################
++
++*_ARMLINUXGCC_ARM_ASLCC_PATH      = ENV(ARMLINUXGCC_TOOLS_PATH)arm-linux-gnueabi-gcc
++*_ARMLINUXGCC_ARM_ASLDLINK_PATH   = ENV(ARMLINUXGCC_TOOLS_PATH)arm-linux-gnueabi-ld
++*_ARMLINUXGCC_ARM_ASLPP_PATH      = ENV(ARMLINUXGCC_TOOLS_PATH)arm-linux-gnueabi-gcc
++
++*_ARMLINUXGCC_ARM_CC_PATH         = ENV(ARMLINUXGCC_TOOLS_PATH)arm-linux-gnueabi-gcc
++*_ARMLINUXGCC_ARM_SLINK_PATH      = ENV(ARMLINUXGCC_TOOLS_PATH)arm-linux-gnueabi-ar
++*_ARMLINUXGCC_ARM_DLINK_PATH      = ENV(ARMLINUXGCC_TOOLS_PATH)arm-linux-gnueabi-ld
++*_ARMLINUXGCC_ARM_ASM_PATH        = ENV(ARMLINUXGCC_TOOLS_PATH)arm-linux-gnueabi-as
++*_ARMLINUXGCC_ARM_PP_PATH         = ENV(ARMLINUXGCC_TOOLS_PATH)arm-linux-gnueabi-gcc
++*_ARMLINUXGCC_ARM_VFRPP_PATH      = ENV(ARMLINUXGCC_TOOLS_PATH)arm-linux-gnueabi-gcc
++
++#
++# Use default values, or override in DSC file
++#
++*_ARMLINUXGCC_ARM_ARCHCC_FLAGS    = -mthumb
++*_ARMLINUXGCC_ARM_ARCHASM_FLAGS   = 
++*_ARMLINUXGCC_ARM_ARCHDLINK_FLAGS =
++*_ARMLINUXGCC_ARM_PLATFORM_FLAGS  = -march=armv7-a
++
++  DEBUG_ARMLINUXGCC_ARM_ASM_FLAGS   = $(ARCHASM_FLAGS) $(PLATFORM_FLAGS) -mlittle-endian -g
++RELEASE_ARMLINUXGCC_ARM_ASM_FLAGS   = $(ARCHASM_FLAGS) $(PLATFORM_FLAGS) -mlittle-endian
++
++*_ARMLINUXGCC_ARM_PP_FLAGS    = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -E -x assembler-with-cpp -include $(DEST_DIR_DEBUG)/AutoGen.h
++*_ARMLINUXGCC_ARM_VFRPP_FLAGS = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) -x c -E -P -DVFRCOMPILE --include $(DEST_DIR_DEBUG)/$(MODULE_NAME)StrDefs.h
++
++*_ARMLINUXGCC_ARM_SLINK_FLAGS =  -rc
++*_ARMLINUXGCC_ARM_DLINK_FLAGS =  $(ARCHDLINK_FLAGS) -Ttext=0x0 --oformat=elf32-littlearm --emit-relocs -nostdlib -u $(IMAGE_ENTRY_POINT) -e $(IMAGE_ENTRY_POINT) -Map $(DEST_DIR_DEBUG)/$(BASE_NAME).map
++
++  DEBUG_ARMLINUXGCC_ARM_CC_FLAGS = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) DEF(GCC_ARMGCC_CC_FLAGS) -Wno-address -O0
++RELEASE_ARMLINUXGCC_ARM_CC_FLAGS = $(ARCHCC_FLAGS) $(PLATFORM_FLAGS) DEF(GCC_ARMGCC_CC_FLAGS) -Wno-address -Wno-unused-but-set-variable
++
  #################
  # ASM 16 linker defintions
-diff --git a/BaseTools/Source/C/GenFv/GenFv.c b/BaseTools/Source/C/GenFv/GenFv.c
-index 2cb8771..4662461 100644
---- a/BaseTools/Source/C/GenFv/GenFv.c
-+++ b/BaseTools/Source/C/GenFv/GenFv.c
-@@ -598,7 +598,7 @@ Returns:
+ #################
+Index: BaseTools/Source/Python/Workspace/MetaFileParser.py
+===================================================================
+--- BaseTools/Source/Python/Workspace/MetaFileParser.py	(revision 12691)
++++ BaseTools/Source/Python/Workspace/MetaFileParser.py	(working copy)
+@@ -1280,6 +1280,9 @@
+             Records = IncludedFileTable.GetAll()
+             if Records:
+                 self._Content[self._ContentIndex:self._ContentIndex] = Records
++                self._Content.pop(self._ContentIndex-1)
++                self._ValueList = None
++                self._ContentIndex -= 1
+ 
+     def __ProcessSkuId(self):
+         self._ValueList = [ReplaceMacro(Value, self._Macros, RaiseError=True)
+Index: BaseTools/Source/Python/Workspace/WorkspaceDatabase.py
+===================================================================
+--- BaseTools/Source/Python/Workspace/WorkspaceDatabase.py	(revision 12691)
++++ BaseTools/Source/Python/Workspace/WorkspaceDatabase.py	(working copy)
+@@ -2319,7 +2319,7 @@
+     # @param GlobalMacros       Global macros used for replacement during file parsing
+     # @prarm RenewDb=False      Create new database file if it's already there
+     #
+-    def __init__(self, DbPath, RenewDb=False):
++    def __init__(self, DbPath, RenewDb=False, DbSignature={}):
+         self._DbClosedFlag = False
+         if not DbPath:
+             DbPath = os.path.normpath(os.path.join(GlobalData.gWorkspace, self._DB_PATH_))
+@@ -2331,7 +2331,7 @@
+                 os.makedirs(DbDir)
+ 
+             # remove db file in case inconsistency between db and file in file system
+-            if self._CheckWhetherDbNeedRenew(RenewDb, DbPath):
++            if self._CheckWhetherDbNeedRenew(RenewDb, DbPath, DbSignature):
+                 os.remove(DbPath)
+         
+         # create db with optimized parameters
+@@ -2367,7 +2367,38 @@
+     #
+     #  @return Bool value for whether need renew workspace databse
+     #
+-    def _CheckWhetherDbNeedRenew (self, force, DbPath):
++    def _CheckWhetherDbNeedRenew (self, force, DbPath, DbSignature):
++        DbDir = os.path.split(DbPath)[0]
++        MacroFilePath = os.path.normpath(os.path.join(DbDir, "build.mac"))
++        MacroMatch = False
++        if os.path.exists(MacroFilePath) and os.path.isfile(MacroFilePath):
++            LastMacros = None
++            try:
++                f = open(MacroFilePath,'r')
++                LastMacros = pickle.load(f)
++                f.close()
++            except IOError:
++                pass
++            except:
++                f.close()
++
++            if LastMacros != None and type(LastMacros) is DictType:
++                if LastMacros == DbSignature:
++                    MacroMatch = True
++
++        if not MacroMatch:
++            # save command line macros to file
++            try:
++                f = open(MacroFilePath,'w')
++                pickle.dump(DbSignature, f, 2)
++                f.close()
++            except IOError:
++                pass
++            except:
++                f.close()
++
++            force = True
++
+         # if database does not exist, we need do nothing
+         if not os.path.exists(DbPath): return False
+             
+Index: BaseTools/Source/Python/build/build.py
+===================================================================
+--- BaseTools/Source/Python/build/build.py	(revision 12691)
++++ BaseTools/Source/Python/build/build.py	(working copy)
+@@ -704,6 +704,8 @@
+     #
+     def __init__(self, Target, WorkspaceDir, BuildOptions):
+         self.WorkspaceDir   = WorkspaceDir
++        DbSignature = {'Target': Target, 'BuildOptions': BuildOptions }
++        
+         self.Target         = Target
+         self.PlatformFile   = BuildOptions.PlatformFile
+         self.ModuleFile     = BuildOptions.ModuleFile
+@@ -726,7 +728,7 @@
+         if BuildOptions.DisableCache:
+             self.Db         = WorkspaceDatabase(":memory:")
+         else:
+-            self.Db         = WorkspaceDatabase(None, self.Reparse)
++            self.Db         = WorkspaceDatabase(None, self.Reparse, DbSignature)
+         self.BuildDatabase  = self.Db.BuildObject
+         self.Platform       = None
+         self.LoadFixAddress = 0
+Index: BaseTools/Source/Python/Trim/Trim.py
+===================================================================
+--- BaseTools/Source/Python/Trim/Trim.py	(revision 12691)
++++ BaseTools/Source/Python/Trim/Trim.py	(working copy)
+@@ -37,7 +37,9 @@
+ ## Regular expression for matching "#pragma pack"
+ gPragmaPattern = re.compile("^\s*#pragma\s+pack", re.MULTILINE)
+ ## Regular expression for matching HEX number
+-gHexNumberPattern = re.compile("0[xX]([0-9a-fA-F]+)")
++gHexNumberPattern = re.compile("(0[xX])([0-9a-fA-F]+)U?")
++## Regular expression for matching decimal number
++gDecNumberPattern = re.compile("([0-9]+)U?")
+ ## Regular expression for matching "Include ()" in asl file
+ gAslIncludePattern = re.compile("^(\s*)[iI]nclude\s*\(\"?([^\"\(\)]+)\"\)", re.MULTILINE)
+ ## Regular expression for matching C style #include "XXX.asl" in asl file
+@@ -169,10 +171,15 @@
+ 
+         # convert HEX number format if indicated
+         if ConvertHex:
+-            Line = gHexNumberPattern.sub(r"0\1h", Line)
++            Line = gHexNumberPattern.sub(r"0\2h", Line)
++        else:
++            Line = gHexNumberPattern.sub(r"\1\2", Line)
+         if TrimLong:
+             Line = gLongNumberPattern.sub(r"\1", Line)
+ 
++        # convert Decimal number format
++        Line = gDecNumberPattern.sub(r"\1", Line)
++
+         if LineNumber != None:
+             EdkLogger.verbose("Got line directive: line=%d" % LineNumber)
+             # in case preprocessor removed some lines, like blank or comment lines
+Index: BaseTools/Source/C/GenFv/GenFv.c
+===================================================================
+--- BaseTools/Source/C/GenFv/GenFv.c	(revision 12691)
++++ BaseTools/Source/C/GenFv/GenFv.c	(working copy)
+@@ -623,12 +623,7 @@
                );
    } else {
      VerboseMsg ("Create Fv image and its map file");
--    if (mFvDataInfo.BaseAddress != 0) {
+-    //
+-    // Will take rebase action at below situation:
+-    // 1. ForceRebase Flag specified to TRUE;
+-    // 2. ForceRebase Flag not specified, BaseAddress greater than zero.
+-    //
+-    if (((mFvDataInfo.BaseAddress > 0) && (mFvDataInfo.ForceRebase == -1)) || (mFvDataInfo.ForceRebase == 1)) {
 +    if (mFvDataInfo.BaseAddressSet) {
        VerboseMsg ("FvImage Rebase Address is 0x%llX", (unsigned long long) mFvDataInfo.BaseAddress);
      }
      //
-diff --git a/BaseTools/Source/C/GenFv/GenFvInternalLib.c b/BaseTools/Source/C/GenFv/GenFvInternalLib.c
-old mode 100644
-new mode 100755
-index 189dc43..496b96c
---- a/BaseTools/Source/C/GenFv/GenFvInternalLib.c
-+++ b/BaseTools/Source/C/GenFv/GenFvInternalLib.c
-@@ -209,6 +209,7 @@ Returns:
-       DebugMsg (NULL, 0, 9, "rebase address", "%s = %s", EFI_FV_BASE_ADDRESS_STRING, Value);
- 
-       FvInfo->BaseAddress = Value64;
-+      FvInfo->BaseAddressSet = TRUE;
-     }
-   }
- 
-@@ -505,6 +506,7 @@ Returns:
+Index: BaseTools/Source/C/GenFv/GenFvInternalLib.c
+===================================================================
+--- BaseTools/Source/C/GenFv/GenFvInternalLib.c	(revision 12691)
++++ BaseTools/Source/C/GenFv/GenFvInternalLib.c	(working copy)
+@@ -506,6 +506,7 @@
  
  EFI_STATUS
  AddPadFile (
@@ -296,7 +299,7 @@ index 189dc43..496b96c
    IN OUT MEMORY_FILE  *FvImage,
    IN UINT32           DataAlignment,
    IN VOID             *FvEnd,
-@@ -536,6 +538,8 @@ Returns:
+@@ -537,6 +538,8 @@
  {
    EFI_FFS_FILE_HEADER *PadFile;
    UINTN               PadFileSize;
@@ -305,7 +308,7 @@ index 189dc43..496b96c
  
    //
    // Verify input parameters.
-@@ -558,32 +562,29 @@ Returns:
+@@ -559,32 +562,29 @@
    // This is the earliest possible valid offset (current plus pad file header
    // plus the next file header)
    //
@@ -351,7 +354,7 @@ index 189dc43..496b96c
    // Verify that we have enough space for the file header
    //
    if (((UINTN) FvImage->CurrentFilePointer + PadFileSize) > (UINTN) FvEnd) {
-@@ -1110,7 +1111,7 @@ Returns:
+@@ -1115,7 +1115,7 @@
    //
    // Add pad file if necessary
    //
@@ -360,7 +363,7 @@ index 189dc43..496b96c
    if (EFI_ERROR (Status)) {
      Error (NULL, 0, 4002, "Resource", "FV space is full, could not add pad file for data alignment property.");
      free (FileBuffer);
-@@ -2295,7 +2296,7 @@ Returns:
+@@ -2304,7 +2304,7 @@
      //
      // Add FV Extended Header contents to the FV as a PAD file
      //
@@ -369,33 +372,26 @@ index 189dc43..496b96c
  
      //
      // Fv Extension header change update Fv Header Check sum
-@@ -2820,7 +2821,7 @@ Returns:
+@@ -2825,20 +2825,12 @@
+   PeFileBuffer       = NULL;
+ 
    //
-   // Don't need to relocate image when BaseAddress is not set.
+-  // Don't need to relocate image when BaseAddress is zero and no ForceRebase Flag specified.
++  // Don't need to relocate image when BaseAddress is not set.
    //
--  if (FvInfo->BaseAddress == 0) {
+-  if ((FvInfo->BaseAddress == 0) && (FvInfo->ForceRebase == -1)) {
 +  if (FvInfo->BaseAddressSet == FALSE) {
      return EFI_SUCCESS;
    }
+-  
+-  //
+-  // If ForceRebase Flag specified to FALSE, will always not take rebase action.
+-  //
+-  if (FvInfo->ForceRebase == 0) {
+-    return EFI_SUCCESS;
+-  }
+ 
+-
    XipBase = FvInfo->BaseAddress + XipOffset;
-diff --git a/BaseTools/Source/Python/AutoGen/GenC.py b/BaseTools/Source/Python/AutoGen/GenC.py
-index e6e8847..6a78d01 100644
---- a/BaseTools/Source/Python/AutoGen/GenC.py
-+++ b/BaseTools/Source/Python/AutoGen/GenC.py
-@@ -67,11 +67,11 @@ typedef UINT8 SKU_ID;
  
- #define PCD_TYPE_SHIFT        28
- 
--#define PCD_TYPE_DATA         (0x0 << PCD_TYPE_SHIFT)
--#define PCD_TYPE_HII          (0x8 << PCD_TYPE_SHIFT)
--#define PCD_TYPE_VPD          (0x4 << PCD_TYPE_SHIFT)
--#define PCD_TYPE_SKU_ENABLED  (0x2 << PCD_TYPE_SHIFT)
--#define PCD_TYPE_STRING       (0x1 << PCD_TYPE_SHIFT)
-+#define PCD_TYPE_DATA         (0x0u << PCD_TYPE_SHIFT)
-+#define PCD_TYPE_HII          (0x8u << PCD_TYPE_SHIFT)
-+#define PCD_TYPE_VPD          (0x4u << PCD_TYPE_SHIFT)
-+#define PCD_TYPE_SKU_ENABLED  (0x2u << PCD_TYPE_SHIFT)
-+#define PCD_TYPE_STRING       (0x1u << PCD_TYPE_SHIFT)
- 
- #define PCD_TYPE_ALL_SET      (PCD_TYPE_DATA | PCD_TYPE_HII | PCD_TYPE_VPD | PCD_TYPE_SKU_ENABLED | PCD_TYPE_STRING)
- 
+   //

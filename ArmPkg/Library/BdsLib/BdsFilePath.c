@@ -16,6 +16,7 @@
 
 #include <Protocol/UsbIo.h>
 #include <Protocol/DiskIo.h>
+#include <Protocol/LoadedImage.h>
 
 #define IS_DEVICE_PATH_NODE(node,type,subtype) (((node)->Type == (type)) && ((node)->SubType == (subtype)))
 
@@ -424,7 +425,7 @@ BdsFileSystemLoadImage (
     return Status;
   }
 
-  //Try to Open the volume and get root directory
+  // Try to Open the volume and get root directory
   Status = FsProtocol->OpenVolume (FsProtocol, &Fs);
   if (EFI_ERROR(Status)) {
     return Status;
@@ -451,7 +452,11 @@ BdsFileSystemLoadImage (
   }
   FreePool(FileInfo);
 
-  Status = gBS->AllocatePages (Type, EfiBootServicesCode, EFI_SIZE_TO_PAGES(Size),Image);
+  Status = gBS->AllocatePages (Type, EfiBootServicesCode, EFI_SIZE_TO_PAGES(Size), Image);
+  // Try to allocate in any pages if failed to allocate memory at the defined location
+  if ((Status == EFI_OUT_OF_RESOURCES) && (Type != AllocateAnyPages)) {
+    Status = gBS->AllocatePages (AllocateAnyPages, EfiBootServicesCode, EFI_SIZE_TO_PAGES(Size), Image);
+  }
   if (!EFI_ERROR(Status)) {
     Status = File->Read (File, &Size, (VOID*)(UINTN)(*Image));
   }
@@ -466,7 +471,8 @@ BdsMemoryMapSupport (
   IN EFI_DEVICE_PATH *RemainingDevicePath
   )
 {
-  return IS_DEVICE_PATH_NODE(RemainingDevicePath,HARDWARE_DEVICE_PATH,HW_MEMMAP_DP);
+  return IS_DEVICE_PATH_NODE(DevicePath,HARDWARE_DEVICE_PATH,HW_MEMMAP_DP) ||
+         IS_DEVICE_PATH_NODE(RemainingDevicePath,HARDWARE_DEVICE_PATH,HW_MEMMAP_DP);
 }
 
 EFI_STATUS
@@ -483,16 +489,23 @@ BdsMemoryMapLoadImage (
   MEMMAP_DEVICE_PATH*   MemMapPathDevicePath;
   UINTN                 Size;
 
-  ASSERT (IS_DEVICE_PATH_NODE(RemainingDevicePath,HARDWARE_DEVICE_PATH,HW_MEMMAP_DP));
-
-  MemMapPathDevicePath = (MEMMAP_DEVICE_PATH*)RemainingDevicePath;
+  if (IS_DEVICE_PATH_NODE(RemainingDevicePath,HARDWARE_DEVICE_PATH,HW_MEMMAP_DP)) {
+    MemMapPathDevicePath = (MEMMAP_DEVICE_PATH*)RemainingDevicePath;
+  } else {
+    ASSERT (IS_DEVICE_PATH_NODE(DevicePath,HARDWARE_DEVICE_PATH,HW_MEMMAP_DP));
+    MemMapPathDevicePath = (MEMMAP_DEVICE_PATH*)DevicePath;
+  }
 
   Size = MemMapPathDevicePath->EndingAddress - MemMapPathDevicePath->StartingAddress;
   if (Size == 0) {
       return EFI_INVALID_PARAMETER;
   }
 
-  Status = gBS->AllocatePages (Type, EfiBootServicesCode, EFI_SIZE_TO_PAGES(Size),Image);
+  Status = gBS->AllocatePages (Type, EfiBootServicesCode, EFI_SIZE_TO_PAGES(Size), Image);
+  // Try to allocate in any pages if failed to allocate memory at the defined location
+  if ((Status == EFI_OUT_OF_RESOURCES) && (Type != AllocateAnyPages)) {
+    Status = gBS->AllocatePages (AllocateAnyPages, EfiBootServicesCode, EFI_SIZE_TO_PAGES(Size), Image);
+  }
   if (!EFI_ERROR(Status)) {
     CopyMem ((VOID*)(UINTN)(*Image), (CONST VOID*)(UINTN)MemMapPathDevicePath->StartingAddress, Size);
 
@@ -571,6 +584,10 @@ BdsFirmwareVolumeLoadImage (
 #else
     // We must copy the buffer into a page allocations. Otherwise, the caller could call gBS->FreePages() on the pool allocation
     Status = gBS->AllocatePages (Type, EfiBootServicesCode, EFI_SIZE_TO_PAGES(*ImageSize), Image);
+    // Try to allocate in any pages if failed to allocate memory at the defined location
+    if ((Status == EFI_OUT_OF_RESOURCES) && (Type != AllocateAnyPages)) {
+      Status = gBS->AllocatePages (AllocateAnyPages, EfiBootServicesCode, EFI_SIZE_TO_PAGES(*ImageSize), Image);
+    }
     if (!EFI_ERROR(Status)) {
       CopyMem ((VOID*)(UINTN)(*Image), ImageBuffer, *ImageSize);
       FreePool (ImageBuffer);
@@ -588,7 +605,11 @@ BdsFirmwareVolumeLoadImage (
                         &AuthenticationStatus
                         );
     if (!EFI_ERROR(Status)) {
-      Status = gBS->AllocatePages (Type, EfiBootServicesCode, EFI_SIZE_TO_PAGES(*ImageSize),Image);
+      Status = gBS->AllocatePages (Type, EfiBootServicesCode, EFI_SIZE_TO_PAGES(*ImageSize), Image);
+      // Try to allocate in any pages if failed to allocate memory at the defined location
+      if ((Status == EFI_OUT_OF_RESOURCES) && (Type != AllocateAnyPages)) {
+        Status = gBS->AllocatePages (AllocateAnyPages, EfiBootServicesCode, EFI_SIZE_TO_PAGES(*ImageSize), Image);
+      }
       if (!EFI_ERROR(Status)) {
         Status = FwVol->ReadFile (
                                 FwVol,
@@ -840,16 +861,19 @@ BdsLoadImage (
 EFI_STATUS
 BdsStartEfiApplication (
   IN EFI_HANDLE                  ParentImageHandle,
-  IN EFI_DEVICE_PATH_PROTOCOL    *DevicePath
+  IN EFI_DEVICE_PATH_PROTOCOL    *DevicePath,
+  IN UINTN                       LoadOptionsSize,
+  IN VOID*                       LoadOptions
   )
 {
   EFI_STATUS                   Status;
   EFI_HANDLE                   ImageHandle;
   EFI_PHYSICAL_ADDRESS         BinaryBuffer;
   UINTN                        BinarySize;
+  EFI_LOADED_IMAGE_PROTOCOL*   LoadedImage;
 
   // Find the nearest supported file loader
-  Status = BdsLoadImage (DevicePath, AllocateAnyPages,&BinaryBuffer,&BinarySize);
+  Status = BdsLoadImage (DevicePath, AllocateAnyPages, &BinaryBuffer, &BinarySize);
   if (EFI_ERROR(Status)) {
     return Status;
   }
@@ -858,6 +882,17 @@ BdsStartEfiApplication (
   Status = gBS->LoadImage (TRUE, ParentImageHandle, DevicePath, (VOID*)(UINTN)BinaryBuffer, BinarySize, &ImageHandle);
   if (EFI_ERROR(Status)) {
     return Status;
+  }
+
+  // Passed LoadOptions to the EFI Application
+  if (LoadOptionsSize != 0) {
+    Status = gBS->HandleProtocol (ImageHandle, &gEfiLoadedImageProtocolGuid, (VOID **) &LoadedImage);
+    if (EFI_ERROR(Status)) {
+      return Status;
+    }
+
+    LoadedImage->LoadOptionsSize  = LoadOptionsSize;
+    LoadedImage->LoadOptions      = LoadOptions;
   }
 
   // Before calling the image, enable the Watchdog Timer for  the 5 Minute period

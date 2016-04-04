@@ -1,7 +1,7 @@
 /** @file
   Contains code that implements the virtual machine.
 
-Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -1344,12 +1344,6 @@ CONST VM_TABLE_ENTRY           mVmOpcodeTable[] = {
 //
 CONST UINT8                    mJMPLen[] = { 2, 2, 6, 10 };
 
-//
-// Simple Debugger Protocol GUID
-//
-EFI_GUID mEbcSimpleDebuggerProtocolGuid = EFI_EBC_SIMPLE_DEBUGGER_PROTOCOL_GUID;
-
-
 /**
   Given a pointer to a new VM context, execute one or more instructions. This
   function is only used for test purposes via the EBC VM test protocol.
@@ -1365,6 +1359,7 @@ EFI_GUID mEbcSimpleDebuggerProtocolGuid = EFI_EBC_SIMPLE_DEBUGGER_PROTOCOL_GUID;
 
 **/
 EFI_STATUS
+EFIAPI
 EbcExecuteInstructions (
   IN EFI_EBC_VM_TEST_PROTOCOL *This,
   IN VM_CONTEXT               *VmPtr,
@@ -1452,7 +1447,7 @@ EbcExecute (
   //
   DEBUG_CODE_BEGIN ();
     Status = gBS->LocateProtocol (
-                    &mEbcSimpleDebuggerProtocolGuid,
+                    &gEfiEbcSimpleDebuggerProtocolGuid,
                     NULL,
                     (VOID **) &EbcSimpleDebugger
                     );
@@ -2551,9 +2546,9 @@ ExecuteMOVsnw (
   //
   // Get the data from the source.
   //
-  Op2 = (UINT64) (VmPtr->Gpr[OPERAND2_REGNUM (Operands)] + Op2Index);
+  Op2 = (UINT64)(INT64)(INTN)(VmPtr->Gpr[OPERAND2_REGNUM (Operands)] + Op2Index);
   if (OPERAND2_INDIRECT (Operands)) {
-    Op2 = (UINT64) VmReadMemN (VmPtr, (UINTN) Op2);
+    Op2 = (UINT64)(INT64)(INTN)VmReadMemN (VmPtr, (UINTN) Op2);
   }
   //
   // Now write back the result.
@@ -2644,9 +2639,9 @@ ExecuteMOVsnd (
   //
   // Get the data from the source.
   //
-  Op2 = (UINT64) (VmPtr->Gpr[OPERAND2_REGNUM (Operands)] + Op2Index);
+  Op2 = (UINT64)(INT64)(INTN)(INT64)(VmPtr->Gpr[OPERAND2_REGNUM (Operands)] + Op2Index);
   if (OPERAND2_INDIRECT (Operands)) {
-    Op2 = (UINT64) VmReadMemN (VmPtr, (UINTN) Op2);
+    Op2 = (UINT64)(INT64)(INTN)(INT64)VmReadMemN (VmPtr, (UINTN) Op2);
   }
   //
   // Now write back the result.

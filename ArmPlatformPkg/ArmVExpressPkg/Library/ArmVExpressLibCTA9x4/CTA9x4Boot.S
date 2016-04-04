@@ -21,6 +21,7 @@
 .text
 .align 3
 
+GCC_ASM_EXPORT(ArmPlatformSecBootAction)
 GCC_ASM_EXPORT(ArmPlatformInitializeBootMemory)
 GCC_ASM_IMPORT(PL35xSmcInitialize)
 
@@ -60,6 +61,18 @@ VersatileExpressSmcConfiguration:
 VersatileExpressSmcConfigurationEnd:
 
 /**
+  Call at the beginning of the platform boot up
+
+  This function allows the firmware platform to do extra actions at the early
+  stage of the platform power up.
+
+  Note: This function must be implemented in assembler as there is no stack set up yet
+
+**/
+ASM_PFX(ArmPlatformSecBootAction):
+  bx    lr
+
+/**
   Initialize the memory where the initial stacks will reside
 
   This memory can contain the initial stacks (Secure and Secure Monitor stacks).
@@ -76,8 +89,8 @@ ASM_PFX(ArmPlatformInitializeBootMemory):
   // Initialize PL354 SMC
   //
   LoadConstantToReg (ARM_VE_SMC_CTRL_BASE, r1)
-  ldr   r2, =VersatileExpressSmcConfiguration
-  ldr   r3, =VersatileExpressSmcConfigurationEnd
+  LoadConstantToReg (VersatileExpressSmcConfiguration, r2)
+  LoadConstantToReg (VersatileExpressSmcConfigurationEnd, r3)
   blx   ASM_PFX(PL35xSmcInitialize)
 
   //
@@ -97,7 +110,7 @@ ASM_PFX(ArmPlatformInitializeBootMemory):
   ldr     r0, [r2, #0]
   ldr     r0, = 0x00000000
   str     r0, [r2, #0]
-  ldr     r0, = 0x00900090
+  LoadConstantToReg (0x00900090, r0)
   str     r0, [r2, #0]
 
   // Confirm page mode enabled

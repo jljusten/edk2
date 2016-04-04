@@ -17,8 +17,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "Language.h"
 #include "Hotkey.h"
 
-EFI_GUID  mFrontPageGuid      = FRONT_PAGE_FORMSET_GUID;
-
 BOOLEAN   gConnectAllHappened = FALSE;
 UINTN     gCallbackKey;
 
@@ -46,10 +44,7 @@ HII_VENDOR_DEVICE_PATH  mFrontPageHiiVendorDevicePath = {
         (UINT8) ((sizeof (VENDOR_DEVICE_PATH)) >> 8)
       }
     },
-    //
-    // {8E6D99EE-7531-48f8-8745-7F6144468FF2}
-    //
-    { 0x8e6d99ee, 0x7531, 0x48f8, { 0x87, 0x45, 0x7f, 0x61, 0x44, 0x46, 0x8f, 0xf2 } }
+    FRONT_PAGE_FORMSET_GUID
   },
   {
     END_DEVICE_PATH_TYPE,
@@ -128,8 +123,8 @@ FakeRouteConfig (
   }
 
   *Progress = Configuration;
-  if (!HiiIsConfigHdrMatch (Configuration, &mBootMaintGuid, mBootMaintStorageName)
-      && !HiiIsConfigHdrMatch (Configuration, &mFileExplorerGuid, mFileExplorerStorageName)) {
+  if (!HiiIsConfigHdrMatch (Configuration, &gBootMaintFormSetGuid, mBootMaintStorageName)
+      && !HiiIsConfigHdrMatch (Configuration, &gFileExploreFormSetGuid, mFileExplorerStorageName)) {
     return EFI_NOT_FOUND;
   }
 
@@ -357,7 +352,7 @@ InitializeFrontPage (
     // Publish our HII data
     //
     gFrontPagePrivate.HiiHandle = HiiAddPackages (
-                                    &mFrontPageGuid,
+                                    &gFrontPageFormSetGuid,
                                     gFrontPagePrivate.DriverHandle,
                                     FrontPageVfrBin,
                                     BdsDxeStrings,
@@ -496,7 +491,7 @@ InitializeFrontPage (
 
   Status = HiiUpdateForm (
              HiiHandle,
-             &mFrontPageGuid,
+             &gFrontPageFormSetGuid,
              FRONT_PAGE_FORM_ID,
              StartOpCodeHandle, // LABEL_SELECT_LANGUAGE
              EndOpCodeHandle    // LABEL_END
@@ -536,7 +531,7 @@ CallFrontPage (
                             gFormBrowser2,
                             &gFrontPagePrivate.HiiHandle,
                             1,
-                            &mFrontPageGuid,
+                            &gFrontPageFormSetGuid,
                             0,
                             NULL,
                             &ActionRequest
@@ -727,7 +722,7 @@ UpdateFrontPageStrings (
                   );
   ASSERT_EFI_ERROR (Status);
 
-  SmbiosHandle = 0;
+  SmbiosHandle = SMBIOS_HANDLE_PI_RESERVED;
   do {
     Status = Smbios->GetNext (Smbios, &SmbiosHandle, NULL, &Record, NULL);
     if (EFI_ERROR(Status)) {
@@ -945,6 +940,187 @@ ShowProgress (
 }
 
 /**
+  This function will change video resolution and text mode for setup when setup is launched.
+
+  @param   None.
+
+  @retval  EFI_SUCCESS  Mode is changed successfully.
+  @retval  Others       Mode failed to changed.
+
+**/
+EFI_STATUS
+EFIAPI
+ChangeModeForSetup (
+  VOID
+  )
+{
+  EFI_GRAPHICS_OUTPUT_PROTOCOL          *GraphicsOutput;
+  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL       *SimpleTextOut;
+  UINTN                                 SizeOfInfo;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  *Info;
+  UINT32                                MaxGopMode;
+  UINT32                                MaxTextMode;
+  UINT32                                ModeNumber;
+  UINT32                                SetupTextModeColumn;
+  UINT32                                SetupTextModeRow;
+  UINT32                                SetupHorizontalResolution;
+  UINT32                                SetupVerticalResolution;
+  UINTN                                 HandleCount;
+  EFI_HANDLE                            *HandleBuffer;
+  EFI_STATUS                            Status;
+  UINTN                                 Index;
+  UINTN                                 CurrentColumn;
+  UINTN                                 CurrentRow;  
+
+  Status = gBS->HandleProtocol (
+                  gST->ConsoleOutHandle,
+                  &gEfiGraphicsOutputProtocolGuid,
+                  (VOID**)&GraphicsOutput
+                  );
+  if (EFI_ERROR (Status)) {
+    GraphicsOutput = NULL;
+  }
+
+  Status = gBS->HandleProtocol (
+                  gST->ConsoleOutHandle,
+                  &gEfiSimpleTextOutProtocolGuid,
+                  (VOID**)&SimpleTextOut
+                  );
+  if (EFI_ERROR (Status)) {
+    SimpleTextOut = NULL;
+  }  
+
+  if ((GraphicsOutput == NULL) || (SimpleTextOut == NULL)) {
+    return EFI_UNSUPPORTED;
+  }
+
+  //
+  // Get user defined text mode for setup.
+  //  
+  SetupHorizontalResolution = PcdGet32 (PcdSetupVideoHorizontalResolution);
+  SetupVerticalResolution   = PcdGet32 (PcdSetupVideoVerticalResolution);      
+  SetupTextModeColumn       = PcdGet32 (PcdSetupConOutColumn);
+  SetupTextModeRow          = PcdGet32 (PcdSetupConOutRow);
+
+  MaxGopMode  = GraphicsOutput->Mode->MaxMode;
+  MaxTextMode = SimpleTextOut->Mode->MaxMode;
+
+  //
+  // 1. If current video resolution is same with setup video resolution,
+  //    video resolution need not be changed.
+  //    1.1. If current text mode is same with setup text mode, text mode need not be changed.
+  //    1.2. If current text mode is different with setup text mode, text mode need be changed to setup text mode.
+  // 2. If current video resolution is different with setup video resolution, we need restart whole console drivers.
+  //
+  for (ModeNumber = 0; ModeNumber < MaxGopMode; ModeNumber++) {
+    Status = GraphicsOutput->QueryMode (
+                       GraphicsOutput,
+                       ModeNumber,
+                       &SizeOfInfo,
+                       &Info
+                       );
+    if (!EFI_ERROR (Status)) {
+      if ((Info->HorizontalResolution == SetupHorizontalResolution) &&
+          (Info->VerticalResolution == SetupVerticalResolution)) {
+        if ((GraphicsOutput->Mode->Info->HorizontalResolution == SetupHorizontalResolution) &&
+            (GraphicsOutput->Mode->Info->VerticalResolution == SetupVerticalResolution)) {
+          //
+          // If current video resolution is same with setup video resolution, 
+          // then check if current text mode is same with setup text mode.
+          //
+          Status = SimpleTextOut->QueryMode (SimpleTextOut, SimpleTextOut->Mode->Mode, &CurrentColumn, &CurrentRow);
+          ASSERT_EFI_ERROR (Status);
+          if (CurrentColumn == SetupTextModeColumn && CurrentRow == SetupTextModeRow) {
+            //
+            // Current text mode is same with setup text mode, text mode need not be change.
+            //
+            FreePool (Info);
+            return EFI_SUCCESS;
+          } else {
+            //
+            // Current text mode is different with setup text mode, text mode need be change to new text mode.
+            //
+            for (Index = 0; Index < MaxTextMode; Index++) {
+              Status = SimpleTextOut->QueryMode (SimpleTextOut, Index, &CurrentColumn, &CurrentRow);
+              if (!EFI_ERROR(Status)) {
+                if ((CurrentColumn == SetupTextModeColumn) && (CurrentRow == SetupTextModeRow)) {
+                  //
+                  // setup text mode is supported, set it.
+                  //
+                  Status = SimpleTextOut->SetMode (SimpleTextOut, Index);
+                  ASSERT_EFI_ERROR (Status);
+                  //
+                  // Update text mode PCD.
+                  //
+                  PcdSet32 (PcdConOutColumn, SetupTextModeColumn);
+                  PcdSet32 (PcdConOutRow, SetupTextModeRow);
+                  FreePool (Info);
+                  return EFI_SUCCESS;
+                }
+              }
+            }
+            if (Index == MaxTextMode) {
+              //
+              // If setup text mode is not supported, return error.
+              //
+              FreePool (Info);
+              return EFI_UNSUPPORTED;
+            }
+          }
+        } else {
+          FreePool (Info);
+          //
+          // If current video resolution is not same with the setup video resolution, set new video resolution.
+          // In this case, the drivers which produce simple text out need be restarted.
+          //
+          Status = GraphicsOutput->SetMode (GraphicsOutput, ModeNumber);
+          if (!EFI_ERROR (Status)) {
+            //
+            // Set PCD to restart GraphicsConsole and Consplitter to change video resolution 
+            // and produce new text mode based on new resolution.
+            //
+            PcdSet32 (PcdVideoHorizontalResolution, SetupHorizontalResolution);
+            PcdSet32 (PcdVideoVerticalResolution, SetupVerticalResolution);
+            PcdSet32 (PcdConOutColumn, SetupTextModeColumn);
+            PcdSet32 (PcdConOutRow, SetupTextModeRow);
+            
+            Status = gBS->LocateHandleBuffer (
+                             ByProtocol,
+                             &gEfiSimpleTextOutProtocolGuid,
+                             NULL,
+                             &HandleCount,
+                             &HandleBuffer
+                             );
+            if (!EFI_ERROR (Status)) {
+              for (Index = 0; Index < HandleCount; Index++) {
+                gBS->DisconnectController (HandleBuffer[Index], NULL, NULL);
+              }
+              for (Index = 0; Index < HandleCount; Index++) {
+                gBS->ConnectController (HandleBuffer[Index], NULL, NULL, TRUE);
+              }
+              if (HandleBuffer != NULL) {
+                FreePool (HandleBuffer);
+              }
+              break;
+            }
+          }
+        }
+      }
+      FreePool (Info);
+    }
+  }
+
+  if (ModeNumber == MaxGopMode) {
+    //
+    // If the new resolution is not supported, return error.
+    //
+    return EFI_UNSUPPORTED;
+  }
+
+  return EFI_SUCCESS;
+}
+
+/**
   This function is the main entry of the platform setup entry.
   The function will present the main menu of the system setup,
   this is the platform reference part and can be customize.
@@ -963,6 +1139,7 @@ PlatformBdsEnterFrontPage (
   )
 {
   EFI_STATUS                    Status;
+  EFI_BOOT_LOGO_PROTOCOL        *BootLogo;
 
   PERF_START (NULL, "BdsTimeOut", "BDS", 0);
   //
@@ -991,8 +1168,20 @@ PlatformBdsEnterFrontPage (
     }
   }
 
-  do {
+  //
+  // Boot Logo is corrupted, report it using Boot Logo protocol.
+  //
+  Status = gBS->LocateProtocol (&gEfiBootLogoProtocolGuid, NULL, (VOID **) &BootLogo);
+  if (!EFI_ERROR (Status) && (BootLogo != NULL)) {
+    BootLogo->SetBootLogo (BootLogo, NULL, 0, 0, 0, 0);
+  }
 
+  do {
+    //
+    // Set proper video resolution and text mode for setup
+    //
+    ChangeModeForSetup ();
+    
     InitializeFrontPage (FALSE);
 
     //

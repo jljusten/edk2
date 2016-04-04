@@ -48,16 +48,36 @@
   gLzmaCustomDecompressGuid      = { 0xEE4E5898, 0x3914, 0x4259, { 0x9D, 0x6E, 0xDC, 0x7B, 0xD7, 0x94, 0x03, 0xCF }}
 
   ## Include/Guid/AcpiVariable.h
-  gEfiAcpiVariableGuid               = { 0xAF9FFD67, 0xEC10, 0x488A, { 0x9D, 0xFC, 0x6C, 0xBF, 0x5E, 0xE2, 0x2C, 0x2E }}
-
-  ## Include/Guid/AcpiVariable.h
-  gEfiAcpiS3ContextGuid              = { 0xef98d3a, 0x3e33, 0x497a, { 0xa4, 0x1, 0x77, 0xbe, 0x3e, 0xb7, 0x4f, 0x38 }}
-  
-  ## Include/Guid/AcpiVariable.h
   gEfiAcpiVariableCompatiblityGuid   = { 0xc020489e, 0x6db2, 0x4ef2, { 0x9a, 0xa5, 0xca, 0x6,  0xfc, 0x11, 0xd3, 0x6a }}
 
   ## Include/Guid/LegacyBios.h
   gEfiLegacyBiosGuid                 = { 0x2E3044AC, 0x879F, 0x490F, { 0x97, 0x60, 0xBB, 0xDF, 0xAF, 0x69, 0x5F, 0x50 }}
+  
+  ## Include/Guid/LegacyDevOrder.h
+  gEfiLegacyDevOrderVariableGuid     = { 0xa56074db, 0x65fe, 0x45f7, {0xbd, 0x21, 0x2d, 0x2b, 0xdd, 0x8e, 0x96, 0x52 }}
+
+  ## Include/Guid/CapsuleDataFile.h
+  gEfiUpdateDataFileGuid             = { 0x283fa2ee, 0x532c, 0x484d, { 0x93, 0x83, 0x9f, 0x93, 0xb3, 0x6f, 0xb, 0x7e }}
+  
+  ## Include/Guid/BlockIoVendor.h
+  gBlockIoVendorGuid                 = { 0xcf31fac5, 0xc24e, 0x11d2,  {0x85, 0xf3, 0x0, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b }}
+  
+  ## Include/Guid/BdsHii.h
+  gFrontPageFormSetGuid              = { 0x9e0c30bc, 0x3f06, 0x4ba6, {0x82, 0x88, 0x9, 0x17, 0x9b, 0x85, 0x5d, 0xbe }}
+  gBootManagerFormSetGuid            = { 0x847bc3fe, 0xb974, 0x446d, {0x94, 0x49, 0x5a, 0xd5, 0x41, 0x2e, 0x99, 0x3b }}
+  gDeviceManagerFormSetGuid          = { 0x3ebfa8e6, 0x511d, 0x4b5b, {0xa9, 0x5f, 0xfb, 0x38, 0x26, 0xf, 0x1c, 0x27 }}
+  gDriverHealthFormSetGuid           = { 0xf76e0a70, 0xb5ed, 0x4c38, {0xac, 0x9a, 0xe5, 0xf5, 0x4b, 0xf1, 0x6e, 0x34 }}
+  gBootMaintFormSetGuid              = { 0x642237c7, 0x35d4, 0x472d, {0x83, 0x65, 0x12, 0xe0, 0xcc, 0xf2, 0x7a, 0x22 }}
+  gFileExploreFormSetGuid            = { 0x1f2d63e1, 0xfebd, 0x4dc7, {0x9c, 0xc5, 0xba, 0x2b, 0x1c, 0xef, 0x9c, 0x5b }}
+  
+  ## Include/Guid/BdsLibHii.h
+  gBdsLibStringPackageGuid           = { 0x3b4d9b23, 0x95ac, 0x44f6, {0x9f, 0xcd, 0xe, 0x95, 0x94, 0x58, 0x6c, 0x72 }}
+  
+  ## Include/Guid/LastEnumLang.h
+  gLastEnumLangGuid                  = { 0xe8c545b, 0xa2ee, 0x470d, {0x8e, 0x26, 0xbd, 0xa1, 0xa1, 0x3c, 0xa, 0xa3 }}
+
+  ## Include/Guid/HdBootVariable.h
+  gHdBootDevicePathVariablGuid       = { 0xfab7e9e1, 0x39dd, 0x4f2b, {0x84, 0x8, 0xe2, 0xe, 0x90, 0x6c, 0xb6, 0xde }}
 
 [Protocols]
   ## Vga Mini port binding for a VGA controller
@@ -96,6 +116,15 @@
   ## Indicates if CSM support is needed for ACPI S3 Save.
   #  If TRUE, CSM support is enclosed for ACPI S3 Save.
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdPlatformCsmSupport|TRUE|BOOLEAN|0x00010044
+
+  ## This PCD specifies whether PS2 keyboard does a extended verification during start.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdPs2KbdExtendedVerification|TRUE|BOOLEAN|0x00010045
+
+  ## If TRUE, ACPI Support Protocol will be installed.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdInstallAcpiSupportProtocol|TRUE|BOOLEAN|0x00010046
+
+  ## This PCD specifies whether PS2 mouse does a extended verification during start.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdPs2MouseExtendedVerification|TRUE|BOOLEAN|0x00010047
 
 [PcdsFixedAtBuild]
   ## FFS filename to find the default BMP Logo file.
@@ -145,3 +174,43 @@
   ## The value should be a multiple of 4KB.
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdEbdaReservedMemorySize|0x8000|UINT32|0x30000005
 
+  ## The PCD is used to specify memory size with page number for a pre-allocated ACPI NVS memory to be used
+  #  by PEI in S3 phase. The default size 32K. When changing the value of this PCD, the platform
+  #  developer should make sure the memory size is large enough to meet PEI requiremnt in S3 phase.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdS3AcpiReservedMemorySize|0x8000|UINT32|0x30000006
+
+  ## The PCD is used to specify memory size for boot script executor stack usage in S3 phase.
+  #  The default size 32K. When changing the value of this PCD, the platform developer should
+  #  make sure the memory size is large enough to meet boot script executor requiremnt in S3 phase.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdS3BootScriptStackSize|0x8000|UINT32|0x30000007
+
+  ## The PCD is used to specify the end of address below 1MB for the OPROM.
+  #  The last shadowed OpROM should not exceed this address.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdEndOpromShadowAddress|0xdffff|UINT32|0x30000008
+  
+  ## The PCD is used to specify the low PMM (Post Memory Manager) size with bytes below 1MB.
+  #  The value should be a multiple of 4KB.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLowPmmMemorySize|0x10000|UINT32|0x30000009
+  
+  ## The PCD is used to specify the high PMM (Post Memory Manager) size with bytes above 1MB.
+  #  The value should be a multiple of 4KB.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdHighPmmMemorySize|0x400000|UINT32|0x3000000a
+
+  ## The 4 PCDs below are used to specify the video resolution and text mode of text setup.
+  #  To make text setup work in this resolution, PcdVideoHorizontalResolution, PcdVideoVerticalResolution,
+  #  PcdConOutColumn and PcdConOutRow in MdeModulePkg.dec should be created as PcdsDynamic or PcdsDynamicEx
+  #  in platform DSC file. Then BDS setup will update these PCDs defined in MdeModulePkg.dec and reconnect
+  #  console drivers (GraphicsConsole, Terminal, Consplitter) to make the video resolution and text mode work
+  #  for text setup.
+
+  ## The PCD is used to specify the video horizontal resolution of text setup.   
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdSetupVideoHorizontalResolution|800|UINT32|0x3000000b
+  
+  ## The PCD is used to specify the video vertical resolution of text setup.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdSetupVideoVerticalResolution|600|UINT32|0x3000000c
+
+  ## The PCD is used to specify the console output column of text setup.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdSetupConOutColumn|80|UINT32|0x3000000d
+  
+  ## The PCD is used to specify the console output column of text setup.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdSetupConOutRow|25|UINT32|0x3000000e

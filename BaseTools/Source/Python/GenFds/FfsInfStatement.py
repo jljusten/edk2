@@ -36,6 +36,7 @@ from Common.BuildToolError import *
 from GuidSection import GuidSection
 from FvImageSection import FvImageSection
 from Common.Misc import PeImageClass
+from AutoGen.GenDepex import DependencyExpression
 
 ## generate FFS from INF
 #
@@ -53,7 +54,81 @@ class FfsInfStatement(FfsInfStatementClassObject):
         self.InDsc = True
         self.OptRomDefs = {}
         self.PiSpecVersion = '0x00000000'
-        
+        self.InfModule = None
+        self.FinalTargetSuffixMap = {}
+        self.CurrentLineNum = None
+        self.CurrentLineContent = None
+        self.FileName = None
+        self.InfFileName = None
+
+    ## GetFinalTargetSuffixMap() method
+    #
+    #    Get final build target list
+    def GetFinalTargetSuffixMap(self):
+        if not self.InfModule or not self.CurrentArch:
+            return []
+        if not self.FinalTargetSuffixMap:
+            FinalBuildTargetList = GenFdsGlobalVariable.GetModuleCodaTargetList(self.InfModule, self.CurrentArch)
+            for File in FinalBuildTargetList:
+                self.FinalTargetSuffixMap.setdefault(os.path.splitext(File)[1], []).append(File)
+
+            # Check if current INF module has DEPEX
+            if '.depex' not in self.FinalTargetSuffixMap and self.InfModule.ModuleType != "USER_DEFINED" \
+                and not self.InfModule.DxsFile and not self.InfModule.LibraryClass:
+                ModuleType = self.InfModule.ModuleType
+                PlatformDataBase = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, self.CurrentArch, GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
+
+                if ModuleType != DataType.SUP_MODULE_USER_DEFINED:
+                    for LibraryClass in PlatformDataBase.LibraryClasses.GetKeys():
+                        if LibraryClass.startswith("NULL") and PlatformDataBase.LibraryClasses[LibraryClass, ModuleType]:
+                            self.InfModule.LibraryClasses[LibraryClass] = PlatformDataBase.LibraryClasses[LibraryClass, ModuleType]
+
+                StrModule = str(self.InfModule)
+                PlatformModule = None
+                if StrModule in PlatformDataBase.Modules:
+                    PlatformModule = PlatformDataBase.Modules[StrModule]
+                    for LibraryClass in PlatformModule.LibraryClasses:
+                        if LibraryClass.startswith("NULL"):
+                            self.InfModule.LibraryClasses[LibraryClass] = PlatformModule.LibraryClasses[LibraryClass]
+
+                DependencyList = [self.InfModule]
+                LibraryInstance = {}
+                DepexList = []
+                while len(DependencyList) > 0:
+                    Module = DependencyList.pop(0)
+                    if not Module:
+                        continue
+                    for Dep in Module.Depex[self.CurrentArch, ModuleType]:
+                        if DepexList != []:
+                            DepexList.append('AND')
+                        DepexList.append('(')
+                        DepexList.extend(Dep)
+                        if DepexList[-1] == 'END':  # no need of a END at this time
+                            DepexList.pop()
+                        DepexList.append(')')
+                    if 'BEFORE' in DepexList or 'AFTER' in DepexList:
+                        break
+                    for LibName in Module.LibraryClasses:
+                        if LibName in LibraryInstance:
+                            continue
+                        if PlatformModule and LibName in PlatformModule.LibraryClasses:
+                            LibraryPath = PlatformModule.LibraryClasses[LibName]
+                        else:
+                            LibraryPath = PlatformDataBase.LibraryClasses[LibName, ModuleType]
+                        if not LibraryPath:
+                            LibraryPath = Module.LibraryClasses[LibName]
+                        if not LibraryPath:
+                            continue
+                        LibraryModule = GenFdsGlobalVariable.WorkSpace.BuildObject[LibraryPath, self.CurrentArch, GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
+                        LibraryInstance[LibName] = LibraryModule
+                        DependencyList.append(LibraryModule)
+                if DepexList:
+                    Dpx = DependencyExpression(DepexList, ModuleType, True)
+                    if len(Dpx.PostfixNotation) != 0:
+                        # It means this module has DEPEX
+                        self.FinalTargetSuffixMap['.depex'] = [os.path.join(self.EfiOutputPath, self.BaseName) + '.depex']
+        return self.FinalTargetSuffixMap
+
     ## __InfParse() method
     #
     #   Parse inf file to get module information
@@ -88,7 +163,7 @@ class FfsInfStatement(FfsInfStatementClassObject):
         
         if self.CurrentArch != None:
 
-            Inf = GenFdsGlobalVariable.WorkSpace.BuildObject[PathClassObj, self.CurrentArch]
+            Inf = GenFdsGlobalVariable.WorkSpace.BuildObject[PathClassObj, self.CurrentArch, GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
             #
             # Set Ffs BaseName, MdouleGuid, ModuleType, Version, OutputPath
             #
@@ -106,7 +181,7 @@ class FfsInfStatement(FfsInfStatementClassObject):
                 self.ShadowFromInfFile = Inf.Shadow
 
         else:
-            Inf = GenFdsGlobalVariable.WorkSpace.BuildObject[PathClassObj, 'COMMON']
+            Inf = GenFdsGlobalVariable.WorkSpace.BuildObject[PathClassObj, 'COMMON', GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
             self.BaseName = Inf.BaseName
             self.ModuleGuid = Inf.Guid
             self.ModuleType = Inf.ModuleType
@@ -128,6 +203,8 @@ class FfsInfStatement(FfsInfStatementClassObject):
 
         if Inf._Defs != None and len(Inf._Defs) > 0:
             self.OptRomDefs.update(Inf._Defs)
+        
+        self.InfModule = Inf
             
         GenFdsGlobalVariable.VerboseLogger( "BaseName : %s" %self.BaseName)
         GenFdsGlobalVariable.VerboseLogger("ModuleGuid : %s" %self.ModuleGuid)
@@ -286,27 +363,27 @@ class FfsInfStatement(FfsInfStatementClassObject):
 
         InfFileKey = os.path.normpath(os.path.join(GenFdsGlobalVariable.WorkSpaceDir, self.InfFileName))
         DscArchList = []
-        PlatformDataBase = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, 'IA32']
+        PlatformDataBase = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, 'IA32', GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
         if  PlatformDataBase != None:
             if InfFileKey in PlatformDataBase.Modules:
                 DscArchList.append ('IA32')
 
-        PlatformDataBase = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, 'X64']
+        PlatformDataBase = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, 'X64', GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
         if  PlatformDataBase != None:
             if InfFileKey in PlatformDataBase.Modules:
                 DscArchList.append ('X64')
 
-        PlatformDataBase = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, 'IPF']
+        PlatformDataBase = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, 'IPF', GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
         if PlatformDataBase != None:
             if InfFileKey in (PlatformDataBase.Modules):
                 DscArchList.append ('IPF')
 
-        PlatformDataBase = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, 'ARM']
+        PlatformDataBase = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, 'ARM', GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
         if PlatformDataBase != None:
             if InfFileKey in (PlatformDataBase.Modules):
                 DscArchList.append ('ARM')
 
-        PlatformDataBase = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, 'EBC']
+        PlatformDataBase = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, 'EBC', GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
         if PlatformDataBase != None:
             if InfFileKey in (PlatformDataBase.Modules):
                 DscArchList.append ('EBC')
@@ -379,7 +456,7 @@ class FfsInfStatement(FfsInfStatementClassObject):
         Arch = ''
         OutputPath = ''
         (ModulePath, FileName) = os.path.split(self.InfFileName)
-        Index = FileName.find('.')
+        Index = FileName.rfind('.')
         FileName = FileName[0:Index]
         Arch = "NoneArch"
         if self.CurrentArch != None:

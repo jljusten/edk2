@@ -61,6 +61,8 @@ typedef UINT16          TCP_PORTNO;
 #define  IP_VERSION_4          4
 #define  IP_VERSION_6          6
 
+#define  IP6_PREFIX_LENGTH     64
+
 #pragma pack(1)
 
 //
@@ -212,6 +214,7 @@ typedef struct {
 
 #define EFI_IP6_EQUAL(Ip1, Ip2)  (CompareMem ((Ip1), (Ip2), sizeof (EFI_IPv6_ADDRESS)) == 0)
 
+#define IP4_COPY_ADDRESS(Dest, Src) (CopyMem ((Dest), (Src), sizeof (EFI_IPv4_ADDRESS)))
 #define IP6_COPY_ADDRESS(Dest, Src) (CopyMem ((Dest), (Src), sizeof (EFI_IPv6_ADDRESS)))
 #define IP6_COPY_LINK_ADDRESS(Mac1, Mac2) (CopyMem ((Mac1), (Mac2), sizeof (EFI_MAC_ADDRESS)))
 

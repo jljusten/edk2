@@ -255,6 +255,18 @@ BiosVideoDriverBindingStart (
   }
 
   //
+  // Prepare for status code
+  //
+  Status = gBS->HandleProtocol (
+                  Controller,
+                  &gEfiDevicePathProtocolGuid,
+                  (VOID **) &ParentDevicePath
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  //
   // Open the IO Abstraction(s) needed
   //
   Status = gBS->OpenProtocol (
@@ -303,18 +315,6 @@ BiosVideoDriverBindingStart (
     Status = EFI_UNSUPPORTED;
     goto Done;
   }  
-
-  //
-  // Prepare for status code
-  //
-  Status = gBS->HandleProtocol (
-                  Controller,
-                  &gEfiDevicePathProtocolGuid,
-                  (VOID **) &ParentDevicePath
-                  );
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
 
   REPORT_STATUS_CODE_WITH_DEVICE_PATH (
     EFI_PROGRESS_CODE,
@@ -712,6 +712,19 @@ BiosVideoChildHandleInstall (
 
     if (EFI_ERROR (Status)) {
       //
+      // Free GOP mode structure if it is not freed before
+      // VgaMiniPort does not need this structure any more
+      //
+      if (BiosVideoPrivate->GraphicsOutput.Mode != NULL) {
+        if (BiosVideoPrivate->GraphicsOutput.Mode->Info != NULL) {
+          FreePool (BiosVideoPrivate->GraphicsOutput.Mode->Info);
+          BiosVideoPrivate->GraphicsOutput.Mode->Info = NULL;
+        }
+        FreePool (BiosVideoPrivate->GraphicsOutput.Mode);
+        BiosVideoPrivate->GraphicsOutput.Mode = NULL;
+      }
+
+      //
       // Neither VBE nor the standard 640x480 16 color VGA mode are supported, so do
       // not produce the Graphics Output protocol.  Instead, produce the VGA MiniPort Protocol.
       //
@@ -993,8 +1006,10 @@ BiosVideoDeviceReleaseResource (
   if (BiosVideoPrivate->GraphicsOutput.Mode != NULL) {
     if (BiosVideoPrivate->GraphicsOutput.Mode->Info != NULL) {
         FreePool (BiosVideoPrivate->GraphicsOutput.Mode->Info);
+        BiosVideoPrivate->GraphicsOutput.Mode->Info = NULL;
     }
     FreePool (BiosVideoPrivate->GraphicsOutput.Mode);
+    BiosVideoPrivate->GraphicsOutput.Mode = NULL;
   }
   //
   // Free EDID discovered protocol occupied resource
@@ -1210,12 +1225,18 @@ BiosVideoCheckForVbe (
   UINT8                                  *EdidOverrideDataBlock;
   UINTN                                  EdidActiveDataSize;
   UINT8                                  *EdidActiveDataBlock;
+  UINT32                                 HighestHorizontalResolution;
+  UINT32                                 HighestVerticalResolution;
+  UINTN                                  HighestResolutionMode;
 
   EdidFound             = TRUE;
   EdidOverrideFound     = FALSE;
   EdidOverrideDataBlock = NULL;
   EdidActiveDataSize    = 0;
   EdidActiveDataBlock   = NULL;
+  HighestHorizontalResolution = 0;
+  HighestVerticalResolution   = 0;
+  HighestResolutionMode       = 0;
 
   //
   // Allocate buffer under 1MB for VBE data structures
@@ -1512,6 +1533,16 @@ BiosVideoCheckForVbe (
     }
 
     //
+    // Record the highest resolution mode to set later
+    //
+    if ((BiosVideoPrivate->VbeModeInformationBlock->XResolution >= HighestHorizontalResolution) &&
+        (BiosVideoPrivate->VbeModeInformationBlock->YResolution >= HighestVerticalResolution)) {
+      HighestHorizontalResolution = BiosVideoPrivate->VbeModeInformationBlock->XResolution;
+      HighestVerticalResolution = BiosVideoPrivate->VbeModeInformationBlock->YResolution;
+      HighestResolutionMode = ModeNumber;
+    }
+
+    //
     // Add mode to the list of available modes
     //
     ModeNumber ++;
@@ -1605,6 +1636,15 @@ BiosVideoCheckForVbe (
   //
   // Find the best mode to initialize
   //
+  if ((PcdGet32 (PcdVideoHorizontalResolution) == 0x0) || (PcdGet32 (PcdVideoVerticalResolution) == 0x0)) {
+    DEBUG_CODE (
+      BIOS_VIDEO_MODE_DATA    *ModeData;
+      ModeData = &BiosVideoPrivate->ModeData[HighestResolutionMode];
+      DEBUG ((EFI_D_INFO, "BiosVideo set highest resolution %d x %d\n",
+              ModeData->HorizontalResolution, ModeData->VerticalResolution));
+    );
+    PreferMode = HighestResolutionMode;
+  }
   Status = BiosVideoGraphicsOutputSetMode (&BiosVideoPrivate->GraphicsOutput, (UINT32) PreferMode);
   if (EFI_ERROR (Status)) {
     for (PreferMode = 0; PreferMode < ModeNumber; PreferMode ++) {
@@ -1633,14 +1673,6 @@ Done:
       FreePool (BiosVideoPrivate->ModeData);
       BiosVideoPrivate->ModeData  = NULL;
       BiosVideoPrivate->MaxMode   = 0;
-    }
-    if (BiosVideoPrivate->GraphicsOutput.Mode != NULL) {
-      if (BiosVideoPrivate->GraphicsOutput.Mode->Info != NULL) {
-        FreePool (BiosVideoPrivate->GraphicsOutput.Mode->Info);
-        BiosVideoPrivate->GraphicsOutput.Mode->Info = NULL;
-      }
-      FreePool (BiosVideoPrivate->GraphicsOutput.Mode);
-      BiosVideoPrivate->GraphicsOutput.Mode= NULL;
     }
     if (EdidOverrideDataBlock != NULL) {
       FreePool (EdidOverrideDataBlock);

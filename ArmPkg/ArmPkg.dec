@@ -2,6 +2,7 @@
 # ARM processor package.
 #
 # Copyright (c) 2009 - 2010, Apple Inc. All rights reserved.<BR>
+# Copyright (c) 2011, ARM Limited. All rights reserved.
 #
 #    This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -35,11 +36,19 @@
   ArmLib|Include/Library/ArmLib.h
   SemihostLib|Include/Library/Semihosting.h
   UncachedMemoryAllocationLib|Include/Library/UncachedMemoryAllocationLib.h
-  DefaultExceptioHandlerLib|Include/Library/DefaultExceptioHandlerLib.h
+  DefaultExceptionHandlerLib|Include/Library/DefaultExceptionHandlerLib.h
   ArmDisassemblerLib|Include/Library/ArmDisassemblerLib.h
   
 [Guids.common]
   gArmTokenSpaceGuid       = { 0xBB11ECFE, 0x820F, 0x4968, { 0xBB, 0xA6, 0xF7, 0x6A, 0xFE, 0x30, 0x25, 0x96 } }
+
+  ## ARM MPCore table
+  # Include/Guid/ArmMpCoreInfo.h
+  gArmMpCoreInfoGuid = { 0xa4ee0728, 0xe5d7, 0x4ac5,  {0xb2, 0x1e, 0x65, 0x8e, 0xd8, 0x57, 0xe8, 0x34} }
+
+[Ppis]
+  ## Include/Ppi/ArmMpCoreInfo.h
+  gArmMpCoreInfoPpiGuid = { 0x6847cc74, 0xe9ec, 0x4f8f, {0xa2, 0x9d, 0xab, 0x44, 0xe7, 0x54, 0xa8, 0xfc} }
 
 [Protocols.common]
   gVirtualUncachedPagesProtocolGuid = { 0xAD651C7D, 0x3C22, 0x4DBF, { 0x92, 0xe8, 0x38, 0xa7, 0xcd, 0xae, 0x87, 0xb2 } }
@@ -59,6 +68,8 @@
   gArmTokenSpaceGuid.PcdEfiUncachedMemoryToStronglyOrdered|FALSE|BOOLEAN|0x00000025
 
 [PcdsFixedAtBuild.common]
+  gArmTokenSpaceGuid.PcdTrustzoneSupport|FALSE|BOOLEAN|0x00000006
+
   # This PCD should be a FeaturePcd. But we used this PCD as an '#if' in an ASM file.
   # Using a FeaturePcd make a '(BOOLEAN) casting for its value which is not understood by the preprocessor.
   gArmTokenSpaceGuid.PcdVFPEnabled|0|UINT32|0x00000024
@@ -86,10 +97,38 @@
   #
   # ARM Normal (or Non Secure) Firmware PCDs
   #
-  gArmTokenSpaceGuid.PcdNormalFdBaseAddress|0|UINT32|0x0000002B
-  gArmTokenSpaceGuid.PcdNormalFdSize|0|UINT32|0x0000002C
-  gArmTokenSpaceGuid.PcdNormalFvBaseAddress|0|UINT32|0x0000002D
-  gArmTokenSpaceGuid.PcdNormalFvSize|0|UINT32|0x0000002E
+  gArmTokenSpaceGuid.PcdFdBaseAddress|0|UINT32|0x0000002B
+  gArmTokenSpaceGuid.PcdFdSize|0|UINT32|0x0000002C
+  gArmTokenSpaceGuid.PcdFvBaseAddress|0|UINT32|0x0000002D
+  gArmTokenSpaceGuid.PcdFvSize|0|UINT32|0x0000002E
+  
+  #
+  # ARM Security Extension
+  #
+  
+  # Secure Configuration Register
+  # - BIT0 : NS - Non Secure bit 
+  # - BIT1 : IRQ Handler
+  # - BIT2 : FIQ Handler
+  # - BIT3 : EA - External Abort
+  # - BIT4 : FW - F bit writable
+  # - BIT5 : AW - A bit writable
+  # - BIT6 : nET - Not Early Termination
+  # - BIT7 : SCD - Secure Monitor Call Disable
+  # - BIT8 : HCE - Hyp Call enable
+  # - BIT9 : SIF - Secure Instruction Fetch
+  # 0x31 = NS | EA | FW
+  gArmTokenSpaceGuid.PcdArmScr|0x31|UINT32|0x00000038
+  
+  # Non Secure Access Control Register
+  # - BIT15 : NSASEDIS - Disable Non-secure Advanced SIMD functionality
+  # - BIT14 : NSD32DIS - Disable Non-secure use of D16-D31 
+  # - BIT11 : cp11 - Non-secure access to coprocessor 11 enable
+  # - BIT10 : cp10 - Non-secure access to coprocessor 10 enable
+  # 0xC00 = cp10 | cp11
+  gArmTokenSpaceGuid.PcdArmNsacr|0xC00|UINT32|0x00000039
+  
+  gArmTokenSpaceGuid.PcdArmNonSecModeTransition|0x0|UINT32|0x0000003E
 
   # System Memory (DRAM): These PCDs define the region of in-built system memory
   # Some platforms can get DRAM extensions, these additional regions will be declared
@@ -97,15 +136,10 @@
   gArmTokenSpaceGuid.PcdSystemMemoryBase|0|UINT32|0x00000029
   gArmTokenSpaceGuid.PcdSystemMemorySize|0|UINT32|0x0000002A
 
-  #
-  # ARM MPCore MailBox PCDs
-  #
-  # Address to Set/Get to Mailbox in Multicore system
-  gArmTokenSpaceGuid.PcdMPCoreMailboxSetAddress|0|UINT32|0x00000017
-  gArmTokenSpaceGuid.PcdMPCoreMailboxGetAddress|0|UINT32|0x00000018
-  # Address/Value to clear Mailbox in Multicore system
-  gArmTokenSpaceGuid.PcdMPCoreMailboxClearAddress|0|UINT32|0x00000019
-  gArmTokenSpaceGuid.PcdMPCoreMailboxClearValue|0|UINT32|0x0000001A
+  # Use ClusterId + CoreId to identify the PrimaryCore
+  gArmTokenSpaceGuid.PcdArmPrimaryCoreMask|0xF03|UINT32|0x00000031
+  # The Primary Core is ClusterId[0] & CoreId[0] 
+  gArmTokenSpaceGuid.PcdArmPrimaryCore|0|UINT32|0x00000037
 
   #
   # ARM L2x0 PCDs
@@ -127,3 +161,10 @@
   # The Linux ATAGs are expected to be under 0x4000 (16KB) from the beginning of the System Memory
   gArmTokenSpaceGuid.PcdArmLinuxAtagMaxOffset|0x4000|UINT32|0x00000020
 
+  #
+  # ARM Architectural Timer
+  #
+  gArmTokenSpaceGuid.PcdArmArchTimerFreqInHz|0|UINT32|0x00000034
+  # ARM Architectural Timer Interrupt(GIC PPI) number
+  gArmTokenSpaceGuid.PcdArmArchTimerSecIntrNum|29|UINT32|0x00000035  
+  gArmTokenSpaceGuid.PcdArmArchTimerIntrNum|30|UINT32|0x00000036

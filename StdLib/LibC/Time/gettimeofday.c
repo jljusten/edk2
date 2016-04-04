@@ -10,7 +10,7 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
- * Copyright (c) 1995, 1996, 1997 Kungliga Tekniska Högskolan
+ * Copyright (c) 1995, 1996, 1997 Kungliga Tekniska Hogskolan
  * (Royal Institute of Technology, Stockholm, Sweden).
  * All rights reserved.
  * 
@@ -44,14 +44,13 @@
   Heimdal: gettimeofday.c 14773 2005-04-12 11:29:18Z lha $
   NetBSD: gettimeofday.c,v 1.2 2008/03/22 08:37:21 mlelstv Exp $
 **/
-
 #include <LibConfig.h>
 #include <sys/EfiCdefs.h>
 #include <sys/time.h>
 #include <time.h>
-#ifndef HAVE_GETTIMEOFDAY
 
 
+#ifdef HAVE_GETTIMEOFDAY
 /*
  * Simple gettimeofday that only returns seconds.
  */

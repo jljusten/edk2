@@ -13,30 +13,63 @@
 *
 **/
 
-#include <Library/IoLib.h>
 #include <Library/BaseLib.h>
-#include <Library/BaseMemoryLib.h>
 #include <Library/DebugAgentLib.h>
 #include <Library/PrintLib.h>
 #include <Library/ArmLib.h>
 #include <Library/SerialPortLib.h>
-#include <Chipset/ArmV7.h>
+
+#include <Ppi/ArmGlobalVariable.h>
 
 #include "PrePeiCore.h"
 
-EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI   mSecTemporaryRamSupportPpi = {SecTemporaryRamSupport};
+EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI   mTemporaryRamSupportPpi = { PrePeiCoreTemporaryRamSupport };
+ARM_GLOBAL_VARIABLE_PPI             mGlobalVariablePpi = { PrePeiCoreGetGlobalVariableMemory };
 
-EFI_PEI_PPI_DESCRIPTOR      gSecPpiTable[] = {
+EFI_PEI_PPI_DESCRIPTOR      gCommonPpiTable[] = {
   {
-    EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
+    EFI_PEI_PPI_DESCRIPTOR_PPI,
     &gEfiTemporaryRamSupportPpiGuid,
-    &mSecTemporaryRamSupportPpi
+    &mTemporaryRamSupportPpi
+  },
+  {
+    EFI_PEI_PPI_DESCRIPTOR_PPI,
+    &gArmGlobalVariablePpiGuid,
+    &mGlobalVariablePpi
   }
 };
 
 VOID
+CreatePpiList (
+  OUT UINTN                   *PpiListSize,
+  OUT EFI_PEI_PPI_DESCRIPTOR  **PpiList
+  )
+{
+  EFI_PEI_PPI_DESCRIPTOR *PlatformPpiList;
+  UINTN                   PlatformPpiListSize;
+  UINTN                   ListBase;
+  EFI_PEI_PPI_DESCRIPTOR *LastPpi;
+
+  // Get the Platform PPIs
+  PlatformPpiListSize = 0;
+  ArmPlatformGetPlatformPpiList (&PlatformPpiListSize, &PlatformPpiList);
+
+  // Copy the Common and Platform PPis in Temporrary Memory
+  ListBase = PcdGet32 (PcdCPUCoresStackBase);
+  CopyMem ((VOID*)ListBase, gCommonPpiTable, sizeof(gCommonPpiTable));
+  CopyMem ((VOID*)(ListBase + sizeof(gCommonPpiTable)), PlatformPpiList, PlatformPpiListSize);
+
+  // Set the Terminate flag on the last PPI entry
+  LastPpi = (EFI_PEI_PPI_DESCRIPTOR*)ListBase + ((sizeof(gCommonPpiTable) + PlatformPpiListSize) / sizeof(EFI_PEI_PPI_DESCRIPTOR)) - 1;
+  LastPpi->Flags |= EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST;
+
+  *PpiList     = (EFI_PEI_PPI_DESCRIPTOR*)ListBase;
+  *PpiListSize = sizeof(gCommonPpiTable) + PlatformPpiListSize;
+}
+
+VOID
 CEntryPoint (
-  IN  UINTN                     CoreId,
+  IN  UINTN                     MpId,
   IN  EFI_PEI_CORE_ENTRY_POINT  PeiCoreEntryPoint
   )
 {
@@ -61,8 +94,8 @@ CEntryPoint (
 
   //Note: The MMU will be enabled by MemoryPeim. Only the primary core will have the MMU on.
 
-  //If not primary Jump to Secondary Main
-  if(0 == CoreId) {
+  // If not primary Jump to Secondary Main
+  if (IS_PRIMARY_CORE(MpId)) {
     // Initialize the Debug Agent for Source Level Debugging
     InitializeDebugAgent (DEBUG_AGENT_INIT_POSTMEM_SEC, NULL, NULL);
     SaveAndSetDebugTimerInterrupt (TRUE);
@@ -70,7 +103,7 @@ CEntryPoint (
     // Goto primary Main.
     PrimaryMain (PeiCoreEntryPoint);
   } else {
-    SecondaryMain (CoreId);
+    SecondaryMain (MpId);
   }
 
   // PEI Core should always load and never return
@@ -79,23 +112,49 @@ CEntryPoint (
 
 EFI_STATUS
 EFIAPI
-SecTemporaryRamSupport (
+PrePeiCoreTemporaryRamSupport (
   IN CONST EFI_PEI_SERVICES   **PeiServices,
   IN EFI_PHYSICAL_ADDRESS     TemporaryMemoryBase,
   IN EFI_PHYSICAL_ADDRESS     PermanentMemoryBase,
   IN UINTN                    CopySize
   )
 {
-  //
-  // Migrate the whole temporary memory to permenent memory.
-  //
-  CopyMem (
-    (VOID*)(UINTN)PermanentMemoryBase, 
-    (VOID*)(UINTN)TemporaryMemoryBase, 
-    CopySize
-    );
+  VOID                             *OldHeap;
+  VOID                             *NewHeap;
+  VOID                             *OldStack;
+  VOID                             *NewStack;
 
-  SecSwitchStack((UINTN)(PermanentMemoryBase - TemporaryMemoryBase));
+  OldHeap = (VOID*)(UINTN)TemporaryMemoryBase;
+  NewHeap = (VOID*)((UINTN)PermanentMemoryBase + (CopySize >> 1));
+
+  OldStack = (VOID*)((UINTN)TemporaryMemoryBase + (CopySize >> 1));
+  NewStack = (VOID*)(UINTN)PermanentMemoryBase;
+
+  //
+  // Migrate the temporary memory stack to permanent memory stack.
+  //
+  CopyMem (NewStack, OldStack, CopySize >> 1);
+
+  //
+  // Migrate the temporary memory heap to permanent memory heap.
+  //
+  CopyMem (NewHeap, OldHeap, CopySize >> 1);
+  
+  SecSwitchStack ((UINTN)NewStack - (UINTN)OldStack);
+
+  return EFI_SUCCESS;
+}
+
+EFI_STATUS
+PrePeiCoreGetGlobalVariableMemory (
+  OUT EFI_PHYSICAL_ADDRESS    *GlobalVariableBase
+  )
+{
+  ASSERT (GlobalVariableBase != NULL);
+
+  *GlobalVariableBase = (UINTN)PcdGet32 (PcdCPUCoresStackBase) +
+                        (UINTN)PcdGet32 (PcdCPUCorePrimaryStackSize) -
+                        (UINTN)PcdGet32 (PcdPeiGlobalVariableSize);
 
   return EFI_SUCCESS;
 }

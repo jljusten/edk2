@@ -24,7 +24,7 @@
 /**
   Dump memory
 
-  Argv[0] - "md"[.#] # is optiona width 1, 2, 4, or 8. Default 1
+  Argv[0] - "md"[.#] # is optional width 1, 2, 4, or 8. Default 1
   Argv[1] - Hex Address to dump
   Argv[2] - Number of hex bytes to dump (0x20 is default)
 
@@ -34,7 +34,7 @@
 
   @param  Argc   Number of command arguments in Argv
   @param  Argv   Array of strings that represent the parsed command line. 
-                 Argv[0] is the comamnd name
+                 Argv[0] is the command name
 
   @return EFI_SUCCESS
 
@@ -71,7 +71,7 @@ EblMdCmd (
 /**
   Fill Memory with data
 
-  Argv[0] - "mfill"[.#] # is optiona width 1, 2, 4, or 8. Default 4
+  Argv[0] - "mfill"[.#] # is optional width 1, 2, 4, or 8. Default 4
   Argv[1] - Hex Address to fill
   Argv[2] - Data to write (0x00 is default)
   Argv[3] - Number of units to dump.
@@ -83,7 +83,7 @@ EblMdCmd (
 
   @param  Argc   Number of command arguments in Argv
   @param  Argv   Array of strings that represent the parsed command line. 
-                 Argv[0] is the comamnd name
+                 Argv[0] is the command name
 
   @return EFI_SUCCESS
 
@@ -163,7 +163,7 @@ CHAR8 *gPciSerialClassCodes[] = {
 
   @param  Argc   Number of command arguments in Argv
   @param  Argv   Array of strings that represent the parsed command line. 
-                 Argv[0] is the comamnd name
+                 Argv[0] is the command name
 
   @return EFI_SUCCESS
 
@@ -255,7 +255,7 @@ EblPciCmd (
         Pci->GetLocation (Pci, &Seg, &Bus, &Dev, &Func);
         if ((Bus == BusArg) && (Dev == DevArg) && (Func == FuncArg)) {
           // Only print Segment if it is non zero. If you only have one PCI segment it is 
-          // redundent to print it out
+          // redundant to print it out
           if (Seg != 0) {
             AsciiPrint ("Seg:%d ", Seg);
           }

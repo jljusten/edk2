@@ -19,15 +19,14 @@
 
 #include <Library/PcdLib.h>
 #include <Library/ArmLib.h>
+#include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
+#include <Library/IoLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/HobLib.h>
 #include <Library/SerialPortLib.h>
 #include <Library/ArmPlatformLib.h>
 
-#include <Chipset/ArmV7.h>
-
-#define ARM_PRIMARY_CORE  0
 #define SerialPrint(txt)  SerialPortWrite (txt, AsciiStrLen(txt)+1);
 
 // Vector Table for PrePi Phase
@@ -45,6 +44,8 @@ TimerConstructor (
 VOID
 PrePiMain (
   IN  UINTN                     UefiMemoryBase,
+  IN  UINTN                     StacksBase,
+  IN  UINTN                     GlobalVariableBase,
   IN  UINT64                    StartTimeStamp
   );
 
@@ -64,12 +65,14 @@ PlatformPeim (
 VOID
 PrimaryMain (
   IN  UINTN                     UefiMemoryBase,
+  IN  UINTN                     StacksBase,
+  IN  UINTN                     GlobalVariableBase,
   IN  UINT64                    StartTimeStamp
   );
 
 VOID
 SecondaryMain (
-  IN  UINTN                     CoreId
+  IN  UINTN                     MpId
   );
 
 // Either implemented by PrePiLib or by MemoryInitPei

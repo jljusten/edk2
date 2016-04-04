@@ -39,6 +39,10 @@ class FileStatement (FileStatementClassObject) :
     #
     def __init__(self):
         FileStatementClassObject.__init__(self)
+        self.CurrentLineNum = None
+        self.CurrentLineContent = None
+        self.FileName = None
+        self.InfFileName = None
 
     ## GenFfs() method
     #
@@ -67,7 +71,7 @@ class FileStatement (FileStatementClassObject) :
         
         OutputDir = os.path.join(GenFdsGlobalVariable.FfsDir, self.NameGuid)
         if not os.path.exists(OutputDir):
-             os.makedirs(OutputDir)
+            os.makedirs(OutputDir)
 
         Dict.update(self.DefineVarDict)
         SectionAlignments = None

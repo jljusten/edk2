@@ -23,9 +23,54 @@
 #include <Drivers/PL301Axi.h>
 #include <Drivers/SP804Timer.h>
 
+#include <Ppi/ArmMpCoreInfo.h>
+
 #include <ArmPlatform.h>
 
 #define SerialPrint(txt)  SerialPortWrite ((UINT8*)(txt), AsciiStrLen(txt)+1);
+
+ARM_CORE_INFO mVersatileExpressMpCoreInfoCTA9x4[] = {
+  {
+    // Cluster 0, Core 0
+    0x0, 0x0,
+
+    // MP Core MailBox Set/Get/Clear Addresses and Clear Value
+    (EFI_PHYSICAL_ADDRESS)ARM_VE_SYS_FLAGS_REG,
+    (EFI_PHYSICAL_ADDRESS)ARM_VE_SYS_FLAGS_SET_REG,
+    (EFI_PHYSICAL_ADDRESS)ARM_VE_SYS_FLAGS_CLR_REG,
+    (UINT64)0xFFFFFFFF
+  },
+  {
+    // Cluster 0, Core 1
+    0x0, 0x1,
+
+    // MP Core MailBox Set/Get/Clear Addresses and Clear Value
+    (EFI_PHYSICAL_ADDRESS)ARM_VE_SYS_FLAGS_REG,
+    (EFI_PHYSICAL_ADDRESS)ARM_VE_SYS_FLAGS_SET_REG,
+    (EFI_PHYSICAL_ADDRESS)ARM_VE_SYS_FLAGS_CLR_REG,
+    (UINT64)0xFFFFFFFF
+  },
+  {
+    // Cluster 0, Core 2
+    0x0, 0x2,
+
+    // MP Core MailBox Set/Get/Clear Addresses and Clear Value
+    (EFI_PHYSICAL_ADDRESS)ARM_VE_SYS_FLAGS_REG,
+    (EFI_PHYSICAL_ADDRESS)ARM_VE_SYS_FLAGS_SET_REG,
+    (EFI_PHYSICAL_ADDRESS)ARM_VE_SYS_FLAGS_CLR_REG,
+    (UINT64)0xFFFFFFFF
+  },
+  {
+    // Cluster 0, Core 3
+    0x0, 0x3,
+
+    // MP Core MailBox Set/Get/Clear Addresses and Clear Value
+    (EFI_PHYSICAL_ADDRESS)ARM_VE_SYS_FLAGS_REG,
+    (EFI_PHYSICAL_ADDRESS)ARM_VE_SYS_FLAGS_SET_REG,
+    (EFI_PHYSICAL_ADDRESS)ARM_VE_SYS_FLAGS_CLR_REG,
+    (UINT64)0xFFFFFFFF
+  }
+};
 
 // DDR2 timings
 PL341_DMC_CONFIG DDRTimings = {
@@ -61,25 +106,6 @@ PL341_DMC_CONFIG DDRTimings = {
 };
 
 /**
-  Return if Trustzone is supported by your platform
-
-  A non-zero value must be returned if you want to support a Secure World on your platform.
-  ArmVExpressTrustzoneInit() will later set up the secure regions.
-  This function can return 0 even if Trustzone is supported by your processor. In this case,
-  the platform will continue to run in Secure World.
-
-  @return   A non-zero value if Trustzone supported.
-
-**/
-UINTN
-ArmPlatformTrustzoneSupported (
-  VOID
-  )
-{
-  return (MmioRead32(ARM_VE_SYS_CFGRW1_REG) & ARM_VE_CFGRW1_TZASC_EN_BIT_MASK);
-}
-
-/**
   Return the current Boot Mode
 
   This function returns the boot reason on the platform
@@ -92,29 +118,10 @@ ArmPlatformGetBootMode (
   VOID
   )
 {
-  return BOOT_WITH_FULL_CONFIGURATION;
-}
-
-/**
-  Remap the memory at 0x0
-
-  Some platform requires or gives the ability to remap the memory at the address 0x0.
-  This function can do nothing if this feature is not relevant to your platform.
-
-**/
-VOID
-ArmPlatformBootRemapping (
-  VOID
-  )
-{
-  UINT32 Value;
-
-  if (FeaturePcdGet(PcdNorFlashRemapping)) {
-    SerialPrint ("Secure ROM at 0x0\n\r");
+  if (MmioRead32(ARM_VE_SYS_FLAGS_NV_REG) == 0) {
+    return BOOT_WITH_FULL_CONFIGURATION;
   } else {
-    Value = MmioRead32(ARM_VE_SYS_CFGRW1_REG); //Scc - CFGRW1
-    // Remap the DRAM to 0x0
-    MmioWrite32(ARM_VE_SYS_CFGRW1_REG, (Value & 0x0FFFFFFF) | ARM_VE_CFGRW1_REMAP_DRAM);
+    return BOOT_ON_S2_RESUME;
   }
 }
 
@@ -151,6 +158,52 @@ ArmPlatformInitializeSystemMemory (
   VOID
   )
 {
+  UINT32 Value;
+
+  // Memory Map remapping
+  if (FeaturePcdGet(PcdNorFlashRemapping)) {
+    SerialPrint ("Secure ROM at 0x0\n\r");
+  } else {
+    Value = MmioRead32(ARM_VE_SYS_CFGRW1_REG); //Scc - CFGRW1
+    // Remap the DRAM to 0x0
+    MmioWrite32(ARM_VE_SYS_CFGRW1_REG, (Value & 0x0FFFFFFF) | ARM_VE_CFGRW1_REMAP_DRAM);
+  }
+
   PL341DmcInit(ARM_VE_DMC_BASE, &DDRTimings);
   PL301AxiInit(ARM_VE_FAXI_BASE);
 }
+
+EFI_STATUS
+PrePeiCoreGetMpCoreInfo (
+  OUT UINTN                   *CoreCount,
+  OUT ARM_CORE_INFO           **ArmCoreTable
+  )
+{
+  *CoreCount    = sizeof(mVersatileExpressMpCoreInfoCTA9x4) / sizeof(ARM_CORE_INFO);
+  *ArmCoreTable = mVersatileExpressMpCoreInfoCTA9x4;
+
+  return EFI_SUCCESS;
+}
+
+// Needs to be declared in the file. Otherwise gArmMpCoreInfoPpiGuid is undefined in the contect of PrePeiCore
+EFI_GUID mArmMpCoreInfoPpiGuid = ARM_MP_CORE_INFO_PPI_GUID;
+ARM_MP_CORE_INFO_PPI mMpCoreInfoPpi = { PrePeiCoreGetMpCoreInfo };
+
+EFI_PEI_PPI_DESCRIPTOR      gPlatformPpiTable[] = {
+  {
+    EFI_PEI_PPI_DESCRIPTOR_PPI,
+    &mArmMpCoreInfoPpiGuid,
+    &mMpCoreInfoPpi
+  }
+};
+
+VOID
+ArmPlatformGetPlatformPpiList (
+  OUT UINTN                   *PpiListSize,
+  OUT EFI_PEI_PPI_DESCRIPTOR  **PpiList
+  )
+{
+  *PpiListSize = sizeof(gPlatformPpiTable);
+  *PpiList = gPlatformPpiTable;
+}
+

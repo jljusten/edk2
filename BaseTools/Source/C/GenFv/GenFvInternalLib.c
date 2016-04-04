@@ -1,6 +1,6 @@
 /** @file
 
-Copyright (c) 2004 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -209,6 +209,7 @@ Returns:
       DebugMsg (NULL, 0, 9, "rebase address", "%s = %s", EFI_FV_BASE_ADDRESS_STRING, Value);
 
       FvInfo->BaseAddress = Value64;
+      FvInfo->BaseAddressSet = TRUE;
     }
   }
 
@@ -1085,7 +1086,11 @@ Returns:
       // Rebase the PE or TE image in FileBuffer of FFS file for XIP 
       // Rebase for the debug genfvmap tool
       //
-      FfsRebase (FvInfo, FvInfo->FvFiles[Index], (EFI_FFS_FILE_HEADER *) FileBuffer, (UINTN) *VtfFileImage - (UINTN) FvImage->FileImage, FvMapFile);
+      Status = FfsRebase (FvInfo, FvInfo->FvFiles[Index], (EFI_FFS_FILE_HEADER *) FileBuffer, (UINTN) *VtfFileImage - (UINTN) FvImage->FileImage, FvMapFile);
+      if (EFI_ERROR (Status)) {
+        Error (NULL, 0, 3000, "Invalid", "Could not rebase %s.", FvInfo->FvFiles[Index]);
+        return Status;
+      }	  
       //
       // copy VTF File
       //
@@ -1124,7 +1129,11 @@ Returns:
     // Rebase the PE or TE image in FileBuffer of FFS file for XIP. 
     // Rebase Bs and Rt drivers for the debug genfvmap tool.
     //
-    FfsRebase (FvInfo, FvInfo->FvFiles[Index], (EFI_FFS_FILE_HEADER *) FileBuffer, (UINTN) FvImage->CurrentFilePointer - (UINTN) FvImage->FileImage, FvMapFile);
+    Status = FfsRebase (FvInfo, FvInfo->FvFiles[Index], (EFI_FFS_FILE_HEADER *) FileBuffer, (UINTN) FvImage->CurrentFilePointer - (UINTN) FvImage->FileImage, FvMapFile);
+	if (EFI_ERROR (Status)) {
+	  Error (NULL, 0, 3000, "Invalid", "Could not rebase %s.", FvInfo->FvFiles[Index]);
+	  return Status;
+	}	  	
     //
     // Copy the file
     //
@@ -2792,7 +2801,6 @@ Returns:
   PE_COFF_LOADER_IMAGE_CONTEXT          OrigImageContext;  
   EFI_PHYSICAL_ADDRESS                  XipBase;
   EFI_PHYSICAL_ADDRESS                  NewPe32BaseAddress;
-  EFI_PHYSICAL_ADDRESS                  *BaseToUpdate;
   UINTN                                 Index;
   EFI_FILE_SECTION_POINTER              CurrentPe32Section;
   EFI_FFS_FILE_STATE                    SavedState;
@@ -2809,7 +2817,6 @@ Returns:
 
   Index              = 0;  
   MemoryImagePointer = NULL;
-  BaseToUpdate       = NULL;
   TEImageHeader      = NULL;
   ImgHdr             = NULL;
   SectionHeader      = NULL;
@@ -2818,11 +2825,20 @@ Returns:
   PeFileBuffer       = NULL;
 
   //
-  // Don't need to relocate image when BaseAddress is not set.
+  // Don't need to relocate image when BaseAddress is zero and no ForceRebase Flag specified.
   //
-  if (FvInfo->BaseAddress == 0) {
+  if ((FvInfo->BaseAddress == 0) && (FvInfo->ForceRebase == -1)) {
     return EFI_SUCCESS;
   }
+  
+  //
+  // If ForceRebase Flag specified to FALSE, will always not take rebase action.
+  //
+  if (FvInfo->ForceRebase == 0) {
+    return EFI_SUCCESS;
+  }
+
+
   XipBase = FvInfo->BaseAddress + XipOffset;
 
   //
@@ -2974,7 +2990,6 @@ Returns:
         }
 
         NewPe32BaseAddress = XipBase + (UINTN) CurrentPe32Section.Pe32Section + sizeof (EFI_PE32_SECTION) - (UINTN)FfsFile;
-        BaseToUpdate = &XipBase;
         break;
 
       case EFI_FV_FILETYPE_DRIVER:
@@ -2990,7 +3005,6 @@ Returns:
           return EFI_ABORTED;
         }
         NewPe32BaseAddress = XipBase + (UINTN) CurrentPe32Section.Pe32Section + sizeof (EFI_PE32_SECTION) - (UINTN)FfsFile;
-        BaseToUpdate = &XipBase;	          	
         break;
 
       default:
@@ -3020,7 +3034,7 @@ Returns:
       return EFI_OUT_OF_RESOURCES;
     }
     memset ((VOID *) MemoryImagePointer, 0, (UINTN) ImageContext.ImageSize + ImageContext.SectionAlignment);
-    ImageContext.ImageAddress = ((UINTN) MemoryImagePointer + ImageContext.SectionAlignment - 1) & (~((INT64)ImageContext.SectionAlignment - 1));
+    ImageContext.ImageAddress = ((UINTN) MemoryImagePointer + ImageContext.SectionAlignment - 1) & (~((UINTN) ImageContext.SectionAlignment - 1));
     
     Status =  PeCoffLoaderLoadImage (&ImageContext);
     if (EFI_ERROR (Status)) {
@@ -3247,7 +3261,7 @@ Returns:
       return EFI_OUT_OF_RESOURCES;
     }
     memset ((VOID *) MemoryImagePointer, 0, (UINTN) ImageContext.ImageSize + ImageContext.SectionAlignment);
-    ImageContext.ImageAddress = ((UINTN) MemoryImagePointer + ImageContext.SectionAlignment - 1) & (~(ImageContext.SectionAlignment - 1));
+    ImageContext.ImageAddress = ((UINTN) MemoryImagePointer + ImageContext.SectionAlignment - 1) & (~((UINTN) ImageContext.SectionAlignment - 1));
 
     Status =  PeCoffLoaderLoadImage (&ImageContext);
     if (EFI_ERROR (Status)) {

@@ -138,9 +138,6 @@ typedef struct _USB_HUB_API    USB_HUB_API;
 #define USB_BIT(a)                  ((UINTN)(1 << (a)))
 #define USB_BIT_IS_SET(Data, Bit)   ((BOOLEAN)(((Data) & (Bit)) == (Bit)))
 
-#define EFI_USB_BUS_PROTOCOL_GUID \
-          {0x2B2F68CC, 0x0CD2, 0x44cf, {0x8E, 0x8B, 0xBB, 0xA2, 0x0B, 0x1B, 0x5B, 0x75}}
-
 #define USB_INTERFACE_FROM_USBIO(a) \
           CR(a, USB_INTERFACE, UsbIo, USB_INTERFACE_SIGNATURE)
 
@@ -149,6 +146,8 @@ typedef struct _USB_HUB_API    USB_HUB_API;
 
 //
 // Used to locate USB_BUS
+// UsbBusProtocol is the private protocol.
+// gEfiCallerIdGuid will be used as its protocol guid.
 //
 typedef struct _EFI_USB_BUS_PROTOCOL {
   UINT64                    Reserved;
@@ -167,7 +166,7 @@ struct _USB_DEVICE {
   //
   UINT8                     Speed;
   UINT8                     Address;
-  UINT8                     MaxPacket0;
+  UINT32                    MaxPacket0;
 
   //
   // The device's descriptors and its configuration
@@ -189,6 +188,7 @@ struct _USB_DEVICE {
   UINT8                     ParentAddr;
   USB_INTERFACE             *ParentIf;
   UINT8                     ParentPort;       // Start at 0
+  UINT8                     Tier;
 };
 
 //
@@ -246,10 +246,16 @@ struct _USB_BUS {
   EFI_USB_HC_PROTOCOL       *UsbHc;
 
   //
+  // Recorded the max supported usb devices.
+  // XHCI can support up to 255 devices.
+  // EHCI/UHCI/OHCI supports up to 127 devices.
+  //
+  UINT32                    MaxDevices;
+  //
   // An array of device that is on the bus. Devices[0] is
   // for root hub. Device with address i is at Devices[i].
   //
-  USB_DEVICE                *Devices[USB_MAX_DEVICES];
+  USB_DEVICE                *Devices[256];
 
   //
   // USB Bus driver need to control the recursive connect policy of the bus, only those wanted

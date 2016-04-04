@@ -279,19 +279,12 @@ BiosKeyboardDriverBindingStart (
   BiosKeyboardPrivate->SimpleTextInputEx.UnregisterKeyNotify = BiosKeyboardUnregisterKeyNotify;    
   InitializeListHead (&BiosKeyboardPrivate->NotifyList);
 
-  Status = gBS->HandleProtocol (
-                  Controller,
-                  &gEfiDevicePathProtocolGuid,
-                  (VOID **) &BiosKeyboardPrivate->DevicePath
-                  );
-
   //
   // Report that the keyboard is being enabled
   //
-  REPORT_STATUS_CODE_WITH_DEVICE_PATH (
+  REPORT_STATUS_CODE (
     EFI_PROGRESS_CODE,
-    EFI_PERIPHERAL_KEYBOARD | EFI_P_PC_ENABLE,
-    BiosKeyboardPrivate->DevicePath
+    EFI_PERIPHERAL_KEYBOARD | EFI_P_PC_ENABLE
     );
 
   //
@@ -350,10 +343,9 @@ BiosKeyboardDriverBindingStart (
   //
   // Report a Progress Code for an attempt to detect the precense of the keyboard device in the system
   //
-  REPORT_STATUS_CODE_WITH_DEVICE_PATH (
+  REPORT_STATUS_CODE (
     EFI_PROGRESS_CODE,
-    EFI_PERIPHERAL_KEYBOARD | EFI_P_PC_PRESENCE_DETECT,
-    BiosKeyboardPrivate->DevicePath
+    EFI_PERIPHERAL_KEYBOARD | EFI_P_PC_PRESENCE_DETECT
     );
 
   //
@@ -361,10 +353,10 @@ BiosKeyboardDriverBindingStart (
   //
   Status = BiosKeyboardPrivate->SimpleTextInputEx.Reset (
                                                     &BiosKeyboardPrivate->SimpleTextInputEx,
-                                                    FALSE
+                                                    FeaturePcdGet (PcdPs2KbdExtendedVerification)
                                                     );
-
   if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "[KBD]Reset Failed. Status - %r\n", Status));  
     StatusCode = EFI_PERIPHERAL_KEYBOARD | EFI_P_EC_NOT_DETECTED;
     goto Done;
   }
@@ -436,6 +428,7 @@ BiosKeyboardDriverBindingStart (
       }
     }
   }
+  DEBUG ((EFI_D_INFO, "[KBD]Extended keystrokes supported by CSM16 - %02x\n", (UINTN)BiosKeyboardPrivate->ExtendedKeyboard));
   //
   // Install protocol interfaces for the keyboard device.
   //
@@ -453,10 +446,9 @@ Done:
     //
     // Report an Error Code for failing to start the keyboard device
     //
-    REPORT_STATUS_CODE_WITH_DEVICE_PATH (
+    REPORT_STATUS_CODE (
       EFI_ERROR_CODE | EFI_ERROR_MINOR,
-      StatusCode,
-      BiosKeyboardPrivate->DevicePath
+      StatusCode
       );
   }
 
@@ -1010,19 +1002,17 @@ BiosKeyboardReset (
   // 1
   // Report reset progress code
   //
-  REPORT_STATUS_CODE_WITH_DEVICE_PATH (
+  REPORT_STATUS_CODE (
     EFI_PROGRESS_CODE,
-    EFI_PERIPHERAL_KEYBOARD | EFI_P_PC_RESET,
-    BiosKeyboardPrivate->DevicePath
+    EFI_PERIPHERAL_KEYBOARD | EFI_P_PC_RESET
     );
 
   //
   // Report a Progress Code for clearing the keyboard buffer
   //
-  REPORT_STATUS_CODE_WITH_DEVICE_PATH (
+  REPORT_STATUS_CODE (
     EFI_PROGRESS_CODE,
-    EFI_PERIPHERAL_KEYBOARD | EFI_P_KEYBOARD_PC_CLEAR_BUFFER,
-    BiosKeyboardPrivate->DevicePath
+    EFI_PERIPHERAL_KEYBOARD | EFI_P_KEYBOARD_PC_CLEAR_BUFFER
     );
 
   //
@@ -1114,10 +1104,9 @@ BiosKeyboardReset (
     //
     // Report a Progress Code for performing a self test on the keyboard controller
     //
-    REPORT_STATUS_CODE_WITH_DEVICE_PATH (
+    REPORT_STATUS_CODE (
       EFI_PROGRESS_CODE,
-      EFI_PERIPHERAL_KEYBOARD | EFI_P_KEYBOARD_PC_SELF_TEST,
-      BiosKeyboardPrivate->DevicePath
+      EFI_PERIPHERAL_KEYBOARD | EFI_P_KEYBOARD_PC_SELF_TEST
       );
 
     Status = KeyboardCommand (
@@ -1395,6 +1384,17 @@ BiosKeyboardReadKeyStroke (
   Status = KeyboardReadKeyStrokeWorker (BiosKeyboardPrivate, &KeyData);
   if (EFI_ERROR (Status)) {
     return Status;
+  }
+
+  //
+  // Convert the Ctrl+[a-z] to Ctrl+[1-26]
+  //
+  if ((KeyData.KeyState.KeyShiftState & (EFI_LEFT_CONTROL_PRESSED | EFI_RIGHT_CONTROL_PRESSED)) != 0) {
+    if (KeyData.Key.UnicodeChar >= L'a' && KeyData.Key.UnicodeChar <= L'z') {
+      KeyData.Key.UnicodeChar = (CHAR16) (KeyData.Key.UnicodeChar - L'a' + 1);
+    } else if (KeyData.Key.UnicodeChar >= L'A' && KeyData.Key.UnicodeChar <= L'Z') {
+      KeyData.Key.UnicodeChar = (CHAR16) (KeyData.Key.UnicodeChar - L'A' + 1);
+    }
   }
 
   CopyMem (Key, &KeyData.Key, sizeof (EFI_INPUT_KEY));  
@@ -1679,6 +1679,11 @@ CheckKeyboardConnect (
              KBC_INPBUF_VIA60_KBEN
              );
   if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "[KBD]CheckKeyboardConnect - Keyboard enable failed!\n"));
+    REPORT_STATUS_CODE (
+      EFI_ERROR_CODE | EFI_ERROR_MINOR,
+      EFI_PERIPHERAL_KEYBOARD | EFI_P_EC_CONTROLLER_ERROR
+      );
     return FALSE;
   }
 
@@ -1689,6 +1694,11 @@ CheckKeyboardConnect (
              );
 
   if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "[KBD]CheckKeyboardConnect - Timeout!\n"));
+    REPORT_STATUS_CODE (
+      EFI_ERROR_CODE | EFI_ERROR_MINOR,
+      EFI_PERIPHERAL_KEYBOARD | EFI_P_EC_CONTROLLER_ERROR
+      );
     return FALSE;
   }
 
@@ -1763,6 +1773,13 @@ BiosKeyboardTimerHandler (
 
   KeyData.Key.ScanCode            = (UINT16) Regs.H.AH;
   KeyData.Key.UnicodeChar         = (UINT16) Regs.H.AL;
+  DEBUG ((
+    EFI_D_INFO,
+    "[KBD]INT16 returns EFI_INPUT_KEY.ScanCode - %x, EFI_INPUT_KEY.UnicodeChar - %x\n",
+    KeyData.Key.ScanCode,
+    KeyData.Key.UnicodeChar
+    ));
+  
   KeyData.KeyState.KeyShiftState  = EFI_SHIFT_STATE_VALID;
   KeyData.KeyState.KeyToggleState = EFI_TOGGLE_STATE_VALID;
   //
@@ -1800,6 +1817,40 @@ BiosKeyboardTimerHandler (
   //
   KbFlag1 = *((UINT8 *) (UINTN) 0x417);  // read the STATUS FLAGS 1
   KbFlag2 = *((UINT8 *) (UINTN) 0x418); // read STATUS FLAGS 2
+
+  DEBUG_CODE (
+    {
+      if ((KbFlag1 & KB_CAPS_LOCK_BIT) == KB_CAPS_LOCK_BIT) {
+        DEBUG ((EFI_D_INFO, "[KBD]Caps Lock Key is pressed.\n"));
+      }
+      if ((KbFlag1 & KB_NUM_LOCK_BIT) == KB_NUM_LOCK_BIT) {
+        DEBUG ((EFI_D_INFO, "[KBD]Num Lock Key is pressed.\n"));
+      }
+      if ((KbFlag1 & KB_SCROLL_LOCK_BIT) == KB_SCROLL_LOCK_BIT) {
+        DEBUG ((EFI_D_INFO, "[KBD]Scroll Lock Key is pressed.\n"));
+      } 
+      if ((KbFlag1 & KB_ALT_PRESSED) == KB_ALT_PRESSED) {
+        if ((KbFlag2 & KB_LEFT_ALT_PRESSED) == KB_LEFT_ALT_PRESSED) {
+          DEBUG ((EFI_D_INFO, "[KBD]Left Alt Key is pressed.\n"));
+        } else {
+          DEBUG ((EFI_D_INFO, "[KBD]Right Alt Key is pressed.\n"));
+        }
+      }  
+      if ((KbFlag1 & KB_CTRL_PRESSED) == KB_CTRL_PRESSED) {
+        if ((KbFlag2 & KB_LEFT_CTRL_PRESSED) == KB_LEFT_CTRL_PRESSED) {
+          DEBUG ((EFI_D_INFO, "[KBD]Left Ctrl Key is pressed.\n"));
+        } else {
+          DEBUG ((EFI_D_INFO, "[KBD]Right Ctrl Key is pressed.\n"));
+        }
+      }  
+      if ((KbFlag1 & KB_LEFT_SHIFT_PRESSED) == KB_LEFT_SHIFT_PRESSED) {
+        DEBUG ((EFI_D_INFO, "[KBD]Left Shift Key is pressed.\n"));
+      }
+      if ((KbFlag1 & KB_RIGHT_SHIFT_PRESSED) == KB_RIGHT_SHIFT_PRESSED) {
+        DEBUG ((EFI_D_INFO, "[KBD]Right Shift Key is pressed.\n"));
+      }
+    }
+  );
 
   //
   // Record toggle state
@@ -1864,6 +1915,13 @@ BiosKeyboardTimerHandler (
     }
   }
 
+  DEBUG ((
+    EFI_D_INFO,
+    "[KBD]Convert to EFI Scan Code, EFI_INPUT_KEY.ScanCode - %x, EFI_INPUT_KEY.UnicodeChar - %x\n",
+    KeyData.Key.ScanCode,
+    KeyData.Key.UnicodeChar
+    ));
+
   //
   // Need not return associated shift state if a class of printable characters that
   // are normally adjusted by shift modifiers.
@@ -1872,6 +1930,7 @@ BiosKeyboardTimerHandler (
   if ((KeyData.Key.UnicodeChar >= L'A' && KeyData.Key.UnicodeChar <= L'Z') ||
       (KeyData.Key.UnicodeChar >= L'a' && KeyData.Key.UnicodeChar <= L'z')
      ) {
+    DEBUG ((EFI_D_INFO, "[KBD]Shift key with a~z are pressed, remove shift state in EFI_KEY_STATE.\n"));
     KeyData.KeyState.KeyShiftState &= ~(EFI_LEFT_SHIFT_PRESSED | EFI_RIGHT_SHIFT_PRESSED);
   }
 
@@ -1890,16 +1949,6 @@ BiosKeyboardTimerHandler (
     }
   }
 
-  //
-  // Convert the Ctrl+[a-z] to Ctrl+[1-26]
-  //
-  if ((KeyData.KeyState.KeyShiftState & (EFI_LEFT_CONTROL_PRESSED | EFI_RIGHT_CONTROL_PRESSED)) != 0) {
-    if (KeyData.Key.UnicodeChar >= L'a' && KeyData.Key.UnicodeChar <= L'z') {
-      KeyData.Key.UnicodeChar = (UINT16) (KeyData.Key.UnicodeChar - L'a' + 1);
-    } else if (KeyData.Key.UnicodeChar >= L'A' && KeyData.Key.UnicodeChar <= L'Z') {
-      KeyData.Key.UnicodeChar = (UINT16) (KeyData.Key.UnicodeChar - L'A' + 1);
-    }
-  }
   Enqueue (&BiosKeyboardPrivate->Queue, &KeyData);
   //
   // Leave critical section and return
@@ -2109,7 +2158,12 @@ BiosKeyboardSetState (
     return EFI_INVALID_PARAMETER;
   }
 
-  if ((*KeyToggleState & EFI_TOGGLE_STATE_VALID) != EFI_TOGGLE_STATE_VALID) {
+  //
+  // Thunk keyboard driver doesn't support partial keystroke.
+  //
+  if ((*KeyToggleState & EFI_TOGGLE_STATE_VALID) != EFI_TOGGLE_STATE_VALID ||
+      (*KeyToggleState & EFI_KEY_STATE_EXPOSED) == EFI_KEY_STATE_EXPOSED
+      ) {
     return EFI_UNSUPPORTED;
   }
 

@@ -12,21 +12,17 @@
 #
 
 #include <AsmMacroIoLib.h>
-#include <Base.h>
 #include <AutoGen.h>
+#include "SecInternal.h"
 
-#start of the code section
 .text
 .align 5
 
-# IMPORT
 GCC_ASM_IMPORT(SecCommonExceptionEntry)
-
-# EXPORT
 GCC_ASM_EXPORT(SecVectorTable)
 
 //============================================================
-//Default Exception Handlers
+// Default Exception Handlers
 //============================================================
   
   

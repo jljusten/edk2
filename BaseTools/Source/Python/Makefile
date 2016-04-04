@@ -17,12 +17,11 @@
 
 FREEZE=$(PYTHON_FREEZER_PATH)\FreezePython.exe
 
-MODULES=encodings.cp437,encodings.gbk,encodings.utf_16,encodings.utf_8,encodings.utf_16_le,encodings.latin_1
+MODULES=encodings.cp437,encodings.gbk,encodings.utf_16,encodings.utf_8,encodings.utf_16_le,encodings.latin_1,encodings.ascii
 
 BIN_DIR=$(EDK_TOOLS_PATH)\Bin\Win32
 
-
-APPLICATIONS=$(BIN_DIR)\build.exe $(BIN_DIR)\GenFds.exe $(BIN_DIR)\Trim.exe $(BIN_DIR)\MigrationMsa2Inf.exe $(BIN_DIR)\Fpd2Dsc.exe $(BIN_DIR)\TargetTool.exe $(BIN_DIR)\spd2dec.exe $(BIN_DIR)\GenDepex.exe $(BIN_DIR)\GenPatchPcdTable.exe $(BIN_DIR)\PatchPcdValue.exe $(BIN_DIR)\BPDG.exe
+APPLICATIONS=$(BIN_DIR)\build.exe $(BIN_DIR)\GenFds.exe $(BIN_DIR)\Trim.exe $(BIN_DIR)\MigrationMsa2Inf.exe $(BIN_DIR)\Fpd2Dsc.exe $(BIN_DIR)\TargetTool.exe $(BIN_DIR)\spd2dec.exe $(BIN_DIR)\GenDepex.exe $(BIN_DIR)\GenPatchPcdTable.exe $(BIN_DIR)\PatchPcdValue.exe $(BIN_DIR)\BPDG.exe $(BIN_DIR)\UPT.exe
 
 COMMON_PYTHON=$(BASE_TOOLS_PATH)\Source\Python\Common\BuildToolError.py \
               $(BASE_TOOLS_PATH)\Source\Python\Common\Database.py \
@@ -50,6 +49,7 @@ COMMON_PYTHON=$(BASE_TOOLS_PATH)\Source\Python\Common\BuildToolError.py \
               $(BASE_TOOLS_PATH)\Source\Python\Common\XmlParser.py \
               $(BASE_TOOLS_PATH)\Source\Python\Common\XmlRoutines.py \
               $(BASE_TOOLS_PATH)\Source\Python\Common\__init__.py \
+              $(BASE_TOOLS_PATH)\Source\Python\Common\BuildVersion.py \
               $(BASE_TOOLS_PATH)\Source\Python\Workspace\BuildClassObject.py \
               $(BASE_TOOLS_PATH)\Source\Python\Workspace\MetaDataTable.py \
               $(BASE_TOOLS_PATH)\Source\Python\Workspace\MetaFileParser.py \
@@ -80,7 +80,7 @@ $(BIN_DIR)\GenFds.exe: $(BASE_TOOLS_PATH)\Source\Python\GenFds\GenFds.py $(COMMO
 $(BIN_DIR)\Trim.exe: $(BASE_TOOLS_PATH)\Source\Python\Trim\Trim.py $(COMMON_PYTHON)
   @pushd . & @cd Trim & @$(FREEZE) --include-modules=$(MODULES) --install-dir=$(BIN_DIR) Trim.py & @popd
 
-$(BIN_DIR)\MigrationMsa2Inf.exe: $(BASE_TOOLS_PATH)\Source\Python\MigrationMsa2Inf\MigrationMsa2Inf.py
+$(BIN_DIR)\MigrationMsa2Inf.exe: $(BASE_TOOLS_PATH)\Source\Python\MigrationMsa2Inf\MigrationMsa2Inf.py $(COMMON_PYTHON)
   @pushd . & @cd MigrationMsa2Inf & @$(FREEZE) --include-modules=$(MODULES) --install-dir=$(BIN_DIR) MigrationMsa2Inf.py & @popd 
 
 $(BIN_DIR)\Fpd2Dsc.exe: $(BASE_TOOLS_PATH)\Source\Python\Fpd2Dsc\Fpd2Dsc.py $(COMMON_PYTHON)
@@ -103,7 +103,10 @@ $(BIN_DIR)\PatchPcdValue.exe: $(BASE_TOOLS_PATH)\Source\Python\PatchPcdValue\Pat
 
 $(BIN_DIR)\BPDG.exe: $(BASE_TOOLS_PATH)\Source\Python\BPDG\BPDG.py $(COMMON_PYTHON)
   @pushd . & @cd BPDG & @$(FREEZE) --include-modules=$(MODULES) --install-dir=$(BIN_DIR) BPDG.py & @popd
-  
+
+$(BIN_DIR)\UPT.exe: $(BASE_TOOLS_PATH)\Source\Python\UPT\UPT.py $(BASE_TOOLS_PATH)\Source\Python\UPT\UPT.py $(COMMON_PYTHON)
+  @pushd . & @cd UPT & @$(FREEZE) --include-modules=$(MODULES) --install-dir=$(BIN_DIR) UPT.py & @popd
+
 clean:
 cleanall:  
   @del /f /q $(BIN_DIR)\*.pyd $(BIN_DIR)\*.dll

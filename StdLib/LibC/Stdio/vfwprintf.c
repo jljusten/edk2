@@ -1003,7 +1003,12 @@ reswitch: switch (ch) {
 
         mbs = initial;
         mbseqlen = wcrtomb(buf,
-            (wchar_t)GETARG(wint_t), &mbs);
+            /* The compiler "knows" that wint_t may be smaller than an int so
+               it warns about it when used as the type argument to va_arg().
+               Since any type of parameter smaller than an int is promoted to an int on a
+               function call, we must call GETARG with type int instead of wint_t.
+            */
+            (wchar_t)GETARG(int), &mbs);
         if (mbseqlen == (size_t)-1) {
           fp->_flags |= __SERR;
           goto error;
@@ -1015,7 +1020,7 @@ reswitch: switch (ch) {
       }
 #else
       if (flags & LONGINT)
-        *buf = (wchar_t)GETARG(wint_t);
+        *buf = (wchar_t)GETARG(int);
       else
         *buf = (wchar_t)btowc(GETARG(int));
       size = 1;
@@ -1056,8 +1061,6 @@ reswitch: switch (ch) {
         xdigs = xdigs_upper;
         expchar = 'P';
       }
-      if (prec >= 0)
-        prec++;
       if (flags & LONGDBL) {
         fparg.ldbl = GETARG(long double);
         dtoaresult =
@@ -1092,10 +1095,8 @@ reswitch: switch (ch) {
     case 'e':
     case 'E':
       expchar = ch;
-      if (prec < 0) /* account for digit before decpt */
-        prec = DEFPREC + 1;
-      else
-        prec++;
+      if (prec < 0)
+        prec = DEFPREC;
       goto fp_begin;
     case 'f':
     case 'F':
@@ -1165,10 +1166,8 @@ fp_common:
     case 'e':
     case 'E':
       expchar = ch;
-      if (prec < 0) /* account for digit before decpt */
-        prec = DEFPREC /* + 1*/ ;
-      else
-        prec++;
+      if (prec < 0)
+        prec = DEFPREC;
       goto fp_begin;
     case 'f':
     case 'F':
@@ -1242,16 +1241,21 @@ fp_begin:
           /*
            * Make %[gG] smell like %[eE], but
            * trim trailing zeroes if no # flag.
+           *
+           * Note: The precision field used with [gG] is the number significant
+           * digits to print.  When converting to [eE] the digit before the
+           * decimal must not be included in the precision value.
            */
           if (!(flags & ALT))
-            prec = ndig;
+            prec = ndig - 1;
         }
       }
       if (expchar) {
+        dprec = prec; /* In some cases dprec will not be set.  Make sure it is set now */
         expsize = exponent(expstr, expt - 1, expchar);
-        size = expsize + prec;
-        if (prec > 1 || flags & ALT)
-          ++size;
+        size = expsize + prec + 1; /* Leading digit + exponent string + precision */
+        if (prec >= 1 || flags & ALT)
+          ++size; /* Decimal point is added to character count */
       } else {
         /* space for digits before decimal point */
         if (expt > 0)
@@ -1322,7 +1326,7 @@ fp_begin:
        * defined manner.''
        *  -- ANSI X3J11
        */
-      ujval = (uintmax_t)GETARG(void *);
+      ujval = (uintmax_t) (UINTN) GETARG(void *);
       base = 16;
       xdigs = xdigs_lower;
       flags = flags | INTMAXT;
@@ -1332,7 +1336,7 @@ fp_begin:
       flags |= LONGINT;
       /*FALLTHROUGH*/
     case 's':
-      if ((flags & LONGINT) != MULTI) {
+      if (((flags & LONGINT) ? 1:0) != MULTI) {
         if ((result = GETARG(CHAR_T *)) == NULL)
           result = STRCONST("(null)");
       } else {
@@ -1538,7 +1542,7 @@ number:     if ((dprec = prec) >= 0)
         PRINTANDPAD(result, convbuf + ndig, prec,
             zeroes);
       } else {  /* %[eE] or sufficiently long %[gG] */
-        if (prec > 1 || flags & ALT) {
+        if (prec >= 1 || flags & ALT) {
           buf[0] = *result++;
           buf[1] = *decimal_point;
           PRINT(buf, 2);
@@ -1916,7 +1920,7 @@ done:
       (*argtable) [n].pvoidarg = va_arg (ap, void *);
       break;
         case T_WINT:
-      (*argtable) [n].wintarg = va_arg (ap, wint_t);
+      (*argtable) [n].wintarg = va_arg (ap, int);
       break;
         case TP_WCHAR:
       (*argtable) [n].pwchararg = va_arg (ap, wchar_t *);
@@ -2003,8 +2007,6 @@ cvt(double value, int ndigits, int flags, char *sign, int *decpt, int ch,
         *decpt = -ndigits + 1;
       bp += *decpt;
     }
-    if (value == 0) /* kludge for __dtoa irregularity */
-      rve = bp;
     while (rve < bp)
       *rve++ = '0';
   }

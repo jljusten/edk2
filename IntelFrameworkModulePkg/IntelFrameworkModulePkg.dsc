@@ -81,6 +81,9 @@
   PcdLib|MdePkg/Library/PeiPcdLib/PeiPcdLib.inf
   MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
 
+[LibraryClasses.common.DXE_DRIVER]
+  LockBoxLib|MdeModulePkg/Library/SmmLockBoxLib/SmmLockBoxDxeLib.inf
+
 [LibraryClasses.common.DXE_DRIVER, LibraryClasses.common.DXE_RUNTIME_DRIVER, LibraryClasses.common.UEFI_DRIVER]
   HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
@@ -133,6 +136,7 @@
   IntelFrameworkModulePkg/Library/PeiDxeDebugLibReportStatusCode/PeiDxeDebugLibReportStatusCode.inf
   IntelFrameworkModulePkg/Library/PlatformBdsLibNull/PlatformBdsLibNull.inf
   IntelFrameworkModulePkg/Library/GenericBdsLib/GenericBdsLib.inf
+  IntelFrameworkModulePkg/Library/DxeCapsuleLib/DxeCapsuleLib.inf
 
   IntelFrameworkModulePkg/Bus/Pci/IdeBusDxe/IdeBusDxe.inf
   IntelFrameworkModulePkg/Bus/Isa/IsaBusDxe/IsaBusDxe.inf
@@ -150,6 +154,7 @@
   IntelFrameworkModulePkg/Csm/BiosThunk/BlockIoDxe/BlockIoDxe.inf
   IntelFrameworkModulePkg/Csm/BiosThunk/Snp16Dxe/Snp16Dxe.inf
 
+  IntelFrameworkModulePkg/Universal/Acpi/AcpiSupportDxe/AcpiSupportDxe.inf
   IntelFrameworkModulePkg/Universal/SectionExtractionDxe/SectionExtractionDxe.inf
   IntelFrameworkModulePkg/Universal/DataHubDxe/DataHubDxe.inf
   IntelFrameworkModulePkg/Universal/DataHubStdErrDxe/DataHubStdErrDxe.inf
@@ -158,6 +163,11 @@
   IntelFrameworkModulePkg/Universal/BdsDxe/BdsDxe.inf
   IntelFrameworkModulePkg/Universal/LegacyRegionDxe/LegacyRegionDxe.inf
   IntelFrameworkModulePkg/Universal/StatusCode/DatahubStatusCodeHandlerDxe/DatahubStatusCodeHandlerDxe.inf
+  IntelFrameworkModulePkg/Universal/FirmwareVolume/FwVolDxe/FwVolDxe.inf
+  IntelFrameworkModulePkg/Universal/FirmwareVolume/UpdateDriverDxe/UpdateDriverDxe.inf
+
+[Components.IA32,Components.X64]
+  IntelFrameworkModulePkg/Universal/Acpi/AcpiS3SaveDxe/AcpiS3SaveDxe.inf
 
 [Components.IA32,Components.X64,Components.IPF]
   IntelFrameworkModulePkg/Csm/LegacyBiosDxe/LegacyBiosDxe.inf

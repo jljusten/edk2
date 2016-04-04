@@ -14,14 +14,14 @@
 
 #include <PiPei.h>
 
+#include <Library/ArmLib.h>
+#include <Library/ArmGicLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PcdLib.h>
 #include <Library/PrintLib.h>
 #include <Library/SerialPortLib.h>
-#include <Chipset/ArmV7.h>
-#include <Drivers/PL390Gic.h>
 
-#define ARM_PRIMARY_CORE    0
+#include <Chipset/ArmV7.h>
 
 // When the firmware is built as not Standalone, the secondary cores need to wait the firmware
 // entirely written into DRAM. It is the firmware from DRAM which will wake up the secondary cores.
@@ -33,12 +33,12 @@ NonSecureWaitForFirmware (
   VOID (*secondary_start)(VOID);
 
   // The secondary cores will execute the firmware once wake from WFI.
-  secondary_start = (VOID (*)())PcdGet32(PcdNormalFvBaseAddress);
+  secondary_start = (VOID (*)())PcdGet32(PcdFvBaseAddress);
 
   ArmCallWFI();
 
   // Acknowledge the interrupt and send End of Interrupt signal.
-  PL390GicAcknowledgeSgiFrom (PcdGet32(PcdGicInterruptInterfaceBase), ARM_PRIMARY_CORE);
+  ArmGicAcknowledgeSgiFrom (PcdGet32(PcdGicInterruptInterfaceBase), PRIMARY_CORE_ID);
 
   // Jump to secondary core entry point.
   secondary_start ();
@@ -56,7 +56,7 @@ NonSecureWaitForFirmware (
 **/
 VOID
 ArmPlatformSecExtraAction (
-  IN  UINTN         CoreId,
+  IN  UINTN         MpId,
   OUT UINTN*        JumpAddress
   )
 {
@@ -64,8 +64,8 @@ ArmPlatformSecExtraAction (
   UINTN           CharCount;
 
   if (FeaturePcdGet (PcdStandalone) == FALSE) {
-    if (CoreId == ARM_PRIMARY_CORE) {
-      UINTN*   StartAddress = (UINTN*)PcdGet32(PcdNormalFvBaseAddress);
+    if (IS_PRIMARY_CORE(MpId)) {
+      UINTN*   StartAddress = (UINTN*)PcdGet32(PcdFvBaseAddress);
 
       // Patch the DRAM to make an infinite loop at the start address
       *StartAddress = 0xEAFFFFFE; // opcode for while(1)
@@ -73,7 +73,7 @@ ArmPlatformSecExtraAction (
       CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"Waiting for firmware at 0x%08X ...\n\r",StartAddress);
       SerialPortWrite ((UINT8 *) Buffer, CharCount);
 
-      *JumpAddress = PcdGet32(PcdNormalFvBaseAddress);
+      *JumpAddress = PcdGet32(PcdFvBaseAddress);
     } else {
       // When the primary core is stopped by the hardware debugger to copy the firmware
       // into DRAM. The secondary cores are still running. As soon as the first bytes of
@@ -85,12 +85,12 @@ ArmPlatformSecExtraAction (
       *JumpAddress = (UINTN)NonSecureWaitForFirmware;
     }
   } else if (FeaturePcdGet (PcdSystemMemoryInitializeInSec)) {
-    if (CoreId == ARM_PRIMARY_CORE) {
+    if (IS_PRIMARY_CORE(MpId)) {
       // Signal the secondary cores they can jump to PEI phase
-      PL390GicSendSgiTo (PcdGet32(PcdGicDistributorBase), GIC_ICDSGIR_FILTER_EVERYONEELSE, 0x0E);
+      ArmGicSendSgiTo (PcdGet32(PcdGicDistributorBase), ARM_GIC_ICDSGIR_FILTER_EVERYONEELSE, 0x0E);
 
       // To enter into Non Secure state, we need to make a return from exception
-      *JumpAddress = PcdGet32(PcdNormalFvBaseAddress);
+      *JumpAddress = PcdGet32(PcdFvBaseAddress);
     } else {
       // We wait for the primary core to finish to initialize the System Memory. Otherwise the secondary
       // cores would make crash the system by setting their stacks in DRAM before the primary core has not
@@ -98,6 +98,6 @@ ArmPlatformSecExtraAction (
       *JumpAddress = (UINTN)NonSecureWaitForFirmware;
     }
   } else {
-    *JumpAddress = PcdGet32(PcdNormalFvBaseAddress);
+    *JumpAddress = PcdGet32(PcdFvBaseAddress);
   }
 }

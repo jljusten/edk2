@@ -15,20 +15,34 @@
 #ifndef __PREPEICORE_H_
 #define __PREPEICORE_H_
 
+#include <Library/ArmLib.h>
+#include <Library/ArmPlatformLib.h>
+#include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
+#include <Library/IoLib.h>
 #include <Library/PcdLib.h>
 
 #include <PiPei.h>
 #include <Ppi/TemporaryRamSupport.h>
 
+VOID
+CreatePpiList (
+  OUT UINTN                   *PpiListSize,
+  OUT EFI_PEI_PPI_DESCRIPTOR  **PpiList
+  );
 
 EFI_STATUS
 EFIAPI
-SecTemporaryRamSupport (
+PrePeiCoreTemporaryRamSupport (
   IN CONST EFI_PEI_SERVICES   **PeiServices,
   IN EFI_PHYSICAL_ADDRESS     TemporaryMemoryBase,
   IN EFI_PHYSICAL_ADDRESS     PermanentMemoryBase,
   IN UINTN                    CopySize
+  );
+
+EFI_STATUS
+PrePeiCoreGetGlobalVariableMemory (
+  OUT EFI_PHYSICAL_ADDRESS    *GlobalVariableBase
   );
 
 VOID
@@ -57,7 +71,7 @@ PrimaryMain (
 VOID
 EFIAPI
 SecondaryMain (
-  IN UINTN CoreId
+  IN UINTN MpId
   );
 
 #endif

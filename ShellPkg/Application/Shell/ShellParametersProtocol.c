@@ -26,9 +26,9 @@
   Temp Parameter must be large enough to hold the parameter before calling this
   function.
 
-  @param[in,out] Walker        pointer to string of command line.  Adjusted to
+  @param[in, out] Walker        pointer to string of command line.  Adjusted to
                                 reminaing command line on return
-  @param[in,out] TempParameter pointer to string of command line item extracted.
+  @param[in, out] TempParameter pointer to string of command line item extracted.
 
 **/
 VOID
@@ -137,9 +137,9 @@ GetNextParameter(
   parameters for inclusion in EFI_SHELL_PARAMETERS_PROTOCOL.  this supports space
   delimited and quote surrounded parameter definition.
 
-  @param[in] CommandLine        String of command line to parse
-  @param[in,out] Argv           pointer to array of strings; one for each parameter
-  @param[in,out] Argc           pointer to number of strings in Argv array
+  @param[in] CommandLine         String of command line to parse
+  @param[in, out] Argv           pointer to array of strings; one for each parameter
+  @param[in, out] Argc           pointer to number of strings in Argv array
 
   @return EFI_SUCCESS           the operation was sucessful
   @return EFI_OUT_OF_RESOURCES  a memory allocation failed.
@@ -215,9 +215,9 @@ ParseCommandLineToArgs(
   installs it on our handle and if there is an existing version of the protocol
   that one is cached for removal later.
 
-  @param[in,out] NewShellParameters on a successful return, a pointer to pointer
+  @param[in, out] NewShellParameters on a successful return, a pointer to pointer
                                      to the newly installed interface.
-  @param[in,out] RootShellInstance  on a successful return, pointer to boolean.
+  @param[in, out] RootShellInstance  on a successful return, pointer to boolean.
                                      TRUE if this is the root shell instance.
 
   @retval EFI_SUCCESS               the operation completed successfully.
@@ -449,7 +449,7 @@ IsUnicodeFile(
 
   All of the characters between quotes is replaced with spaces.
 
-  @param[in,out] TheString  A pointer to the string to update.
+  @param[in, out] TheString  A pointer to the string to update.
 **/
 VOID
 EFIAPI
@@ -471,18 +471,83 @@ StripQuotes (
 }
 
 /**
+  Calcualte the 32-bit CRC in a EFI table using the service provided by the
+  gRuntime service.
+
+  @param  Hdr                    Pointer to an EFI standard header
+
+**/
+VOID
+CalculateEfiHdrCrc (
+  IN  OUT EFI_TABLE_HEADER    *Hdr
+  )
+{
+  UINT32 Crc;
+
+  Hdr->CRC32 = 0;
+
+  //
+  // If gBS->CalculateCrce32 () == CoreEfiNotAvailableYet () then
+  //  Crc will come back as zero if we set it to zero here
+  //
+  Crc = 0;
+  gBS->CalculateCrc32 ((UINT8 *)Hdr, Hdr->HeaderSize, &Crc);
+  Hdr->CRC32 = Crc;
+}
+
+/**
+  Fix a string to only have the file name, removing starting at the first space of whatever is quoted.
+
+  @param[in]  FileName    The filename to start with.
+
+  @retval NULL  FileName was invalid.
+  @return       The modified FileName.
+**/
+CHAR16*
+EFIAPI
+FixFileName (
+  IN CHAR16 *FileName
+  )
+{
+  CHAR16  *Copy;
+  CHAR16  *TempLocation;
+
+  if (FileName == NULL) {
+    return (NULL);
+  }
+
+  if (FileName[0] == L'\"') {
+    Copy = FileName+1;
+    if ((TempLocation = StrStr(Copy , L"\"")) != NULL) {
+      TempLocation[0] = CHAR_NULL;
+    }    
+  } else {
+    Copy = FileName;
+    if ((TempLocation = StrStr(Copy , L" ")) != NULL) {
+      TempLocation[0] = CHAR_NULL;
+    }    
+  }
+
+  if (Copy[0] == CHAR_NULL) {
+    return (NULL);
+  }
+
+  return (Copy);
+}
+
+/**
   Funcion will replace the current StdIn and StdOut in the ShellParameters protocol
   structure by parsing NewCommandLine.  The current values are returned to the
   user.
 
   This will also update the system table.
 
-  @param[in,out] ShellParameters        Pointer to parameter structure to modify.
-  @param[in] NewCommandLine             The new command line to parse and use.
-  @param[out] OldStdIn                  Pointer to old StdIn.
-  @param[out] OldStdOut                 Pointer to old StdOut.
-  @param[out] OldStdErr                 Pointer to old StdErr.
-  @param[out] SystemTableInfo           Pointer to old system table information.
+  @param[in, out] ShellParameters        Pointer to parameter structure to modify.
+  @param[in] NewCommandLine              The new command line to parse and use.
+  @param[out] OldStdIn                   Pointer to old StdIn.
+  @param[out] OldStdOut                  Pointer to old StdOut.
+  @param[out] OldStdErr                  Pointer to old StdErr.
+  @param[out] SystemTableInfo            Pointer to old system table information.
 
   @retval   EFI_SUCCESS                 Operation was sucessful, Argv and Argc are valid.
   @retval   EFI_OUT_OF_RESOURCES        A memory allocation failed.
@@ -552,6 +617,9 @@ UpdateStdInStdOutStdErr(
   }
 
   CommandLineCopy = StrnCatGrow(&CommandLineCopy, NULL, NewCommandLine, 0);
+  if (CommandLineCopy == NULL) {
+    return (EFI_OUT_OF_RESOURCES);
+  }
   Status          = EFI_SUCCESS;
   Split           = NULL;
   FirstLocation   = CommandLineCopy + StrLen(CommandLineCopy);
@@ -814,6 +882,11 @@ UpdateStdInStdOutStdErr(
     }
   }
 
+  //
+  // re-populate the string to support any filenames that were in quotes.
+  //
+  StrCpy(CommandLineCopy, NewCommandLine);
+
   if (FirstLocation != CommandLineCopy + StrLen(CommandLineCopy)
     && ((UINTN)(FirstLocation - CommandLineCopy) < StrLen(NewCommandLine))
     ){
@@ -821,23 +894,36 @@ UpdateStdInStdOutStdErr(
   }
 
   if (!EFI_ERROR(Status)) {
-    if (StdErrFileName != NULL && (CommandLineWalker = StrStr(StdErrFileName, L" ")) != NULL) {
-      CommandLineWalker[0] = CHAR_NULL;
+
+    if (StdErrFileName != NULL) {
+      if ((StdErrFileName    = FixFileName(StdErrFileName)) == NULL) {
+        Status = EFI_INVALID_PARAMETER;
+      }
     }
-    if (StdOutFileName != NULL && (CommandLineWalker = StrStr(StdOutFileName, L" ")) != NULL) {
-      CommandLineWalker[0] = CHAR_NULL;
+    if (StdOutFileName != NULL) {
+      if ((StdOutFileName    = FixFileName(StdOutFileName)) == NULL) {
+        Status = EFI_INVALID_PARAMETER;
+      }
     }
-    if (StdInFileName  != NULL && (CommandLineWalker = StrStr(StdInFileName , L" ")) != NULL) {
-      CommandLineWalker[0] = CHAR_NULL;
+    if (StdInFileName  != NULL) {
+      if ((StdInFileName     = FixFileName(StdInFileName)) == NULL) {
+        Status = EFI_INVALID_PARAMETER;
+      }
     }
-    if (StdErrVarName  != NULL && (CommandLineWalker = StrStr(StdErrVarName , L" ")) != NULL) {
-      CommandLineWalker[0] = CHAR_NULL;
+    if (StdErrVarName  != NULL) {
+      if ((StdErrVarName     = FixFileName(StdErrVarName)) == NULL) {
+        Status = EFI_INVALID_PARAMETER;
+      }
     }
-    if (StdOutVarName  != NULL && (CommandLineWalker = StrStr(StdOutVarName , L" ")) != NULL) {
-      CommandLineWalker[0] = CHAR_NULL;
+    if (StdOutVarName  != NULL) {
+      if ((StdOutVarName     = FixFileName(StdOutVarName)) == NULL) {
+        Status = EFI_INVALID_PARAMETER;
+      }
     }
-    if (StdInVarName   != NULL && (CommandLineWalker = StrStr(StdInVarName  , L" ")) != NULL) {
-      CommandLineWalker[0] = CHAR_NULL;
+    if (StdInVarName   != NULL) {
+      if ((StdInVarName      = FixFileName(StdInVarName)) == NULL) {
+        Status = EFI_INVALID_PARAMETER;
+      }
     }
 
     //
@@ -1005,16 +1091,19 @@ UpdateStdInStdOutStdErr(
       //
       if (!EFI_ERROR(Status) && StdInVarName != NULL) {
         TempHandle = CreateFileInterfaceEnv(StdInVarName);
-        if (!InUnicode) {
-          TempHandle = CreateFileInterfaceFile(TempHandle, FALSE);
-        }
-        Size = 0;
-        ASSERT(TempHandle != NULL);
-        if (((EFI_FILE_PROTOCOL*)TempHandle)->Read(TempHandle, &Size, NULL) != EFI_BUFFER_TOO_SMALL) {
-          Status = EFI_INVALID_PARAMETER;
+        if (TempHandle == NULL) {
+          Status = EFI_OUT_OF_RESOURCES;
         } else {
-          ShellParameters->StdIn = TempHandle;
-          gST->ConIn = CreateSimpleTextInOnFile(TempHandle, &gST->ConsoleInHandle);
+          if (!InUnicode) {
+            TempHandle = CreateFileInterfaceFile(TempHandle, FALSE);
+          }
+          Size = 0;
+          if (TempHandle == NULL || ((EFI_FILE_PROTOCOL*)TempHandle)->Read(TempHandle, &Size, NULL) != EFI_BUFFER_TOO_SMALL) {
+            Status = EFI_INVALID_PARAMETER;
+          } else {
+            ShellParameters->StdIn = TempHandle;
+            gST->ConIn = CreateSimpleTextInOnFile(TempHandle, &gST->ConsoleInHandle);
+          }
         }
       }
 
@@ -1039,6 +1128,8 @@ UpdateStdInStdOutStdErr(
   }
   FreePool(CommandLineCopy);
 
+  CalculateEfiHdrCrc(&gST->Hdr);
+
   if (gST->ConIn == NULL ||gST->ConOut == NULL) {
     return (EFI_OUT_OF_RESOURCES);
   }
@@ -1049,11 +1140,11 @@ UpdateStdInStdOutStdErr(
   Funcion will replace the current StdIn and StdOut in the ShellParameters protocol
   structure with StdIn and StdOut.  The current values are de-allocated.
 
-  @param[in,out] ShellParameters      Pointer to parameter structure to modify.
-  @param[in] OldStdIn                 Pointer to old StdIn.
-  @param[in] OldStdOut                Pointer to old StdOut.
-  @param[in] OldStdErr                Pointer to old StdErr.
-  @param[in] SystemTableInfo          Pointer to old system table information.
+  @param[in, out] ShellParameters      Pointer to parameter structure to modify.
+  @param[in] OldStdIn                  Pointer to old StdIn.
+  @param[in] OldStdOut                 Pointer to old StdOut.
+  @param[in] OldStdErr                 Pointer to old StdErr.
+  @param[in] SystemTableInfo           Pointer to old system table information.
 **/
 EFI_STATUS
 EFIAPI
@@ -1112,6 +1203,8 @@ RestoreStdInStdOutStdErr (
     gST->StandardErrorHandle  = SystemTableInfo->ConErrHandle;
   }
 
+  CalculateEfiHdrCrc(&gST->Hdr);
+
   return (EFI_SUCCESS);
 }
 /**
@@ -1121,10 +1214,10 @@ RestoreStdInStdOutStdErr (
 
   If OldArgv or OldArgc is NULL then that value is not returned.
 
-  @param[in,out] ShellParameters        Pointer to parameter structure to modify.
-  @param[in] NewCommandLine             The new command line to parse and use.
-  @param[out] OldArgv                   Pointer to old list of parameters.
-  @param[out] OldArgc                   Pointer to old number of items in Argv list.
+  @param[in, out] ShellParameters        Pointer to parameter structure to modify.
+  @param[in] NewCommandLine              The new command line to parse and use.
+  @param[out] OldArgv                    Pointer to old list of parameters.
+  @param[out] OldArgc                    Pointer to old number of items in Argv list.
 
   @retval   EFI_SUCCESS                 Operation was sucessful, Argv and Argc are valid.
   @retval   EFI_OUT_OF_RESOURCES        A memory allocation failed.
@@ -1155,9 +1248,9 @@ UpdateArgcArgv(
   structure with Argv and Argc.  The current values are de-allocated and the
   OldArgv must not be deallocated by the caller.
 
-  @param[in,out] ShellParameters       pointer to parameter structure to modify
-  @param[in] OldArgv                   pointer to old list of parameters
-  @param[in] OldArgc                   pointer to old number of items in Argv list
+  @param[in, out] ShellParameters       pointer to parameter structure to modify
+  @param[in] OldArgv                    pointer to old list of parameters
+  @param[in] OldArgc                    pointer to old number of items in Argv list
 **/
 VOID
 EFIAPI

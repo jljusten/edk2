@@ -1,7 +1,7 @@
 /** @file
   The header file of CHAP configuration.
 
-Copyright (c) 2004 - 2009, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -14,13 +14,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #ifndef _ISCSI_CHAP_H_
 #define _ISCSI_CHAP_H_
-
-#define ISCSI_CHAP_AUTH_INFO_GUID \
-  { \
-    0x786ec0ac, 0x65ae, 0x4d1b, {0xb1, 0x37, 0xd, 0x11, 0xa, 0x48, 0x37, 0x97} \
-  }
-
-extern EFI_GUID mIScsiCHAPAuthInfoGuid;
 
 #define ISCSI_AUTH_METHOD_CHAP    "CHAP"
 
@@ -48,9 +41,9 @@ extern EFI_GUID mIScsiCHAPAuthInfoGuid;
 
 typedef struct _ISCSI_CHAP_AUTH_CONFIG_NVDATA {
   UINT8 CHAPType;
-  CHAR8 CHAPName[ISCSI_CHAP_NAME_MAX_LEN];
+  CHAR8 CHAPName[ISCSI_CHAP_NAME_STORAGE];
   CHAR8 CHAPSecret[ISCSI_CHAP_SECRET_STORAGE];
-  CHAR8 ReverseCHAPName[ISCSI_CHAP_NAME_MAX_LEN];
+  CHAR8 ReverseCHAPName[ISCSI_CHAP_NAME_STORAGE];
   CHAR8 ReverseCHAPSecret[ISCSI_CHAP_SECRET_STORAGE];
 } ISCSI_CHAP_AUTH_CONFIG_NVDATA;
 

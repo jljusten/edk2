@@ -121,6 +121,7 @@
   gEfiDevicePathProtocolGuid                    # PROTOCOL ALWAYS_CONSUMED
   gEfiPciRootBridgeIoProtocolGuid               # PROTOCOL ALWAYS_CONSUMED
   gEfiCpuArchProtocolGuid                       # PROTOCOL ALWAYS_CONSUMED
+  gEfiTimerArchProtocolGuid                     # PROTOCOL ALWAYS_CONSUMED
   gEfiIsaIoProtocolGuid                         # PROTOCOL ALWAYS_CONSUMED
   gEfiBlockIoProtocolGuid                       # PROTOCOL ALWAYS_CONSUMED
   gEfiPciIoProtocolGuid                         # PROTOCOL ALWAYS_CONSUMED
@@ -132,12 +133,14 @@
   gEfiLegacyInterruptProtocolGuid               # PROTOCOL ALWAYS_CONSUMED
   gEfiLegacyRegion2ProtocolGuid                 # PROTOCOL ALWAYS_CONSUMED
   gEfiLegacyBiosProtocolGuid                    # PROTOCOL ALWAYS_PRODUCED
-  gEfiTimerArchProtocolGuid                     # PROTOCOL ALWAYS_PRODUCED
 
 [Pcd]
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLegacyBiosCacheLegacyRegion
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdEbdaReservedMemorySize
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdEndOpromShadowAddress
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLowPmmMemorySize
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdHighPmmMemorySize
 
 [Depex]
-  gEfiLegacyRegion2ProtocolGuid AND gEfiLegacyInterruptProtocolGuid AND gEfiLegacyBiosPlatformProtocolGuid AND gEfiLegacy8259ProtocolGuid AND gEfiGenericMemTestProtocolGuid AND gEfiCpuArchProtocolGuid
+  gEfiLegacyRegion2ProtocolGuid AND gEfiLegacyInterruptProtocolGuid AND gEfiLegacyBiosPlatformProtocolGuid AND gEfiLegacy8259ProtocolGuid AND gEfiGenericMemTestProtocolGuid AND gEfiCpuArchProtocolGuid AND gEfiTimerArchProtocolGuid
 

@@ -24,8 +24,6 @@
 
 #include <ArmPlatform.h>
 
-#define PL111_CLCD_SITE ARM_VE_DAUGHTERBOARD_1_SITE
-
 typedef struct {
   UINT32                     Mode;
   UINT32                     HorizontalResolution;
@@ -142,6 +140,8 @@ LcdPlatformGetVram (
   EFI_STATUS              Status;
   EFI_CPU_ARCH_PROTOCOL  *Cpu;
 
+  Status = EFI_SUCCESS;
+
   // Is it on the motherboard or on the daughterboard?
   switch(PL111_CLCD_SITE) {
 
@@ -234,11 +234,15 @@ LcdPlatformSetMode (
     return Status;
   }
 
-  // Set the DVI into the new mode
-  Status = ArmPlatformSysConfigSet (SYS_CFG_DVIMODE, mResolutions[ModeNumber].Mode);
-  if (EFI_ERROR(Status)) {
-    ASSERT_EFI_ERROR (Status);
-    return Status;
+  // On the ARM Versatile Express Model (RTSM) the value of the SysId is equal to 0x225F500.
+  // Note: The DVI Mode is not modelled on RTSM
+  if (MmioRead32 (ARM_VE_SYS_ID_REG) != 0x225F500) {
+    // Set the DVI into the new mode
+    Status = ArmPlatformSysConfigSet (SYS_CFG_DVIMODE, mResolutions[ModeNumber].Mode);
+    if (EFI_ERROR(Status)) {
+      ASSERT_EFI_ERROR (Status);
+      return Status;
+    }
   }
 
   // Set the multiplexer

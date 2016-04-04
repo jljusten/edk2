@@ -20,7 +20,7 @@
   Removes the last directory or file entry in a path by changing the last
   L'\' to a CHAR_NULL.
 
-  @param[in,out] Path    The pointer to the path to modify.
+  @param[in, out] Path    The pointer to the path to modify.
 
   @retval FALSE     Nothing was found to remove.
   @retval TRUE      A directory or file was removed.
@@ -112,7 +112,7 @@ PathCleanUpDirectories(
     CopyMem(Path+StrLen(Path), TempString, TempSize);
   }
   if ((TempString = StrStr(Path, L"\\.")) != NULL && *(TempString + 2) == CHAR_NULL) {
-    *TempString = CHAR_NULL;
+    *(TempString + 1) = CHAR_NULL;
   }
 
 

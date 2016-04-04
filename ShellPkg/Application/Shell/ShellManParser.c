@@ -180,6 +180,10 @@ ManBufferFindSections(
         TempString2 = MIN(TempString2, StrStr(CurrentLocation, L"\n"));
         ASSERT(TempString == NULL);
         TempString = StrnCatGrow(&TempString, NULL, CurrentLocation, TempString2==NULL?0:TempString2 - CurrentLocation);
+        if (TempString == NULL) {
+          Status = EFI_OUT_OF_RESOURCES;
+          break;
+        }
         SectionName = TempString;
         SectionLen = StrLen(SectionName);
         SectionName = StrStr(Sections, SectionName);
@@ -197,12 +201,24 @@ ManBufferFindSections(
         TempString2 = MIN(TempString2, StrStr(CurrentLocation, L"\n"));
         ASSERT(TempString == NULL);
         TempString = StrnCatGrow(&TempString, NULL, CurrentLocation, TempString2==NULL?0:TempString2 - CurrentLocation);
+        if (TempString == NULL) {
+          Status = EFI_OUT_OF_RESOURCES;
+          break;
+        }
         //
         // copy and save the current line.
         //
         ASSERT((*HelpText == NULL && *HelpSize == 0) || (*HelpText != NULL));
         StrnCatGrow (HelpText, HelpSize, TempString, 0);
+        if (HelpText == NULL) {
+          Status = EFI_OUT_OF_RESOURCES;
+          break;
+        }
         StrnCatGrow (HelpText, HelpSize, L"\r\n", 0);
+        if (HelpText == NULL) {
+          Status = EFI_OUT_OF_RESOURCES;
+          break;
+        }
       }
     }
     SHELL_FREE_NON_NULL(TempString);
@@ -423,12 +439,12 @@ ManBufferFindTitleSection(
 
   Upon a sucessful return the caller is responsible to free the memory in *BriefDesc
 
-  @param[in] Handle             FileHandle to read from
-  @param[in] Command            name of command's section to find
-  @param[out] BriefDesc         pointer to pointer to string where description goes.
-  @param[out] BriefSize         pointer to size of allocated BriefDesc
-  @param[in,out] Ascii          TRUE if the file is ASCII, FALSE otherwise, will be
-                                set if the file handle is at the 0 position.
+  @param[in] Handle              FileHandle to read from
+  @param[in] Command             name of command's section to find
+  @param[out] BriefDesc          pointer to pointer to string where description goes.
+  @param[out] BriefSize          pointer to size of allocated BriefDesc
+  @param[in, out] Ascii          TRUE if the file is ASCII, FALSE otherwise, will be
+                                 set if the file handle is at the 0 position.
 
   @retval EFI_OUT_OF_RESOURCES  a memory allocation failed.
   @retval EFI_SUCCESS           the section was found and its description sotred in
@@ -548,7 +564,8 @@ ManFileFindTitleSection(
   @retval EFI_SUCCESS           The help text was returned.
   @retval EFI_OUT_OF_RESOURCES  The necessary buffer could not be allocated to hold the
                                 returned help text.
-  @retval EFI_INVALID_PARAMETER HelpText is NULL
+  @retval EFI_INVALID_PARAMETER HelpText is NULL.
+  @retval EFI_INVALID_PARAMETER ManFileName is invalid.
   @retval EFI_NOT_FOUND         There is no help text available for Command.
 **/
 EFI_STATUS
@@ -594,6 +611,9 @@ ProcessManFile(
   } else {
     FileHandle    = NULL;
     TempString  = GetManFileName(ManFileName);
+    if (TempString == NULL) {
+      return (EFI_INVALID_PARAMETER);
+    }
 
     Status = SearchPathForFile(TempString, &FileHandle);
     if (EFI_ERROR(Status)) {

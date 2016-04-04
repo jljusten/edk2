@@ -27,6 +27,7 @@
 [Sources.ARM]
   CpuDxe.c
   CpuDxe.h
+  CpuMpCore.c
   Exception.c
 
 #
@@ -40,7 +41,7 @@
 #
   ExceptionSupport.ARMv6.asm | RVCT
   ExceptionSupport.ARMv6.S   | GCC
-  Mmu.c
+  Mmu.c  
 
 
 [Packages]
@@ -50,16 +51,17 @@
   MdeModulePkg/MdeModulePkg.dec
 
 [LibraryClasses]
+  ArmLib
   BaseMemoryLib
   CacheMaintenanceLib
-  UefiDriverEntryPoint
-  ArmLib
-  DxeServicesTableLib
-  PeCoffGetEntryPointLib
-  UefiLib
   CpuLib
-  DefaultExceptioHandlerLib
   DebugLib
+  DefaultExceptionHandlerLib
+  DxeServicesTableLib
+  HobLib
+  PeCoffGetEntryPointLib
+  UefiDriverEntryPoint
+  UefiLib
 
 [Protocols]
   gEfiCpuArchProtocolGuid
@@ -68,6 +70,7 @@
 
 [Guids]
   gEfiDebugImageInfoTableGuid
+  gArmMpCoreInfoGuid
   gIdleLoopEventGuid
 
 [Pcd.common]

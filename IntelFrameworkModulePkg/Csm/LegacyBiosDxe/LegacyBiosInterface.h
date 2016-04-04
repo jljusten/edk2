@@ -29,6 +29,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/LoadedImage.h>
 #include <Protocol/PciIo.h>
 #include <Protocol/Cpu.h>
+#include <Protocol/Timer.h>
 #include <Protocol/IsaIo.h>
 #include <Protocol/LegacyRegion2.h>
 #include <Protocol/SimpleTextIn.h>
@@ -40,7 +41,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/DevicePath.h>
 #include <Protocol/Legacy8259.h>
 #include <Protocol/PciRootBridgeIo.h>
-#include <Protocol/Timer.h>
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
@@ -61,9 +61,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/DebugAgentLib.h>
 
 //
-// System Tickers
-//
-#define DEFAULT_LAGACY_TIMER_TICK_DURATION 549254
 // BUGBUG: This entry maybe changed to PCD in future and wait for
 //         redesign of BDS library
 //
@@ -160,11 +157,6 @@ typedef struct {
 #define INITIAL_VALUE_BELOW_1K  0xff
 
 #endif
-
-//
-// Miscellaneous numbers
-//
-#define PMM_MEMORY_SIZE         0x400000  // 4 MB
 
 #pragma pack(1)
 
@@ -497,8 +489,6 @@ extern BBS_TABLE           *mBbsTable;
 
 extern EFI_GENERIC_MEMORY_TEST_PROTOCOL *gGenMemoryTest;
 
-extern UINTN               mEndOpromShadowAddress;
-
 #define PORT_70 0x70
 #define PORT_71 0x71
 
@@ -521,6 +511,18 @@ extern UINTN               mEndOpromShadowAddress;
 #define CMOS_31     0x31  ///< CMOS 0x18
 #define CMOS_32     0x32  ///< Century byte
 
+//
+// 8254 Timer registers
+//
+#define TIMER0_COUNT_PORT                         0x40
+#define TIMER1_COUNT_PORT                         0x41
+#define TIMER2_COUNT_PORT                         0x42
+#define TIMER_CONTROL_PORT                        0x43
+
+//
+// Timer 0, Read/Write LSB then MSB, Square wave output, binary count use.
+//
+#define TIMER0_CONTROL_WORD         0x36      
 
 #define LEGACY_BIOS_INSTANCE_SIGNATURE  SIGNATURE_32 ('L', 'B', 'I', 'T')
 typedef struct {
@@ -537,6 +539,12 @@ typedef struct {
   EFI_CPU_ARCH_PROTOCOL             *Cpu;
 
   //
+  // Timer Architectural Protocol 
+  //
+  EFI_TIMER_ARCH_PROTOCOL           *Timer;
+  BOOLEAN                           TimerUses8254; 
+  
+  //
   // Protocol to Lock and Unlock 0xc0000 - 0xfffff
   //
   EFI_LEGACY_REGION2_PROTOCOL       *LegacyRegion;
@@ -547,7 +555,7 @@ typedef struct {
   // Interrupt control for thunk and PCI IRQ
   //
   EFI_LEGACY_8259_PROTOCOL          *Legacy8259;
-
+  
   //
   // PCI Interrupt PIRQ control
   //

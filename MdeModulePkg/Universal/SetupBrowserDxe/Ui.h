@@ -33,17 +33,16 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 typedef enum {
   UiNoOperation,
-  UiDefault,
   UiSelect,
   UiUp,
   UiDown,
   UiLeft,
   UiRight,
   UiReset,
-  UiSave,
   UiPrevious,
   UiPageUp,
   UiPageDown,
+  UiHotKey,
   UiMaxOperation
 } UI_SCREEN_OPERATION;
 
@@ -64,10 +63,10 @@ typedef enum {
   CfUiPageUp,
   CfUiPageDown,
   CfUiDown,
-  CfUiSave,
   CfUiDefault,
   CfUiNoOperation,
   CfExit,
+  CfUiHotKey,
   CfMaxControlFlag
 } UI_CONTROL_FLAG;
 
@@ -161,6 +160,7 @@ struct _UI_MENU_LIST {
   UINTN           Signature;
   LIST_ENTRY      Link;
 
+  EFI_HII_HANDLE  HiiHandle;
   EFI_GUID        FormSetGuid;
   UINT16          FormId;
   UINT16          QuestionId;
@@ -234,6 +234,7 @@ UiFreeMenu (
   of the given parent menu.
 
   @param  Parent                 The parent of menu to be added.
+  @param  HiiHandle              Hii handle related to this formset.
   @param  FormSetGuid            The Formset Guid of menu to be added.
   @param  FormId                 The Form ID of menu to be added.
 
@@ -243,6 +244,7 @@ UiFreeMenu (
 UI_MENU_LIST *
 UiAddMenuList (
   IN OUT UI_MENU_LIST     *Parent,
+  IN EFI_HII_HANDLE       HiiHandle,
   IN EFI_GUID             *FormSetGuid,
   IN UINT16               FormId
   );
@@ -251,6 +253,7 @@ UiAddMenuList (
   Search Menu with given FormId in the parent menu and all its child menus.
 
   @param  Parent                 The parent of menu to search.
+  @param  FormSetGuid            The Formset GUID of the menu to search.  
   @param  FormId                 The Form ID of menu to search.
 
   @return A pointer to menu found or NULL if not found.
@@ -259,6 +262,7 @@ UiAddMenuList (
 UI_MENU_LIST *
 UiFindChildMenuList (
   IN UI_MENU_LIST         *Parent,
+  IN EFI_GUID             *FormSetGuid, 
   IN UINT16               FormId
   );
 
@@ -291,6 +295,7 @@ UiFreeRefreshList (
 
   @param  String                 String description for this option.
   @param  Handle                 Hii handle for the package list.
+  @param  Form                   The form this statement belong to.
   @param  Statement              Statement of this Menu Option.
   @param  NumberOfLines          Display lines for this Menu Option.
   @param  MenuItemCount          The index for this Option in the Menu.
@@ -302,6 +307,7 @@ UI_MENU_OPTION *
 UiAddMenuOption (
   IN CHAR16                  *String,
   IN EFI_HII_HANDLE          Handle,
+  IN FORM_BROWSER_FORM       *Form,
   IN FORM_BROWSER_STATEMENT  *Statement,
   IN UINT16                  NumberOfLines,
   IN UINT16                  MenuItemCount
@@ -426,7 +432,7 @@ CreateMultiStringPopUp (
 
   @param  MenuOption        Pointer to the current input menu.
   @param  Prompt            The prompt string shown on popup window.
-  @param  StringPtr         Destination for use input string.
+  @param  StringPtr         Old user input and destination for use input string.
 
   @retval EFI_SUCCESS       If string input is read successfully
   @retval EFI_DEVICE_ERROR  If operation fails
@@ -434,9 +440,9 @@ CreateMultiStringPopUp (
 **/
 EFI_STATUS
 ReadString (
-  IN  UI_MENU_OPTION              *MenuOption,
-  IN  CHAR16                      *Prompt,
-  OUT CHAR16                      *StringPtr
+  IN     UI_MENU_OPTION              *MenuOption,
+  IN     CHAR16                      *Prompt,
+  IN OUT CHAR16                      *StringPtr
   );
 
 /**

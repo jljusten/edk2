@@ -42,19 +42,6 @@ typedef struct {
 } ARM_SYSTEM_MEMORY_REGION_DESCRIPTOR;
 
 /**
-  Called at the early stage of the Boot phase to know if the memory has already been initialized
-
-  Running the code from the reset vector does not mean we start from cold boot. In some case, we
-  can go through this code with the memory already initialized.
-  Because this function is called at the early stage, the implementation must not use the stack.
-  Its implementation must probably done in assembly to ensure this requirement.
-
-  @return   Return the condition value into the 'Z' flag
-
-**/
-VOID ArmPlatformIsMemoryInitialized(VOID);
-
-/**
   Initialize the memory where the initial stacks will reside
 
   This memory can contain the initial stacks (Secure and Secure Monitor stacks).
@@ -83,6 +70,20 @@ ArmPlatformGetBootMode (
   );
 
 /**
+  Call at the beginning of the platform boot up
+
+  This function allows the firmware platform to do extra actions at the early
+  stage of the platform power up.
+
+  Note: This function must be implemented in assembler as there is no stack set up yet
+
+**/
+VOID
+ArmPlatformSecBootAction (
+  VOID
+  );
+
+/**
   Initialize controllers that must setup at the early stage
 
   Some peripherals must be initialized in Secure World.
@@ -103,7 +104,7 @@ ArmPlatformSecInitialize (
 **/
 VOID
 ArmPlatformSecExtraAction (
-  IN  UINTN         CoreId,
+  IN  UINTN         MpId,
   OUT UINTN*        JumpAddress
   );
 
@@ -127,34 +128,6 @@ ArmPlatformNormalInitialize (
 **/
 VOID
 ArmPlatformInitializeSystemMemory (
-  VOID
-  );
-
-/**
-  Remap the memory at 0x0
-
-  Some platform requires or gives the ability to remap the memory at the address 0x0.
-  This function can do nothing if this feature is not relevant to your platform.
-
-**/
-VOID
-ArmPlatformBootRemapping (
-  VOID
-  );
-
-/**
-  Return if Trustzone is supported by your platform
-
-  A non-zero value must be returned if you want to support a Secure World on your platform.
-  ArmPlatformTrustzoneInit() will later set up the secure regions.
-  This function can return 0 even if Trustzone is supported by your processor. In this case,
-  the platform will continue to run in Secure World.
-
-  @return   A non-zero value if Trustzone supported.
-
-**/
-UINTN
-ArmPlatformTrustzoneSupported (
   VOID
   );
 
@@ -198,6 +171,22 @@ ArmPlatformGetVirtualMemoryMap (
 EFI_STATUS
 ArmPlatformGetAdditionalSystemMemory (
   OUT ARM_SYSTEM_MEMORY_REGION_DESCRIPTOR** EfiMemoryMap
+  );
+
+/**
+  Return the Platform specific PPIs
+
+  This function exposes the Platform Specific PPIs. They can be used by any PrePi modules or passed
+  to the PeiCore by PrePeiCore.
+
+  @param[out]   PpiListSize         Size in Bytes of the Platform PPI List
+  @param[out]   PpiList             Platform PPI List
+
+**/
+VOID
+ArmPlatformGetPlatformPpiList (
+  OUT UINTN                   *PpiListSize,
+  OUT EFI_PEI_PPI_DESCRIPTOR  **PpiList
   );
 
 #endif

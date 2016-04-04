@@ -22,6 +22,7 @@
 #include <Guid/ConsoleInDevice.h>
 #include <Guid/ConsoleOutDevice.h>
 #include <Guid/FileSystemInfo.h>
+#include <Guid/ShellLibHiiGuid.h>
 
 #include <Protocol/EfiShell.h>
 #include <Protocol/EfiShellParameters.h>
@@ -60,7 +61,6 @@
 
 
 extern        EFI_HANDLE                        gShellDebug1HiiHandle;
-extern CONST  EFI_GUID                          gShellDebug1HiiGuid;
 
 /**
   Function printing hex output to the console.
@@ -82,8 +82,8 @@ DumpHex (
   Function returns a system configuration table that is stored in the
   EFI System Table based on the provided GUID.
 
-  @param[in]  TableGuid    A pointer to the table's GUID type.
-  @param[in,out] Table     On exit, a pointer to a system configuration table.
+  @param[in]   TableGuid    A pointer to the table's GUID type.
+  @param[in, out] Table     On exit, a pointer to a system configuration table.
 
   @retval EFI_SUCCESS      A configuration table matching TableGuid was found.
   @retval EFI_NOT_FOUND    A configuration table matching TableGuid was not found.
@@ -98,8 +98,8 @@ GetSystemConfigurationTable (
 /**
   Convert a string representation of a GUID to the GUID value.
 
-  @param[in] StringGuid   The pointer to the string containing a GUID printed.
-  @param[in,out] Guid     The pointer to the buffer to get the GUID value.
+  @param[in]  StringGuid   The pointer to the string containing a GUID printed.
+  @param[in, out] Guid     The pointer to the buffer to get the GUID value.
 **/
 EFI_STATUS
 EFIAPI
@@ -359,37 +359,6 @@ EFIAPI
 ShellCommandRunHexEdit (
   IN EFI_HANDLE        ImageHandle,
   IN EFI_SYSTEM_TABLE  *SystemTable
-  );
-
-/** 
-  Appends a formatted Unicode string to a Null-terminated Unicode string
- 
-  This function appends a formatted Unicode string to the Null-terminated 
-  Unicode string specified by String.   String is optional and may be NULL.
-  Storage for the formatted Unicode string returned is allocated using 
-  AllocateZeroPool().  The pointer to the appended string is returned.  The caller
-  is responsible for freeing the returned string.
- 
-  If String is not NULL and not aligned on a 16-bit boundary, then ASSERT().
-  If Format is NULL, then ASSERT().
-  If Format is not aligned on a 16-bit boundary, then ASSERT().
- 
-  @param String   A null-terminated Unicode string.
-  @param FormatString   A null-terminated Unicode format string.
-  @param ...      The variable argument list whose contents are accessed based 
-                  on the format string specified by Format.
-
-  @retval NULL    There was not enough available memory.
-  @return         Null terminated Unicode string is that is the formatted 
-                  string appended to String.
-  @sa CatVSPrint
-**/
-CHAR16*
-EFIAPI
-CatSPrint (
-  IN  CONST CHAR16  *String OPTIONAL,
-  IN  CONST CHAR16  *FormatString,
-  ...
   );
 
 /**

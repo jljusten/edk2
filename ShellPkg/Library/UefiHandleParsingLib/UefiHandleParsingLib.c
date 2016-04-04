@@ -14,11 +14,6 @@
 
 #include "UefiHandleParsingLib.h"
 
-
-STATIC CONST EFI_GUID mHandleParsingHiiGuid = \
-  { \
-  0xb8969637, 0x81de, 0x43af, { 0xbc, 0x9a, 0x24, 0xd9, 0x89, 0x13, 0xf2, 0xf6 } \
-  };
 EFI_HANDLE mHandleParsingHiiHandle;
 HANDLE_INDEX_LIST mHandleList = {{{NULL,NULL},0,0},0};
 
@@ -37,7 +32,7 @@ HandleParsingLibConstructor (
   IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
-  mHandleParsingHiiHandle = HiiAddPackages (&mHandleParsingHiiGuid, gImageHandle, UefiHandleParsingLibStrings, NULL);
+  mHandleParsingHiiHandle = HiiAddPackages (&gHandleParsingHiiGuid, gImageHandle, UefiHandleParsingLibStrings, NULL);
   if (mHandleParsingHiiHandle == NULL) {
     return (EFI_DEVICE_ERROR);
   }
@@ -211,8 +206,10 @@ TxtOutProtocolDumpInformation(
   RetVal = AllocateZeroPool(Size);
 
   Temp = HiiGetString(mHandleParsingHiiHandle, STRING_TOKEN(STR_TXT_OUT_DUMP_HEADER), NULL);
-  UnicodeSPrint(RetVal, Size, Temp, Dev, Dev->Mode->Attribute);
-  FreePool(Temp);
+  if (Temp != NULL) {
+    UnicodeSPrint(RetVal, Size, Temp, Dev, Dev->Mode->Attribute);
+    FreePool(Temp);
+  }
 
   //
   // Dump TextOut Info
@@ -224,7 +221,7 @@ TxtOutProtocolDumpInformation(
     UnicodeSPrint(
       RetVal + StrLen(RetVal),
       NewSize,
-      Temp,
+      Temp == NULL?L"":Temp,
       Index == Dev->Mode->Mode ? L'*' : L' ',
       Index,
       !EFI_ERROR(Status)?Col:-1,
@@ -1179,10 +1176,10 @@ ParseHandleDatabaseForChildControllers(
 
   If DestinationBuffer is NULL, then ASSERT().
 
-  @param[in,out]  DestinationBuffer The pointer to the pointer to the buffer to append onto.
-  @param[in,out]  DestinationSize   The pointer to the size of DestinationBuffer.
-  @param[in]      SourceBuffer      The pointer to the buffer to append onto DestinationBuffer.
-  @param[in]      SourceSize        The number of bytes of SourceBuffer to append.
+  @param[in, out]  DestinationBuffer The pointer to the pointer to the buffer to append onto.
+  @param[in, out]  DestinationSize   The pointer to the size of DestinationBuffer.
+  @param[in]       SourceBuffer      The pointer to the buffer to append onto DestinationBuffer.
+  @param[in]       SourceSize        The number of bytes of SourceBuffer to append.
 
   @retval NULL                      A memory allocation failed.
   @retval NULL                      A parameter was invalid.

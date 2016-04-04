@@ -15,6 +15,25 @@
 #ifndef __BDS_ENTRY_H__
 #define __BDS_ENTRY_H__
 
+typedef UINT8* EFI_LOAD_OPTION;
+
+/**
+  This is defined by the UEFI specs, don't change it
+**/
+typedef struct {
+  UINT16                      LoadOptionIndex;
+  EFI_LOAD_OPTION             LoadOption;
+  UINTN                       LoadOptionSize;
+
+  UINT32                      Attributes;
+  UINT16                      FilePathListLength;
+  CHAR16                      *Description;
+  EFI_DEVICE_PATH_PROTOCOL    *FilePathList;
+
+  VOID*                       OptionalData;
+  UINTN                       OptionalDataSize;
+} BDS_LOAD_OPTION;
+
 /**
   Connect a Device Path and return the handle of the driver that support this DevicePath
 
@@ -47,6 +66,54 @@ BdsConnectAllDrivers (
   VOID
   );
 
+EFI_STATUS
+GetEnvironmentVariable (
+  IN     CONST CHAR16*   VariableName,
+  IN     VOID*           DefaultValue,
+  IN OUT UINTN*          Size,
+  OUT    VOID**          Value
+  );
+
+EFI_STATUS
+BootOptionFromLoadOptionIndex (
+  IN  UINT16            LoadOptionIndex,
+  OUT BDS_LOAD_OPTION** BdsLoadOption
+  );
+
+EFI_STATUS
+BootOptionFromLoadOptionVariable (
+  IN  CHAR16*           BootVariableName,
+  OUT BDS_LOAD_OPTION** BdsLoadOption
+  );
+
+EFI_STATUS
+BootOptionToLoadOptionVariable (
+  IN BDS_LOAD_OPTION*   BdsLoadOption
+  );
+
+UINT16
+BootOptionAllocateBootIndex (
+  VOID
+  );
+
+/**
+  Start a Linux kernel from a Device Path
+
+  @param  LinuxKernel           Device Path to the Linux Kernel
+  @param  Parameters            Linux kernel arguments
+
+  @retval EFI_SUCCESS           All drivers have been connected
+  @retval EFI_NOT_FOUND         The Linux kernel Device Path has not been found
+  @retval EFI_OUT_OF_RESOURCES  There is not enough resource memory to store the matching results.
+
+**/
+EFI_STATUS
+BdsBootLinuxAtag (
+  IN  EFI_DEVICE_PATH_PROTOCOL* LinuxKernelDevicePath,
+  IN  EFI_DEVICE_PATH_PROTOCOL* InitrdDevicePath,
+  IN  CONST CHAR8*              Arguments
+  );
+
 /**
   Start a Linux kernel from a Device Path
 
@@ -60,9 +127,10 @@ BdsConnectAllDrivers (
 
 **/
 EFI_STATUS
-BdsBootLinux (
+BdsBootLinuxFdt (
   IN  EFI_DEVICE_PATH_PROTOCOL* LinuxKernelDevicePath,
-  IN  CONST CHAR8*  Arguments,
+  IN  EFI_DEVICE_PATH_PROTOCOL* InitrdDevicePath,
+  IN  CONST CHAR8*              Arguments,
   IN  EFI_DEVICE_PATH_PROTOCOL* FdtDevicePath
   );
 
@@ -80,7 +148,9 @@ BdsBootLinux (
 EFI_STATUS
 BdsStartEfiApplication (
   IN EFI_HANDLE                  ParentImageHandle,
-  IN EFI_DEVICE_PATH_PROTOCOL    *DevicePath
+  IN EFI_DEVICE_PATH_PROTOCOL    *DevicePath,
+  IN UINTN                       LoadOptionsSize,
+  IN VOID*                       LoadOptions
   );
 
 /**
@@ -96,7 +166,17 @@ BdsStartEfiApplication (
 EFI_STATUS
 BdsLoadApplication (
   IN EFI_HANDLE                  ParentImageHandle,
-  IN CHAR16*                     EfiApp
+  IN CHAR16*                     EfiApp,
+  IN UINTN                       LoadOptionsSize,
+  IN VOID*                       LoadOptions
+  );
+
+EFI_STATUS
+BdsLoadImage (
+  IN     EFI_DEVICE_PATH       *DevicePath,
+  IN     EFI_ALLOCATE_TYPE     Type,
+  IN OUT EFI_PHYSICAL_ADDRESS* Image,
+  OUT    UINTN                 *FileSize
   );
 
 #endif

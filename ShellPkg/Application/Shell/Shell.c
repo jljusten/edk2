@@ -475,6 +475,9 @@ UefiMain (
     DEBUG_CODE(ShellInfoObject.ConsoleInfo = NULL;);
   }
 
+  if (ShellCommandGetExit()) {
+    return ((EFI_STATUS)ShellCommandGetExitCode());
+  }
   return (Status);
 }
 
@@ -566,8 +569,8 @@ IsScriptOnlyCommand(
   loaded image protocol installed on it.  The FilePath will point to the device path
   for the file that was loaded.
 
-  @param[in,out] DevPath       On a sucessful return the device path to the loaded image.
-  @param[in,out] FilePath      On a sucessful return the device path to the file.
+  @param[in, out] DevPath       On a sucessful return the device path to the loaded image.
+  @param[in, out] FilePath      On a sucessful return the device path to the file.
 
   @retval EFI_SUCCESS           The 2 device paths were sucessfully returned.
   @retval other                 A error from gBS->HandleProtocol.
@@ -854,15 +857,19 @@ DoStartupScript(
     FileStringPath = NULL;
     NewSize = 0;
     FileStringPath = StrnCatGrow(&FileStringPath, &NewSize, MapName, 0);
-    TempSpot = StrStr(FileStringPath, L";");
-    if (TempSpot != NULL) {
-      *TempSpot = CHAR_NULL;
+    if (FileStringPath == NULL) {
+      Status = EFI_OUT_OF_RESOURCES;
+    } else {
+      TempSpot = StrStr(FileStringPath, L";");
+      if (TempSpot != NULL) {
+        *TempSpot = CHAR_NULL;
+      }
+      FileStringPath = StrnCatGrow(&FileStringPath, &NewSize, ((FILEPATH_DEVICE_PATH*)FilePath)->PathName, 0);
+      PathRemoveLastItem(FileStringPath);
+      FileStringPath = StrnCatGrow(&FileStringPath, &NewSize, mStartupScript, 0);
+      Status = ShellInfoObject.NewEfiShellProtocol->OpenFileByName(FileStringPath, &FileHandle, EFI_FILE_MODE_READ);
+      FreePool(FileStringPath);
     }
-    FileStringPath = StrnCatGrow(&FileStringPath, &NewSize, ((FILEPATH_DEVICE_PATH*)FilePath)->PathName, 0);
-    PathRemoveLastItem(FileStringPath);
-    FileStringPath = StrnCatGrow(&FileStringPath, &NewSize, mStartupScript, 0);
-    Status = ShellInfoObject.NewEfiShellProtocol->OpenFileByName(FileStringPath, &FileHandle, EFI_FILE_MODE_READ);
-    FreePool(FileStringPath);
   }
   if (EFI_ERROR(Status)) {
     NamePath = FileDevicePath (NULL, mStartupScript);
@@ -1016,10 +1023,10 @@ AddLineToCommandHistory(
   Checks if a string is an alias for another command.  If yes, then it replaces the alias name
   with the correct command name.
 
-  @param[in,out] CommandString    Upon entry the potential alias.  Upon return the
-                                  command name if it was an alias.  If it was not
-                                  an alias it will be unchanged.  This function may
-                                  change the buffer to fit the command name.
+  @param[in, out] CommandString    Upon entry the potential alias.  Upon return the
+                                   command name if it was an alias.  If it was not
+                                   an alias it will be unchanged.  This function may
+                                   change the buffer to fit the command name.
 
   @retval EFI_SUCCESS             The name was changed.
   @retval EFI_SUCCESS             The name was not an alias.
@@ -1212,6 +1219,12 @@ RunSplitCommand(
 
   NextCommandLine = StrnCatGrow(&NextCommandLine, &Size1, StrStr(CmdLine, L"|")+1, 0);
   OurCommandLine  = StrnCatGrow(&OurCommandLine , &Size2, CmdLine                , StrStr(CmdLine, L"|") - CmdLine);
+
+  if (NextCommandLine == NULL || OurCommandLine == NULL) {
+    SHELL_FREE_NON_NULL(OurCommandLine);
+    SHELL_FREE_NON_NULL(NextCommandLine);
+    return (EFI_OUT_OF_RESOURCES);
+  }
   if (NextCommandLine[0] != CHAR_NULL &&
       NextCommandLine[0] == L'a' &&
       NextCommandLine[1] == L' '
@@ -1331,6 +1344,9 @@ RunCommand(
   Split               = NULL;
 
   CleanOriginal = StrnCatGrow(&CleanOriginal, NULL, CmdLine, 0);
+  if (CleanOriginal == NULL) {
+    return (EFI_OUT_OF_RESOURCES);
+  }
   while (CleanOriginal[StrLen(CleanOriginal)-1] == L' ') {
     CleanOriginal[StrLen(CleanOriginal)-1] = CHAR_NULL;
   }
@@ -1619,8 +1635,10 @@ RunScriptFileHandle (
   SCRIPT_COMMAND_LIST *LastCommand;
   BOOLEAN             Ascii;
   BOOLEAN             PreScriptEchoState;
+  BOOLEAN             PreCommandEchoState;
   CONST CHAR16        *CurDir;
   UINTN               LineCount;
+  CHAR16              LeString[50];
 
   ASSERT(!ShellCommandGetScriptExit());
 
@@ -1797,20 +1815,39 @@ RunScriptFileHandle (
         //
       } else {
         if (CommandLine3 != NULL && StrLen(CommandLine3) > 0) {
-          if (ShellCommandGetEchoState()) {
-            CurDir = ShellInfoObject.NewEfiShellProtocol->GetEnv(L"cwd");
-            if (CurDir != NULL && StrLen(CurDir) > 1) {
-              ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_SHELL_CURDIR), ShellInfoObject.HiiHandle, CurDir);
-            } else {
-              ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_SHELL_SHELL), ShellInfoObject.HiiHandle);
+          if (CommandLine3[0] == L'@') {
+            //
+            // We need to save the current echo state
+            // and disable echo for just this command.
+            //
+            PreCommandEchoState = ShellCommandGetEchoState();
+            ShellCommandSetEchoState(FALSE);
+            Status = RunCommand(CommandLine3+1);
+
+            //
+            // Now restore the pre-'@' echo state.
+            //
+            ShellCommandSetEchoState(PreCommandEchoState);
+          } else {
+            if (ShellCommandGetEchoState()) {
+              CurDir = ShellInfoObject.NewEfiShellProtocol->GetEnv(L"cwd");
+              if (CurDir != NULL && StrLen(CurDir) > 1) {
+                ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_SHELL_CURDIR), ShellInfoObject.HiiHandle, CurDir);
+              } else {
+                ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_SHELL_SHELL), ShellInfoObject.HiiHandle);
+              }
+              ShellPrintEx(-1, -1, L"%s\r\n", CommandLine2);
             }
-            ShellPrintEx(-1, -1, L"%s\r\n", CommandLine2);
+            Status = RunCommand(CommandLine3);
           }
-          Status = RunCommand(CommandLine3);
         }
 
         if (ShellCommandGetScriptExit()) {
-          ShellCommandRegisterExit(FALSE);
+          UnicodeSPrint(LeString, sizeof(LeString)*sizeof(LeString[0]), L"0x%Lx", ShellCommandGetExitCode());
+          DEBUG_CODE(InternalEfiShellSetEnv(L"DebugLasterror", LeString, TRUE););
+          InternalEfiShellSetEnv(L"Lasterror", LeString, TRUE);
+
+          ShellCommandRegisterExit(FALSE, 0);
           Status = EFI_SUCCESS;
           break;
         }

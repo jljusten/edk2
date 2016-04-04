@@ -992,6 +992,7 @@ ParseOpCodes (
   InitializeListHead (&FormSet->StorageListHead);
   InitializeListHead (&FormSet->DefaultStoreListHead);
   InitializeListHead (&FormSet->FormListHead);
+  InitializeListHead (&FormSet->ExpressionListHead);
   ResetCurrentExpressionStack ();
   ResetMapExpressionListStack ();
 
@@ -1332,8 +1333,6 @@ ParseOpCodes (
         FormSet->NumberOfClassGuid = (UINT8) (((EFI_IFR_FORM_SET *) OpCodeData)->Flags & 0x3);
         CopyMem (FormSet->ClassGuid, OpCodeData + sizeof (EFI_IFR_FORM_SET), FormSet->NumberOfClassGuid * sizeof (EFI_GUID));
       }
-
-      InitializeListHead (&FormSet->ExpressionListHead);
       break;
 
     case EFI_IFR_FORM_OP:
@@ -1842,6 +1841,10 @@ ParseOpCodes (
         CurrentStatement->StorageWidth = (UINT16) (CurrentStatement->MaxContainers * Width);
         CurrentStatement->BufferValue = AllocateZeroPool (CurrentStatement->StorageWidth);
         CurrentStatement->ValueType = CurrentOption->Value.Type;
+        if (CurrentStatement->HiiValue.Type == EFI_IFR_TYPE_BUFFER) {
+          CurrentStatement->HiiValue.Buffer = CurrentStatement->BufferValue;
+          CurrentStatement->HiiValue.BufferLen = CurrentStatement->StorageWidth;
+        }
 
         InitializeRequestElement (FormSet, CurrentStatement, CurrentForm);
       }
@@ -2116,6 +2119,28 @@ ParseOpCodes (
     case EFI_IFR_MODAL_TAG_OP:
       ASSERT (CurrentForm != NULL);
       CurrentForm->ModalForm = TRUE;
+      break;
+
+    //
+    // Lock tag, used by form and statement.
+    //
+    case EFI_IFR_LOCKED_OP:
+      //
+      // Get ScopeOpcode from top of stack
+      //
+      PopScope (&ScopeOpCode);
+      PushScope (ScopeOpCode);
+      switch (ScopeOpCode) {
+      case EFI_IFR_FORM_OP:
+      case EFI_IFR_FORM_MAP_OP:
+        ASSERT (CurrentForm != NULL);
+        CurrentForm->Locked = TRUE;
+        break;
+
+      default:
+        ASSERT (CurrentStatement != NULL);
+        CurrentStatement->Locked = TRUE;
+      }      
       break;
 
     //

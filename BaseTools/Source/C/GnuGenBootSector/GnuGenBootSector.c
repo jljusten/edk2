@@ -1,6 +1,6 @@
 /** @file
 
-Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -275,7 +275,7 @@ Version (
   VOID
   )
 {
-  printf ("%s v%d.%d -Utility to retrieve and update the boot sector or MBR.\n", UTILITY_NAME, UTILITY_MAJOR_VERSION, UTILITY_MINOR_VERSION);
+  printf ("%s v%d.%d %s-Utility to retrieve and update the boot sector or MBR.\n", UTILITY_NAME, UTILITY_MAJOR_VERSION, UTILITY_MINOR_VERSION, __BUILD_VERSION);
   printf ("Copyright (c) 2007-2010 Intel Corporation. All rights reserved.\n");
 }
 
@@ -305,7 +305,6 @@ main (
   char *argv[]
   )
 {
-  CHAR8          *AppName;
   INTN           Index;
   BOOLEAN        ProcessMbr;
   ERROR_STATUS   Status;
@@ -319,7 +318,6 @@ main (
   ZeroMem(&InputPathInfo, sizeof(PATH_INFO));
   ZeroMem(&OutputPathInfo, sizeof(PATH_INFO));
   
-  AppName = *argv;
   argv ++;
   argc --;
   

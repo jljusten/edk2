@@ -18,7 +18,9 @@
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PeCoffGetEntryPointLib.h>
+#include <Library/PrintLib.h>
 #include <Library/ArmDisassemblerLib.h>
+#include <Library/SerialPortLib.h>
 
 #include <Guid/DebugImageInfoTable.h>
 #include <Protocol/DebugSupport.h>
@@ -32,8 +34,6 @@ typedef struct {
   UINT32  BIT;
   CHAR8   Char;
 } CPSR_CHAR;
-
-
 
  
 /**
@@ -61,7 +61,6 @@ GetImageName (
   UINTN                 Entry;
   CHAR8                 *Address;
 
-  
   DebugTable = gDebugImageTableHeader->EfiDebugImageInfoTable;
   if (DebugTable == NULL) {
     return NULL;
@@ -102,9 +101,9 @@ CpsrString (
   OUT CHAR8   *ReturnStr
   )
 {
-  UINTN Index;
-  CHAR8 *Str = ReturnStr;
-  CHAR8 *ModeStr;
+  UINTN     Index;
+  CHAR8*    Str;
+  CHAR8*    ModeStr;
   CPSR_CHAR CpsrChar[] = {
     { 31, 'n' },
     { 30, 'z' },
@@ -119,6 +118,8 @@ CpsrString (
     { 0,  '?' }
   };
   
+  Str = ReturnStr;
+
   for (Index = 0; CpsrChar[Index].BIT != 0; Index++, Str++) {
     *Str = CpsrChar[Index].Char;
     if ((Cpsr & (1 << CpsrChar[Index].BIT)) != 0) {
@@ -194,8 +195,7 @@ FaultStatusToString (
   return FaultSource;
 }
 
-
-CHAR8 *gExceptionTypeString[] = {
+STATIC CHAR8 *gExceptionTypeString[] = {
   "Reset",
   "Undefined OpCode",
   "SWI",
@@ -205,7 +205,6 @@ CHAR8 *gExceptionTypeString[] = {
   "IRQ",
   "FIQ"
 };
-
 
 /**
   This is the default action to take on an unexpected exception
@@ -223,12 +222,17 @@ DefaultExceptionHandler (
   IN OUT EFI_SYSTEM_CONTEXT           SystemContext
   )
 {
+  CHAR8     Buffer[100];
+  UINTN     CharCount;
   UINT32    DfsrStatus;
   UINT32    IfsrStatus;
   BOOLEAN   DfsrWrite;
   UINT32    PcAdjust = 0;
 
-  DEBUG ((EFI_D_ERROR, "\n%a Exception PC at 0x%08x  CPSR 0x%08x ", gExceptionTypeString[ExceptionType], SystemContext.SystemContextArm->PC, SystemContext.SystemContextArm->CPSR));
+  CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"\n%a Exception PC at 0x%08x  CPSR 0x%08x ",
+	  gExceptionTypeString[ExceptionType], SystemContext.SystemContextArm->PC, SystemContext.SystemContextArm->CPSR);
+  SerialPortWrite ((UINT8 *) Buffer, CharCount);
+
   DEBUG_CODE_BEGIN ();
     CHAR8   *Pdb;
     UINT32  ImageBase;
@@ -249,10 +253,10 @@ DefaultExceptionHandler (
 
       //
       // A PE/COFF image loads its headers into memory so the headers are 
-      // included in the linked addressess. ELF and Mach-O images do not
+      // included in the linked addresses. ELF and Mach-O images do not
       // include the headers so the first byte of the image is usually
       // text (code). If you look at link maps from ELF or Mach-O images
-      // you need to subtact out the size of the PE/COFF header to get
+      // you need to subtract out the size of the PE/COFF header to get
       // get the offset that matches the link map. 
       //
       DEBUG ((EFI_D_ERROR, "loaded at 0x%08x (PE/COFF offset) 0x%x (ELF or Mach-O offset) 0x%x", ImageBase, Offset, Offset - PeCoffSizeOfHeader));

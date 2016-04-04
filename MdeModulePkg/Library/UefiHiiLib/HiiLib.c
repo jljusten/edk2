@@ -1,7 +1,7 @@
 /** @file
   HII Library implementation that uses DXE protocols and services.
 
-  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -129,7 +129,7 @@ InternalHiiExtractGuidFromHiiHandle (
                                to packages terminated by a NULL.
 
   @retval NULL   A HII Handle has already been registered in the HII Database with
-                 the same PackageListGuid.
+                 the same PackageListGuid and DeviceHandle.
   @retval NULL   The HII Handle could not be created.
   @retval NULL   An empty list of packages was passed in.
   @retval NULL   All packages are empty.
@@ -1630,12 +1630,11 @@ InternalHiiIfrValueAction (
   EFI_GUID       *VarGuid;
   EFI_STRING     VarName;
 
-  UINT8                        *PackageData;
   EFI_HII_PACKAGE_LIST_HEADER  *HiiPackageList;
   UINTN                        PackageListLength;
   EFI_DEVICE_PATH_PROTOCOL     *DevicePath;
   EFI_DEVICE_PATH_PROTOCOL     *TempDevicePath;
-  
+
   ConfigAltResp = NULL;
   ConfigResp    = NULL;
   VarGuid       = NULL;
@@ -1646,7 +1645,6 @@ InternalHiiIfrValueAction (
   Index            = 0;
   TempDriverHandle = NULL;
   HiiHandle        = NULL;
-  PackageData      = NULL;
   HiiPackageList   = NULL;
   
   //
@@ -2446,9 +2444,7 @@ InternalHiiGrowOpCodeHandle (
               OpCodeBuffer->BufferSize + (Size + HII_LIB_OPCODE_ALLOCATION_SIZE),
               OpCodeBuffer->Buffer
               );
-    if (Buffer == NULL) {
-      return NULL;
-    }
+    ASSERT (Buffer != NULL);
     OpCodeBuffer->Buffer = Buffer;
     OpCodeBuffer->BufferSize += (Size + HII_LIB_OPCODE_ALLOCATION_SIZE);
   }

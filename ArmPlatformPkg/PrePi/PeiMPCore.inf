@@ -38,9 +38,9 @@
   BaseLib
   DebugLib
   DebugAgentLib
+  ArmCpuLib
   ArmLib
-  ArmMPCoreMailBoxLib
-  PL390GicNonSecLib
+  ArmGicLib
   IoLib
   TimerLib
   SerialPortLib
@@ -56,6 +56,12 @@
   PlatformPeiLib
   MemoryInitPeiLib
 
+[Ppis]
+  gArmMpCoreInfoPpiGuid
+
+[Guids]
+  gArmGlobalVariableGuid
+
 [FeaturePcd]  
   gEmbeddedTokenSpaceGuid.PcdCacheEnable
   gEmbeddedTokenSpaceGuid.PcdPrePiProduceMemoryTypeInformationHob
@@ -64,17 +70,17 @@
 [FixedPcd]
   gArmTokenSpaceGuid.PcdVFPEnabled
 
-  gArmTokenSpaceGuid.PcdNormalFdBaseAddress
-  gArmTokenSpaceGuid.PcdNormalFdSize
+  gArmTokenSpaceGuid.PcdFdBaseAddress
+  gArmTokenSpaceGuid.PcdFdSize
 
-  gArmTokenSpaceGuid.PcdNormalFvBaseAddress
-  gArmTokenSpaceGuid.PcdNormalFvSize
+  gArmTokenSpaceGuid.PcdFvBaseAddress
+  gArmTokenSpaceGuid.PcdFvSize
 
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresNonSecStackBase
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresNonSecStackSize
+  gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase
+  gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize
+  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecondaryStackSize
 
   gArmPlatformTokenSpaceGuid.PcdPeiGlobalVariableSize
-  gArmPlatformTokenSpaceGuid.PcdHobListPtrGlobalOffset
 
   gArmTokenSpaceGuid.PcdGicDistributorBase
   gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase
@@ -83,7 +89,10 @@
   gArmTokenSpaceGuid.PcdSystemMemorySize
   gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize
   
-  gArmPlatformTokenSpaceGuid.PcdMPCoreMaxCores
+  gArmPlatformTokenSpaceGuid.PcdClusterCount
+  gArmTokenSpaceGuid.PcdArmPrimaryCoreMask
+  gArmTokenSpaceGuid.PcdArmPrimaryCore
+
   gEmbeddedTokenSpaceGuid.PcdPrePiCpuMemorySize
   gEmbeddedTokenSpaceGuid.PcdPrePiCpuIoSize
 

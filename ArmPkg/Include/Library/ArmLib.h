@@ -15,6 +15,12 @@
 #ifndef __ARM_LIB__
 #define __ARM_LIB__
 
+#ifdef ARM_CPU_ARMv6
+#include <Chipset/ARM1176JZ-S.h>
+#else
+#include <Chipset/ArmV7.h>
+#endif
+
 typedef enum {
   ARM_CACHE_TYPE_WRITE_BACK,
   ARM_CACHE_TYPE_UNKNOWN
@@ -72,6 +78,14 @@ typedef enum {
   ARM_PROCESSOR_MODE_SYSTEM     = 0x1F,
   ARM_PROCESSOR_MODE_MASK       = 0x1F
 } ARM_PROCESSOR_MODE;
+
+#define IS_PRIMARY_CORE(MpId) (((MpId) & PcdGet32(PcdArmPrimaryCoreMask)) == PcdGet32(PcdArmPrimaryCore))
+#define GET_CORE_ID(MpId)     ((MpId) & 0x3)
+#define GET_CLUSTER_ID(MpId)  (((MpId) >> 8) & 0x3C)
+// Get the position of the core for the Stack Offset (4 Core per Cluster)
+//   Position = (ClusterId * 4) + CoreId
+#define GET_CORE_POS(MpId)    ((((MpId) >> 6) & 0x3C) + ((MpId) & 0x3))
+#define PRIMARY_CORE_ID       (PcdGet32(PcdArmPrimaryCore) & 0x3)
 
 ARM_CACHE_TYPE
 EFIAPI
@@ -153,7 +167,7 @@ Cp15CacheInfo (
 
 BOOLEAN
 EFIAPI
-ArmIsMPCore (
+ArmIsMpCore (
   VOID
   );
 
@@ -239,6 +253,12 @@ ArmDisableMmu (
 VOID
 EFIAPI
 ArmDisableCachesAndMmu (
+  VOID
+  );
+
+VOID
+EFIAPI
+ArmInvalidateInstructionAndDataTlb (
   VOID
   );
 
@@ -376,6 +396,77 @@ EFIAPI
 ArmInstructionSynchronizationBarrier (
   VOID
   );
-  
+
+VOID
+EFIAPI
+ArmWriteVBar (
+  IN  UINT32   VectorBase
+  );
+
+UINT32
+EFIAPI
+ArmReadVBar (
+  VOID
+  );
+
+VOID
+EFIAPI
+ArmWriteAuxCr (
+  IN  UINT32    Bit
+  );
+
+UINT32
+EFIAPI
+ArmReadAuxCr (
+  VOID
+  );
+
+VOID
+EFIAPI
+ArmSetAuxCrBit (
+  IN  UINT32    Bits
+  );
+
+VOID
+EFIAPI
+ArmCallWFI (
+  VOID
+  );
+
+UINTN
+EFIAPI
+ArmReadMpidr (
+  VOID
+  );
+
+VOID
+EFIAPI
+ArmWriteCPACR (
+  IN  UINT32   Access
+  );
+
+VOID
+EFIAPI
+ArmEnableVFP (
+  VOID
+  );
+
+VOID
+EFIAPI
+ArmWriteNsacr (
+  IN  UINT32   SetWayFormat
+  );
+
+VOID
+EFIAPI
+ArmWriteScr (
+  IN  UINT32   SetWayFormat
+  );
+
+VOID
+EFIAPI
+ArmWriteVMBar (
+  IN  UINT32   VectorMonitorBase
+  );
 
 #endif // __ARM_LIB__

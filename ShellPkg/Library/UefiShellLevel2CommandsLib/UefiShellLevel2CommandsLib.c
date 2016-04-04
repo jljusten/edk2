@@ -36,10 +36,6 @@
 
 CONST CHAR16 mFileName[] = L"ShellCommands";
 EFI_HANDLE gShellLevel2HiiHandle = NULL;
-CONST EFI_GUID gShellLevel2HiiGuid = \
-  { \
-    0xf95a7ccc, 0x4c55, 0x4426, { 0xa7, 0xb4, 0xdc, 0x89, 0x61, 0x95, 0xb, 0xae } \
-  };
 
 /**
   Get the filename to get help text from if not using HII.
@@ -167,8 +163,8 @@ ShellLevel2CommandsLibDestructor (
   @param[in] Path         The unknown Path Value
 
   @retval NULL            A memory allocation failed
-  @retval NULL            a fully qualified path could not be discovered.
-  @retval other           pointer to a fuly qualified path.
+  @retval NULL            A fully qualified path could not be discovered.
+  @retval other           An allocated pointer to a fuly qualified path.
 **/
 CHAR16*
 EFIAPI
@@ -197,6 +193,10 @@ GetFullyQualifiedPath(
   StrnCatGrow(&PathToReturn, &Size, Path, 0);
 
   PathCleanUpDirectories(PathToReturn);
+
+  if (PathToReturn == NULL) {
+    return NULL;
+  }
 
   while (PathToReturn[StrLen(PathToReturn)-1] == L'*') {
     PathToReturn[StrLen(PathToReturn)-1] = CHAR_NULL;
@@ -229,6 +229,10 @@ VerifyIntermediateDirectories (
   PathCopy    = NULL;
   PathCopy    = StrnCatGrow(&PathCopy, NULL, Path, 0);
   FileHandle  = NULL;
+
+  if (PathCopy == NULL) {
+    return (EFI_OUT_OF_RESOURCES);
+  }
 
   for (TempSpot = &PathCopy[StrLen(PathCopy)-1] ; *TempSpot != CHAR_NULL && *TempSpot != L'\\' ; TempSpot = &PathCopy[StrLen(PathCopy)-1]){
     *TempSpot = CHAR_NULL;

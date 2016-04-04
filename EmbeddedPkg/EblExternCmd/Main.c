@@ -23,13 +23,14 @@
 
 **/
 
+#include "Ebl.h"
 
 /**
   Entry point with Argc, Argv. Put your code here.
 
   @param  Argc   Number of command arguments in Argv
   @param  Argv   Array of strings that represent the parsed command line. 
-                 Argv[0] is the comamnd name
+                 Argv[0] is the command name
 
   @return EFI_SUCCESS
 

@@ -36,7 +36,7 @@
 [LibraryClasses]
   DebugLib
   PcdLib
-  PL390GicSecLib
+  ArmGicSecLib
   PrintLib
   SerialPortLib
 
@@ -45,7 +45,10 @@
   gArmPlatformTokenSpaceGuid.PcdSystemMemoryInitializeInSec
 
 [FixedPcd]
-  gArmTokenSpaceGuid.PcdNormalFvBaseAddress
+  gArmTokenSpaceGuid.PcdFvBaseAddress
   
+  gArmTokenSpaceGuid.PcdArmPrimaryCoreMask
+  gArmTokenSpaceGuid.PcdArmPrimaryCore
+
   gArmTokenSpaceGuid.PcdGicDistributorBase
   gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase

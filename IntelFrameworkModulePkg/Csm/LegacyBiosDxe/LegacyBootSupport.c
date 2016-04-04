@@ -136,6 +136,72 @@ PrintHddInfo (
 }
 
 /**
+  Print the PCI Interrupt Line and Interrupt Pin registers.
+**/
+VOID
+PrintPciInterruptRegister (
+  VOID
+  )
+{
+  EFI_STATUS                  Status;
+  UINTN                       Index;
+  EFI_HANDLE                  *Handles;
+  UINTN                       HandleNum;
+  EFI_PCI_IO_PROTOCOL         *PciIo;
+  UINT8                       Interrupt[2];
+  UINTN                       Segment;
+  UINTN                       Bus;
+  UINTN                       Device;
+  UINTN                       Function;
+
+  gBS->LocateHandleBuffer (
+         ByProtocol,
+         &gEfiPciIoProtocolGuid,
+         NULL,
+         &HandleNum,
+         &Handles
+         );
+
+  Bus      = 0;
+  Device   = 0;
+  Function = 0;
+
+  DEBUG ((EFI_D_INFO, "\n"));
+  DEBUG ((EFI_D_INFO, " bb/dd/ff interrupt line interrupt pin\n"));
+  DEBUG ((EFI_D_INFO, "======================================\n"));
+  for (Index = 0; Index < HandleNum; Index++) {
+    Status = gBS->HandleProtocol (Handles[Index], &gEfiPciIoProtocolGuid, (VOID **) &PciIo);
+    if (!EFI_ERROR (Status)) {
+      Status = PciIo->Pci.Read (
+                            PciIo,
+                            EfiPciIoWidthUint8,
+                            PCI_INT_LINE_OFFSET,
+                            2,
+                            Interrupt
+                            );
+    }
+    if (!EFI_ERROR (Status)) {
+      Status = PciIo->GetLocation (
+                        PciIo,
+                        &Segment,
+                        &Bus,
+                        &Device,
+                        &Function
+                        );
+    }
+    if (!EFI_ERROR (Status)) {
+      DEBUG ((EFI_D_INFO, " %02x/%02x/%02x 0x%02x           0x%02x\n",
+              Bus, Device, Function, Interrupt[0], Interrupt[1]));
+    }
+  }
+  DEBUG ((EFI_D_INFO, "\n"));
+
+  if (Handles != NULL) {
+    FreePool (Handles);
+  }
+}
+
+/**
   Identify drive data must be updated to actual parameters before boot.
 
   @param  IdentifyDriveData       ATA Identify Data
@@ -753,14 +819,11 @@ GenericLegacyBoot (
   VOID                              *AcpiTable;
   UINTN                             ShadowAddress;
   UINT32                            Granularity;
-  EFI_TIMER_ARCH_PROTOCOL           *Timer;
-  UINT64                            TimerPeriod;
 
   LocalHddInfo  = NULL;
   HddCount      = 0;
   BbsCount      = 0;
   LocalBbsTable = NULL;
-  TimerPeriod   = 0;
 
   Private       = LEGACY_BIOS_INSTANCE_FROM_THIS (This);
   DEBUG_CODE (
@@ -775,36 +838,6 @@ GenericLegacyBoot (
 
   EfiToLegacy16BootTable->MajorVersion = EFI_TO_LEGACY_MAJOR_VERSION;
   EfiToLegacy16BootTable->MinorVersion = EFI_TO_LEGACY_MINOR_VERSION;
-
-  //
-  // Before starting the Legacy boot check the system ticker.
-  //
-  Status = gBS->LocateProtocol (
-                  &gEfiTimerArchProtocolGuid, 
-                  NULL,
-                  (VOID **) &Timer
-                  );
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  Status = Timer->GetTimerPeriod (
-                    Timer,
-                    &TimerPeriod
-                    );
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  if (TimerPeriod != DEFAULT_LAGACY_TIMER_TICK_DURATION) {
-    Status = Timer->SetTimerPeriod (
-                      Timer, 
-                      DEFAULT_LAGACY_TIMER_TICK_DURATION
-                      );
-    if (EFI_ERROR (Status)) {
-      return Status;
-    }
-  }
   
   //
   // If booting to a legacy OS then force HDD drives to the appropriate
@@ -1031,9 +1064,11 @@ GenericLegacyBoot (
     &LocalBbsTable
     );
 
-  PrintBbsTable (LocalBbsTable);
-  PrintHddInfo (LocalHddInfo);
-
+  DEBUG_CODE (
+    PrintPciInterruptRegister ();
+    PrintBbsTable (LocalBbsTable);
+    PrintHddInfo (LocalHddInfo);
+    );
   //
   // If drive wasn't spun up then BuildIdeData may have found new drives.
   // Need to update BBS boot priority.
@@ -1169,10 +1204,17 @@ GenericLegacyBoot (
     //
     EfiSignalEventLegacyBoot ();
     DEBUG ((EFI_D_INFO, "Legacy INT19 Boot...\n"));
+
     //
-    // Raise TPL to high level to disable CPU interrupts
+    // Disable DXE Timer while executing in real mode
     //
-    gBS->RaiseTPL (TPL_HIGH_LEVEL);
+    Private->Timer->SetTimerPeriod (Private->Timer, 0);
+    
+    //
+    // Save and disable interrupt of debug timer
+    //
+    SaveAndSetDebugTimerInterrupt (FALSE);
+
 
     //
     // Put the 8259 into its legacy mode by reprogramming the vector bases

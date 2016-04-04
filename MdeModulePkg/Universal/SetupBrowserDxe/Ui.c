@@ -50,25 +50,15 @@ SCAN_CODE_TO_SCREEN_OPERATION     gScanCodeToOperation[] = {
   {
     SCAN_RIGHT,
     UiRight,
-  },
-  {
-    SCAN_F9,
-    UiDefault,
-  },
-  {
-    SCAN_F10,
-    UiSave
   }
 };
+
+UINTN mScanCodeNumber = sizeof (gScanCodeToOperation) / sizeof (gScanCodeToOperation[0]);
 
 SCREEN_OPERATION_T0_CONTROL_FLAG  gScreenOperationToControlFlag[] = {
   {
     UiNoOperation,
     CfUiNoOperation,
-  },
-  {
-    UiDefault,
-    CfUiDefault,
   },
   {
     UiSelect,
@@ -95,16 +85,16 @@ SCREEN_OPERATION_T0_CONTROL_FLAG  gScreenOperationToControlFlag[] = {
     CfUiReset,
   },
   {
-    UiSave,
-    CfUiSave,
-  },
-  {
     UiPageUp,
     CfUiPageUp,
   },
   {
     UiPageDown,
     CfUiPageDown
+  }, 
+  {
+    UiHotKey,
+    CfUiHotKey
   }
 };
 
@@ -185,6 +175,7 @@ UiFreeMenu (
   of the given parent menu.
 
   @param  Parent                 The parent of menu to be added.
+  @param  HiiHandle              Hii handle related to this formset.
   @param  FormSetGuid            The Formset Guid of menu to be added.
   @param  FormId                 The Form ID of menu to be added.
 
@@ -194,6 +185,7 @@ UiFreeMenu (
 UI_MENU_LIST *
 UiAddMenuList (
   IN OUT UI_MENU_LIST     *Parent,
+  IN EFI_HII_HANDLE       HiiHandle,
   IN EFI_GUID             *FormSetGuid,
   IN UINT16               FormId
   )
@@ -208,6 +200,7 @@ UiAddMenuList (
   MenuList->Signature = UI_MENU_LIST_SIGNATURE;
   InitializeListHead (&MenuList->ChildListHead);
 
+  MenuList->HiiHandle = HiiHandle;
   CopyMem (&MenuList->FormSetGuid, FormSetGuid, sizeof (EFI_GUID));
   MenuList->FormId = FormId;
   MenuList->Parent = Parent;
@@ -226,9 +219,10 @@ UiAddMenuList (
 
 
 /**
-  Search Menu with given FormId in the parent menu and all its child menus.
+  Search Menu with given FormId and FormSetGuid in all cached menu list.
 
   @param  Parent                 The parent of menu to search.
+  @param  FormSetGuid            The Formset GUID of the menu to search.  
   @param  FormId                 The Form ID of menu to search.
 
   @return A pointer to menu found or NULL if not found.
@@ -237,6 +231,7 @@ UiAddMenuList (
 UI_MENU_LIST *
 UiFindChildMenuList (
   IN UI_MENU_LIST         *Parent,
+  IN EFI_GUID             *FormSetGuid, 
   IN UINT16               FormId
   )
 {
@@ -244,7 +239,9 @@ UiFindChildMenuList (
   UI_MENU_LIST    *Child;
   UI_MENU_LIST    *MenuList;
 
-  if (Parent->FormId == FormId) {
+  ASSERT (Parent != NULL);
+
+  if (Parent->FormId == FormId && CompareGuid (FormSetGuid, &Parent->FormSetGuid)) {
     return Parent;
   }
 
@@ -252,7 +249,7 @@ UiFindChildMenuList (
   while (!IsNull (&Parent->ChildListHead, Link)) {
     Child = UI_MENU_LIST_FROM_LINK (Link);
 
-    MenuList = UiFindChildMenuList (Child, FormId);
+    MenuList = UiFindChildMenuList (Child, FormSetGuid, FormId);
     if (MenuList != NULL) {
       return MenuList;
     }
@@ -287,14 +284,9 @@ UiFindMenuList (
   while (!IsNull (&gMenuList, Link)) {
     MenuList = UI_MENU_LIST_FROM_LINK (Link);
 
-    if (CompareGuid (FormSetGuid, &MenuList->FormSetGuid)) {
-      //
-      // This is the formset we are looking for, find the form in this formset
-      //
-      Child = UiFindChildMenuList (MenuList, FormId);
-      if (Child != NULL) {
-        return Child;
-      }
+    Child = UiFindChildMenuList(MenuList, FormSetGuid, FormId);
+    if (Child != NULL) {
+      return Child;
     }
 
     Link = GetNextNode (&gMenuList, Link);
@@ -332,6 +324,102 @@ UiFreeRefreshList (
 }
 
 
+/**
+  Process option string for date/time opcode.
+
+  @param  MenuOption              Menu option point to date/time.
+  @param  OptionString            Option string input for process.
+  @param  AddOptCol               Whether need to update MenuOption->OptCol. 
+
+**/
+VOID 
+ProcessStringForDateTime (
+  UI_MENU_OPTION                  *MenuOption,
+  CHAR16                          *OptionString,
+  BOOLEAN                         AddOptCol
+  )
+{
+  UINTN Index;
+  UINTN Count;
+  FORM_BROWSER_STATEMENT          *Statement;
+
+  ASSERT (MenuOption != NULL && OptionString != NULL);
+  
+  Statement = MenuOption->ThisTag;
+  
+  //
+  // If leading spaces on OptionString - remove the spaces
+  //
+  for (Index = 0; OptionString[Index] == L' '; Index++) {
+    //
+    // Base on the blockspace to get the option column info.
+    //
+    if (AddOptCol) {
+      MenuOption->OptCol++;
+    }
+  }
+  
+  for (Count = 0; OptionString[Index] != CHAR_NULL; Index++) {
+    OptionString[Count] = OptionString[Index];
+    Count++;
+  }
+  OptionString[Count] = CHAR_NULL;
+  
+  //
+  // Enable to suppress field in the opcode base on the flag.
+  //
+  if (Statement->Operand == EFI_IFR_DATE_OP) {
+    //
+    // OptionString format is: <**:  **: ****>
+    //                        |month|day|year|
+    //                          4     3    5
+    //
+    if ((Statement->Flags & EFI_QF_DATE_MONTH_SUPPRESS) && (MenuOption->Sequence == 0)) {
+      //
+      // At this point, only "<**:" in the optionstring. 
+      // Clean the day's ** field, after clean, the format is "<  :"
+      //
+      SetUnicodeMem (&OptionString[1], 2, L' ');
+    } else if ((Statement->Flags & EFI_QF_DATE_DAY_SUPPRESS) && (MenuOption->Sequence == 1)) {
+      //
+      // At this point, only "**:" in the optionstring. 
+      // Clean the month's "**" field, after clean, the format is "  :"
+      //                
+      SetUnicodeMem (&OptionString[0], 2, L' ');
+    } else if ((Statement->Flags & EFI_QF_DATE_YEAR_SUPPRESS) && (MenuOption->Sequence == 2)) {
+      //
+      // At this point, only "****>" in the optionstring. 
+      // Clean the year's "****" field, after clean, the format is "  >"
+      //                
+      SetUnicodeMem (&OptionString[0], 4, L' ');
+    }
+  } else if (Statement->Operand == EFI_IFR_TIME_OP) {
+    //
+    // OptionString format is: <**:  **:    **>
+    //                        |hour|minute|second|
+    //                          4     3      3
+    //
+    if ((Statement->Flags & QF_TIME_HOUR_SUPPRESS) && (MenuOption->Sequence == 0)) {
+      //
+      // At this point, only "<**:" in the optionstring. 
+      // Clean the hour's ** field, after clean, the format is "<  :"
+      //
+      SetUnicodeMem (&OptionString[1], 2, L' ');
+    } else if ((Statement->Flags & QF_TIME_MINUTE_SUPPRESS) && (MenuOption->Sequence == 1)) {
+      //
+      // At this point, only "**:" in the optionstring. 
+      // Clean the minute's "**" field, after clean, the format is "  :"
+      //                
+      SetUnicodeMem (&OptionString[0], 2, L' ');
+    } else if ((Statement->Flags & QF_TIME_SECOND_SUPPRESS) && (MenuOption->Sequence == 2)) {
+      //
+      // At this point, only "**>" in the optionstring. 
+      // Clean the second's "**" field, after clean, the format is "  >"
+      //                
+      SetUnicodeMem (&OptionString[0], 2, L' ');
+    }
+  }
+}
 
 /**
   Refresh question.
@@ -344,7 +432,6 @@ RefreshQuestion (
   )
 {
   CHAR16                          *OptionString;
-  UINTN                           Index;
   EFI_STATUS                      Status;
   UI_MENU_SELECTION               *Selection;
   FORM_BROWSER_STATEMENT          *Question;
@@ -362,12 +449,6 @@ RefreshQuestion (
 
   if (OptionString != NULL) {
     //
-    // If leading spaces on OptionString - remove the spaces
-    //
-    for (Index = 0; OptionString[Index] == L' '; Index++)
-      ;
-
-    //
     // If old Text is longer than new string, need to clean the old string before paint the newer.
     // This option is no need for time/date opcode, because time/data opcode has fixed string length.
     //
@@ -383,7 +464,8 @@ RefreshQuestion (
     }
 
     gST->ConOut->SetAttribute (gST->ConOut, MenuRefreshEntry->CurrentAttribute);
-    PrintStringAt (MenuRefreshEntry->CurrentColumn, MenuRefreshEntry->CurrentRow, &OptionString[Index]);
+    ProcessStringForDateTime(MenuRefreshEntry->MenuOption, OptionString, FALSE);
+    PrintStringAt (MenuRefreshEntry->CurrentColumn, MenuRefreshEntry->CurrentRow, OptionString);
     FreePool (OptionString);
   }
 
@@ -585,6 +667,7 @@ UiWaitForSingleEvent (
 
   @param  String                 String description for this option.
   @param  Handle                 Hii handle for the package list.
+  @param  Form                   The form this statement belong to.
   @param  Statement              Statement of this Menu Option.
   @param  NumberOfLines          Display lines for this Menu Option.
   @param  MenuItemCount          The index for this Option in the Menu.
@@ -596,6 +679,7 @@ UI_MENU_OPTION *
 UiAddMenuOption (
   IN CHAR16                  *String,
   IN EFI_HII_HANDLE          Handle,
+  IN FORM_BROWSER_FORM       *Form,
   IN FORM_BROWSER_STATEMENT  *Statement,
   IN UINT16                  NumberOfLines,
   IN UINT16                  MenuItemCount
@@ -651,6 +735,13 @@ UiAddMenuOption (
       MenuOption->GrayOut = Statement->GrayOutExpression->Result.Value.b;
     }
 
+    //
+    // If the form or the question has the lock attribute, deal same as grayout.
+    //
+    if (Form->Locked || Statement->Locked) {
+      MenuOption->GrayOut = TRUE;
+    }
+    
     switch (Statement->Operand) {
     case EFI_IFR_ORDERED_LIST_OP:
     case EFI_IFR_ONE_OF_OP:
@@ -1057,7 +1148,10 @@ UpdateStatusBar (
   UINTN           Index;
   CHAR16          *NvUpdateMessage;
   CHAR16          *InputErrorMessage;
-
+  LIST_ENTRY              *Link;
+  FORM_BROWSER_FORMSET    *LocalFormSet;
+  FORM_BROWSER_STATEMENT  *Question;
+  
   NvUpdateMessage   = GetToken (STRING_TOKEN (NV_UPDATE_MESSAGE), gHiiHandle);
   InputErrorMessage = GetToken (STRING_TOKEN (INPUT_ERROR_MESSAGE), gHiiHandle);
 
@@ -1082,32 +1176,38 @@ UpdateStatusBar (
     break;
 
   case NV_UPDATE_REQUIRED:
-    if ((gClassOfVfr & FORMSET_CLASS_FRONT_PAGE) != FORMSET_CLASS_FRONT_PAGE) {
-      if (State) {
+    //
+    // Global setting support. Show configuration change on every form.
+    //
+    if (State) {
+      gResetRequired    = (BOOLEAN) (gResetRequired | ((Flags & EFI_IFR_FLAG_RESET_REQUIRED) == EFI_IFR_FLAG_RESET_REQUIRED));
+
+      if (Selection != NULL && Selection->Statement != NULL) {
+        Question = Selection->Statement;
+        if (Question->Storage != NULL || Question->Operand == EFI_IFR_DATE_OP || Question->Operand == EFI_IFR_TIME_OP) {
+          //
+          // Update only for Question value that need to be saved into Storage.
+          //
+          Selection->Form->NvUpdateRequired = TRUE;
+        }
+      }
+      
+      if (Selection == NULL || IsNvUpdateRequired (Selection->FormSet)) {
         gST->ConOut->SetAttribute (gST->ConOut, INFO_TEXT);
         PrintStringAt (
           gScreenDimensions.LeftColumn + gPromptBlockWidth + gOptionBlockWidth,
           gScreenDimensions.BottomRow - 1,
           NvUpdateMessage
           );
-        gResetRequired    = (BOOLEAN) (gResetRequired | ((Flags & EFI_IFR_FLAG_RESET_REQUIRED) == EFI_IFR_FLAG_RESET_REQUIRED));
-
-        if (Selection != NULL) {
-          Selection->Form->NvUpdateRequired = TRUE;
-        }
-      } else {
-        gST->ConOut->SetAttribute (gST->ConOut, PcdGet8 (PcdBrowserFieldTextHighlightColor));
-        for (Index = 0; Index < (GetStringWidth (NvUpdateMessage) - 2) / 2; Index++) {
-          PrintAt (
-            (gScreenDimensions.LeftColumn + gPromptBlockWidth + gOptionBlockWidth + Index),
-            gScreenDimensions.BottomRow - 1,
-            L"  "
-            );
-        }
-
-        if (Selection != NULL) {
-          Selection->Form->NvUpdateRequired = FALSE;
-        }
+      }
+    } else {
+      gST->ConOut->SetAttribute (gST->ConOut, PcdGet8 (PcdBrowserFieldTextHighlightColor));
+      for (Index = 0; Index < (GetStringWidth (NvUpdateMessage) - 2) / 2; Index++) {
+        PrintAt (
+          (gScreenDimensions.LeftColumn + gPromptBlockWidth + gOptionBlockWidth + Index),
+          gScreenDimensions.BottomRow - 1,
+          L"  "
+          );
       }
     }
     break;
@@ -1117,9 +1217,28 @@ UpdateStatusBar (
       UpdateStatusBar (Selection, INPUT_ERROR, Flags, TRUE);
     }
 
-    if (IsNvUpdateRequired(Selection->FormSet)) {
-      UpdateStatusBar (NULL, NV_UPDATE_REQUIRED, Flags, TRUE);
+    switch (gBrowserSettingScope) {
+    case SystemLevel:
+      //
+      // Check the maintain list to see whether there is any change.
+      //
+      Link = GetFirstNode (&gBrowserFormSetList);
+      while (!IsNull (&gBrowserFormSetList, Link)) {
+        LocalFormSet = FORM_BROWSER_FORMSET_FROM_LINK (Link);
+        if (IsNvUpdateRequired(LocalFormSet)) {
+          UpdateStatusBar (NULL, NV_UPDATE_REQUIRED, Flags, TRUE);
+          break;
+        }
+        Link = GetNextNode (&gBrowserFormSetList, Link);
+      }
+      break;
+    case FormSetLevel:
+    case FormLevel:
+      UpdateStatusBar (Selection, NV_UPDATE_REQUIRED, Flags, TRUE);
+    default:
+      break;
     }
+
     break;
 
   default:
@@ -1290,16 +1409,12 @@ GetLineByWidth (
 
   @param  Selection              The user's selection.
   @param  MenuOption             The MenuOption to be checked.
-  @param  OptionalString         The option string.
-  @param  SkipValue              The number of lins to skip.
 
 **/
 VOID
 UpdateOptionSkipLines (
   IN UI_MENU_SELECTION            *Selection,
-  IN UI_MENU_OPTION               *MenuOption,
-  OUT CHAR16                       **OptionalString,
-  IN UINTN                        SkipValue
+  IN UI_MENU_OPTION               *MenuOption
   )
 {
   UINTN   Index;
@@ -1310,9 +1425,7 @@ UpdateOptionSkipLines (
   CHAR16  *OptionString;
 
   Row           = 0;
-  OptionString  = *OptionalString;
-  OutputString  = NULL;
-
+  OptionString  = NULL;
   ProcessOptions (Selection, MenuOption, FALSE, &OptionString);
 
   if (OptionString != NULL) {
@@ -1325,31 +1438,28 @@ UpdateOptionSkipLines (
       // If there is more string to process print on the next row and increment the Skip value
       //
       if (StrLen (&OptionString[Index]) != 0) {
-        if (SkipValue == 0) {
-          Row++;
-          //
-          // Since the Number of lines for this menu entry may or may not be reflected accurately
-          // since the prompt might be 1 lines and option might be many, and vice versa, we need to do
-          // some testing to ensure we are keeping this in-sync.
-          //
-          // If the difference in rows is greater than or equal to the skip value, increase the skip value
-          //
-          if ((Row - OriginalRow) >= MenuOption->Skip) {
-            MenuOption->Skip++;
-          }
+        Row++;
+        //
+        // Since the Number of lines for this menu entry may or may not be reflected accurately
+        // since the prompt might be 1 lines and option might be many, and vice versa, we need to do
+        // some testing to ensure we are keeping this in-sync.
+        //
+        // If the difference in rows is greater than or equal to the skip value, increase the skip value
+        //
+        if ((Row - OriginalRow) >= MenuOption->Skip) {
+          MenuOption->Skip++;
         }
       }
 
       FreePool (OutputString);
-      if (SkipValue != 0) {
-        SkipValue--;
-      }
     }
 
     Row = OriginalRow;
   }
 
-  *OptionalString = OptionString;
+  if (OptionString != NULL) {
+    FreePool (OptionString);
+  }
 }
 
 
@@ -1413,6 +1523,7 @@ ValueIsScroll (
 
   This is an internal function.
 
+  @param  Selection              Menu selection.
   @param  GoUp                   The navigation direction. TRUE: up, FALSE: down.
   @param  CurrentPosition        Current position.
   @param  GapToTop               Gap position to top or bottom.
@@ -1422,6 +1533,7 @@ ValueIsScroll (
 **/
 INTN
 MoveToNextStatement (
+  IN     UI_MENU_SELECTION         *Selection,
   IN     BOOLEAN                   GoUp,
   IN OUT LIST_ENTRY                **CurrentPosition,
   IN     UINTN                     GapToTop
@@ -1438,6 +1550,10 @@ MoveToNextStatement (
 
   while (TRUE) {
     NextMenuOption = MENU_OPTION_FROM_LINK (Pos);
+    if (NextMenuOption->Row == 0) {
+      UpdateOptionSkipLines (Selection, NextMenuOption);
+    }
+    
     if (GoUp && (PreMenuOption != NextMenuOption)) {
       //
       // Current Position doesn't need to be caculated when go up.
@@ -1650,6 +1766,112 @@ DevicePathToHiiHandle (
 }
 
 /**
+  Find HII Handle in the HII database associated with given form set guid.
+
+  If FormSetGuid is NULL, then ASSERT.
+
+  @param  ComparingGuid          FormSet Guid associated with the HII package list
+                                 handle.
+
+  @retval Handle                 HII package list Handle associated with the Device
+                                        Path.
+  @retval NULL                   Hii Package list handle is not found.
+
+**/
+EFI_HII_HANDLE
+FormSetGuidToHiiHandle (
+  EFI_GUID     *ComparingGuid
+  )
+{
+  EFI_HII_HANDLE               *HiiHandles;
+  UINTN                        Index;
+  EFI_HII_PACKAGE_LIST_HEADER  *HiiPackageList;
+  UINTN                        BufferSize;
+  UINT32                       Offset;
+  UINT32                       Offset2;
+  UINT32                       PackageListLength;
+  EFI_HII_PACKAGE_HEADER       PackageHeader;
+  UINT8                        *Package;
+  UINT8                        *OpCodeData;
+  EFI_STATUS                   Status;
+  EFI_HII_HANDLE               HiiHandle;
+
+  ASSERT (ComparingGuid != NULL);
+
+  HiiHandle  = NULL;
+  //
+  // Get all the Hii handles
+  //
+  HiiHandles = HiiGetHiiHandles (NULL);
+  ASSERT (HiiHandles != NULL);
+
+  //
+  // Search for formset of each class type
+  //
+  for (Index = 0; HiiHandles[Index] != NULL; Index++) {
+    BufferSize = 0;
+    HiiPackageList = NULL;
+    Status = mHiiDatabase->ExportPackageLists (mHiiDatabase, HiiHandles[Index], &BufferSize, HiiPackageList);
+    if (Status == EFI_BUFFER_TOO_SMALL) {
+      HiiPackageList = AllocatePool (BufferSize);
+      ASSERT (HiiPackageList != NULL);
+
+      Status = mHiiDatabase->ExportPackageLists (mHiiDatabase, HiiHandles[Index], &BufferSize, HiiPackageList);
+    }
+    if (EFI_ERROR (Status) || HiiPackageList == NULL) {
+      return NULL;
+    }
+
+    //
+    // Get Form package from this HII package List
+    //
+    Offset = sizeof (EFI_HII_PACKAGE_LIST_HEADER);
+    Offset2 = 0;
+    CopyMem (&PackageListLength, &HiiPackageList->PackageLength, sizeof (UINT32)); 
+
+    while (Offset < PackageListLength) {
+      Package = ((UINT8 *) HiiPackageList) + Offset;
+      CopyMem (&PackageHeader, Package, sizeof (EFI_HII_PACKAGE_HEADER));
+
+      if (PackageHeader.Type == EFI_HII_PACKAGE_FORMS) {
+        //
+        // Search FormSet in this Form Package
+        //
+        Offset2 = sizeof (EFI_HII_PACKAGE_HEADER);
+        while (Offset2 < PackageHeader.Length) {
+          OpCodeData = Package + Offset2;
+
+          if (((EFI_IFR_OP_HEADER *) OpCodeData)->OpCode == EFI_IFR_FORM_SET_OP) {
+            //
+            // Try to compare against formset GUID
+            //
+            if (CompareGuid (ComparingGuid, (EFI_GUID *)(OpCodeData + sizeof (EFI_IFR_OP_HEADER)))) {
+              HiiHandle = HiiHandles[Index];
+              break;
+            }
+          }
+
+          Offset2 += ((EFI_IFR_OP_HEADER *) OpCodeData)->Length;
+        }
+      }
+      if (HiiHandle != NULL) {
+        break;
+      }
+      Offset += PackageHeader.Length;
+    }
+    
+    FreePool (HiiPackageList);
+  	if (HiiHandle != NULL) {
+  		break;
+  	}
+  }
+
+  FreePool (HiiHandles);
+
+  return HiiHandle;
+}
+
+/**
   Process the goto op code, update the info in the selection structure.
 
   @param Statement    The statement belong to goto op code.
@@ -1679,8 +1901,10 @@ ProcessGotoOpCode (
   EFI_INPUT_KEY                   Key;
   EFI_STATUS                      Status;
   UI_MENU_LIST                    *MenuList;
+  BOOLEAN                         UpdateFormInfo;
   
   Status = EFI_SUCCESS;
+  UpdateFormInfo = TRUE;
 
   if (Statement->HiiValue.Value.ref.DevicePath != 0) {
     if (Selection->Form->ModalForm) {
@@ -1748,6 +1972,16 @@ ProcessGotoOpCode (
     // Goto another Formset, check for uncommitted data
     //
     Selection->Action = UI_ACTION_REFRESH_FORMSET;
+    
+    Selection->Handle = FormSetGuidToHiiHandle(&Statement->HiiValue.Value.ref.FormSetGuid);
+    if (Selection->Handle == NULL) {
+      //
+      // If target Hii Handle not found, exit
+      //
+      Selection->Action = UI_ACTION_EXIT;
+      Selection->Statement = NULL;
+      return Status;
+    } 
 
     CopyMem (&Selection->FormSetGuid, &Statement->HiiValue.Value.ref.FormSetGuid, sizeof (EFI_GUID));
     Selection->FormId = Statement->HiiValue.Value.ref.FormId;
@@ -1783,14 +2017,6 @@ ProcessGotoOpCode (
     //
     Selection->Action = UI_ACTION_REFRESH_FORM;
 
-    //
-    // Link current form so that we can always go back when someone hits the ESC
-    //
-    MenuList = UiFindMenuList (&Selection->FormSetGuid, Statement->HiiValue.Value.ref.FormId);
-    if (MenuList == NULL && Selection->CurrentMenu != NULL) {
-      MenuList = UiAddMenuList (Selection->CurrentMenu, &Selection->FormSetGuid, Statement->HiiValue.Value.ref.FormId);
-    }
-
     Selection->FormId = Statement->HiiValue.Value.ref.FormId;
     Selection->QuestionId = Statement->HiiValue.Value.ref.QuestionId;
   } else if (Statement->HiiValue.Value.ref.QuestionId != 0) {
@@ -1809,9 +2035,21 @@ ProcessGotoOpCode (
         *NewLine = TRUE;
       }
     }
+    UpdateFormInfo = FALSE;
   } else {
     if ((Statement->QuestionFlags & EFI_IFR_FLAG_CALLBACK) != 0) {
       Selection->Action = UI_ACTION_REFRESH_FORM;
+    }
+    UpdateFormInfo = FALSE;
+  }
+
+  if (UpdateFormInfo) {
+    //
+    // Link current form so that we can always go back when someone hits the ESC
+    //
+    MenuList = UiFindMenuList (&Selection->FormSetGuid, Selection->FormId);
+    if (MenuList == NULL && Selection->CurrentMenu != NULL) {
+      MenuList = UiAddMenuList (Selection->CurrentMenu, Selection->Handle, &Selection->FormSetGuid, Selection->FormId);
     }
   }
 
@@ -1845,7 +2083,6 @@ UiDisplayMenu (
   UINTN                           BottomRow;
   UINTN                           OriginalRow;
   UINTN                           Index;
-  UINT32                          Count;
   UINT16                          Width;
   CHAR16                          *StringPtr;
   CHAR16                          *OptionString;
@@ -1877,6 +2114,7 @@ UiDisplayMenu (
   FORM_BROWSER_STATEMENT          *Statement;
   UI_MENU_LIST                    *CurrentMenu;
   UINTN                           ModalSkipColumn;
+  BROWSER_HOT_KEY                 *HotKey;
 
   CopyMem (&LocalScreen, &gScreenDimensions, sizeof (EFI_SCREEN_DESCRIPTOR));
 
@@ -1898,6 +2136,7 @@ UiDisplayMenu (
   NextMenuOption      = NULL;
   PreviousMenuOption  = NULL;
   SavedMenuOption     = NULL;
+  HotKey              = NULL;
   ModalSkipColumn     = (LocalScreen.RightColumn - LocalScreen.LeftColumn) / 6;
 
   ZeroMem (&Key, sizeof (EFI_INPUT_KEY));
@@ -1916,7 +2155,7 @@ UiDisplayMenu (
     Col = LocalScreen.LeftColumn + LEFT_SKIPPED_COLUMNS;
   }
 
-  BottomRow = LocalScreen.BottomRow - STATUS_BAR_HEIGHT - FOOTER_HEIGHT - SCROLL_ARROW_HEIGHT - 1;
+  BottomRow = LocalScreen.BottomRow - STATUS_BAR_HEIGHT - gFooterHeight - SCROLL_ARROW_HEIGHT - 1;
 
   Selection->TopRow = TopRow;
   Selection->BottomRow = BottomRow;
@@ -1936,7 +2175,7 @@ UiDisplayMenu (
     //
     // Current menu not found, add it to the menu tree
     //
-    CurrentMenu = UiAddMenuList (NULL, &Selection->FormSetGuid, Selection->FormId);
+    CurrentMenu = UiAddMenuList (NULL, Selection->Handle, &Selection->FormSetGuid, Selection->FormId);
   }
   ASSERT (CurrentMenu != NULL);
   Selection->CurrentMenu = CurrentMenu;
@@ -2085,19 +2324,7 @@ UiDisplayMenu (
 
           if (OptionString != NULL) {
             if (Statement->Operand == EFI_IFR_DATE_OP || Statement->Operand == EFI_IFR_TIME_OP) {
-              //
-              // If leading spaces on OptionString - remove the spaces
-              //
-              for (Index = 0; OptionString[Index] == L' '; Index++) {
-                MenuOption->OptCol++;
-              }
-
-              for (Count = 0; OptionString[Index] != CHAR_NULL; Index++) {
-                OptionString[Count] = OptionString[Index];
-                Count++;
-              }
-
-              OptionString[Count] = CHAR_NULL;
+              ProcessStringForDateTime(MenuOption, OptionString, TRUE);
             }
 
             Width       = (UINT16) gOptionBlockWidth;
@@ -2304,7 +2531,7 @@ UiDisplayMenu (
       ControlFlag = CfUpdateHelpString;
       if (InitializedFlag) {
         InitializedFlag = FALSE;
-        MoveToNextStatement (FALSE, &NewPos, BottomRow - TopRow);
+        MoveToNextStatement (Selection, FALSE, &NewPos, BottomRow - TopRow);
       }
 
       //
@@ -2333,20 +2560,49 @@ UiDisplayMenu (
           for (Index = TopRow; Index <= BottomRow && Link != NewPos;) {
             SavedMenuOption = MENU_OPTION_FROM_LINK (Link);
             Index += SavedMenuOption->Skip;
+            if (Link == TopOfScreen) {
+              Index -= OldSkipValue;
+            }
             Link = Link->ForwardLink;
           }
+          if (NewPos == Link) {
+            SavedMenuOption = MENU_OPTION_FROM_LINK (Link);
+          }
 
-          if (Link != NewPos || Index > BottomRow) {
+          if (Link != NewPos || Index > BottomRow || (Link == NewPos && SavedMenuOption->Row + SavedMenuOption->Skip - 1 > BottomRow)) {
+            //
+            // Find the MenuOption which has the skip value for Date/Time opcode. 
+            //
+            AdjustDateAndTimePosition(FALSE, &NewPos);
             //
             // NewPos is not in the current page, simply scroll page so that NewPos is in the end of the page
             //
+            SavedMenuOption = MENU_OPTION_FROM_LINK (NewPos);
+            //
+            // SavedMenuOption->Row == 0 means the menu not show yet.
+            //
+            if (SavedMenuOption->Row == 0) {
+              UpdateOptionSkipLines (Selection, SavedMenuOption);
+            }
+            
             Link    = NewPos;
-            for (Index = TopRow; Index <= BottomRow; ) {
+            for (Index = TopRow + SavedMenuOption->Skip; Index <= BottomRow + 1; ) {            
               Link = Link->BackLink;
               SavedMenuOption = MENU_OPTION_FROM_LINK (Link);
+              if (SavedMenuOption->Row == 0) {
+                UpdateOptionSkipLines (Selection, SavedMenuOption);
+              }
               Index     += SavedMenuOption->Skip;
             }
-            TopOfScreen     = Link->ForwardLink;
+            
+            SkipValue = Index - BottomRow - 1;
+            if (SkipValue > 0 && SkipValue < (INTN) SavedMenuOption->Skip) {
+              TopOfScreen     = Link;
+              OldSkipValue    = SkipValue;
+            } else {
+              SkipValue       = 0;
+              TopOfScreen     = Link->ForwardLink;
+            }
 
             Repaint = TRUE;
             NewLine = TRUE;
@@ -2375,18 +2631,7 @@ UiDisplayMenu (
             if ((MenuOption->ThisTag->Operand == EFI_IFR_DATE_OP) ||
                 (MenuOption->ThisTag->Operand == EFI_IFR_TIME_OP)
                ) {
-              //
-              // If leading spaces on OptionString - remove the spaces
-              //
-              for (Index = 0; OptionString[Index] == L' '; Index++)
-                ;
-
-              for (Count = 0; OptionString[Index] != CHAR_NULL; Index++) {
-                OptionString[Count] = OptionString[Index];
-                Count++;
-              }
-
-              OptionString[Count] = CHAR_NULL;
+              ProcessStringForDateTime(MenuOption, OptionString, FALSE);
             }
 
             Width               = (UINT16) gOptionBlockWidth;
@@ -2485,18 +2730,7 @@ UiDisplayMenu (
         ProcessOptions (Selection, MenuOption, FALSE, &OptionString);
         if (OptionString != NULL) {
           if (Statement->Operand == EFI_IFR_DATE_OP || Statement->Operand == EFI_IFR_TIME_OP) {
-            //
-            // If leading spaces on OptionString - remove the spaces
-            //
-            for (Index = 0; OptionString[Index] == L' '; Index++)
-              ;
-
-            for (Count = 0; OptionString[Index] != CHAR_NULL; Index++) {
-              OptionString[Count] = OptionString[Index];
-              Count++;
-            }
-
-            OptionString[Count] = CHAR_NULL;
+            ProcessStringForDateTime(MenuOption, OptionString, FALSE);
           }
           Width               = (UINT16) gOptionBlockWidth;
 
@@ -2620,8 +2854,9 @@ UiDisplayMenu (
         //
         // IFR is updated in Callback of refresh opcode, re-parse it
         //
+        ControlFlag = CfCheckSelection;
         Selection->Statement = NULL;
-        return EFI_SUCCESS;
+        break;
       }
 
       Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
@@ -2709,30 +2944,28 @@ UiDisplayMenu (
         break;
 
       case CHAR_NULL:
-        if (((Key.ScanCode == SCAN_F9) && ((gFunctionKeySetting & FUNCTION_NINE) != FUNCTION_NINE)) ||
-            ((Key.ScanCode == SCAN_F10) && ((gFunctionKeySetting & FUNCTION_TEN) != FUNCTION_TEN))
-            ) {
+        for (Index = 0; Index < mScanCodeNumber; Index++) {
+          if (Key.ScanCode == gScanCodeToOperation[Index].ScanCode) {
+            ScreenOperation = gScanCodeToOperation[Index].ScreenOperation;
+            break;
+          }
+        }
+        
+        if (Selection->Form->ModalForm && (Key.ScanCode == SCAN_ESC || Index == mScanCodeNumber)) {
           //
-          // If the function key has been disabled, just ignore the key.
+          // ModalForm has no ESC key and Hot Key.
           //
-        } else {
-          for (Index = 0; Index < sizeof (gScanCodeToOperation) / sizeof (gScanCodeToOperation[0]); Index++) {
-            if (Selection->Form->ModalForm && 
-              (Key.ScanCode == SCAN_F9 || Key.ScanCode == SCAN_F10 || Key.ScanCode == SCAN_ESC)) {
-              ControlFlag = CfReadKey;
-              break;
-            }
-
-            if (Key.ScanCode == gScanCodeToOperation[Index].ScanCode) {
-              if (Key.ScanCode == SCAN_F9) {
-                //
-                // Reset to standard default
-                //
-                DefaultId = EFI_HII_DEFAULT_CLASS_STANDARD;
-              }
-              ScreenOperation = gScanCodeToOperation[Index].ScreenOperation;
-              break;
-            }
+          ControlFlag = CfReadKey;
+        } else if (Index == mScanCodeNumber) {
+          //
+          // Check whether Key matches the registered hot key.
+          //
+          HotKey = NULL;
+          if ((gBrowserSettingScope == SystemLevel) || (gFunctionKeySetting != NONE_FUNCTION_KEY_SETTING)) {
+            HotKey = GetHotKeyFromRegisterList (&Key);
+          }
+          if (HotKey != NULL) {
+            ScreenOperation = UiHotKey;
           }
         }
         break;
@@ -2832,9 +3065,7 @@ UiDisplayMenu (
       // We come here when someone press ESC
       //
       ControlFlag = CfCheckSelection;
-      if (FindNextMenu (Selection, &Repaint, &NewLine)) {
-        return EFI_SUCCESS;
-      } 
+      FindNextMenu (Selection, &Repaint, &NewLine);
       break;
 
     case CfUiLeft:
@@ -2882,10 +3113,13 @@ UiDisplayMenu (
         NewPos     = NewPos->BackLink;
 
         PreviousMenuOption = MENU_OPTION_FROM_LINK (NewPos);
+        if (PreviousMenuOption->Row == 0) {
+          UpdateOptionSkipLines (Selection, PreviousMenuOption);
+        }
         DistanceValue = PreviousMenuOption->Skip;
         Difference    = 0;
         if (MenuOption->Row >= DistanceValue + TopRow) {
-          Difference = MoveToNextStatement (TRUE, &NewPos, MenuOption->Row - TopRow - DistanceValue);
+          Difference = MoveToNextStatement (Selection, TRUE, &NewPos, MenuOption->Row - TopRow - DistanceValue);
         }
         NextMenuOption = MENU_OPTION_FROM_LINK (NewPos);
        
@@ -2960,6 +3194,9 @@ UiDisplayMenu (
       while ((Index >= TopRow) && (Link->BackLink != &gMenuOption)) {
         Link = Link->BackLink;
         PreviousMenuOption = MENU_OPTION_FROM_LINK (Link);
+        if (PreviousMenuOption->Row == 0) {
+          UpdateOptionSkipLines (Selection, PreviousMenuOption);
+        }        
         if (Index < PreviousMenuOption->Skip) {
           Index = 0;
           break;
@@ -2971,19 +3208,19 @@ UiDisplayMenu (
         if (TopOfScreen == &gMenuOption) {
           TopOfScreen = gMenuOption.ForwardLink;
           NewPos      = gMenuOption.BackLink;
-          MoveToNextStatement (TRUE, &NewPos, BottomRow - TopRow);
+          MoveToNextStatement (Selection, TRUE, &NewPos, BottomRow - TopRow);
           Repaint = FALSE;
         } else if (TopOfScreen != Link) {
           TopOfScreen = Link;
           NewPos      = Link;
-          MoveToNextStatement (FALSE, &NewPos, BottomRow - TopRow);
+          MoveToNextStatement (Selection, FALSE, &NewPos, BottomRow - TopRow);
         } else {
           //
           // Finally we know that NewPos is the last MenuOption can be focused.
           //
           Repaint = FALSE;
           NewPos  = Link;
-          MoveToNextStatement (FALSE, &NewPos, BottomRow - TopRow);
+          MoveToNextStatement (Selection, FALSE, &NewPos, BottomRow - TopRow);
         }
       } else {
         if (Index + 1 < TopRow) {
@@ -2998,10 +3235,10 @@ UiDisplayMenu (
         //
         if (TopOfScreen == &gMenuOption) {
           NewPos = gMenuOption.BackLink;
-          MoveToNextStatement (TRUE, &NewPos, BottomRow - TopRow);
+          MoveToNextStatement (Selection, TRUE, &NewPos, BottomRow - TopRow);
         } else {
           NewPos = Link;
-          MoveToNextStatement (FALSE, &NewPos, BottomRow - TopRow);
+          MoveToNextStatement (Selection, FALSE, &NewPos, BottomRow - TopRow);
         }
 
         //
@@ -3045,7 +3282,7 @@ UiDisplayMenu (
         // Finally we know that NewPos is the last MenuOption can be focused.
         //
         Repaint = FALSE;
-        MoveToNextStatement (TRUE, &Link, Index - TopRow);
+        MoveToNextStatement (Selection, TRUE, &Link, Index - TopRow);
       } else {
         if (Index - 1 > BottomRow) {
           //
@@ -3061,7 +3298,7 @@ UiDisplayMenu (
         //
         // Move to the option in Next page.
         //
-        MoveToNextStatement (FALSE, &Link, BottomRow - TopRow);
+        MoveToNextStatement (Selection, FALSE, &Link, BottomRow - TopRow);
       }
 
       //
@@ -3093,7 +3330,7 @@ UiDisplayMenu (
 
         Difference      = 0;
         if (BottomRow >= MenuOption->Row + MenuOption->Skip) {
-          Difference    = MoveToNextStatement (FALSE, &NewPos, BottomRow - MenuOption->Row - MenuOption->Skip);
+          Difference    = MoveToNextStatement (Selection, FALSE, &NewPos, BottomRow - MenuOption->Row - MenuOption->Skip);
           //
           // We hit the end of MenuOption that can be focused
           // so we simply scroll to the first page.
@@ -3110,7 +3347,7 @@ UiDisplayMenu (
               MenuOption = MENU_OPTION_FROM_LINK (SavedListEntry);
             }
             NewPos        = gMenuOption.ForwardLink;
-            MoveToNextStatement (FALSE, &NewPos, BottomRow - TopRow);
+            MoveToNextStatement (Selection, FALSE, &NewPos, BottomRow - TopRow);
     
             //
             // If we are at the end of the list and sitting on a Date/Time op, rewind to the head.
@@ -3125,7 +3362,7 @@ UiDisplayMenu (
         //
         // An option might be multi-line, so we need to reflect that data in the overall skip value
         //
-        UpdateOptionSkipLines (Selection, NextMenuOption, &OptionString, (UINTN) SkipValue);
+        UpdateOptionSkipLines (Selection, NextMenuOption);
         DistanceValue  = Difference + NextMenuOption->Skip;
 
         Temp = MenuOption->Row + MenuOption->Skip + DistanceValue - 1;
@@ -3242,7 +3479,7 @@ UiDisplayMenu (
         }
         NewLine       = TRUE;
         NewPos        = gMenuOption.ForwardLink;
-        MoveToNextStatement (FALSE, &NewPos, BottomRow - TopRow);
+        MoveToNextStatement (Selection, FALSE, &NewPos, BottomRow - TopRow);
       }
 
       //
@@ -3252,43 +3489,120 @@ UiDisplayMenu (
       AdjustDateAndTimePosition (TRUE, &NewPos);
       break;
 
-    case CfUiSave:
+    case CfUiHotKey:
       ControlFlag = CfCheckSelection;
+      
+      Status = EFI_SUCCESS;
+      //
+      // Discard changes. After it, no NV flag is showed.
+      //
+      if ((HotKey->Action & BROWSER_ACTION_DISCARD) == BROWSER_ACTION_DISCARD) {
+        Status = DiscardForm (Selection->FormSet, Selection->Form, gBrowserSettingScope);
+        if (!EFI_ERROR (Status)) {
+          Selection->Action = UI_ACTION_REFRESH_FORM;
+          Selection->Statement = NULL;
+          gResetRequired = FALSE;
+        } else {
+          do {
+            CreateDialog (4, TRUE, 0, NULL, &Key, HotKey->HelpString, gDiscardFailed, gPressEnter, gEmptyString);
+          } while (Key.UnicodeChar != CHAR_CARRIAGE_RETURN);
+          //
+          // Still show current page.
+          //
+          Selection->Action = UI_ACTION_NONE;
+          Repaint = TRUE;
+          NewLine = TRUE;
+          break;
+        }
+      }
 
       //
-      // Submit the form
+      // Reterieve default setting. After it. NV flag will be showed.
       //
-      Status = SubmitForm (Selection->FormSet, Selection->Form, FALSE);
+      if ((HotKey->Action & BROWSER_ACTION_DEFAULT) == BROWSER_ACTION_DEFAULT) {
+        Status = ExtractDefault (Selection->FormSet, Selection->Form, HotKey->DefaultId, gBrowserSettingScope);
+        if (!EFI_ERROR (Status)) {
+          Selection->Action = UI_ACTION_REFRESH_FORM;
+          Selection->Statement = NULL;
+          gResetRequired = TRUE;
+        } else {
+          do {
+            CreateDialog (4, TRUE, 0, NULL, &Key, HotKey->HelpString, gDefaultFailed, gPressEnter, gEmptyString);
+          } while (Key.UnicodeChar != CHAR_CARRIAGE_RETURN);
+          //
+          // Still show current page.
+          //
+          Selection->Action = UI_ACTION_NONE;
+          Repaint = TRUE;
+          NewLine = TRUE;
+          break;
+        }
+      }
 
-      if (!EFI_ERROR (Status)) {
-        ASSERT(MenuOption != NULL);
-        UpdateStatusBar (Selection, INPUT_ERROR, MenuOption->ThisTag->QuestionFlags, FALSE);
-        UpdateStatusBar (Selection, NV_UPDATE_REQUIRED, MenuOption->ThisTag->QuestionFlags, FALSE);
-      } else {
-        do {
-          CreateDialog (4, TRUE, 0, NULL, &Key, gEmptyString, gSaveFailed, gPressEnter, gEmptyString);
-        } while (Key.UnicodeChar != CHAR_CARRIAGE_RETURN);
-
-        Repaint = TRUE;
-        NewLine = TRUE;
+      //
+      // Save changes. After it, no NV flag is showed.
+      //
+      if ((HotKey->Action & BROWSER_ACTION_SUBMIT) == BROWSER_ACTION_SUBMIT) {
+        Status = SubmitForm (Selection->FormSet, Selection->Form, gBrowserSettingScope);
+        if (!EFI_ERROR (Status)) {
+          ASSERT(MenuOption != NULL);
+          UpdateStatusBar (Selection, INPUT_ERROR, MenuOption->ThisTag->QuestionFlags, FALSE);
+          UpdateStatusBar (Selection, NV_UPDATE_REQUIRED, MenuOption->ThisTag->QuestionFlags, FALSE);
+        } else {
+          do {
+            CreateDialog (4, TRUE, 0, NULL, &Key, HotKey->HelpString, gSaveFailed, gPressEnter, gEmptyString);
+          } while (Key.UnicodeChar != CHAR_CARRIAGE_RETURN);
+          //
+          // Still show current page.
+          //
+          Selection->Action = UI_ACTION_NONE;
+          Repaint = TRUE;
+          NewLine = TRUE;
+          break;
+        }
+      }
+      
+      //
+      // Set Reset required Flag
+      //
+      if ((HotKey->Action & BROWSER_ACTION_RESET) == BROWSER_ACTION_RESET) {
+        gResetRequired = TRUE;
+      }
+      
+      //
+      // Exit Action
+      //
+      if ((HotKey->Action & BROWSER_ACTION_EXIT) == BROWSER_ACTION_EXIT) {
+        //
+        // Form Exit without saving, Similar to ESC Key.
+        // FormSet Exit without saving, Exit SendForm.
+        // System Exit without saving, CallExitHandler and Exit SendForm.
+        //
+        DiscardForm (Selection->FormSet, Selection->Form, gBrowserSettingScope);
+        if (gBrowserSettingScope == FormLevel) {
+          ControlFlag = CfUiReset;
+        } else if (gBrowserSettingScope == FormSetLevel) {
+          Selection->Action = UI_ACTION_EXIT;
+        } else if (gBrowserSettingScope == SystemLevel) {
+          if (ExitHandlerFunction != NULL) {
+            ExitHandlerFunction ();
+          }
+          Selection->Action = UI_ACTION_EXIT;
+        }
+        Selection->Statement = NULL;
       }
       break;
 
     case CfUiDefault:
       ControlFlag = CfCheckSelection;
       //
-      // Reset to default values for the whole formset
+      // Reset to default value for all forms in the whole system.
       //
-      Status = ExtractFormSetDefault (Selection->FormSet, DefaultId);
+      Status = ExtractDefault (Selection->FormSet, NULL, DefaultId, FormSetLevel);
 
       if (!EFI_ERROR (Status)) {
         Selection->Action = UI_ACTION_REFRESH_FORM;
         Selection->Statement = NULL;
-
-        //
-        // Show NV update flag on status bar
-        //
-        UpdateNvInfoInForm(Selection->FormSet, TRUE);
         gResetRequired = TRUE;
       }
       break;

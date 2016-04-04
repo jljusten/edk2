@@ -101,20 +101,20 @@ FileHandleGetInfo (
 
   @param[in]  FileInfo          The information to set.
 
-  @retval EFI_SUCCESS		        The information was set.
+  @retval EFI_SUCCESS           The information was set.
   @retval EFI_INVALID_PARAMETER A parameter was out of range or invalid.
   @retval EFI_UNSUPPORTED       The FileHandle does not support FileInfo.
-  @retval EFI_NO_MEDIA		      The device has no medium.
-  @retval EFI_DEVICE_ERROR	    The device reported an error.
-  @retval EFI_VOLUME_CORRUPTED	The file system structures are corrupted.
-  @retval EFI_WRITE_PROTECTED	  The file or medium is write protected.
+  @retval EFI_NO_MEDIA          The device has no medium.
+  @retval EFI_DEVICE_ERROR      The device reported an error.
+  @retval EFI_VOLUME_CORRUPTED  The file system structures are corrupted.
+  @retval EFI_WRITE_PROTECTED   The file or medium is write protected.
   @retval EFI_ACCESS_DENIED     The file was opened read only.
   @retval EFI_VOLUME_FULL       The volume is full.
 **/
 EFI_STATUS
 EFIAPI
 FileHandleSetInfo (
-  IN EFI_FILE_HANDLE  	        FileHandle,
+  IN EFI_FILE_HANDLE            FileHandle,
   IN CONST EFI_FILE_INFO        *FileInfo
   )
 {
@@ -198,14 +198,14 @@ FileHandleRead(
                               the number of bytes written.
   @param Buffer               the buffer containing data to write is stored.
 
- @retval EFI_SUCCESS	        Data was written.
- @retval EFI_UNSUPPORTED	    Writes to an open directory are not supported.
- @retval EFI_NO_MEDIA	        The device has no media.
- @retval EFI_DEVICE_ERROR	    The device reported an error.
- @retval EFI_VOLUME_CORRUPTED	The file system structures are corrupted.
- @retval EFI_WRITE_PROTECTED	The device is write-protected.
- @retval EFI_ACCESS_DENIED	  The file was open for read only.
- @retval EFI_VOLUME_FULL	    The volume is full.
+ @retval EFI_SUCCESS          Data was written.
+ @retval EFI_UNSUPPORTED      Writes to an open directory are not supported.
+ @retval EFI_NO_MEDIA         The device has no media.
+ @retval EFI_DEVICE_ERROR     The device reported an error.
+ @retval EFI_VOLUME_CORRUPTED The file system structures are corrupted.
+ @retval EFI_WRITE_PROTECTED  The device is write-protected.
+ @retval EFI_ACCESS_DENIED    The file was open for read only.
+ @retval EFI_VOLUME_FULL      The volume is full.
 **/
 EFI_STATUS
 EFIAPI
@@ -266,12 +266,12 @@ FileHandleClose (
   @retval EFI_SUCCESS           the file was closed sucessfully
   @retval EFI_WARN_DELETE_FAILURE the handle was closed, but the file was not
                                 deleted
-  @retval INVALID_PARAMETER    	One of the parameters has an invalid value.
+  @retval INVALID_PARAMETER     One of the parameters has an invalid value.
 **/
 EFI_STATUS
 EFIAPI
 FileHandleDelete (
-  IN EFI_FILE_HANDLE		FileHandle
+  IN EFI_FILE_HANDLE    FileHandle
   )
 {
   EFI_STATUS Status;
@@ -308,8 +308,8 @@ FileHandleDelete (
 EFI_STATUS
 EFIAPI
 FileHandleSetPosition (
-  IN EFI_FILE_HANDLE   	FileHandle,
-  IN UINT64           	Position
+  IN EFI_FILE_HANDLE    FileHandle,
+  IN UINT64             Position
   )
 {
   //
@@ -441,15 +441,19 @@ FileHandleIsDirectory (
   return (EFI_SUCCESS);
 }
 
-/**
-  Retrieves the first file from a directory
+/** Retrieve first entry from a directory.
 
-  This function opens a directory and gets the first file's info in the
-  directory. Caller can use FileHandleFindNextFile() to get other files.  When
-  complete the caller is responsible for calling FreePool() on Buffer.
+  This function takes an open directory handle and gets information from the
+  first entry in the directory.  A buffer is allocated to contain
+  the information and a pointer to the buffer is returned in *Buffer.  The
+  caller can use FileHandleFindNextFile() to get subsequent directory entries.
 
-  @param DirHandle              The file handle of the directory to search
-  @param Buffer                 Pointer to buffer for file's information
+  The buffer will be freed by FileHandleFindNextFile() when the last directory
+  entry is read.  Otherwise, the caller must free the buffer, using FreePool,
+  when finished with it.
+
+  @param[in]  DirHandle         The file handle of the directory to search.
+  @param[out] Buffer            The pointer to pointer to buffer for file's information.
 
   @retval EFI_SUCCESS           Found the first file.
   @retval EFI_NOT_FOUND         Cannot find the directory.
@@ -512,19 +516,19 @@ FileHandleFindFirstFile (
   }
   return (EFI_SUCCESS);
 }
-/**
-  Retrieves the next file in a directory.
 
-  To use this function, caller must call the FileHandleFindFirstFile() to get the
-  first file, and then use this function get other files. This function can be
-  called for several times to get each file's information in the directory. If
-  the call of FileHandleFindNextFile() got the last file in the directory, the next
-  call of this function has no file to get. *NoFile will be set to TRUE and the
-  Buffer memory will be automatically freed.
+/** Retrieve next entries from a directory.
 
-  @param DirHandle              the file handle of the directory
-  @param Buffer			            pointer to buffer for file's information
-  @param NoFile			            pointer to boolean when last file is found
+  To use this function, the caller must first call the FileHandleFindFirstFile()
+  function to get the first directory entry.  Subsequent directory entries are
+  retrieved by using the FileHandleFindNextFile() function.  This function can
+  be called several times to get each entry from the directory.  If the call of
+  FileHandleFindNextFile() retrieved the last directory entry, the next call of
+  this function will set *NoFile to TRUE and free the buffer.
+
+  @param[in]  DirHandle         The file handle of the directory.
+  @param[out] Buffer            The pointer to buffer for file's information.
+  @param[out] NoFile            The pointer to boolean when last file is found.
 
   @retval EFI_SUCCESS           Found the next file, or reached last file
   @retval EFI_NO_MEDIA          The device has no media.
@@ -534,9 +538,9 @@ FileHandleFindFirstFile (
 EFI_STATUS
 EFIAPI
 FileHandleFindNextFile(
-  IN EFI_FILE_HANDLE             DirHandle,
-  OUT EFI_FILE_INFO              *Buffer,
-  OUT BOOLEAN                    *NoFile
+  IN EFI_FILE_HANDLE          DirHandle,
+  OUT EFI_FILE_INFO          *Buffer,
+  OUT BOOLEAN                *NoFile
   )
 {
   EFI_STATUS    Status;
@@ -698,8 +702,8 @@ FileHandleSetSize (
   if Destination's current length (including NULL terminator) is already more then
   CurrentSize, then ASSERT()
 
-  @param[in,out] Destination   The String to append onto
-  @param[in,out] CurrentSize   on call the number of bytes in Destination.  On
+  @param[in, out] Destination   The String to append onto
+  @param[in, out] CurrentSize   on call the number of bytes in Destination.  On
                                 return possibly the new size (still in bytes).  if NULL
                                 then allocate whatever is needed.
   @param[in]      Source        The String to append from
@@ -764,6 +768,9 @@ StrnCatGrowLeft (
     *CurrentSize = NewSize;
   } else {
     *Destination = AllocateZeroPool(Count+sizeof(CHAR16));
+  }
+  if (*Destination == NULL) {
+    return NULL;
   }
 
   CopySize = StrSize(*Destination);
@@ -879,8 +886,8 @@ FileHandleGetFileName (
   If the position upon start is 0, then the Ascii Boolean will be set.  This should be
   maintained and not changed for all operations with the same file.
 
-  @param[in]      Handle        FileHandle to read from.
-  @param[in,out]  Ascii         Boolean value for indicating whether the file is Ascii (TRUE) or UCS2 (FALSE);
+  @param[in]       Handle        FileHandle to read from.
+  @param[in, out]  Ascii         Boolean value for indicating whether the file is Ascii (TRUE) or UCS2 (FALSE);
 
   @return                       The line of text from the file.
 
@@ -919,13 +926,13 @@ FileHandleReturnLine(
   If the position upon start is 0, then the Ascii Boolean will be set.  This should be
   maintained and not changed for all operations with the same file.
 
-  @param[in]      Handle        FileHandle to read from
-  @param[in,out]  Buffer        pointer to buffer to read into
-  @param[in,out]  Size          pointer to number of bytes in buffer
-  @param[in]      Truncate      if TRUE then allows for truncation of the line to fit.
-                                if FALSE will reset the position to the begining of the
-                                line if the buffer is not large enough.
-  @param[in,out]  Ascii         Boolean value for indicating whether the file is Ascii (TRUE) or UCS2 (FALSE);
+  @param[in]       Handle        FileHandle to read from
+  @param[in, out]  Buffer        pointer to buffer to read into
+  @param[in, out]  Size          pointer to number of bytes in buffer
+  @param[in]       Truncate      if TRUE then allows for truncation of the line to fit.
+                                 if FALSE will reset the position to the begining of the
+                                 line if the buffer is not large enough.
+  @param[in, out]  Ascii         Boolean value for indicating whether the file is Ascii (TRUE) or UCS2 (FALSE);
 
   @retval EFI_SUCCESS           the operation was sucessful.  the line is stored in
                                 Buffer.

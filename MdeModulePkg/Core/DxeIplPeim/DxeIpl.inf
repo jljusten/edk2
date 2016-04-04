@@ -73,6 +73,7 @@
   PeimEntryPoint
   DebugLib
   DebugAgentLib
+  PeiServicesTablePointerLib
 
 [Ppis]
   gEfiDxeIplPpiGuid                 ## PRODUCES
@@ -95,6 +96,9 @@
 
 [FeaturePcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSupportUefiDecompress
+
+[Pcd.IA32,Pcd.X64]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdUse1GPageTable
 
 [Depex]
   gEfiPeiMemoryDiscoveredPpiGuid AND gEfiPeiLoadFilePpiGuid AND gEfiPeiMasterBootModePpiGuid

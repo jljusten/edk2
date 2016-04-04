@@ -17,10 +17,17 @@
 VOID
 PrimaryMain (
   IN  UINTN                     UefiMemoryBase,
+  IN  UINTN                     StacksBase,
+  IN  UINTN                     GlobalVariableBase,
   IN  UINT64                    StartTimeStamp
   )
 {
-  PrePiMain (UefiMemoryBase, StartTimeStamp);
+  DEBUG_CODE_BEGIN();
+    // On MPCore system, PeiMpCore.inf should be used instead of PeiUniCore.inf
+    ASSERT(ArmIsMpCore() == 0);
+  DEBUG_CODE_END();
+
+  PrePiMain (UefiMemoryBase, StacksBase, GlobalVariableBase, StartTimeStamp);
 
   // We must never return
   ASSERT(FALSE);
@@ -28,7 +35,7 @@ PrimaryMain (
 
 VOID
 SecondaryMain (
-  IN  UINTN                     CoreId
+  IN  UINTN                     MpId
   )
 {
   // We must never get into this function on UniCore system

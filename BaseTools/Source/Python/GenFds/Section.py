@@ -1,7 +1,7 @@
 ## @file
 # section base class
 #
-#  Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2007-2011, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -139,14 +139,10 @@ class Section (SectionClassObject):
                 else:
                     GenFdsGlobalVariable.InfLogger ("\nCurrent ARCH \'%s\' of File %s is not in the Support Arch Scope of %s specified by INF %s in FDF" %(FfsInf.CurrentArch, File.File, File.Arch, FfsInf.InfFileName))
 
-        if Suffix != None and os.path.exists(FfsInf.EfiOutputPath):
-            # Update to search files with suffix in all sub-dirs.
-            Tuple = os.walk(FfsInf.EfiOutputPath)
-            for Dirpath, Dirnames, Filenames in Tuple:
-                for F in Filenames:
-                    if os.path.splitext(F)[1] in (Suffix):
-                        FullName = os.path.join(Dirpath, F)
-                        FileList.append(FullName)
+        if Suffix != None:
+            SuffixMap = FfsInf.GetFinalTargetSuffixMap()
+            if Suffix in SuffixMap:
+                FileList.extend(SuffixMap[Suffix])
 
         #Process the file lists is alphabetical for a same section type
         if len (FileList) > 1:

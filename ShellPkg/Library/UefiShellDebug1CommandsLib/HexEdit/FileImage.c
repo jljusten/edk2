@@ -169,7 +169,7 @@ HFileImageRead (
   // you should set the status string
   //
   Status = ReadFileIntoBuffer (FileName, (VOID**)&Buffer, &HFileImage.Size, &HFileImage.ReadOnly);
-  if (EFI_ERROR(Status)) {
+  if (EFI_ERROR(Status) || Buffer == NULL) {
     UnicodeBuffer = CatSPrint(NULL, L"Read error on file &s: %r", FileName, Status);
     if (UnicodeBuffer == NULL) {
       SHELL_FREE_NON_NULL(Buffer);
@@ -178,6 +178,7 @@ HFileImageRead (
 
     StatusBarSetStatusString (UnicodeBuffer);
     FreePool (UnicodeBuffer);
+    return EFI_OUT_OF_RESOURCES;
   }
 
   HFileImageSetFileName (FileName);
