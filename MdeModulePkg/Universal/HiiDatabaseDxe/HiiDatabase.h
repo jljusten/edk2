@@ -84,9 +84,9 @@ typedef struct {
 // Get default value from IFR data.
 //
 typedef enum {
-  DEFAULT_VALUE_FROM_DEFAULT = 0,   // Get from the minimum or first one when not set default value.
-  DEFAULT_VALUE_FROM_FLAG,          // Get default value from the defalut flag.
-  DEFAULT_VALUE_FROM_OPCODE         // Get default value from default opcode, highest priority.
+  DefaultValueFromDefault = 0,     // Get from the minimum or first one when not set default value.
+  DefaultValueFromFlag,            // Get default value from the defalut flag.
+  DefaultValueFromOpcode           // Get default value from default opcode, highest priority.
 } DEFAULT_VALUE_TYPE;
 
 typedef struct {
@@ -96,7 +96,7 @@ typedef struct {
                                      // TRUE  Cleaned, the value can't be used
                                      // FALSE Not cleaned, the value can  be used.
   UINT16              DefaultId;
-  UINT64              Value;
+  EFI_IFR_TYPE_VALUE  Value;
 } IFR_DEFAULT_DATA;
 
 //

@@ -36,14 +36,23 @@ gLineControlDirective = re.compile('^\s*#(?:line)?\s+([0-9]+)\s+"*([^"]*)"')
 gTypedefPattern = re.compile("^\s*typedef\s+struct(\s+\w+)?\s*[{]*$", re.MULTILINE)
 ## Regular expression for matching "#pragma pack"
 gPragmaPattern = re.compile("^\s*#pragma\s+pack", re.MULTILINE)
+
+#
+# The following number pattern match will only match if following criteria is met:
+# There is leading non-(alphanumeric or _) character, and no following alphanumeric or _
+# as the pattern is greedily match, so it is ok for the gDecNumberPattern or gHexNumberPattern to grab the maximum match
+#
 ## Regular expression for matching HEX number
-gHexNumberPattern = re.compile("0[xX]([0-9a-fA-F]+)")
+gHexNumberPattern = re.compile("(?<=[^a-zA-Z0-9_])(0[xX])([0-9a-fA-F]+)(U(?=$|[^a-zA-Z0-9_]))?")
+## Regular expression for matching decimal number with 'U' postfix
+gDecNumberPattern = re.compile("(?<=[^a-zA-Z0-9_])([0-9]+)U(?=$|[^a-zA-Z0-9_])")
+## Regular expression for matching constant with 'ULL' 'LL' postfix
+gLongNumberPattern = re.compile("(?<=[^a-zA-Z0-9_])(0[xX][0-9a-fA-F]+|[0-9]+)U?LL(?=$|[^a-zA-Z0-9_])")
+
 ## Regular expression for matching "Include ()" in asl file
 gAslIncludePattern = re.compile("^(\s*)[iI]nclude\s*\(\"?([^\"\(\)]+)\"\)", re.MULTILINE)
 ## Regular expression for matching C style #include "XXX.asl" in asl file
 gAslCIncludePattern = re.compile(r'^(\s*)#include\s*[<"]\s*([-\\/\w.]+)\s*([>"])', re.MULTILINE)
-## Regular expression for matching constant with 'ULL' and 'UL', 'LL', 'L' postfix
-gLongNumberPattern = re.compile("(0[xX][0-9a-fA-F]+|[0-9]+)U?LL", re.MULTILINE)
 ## Patterns used to convert EDK conventions to EDK2 ECP conventions
 gImportCodePatterns = [
     [
@@ -169,9 +178,14 @@ def TrimPreprocessedFile(Source, Target, ConvertHex, TrimLong):
 
         # convert HEX number format if indicated
         if ConvertHex:
-            Line = gHexNumberPattern.sub(r"0\1h", Line)
+            Line = gHexNumberPattern.sub(r"0\2h", Line)
+        else:
+            Line = gHexNumberPattern.sub(r"\1\2", Line)
         if TrimLong:
             Line = gLongNumberPattern.sub(r"\1", Line)
+
+        # convert Decimal number format
+        Line = gDecNumberPattern.sub(r"\1", Line)
 
         if LineNumber != None:
             EdkLogger.verbose("Got line directive: line=%d" % LineNumber)

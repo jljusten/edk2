@@ -1,6 +1,14 @@
-/*  $NetBSD: unistd.h,v 1.35 2006/08/14 18:17:48 rpaulo Exp $ */
+/** @file
 
-/*
+  Copyright (c) 2011, Intel Corporation. All rights reserved.<BR>
+  This program and the accompanying materials are licensed and made available under
+  the terms and conditions of the BSD License that accompanies this distribution.
+  The full text of the license may be found at
+  http://opensource.org/licenses/bsd-license.
+
+  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+
  * Copyright (c) 1989, 1993
  *  The Regents of the University of California.  All rights reserved.
  *
@@ -29,15 +37,14 @@
  * SUCH DAMAGE.
  *
  *  @(#)unistd.h  8.2 (Berkeley) 1/7/94
- */
-
+    NetBSD: unistd.h,v 1.35 2006/08/14 18:17:48 rpaulo Exp
+**/
 #ifndef _SYS_UNISTD_H_
 #define _SYS_UNISTD_H_
 
 #include <sys/featuretest.h>
 
 /* compile-time symbolic constants */
-//#define _POSIX_JOB_CONTROL  /* implementation supports job control */
 
 /*
  * According to POSIX 1003.1:
@@ -61,128 +68,26 @@
 #define _POSIX2_VERSION   199212L
 
 /* execution-time symbolic constants */
-        /* chown requires appropriate privileges */
-//#define _POSIX_CHOWN_RESTRICTED 1
-//        /* clock selection */
-//#define _POSIX_CLOCK_SELECTION  -1
-//        /* too-long path components generate errors */
-//#define _POSIX_NO_TRUNC   1
-//        /* may disable terminal special characters */
-//#define _POSIX_VDISABLE   ((unsigned char)'\377')
-//        /* file synchronization is available */
-//#define _POSIX_FSYNC    1
-//        /* synchronized I/O is available */
-//#define _POSIX_SYNCHRONIZED_IO  1
-//        /* memory mapped files */
-//#define _POSIX_MAPPED_FILES 1
-//        /* memory locking of whole address space */
-//#define _POSIX_MEMLOCK    1
-//        /* memory locking address ranges */
-//#define _POSIX_MEMLOCK_RANGE  1
-//        /* memory access protections */
-//#define _POSIX_MEMORY_PROTECTION 1
-//        /* monotonic clock */
-//#define _POSIX_MONOTONIC_CLOCK  200112L
-//        /* threads */
-//#define _POSIX_THREADS    200112L
-//        /* semaphores */
-//#define _POSIX_SEMAPHORES 0
-//        /* barriers */
-//#define _POSIX_BARRIERS   200112L
         /* timers */
 #define _POSIX_TIMERS   200112L
-        /* spin locks */
-//#define _POSIX_SPIN_LOCKS 200112L
-//        /* read/write locks */
-//#define _POSIX_READER_WRITER_LOCKS  200112L
-//        /* XPG4.2 shared memory */
-//#define _XOPEN_SHM    0
+
+/* Always ensure that these are consistent with <fcntl.h>!
+   whence values for lseek(2).
+*/
+#ifndef SEEK_SET
+#define SEEK_SET  0 /**< set file offset to offset */
+#endif
+#ifndef SEEK_CUR
+#define SEEK_CUR  1 /**< set file offset to current plus offset */
+#endif
+#ifndef SEEK_END
+#define SEEK_END  2 /**< set file offset to EOF plus offset */
+#endif
 
 /* whence values for lseek(2); renamed by POSIX 1003.1 */
 #define L_SET   SEEK_SET
 #define L_INCR    SEEK_CUR
 #define L_XTND    SEEK_END
-
-/*
- * fsync_range values.
- *
- * Note the following flag values were chosen to not overlap
- * values for SEEK_XXX flags.  While not currently implemented,
- * it is possible to extend this call to respect SEEK_CUR and
- * SEEK_END offset addressing modes.
- */
-#define FDATASYNC 0x0010  /* sync data and minimal metadata */
-#define FFILESYNC 0x0020  /* sync data and metadata */
-#define FDISKSYNC 0x0040  /* flush disk caches after sync */
-
-/* configurable pathname variables; use as argument to pathconf(3) */
-#define _PC_LINK_MAX     1
-#define _PC_MAX_CANON    2
-#define _PC_MAX_INPUT    3
-#define _PC_NAME_MAX     4
-#define _PC_PATH_MAX     5
-#define _PC_PIPE_BUF     6
-#define _PC_CHOWN_RESTRICTED   7
-#define _PC_NO_TRUNC     8
-#define _PC_VDISABLE     9
-#define _PC_SYNC_IO   10
-#define _PC_FILESIZEBITS  11
-
-/* configurable system variables; use as argument to sysconf(3) */
-/*
- * XXX The value of _SC_CLK_TCK is embedded in <time.h>.
- * XXX The value of _SC_PAGESIZE is embedded in <sys/shm.h>.
- */
-#define _SC_ARG_MAX    1
-#define _SC_CHILD_MAX    2
-#define _O_SC_CLK_TCK    3 /* Old version, always 100 */
-#define _SC_NGROUPS_MAX    4
-#define _SC_OPEN_MAX     5
-#define _SC_JOB_CONTROL    6
-#define _SC_SAVED_IDS    7
-#define _SC_VERSION    8
-#define _SC_BC_BASE_MAX    9
-#define _SC_BC_DIM_MAX    10
-#define _SC_BC_SCALE_MAX  11
-#define _SC_BC_STRING_MAX 12
-#define _SC_COLL_WEIGHTS_MAX  13
-#define _SC_EXPR_NEST_MAX 14
-#define _SC_LINE_MAX    15
-#define _SC_RE_DUP_MAX    16
-#define _SC_2_VERSION   17
-#define _SC_2_C_BIND    18
-#define _SC_2_C_DEV   19
-#define _SC_2_CHAR_TERM   20
-#define _SC_2_FORT_DEV    21
-#define _SC_2_FORT_RUN    22
-#define _SC_2_LOCALEDEF   23
-#define _SC_2_SW_DEV    24
-#define _SC_2_UPE   25
-#define _SC_STREAM_MAX    26
-#define _SC_TZNAME_MAX    27
-#define _SC_PAGESIZE    28
-#define _SC_PAGE_SIZE   _SC_PAGESIZE  /* 1170 compatibility */
-#define _SC_FSYNC   29
-#define _SC_XOPEN_SHM   30
-#define _SC_SYNCHRONIZED_IO 31
-#define _SC_IOV_MAX   32
-#define _SC_MAPPED_FILES  33
-#define _SC_MEMLOCK   34
-#define _SC_MEMLOCK_RANGE 35
-#define _SC_MEMORY_PROTECTION 36
-#define _SC_LOGIN_NAME_MAX  37
-#define _SC_MONOTONIC_CLOCK 38
-#define _SC_CLK_TCK   39 /* New, variable version */
-#define _SC_ATEXIT_MAX    40
-#define _SC_THREADS   41
-#define _SC_SEMAPHORES    42
-#define _SC_BARRIERS    43
-#define _SC_TIMERS    44
-#define _SC_SPIN_LOCKS    45
-#define _SC_READER_WRITER_LOCKS 46
-#define _SC_GETGR_R_SIZE_MAX  47
-#define _SC_GETPW_R_SIZE_MAX  48
-#define _SC_CLOCK_SELECTION 49
 
 /* configurable system strings */
 #define _CS_PATH     1

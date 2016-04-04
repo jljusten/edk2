@@ -196,6 +196,7 @@ ERR_INF_PARSER_VER_EXIST_BOTH_NUM_STR = \
     _("The INF file %s defines both VERSION_NUMBER and VERSION_STRING, "
       "using VERSION_STRING")
 ERR_INF_PARSER_NOT_SUPPORT_EDKI_INF = _("EDKI INF is not supported")
+ERR_INF_PARSER_EDKI_COMMENT_IN_EDKII = _("The EDKI style comment is not supported in EDKII modules")
 
 ERR_INF_PARSER_FEATUREPCD_USAGE_INVALID = _("The usage for FeaturePcd can only"
     " be type of \"CONSUMES\".") 
@@ -523,6 +524,7 @@ ERR_UNKNOWN_ERROR                = _("Unknown error")
 ERR_UPT_ALREADY_INSTALLED_ERROR  = _("Already installed")
 ERR_UPT_ENVIRON_MISSING_ERROR    = _("Environ missing")
 ERR_UPT_REPKG_ERROR              = _("File not allowed for RePackage")
+ERR_UPT_DB_UPDATE_ERROR          = _("Update database did not complete successfully")
 ERR_UPT_INI_PARSE_ERROR          = _("INI file parse error")
 ERR_COPYRIGHT_MISSING            = \
 _("Header comment section must have copyright information")

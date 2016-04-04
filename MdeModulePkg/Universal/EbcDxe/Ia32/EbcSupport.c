@@ -1,6 +1,6 @@
 /** @file
   This module contains EBC support routines that are customized based on
-  the target processor.
+  the target ia32 processor.
 
 Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
@@ -23,10 +23,72 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 //       platform-specific configurations.
 //
 #define VM_STACK_SIZE   (1024 * 4)
-#define EBC_THUNK_SIZE  32
 
 #define STACK_REMAIN_SIZE (1024 * 4)
 
+//
+// This is instruction buffer used to create EBC thunk
+//
+#define EBC_ENTRYPOINT_SIGNATURE           0xAFAFAFAF
+#define EBC_LL_EBC_ENTRYPOINT_SIGNATURE    0xFAFAFAFA
+UINT8  mInstructionBufferTemplate[] = {
+  //
+  // Add a magic code here to help the VM recognize the thunk..
+  // mov eax, 0xca112ebc  => B8 BC 2E 11 CA
+  //
+  0xB8, 0xBC, 0x2E, 0x11, 0xCA,
+  //
+  // Add code bytes to load up a processor register with the EBC entry point.
+  //  mov eax, EbcEntryPoint  => B8 XX XX XX XX (To be fixed at runtime)
+  // These 4 bytes of the thunk entry is the address of the EBC
+  // entry point.
+  //
+  0xB8, 
+    (UINT8)(EBC_ENTRYPOINT_SIGNATURE & 0xFF),
+    (UINT8)((EBC_ENTRYPOINT_SIGNATURE >> 8) & 0xFF),
+    (UINT8)((EBC_ENTRYPOINT_SIGNATURE >> 16) & 0xFF),
+    (UINT8)((EBC_ENTRYPOINT_SIGNATURE >> 24) & 0xFF),
+  //
+  // Stick in a load of ecx with the address of appropriate VM function.
+  //  mov ecx, EbcLLEbcInterpret  => B9 XX XX XX XX (To be fixed at runtime)
+  //
+  0xB9,
+    (UINT8)(EBC_LL_EBC_ENTRYPOINT_SIGNATURE & 0xFF),
+    (UINT8)((EBC_LL_EBC_ENTRYPOINT_SIGNATURE >> 8) & 0xFF),
+    (UINT8)((EBC_LL_EBC_ENTRYPOINT_SIGNATURE >> 16) & 0xFF),
+    (UINT8)((EBC_LL_EBC_ENTRYPOINT_SIGNATURE >> 24) & 0xFF),
+  //
+  // Stick in jump opcode bytes
+  //  jmp ecx => FF E1
+  //
+  0xFF, 0xE1,
+};
+
+/**
+  Begin executing an EBC image.
+  This is used for Ebc Thunk call.
+
+  @return The value returned by the EBC application we're going to run.
+
+**/
+UINT64
+EFIAPI
+EbcLLEbcInterpret (
+  VOID
+  );
+
+/**
+  Begin executing an EBC image.
+  This is used for Ebc image entrypoint.
+
+  @return The value returned by the EBC application we're going to run.
+
+**/
+UINT64
+EFIAPI
+EbcLLExecuteEbcImageEntryPoint (
+  VOID
+  );
 
 /**
   This function is called to execute an EBC CALLEX instruction.
@@ -54,54 +116,37 @@ EbcLLCALLEX (
 {
   UINTN    IsThunk;
   UINTN    TargetEbcAddr;
+  UINT8    InstructionBuffer[sizeof(mInstructionBufferTemplate)];
+  UINTN    Index;
+  UINTN    IndexOfEbcEntrypoint;
 
   IsThunk       = 1;
   TargetEbcAddr = 0;
+  IndexOfEbcEntrypoint = 0;
 
   //
   // Processor specific code to check whether the callee is a thunk to EBC.
   //
-  if (*((UINT8 *)FuncAddr) != 0xB8) {
-    IsThunk = 0;
-    goto Action;
+  CopyMem (InstructionBuffer, (VOID *)FuncAddr, sizeof(InstructionBuffer));
+  //
+  // Fill the signature according to mInstructionBufferTemplate
+  //
+  for (Index = 0; Index < sizeof(mInstructionBufferTemplate) - sizeof(UINTN); Index++) {
+    if (*(UINTN *)&mInstructionBufferTemplate[Index] == EBC_ENTRYPOINT_SIGNATURE) {
+      *(UINTN *)&InstructionBuffer[Index] = EBC_ENTRYPOINT_SIGNATURE;
+      IndexOfEbcEntrypoint = Index;
+    }
+    if (*(UINTN *)&mInstructionBufferTemplate[Index] == EBC_LL_EBC_ENTRYPOINT_SIGNATURE) {
+      *(UINTN *)&InstructionBuffer[Index] = EBC_LL_EBC_ENTRYPOINT_SIGNATURE;
+    }
   }
-  if (*((UINT8 *)FuncAddr + 1) != 0xBC)  {
+  //
+  // Check if we need thunk to native
+  //
+  if (CompareMem (InstructionBuffer, mInstructionBufferTemplate, sizeof(mInstructionBufferTemplate)) != 0) {
     IsThunk = 0;
-    goto Action;
-  }
-  if (*((UINT8 *)FuncAddr + 2) != 0x2E)  {
-    IsThunk = 0;
-    goto Action;
-  }
-  if (*((UINT8 *)FuncAddr + 3) != 0x11)  {
-    IsThunk = 0;
-    goto Action;
-  }
-  if (*((UINT8 *)FuncAddr + 4) != 0xCA)  {
-    IsThunk = 0;
-    goto Action;
-  }
-  if (*((UINT8 *)FuncAddr + 5) != 0xB8)  {
-    IsThunk = 0;
-    goto Action;
-  }
-  if (*((UINT8 *)FuncAddr + 10) != 0xB9)  {
-    IsThunk = 0;
-    goto Action;
-  }
-  if (*((UINT8 *)FuncAddr + 15) != 0xFF)  {
-    IsThunk = 0;
-    goto Action;
-  }
-  if (*((UINT8 *)FuncAddr + 16) != 0xE1)  {
-    IsThunk = 0;
-    goto Action;
   }
 
-  TargetEbcAddr = ((UINTN)(*((UINT8 *)FuncAddr + 9)) << 24) + ((UINTN)(*((UINT8 *)FuncAddr + 8)) << 16) +
-                    ((UINTN)(*((UINT8 *)FuncAddr + 7)) << 8) + ((UINTN)(*((UINT8 *)FuncAddr + 6)));
-
-Action:
   if (IsThunk == 1){
     //
     // The callee is a thunk to EBC, adjust the stack pointer down 16 bytes and
@@ -114,11 +159,12 @@ Action:
     VmPtr->Gpr[0] -= 8;
     VmWriteMem64 (VmPtr, (UINTN) VmPtr->Gpr[0], (UINT64) (UINTN) (VmPtr->Ip + Size));
 
+    CopyMem (&TargetEbcAddr, (UINT8 *)FuncAddr + IndexOfEbcEntrypoint, sizeof(UINTN));
     VmPtr->Ip = (VMIP) (UINTN) TargetEbcAddr;
   } else {
     //
     // The callee is not a thunk to EBC, call native code,
-    // and get return value
+    // and get return value.
     //
     VmPtr->Gpr[7] = EbcLLCALLEXNative (FuncAddr, NewStackPointer, FramePtr);
 
@@ -131,14 +177,13 @@ Action:
 
 
 /**
-  Begin executing an EBC image. The address of the entry point is passed
-  in via a processor register, so we'll need to make a call to get the
-  value.
+  Begin executing an EBC image.
 
   This is a thunk function. Microsoft x64 compiler only provide fast_call
   calling convention, so the first four arguments are passed by rcx, rdx,
   r8, and r9, while other arguments are passed in stack.
 
+  @param  EntryPoint            The entrypoint of EBC code.
   @param  Arg1                  The 1st argument.
   @param  Arg2                  The 2nd argument.
   @param  Arg3                  The 3rd argument.
@@ -162,22 +207,23 @@ Action:
 UINT64
 EFIAPI
 EbcInterpret (
-  IN OUT UINTN      Arg1,
-  IN OUT UINTN      Arg2,
-  IN OUT UINTN      Arg3,
-  IN OUT UINTN      Arg4,
-  IN OUT UINTN      Arg5,
-  IN OUT UINTN      Arg6,
-  IN OUT UINTN      Arg7,
-  IN OUT UINTN      Arg8,
-  IN OUT UINTN      Arg9,
-  IN OUT UINTN      Arg10,
-  IN OUT UINTN      Arg11,
-  IN OUT UINTN      Arg12,
-  IN OUT UINTN      Arg13,
-  IN OUT UINTN      Arg14,
-  IN OUT UINTN      Arg15,
-  IN OUT UINTN      Arg16
+  IN UINTN      EntryPoint,
+  IN UINTN      Arg1,
+  IN UINTN      Arg2,
+  IN UINTN      Arg3,
+  IN UINTN      Arg4,
+  IN UINTN      Arg5,
+  IN UINTN      Arg6,
+  IN UINTN      Arg7,
+  IN UINTN      Arg8,
+  IN UINTN      Arg9,
+  IN UINTN      Arg10,
+  IN UINTN      Arg11,
+  IN UINTN      Arg12,
+  IN UINTN      Arg13,
+  IN UINTN      Arg14,
+  IN UINTN      Arg15,
+  IN UINTN      Arg16
   )
 {
   //
@@ -189,9 +235,9 @@ EbcInterpret (
   UINTN       StackIndex;
 
   //
-  // Get the EBC entry point from the processor register.
+  // Get the EBC entry point
   //
-  Addr = EbcLLGetEbcEntryPoint ();
+  Addr = EntryPoint;
 
   //
   // Now clear out our context
@@ -297,10 +343,9 @@ EbcInterpret (
 
 
 /**
-  Begin executing an EBC image. The address of the entry point is passed
-  in via a processor register, so we'll need to make a call to get the
-  value.
+  Begin executing an EBC image.
 
+  @param  EntryPoint       The entrypoint of EBC code.
   @param  ImageHandle      image handle for the EBC application we're executing
   @param  SystemTable      standard system table passed into an driver's entry
                            point
@@ -311,6 +356,7 @@ EbcInterpret (
 UINT64
 EFIAPI
 ExecuteEbcImageEntryPoint (
+  IN UINTN                EntryPoint,
   IN EFI_HANDLE           ImageHandle,
   IN EFI_SYSTEM_TABLE     *SystemTable
   )
@@ -324,15 +370,10 @@ ExecuteEbcImageEntryPoint (
   UINTN       StackIndex;
 
   //
-  // Get the EBC entry point from the processor register. Make sure you don't
-  // call any functions before this or you could mess up the register the
-  // entry point is passed in.
+  // Get the EBC entry point
   //
-  Addr = EbcLLGetEbcEntryPoint ();
+  Addr = EntryPoint;
 
-  //
-  //  Print(L"*** Thunked into EBC entry point - ImageHandle = 0x%X\n", (UINTN)ImageHandle);
-  //  Print(L"EBC entry point is 0x%X\n", (UINT32)(UINTN)Addr);
   //
   // Now clear out our context
   //
@@ -429,8 +470,6 @@ EbcCreateThunks (
   UINT8       *Ptr;
   UINT8       *ThunkBase;
   UINT32      Index;
-  UINT32      Addr;
-  INT32       Size;
   INT32       ThunkSize;
 
   //
@@ -440,10 +479,9 @@ EbcCreateThunks (
     return EFI_INVALID_PARAMETER;
   }
 
-  Size      = EBC_THUNK_SIZE;
-  ThunkSize = Size;
+  ThunkSize = sizeof(mInstructionBufferTemplate);
 
-  Ptr = AllocatePool (Size);
+  Ptr = AllocatePool (sizeof(mInstructionBufferTemplate));
 
   if (Ptr == NULL) {
     return EFI_OUT_OF_RESOURCES;
@@ -461,74 +499,26 @@ EbcCreateThunks (
   *Thunk = (VOID *) Ptr;
 
   //
-  // Add a magic code here to help the VM recognize the thunk..
-  // mov eax, 0xca112ebc  => B8 BC 2E 11 CA
+  // Copy whole thunk instruction buffer template
   //
-  *Ptr = 0xB8;
-  Ptr++;
-  Size--;
-  Addr = (UINT32) 0xCA112EBC;
-  for (Index = 0; Index < sizeof (Addr); Index++) {
-    *Ptr = (UINT8) (UINTN) Addr;
-    Addr >>= 8;
-    Ptr++;
-    Size--;
-  }
+  CopyMem (Ptr, mInstructionBufferTemplate, sizeof(mInstructionBufferTemplate));
 
   //
-  // Add code bytes to load up a processor register with the EBC entry point.
-  // mov eax, 0xaa55aa55  => B8 55 AA 55 AA
-  // The first 8 bytes of the thunk entry is the address of the EBC
-  // entry point.
+  // Patch EbcEntryPoint and EbcLLEbcInterpret
   //
-  *Ptr = 0xB8;
-  Ptr++;
-  Size--;
-  Addr = (UINT32) EbcEntryPoint;
-  for (Index = 0; Index < sizeof (Addr); Index++) {
-    *Ptr = (UINT8) (UINTN) Addr;
-    Addr >>= 8;
-    Ptr++;
-    Size--;
-  }
-  //
-  // Stick in a load of ecx with the address of appropriate VM function.
-  //  mov ecx 12345678h  => 0xB9 0x78 0x56 0x34 0x12
-  //
-  if ((Flags & FLAG_THUNK_ENTRY_POINT) != 0) {
-    Addr = (UINT32) (UINTN) ExecuteEbcImageEntryPoint;
-  } else {
-    Addr = (UINT32) (UINTN) EbcInterpret;
+  for (Index = 0; Index < sizeof(mInstructionBufferTemplate) - sizeof(UINTN); Index++) {
+    if (*(UINTN *)&Ptr[Index] == EBC_ENTRYPOINT_SIGNATURE) {
+      *(UINTN *)&Ptr[Index] = (UINTN)EbcEntryPoint;
+    }
+    if (*(UINTN *)&Ptr[Index] == EBC_LL_EBC_ENTRYPOINT_SIGNATURE) {
+      if ((Flags & FLAG_THUNK_ENTRY_POINT) != 0) {
+        *(UINTN *)&Ptr[Index] = (UINTN)EbcLLExecuteEbcImageEntryPoint;
+      } else {
+        *(UINTN *)&Ptr[Index] = (UINTN)EbcLLEbcInterpret;
+      }
+    }
   }
 
-  //
-  // MOV ecx
-  //
-  *Ptr = 0xB9;
-  Ptr++;
-  Size--;
-  for (Index = 0; Index < sizeof (Addr); Index++) {
-    *Ptr = (UINT8) Addr;
-    Addr >>= 8;
-    Ptr++;
-    Size--;
-  }
-  //
-  // Stick in jump opcode bytes for jmp ecx => 0xFF 0xE1
-  //
-  *Ptr = 0xFF;
-  Ptr++;
-  Size--;
-  *Ptr = 0xE1;
-  Size--;
-
-  //
-  // Double check that our defined size is ok (application error)
-  //
-  if (Size < 0) {
-    ASSERT (FALSE);
-    return EFI_BUFFER_TOO_SMALL;
-  }
   //
   // Add the thunk to the list for this image. Do this last since the add
   // function flushes the cache for us.

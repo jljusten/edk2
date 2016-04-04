@@ -1891,6 +1891,7 @@ ProcessGotoOpCode (
   )
 {
   CHAR16                          *StringPtr;
+  UINTN                           StringLen;
   UINTN                           BufferSize;
   EFI_DEVICE_PATH_PROTOCOL        *DevicePath;
   CHAR16                          TemStr[2];
@@ -1905,8 +1906,23 @@ ProcessGotoOpCode (
   
   Status = EFI_SUCCESS;
   UpdateFormInfo = TRUE;
+  StringPtr = NULL;
+  StringLen = 0;
 
+  //
+  // Prepare the device path check, get the device path info first.
+  //
   if (Statement->HiiValue.Value.ref.DevicePath != 0) {
+    StringPtr = GetToken (Statement->HiiValue.Value.ref.DevicePath, Selection->FormSet->HiiHandle);
+    if (StringPtr != NULL) {
+      StringLen = StrLen (StringPtr);
+    }
+  }
+
+  //
+  // Check whether the device path string is a valid string.
+  //
+  if (Statement->HiiValue.Value.ref.DevicePath != 0 && StringPtr != NULL && StringLen != 0) {
     if (Selection->Form->ModalForm) {
       return Status;
     }
@@ -1914,16 +1930,6 @@ ProcessGotoOpCode (
     // Goto another Hii Package list
     //
     Selection->Action = UI_ACTION_REFRESH_FORMSET;
-
-    StringPtr = GetToken (Statement->HiiValue.Value.ref.DevicePath, Selection->FormSet->HiiHandle);
-    if (StringPtr == NULL) {
-      //
-      // No device path string not found, exit
-      //
-      Selection->Action = UI_ACTION_EXIT;
-      Selection->Statement = NULL;
-      return Status;
-    }
     BufferSize = StrLen (StringPtr) / 2;
     DevicePath = AllocatePool (BufferSize);
     ASSERT (DevicePath != NULL);
@@ -1947,8 +1953,11 @@ ProcessGotoOpCode (
         DevicePathBuffer [Index/2] = (UINT8) ((DevicePathBuffer [Index/2] << 4) + DigitUint8);
       }
     }
+    FreePool (StringPtr);
 
     Selection->Handle = DevicePathToHiiHandle (DevicePath);
+    FreePool (DevicePath);
+
     if (Selection->Handle == NULL) {
       //
       // If target Hii Handle not found, exit
@@ -1957,9 +1966,6 @@ ProcessGotoOpCode (
       Selection->Statement = NULL;
       return Status;
     }
-
-    FreePool (StringPtr);
-    FreePool (DevicePath);
 
     CopyMem (&Selection->FormSetGuid,&Statement->HiiValue.Value.ref.FormSetGuid, sizeof (EFI_GUID));
     Selection->FormId = Statement->HiiValue.Value.ref.FormId;
@@ -2569,7 +2575,18 @@ UiDisplayMenu (
             SavedMenuOption = MENU_OPTION_FROM_LINK (Link);
           }
 
-          if (Link != NewPos || Index > BottomRow || (Link == NewPos && SavedMenuOption->Row + SavedMenuOption->Skip - 1 > BottomRow)) {
+          //
+          // Not find the selected menu in current show page.
+          // Have two case to enter this if:
+          // 1. Not find the menu at current page.
+          // 2. Find the menu in current page, but the menu shows at the bottom and not all info shows.
+          //    For case 2, has an exception: The menu can show more than one pages and now only this menu shows.
+          //
+          // Base on the selected menu will show at the bottom of the page,
+          // select the menu which will show at the top of the page.
+          //
+          if (Link != NewPos || Index > BottomRow || 
+              (Link == NewPos && (SavedMenuOption->Row + SavedMenuOption->Skip - 1 > BottomRow) && (Link != TopOfScreen))) {
             //
             // Find the MenuOption which has the skip value for Date/Time opcode. 
             //
@@ -2584,7 +2601,11 @@ UiDisplayMenu (
             if (SavedMenuOption->Row == 0) {
               UpdateOptionSkipLines (Selection, SavedMenuOption);
             }
-            
+
+            //
+            // Base on the selected menu will show at the bottome of next page, 
+            // select the menu show at the top of the next page. 
+            //
             Link    = NewPos;
             for (Index = TopRow + SavedMenuOption->Skip; Index <= BottomRow + 1; ) {            
               Link = Link->BackLink;
@@ -2592,16 +2613,31 @@ UiDisplayMenu (
               if (SavedMenuOption->Row == 0) {
                 UpdateOptionSkipLines (Selection, SavedMenuOption);
               }
-              Index     += SavedMenuOption->Skip;
+              Index += SavedMenuOption->Skip;
             }
-            
-            SkipValue = Index - BottomRow - 1;
-            if (SkipValue > 0 && SkipValue < (INTN) SavedMenuOption->Skip) {
-              TopOfScreen     = Link;
-              OldSkipValue    = SkipValue;
+
+            //
+            // Found the menu which will show at the top of the page.
+            //
+            if (Link == NewPos) {
+              //
+              // The menu can show more than one pages, just show the menu at the top of the page.
+              //
+              SkipValue    = 0;
+              TopOfScreen  = Link;
+              OldSkipValue = SkipValue;
             } else {
-              SkipValue       = 0;
-              TopOfScreen     = Link->ForwardLink;
+              //
+              // Check whether need to skip some line for menu shows at the top of the page.
+              //
+              SkipValue = Index - BottomRow - 1;
+              if (SkipValue > 0 && SkipValue < (INTN) SavedMenuOption->Skip) {
+                TopOfScreen     = Link;
+                OldSkipValue    = SkipValue;
+              } else {
+                SkipValue       = 0;
+                TopOfScreen     = Link->ForwardLink;
+              }
             }
 
             Repaint = TRUE;
@@ -2870,6 +2906,11 @@ UiDisplayMenu (
 
       switch (Key.UnicodeChar) {
       case CHAR_CARRIAGE_RETURN:
+        if(MenuOption->GrayOut || MenuOption->ReadOnly) {
+          ControlFlag = CfReadKey;
+          break;
+        }
+
         ScreenOperation = UiSelect;
         gDirection      = 0;
         break;
@@ -2884,7 +2925,7 @@ UiDisplayMenu (
         // If the screen has no menu items, and the user didn't select UiReset
         // ignore the selection and go back to reading keys.
         //
-        if(IsListEmpty (&gMenuOption)) {
+        if(IsListEmpty (&gMenuOption) || MenuOption->GrayOut || MenuOption->ReadOnly) {
           ControlFlag = CfReadKey;
           break;
         }
@@ -2937,7 +2978,7 @@ UiDisplayMenu (
           }
           
           ASSERT(MenuOption != NULL);
-          if (MenuOption->ThisTag->Operand == EFI_IFR_CHECKBOX_OP && !MenuOption->GrayOut) {
+          if (MenuOption->ThisTag->Operand == EFI_IFR_CHECKBOX_OP && !MenuOption->GrayOut && !MenuOption->ReadOnly) {
             ScreenOperation = UiSelect;
           }
         }

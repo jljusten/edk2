@@ -1,26 +1,26 @@
 /** @file
-  * Shell application for Displaying Performance Metrics.
-  *
-  * The Dp application reads performance data and presents it in several
-  * different formats depending upon the needs of the user.  Both
-  * Trace and Measured Profiling information is processed and presented.
-  *
-  * Dp uses the "PerformanceLib" to read the measurement records.
-  * The "TimerLib" provides information about the timer, such as frequency,
-  * beginning, and ending counter values.
-  * Measurement records contain identifying information (Handle, Token, Module)
-  * and start and end time values.
-  * Dp uses this information to group records in different ways.  It also uses
-  * timer information to calculate elapsed time for each measurement.
-  *
-  * Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
-  * This program and the accompanying materials
-  * are licensed and made available under the terms and conditions of the BSD License
-  * which accompanies this distribution.  The full text of the license may be found at
-  * http://opensource.org/licenses/bsd-license.php
-  *
-  * THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+  Shell application for Displaying Performance Metrics.
+
+  The Dp application reads performance data and presents it in several
+  different formats depending upon the needs of the user.  Both
+  Trace and Measured Profiling information is processed and presented.
+
+  Dp uses the "PerformanceLib" to read the measurement records.
+  The "TimerLib" provides information about the timer, such as frequency,
+  beginning, and ending counter values.
+  Measurement records contain identifying information (Handle, Token, Module)
+  and start and end time values.
+  Dp uses this information to group records in different ways.  It also uses
+  timer information to calculate elapsed time for each measurement.
+ 
+  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
+  This program and the accompanying materials
+  are licensed and made available under the terms and conditions of the BSD License
+  which accompanies this distribution.  The full text of the license may be found at
+  http://opensource.org/licenses/bsd-license.php
+ 
+  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 #include <Library/UefiApplicationEntryPoint.h>
@@ -46,8 +46,8 @@
 EFI_HII_HANDLE   gHiiHandle;
 SHELL_PARAM_ITEM *DpParamList       = NULL;
 CHAR16           *mPrintTokenBuffer = NULL;
-CHAR16           mGaugeString[DXE_PERFORMANCE_STRING_SIZE];
-CHAR16           mUnicodeToken[PERF_TOKEN_LENGTH + 1];
+CHAR16           mGaugeString[DP_GAUGE_STRING_LENGTH + 1];
+CHAR16           mUnicodeToken[DXE_PERFORMANCE_STRING_SIZE];
 UINT64           mInterestThreshold;
 
 PERF_SUMMARY_DATA SummaryData = { 0 };    ///< Create the SummaryData structure and init. to ZERO.
@@ -84,22 +84,6 @@ PARAM_ITEM_LIST  ParamList[] = {
   };
 
 ///@}
-
-/**
-  Wrap original FreePool to check NULL pointer first.
-
-  @param[in]    Buffer      The pointer to the buffer to free.
-
-**/
-VOID
-SafeFreePool (
-  IN VOID   *Buffer
-  )
-{
-  if (Buffer != NULL) {
-    FreePool (Buffer);
-  }
-}
 
 /**
   Transfer the param list value and get the command line parse.
