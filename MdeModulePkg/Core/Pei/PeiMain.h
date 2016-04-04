@@ -1,7 +1,7 @@
 /** @file
   Definition of Pei Core Structures and Services
   
-Copyright (c) 2006 - 2009, Intel Corporation
+Copyright (c) 2006 - 2010, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -177,6 +177,18 @@ typedef struct{
   EFI_PHYSICAL_ADDRESS               FreePhysicalMemoryTop;
   VOID*                              ShadowedPeiCore;
   CACHE_SECTION_DATA                 CacheSection;
+  //
+  // For Loading modules at fixed address feature to cache the top address below which the 
+  // Runtime code, boot time code and PEI memory will be placed. Please note that the offset between this field 
+  // and  PS should not be changed since maybe user could get this top address by using the offet to PS. 
+  //
+  EFI_PHYSICAL_ADDRESS               LoadModuleAtFixAddressTopAddress;
+  //
+  // The field is define for Loading modules at fixed address feature to tracker the PEI code
+  // memory range usage. It is a bit mapped array in which every bit indicates the correspoding memory page
+  // available or not. 
+  //
+  UINT64                            *PeiCodeMemoryRangeUsageBitMap;
 } PEI_CORE_INSTANCE;
 
 ///
@@ -815,6 +827,7 @@ PeiAllocatePool (
 
   @param PeiServices            An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation.
   @param FileHandle             Pointer to the FFS file header of the image.
+  @param PeimState              The dispatch state of the input PEIM handle.
   @param EntryPoint             Pointer to entry point of specified image file for output.
   @param AuthenticationState    Pointer to attestation authentication state of image.
 
@@ -827,6 +840,7 @@ EFI_STATUS
 PeiLoadImage (
   IN  CONST EFI_PEI_SERVICES      **PeiServices,
   IN  EFI_PEI_FILE_HANDLE         FileHandle,
+  IN  UINT8                       PeimState,
   OUT    EFI_PHYSICAL_ADDRESS     *EntryPoint,
   OUT    UINT32                   *AuthenticationState
   );

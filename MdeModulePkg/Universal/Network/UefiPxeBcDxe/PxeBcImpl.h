@@ -1,6 +1,6 @@
 /** @file
 
-Copyright (c) 2007 - 2008, Intel Corporation.<BR>                                                         
+Copyright (c) 2007 - 2010, Intel Corporation.<BR>                                                         
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -42,14 +42,16 @@ typedef struct _PXEBC_PRIVATE_DATA  PXEBC_PRIVATE_DATA;
 #include <Library/DpcLib.h>
 
 #include "PxeBcDriver.h"
-#include "PxeArch.h"
 #include "PxeBcDhcp.h"
 #include "PxeBcMtftp.h"
 #include "PxeBcSupport.h"
 
 #define PXEBC_PRIVATE_DATA_SIGNATURE  SIGNATURE_32 ('P', 'X', 'E', 'P')
-#define PXEBC_MTFTP_TIMEOUT           4
-#define PXEBC_MTFTP_RETRIES           6
+#define PXEBC_MTFTP_TIMEOUT                4
+#define PXEBC_MTFTP_RETRIES                6
+#define PXEBC_DEFAULT_UDP_OVERHEAD_SIZE    8
+#define PXEBC_DEFAULT_TFTP_OVERHEAD_SIZE   4
+#define PXEBC_DEFAULT_PACKET_SIZE          1480 
 
 struct _PXEBC_PRIVATE_DATA {
   UINT32                                    Signature;
@@ -89,7 +91,8 @@ struct _PXEBC_PRIVATE_DATA {
   EFI_IP_ADDRESS                            GatewayIp;
   EFI_IP_ADDRESS                            ServerIp;
   BOOLEAN                                   AddressIsOk;
-
+  UINT32                                    Ip4MaxPacketSize;
+  UINTN                                     BlockSize;
   UINTN                                     FileSize;
 
   UINT8                                     OptionBuffer[PXEBC_DHCP4_MAX_OPTION_SIZE];

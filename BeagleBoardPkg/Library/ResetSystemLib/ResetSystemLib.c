@@ -1,10 +1,7 @@
 /** @file
-  Template library implementation to support ResetSystem Runtime call.
+  Do a generic Cold Reset for OMAP3550 and BeagleBoard specific Warm reset
   
-  Fill in the templates with what ever makes you system reset.
-
-
-  Copyright (c) 2008-2009, Apple Inc. All rights reserved.
+  Copyright (c) 2008-2010, Apple Inc. All rights reserved.
   
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -17,15 +14,85 @@
 **/
 
 
-#include <PiDxe.h>
+#include <Uefi.h>
 
-#include <Library/PcdLib.h>
 #include <Library/ArmLib.h>
 #include <Library/CacheMaintenanceLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/IoLib.h>
+#include <Library/PcdLib.h>
 #include <Library/DebugLib.h>
-#include <Library/EfiResetSystemLib.h>
+#include <Library/UefiBootServicesTableLib.h>
 
-#include <Library/BeagleBoardSystemLib.h>
+#include <Omap3530/Omap3530.h>
+
+
+VOID
+ShutdownEfi (
+  VOID
+  )
+{
+  EFI_STATUS              Status;
+  UINTN                   MemoryMapSize;
+  EFI_MEMORY_DESCRIPTOR   *MemoryMap;
+  UINTN                   MapKey;
+  UINTN                   DescriptorSize;
+  UINTN                   DescriptorVersion;
+  UINTN                   Pages;
+
+  MemoryMap = NULL;
+  MemoryMapSize = 0;
+  do {
+    Status = gBS->GetMemoryMap (
+                    &MemoryMapSize,
+                    MemoryMap,
+                    &MapKey,
+                    &DescriptorSize,
+                    &DescriptorVersion
+                    );
+    if (Status == EFI_BUFFER_TOO_SMALL) {
+
+      Pages = EFI_SIZE_TO_PAGES (MemoryMapSize) + 1;
+      MemoryMap = AllocatePages (Pages);
+    
+      //
+      // Get System MemoryMap
+      //
+      Status = gBS->GetMemoryMap (
+                      &MemoryMapSize,
+                      MemoryMap,
+                      &MapKey,
+                      &DescriptorSize,
+                      &DescriptorVersion
+                      );
+      // Don't do anything between the GetMemoryMap() and ExitBootServices()
+      if (!EFI_ERROR (Status)) {
+        Status = gBS->ExitBootServices (gImageHandle, MapKey);
+        if (EFI_ERROR (Status)) {
+          FreePages (MemoryMap, Pages);
+          MemoryMap = NULL;
+          MemoryMapSize = 0;
+        }
+      }
+    }
+  } while (EFI_ERROR (Status));
+
+  //Clean and invalidate caches.
+  WriteBackInvalidateDataCache();
+  InvalidateInstructionCache();
+
+  //Turning off Caches and MMU
+  ArmDisableDataCache ();
+  ArmDisableInstructionCache ();
+  ArmDisableMmu ();
+}
+
+typedef
+VOID
+(EFIAPI *CALL_STUB)(
+  VOID
+);
+
 
 /**
   Resets the entire platform.
@@ -47,17 +114,31 @@ LibResetSystem (
   IN CHAR16           *ResetData OPTIONAL
   )
 {
+  CALL_STUB   StartOfFv;
+
   if (ResetData != NULL) {
     DEBUG((EFI_D_ERROR, "%s", ResetData));
   }
 
-  //Shutdown EFI services.
-  ShutdownEfi();
+  ShutdownEfi ();
 
-  //Reset the sytem. 
-  ResetSystem(ResetType);
+  switch (ResetType) {
+  case EfiResetWarm:
+    //Perform warm reset of the system by jumping to the begining of the FV
+    StartOfFv = (CALL_STUB)(UINTN)PcdGet32(PcdFlashFvMainBase);
+    StartOfFv ();
+    break;
+  case EfiResetCold:
+  case EfiResetShutdown:
+  default:
+    //Perform cold reset of the system.
+    MmioOr32 (PRM_RSTCTRL, RST_DPLL3);
+    while ((MmioRead32(PRM_RSTST) & GLOBAL_COLD_RST) != 0x1);
+    break;
+  }
 
   // If the reset didn't work, return an error.
+  ASSERT (FALSE);
   return EFI_DEVICE_ERROR;
 }
   

@@ -13,7 +13,10 @@
 **/
 
 #include <PrePi.h>
+#include <Protocol/PeCoffLoader.h>
+#include <Guid/ExtractSection.h>
 #include <Guid/MemoryTypeInformation.h>
+#include <Library/PeCoffLib.H>
 
 //
 // Have to use build system to set the original value in case we are running
@@ -804,5 +807,46 @@ BuildMemoryAllocationHob (
   //
   ZeroMem (Hob->AllocDescriptor.Reserved, sizeof (Hob->AllocDescriptor.Reserved));
 }
+
+
+
+VOID
+EFIAPI
+BuildExtractSectionHob (
+  IN  EFI_GUID                                  *Guid,
+  IN  EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER   SectionGetInfo,
+  IN  EXTRACT_GUIDED_SECTION_DECODE_HANDLER     SectionExtraction
+  )
+{
+  EXTRACT_SECTION_DATA Data;
+  
+  Data.SectionGetInfo    = SectionGetInfo;
+  Data.SectionExtraction = SectionExtraction;
+  BuildGuidDataHob (Guid, &Data, sizeof (Data));
+}
+
+PE_COFF_LOADER_PROTOCOL gPeCoffProtocol = {
+  PeCoffLoaderGetImageInfo,
+  PeCoffLoaderLoadImage,
+  PeCoffLoaderRelocateImage,
+  PeCoffLoaderImageReadFromMemory,
+  PeCoffLoaderRelocateImageForRuntime,
+  PeCoffLoaderUnloadImage
+};
+
+
+
+VOID
+EFIAPI
+BuildPeCoffLoaderHob (
+  VOID
+  )
+{
+  VOID  *Ptr;      
+  
+  Ptr = &gPeCoffProtocol;
+  BuildGuidDataHob (&gPeCoffLoaderProtocolGuid, &Ptr, sizeof (VOID *));  
+}
+
 
 

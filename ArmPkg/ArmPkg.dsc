@@ -48,25 +48,15 @@
   SemihostLib|ArmPkg/Library/SemihostLib/SemihostLib.inf
   UncachedMemoryAllocationLib|ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
   DxeServicesTableLib|MdePkg/Library/DxeServicesTableLib/DxeServicesTableLib.inf
+  DefaultExceptioHandlerLib|ArmPkg/Library/DefaultExceptionHandlerLib/DefaultExceptionHandlerLib.inf
 
   ArmLib|ArmPkg/Library/ArmLib/ArmCortexA/ArmCortexArmLib.inf
   CpuLib|MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
+  ArmDisassemblerLib|ArmPkg/Library/ArmDisassemblerLib/ArmDisassemblerLib.inf
 
 [LibraryClasses.ARM]
-  #
-  # Note: This NULL library feature is not yet in the edk2/BaseTools, but it is checked in to 
-  # the BaseTools project. So you need to build with the BaseTools project util this feature gets synced.
-  #
   NULL|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
 
-[BuildOptions]
-  XCODE:*_*_ARM_ARCHCC_FLAGS     == -arch armv6 -march=armv6
-  XCODE:*_*_ARM_ARCHASM_FLAGS    == -arch armv6
-  XCODE:*_*_ARM_ARCHDLINK_FLAGS  == -arch armv6
-
-  RVCT:*_*_ARM_ARCHCC_FLAGS     == --cpu Cortex-A8
-  RVCT:*_*_ARM_ARCHASM_FLAGS    == --cpu Cortex-A8
- 
 
 [Components.common]
   ArmPkg/Library/ArmCacheMaintenanceLib/ArmCacheMaintenanceLib.inf
@@ -83,7 +73,8 @@
   ArmPkg/Library/SemihostLib/SemihostLib.inf
   ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
   ArmPkg/Library/DebugUncachedMemoryAllocationLib/DebugUncachedMemoryAllocationLib.inf
-  ArmPkg/Library/RviPeCoffExtraActionLib/RviPeCoffExtraActionLib.inf
+  ArmPkg/Library/RvdPeCoffExtraActionLib/RvdPeCoffExtraActionLib.inf
+  ArmPkg/Library/DefaultExceptionHandlerLib/DefaultExceptionHandlerLib.inf
 
   ArmPkg/Drivers/CpuDxe/CpuDxe.inf
   ArmPkg/Drivers/DebugSupportDxe/DebugSupportDxe.inf

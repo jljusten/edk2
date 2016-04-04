@@ -25,10 +25,62 @@
 #include <Library/UefiLib.h>
 #include <Library/PcdLib.h>
 #include <Library/EfiFileLib.h>
+#include <Library/ArmDisassemblerLib.h>
+
+//PcdEmbeddedFdBaseAddress
+
+/**
+  Fill Me In
+
+  Argv[0] - "%CommandName%"
+
+  @param  Argc   Number of command arguments in Argv
+  @param  Argv   Array of strings that represent the parsed command line. 
+                 Argv[0] is the comamnd name
+
+  @return EFI_SUCCESS
+
+**/
+EFI_STATUS
+EblDisassembler (
+  IN UINTN  Argc,
+  IN CHAR8  **Argv
+  )
+{
+  UINT8   *Ptr, *CurrentAddress;
+  UINT32  Address;
+  UINT32  Count;
+  CHAR8   Buffer[80];
+  UINT32  ItBlock;
+  
+  if (Argc < 2) {
+    return EFI_INVALID_PARAMETER;
+  }
+  
+  Address = AsciiStrHexToUintn (Argv[1]);
+  Count   = (Argc > 2) ? (UINT32)AsciiStrHexToUintn (Argv[2]) : 20;
+
+  Ptr = (UINT8 *)(UINTN)Address;  
+  ItBlock = 0;
+  do {
+    CurrentAddress = Ptr;
+    DisassembleInstruction (&Ptr, TRUE, TRUE, &ItBlock, Buffer, sizeof (Buffer));
+    AsciiPrint ("0x%08x: %a\n", CurrentAddress, Buffer);
+  } while (Count-- > 0);
+ 
+
+  return EFI_SUCCESS;
+}
 
 
 GLOBAL_REMOVE_IF_UNREFERENCED const EBL_COMMAND_TABLE mLibCmdTemplate[] =
 {
+  {
+    "disasm address [count]",
+    " disassemble count instructions",
+    NULL,
+    EblDisassembler
+  }
 };
 
 

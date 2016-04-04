@@ -368,8 +368,8 @@ FirmwareVolmeInfoPpiNotifyCallback (
   Status       = EFI_SUCCESS;
   PrivateData  = PEI_CORE_INSTANCE_FROM_PS_THIS (PeiServices);
 
-  if (PrivateData->FvCount >= FixedPcdGet32 (PcdPeiCoreMaxFvSupported)) {
-    DEBUG ((EFI_D_ERROR, "The number of Fv Images (%d) exceed the max supported FVs (%d) in Pei", PrivateData->FvCount + 1, FixedPcdGet32 (PcdPeiCoreMaxFvSupported)));
+  if (PrivateData->FvCount >= PcdGet32 (PcdPeiCoreMaxFvSupported)) {
+    DEBUG ((EFI_D_ERROR, "The number of Fv Images (%d) exceed the max supported FVs (%d) in Pei", PrivateData->FvCount + 1, PcdGet32 (PcdPeiCoreMaxFvSupported)));
     DEBUG ((EFI_D_ERROR, "PcdPeiCoreMaxFvSupported value need be reconfigurated in DSC"));
     ASSERT (FALSE);
   }
@@ -853,6 +853,7 @@ ProcessFvFile (
   EFI_PEI_FV_HANDLE             ParentFvHandle;
   EFI_FIRMWARE_VOLUME_HEADER    *FvHeader;
   EFI_FV_FILE_INFO              FileInfo;
+  UINT64                        FvLength;
   
   //
   // Check if this EFI_FV_FILETYPE_FIRMWARE_VOLUME_IMAGE file has already
@@ -890,7 +891,7 @@ ProcessFvFile (
   //
   // FvAlignment must be more than 8 bytes required by FvHeader structure.
   //
-  FvAlignment = 1 << ((FvHeader->Attributes & EFI_FVB2_ALIGNMENT) >> 16);
+  FvAlignment = 1 << ((ReadUnaligned32 (&FvHeader->Attributes) & EFI_FVB2_ALIGNMENT) >> 16);
   if (FvAlignment < 8) {
     FvAlignment = 8;
   }
@@ -899,11 +900,12 @@ ProcessFvFile (
   // Check FvImage
   //
   if ((UINTN) FvHeader % FvAlignment != 0) {
-    NewFvBuffer = AllocateAlignedPages (EFI_SIZE_TO_PAGES ((UINT32) FvHeader->FvLength), FvAlignment);
+    FvLength    = ReadUnaligned64 (&FvHeader->FvLength);
+    NewFvBuffer = AllocateAlignedPages (EFI_SIZE_TO_PAGES ((UINT32) FvLength), FvAlignment);
     if (NewFvBuffer == NULL) {
       return EFI_OUT_OF_RESOURCES;
     }
-    CopyMem (NewFvBuffer, FvHeader, (UINTN) FvHeader->FvLength);
+    CopyMem (NewFvBuffer, FvHeader, (UINTN) FvLength);
     FvHeader = (EFI_FIRMWARE_VOLUME_HEADER*) NewFvBuffer;
   }
   
@@ -1415,7 +1417,7 @@ PeiReinitializeFv (
   //
   // Fixup all FvPpi pointers for the implementation in flash to permanent memory.
   //
-  for (Index = 0; Index < FixedPcdGet32 (PcdPeiCoreMaxFvSupported); Index ++) {
+  for (Index = 0; Index < PcdGet32 (PcdPeiCoreMaxFvSupported); Index ++) {
     if (PrivateData->Fv[Index].FvPpi == OldFfs2FvPpi) {
       PrivateData->Fv[Index].FvPpi = &mPeiFfs2FvPpi;
     }
@@ -1450,7 +1452,7 @@ AddUnknownFormatFvInfo (
 {
   PEI_CORE_UNKNOW_FORMAT_FV_INFO    *NewUnknownFv;
   
-  if (PrivateData->UnknownFvInfoCount + 1 >= FixedPcdGet32 (PcdPeiCoreMaxPeimPerFv)) {
+  if (PrivateData->UnknownFvInfoCount + 1 >= PcdGet32 (PcdPeiCoreMaxPeimPerFv)) {
     return EFI_OUT_OF_RESOURCES;
   }
   

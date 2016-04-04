@@ -164,6 +164,12 @@ WriteBootToOsPerformanceData (
   UINT64                    StartValue;
   UINT64                    EndValue;
   BOOLEAN                   CountUp;
+  UINTN                     EntryIndex;
+  UINTN                     NumPerfEntries;
+  //
+  // List of flags indicating PerfEntry contains DXE handle
+  //
+  BOOLEAN                   *PerfEntriesAsDxeHandle;
 
   //
   // Retrieve time stamp count as early as possible
@@ -224,7 +230,19 @@ WriteBootToOsPerformanceData (
   Ptr        = (UINT8 *) ((UINT32) mAcpiLowMemoryBase + sizeof (PERF_HEADER));
   LimitCount = (AcpiLowMemoryLength - sizeof (PERF_HEADER)) / sizeof (PERF_DATA);
 
-
+  NumPerfEntries = 0;
+  LogEntryKey    = 0;
+  while ((LogEntryKey = GetPerformanceMeasurement (
+                          LogEntryKey,
+                          &Handle,
+                          &Token,
+                          &Module,
+                          &StartTicker,
+                          &EndTicker)) != 0) {
+    NumPerfEntries++;
+  }
+  PerfEntriesAsDxeHandle = AllocateZeroPool (NumPerfEntries * sizeof (BOOLEAN));
+  ASSERT (PerfEntriesAsDxeHandle != NULL);
   
   //
   // Get DXE drivers performance
@@ -232,6 +250,7 @@ WriteBootToOsPerformanceData (
   for (Index = 0; Index < NoHandles; Index++) {
     Ticker = 0;
     LogEntryKey = 0;
+    EntryIndex  = 0;
     while ((LogEntryKey = GetPerformanceMeasurement (
                             LogEntryKey,
                             &Handle,
@@ -239,7 +258,17 @@ WriteBootToOsPerformanceData (
                             &Module,
                             &StartTicker,
                             &EndTicker)) != 0) {
+      if (Handle == Handles[Index] && !PerfEntriesAsDxeHandle[EntryIndex]) {
+        PerfEntriesAsDxeHandle[EntryIndex] = TRUE;
+      }
+      EntryIndex++;
       if ((Handle == Handles[Index]) && (EndTicker != 0)) {
+        if (StartTicker == 1) {
+          StartTicker = StartValue;
+        }
+        if (EndTicker == 1) {
+          EndTicker = StartValue;
+        }
         Ticker += CountUp ? (EndTicker - StartTicker) : (StartTicker - EndTicker);
       }
     }
@@ -263,12 +292,11 @@ WriteBootToOsPerformanceData (
     }
   }
 
-  FreePool (Handles);
-
   //
   // Get inserted performance data
   //
   LogEntryKey = 0;
+  EntryIndex  = 0;
   while ((LogEntryKey = GetPerformanceMeasurement (
                           LogEntryKey,
                           &Handle,
@@ -276,11 +304,17 @@ WriteBootToOsPerformanceData (
                           &Module,
                           &StartTicker,
                           &EndTicker)) != 0) {
-    if (Handle == NULL && EndTicker != 0) {
+    if (!PerfEntriesAsDxeHandle[EntryIndex] && EndTicker != 0) {
 
       ZeroMem (&mPerfData, sizeof (PERF_DATA));
 
       AsciiStrnCpy (mPerfData.Token, Token, PERF_TOKEN_LENGTH);
+      if (StartTicker == 1) {
+        StartTicker = StartValue;
+      }
+      if (EndTicker == 1) {
+        EndTicker = StartValue;
+      }
       Ticker = CountUp ? (EndTicker - StartTicker) : (StartTicker - EndTicker);
 
       mPerfData.Duration = (UINT32) DivU64x32 (Ticker, (UINT32) Freq);
@@ -293,9 +327,13 @@ WriteBootToOsPerformanceData (
         goto Done;
       }
     }
+    EntryIndex++;
   }
 
 Done:
+
+  FreePool (Handles);
+  FreePool (PerfEntriesAsDxeHandle);
 
   mPerfHeader.Signiture = PERFORMANCE_SIGNATURE;
 

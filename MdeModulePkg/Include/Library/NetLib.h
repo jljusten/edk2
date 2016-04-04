@@ -1093,6 +1093,40 @@ NetLibGetMacString (
   );
 
 /**
+  Detect media status for specified network device.
+
+  The underlying UNDI driver may or may not support reporting media status from
+  GET_STATUS command (PXE_STATFLAGS_GET_STATUS_NO_MEDIA_SUPPORTED). This routine
+  will try to invoke Snp->GetStatus() to get the media status: if media already
+  present, it return directly; if media not present, it will stop SNP and then
+  restart SNP to get the latest media status, this give chance to get the correct
+  media status for old UNDI driver which doesn't support reporting media status
+  from GET_STATUS command.
+  Note: there will be two limitations for current algorithm:
+  1) for UNDI with this capability, in case of cable is not attached, there will
+     be an redundant Stop/Start() process;
+  2) for UNDI without this capability, in case cable is attached in UNDI
+     initialize while unattached latter, NetLibDetectMedia() will report
+     MediaPresent as TRUE, this cause upper layer apps wait for timeout time.
+
+  @param[in]   ServiceHandle    The handle where network service binding protocols are
+                                installed on.
+  @param[out]  MediaPresent     The pointer to store the media status.
+
+  @retval EFI_SUCCESS           Media detection success.
+  @retval EFI_INVALID_PARAMETER ServiceHandle is not valid network device handle.
+  @retval EFI_UNSUPPORTED       Network device does not support media detection.
+  @retval EFI_DEVICE_ERROR      SNP is in unknown state.
+
+**/
+EFI_STATUS
+EFIAPI
+NetLibDetectMedia (
+  IN  EFI_HANDLE            ServiceHandle,
+  OUT BOOLEAN               *MediaPresent
+  );
+
+/**
   Create an IPv4 device path node.
 
   The header type of IPv4 device path node is MESSAGING_DEVICE_PATH.
@@ -1195,9 +1229,97 @@ NetLibDefaultUnload (
   IN EFI_HANDLE             ImageHandle
   );
 
+/**
+  Convert one Null-terminated ASCII string (decimal dotted) to EFI_IPv4_ADDRESS.
+
+  @param[in]      String         The pointer to the Ascii string.
+  @param[out]     Ip4Address     The pointer to the converted IPv4 address.
+
+  @retval EFI_SUCCESS            Convert to IPv4 address successfully.
+  @retval EFI_INVALID_PARAMETER  The string is mal-formated or Ip4Address is NULL.
+
+**/
+EFI_STATUS
+NetLibAsciiStrToIp4 (
+  IN CONST CHAR8                 *String,
+  OUT      EFI_IPv4_ADDRESS      *Ip4Address
+  );
+
+/**
+  Convert one Null-terminated ASCII string to EFI_IPv6_ADDRESS. The format of the
+  string is defined in RFC 4291 - Text Pepresentation of Addresses.
+
+  @param[in]      String         The pointer to the Ascii string.
+  @param[out]     Ip6Address     The pointer to the converted IPv6 address.
+
+  @retval EFI_SUCCESS            Convert to IPv6 address successfully.
+  @retval EFI_INVALID_PARAMETER  The string is mal-formated or Ip6Address is NULL.
+
+**/
+EFI_STATUS
+NetLibAsciiStrToIp6 (
+  IN CONST CHAR8                 *String,
+  OUT      EFI_IPv6_ADDRESS      *Ip6Address
+  );
+
+/**
+  Convert one Null-terminated Unicode string (decimal dotted) to EFI_IPv4_ADDRESS.
+
+  @param[in]      String         The pointer to the Ascii string.
+  @param[out]     Ip4Address     The pointer to the converted IPv4 address.
+
+  @retval EFI_SUCCESS            Convert to IPv4 address successfully.
+  @retval EFI_INVALID_PARAMETER  The string is mal-formated or Ip4Address is NULL.
+  @retval EFI_OUT_OF_RESOURCES   Fail to perform the operation due to lack of resource.
+
+**/
+EFI_STATUS
+NetLibStrToIp4 (
+  IN CONST CHAR16                *String,
+  OUT      EFI_IPv4_ADDRESS      *Ip4Address
+  );
+
+/**
+  Convert one Null-terminated Unicode string to EFI_IPv6_ADDRESS.  The format of
+  the string is defined in RFC 4291 - Text Pepresentation of Addresses.
+
+  @param[in]      String         The pointer to the Ascii string.
+  @param[out]     Ip6Address     The pointer to the converted IPv6 address.
+
+  @retval EFI_SUCCESS            Convert to IPv6 address successfully.
+  @retval EFI_INVALID_PARAMETER  The string is mal-formated or Ip6Address is NULL.
+  @retval EFI_OUT_OF_RESOURCES   Fail to perform the operation due to lack of resource.
+
+**/
+EFI_STATUS
+NetLibStrToIp6 (
+  IN CONST CHAR16                *String,
+  OUT      EFI_IPv6_ADDRESS      *Ip6Address
+  );
+
+/**
+  Convert one Null-terminated Unicode string to EFI_IPv6_ADDRESS and prefix length.
+  The format of the string is defined in RFC 4291 - Text Pepresentation of Addresses
+  Prefixes: ipv6-address/prefix-length.
+
+  @param[in]      String         The pointer to the Ascii string.
+  @param[out]     Ip6Address     The pointer to the converted IPv6 address.
+  @param[out]     PrefixLength   The pointer to the converted prefix length.
+
+  @retval EFI_SUCCESS            Convert to IPv6 address successfully.
+  @retval EFI_INVALID_PARAMETER  The string is mal-formated or Ip6Address is NULL.
+  @retval EFI_OUT_OF_RESOURCES   Fail to perform the operation due to lack of resource.
+
+**/
+EFI_STATUS
+NetLibStrToIp6andPrefix (
+  IN CONST CHAR16                *String,
+  OUT      EFI_IPv6_ADDRESS      *Ip6Address,
+  OUT      UINT8                 *PrefixLength
+  );
 
 //
-//Various signatures
+// Various signatures
 //
 #define  NET_BUF_SIGNATURE    SIGNATURE_32 ('n', 'b', 'u', 'f')
 #define  NET_VECTOR_SIGNATURE SIGNATURE_32 ('n', 'v', 'e', 'c')

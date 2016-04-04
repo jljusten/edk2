@@ -117,6 +117,10 @@
 [LibraryClasses.ARM]
   SemihostLib|ArmPkg/Library/SemihostLib/SemihostLib.inf
 
+[LibraryClasses.ARM]
+  NULL|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
+
+
 ################################################################################
 #
 # Pcd Section - list of all PCD Entries defined by this Platform
@@ -242,9 +246,7 @@
   EmbeddedPkg/Library/TemplateSerialPortLib/TemplateSerialPortLib.inf
   EmbeddedPkg/Library/TemplateResetSystemLib/TemplateResetSystemLib.inf
   EmbeddedPkg/Library/TemplateRealTimeClockLib/TemplateRealTimeClockLib.inf
-
-####ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf ???
-
+  EmbeddedPkg/Library/LzmaHobCustomDecompressLib/LzmaHobCustomDecompressLib.inf
 
   EmbeddedPkg/Ebl/Ebl.inf
 ####  EmbeddedPkg/EblExternCmd/EblExternCmd.inf
@@ -254,11 +256,7 @@
   EmbeddedPkg/ResetRuntimeDxe/ResetRuntimeDxe.inf
   EmbeddedPkg/SerialDxe/SerialDxe.inf
   EmbeddedPkg/SimpleTextInOutSerial/SimpleTextInOutSerial.inf
-  EmbeddedPkg/TemplateBds/TemplateBds.inf
-  EmbeddedPkg/TemplateCpuDxe/TemplateCpuDxe.inf
-  EmbeddedPkg/TemplateMetronomeDxe/TemplateMetronomeDxe.inf
-  EmbeddedPkg/TemplateSec/TemplateSec.inf
-  EmbeddedPkg/TemplateTimerDxe/TemplateTimerDxe.inf
+  EmbeddedPkg/MetronomeDxe/MetronomeDxe.inf
 
   
   

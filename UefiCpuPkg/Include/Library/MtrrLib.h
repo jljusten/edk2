@@ -1,7 +1,7 @@
 /** @file
   MTRR setting library
 
-  Copyright (c) 2008 - 2009, Intel Corporation
+  Copyright (c) 2008 - 2010, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -19,9 +19,23 @@
 // According to IA32 SDM, MTRRs number and msr offset are always consistent
 // for IA32 processor family
 //
-#define  MTRR_NUMBER_OF_VARIABLE_MTRR   8
+
+//
+// The semantics of below macro is MAX_MTRR_NUMBER_OF_VARIABLE_MTRR, the real number can be read out from MTRR_CAP register.
+//
+#define  MTRR_NUMBER_OF_VARIABLE_MTRR  32
+//
+// Firmware need reserve 2 MTRR for OS
+//
+#define  RESERVED_FIRMWARE_VARIABLE_MTRR_NUMBER  2
+
 #define  MTRR_NUMBER_OF_FIXED_MTRR      11
+//
+// Below macro is deprecated, and should not be used.
+//
 #define  FIRMWARE_VARIABLE_MTRR_NUMBER  6
+#define  MTRR_LIB_IA32_MTRR_CAP                      0x0FE
+#define  MTRR_LIB_IA32_MTRR_CAP_VCNT_MASK            0x0FF
 #define  MTRR_LIB_IA32_MTRR_FIX64K_00000             0x250
 #define  MTRR_LIB_IA32_MTRR_FIX16K_80000             0x258
 #define  MTRR_LIB_IA32_MTRR_FIX16K_A0000             0x259
@@ -34,6 +48,9 @@
 #define  MTRR_LIB_IA32_MTRR_FIX4K_F0000              0x26E
 #define  MTRR_LIB_IA32_MTRR_FIX4K_F8000              0x26F
 #define  MTRR_LIB_IA32_VARIABLE_MTRR_BASE            0x200
+//
+// Below macro is deprecated, and should not be used.
+//
 #define  MTRR_LIB_IA32_VARIABLE_MTRR_END             0x20F
 #define  MTRR_LIB_IA32_MTRR_DEF_TYPE                 0x2FF
 #define  MTRR_LIB_MSR_VALID_MASK                     0xFFFFFFFFFULL
@@ -111,15 +128,27 @@ typedef enum {
 #define  MTRR_CACHE_WRITE_BACK       6
 #define  MTRR_CACHE_INVALID_TYPE     7
 
-//
-// structure for memory attribute descriptor according MTRR setting
-//
-typedef struct _MTRR_MEMORY_ATTRIBUTE_MAP_ {
-	PHYSICAL_ADDRESS       StartAddress;
-	PHYSICAL_ADDRESS       EndAddress;
-	MTRR_MEMORY_CACHE_TYPE Attribute;
-} MTRR_MEMORY_ATTRIBUTE_MAP;
+/**
+  Returns the variable MTRR count for the CPU.
 
+  @return Variable MTRR count
+
+**/
+UINT32
+GetVariableMtrrCount (
+  VOID
+  );
+
+/**
+  Returns the firmware usable variable MTRR count for the CPU.
+
+  @return Firmware usable variable MTRR count
+
+**/
+UINT32
+GetFirmwareVariableMtrrCount (
+  VOID
+  );
 
 /**
   This function attempts to set the attributes for a memory range.

@@ -32,12 +32,11 @@
 
 
 [LibraryClasses.common]
-!if TARGET_HACK == DEBUG
-  DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
-!else
+!if DEBUG_TARGET == RELEASE
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+!else
+  DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
 !endif
-
 
   ArmLib|ArmPkg/Library/ArmLib/ArmCortexA/ArmCortexArmLib.inf
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
@@ -58,7 +57,6 @@
   
   
   PeCoffGetEntryPointLib|MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
-  PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
   
   #
   # Uncomment (and comment out the next line) For RealView Debugger. The Standard IO window 
@@ -71,9 +69,10 @@
 
   
   CacheMaintenanceLib|ArmPkg/Library/ArmCacheMaintenanceLib/ArmCacheMaintenanceLib.inf
+  DefaultExceptioHandlerLib|ArmPkg/Library/DefaultExceptionHandlerLib/DefaultExceptionHandlerLib.inf
   PrePiLib|EmbeddedPkg/Library/PrePiLib/PrePiLib.inf
   
-  SerialPortLib|BeagleBoardPkg/Library/SerialPortLib/SerialPortLib.inf
+  SerialPortLib|Omap35xxPkg/Library/SerialPortLib/SerialPortLib.inf
   SemihostLib|ArmPkg/Library/SemihostLib/SemihostLib.inf
   
   RealTimeClockLib|EmbeddedPkg/Library/TemplateRealTimeClockLib/TemplateRealTimeClockLib.inf
@@ -106,11 +105,12 @@
 
   CpuLib|MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
 
-  TimerLib|BeagleBoardPkg/Library/BeagleBoardTimerLib/BeagleBoardTimerLib.inf  
-  OmapLib|BeagleBoardPkg/Library/OmapLib/OmapLib.inf
+  TimerLib|Omap35xxPkg/Library/BeagleBoardTimerLib/BeagleBoardTimerLib.inf  
+  OmapLib|Omap35xxPkg/Library/OmapLib/OmapLib.inf
   EblNetworkLib|EmbeddedPkg/Library/EblNetworkLib/EblNetworkLib.inf
   
-  GdbSerialLib|BeagleBoardPkg/Library/GdbSerialLib/GdbSerialLib.inf
+  GdbSerialLib|Omap35xxPkg/Library/GdbSerialLib/GdbSerialLib.inf
+  ArmDisassemblerLib|ArmPkg/Library/ArmDisassemblerLib/ArmDisassemblerLib.inf
 
 
 [LibraryClasses.common.SEC]
@@ -120,6 +120,7 @@
   UefiDecompressLib|MdePkg/Library/BaseUefiDecompressLib/BaseUefiDecompressLib.inf
   ExtractGuidedSectionLib|EmbeddedPkg/Library/PrePiExtractGuidedSectionLib/PrePiExtractGuidedSectionLib.inf
   LzmaDecompressLib|IntelFrameworkModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
+  PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
 
 [LibraryClasses.common.PEI_CORE]
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
@@ -133,6 +134,8 @@
   ExtractGuidedSectionLib|MdePkg/Library/DxeExtractGuidedSectionLib/DxeExtractGuidedSectionLib.inf
   UefiDecompressLib|MdePkg/Library/BaseUefiDecompressLib/BaseUefiDecompressLib.inf
   DxeServicesLib|MdePkg/Library/DxeServicesLib/DxeServicesLib.inf
+  PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
+#  PeCoffLib|EmbeddedPkg/Library/DxeHobPeCoffLib/DxeHobPeCoffLib.inf
 
 [LibraryClasses.common.DXE_DRIVER]
   ReportStatusCodeLib|IntelFrameworkModulePkg/Library/DxeReportStatusCodeLibFramework/DxeReportStatusCodeLib.inf
@@ -154,13 +157,11 @@
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
   ReportStatusCodeLib|IntelFrameworkModulePkg/Library/DxeReportStatusCodeLibFramework/DxeReportStatusCodeLib.inf
   CapsuleLib|MdeModulePkg/Library/DxeCapsuleLibNull/DxeCapsuleLibNull.inf
+  PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
+#  PeCoffLib|EmbeddedPkg/Library/DxeHobPeCoffLib/DxeHobPeCoffLib.inf
 
 
 [LibraryClasses.ARM]
-  #
-  # Note: This NULL library feature is not yet in the edk2/BaseTools, but it is checked in to 
-  # the BaseTools project. So you need to build with the BaseTools project util this feature gets synced.
-  #
   NULL|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
 
 
@@ -168,10 +169,10 @@
   XCODE:*_*_ARM_ARCHCC_FLAGS     == -arch armv6 -march=armv6
   XCODE:*_*_ARM_ARCHASM_FLAGS    == -arch armv6
   XCODE:*_*_ARM_ARCHDLINK_FLAGS  == -arch armv6
+  XCODE:RELEASE_*_*_CC_FLAGS     = -DMDEPKG_NDEBUG 
 
-  RVCT:*_*_ARM_ARCHCC_FLAGS     == --cpu Cortex-A8
-  RVCT:*_*_ARM_ARCHASM_FLAGS    == --cpu Cortex-A8
- 
+  RVCT:*_*_ARM_ARCHCC_FLAGS == --cpu Cortex-A8 --thumb
+  RVCT:RELEASE_*_*_CC_FLAGS = -DMDEPKG_NDEBUG 
 
 ################################################################################
 #
@@ -297,9 +298,7 @@
   gBeagleBoardTokenSpaceGuid.PcdBeagleConsoleUart|3
   
   # Timers
-#  gBeagleBoardTokenSpaceGuid.PcdBeagleArchTimer|OMAP3530_GPTIMER3
   gBeagleBoardTokenSpaceGuid.PcdBeagleArchTimer|3
-#  gBeagleBoardTokenSpaceGuid.PcdBeagleFreeTimer|OMAP3530_GPTIMER4
   gBeagleBoardTokenSpaceGuid.PcdBeagleFreeTimer|4
   gEmbeddedTokenSpaceGuid.PcdTimerPeriod|100000
   gEmbeddedTokenSpaceGuid.PcdEmbeddedFdPerformanceCounterPeriodInNanoseconds|77
@@ -330,6 +329,7 @@
       PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
       NULL|MdeModulePkg/Library/DxeCrc32GuidedSectionExtractLib/DxeCrc32GuidedSectionExtractLib.inf
       NULL|IntelFrameworkModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
+#      NULL|EmbeddedPkg/Library/LzmaHobCustomDecompressLib/LzmaHobCustomDecompressLib.inf    
   }
 
   ArmPkg/Drivers/CpuDxe/CpuDxe.inf
@@ -344,7 +344,7 @@
   
   EmbeddedPkg/ResetRuntimeDxe/ResetRuntimeDxe.inf
   EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
-  EmbeddedPkg/TemplateMetronomeDxe/TemplateMetronomeDxe.inf
+  EmbeddedPkg/MetronomeDxe/MetronomeDxe.inf
 
   #
   # Semi-hosting filesystem
@@ -362,7 +362,7 @@
   #
   # USB
   #
-  BeagleBoardPkg/PciEmulation/PciEmulation.inf
+  Omap35xxPkg/PciEmulation/PciEmulation.inf
 
   #NOTE: Open source EHCI stack doesn't work on Beagleboard.
   #NOTE: UsbBus and UsbMassStorage don't work using iPhone SDK tool chain.
@@ -376,29 +376,29 @@
   #
   # Nand Flash
   #
-  BeagleBoardPkg/Flash/Flash.inf
+  Omap35xxPkg/Flash/Flash.inf
 
   #
   # MMC/SD
   #
-  BeagleBoardPkg/MMCHSDxe/MMCHS.inf
+  Omap35xxPkg/MMCHSDxe/MMCHS.inf
   
   #
   # I2C
   #
-  BeagleBoardPkg/SmbusDxe/Smbus.inf
+  Omap35xxPkg/SmbusDxe/Smbus.inf
   
   #
   # SoC Drivers
   #
-  BeagleBoardPkg/Gpio/Gpio.inf
-  BeagleBoardPkg/InterruptDxe/InterruptDxe.inf
-  BeagleBoardPkg/TimerDxe/TimerDxe.inf 
+  Omap35xxPkg/Gpio/Gpio.inf
+  Omap35xxPkg/InterruptDxe/InterruptDxe.inf
+  Omap35xxPkg/TimerDxe/TimerDxe.inf 
   
   #
   # Power IC
   #
-  BeagleBoardPkg/TPS65950Dxe/TPS65950.inf
+  Omap35xxPkg/TPS65950Dxe/TPS65950.inf
   
   #
   # Application

@@ -73,7 +73,16 @@ case `uname` in
       ;;
 esac
 
-BUILD_ROOT=$WORKSPACE/Build/BeagleBoard/DEBUG_"$TARGET_TOOLS"
+TARGET=DEBUG
+for arg in "$@"
+do
+  if [[ $arg == RELEASE ]]; 
+  then
+    TARGET=RELEASE
+  fi
+done
+
+BUILD_ROOT=$WORKSPACE/Build/BeagleBoard/"$TARGET"_"$TARGET_TOOLS"
 GENERATE_IMAGE=$WORKSPACE/BeagleBoardPkg/Tools/generate_image
 FLASH_BOOT=$BUILD_ROOT/FV/BeagleBoard_EFI_flashboot.fd
 
@@ -89,7 +98,12 @@ fi
 #
 # Build the edk2 BeagleBoard code
 #
-build -p $WORKSPACE/BeagleBoardPkg/BeagleBoardPkg.dsc -a ARM -t $TARGET_TOOLS $1 $2 $3 $4 $5 $6 $7 $8
+if [[ $TARGET == RELEASE ]]; then
+  build -p $WORKSPACE/BeagleBoardPkg/BeagleBoardPkg.dsc -a ARM -t $TARGET_TOOLS -b $TARGET -D DEBUG_TARGET=RELEASE $2 $3 $4 $5 $6 $7 $8
+else
+  build -p $WORKSPACE/BeagleBoardPkg/BeagleBoardPkg.dsc -a ARM -t $TARGET_TOOLS -b $TARGET $1 $2 $3 $4 $5 $6 $7 $8
+fi
+
 
 for arg in "$@"
 do

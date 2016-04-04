@@ -1,7 +1,7 @@
-#/** @file
+## @file
 # EFI/PI Reference Module Package for All Architectures
 #
-# Copyright (c) 2007 - 2009, Intel Corporation
+# Copyright (c) 2007 - 2010, Intel Corporation
 #
 #  All rights reserved. This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -11,7 +11,7 @@
 #    THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 #    WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #
-#**/
+##
 
 [Defines]
   PLATFORM_NAME                  = MdeModule
@@ -179,28 +179,6 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxPeiPerformanceLogEntries|28
   gEfiMdeModulePkgTokenSpaceGuid.PcdVpdBaseAddress|0x0
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxPeiPcdCallBackNumberPerPcdEntry|0x08
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueEfiWatchDogTimerExpired|0x00011003   # EFI_COMPUTING_UNIT_HOST_PROCESSOR | EFI_CU_HP_EC_TIMER_EXPIRED
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueMemoryTestStarted|0x00051006         # EFI_SOFTWARE_EFI_BOOT_SERVICE | EFI_SW_RS_PC_SET_VIRTUAL_ADDRESS_MAP
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueSetVirtualAddressMap|0x03101004      # EFI_COMPUTING_UNIT_MEMORY | EFI_CU_MEMORY_PC_TEST
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueUncorrectableMemoryError|0x0005100   # EFI_COMPUTING_UNIT_MEMORY | EFI_CU_MEMORY_EC_UNCORRECTABLE3
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueRemoteConsoleError|0x01040006        # EFI_PERIPHERAL_REMOTE_CONSOLE | EFI_P_EC_CONTROLLER_ERROR
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueRemoteConsoleReset|0x01040001        # EFI_PERIPHERAL_REMOTE_CONSOLE | EFI_P_PC_RESET
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueRemoteConsoleInputError|0x01040007   # EFI_PERIPHERAL_REMOTE_CONSOLE | EFI_P_EC_INPUT_ERROR
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueRemoteConsoleOutputError|0x01040008  # EFI_PERIPHERAL_REMOTE_CONSOLE | EFI_P_EC_OUTPUT_ERROR
-
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueMouseInterfaceError|0x01020005       # EFI_PERIPHERAL_MOUSE | EFI_P_EC_INTERFACE_ERROR
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueMouseEnable|0x01020004               # EFI_PERIPHERAL_MOUSE | EFI_P_PC_ENABLE
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueMouseDisable|0x01020002              # EFI_PERIPHERAL_MOUSE | EFI_P_PC_DISABLE
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardEnable|0x01010004            # EFI_PERIPHERAL_KEYBOARD | EFI_P_PC_ENABLE
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardPresenceDetect|0x01010003    # EFI_PERIPHERAL_KEYBOARD | EFI_P_PC_PRESENCE_DETECT
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardDisable|0x01010002           # EFI_PERIPHERAL_KEYBOARD | EFI_P_PC_DISABLE
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardReset|0x01010001             # EFI_PERIPHERAL_KEYBOARD | EFI_P_PC_RESET
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardClearBuffer|0x01011000       # EFI_PERIPHERAL_KEYBOARD | EFI_P_KEYBOARD_PC_CLEAR_BUFFER
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardSelfTest|0x01011001          # EFI_PERIPHERAL_KEYBOARD | EFI_P_KEYBOARD_PC_SELF_TEST
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardInterfaceError|0x01010005    # EFI_PERIPHERAL_KEYBOARD | EFI_P_EC_INTERFACE_ERROR
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueKeyboardInputError|0x01010007        # EFI_PERIPHERAL_KEYBOARD | EFI_P_EC_INPUT_ERROR
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueMouseInputError|0x01020007           # EFI_PERIPHERAL_MOUSE | EFI_P_EC_INPUT_ERROR
-  gEfiMdePkgTokenSpaceGuid.PcdStatusCodeValueMouseReset|0x01020001                # EFI_PERIPHERAL_MOUSE | EFI_P_PC_RESET
 
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultBaudRate|115200
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultDataBits|8
@@ -311,7 +289,6 @@
   MdeModulePkg/Universal/Network/SnpDxe/SnpDxe.inf
   MdeModulePkg/Universal/Network/Tcp4Dxe/Tcp4Dxe.inf
   MdeModulePkg/Universal/Network/Udp4Dxe/Udp4Dxe.inf
-  MdeModulePkg/Universal/Network/UefiPxeBcDxe/UefiPxeBcDxe.inf
 
   MdeModulePkg/Universal/PcatSingleSegmentPciCfg2Pei/PcatSingleSegmentPciCfg2Pei.inf
   MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
@@ -337,7 +314,9 @@
   MdeModulePkg/Universal/StatusCodeHandler/Pei/StatusCodeHandlerPei.inf
   MdeModulePkg/Universal/StatusCodeHandler/RuntimeDxe/StatusCodeHandlerRuntimeDxe.inf
 
+
 [Components.IA32, Components.X64]
+  MdeModulePkg/Universal/Network/UefiPxeBcDxe/UefiPxeBcDxe.inf
   MdeModulePkg/Library/SmmReportStatusCodeLib/SmmReportStatusCodeLib.inf
   MdeModulePkg/Universal/DebugSupportDxe/DebugSupportDxe.inf
   MdeModulePkg/Universal/EbcDxe/EbcDxe.inf
@@ -347,6 +326,7 @@
 
 
 [Components.IPF]
+  MdeModulePkg/Universal/Network/UefiPxeBcDxe/UefiPxeBcDxe.inf
   MdeModulePkg/Universal/DebugSupportDxe/DebugSupportDxe.inf
   MdeModulePkg/Universal/EbcDxe/EbcDxe.inf
 

@@ -13,14 +13,59 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 #include "InternalBdsLib.h"
+#include "String.h"
 
 BOOLEAN mEnumBootDevice = FALSE;
+EFI_HII_HANDLE gBdsLibStringPackHandle = NULL;
 
 ///
 /// This GUID is used for an EFI Variable that stores the front device pathes
 /// for a partial device path that starts with the HD node.
 ///
 EFI_GUID  mHdBootVariablePrivateGuid = { 0xfab7e9e1, 0x39dd, 0x4f2b, { 0x84, 0x8, 0xe2, 0xe, 0x90, 0x6c, 0xb6, 0xde } };
+
+///
+/// This GUID is used for register UNI string.
+///
+EFI_GUID mBdsLibStringPackGuid = {  0x3b4d9b23, 0x95ac, 0x44f6, { 0x9f, 0xcd, 0xe, 0x95, 0x94, 0x58, 0x6c, 0x72 } };
+
+///
+/// This GUID is used for Set/Get platform language into/from variable at last time enumeration to ensure the enumeration will
+/// only execute once.
+///
+EFI_GUID mBdsLibLastLangGuid = { 0xe8c545b, 0xa2ee, 0x470d, { 0x8e, 0x26, 0xbd, 0xa1, 0xa1, 0x3c, 0xa, 0xa3 } };
+
+/**
+  The constructor function register UNI strings into imageHandle.
+  
+  It will ASSERT() if that operation fails and it will always return EFI_SUCCESS. 
+
+  @param  ImageHandle   The firmware allocated handle for the EFI image.
+  @param  SystemTable   A pointer to the EFI System Table.
+  
+  @retval EFI_SUCCESS   The constructor successfully added string package.
+  @retval Other value   The constructor can't add string package.
+
+**/
+EFI_STATUS
+EFIAPI
+GenericBdsLibConstructor (
+  IN EFI_HANDLE        ImageHandle,
+  IN EFI_SYSTEM_TABLE  *SystemTable
+  )
+{
+
+  gBdsLibStringPackHandle = HiiAddPackages (
+                              &mBdsLibStringPackGuid,
+                              &ImageHandle,
+                              GenericBdsLibStrings,
+                              NULL
+                              );
+
+  ASSERT (gBdsLibStringPackHandle != NULL);
+
+  return EFI_SUCCESS;
+}
 
 
 
@@ -241,67 +286,13 @@ BdsLibBootViaBootOption (
   }
 
   DEBUG_CODE_BEGIN();
-    UINTN                     DevicePathTypeValue;
-    CHAR16                    *HiiString;
-    CHAR16                    *BootStringNumber;
-    UINTN                     BufferSize;
-  
-    DevicePathTypeValue = BdsGetBootTypeFromDevicePath (Option->DevicePath);
-  
-    //
-    // store number string of boot option temporary.
-    //
-    HiiString = NULL;
-    switch (DevicePathTypeValue) {
-    case BDS_EFI_ACPI_FLOPPY_BOOT:
-      HiiString = L"EFI Floppy";
-      break;
-    case BDS_EFI_MEDIA_CDROM_BOOT:
-    case BDS_EFI_MESSAGE_SATA_BOOT:
-    case BDS_EFI_MESSAGE_ATAPI_BOOT:
-      HiiString = L"EFI DVD/CDROM";
-      break;
-    case BDS_EFI_MESSAGE_USB_DEVICE_BOOT:
-      HiiString = L"EFI USB Device";
-      break;
-    case BDS_EFI_MESSAGE_SCSI_BOOT:
-      HiiString = L"EFI SCSI Device";
-      break;
-    case BDS_EFI_MESSAGE_MISC_BOOT:
-      HiiString = L"EFI Misc Device";
-      break;
-    case BDS_EFI_MESSAGE_MAC_BOOT:
-      HiiString = L"EFI Network";
-      break;
-    case BBS_DEVICE_PATH:
-      //
-      // Do nothing for legacy boot option.
-      //
-      break;
-    default:
-      DEBUG((EFI_D_INFO, "Can not find HiiString for given device path type 0x%x\n", DevicePathTypeValue));
-    }
 
-    //
-    // If found Hii description string then cat Hii string with original description.
-    //
-    if (HiiString != NULL) {
-      BootStringNumber = Option->Description;
-      BufferSize = StrSize(BootStringNumber);
-      BufferSize += StrSize(HiiString);
-      Option->Description = AllocateZeroPool(BufferSize);
-      ASSERT (Option->Description != NULL);
-      StrCpy (Option->Description, HiiString);
-      if (StrnCmp (BootStringNumber, L"0", 1) != 0) {
-        StrCat (Option->Description, L" ");
-        StrCat (Option->Description, BootStringNumber);
-      } 
-      
-      FreePool (BootStringNumber);
+    if (Option->Description == NULL) {
+      DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Booting from unknown device path\n"));
+    } else {
+      DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Booting %S\n", Option->Description));
     }
-  
-    DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Booting %S\n", Option->Description));
-    
+        
   DEBUG_CODE_END();
   
   Status = gBS->LoadImage (
@@ -567,7 +558,9 @@ BdsExpandPartitionPartialDevicePathToFull (
 
           TempNewDevicePath = CachedDevicePath;
           CachedDevicePath = AppendDevicePathInstance (BlockIoDevicePath, CachedDevicePath);
-          FreePool(TempNewDevicePath);
+          if (TempNewDevicePath != NULL) {
+            FreePool(TempNewDevicePath);
+          }
         } else {
           TempNewDevicePath = CachedDevicePath;
           CachedDevicePath = AppendDevicePathInstance (BlockIoDevicePath, CachedDevicePath);
@@ -616,7 +609,9 @@ BdsExpandPartitionPartialDevicePathToFull (
     }
   }
 
-  FreePool (CachedDevicePath);
+  if (CachedDevicePath != NULL) {
+    FreePool (CachedDevicePath);
+  }
   if (BlockIoBuffer != NULL) {
     FreePool (BlockIoBuffer);
   }
@@ -987,8 +982,8 @@ BdsLibEnumerateAllBootOption (
   EFI_HANDLE                    *BlockIoHandles;
   EFI_BLOCK_IO_PROTOCOL         *BlkIo;
   UINTN                         Index;
-  UINTN                         NumberNetworkHandles;
-  EFI_HANDLE                    *NetworkHandles;
+  UINTN                         NumOfLoadFileHandles;
+  EFI_HANDLE                    *LoadFileHandles;
   UINTN                         FvHandleCount;
   EFI_HANDLE                    *FvHandleBuffer;
   EFI_FV_FILETYPE               Type;
@@ -1003,6 +998,8 @@ BdsLibEnumerateAllBootOption (
   UINTN                         NumberFileSystemHandles;
   BOOLEAN                       NeedDelete;
   EFI_IMAGE_DOS_HEADER          DosHeader;
+  CHAR8                         *PlatLang;
+  CHAR8                         *LastLang;
   EFI_IMAGE_OPTIONAL_HEADER_UNION       HdrData;
   EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION   Hdr;
 
@@ -1011,6 +1008,8 @@ BdsLibEnumerateAllBootOption (
   UsbNumber     = 0;
   MiscNumber    = 0;
   ScsiNumber    = 0;
+  PlatLang      = NULL;
+  LastLang      = NULL;
   ZeroMem (Buffer, sizeof (Buffer));
 
   //
@@ -1018,8 +1017,21 @@ BdsLibEnumerateAllBootOption (
   // device from the boot order variable
   //
   if (mEnumBootDevice) {
-    Status = BdsLibBuildOptionFromVar (BdsBootOptionList, L"BootOrder");
-    return Status;
+    LastLang = GetVariable (L"LastEnumLang", &mBdsLibLastLangGuid);
+    PlatLang = GetEfiGlobalVariable (L"PlatformLang");
+    if (LastLang == PlatLang) {
+      Status = BdsLibBuildOptionFromVar (BdsBootOptionList, L"BootOrder");
+      return Status;
+    } else {
+      Status = gRT->SetVariable (
+        L"LastEnumLang",
+        &mBdsLibLastLangGuid,
+        EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_NON_VOLATILE,
+        sizeof (PlatLang),
+        PlatLang
+        );
+      ASSERT_EFI_ERROR (Status);
+    }
   }
 
   //
@@ -1064,7 +1076,11 @@ BdsLibEnumerateAllBootOption (
 
     switch (DevicePathType) {
     case BDS_EFI_ACPI_FLOPPY_BOOT:
-      UnicodeSPrint (Buffer, sizeof (Buffer), L"%d", FloppyNumber);
+      if (FloppyNumber != 0) {
+        UnicodeSPrint (Buffer, sizeof (Buffer), L"%s %d", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_FLOPPY)), FloppyNumber);
+      } else {
+        UnicodeSPrint (Buffer, sizeof (Buffer), L"%s", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_FLOPPY)));
+      }
       BdsLibBuildOptionFromHandle (BlockIoHandles[Index], BdsBootOptionList, Buffer);
       FloppyNumber++;
       break;
@@ -1074,25 +1090,42 @@ BdsLibEnumerateAllBootOption (
     //
     case BDS_EFI_MESSAGE_ATAPI_BOOT:
     case BDS_EFI_MESSAGE_SATA_BOOT:
-      UnicodeSPrint (Buffer, sizeof (Buffer), L"%d", CdromNumber);
+      if (CdromNumber != 0) {
+        UnicodeSPrint (Buffer, sizeof (Buffer), L"%s %d", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_CD_DVD)), CdromNumber);
+      } else {
+        UnicodeSPrint (Buffer, sizeof (Buffer), L"%s", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_CD_DVD)));
+      }
+      DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Buffer: %S\n", Buffer));
       BdsLibBuildOptionFromHandle (BlockIoHandles[Index], BdsBootOptionList, Buffer);
       CdromNumber++;
       break;
 
     case BDS_EFI_MESSAGE_USB_DEVICE_BOOT:
-      UnicodeSPrint (Buffer, sizeof (Buffer), L"%d", UsbNumber);
+      if (UsbNumber != 0) {
+        UnicodeSPrint (Buffer, sizeof (Buffer), L"%s %d", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_USB)), UsbNumber);
+      } else {
+        UnicodeSPrint (Buffer, sizeof (Buffer), L"%s", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_USB)));
+      }
       BdsLibBuildOptionFromHandle (BlockIoHandles[Index], BdsBootOptionList, Buffer);
       UsbNumber++;
       break;
 
     case BDS_EFI_MESSAGE_SCSI_BOOT:
-      UnicodeSPrint (Buffer, sizeof (Buffer), L"%d", ScsiNumber);
+      if (ScsiNumber != 0) {
+        UnicodeSPrint (Buffer, sizeof (Buffer), L"%s %d", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_SCSI)), ScsiNumber);
+      } else {
+        UnicodeSPrint (Buffer, sizeof (Buffer), L"%s", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_SCSI)));
+      }
       BdsLibBuildOptionFromHandle (BlockIoHandles[Index], BdsBootOptionList, Buffer);
       ScsiNumber++;
       break;
 
     case BDS_EFI_MESSAGE_MISC_BOOT:
-      UnicodeSPrint (Buffer, sizeof (Buffer), L"%d", MiscNumber);
+      if (MiscNumber != 0) {
+        UnicodeSPrint (Buffer, sizeof (Buffer), L"%s %d", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_MISC)), MiscNumber);
+      } else {
+        UnicodeSPrint (Buffer, sizeof (Buffer), L"%s", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_MISC)));
+      }
       BdsLibBuildOptionFromHandle (BlockIoHandles[Index], BdsBootOptionList, Buffer);
       MiscNumber++;
       break;
@@ -1154,7 +1187,11 @@ BdsLibEnumerateAllBootOption (
       //
       BdsLibDeleteOptionFromHandle (FileSystemHandles[Index]);
     } else {
-      UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI Non-Block Boot Device %d", NonBlockNumber);
+      if (NonBlockNumber != 0) {
+        UnicodeSPrint (Buffer, sizeof (Buffer), L"%s %d", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_NON_BLOCK)), NonBlockNumber);
+      } else {
+        UnicodeSPrint (Buffer, sizeof (Buffer), L"%s", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_NON_BLOCK)));
+      }
       BdsLibBuildOptionFromHandle (FileSystemHandles[Index], BdsBootOptionList, Buffer);
       NonBlockNumber++;
     }
@@ -1167,37 +1204,29 @@ BdsLibEnumerateAllBootOption (
   //
   // Parse Network Boot Device
   //
-  NumberNetworkHandles = 0;
+  NumOfLoadFileHandles = 0;
   //
-  // Search MNP Service Binding protocol for UEFI network stack
+  // Search Load File protocol for PXE boot option.
   //
   gBS->LocateHandleBuffer (
         ByProtocol,
-        &gEfiManagedNetworkServiceBindingProtocolGuid,
+        &gEfiLoadFileProtocolGuid,
         NULL,
-        &NumberNetworkHandles,
-        &NetworkHandles
+        &NumOfLoadFileHandles,
+        &LoadFileHandles
         );
-  if (NumberNetworkHandles == 0) {
-    //
-    // MNP Service Binding protocol not found, search SNP for EFI network stack
-    //
-    gBS->LocateHandleBuffer (
-          ByProtocol,
-          &gEfiSimpleNetworkProtocolGuid,
-          NULL,
-          &NumberNetworkHandles,
-          &NetworkHandles
-          );
+
+  for (Index = 0; Index < NumOfLoadFileHandles; Index++) {
+    if (Index != 0) {
+      UnicodeSPrint (Buffer, sizeof (Buffer), L"%s %d", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_NETWORK)), Index);
+    } else {
+      UnicodeSPrint (Buffer, sizeof (Buffer), L"%s", BdsLibGetStringById (STRING_TOKEN (STR_DESCRIPTION_NETWORK)));
+    }
+    BdsLibBuildOptionFromHandle (LoadFileHandles[Index], BdsBootOptionList, Buffer);
   }
 
-  for (Index = 0; Index < NumberNetworkHandles; Index++) {
-    UnicodeSPrint (Buffer, sizeof (Buffer), L"%d", Index);
-    BdsLibBuildOptionFromHandle (NetworkHandles[Index], BdsBootOptionList, Buffer);
-  }
-
-  if (NumberNetworkHandles != 0) {
-    FreePool (NetworkHandles);
+  if (NumOfLoadFileHandles != 0) {
+    FreePool (LoadFileHandles);
   }
 
   //
@@ -1547,21 +1576,15 @@ BdsLibNetworkBootWithMediaPresent (
   EFI_HANDLE                      Handle;
   EFI_SIMPLE_NETWORK_PROTOCOL     *Snp;
   BOOLEAN                         MediaPresent;
+  UINT32                          InterruptStatus;
 
   MediaPresent = FALSE;
 
   UpdatedDevicePath = DevicePath;
   //
-  // Locate MNP Service Binding protocol for UEFI network stack first
+  // Locate Load File Protocol for PXE boot option first
   //
-  Status = gBS->LocateDevicePath (&gEfiManagedNetworkServiceBindingProtocolGuid, &UpdatedDevicePath, &Handle);
-  if (EFI_ERROR (Status)) {
-    //
-    // MNP Service Binding protocol not found, search SNP for EFI network stack
-    //
-    UpdatedDevicePath = DevicePath;
-    Status = gBS->LocateDevicePath (&gEfiSimpleNetworkProtocolGuid, &UpdatedDevicePath, &Handle);
-  }
+  Status = gBS->LocateDevicePath (&gEfiLoadFileProtocolGuid, &UpdatedDevicePath, &Handle);
   if (EFI_ERROR (Status)) {
     //
     // Device not present so see if we need to connect it
@@ -1571,11 +1594,7 @@ BdsLibNetworkBootWithMediaPresent (
       //
       // This one should work after we did the connect
       //
-      Status = gBS->LocateDevicePath (&gEfiManagedNetworkServiceBindingProtocolGuid, &UpdatedDevicePath, &Handle);
-      if (EFI_ERROR (Status)) {
-        UpdatedDevicePath = DevicePath;
-        Status = gBS->LocateDevicePath (&gEfiSimpleNetworkProtocolGuid, &UpdatedDevicePath, &Handle);
-      }
+      Status = gBS->LocateDevicePath (&gEfiLoadFileProtocolGuid, &UpdatedDevicePath, &Handle);
     }
   }
 
@@ -1600,6 +1619,11 @@ BdsLibNetworkBootWithMediaPresent (
     if (!EFI_ERROR (Status)) {
       if (Snp->Mode->MediaPresentSupported) {
         if (Snp->Mode->State == EfiSimpleNetworkInitialized) {
+          //
+          // Invoke Snp->GetStatus() to refresh the media status
+          //
+          Snp->GetStatus (Snp, &InterruptStatus, NULL);
+
           //
           // In case some one else is using the SNP check to see if it's connected
           //
@@ -1723,6 +1747,8 @@ BdsGetBootTypeFromDevicePath (
 
         case MSG_MAC_ADDR_DP:
         case MSG_VLAN_DP:
+        case MSG_IPv4_DP:
+        case MSG_IPv6_DP:
           BootType = BDS_EFI_MESSAGE_MAC_BOOT;
           break;
 
@@ -1790,29 +1816,20 @@ BdsLibIsValidEFIBootOptDevicePathExt (
   EFI_DEVICE_PATH_PROTOCOL  *TempDevicePath;
   EFI_DEVICE_PATH_PROTOCOL  *LastDeviceNode;
   EFI_BLOCK_IO_PROTOCOL     *BlockIo;
-  EFI_LOAD_FILE_PROTOCOL    *LoadFile;
 
   TempDevicePath = DevPath;
   LastDeviceNode = DevPath;
 
   //
-  // Check if it's a valid boot option for network boot device
-  // Check if there is MNP Service Binding Protocol or SimpleNetworkProtocol
-  // installed. If yes, that means there is the network card there.
+  // Check if it's a valid boot option for network boot device.
+  // Check if there is EfiLoadFileProtocol installed. 
+  // If yes, that means there is a boot option for network.
   //
   Status = gBS->LocateDevicePath (
-                  &gEfiManagedNetworkServiceBindingProtocolGuid,
+                  &gEfiLoadFileProtocolGuid,
                   &TempDevicePath,
                   &Handle
                   );
-  if (EFI_ERROR (Status)) {
-    TempDevicePath = DevPath;
-    Status = gBS->LocateDevicePath (
-                    &gEfiSimpleNetworkProtocolGuid,
-                    &TempDevicePath,
-                    &Handle
-                    );
-  }
   if (EFI_ERROR (Status)) {
     //
     // Device not present so see if we need to connect it
@@ -1820,44 +1837,30 @@ BdsLibIsValidEFIBootOptDevicePathExt (
     TempDevicePath = DevPath;
     BdsLibConnectDevicePath (TempDevicePath);
     Status = gBS->LocateDevicePath (
-                    &gEfiManagedNetworkServiceBindingProtocolGuid,
+                    &gEfiLoadFileProtocolGuid,
                     &TempDevicePath,
                     &Handle
                     );
-    if (EFI_ERROR (Status)) {
-      TempDevicePath = DevPath;
-      Status = gBS->LocateDevicePath (
-                      &gEfiSimpleNetworkProtocolGuid,
-                      &TempDevicePath,
-                      &Handle
-                      );
-    }
   }
 
   if (!EFI_ERROR (Status)) {
-    //
-    // Check whether LoadFile protocol is installed
-    //
-    Status = gBS->HandleProtocol (Handle, &gEfiLoadFileProtocolGuid, (VOID **)&LoadFile);
-    if (!EFI_ERROR (Status)) {
-      if (!IsDevicePathEnd (TempDevicePath)) {
-        //
-        // LoadFile protocol is not installed on handle with exactly the same DevPath
-        //
-        return FALSE;
-      }
+    if (!IsDevicePathEnd (TempDevicePath)) {
+      //
+      // LoadFile protocol is not installed on handle with exactly the same DevPath
+      //
+      return FALSE;
+    }
 
-      if (CheckMedia) {
-        //
-        // Test if it is ready to boot now
-        //
-        if (BdsLibNetworkBootWithMediaPresent(DevPath)) {
-          return TRUE;
-        }
-      } else {
+    if (CheckMedia) {
+      //
+      // Test if it is ready to boot now
+      //
+      if (BdsLibNetworkBootWithMediaPresent(DevPath)) {
         return TRUE;
       }
-    }
+    } else {
+      return TRUE;
+    }    
   }
 
   //

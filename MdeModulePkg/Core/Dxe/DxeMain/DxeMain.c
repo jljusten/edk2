@@ -1,7 +1,7 @@
 /** @file
   DXE Core Main Entry Point
 
-Copyright (c) 2006 - 2009, Intel Corporation. <BR>
+Copyright (c) 2006 - 2010, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -210,6 +210,11 @@ EFI_DECOMPRESS_PROTOCOL  gEfiDecompress = {
 };
 
 //
+// For Loading modules at fixed address feature, the configuration table is to cache the top address below which to load 
+// Runtime code&boot time code 
+//
+GLOBAL_REMOVE_IF_UNREFERENCED EFI_LOAD_FIXED_ADDRESS_CONFIGURATION_TABLE    gLoadModuleAtFixAddressConfigurationTable = {0, 0};
+
 // Main entry point to the DXE Core
 //
 
@@ -284,13 +289,22 @@ DxeMain (
   //
   Status = CoreInstallConfigurationTable (&gEfiMemoryTypeInformationGuid, &gMemoryTypeInformation);
   ASSERT_EFI_ERROR (Status);
-
+  
+  //
+  // If Loading modules At fixed address feature is enabled, install Load moduels at fixed address 
+  // Configuration Table so that user could easily to retrieve the top address to load Dxe and PEI
+  // Code and Tseg base to load SMM driver. 
+  //
+  if (FixedPcdGet64(PcdLoadModuleAtFixAddressEnable) != 0) {
+    Status = CoreInstallConfigurationTable (&gLoadFixedAddressConfigurationTableGuid, &gLoadModuleAtFixAddressConfigurationTable);
+    ASSERT_EFI_ERROR (Status);
+  }
   //
   // Report Status Code here for DXE_ENTRY_POINT once it is available
   //
   REPORT_STATUS_CODE (
     EFI_PROGRESS_CODE,
-    FixedPcdGet32(PcdStatusCodeValueDxeCoreEntry)
+    (EFI_SOFTWARE_DXE_CORE | EFI_SW_DXE_CORE_PC_ENTRY_POINT)
     );
 
   //
@@ -416,7 +430,7 @@ DxeMain (
   //
   REPORT_STATUS_CODE (
     EFI_PROGRESS_CODE,
-    FixedPcdGet32 (PcdStatusCodeValueDxeCoreHandoffToBds)
+    (EFI_SOFTWARE_DXE_CORE | EFI_SW_DXE_CORE_PC_HANDOFF_TO_NEXT)
     );
 
   //
@@ -670,7 +684,7 @@ CoreExitBootServices (
   //
   REPORT_STATUS_CODE (
     EFI_PROGRESS_CODE,
-    FixedPcdGet32 (PcdStatusCodeValueBootServiceExit)
+    (EFI_SOFTWARE_EFI_BOOT_SERVICE | EFI_SW_BS_PC_EXIT_BOOT_SERVICES)
     );
 
   //

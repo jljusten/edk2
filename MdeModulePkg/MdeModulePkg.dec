@@ -4,7 +4,7 @@
 # It also provides the defintions(including PPIs/PROTOCOLs/GUIDs and library classes)
 # and libraries instances, which are used for those modules.
 #
-# Copyright (c) 2007 - 2009, Intel Corporation.
+# Copyright (c) 2007 - 2010, Intel Corporation.
 #
 # All rights reserved.
 # This program and the accompanying materials are licensed and made available under
@@ -143,6 +143,10 @@
   #  Include/Guid/StatusCodeDataTypeDebug.h
   gEfiStatusCodeDataTypeDebugGuid  = { 0x9A4E9246, 0xD553, 0x11D5, { 0x87, 0xE2, 0x00, 0x06, 0x29, 0x45, 0xC3, 0xB9 }}
 
+  ##  A configuration Table Guid for Load module at fixed address 
+  #  Include/Guid/LoadModuleAtFixedAddress.h
+  gLoadFixedAddressConfigurationTableGuid  = { 0x2CA88B53,0xD296,0x4080, { 0xA4,0xA5,0xCA,0xD9,0xBA,0xE2,0x4B,0x9 } }
+
 [Protocols.common]
   ## Load File protocol provides capability to load and unload EFI image into memory and execute it.
   #  Include/Protocol/LoadPe32Image.h
@@ -269,7 +273,7 @@
   ## This PCD specifies whether Peiphase StatusCode is replayed in DxePhase.
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeReplayIn|FALSE|BOOLEAN|0x0001002d
 
-[PcdsFeatureFlag.IA32]
+[PcdsFeatureFlag.IA32, PcdsFeatureFlag.X64]
   ##
   # This feature flag specifies whether DxeIpl switches to long mode to enter DXE phase.
   # If it is TRUE, DxeIpl will load a 64-bit DxeCore and switch to long mode to hand over to DxeCore;
@@ -342,6 +346,15 @@
   #  BIT0 set indicates 4KB alignment
   #  BIT1 set indicates 8KB alignment
   gEfiMdeModulePkgTokenSpaceGuid.PcdSrIovSystemPageSize|0x1|UINT32|0x10000047
+  
+  ## Flag of enabling/disabling the feature of Loading Module at Fixed Address 
+  #  -1: Enable the feature as fixed offset to TOLM
+  #   0: Disable the feature.
+  #  Positive Value:  Enable the feature as fixed absolute address, and the value is the top memory address 
+  gEfiMdeModulePkgTokenSpaceGuid.PcdLoadModuleAtFixAddressEnable|0|UINT64|0x30001015
+  
+  ## Smbios version
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion|0x0206|UINT16|0x00010055
 
 [PcdsFixedAtBuild,PcdsPatchableInModule]
   ## Maximun number of performance log entries during PEI phase.
@@ -405,4 +418,21 @@
   #  The default value in PeiPhase is 1 KBytes.
   #  The default value in DxePhase is 128 KBytes.
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeMemorySize|1|UINT16|0x00010054
+
+[PcdsPatchableInModule]
+  ## Specify  memory size with page number for PEI code when 
+  #  the feature of Loading Module at Fixed Address is enabled
+  gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressPeiCodePageNumber|0|UINT32|0x00000029
+  
+  ## Specify  memory size with page number for DXE boot time code when 
+  #  the feature of Loading Module at Fixed Address is enabled
+  gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressBootTimeCodePageNumber|0|UINT32|0x0000002a
+  
+  ## Specify  memory size with page number for DXE runtime code when 
+  #  the feature of Loading Module at Fixed Address is enabled
+  gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressRuntimeCodePageNumber|0|UINT32|0x0000002b
+ 
+  ## Specify  memory size with page number for SMM code when 
+  #  the feature of Loading Module at Fixed Address is enabled
+  gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber|0|UINT32|0x0000002c
 

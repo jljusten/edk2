@@ -1,7 +1,7 @@
 /** @file
 Parser for IFR binary encoding.
 
-Copyright (c) 2007 - 2009, Intel Corporation
+Copyright (c) 2007 - 2010, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -1110,11 +1110,13 @@ ParseOpCodes (
       CopyMem (&FormSet->FormSetTitle, &((EFI_IFR_FORM_SET *) OpCodeData)->FormSetTitle, sizeof (EFI_STRING_ID));
       CopyMem (&FormSet->Help,         &((EFI_IFR_FORM_SET *) OpCodeData)->Help,         sizeof (EFI_STRING_ID));
 
-      //
-      // The formset OpCode contains ClassGuid
-      //
-      FormSet->NumberOfClassGuid = (UINT8) (((EFI_IFR_FORM_SET *) OpCodeData)->Flags & 0x3);
-      CopyMem (FormSet->ClassGuid, OpCodeData + sizeof (EFI_IFR_FORM_SET), FormSet->NumberOfClassGuid * sizeof (EFI_GUID));
+      if (OpCodeLength > OFFSET_OF (EFI_IFR_FORM_SET, Flags)) {
+        //
+        // The formset OpCode contains ClassGuid
+        //
+        FormSet->NumberOfClassGuid = (UINT8) (((EFI_IFR_FORM_SET *) OpCodeData)->Flags & 0x3);
+        CopyMem (FormSet->ClassGuid, OpCodeData + sizeof (EFI_IFR_FORM_SET), FormSet->NumberOfClassGuid * sizeof (EFI_GUID));
+      }
 
       InitializeListHead (&FormSet->ExpressionListHead);
       break;
@@ -1503,6 +1505,7 @@ ParseOpCodes (
       //
       // Now we know the Storage width of nested Ordered List
       //
+      ASSERT (CurrentStatement != NULL);
       if ((CurrentStatement->Operand == EFI_IFR_ORDERED_LIST_OP) && (CurrentStatement->BufferValue == NULL)) {
         Width = 1;
         switch (CurrentOption->Value.Type) {
