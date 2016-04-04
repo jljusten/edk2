@@ -1,14 +1,14 @@
 /** @file
   Processor or Compiler specific defines and types for IA-32 architecture.
 
-  Copyright (c) 2006 - 2010, Intel Corporation<BR>                                                         
-  All rights reserved. This program and the accompanying materials                          
-  are licensed and made available under the terms and conditions of the BSD License         
-  which accompanies this distribution.  The full text of the license may be found at        
-  http://opensource.org/licenses/bsd-license.php                                            
-
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+Copyright (c) 2006 - 2010, Intel Corporation.  All rights reserved<BR>
+This program and the accompanying materials are licensed and made available under 
+the terms and conditions of the BSD License that accompanies this distribution.  
+The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php.                                          
+    
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
 **/
 
@@ -16,7 +16,7 @@
 #define __PROCESSOR_BIND_H__
 
 ///
-/// Define the processor type so other code can make processor based choices
+/// Define the processor type so other code can make processor based choices.
 ///
 #define MDE_CPU_IA32
 
@@ -96,180 +96,115 @@
 #endif
 
 
-#if !defined(__GNUC__) && (__STDC_VERSION__ < 199901L)
+#if defined(_MSC_EXTENSIONS)
+
   //
-  // No ANSI C 2000 stdint.h integer width declarations, so define equivalents
+  // use Microsoft C complier dependent integer width types 
   //
- 
-  #if defined(_MSC_EXTENSIONS)
-
-    //
-    // use Microsoft C complier dependent integer width types 
-    //
-
-    ///
-    /// 8-byte unsigned value
-    ///
-    typedef unsigned __int64    UINT64;
-    ///
-    /// 8-byte signed value
-    ///
-    typedef __int64             INT64;
-    ///
-    /// 4-byte unsigned value
-    ///
-    typedef unsigned __int32    UINT32;
-    ///
-    /// 4-byte signed value
-    ///
-    typedef __int32             INT32;
-    ///
-    /// 2-byte unsigned value
-    ///
-    typedef unsigned short      UINT16;
-    ///
-    /// 2-byte Character.  Unless otherwise specified all strings are stored in the
-    /// UTF-16 encoding format as defined by Unicode 2.1 and ISO/IEC 10646 standards.
-    ///
-    typedef unsigned short      CHAR16;
-    ///
-    /// 2-byte signed value
-    ///
-    typedef short               INT16;
-    ///
-    /// Logical Boolean.  1-byte value containing 0 for FALSE or a 1 for TRUE.  Other
-    /// values are undefined.
-    ///
-    typedef unsigned char       BOOLEAN;
-    ///
-    /// 1-byte unsigned value
-    ///
-    typedef unsigned char       UINT8;
-    ///
-    /// 1-byte Character
-    ///
-    typedef char                CHAR8;
-    ///
-    /// 1-byte signed value
-    ///
-    typedef char                INT8;
-  #else
-
-    //
-    // Assume standard IA-32 alignment. 
-    // Need to check portability of long long
-    //
-
-    ///
-    /// 8-byte unsigned value
-    ///
-    typedef unsigned long long  UINT64;
-    ///
-    /// 8-byte signed value
-    ///
-    typedef long long           INT64;
-    ///
-    /// 4-byte unsigned value
-    ///
-    typedef unsigned int        UINT32;
-    ///
-    /// 4-byte signed value
-    ///
-    typedef int                 INT32;
-    ///
-    /// 2-byte unsigned value
-    ///
-    typedef unsigned short      UINT16;
-    ///
-    /// 2-byte Character.  Unless otherwise specified all strings are stored in the
-    /// UTF-16 encoding format as defined by Unicode 2.1 and ISO/IEC 10646 standards.
-    ///
-    typedef unsigned short      CHAR16;
-    ///
-    /// 2-byte signed value
-    ///
-    typedef short               INT16;
-    ///
-    /// Logical Boolean.  1-byte value containing 0 for FALSE or a 1 for TRUE.  Other
-    /// values are undefined.
-    ///
-    typedef unsigned char       BOOLEAN;
-    ///
-    /// 1-byte unsigned value
-    ///
-    typedef unsigned char       UINT8;
-    ///
-    /// 1-byte Character
-    ///
-    typedef char                CHAR8;
-    ///
-    /// 1-byte signed value
-    ///
-    typedef char                INT8;
-  #endif
-#else
-  //
-  // Use ANSI C 2000 stdint.h integer width declarations
-  //
-  #include <stdint.h>
 
   ///
-  /// Logical Boolean.  1-byte value containing 0 for FALSE or a 1 for TRUE.  Other
-  /// values are undefined.
+  /// 8-byte unsigned value.
   ///
-  typedef uint8_t   BOOLEAN;
+  typedef unsigned __int64    UINT64;
   ///
-  /// 1-byte signed value
+  /// 8-byte signed value.
   ///
-  typedef int8_t    INT8;
+  typedef __int64             INT64;
   ///
-  /// 1-byte unsigned value
+  /// 4-byte unsigned value.
   ///
-  typedef uint8_t   UINT8;
+  typedef unsigned __int32    UINT32;
   ///
-  /// 2-byte signed value
+  /// 4-byte signed value.
   ///
-  typedef int16_t   INT16;
+  typedef __int32             INT32;
   ///
-  /// 2-byte unsigned value
+  /// 2-byte unsigned value.
   ///
-  typedef uint16_t  UINT16;
-  ///
-  /// 4-byte signed value
-  ///
-  typedef int32_t   INT32;
-  ///
-  /// 4-byte unsigned value
-  ///
-  typedef uint32_t  UINT32;
-  ///
-  /// 8-byte signed value
-  ///
-  typedef int64_t   INT64;
-  ///
-  /// 8-byte unsigned value
-  ///
-  typedef uint64_t  UINT64;
-  ///
-  /// 1-byte Character
-  ///
-  typedef char      CHAR8;
+  typedef unsigned short      UINT16;
   ///
   /// 2-byte Character.  Unless otherwise specified all strings are stored in the
   /// UTF-16 encoding format as defined by Unicode 2.1 and ISO/IEC 10646 standards.
   ///
-  typedef uint16_t  CHAR16;
-
+  typedef unsigned short      CHAR16;
+  ///
+  /// 2-byte signed value.
+  ///
+  typedef short               INT16;
+  ///
+  /// Logical Boolean.  1-byte value containing 0 for FALSE or a 1 for TRUE.  Other
+  /// values are undefined.
+  ///
+  typedef unsigned char       BOOLEAN;
+  ///
+  /// 1-byte unsigned value.
+  ///
+  typedef unsigned char       UINT8;
+  ///
+  /// 1-byte Character.
+  ///
+  typedef char                CHAR8;
+  ///
+  /// 1-byte signed value.
+  ///
+  typedef char                INT8;
+#else  
+  ///
+  /// 8-byte unsigned value.
+  ///
+  typedef unsigned long long  UINT64;
+  ///
+  /// 8-byte signed value.
+  ///
+  typedef long long           INT64;
+  ///
+  /// 4-byte unsigned value.
+  ///
+  typedef unsigned int        UINT32;
+  ///
+  /// 4-byte signed value.
+  ///
+  typedef int                 INT32;
+  ///
+  /// 2-byte unsigned value.
+  ///
+  typedef unsigned short      UINT16;
+  ///
+  /// 2-byte Character.  Unless otherwise specified all strings are stored in the
+  /// UTF-16 encoding format as defined by Unicode 2.1 and ISO/IEC 10646 standards.
+  ///
+  typedef unsigned short      CHAR16;
+  ///
+  /// 2-byte signed value.
+  ///
+  typedef short               INT16;
+  ///
+  /// Logical Boolean.  1-byte value containing 0 for FALSE or a 1 for TRUE.  Other
+  /// values are undefined.
+  ///
+  typedef unsigned char       BOOLEAN;
+  ///
+  /// 1-byte unsigned value.
+  ///
+  typedef unsigned char       UINT8;
+  ///
+  /// 1-byte Character
+  ///
+  typedef char                CHAR8;
+  ///
+  /// 1-byte signed value
+  ///
+  typedef char                INT8;
 #endif
 
 ///
-/// Unsigned value of native width.  (4 bytes on supported 32-bit processor instructions,
-/// 8 bytes on supported 64-bit processor instructions)
+/// Unsigned value of native width.  (4 bytes on supported 32-bit processor instructions;
+/// 8 bytes on supported 64-bit processor instructions.)
 ///
 typedef UINT32  UINTN;
 ///
-/// Signed value of native width.  (4 bytes on supported 32-bit processor instructions,
-/// 8 bytes on supported 64-bit processor instructions)
+/// Signed value of native width.  (4 bytes on supported 32-bit processor instructions;
+/// 8 bytes on supported 64-bit processor instructions.)
 ///
 typedef INT32   INTN;
 
@@ -287,12 +222,12 @@ typedef INT32   INTN;
 #define MAX_2_BITS  0xC0000000
 
 ///
-/// Maximum legal IA-32 address
+/// Maximum legal IA-32 address.
 ///
 #define MAX_ADDRESS   0xFFFFFFFF
 
 ///
-/// The stack alignment required for IA-32
+/// The stack alignment required for IA-32.
 ///
 #define CPU_STACK_ALIGNMENT   sizeof(UINTN)
 
@@ -307,13 +242,13 @@ typedef INT32   INTN;
   ///
 #elif defined(_MSC_EXTENSIONS)
   ///
-  /// Microsoft* compiler specific method for EFIAPI calling convension
+  /// Microsoft* compiler specific method for EFIAPI calling convention.
   /// 
   #define EFIAPI __cdecl  
 #else
   #if defined(__GNUC__)
     ///
-    /// GCC specific method for EFIAPI calling convension
+    /// GCC specific method for EFIAPI calling convention.
     /// 
     #define EFIAPI __attribute__((cdecl))  
   #endif  

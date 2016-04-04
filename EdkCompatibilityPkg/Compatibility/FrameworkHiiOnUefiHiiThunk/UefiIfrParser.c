@@ -1,7 +1,7 @@
 /** @file
 Parser for IFR binary encoding.
 
-Copyright (c) 2008, Intel Corporation
+Copyright (c) 2008 - 2010, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -25,6 +25,15 @@ BOOLEAN          mInScopeGrayOut;
 EFI_GUID  mFrameworkHiiCompatibilityGuid = EFI_IFR_FRAMEWORK_GUID;
 extern EFI_GUID mTianoHiiIfrGuid;
 
+/**
+  Find the question's OneOfOptionMap list in FormSet 
+  based on the input question Id. 
+  
+  @param FormSet     FormSet context.
+  @param QuestionId  Unique ID to specicy the question in FormSet.
+  
+  @return the found OneOfOptionMap list. If not found, NULL will return.
+**/
 LIST_ENTRY *
 GetOneOfOptionMapEntryListHead (
   IN CONST FORM_BROWSER_FORMSET  *FormSet,
@@ -47,6 +56,12 @@ GetOneOfOptionMapEntryListHead (
   return NULL;
 }
 
+/**
+  Free OneOfOption map list.
+  
+  @param OneOfOptionMapListHead Pointer to list header of OneOfOptionMap list.
+
+**/
 VOID
 DestoryOneOfOptionMap (
   IN LIST_ENTRY     *OneOfOptionMapListHead
@@ -209,6 +224,7 @@ CreateStorage (
   FORMSET_STORAGE  *Storage;
 
   Storage = AllocateZeroPool (sizeof (FORMSET_STORAGE));
+  ASSERT (Storage != NULL);
   Storage->Signature = FORMSET_STORAGE_SIGNATURE;
   InsertTailList (&FormSet->StorageListHead, &Storage->Link);
 
@@ -586,6 +602,7 @@ ParseOpCodes (
       // Create a new Form for this FormSet
       //
       CurrentForm = AllocateZeroPool (sizeof (FORM_BROWSER_FORM));
+      ASSERT (CurrentForm != NULL);
       CurrentForm->Signature = FORM_BROWSER_FORM_SIGNATURE;
 
       InitializeListHead (&CurrentForm->StatementListHead);
@@ -604,6 +621,7 @@ ParseOpCodes (
       // Create a new Form Map for this FormSet
       //
       CurrentForm = AllocateZeroPool (sizeof (FORM_BROWSER_FORM));
+      ASSERT (CurrentForm != NULL);
       CurrentForm->Signature = FORM_BROWSER_FORM_SIGNATURE;
 
       InitializeListHead (&CurrentForm->StatementListHead);
@@ -701,6 +719,7 @@ ParseOpCodes (
     //
     case EFI_IFR_DEFAULTSTORE_OP:
       DefaultStore = AllocateZeroPool (sizeof (FORMSET_DEFAULTSTORE));
+      ASSERT (DefaultStore != NULL);
       DefaultStore->Signature = FORMSET_DEFAULTSTORE_SIGNATURE;
 
       CopyMem (&DefaultStore->DefaultId,   &((EFI_IFR_DEFAULTSTORE *) OpCodeData)->DefaultId,   sizeof (UINT16));
@@ -917,6 +936,7 @@ ParseOpCodes (
       // A Question may have more than one Default value which have different default types.
       //
       CurrentDefault = AllocateZeroPool (sizeof (QUESTION_DEFAULT));
+      ASSERT (CurrentDefault != NULL);
       CurrentDefault->Signature = QUESTION_DEFAULT_SIGNATURE;
 
       CurrentDefault->Value.Type = ((EFI_IFR_DEFAULT *) OpCodeData)->Type;
@@ -940,6 +960,7 @@ ParseOpCodes (
       // It create a selection for use in current Question.
       //
       CurrentOption = AllocateZeroPool (sizeof (QUESTION_OPTION));
+      ASSERT (CurrentOption != NULL);
       CurrentOption->Signature = QUESTION_OPTION_SIGNATURE;
 
       CurrentOption->Flags = ((EFI_IFR_ONE_OF_OPTION *) OpCodeData)->Flags;

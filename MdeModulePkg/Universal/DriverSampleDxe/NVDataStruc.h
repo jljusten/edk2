@@ -1,6 +1,6 @@
 /** @file
 
-Copyright (c) 2007 - 2009, Intel Corporation
+Copyright (c) 2007 - 2010, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -26,6 +26,7 @@ Revision History:
 #define _NVDATASTRUC_H_
 
 #include <Guid/HiiPlatformSetupFormset.h>
+#include <Guid/HiiFormMapMethodGuid.h>
 
 #define FORMSET_GUID \
   { \
@@ -36,6 +37,9 @@ Revision History:
   { \
     0xb3f56470, 0x6141, 0x4621, {0x8f, 0x19, 0x70, 0x4e, 0x57, 0x7a, 0xa9, 0xe8} \
   }
+
+#define EFI_USER_INFO_ACCESS_SETUP_ADMIN_GUID \
+  { 0x85b75607, 0xf7ce, 0x471e, { 0xb7, 0xe4, 0x2a, 0xea, 0x5f, 0x72, 0x32, 0xee } }
 
 #define CONFIGURATION_VARSTORE_ID    0x1234
 
@@ -66,6 +70,10 @@ typedef struct {
   UINT8   NameValueVar0;
   UINT16  NameValueVar1;
   UINT16  NameValueVar2[20];
+  UINT8   SerialPortNo;
+  UINT8   SerialPortStatus;
+  UINT16  SerialPortIo;
+  UINT8   SerialPortIrq;
 } DRIVER_SAMPLE_CONFIGURATION;
 
 //

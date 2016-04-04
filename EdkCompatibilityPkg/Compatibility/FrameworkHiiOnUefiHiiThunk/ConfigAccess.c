@@ -1,4 +1,4 @@
-/**@file
+/** @file
   This file implements functions related to Config Access Protocols installed by
   by HII Thunk Modules. These Config access Protocols are used to thunk UEFI Config 
   Access Callback to Framework HII Callback and EFI Variable Set/Get operations.
@@ -128,38 +128,6 @@ GetStorageFromQuestionId (
 }
 
 /**
-  Get the EFI_IFR_VARSTORE based the ID.
-    
-  @param FormSet                  The Form Set.
-   
-  @retval FORMSET_STORAGE *       The EFI_IFR_VARSTORE with the ID.
-  @retval NULL                    If the Form Set does not have EFI_IFR_VARSTORE with such ID.
-**/
-FORMSET_STORAGE *
-GetStorageFromVarStoreId (
-  IN CONST FORM_BROWSER_FORMSET * FormSet,
-  IN       EFI_VARSTORE_ID        VarStoreId
-  )
-{
-  LIST_ENTRY             *StorageList;
-  FORMSET_STORAGE        *Storage;
-
-  StorageList = GetFirstNode (&FormSet->StorageListHead);
-
-  while (!IsNull (&FormSet->StorageListHead, StorageList)) {
-    Storage = FORMSET_STORAGE_FROM_LINK (StorageList);
-
-    if (VarStoreId == Storage->VarStoreId) {
-      return Storage;
-    }
-
-    StorageList = GetNextNode (&FormSet->StorageListHead, StorageList);
-  }
-  
-  return NULL;
-}
-
-/**
   Get the EFI_IFR_VARSTORE based the <ConfigHdr> string in a <ConfigRequest>
   or a <ConfigResp> string.
     
@@ -179,6 +147,10 @@ GetStorageFromConfigString (
   FORMSET_STORAGE        *Storage;
   CHAR16                 *Name;
 
+  if (ConfigString == NULL) {
+    return NULL;
+  }
+
   StorageList = GetFirstNode (&FormSet->StorageListHead);
 
   while (!IsNull (&FormSet->StorageListHead, StorageList)) {
@@ -197,7 +169,7 @@ GetStorageFromConfigString (
     StorageList = GetNextNode (&FormSet->StorageListHead, StorageList);
   }
 
-   return NULL;
+  return NULL;
 }
 
 /**
@@ -377,7 +349,6 @@ CallFormCallBack (
    @retval EFI_INVALID_PARAMETER   If the UEFI Variable Get Service return the size information of the data
                                    does not match what has been recorded early in he BUFFER_STORAGE_ENTRY.
  **/
-
 EFI_STATUS
 GetUefiVariable (
   IN       FORMSET_STORAGE                            *BufferStorage,
@@ -452,73 +423,194 @@ ThunkExtractConfig (
   OUT EFI_STRING                             *Results
   )
 {
-  EFI_STATUS                                  Status;
-  CONFIG_ACCESS_PRIVATE                       *ConfigAccess;
-  FORMSET_STORAGE                             *BufferStorage;
-  VOID                                        *Data;
-  UINTN                                       DataSize;
+  EFI_STATUS                       Status;
+  CONFIG_ACCESS_PRIVATE            *ConfigAccess;
+  FORMSET_STORAGE                  *BufferStorage;
+  VOID                             *Data;
+  UINTN                            DataSize;
+  FORM_BROWSER_FORMSET             *FormSetContext;
+  CHAR16                           *VarStoreName;
+  EFI_STRING                       ConfigRequestHdr;
+  EFI_STRING                       ConfigRequest;
+  UINTN                            Size;
+  BOOLEAN                          AllocatedRequest;
+  LIST_ENTRY                       *StorageList;
+  EFI_STRING                       SingleResult;
+  EFI_STRING                       FinalResults;
+  EFI_STRING                       StrPointer;
 
-  if (Request == NULL) {
+  if (Progress == NULL || Results == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+  *Progress = Request;
+
+  Status         = EFI_SUCCESS;
+  Data           = NULL;
+  StrPointer     = NULL;
+  SingleResult   = NULL;
+  FinalResults   = NULL;
+  ConfigAccess   = CONFIG_ACCESS_PRIVATE_FROM_PROTOCOL (This);
+  FormSetContext = ConfigAccess->ThunkContext->FormSet;
+  if (IsListEmpty (&FormSetContext->StorageListHead)) {
+    //
+    // No VarStorage does exist in this form.
+    //
     return EFI_NOT_FOUND;
   }
+  StorageList    = GetFirstNode (&FormSetContext->StorageListHead);
 
-  Data = NULL;
-  ConfigAccess = CONFIG_ACCESS_PRIVATE_FROM_PROTOCOL (This);
-
-  BufferStorage = GetStorageFromConfigString (ConfigAccess->ThunkContext->FormSet, Request);
-
-  if (BufferStorage == NULL) {
-    *Progress = (EFI_STRING) Request;
-    return EFI_NOT_FOUND;
-  }
-
-  if (ConfigAccess->ThunkContext->NvMapOverride == NULL) {
-    //
-    // NvMapOverride is not used. Get the Storage data from EFI Variable or Framework Form Callback.
-    //
-    if (ConfigAccess->FormCallbackProtocol == NULL ||
-        ConfigAccess->FormCallbackProtocol->NvRead == NULL) {
-      Status = GetUefiVariable (
-                 BufferStorage,
-                 &Data,
-                 &DataSize
-                 );
+  do {
+    if (Request != NULL) {
+      BufferStorage = GetStorageFromConfigString (ConfigAccess->ThunkContext->FormSet, Request);
+      if (BufferStorage == NULL) {
+        return EFI_NOT_FOUND;
+      }
     } else {
-      Status = CallFormCallBack (
-                 BufferStorage,
-                 ConfigAccess->FormCallbackProtocol,
-                  &Data,
-                  &DataSize
-                 );
+      if (IsNull (&FormSetContext->StorageListHead, StorageList)) {
+        //
+        // No Storage to be extracted into the results.
+        //
+        break;
+      }
+      BufferStorage = FORMSET_STORAGE_FROM_LINK (StorageList);
+      StorageList = GetNextNode (&FormSetContext->StorageListHead, StorageList);
     }
-  } else {
-    //
-    // Use the NvMapOverride.
-    //
-    DataSize = BufferStorage->Size;
-    Data = AllocateCopyPool (DataSize, ConfigAccess->ThunkContext->NvMapOverride);
-    
-    if (Data != NULL) {
-      Status = EFI_SUCCESS;
-    } else {
-      Status = EFI_OUT_OF_RESOURCES;
-    }
-  }
   
+    VarStoreName     = NULL;
+    ConfigRequestHdr = NULL;
+    ConfigRequest    = NULL;
+    Size             = 0;
+    AllocatedRequest = FALSE;
+
+    if (ConfigAccess->ThunkContext->NvMapOverride == NULL) {
+      //
+      // NvMapOverride is not used. Get the Storage data from EFI Variable or Framework Form Callback.
+      //
+      if (ConfigAccess->FormCallbackProtocol == NULL ||
+          ConfigAccess->FormCallbackProtocol->NvRead == NULL) {
+        Status = GetUefiVariable (
+                   BufferStorage,
+                   &Data,
+                   &DataSize
+                   );
+      } else {
+        Status = CallFormCallBack (
+                   BufferStorage,
+                   ConfigAccess->FormCallbackProtocol,
+                    &Data,
+                    &DataSize
+                   );
+      }
+    } else {
+      //
+      // Use the NvMapOverride.
+      //
+      DataSize = BufferStorage->Size;
+      Data = AllocateCopyPool (DataSize, ConfigAccess->ThunkContext->NvMapOverride);
+      
+      if (Data != NULL) {
+        Status = EFI_SUCCESS;
+      } else {
+        Status = EFI_OUT_OF_RESOURCES;
+      }
+    }
+    
+    if (!EFI_ERROR (Status)) {
+      ConfigRequest = Request;
+      if (Request == NULL || (StrStr (Request, L"OFFSET") == NULL)) {
+        //
+        // Request is without any request element, construct full request string.
+        //
+
+        if ((BufferStorage->VarStoreId == FormSetContext->DefaultVarStoreId) && (FormSetContext->OriginalDefaultVarStoreName != NULL)) {
+          VarStoreName = FormSetContext->OriginalDefaultVarStoreName;
+        } else {
+          VarStoreName = BufferStorage->Name;
+        }
+
+        //
+        // First Set ConfigRequestHdr string.
+        //
+        ConfigRequestHdr = HiiConstructConfigHdr (&BufferStorage->Guid, VarStoreName, ConfigAccess->ThunkContext->UefiHiiDriverHandle);
+        ASSERT (ConfigRequestHdr != NULL);
+
+        //
+        // Allocate and fill a buffer large enough to hold the <ConfigHdr> template 
+        // followed by "&OFFSET=0&WIDTH=WWWWWWWWWWWWWWWW" followed by a Null-terminator
+        //
+        Size = (StrLen (ConfigRequestHdr) + 32 + 1) * sizeof (CHAR16);
+        ConfigRequest = AllocateZeroPool (Size);
+        ASSERT (ConfigRequest != NULL);
+        AllocatedRequest = TRUE;
+        UnicodeSPrint (ConfigRequest, Size, L"%s&OFFSET=0&WIDTH=%016LX", ConfigRequestHdr, (UINT64)DataSize);
+        FreePool (ConfigRequestHdr);
+      }
+      Status = mHiiConfigRoutingProtocol->BlockToConfig (
+                                              mHiiConfigRoutingProtocol,
+                                              ConfigRequest,
+                                              Data,
+                                              DataSize,
+                                              &SingleResult,
+                                              Progress
+                                              );
+      //
+      // Free the allocated config request string.
+      //
+      if (AllocatedRequest) {
+        FreePool (ConfigRequest);
+        ConfigRequest = NULL;
+      }
+    }
+    //
+    // Free the allocated Data
+    //
+    if (Data != NULL) {
+      FreePool (Data);
+    }
+    //
+    // Directly return when meet with error
+    //
+    if (EFI_ERROR (Status)) {
+      break;
+    }
+    //
+    // Merge result into the final results.
+    //
+    if (FinalResults == NULL) {
+      FinalResults = SingleResult;
+      SingleResult = NULL;
+    } else {
+      Size = StrLen (FinalResults);
+      Size = Size + 1;
+      Size = Size + StrLen (SingleResult) + 1;
+      StrPointer = AllocateZeroPool (Size * sizeof (CHAR16));
+      ASSERT (StrPointer != NULL);
+      StrCpy (StrPointer, FinalResults);
+      FreePool (FinalResults);
+      FinalResults = StrPointer;
+      StrPointer  = StrPointer + StrLen (StrPointer);
+      *StrPointer = L'&';
+      StrCpy (StrPointer + 1, SingleResult);
+      FreePool (SingleResult);
+    }
+  } while (Request == NULL);
+
   if (!EFI_ERROR (Status)) {
-    Status = mHiiConfigRoutingProtocol->BlockToConfig (
-                                            mHiiConfigRoutingProtocol,
-                                            Request,
-                                            Data,
-                                            DataSize,
-                                            Results,
-                                            Progress
-                                            );
+    *Results = FinalResults;
+  } else {
+    if (FinalResults != NULL) {
+      FreePool (FinalResults);
+    }
+  }
+  //
+  // Set Progress string to the original request string.
+  //
+  if (Request == NULL) {
+    *Progress = NULL;
+  } else if (StrStr (Request, L"OFFSET") == NULL) {
+    *Progress = Request + StrLen (Request);
   }
 
-  if (Data != NULL) {
-    FreePool (Data);
-  }
   return Status;
 }
 
@@ -651,7 +743,7 @@ Done:
 
   ASSERT if the Question Type is not EFI_IFR_TYPE_NUM_SIZE_* or EFI_IFR_TYPE_STRING.
   
-   @param This             Points to the EFI_HII_CONFIG_ACCESS_PROTOCOL
+   @param ConfigAccess     Points to the EFI_HII_CONFIG_ACCESS_PROTOCOL
    @param QuestionId       The Question ID.
    @param Type             The Question Type.
    @param Value            The Question Value.
@@ -701,6 +793,7 @@ CreateIfrDataArray (
       break;
 
     case EFI_IFR_TYPE_ACTION:
+    case EFI_IFR_TYPE_UNDEFINED:
       Size = 0;
       break;
       
@@ -760,6 +853,7 @@ CreateIfrDataArray (
         break;
 
       case EFI_IFR_TYPE_ACTION:
+      case EFI_IFR_TYPE_UNDEFINED:
         break;
 
       default:

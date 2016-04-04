@@ -590,6 +590,10 @@ CpuSetMemoryAttributes (
   RETURN_STATUS             Status;
   MTRR_MEMORY_CACHE_TYPE    CacheType;
 
+  if (!IsMtrrSupported ()) {
+    return EFI_UNSUPPORTED;
+  }
+
   DEBUG((EFI_D_ERROR, "CpuAp: SetMemorySpaceAttributes(BA=%08x, Len=%08x, Attr=%08x)\n", BaseAddress, Length, Attributes));
 
   //
@@ -856,7 +860,12 @@ RefreshGcdMemoryAttributes (
   MTRR_FIXED_SETTINGS                 MtrrFixedSettings;
   UINT32                              FirmwareVariableMtrrCount;
 
+  if (!IsMtrrSupported ()) {
+    return;
+  }
+
   FirmwareVariableMtrrCount = GetFirmwareVariableMtrrCount ();
+  ASSERT (FirmwareVariableMtrrCount <= MTRR_NUMBER_OF_VARIABLE_MTRR);
 
 //  mIsFlushingGCD = TRUE;
   mIsFlushingGCD = FALSE;

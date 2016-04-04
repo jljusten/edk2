@@ -14,28 +14,6 @@
 
 ################################################################################
 #
-# FD Section
-# The [FD] Section is made up of the definition statements and a
-# description of what goes into  the Flash Device Image.  Each FD section
-# defines one flash "device" image.  A flash device image may be one of
-# the following: Removable media bootable image (like a boot floppy
-# image,) an Option ROM image (that would be "flashed" into an add-in
-# card,) a System "Flash"  image (that would be burned into a system's
-# flash) or an Update ("Capsule") image that will be used to update and
-# existing system flash.
-#
-################################################################################
-[FD.DuetMainFd]
-BaseAddress   = 0x0 #The base address of the FLASH Device.
-Size          = 0x002a0000                                           #The size in bytes of the FLASH Device
-ErasePolarity = 1
-BlockSize     = 0x10000
-NumBlocks     = 0x2a
-
-0x00000000|0x002a0000
-
-################################################################################
-#
 # FV Section
 #
 # [FV] section is used to define what components or modules are placed within a flash
@@ -45,6 +23,8 @@ NumBlocks     = 0x2a
 #
 ################################################################################
 [FV.DuetEfiMainFv]
+BlockSize          = 0x10000
+NumBlocks          = 0x2a
 FvAlignment        = 16         #FV alignment and FV attributes setting.
 ERASE_POLARITY     = 1
 MEMORY_MAPPED      = TRUE
@@ -121,7 +101,7 @@ INF  MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
 INF  DuetPkg/BiosVideoThunkDxe/BiosVideo.inf
 
   # Binary INF file to support toggle among different CPU architectures.
-INF  FatBinPkg/EnhancedFatDxe/Fat.inf
+INF  RuleOverride=BINARY FatBinPkg/EnhancedFatDxe/Fat.inf
 
 FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
     SECTION RAW = MdeModulePkg/Logo/Logo.bmp
@@ -129,29 +109,35 @@ FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
 
 [Rule.Common.DXE_CORE]
   FILE DXE_CORE = $(NAMED_GUID) {
-      PE32     PE32           |.efi
+      PE32     PE32           $(INF_OUTPUT)/$(MODULE_NAME).efi
   }
 
 [Rule.Common.UEFI_DRIVER]
   FILE DRIVER = $(NAMED_GUID) {
-    DXE_DEPEX    DXE_DEPEX Optional      |.depex
-        PE32     PE32                    |.efi
+    DXE_DEPEX    DXE_DEPEX Optional      $(INF_OUTPUT)/$(MODULE_NAME).depex
+        PE32     PE32                    $(INF_OUTPUT)/$(MODULE_NAME).efi
   }
 
 [Rule.Common.DXE_DRIVER]
   FILE DRIVER = $(NAMED_GUID) {
-    DXE_DEPEX    DXE_DEPEX Optional      |.depex
-        PE32     PE32                    |.efi
+    DXE_DEPEX    DXE_DEPEX Optional      $(INF_OUTPUT)/$(MODULE_NAME).depex
+        PE32     PE32                    $(INF_OUTPUT)/$(MODULE_NAME).efi
   }
 
 [Rule.Common.DXE_RUNTIME_DRIVER]
   FILE DRIVER = $(NAMED_GUID) {
-    DXE_DEPEX    DXE_DEPEX Optional      |.depex
-        PE32     PE32                    |.efi
+    DXE_DEPEX    DXE_DEPEX Optional      $(INF_OUTPUT)/$(MODULE_NAME).depex
+        PE32     PE32                    $(INF_OUTPUT)/$(MODULE_NAME).efi
   }
 
 [Rule.Common.UEFI_APPLICATION]
   FILE APPLICATION = $(NAMED_GUID) {
+        PE32     PE32                    $(INF_OUTPUT)/$(MODULE_NAME).efi
+  }
+
+[Rule.Common.UEFI_DRIVER.BINARY]
+  FILE DRIVER = $(NAMED_GUID) {
+    DXE_DEPEX    DXE_DEPEX Optional      |.depex
         PE32     PE32                    |.efi
   }
 

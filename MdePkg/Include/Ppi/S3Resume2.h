@@ -7,7 +7,7 @@
   the boot script includes an SMBus command, this PEIM looks for the relevant PPI 
   that is able to execute that command.  
   
-  Copyright (c) 2007 - 2009, Intel Corporation
+  Copyright (c) 2010, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -26,17 +26,17 @@
 #define __PEI_S3_RESUME_PPI_H__
 
 ///
-/// Global ID for EFI_PEI_S3_RESUME_PPI
+/// Global ID for EFI_PEI_S3_RESUME2_PPI
 ///
-#define EFI_PEI_S3_RESUME_PPI_GUID \
+#define EFI_PEI_S3_RESUME2_PPI_GUID \
   { \
-    0x4426CCB2, 0xE684, 0x4a8a, {0xAE, 0x40, 0x20, 0xD4, 0xB0, 0x25, 0xB7, 0x10 } \
+    0x6D582DBC, 0xDB85, 0x4514, {0x8F, 0xCC, 0x5A, 0xDF, 0x62, 0x27, 0xB1, 0x47 } \
   }
 
 ///
 /// Forward declaration for EFI_PEI_S3_RESUME_PPI
 ///
-typedef struct _EFI_PEI_S3_RESUME_PPI  EFI_PEI_S3_RESUME_PPI;
+typedef struct _EFI_PEI_S3_RESUME2_PPI  EFI_PEI_S3_RESUME2_PPI;
 
 /**
   Restores the platform to its preboot configuration for an S3 resume and
@@ -62,7 +62,7 @@ typedef struct _EFI_PEI_S3_RESUME_PPI  EFI_PEI_S3_RESUME_PPI;
   vector. If this function returns, it indicates that the attempt to resume 
   from the ACPI S3 sleep state failed.  
   
-  @param[in] PeiServices   Pointer to the PEI Services Table
+  @param[in] This   Pointer to this instance of the PEI_S3_RESUME_PPI
 
   @retval EFI_ABORTED     Execution of the S3 resume boot script table failed.
   @retval EFI_NOT_FOUND   Some necessary information that is used for the S3 
@@ -71,22 +71,22 @@ typedef struct _EFI_PEI_S3_RESUME_PPI  EFI_PEI_S3_RESUME_PPI;
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PEI_S3_RESUME_PPI_RESTORE_CONFIG)(
-  IN EFI_PEI_SERVICES  **PeiServices
+(EFIAPI *EFI_PEI_S3_RESUME_PPI_RESTORE_CONFIG2)(
+  IN EFI_PEI_S3_RESUME2_PPI  *This
   );
 
 /**
-  EFI_PEI_S3_RESUME_PPI accomplishes the firmware S3 resume boot
+  EFI_PEI_S3_RESUME2_PPI accomplishes the firmware S3 resume boot
   path and transfers control to OS.
 **/
-struct _EFI_PEI_S3_RESUME_PPI {
+struct _EFI_PEI_S3_RESUME2_PPI {
   ///
   /// Restores the platform to its preboot configuration for an S3 resume and
   /// jumps to the OS waking vector.
   ///
-  EFI_PEI_S3_RESUME_PPI_RESTORE_CONFIG  S3RestoreConfig;
+  EFI_PEI_S3_RESUME_PPI_RESTORE_CONFIG2  S3RestoreConfig2;
 };
 
-extern EFI_GUID gEfiPeiS3ResumePpiGuid;
+extern EFI_GUID gEfiPeiS3Resume2PpiGuid;
 
 #endif

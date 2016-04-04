@@ -2,14 +2,14 @@
   This file declares Read-only Variable Service2 PPI.
   This ppi permits read-only access to the UEFI variable store during the PEI phase.
 
-  Copyright (c) 2006 - 2009, Intel Corporation                                                         
-  All rights reserved. This program and the accompanying materials                          
-  are licensed and made available under the terms and conditions of the BSD License         
-  which accompanies this distribution.  The full text of the license may be found at        
-  http://opensource.org/licenses/bsd-license.php                                            
+Copyright (c) 2006 - 2010, Intel Corporation.  All rights reserved<BR>
+This program and the accompanying materials are licensed and made available under 
+the terms and conditions of the BSD License that accompanies this distribution.  
+The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php.                                             
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
   @par Revision Reference:
   This PPI is introduced in PI Version 1.0.
@@ -76,6 +76,7 @@ EFI_STATUS
   @param  This              A pointer to this instance of the EFI_PEI_READ_ONLY_VARIABLE2_PPI.
 
   @param  VariableNameSize  On entry, points to the size of the buffer pointed to by VariableName.
+                            On return, the size of the variable name buffer.
   @param  VariableName      On entry, a pointer to a null-terminated string that is the variable's name.
                             On return, points to the next variable's null-terminated name string.
 

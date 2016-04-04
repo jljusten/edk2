@@ -40,28 +40,39 @@ _ModuleEntryPoint
   mcr     p15, 0, r0, c1, c0, 0
  
   // Set CPU vectors to start of DRAM
-  mov     r0, #0x80000000
+  LoadConstantToReg (FixedPcdGet32(PcdCpuVectorBaseAddress) ,r0) // Get vector base
   mcr     p15, 0, r0, c12, c0, 0
-  /* before we call C code, lets setup the stack pointer in internal RAM*/
+  isb                               // Sync changes to control registers
+
+  // Fill vector table with branchs to current pc (jmp $)
+  ldr     r1, ShouldNeverGetHere
+  movs    r2, #0
+FillVectors
+  str     r1, [r0, r2]
+  adds    r2, r2, #4
+  cmp     r2, #32
+  bne     FillVectors
+   
+  /* before we call C code, lets setup the stack pointer in internal RAM */
 stack_pointer_setup
 
   //
   // Set stack based on PCD values. Need to do it this way to make C code work 
   // when it runs from FLASH. 
   //  
-  LoadConstantToReg (FixedPcdGet32(PcdPrePiStackBase) ,r2)    /* stack base arg2  */
-  LoadConstantToReg (FixedPcdGet32(PcdPrePiStackSize) ,r3)    /* stack size arg3  */
+  LoadConstantToReg (FixedPcdGet32(PcdPrePiStackBase) ,r2)    // stack base arg2  
+  LoadConstantToReg (FixedPcdGet32(PcdPrePiStackSize) ,r3)    // stack size arg3  
   add     r4, r2, r3
 
   //Enter SVC mode and set up SVC stack pointer
-  mov     r0,#0x13|0x80|0x40
-  msr     CPSR_c,r0
+  mov     r5,#0x13|0x80|0x40
+  msr     CPSR_c,r5
   mov     r13,r4
 
   // Call C entry point
-  mov     r0, #0x80000000   /* memory base arg0          */
-  mov     r1, #0x10000000   /* memory size arg1          */
-  blx     CEntryPoint       /* Assume C code is thumb    */
+  LoadConstantToReg (FixedPcdGet32(PcdMemorySize) ,r1)    // memory size arg1         
+  LoadConstantToReg (FixedPcdGet32(PcdMemoryBase) ,r0)    // memory start arg0
+  blx     CEntryPoint                                     // Assume C code is thumb    
 
 ShouldNeverGetHere
   /* _CEntryPoint should never return */

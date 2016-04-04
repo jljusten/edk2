@@ -3,7 +3,7 @@
 # This Package provides all definitions(including functions, MACROs, structures and library classes)
 # and libraries instances, which are defined in MDE Specification.
 # It also provides the definitions(including PPIs/PROTOCOLs/GUIDs) of
-# EFI1.10/UEFI2.0/UEFI2.1/PI1.0 and some Industry Standards.
+# EFI1.10/UEFI2.3/PI1.2 and some Industry Standards.
 #
 # Copyright (c) 2007 - 2010, Intel Corporation.<BR>
 # Portions copyright (c) 2008-2009 Apple Inc. All rights reserved.<BR>
@@ -24,7 +24,7 @@
   DEC_SPECIFICATION              = 0x00010005
   PACKAGE_NAME                   = MdePkg
   PACKAGE_GUID                   = 1E73767F-8F52-4603-AEB4-F29B510B6766
-  PACKAGE_VERSION                = 1.01
+  PACKAGE_VERSION                = 1.02
 
 
 [Includes]
@@ -73,10 +73,6 @@
   ##  @libraryclass  Provides a service to retrieve a pointer to the EFI Boot Services Table.
   #                  Only available to DXE and UEFI module types.
   UefiBootServicesTableLib|Include/Library/UefiBootServicesTableLib.h
-
-  ##  @libraryclass  Provides a service to retrieve a pointer to the SMM Services Table.
-  #                  Only available to SMM/DXE Combined and SMM module types.
-  SmmServicesTableLib|Include/Library/SmmServicesTableLib.h
 
   ##  @libraryclass  Module entry point library for UEFI Applications.
   UefiApplicationEntryPoint|Include/Library/UefiApplicationEntryPoint.h
@@ -195,6 +191,15 @@
   ##  @libraryclass  Provides synchronization functions.
   ##
   SynchronizationLib|Include/Library/SynchronizationLib.h
+
+[LibraryClasses.IA32, LibraryClasses.X64]
+  ##  @libraryclass  Abstracts both S/W SMI generation and detection.
+  ##
+  SmmLib|Include/Library/SmmLib.h
+
+  ##  @libraryclass  Provides a service to retrieve a pointer to the SMM Services Table.
+  #                  Only available to SMM/DXE Combined and SMM module types.
+  SmmServicesTableLib|Include/Library/SmmServicesTableLib.h
 
 [LibraryClasses.IPF]
   ##  @libraryclass  The SAL Library provides a service to make a SAL CALL.
@@ -535,8 +540,8 @@
   ## Include/Ppi/BlockIo.h
   gEfiPeiVirtualBlockIoPpiGuid       = { 0x695d8aa1, 0x42ee, 0x4c46, { 0x80, 0x5c, 0x6e, 0xa6, 0xbc, 0xe7, 0x99, 0xe3 }}
 
-  ## Include/Ppi/S3Resume.h
-  gEfiPeiS3ResumePpiGuid             = { 0x4426CCB2, 0xE684, 0x4a8a, { 0xae, 0x40, 0x20, 0xd4, 0xb0, 0x25, 0xb7, 0x10 }}
+  ## Include/Ppi/S3Resume2.h
+  gEfiPeiS3Resume2PpiGuid             = { 0x6D582DBC, 0xDB85, 0x4514, {0x8F, 0xCC, 0x5A, 0xDF, 0x62, 0x27, 0xB1, 0x47 }}
 
   ## Include/Ppi/ReportStatusCodeHandler.h
   gEfiPeiRscHandlerPpiGuid           = { 0x65d394, 0x9951, 0x4144, {0x82, 0xa3, 0xa, 0xfc, 0x85, 0x79, 0xc2, 0x51 }}

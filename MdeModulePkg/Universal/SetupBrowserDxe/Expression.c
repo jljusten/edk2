@@ -1528,7 +1528,7 @@ CheckUserPrivilege (
     RemainSize = UserInfo->InfoSize - sizeof (EFI_USER_INFO);
     AccessControl = (EFI_USER_INFO_ACCESS_CONTROL *)(UserInfo + 1);
     while (RemainSize >= sizeof (EFI_USER_INFO_ACCESS_CONTROL)) {
-      if (RemainSize < AccessControl->Size || AccessControl->Size <= sizeof (EFI_USER_INFO_ACCESS_CONTROL)) {
+      if (RemainSize < AccessControl->Size || AccessControl->Size < sizeof (EFI_USER_INFO_ACCESS_CONTROL)) {
         break;
       }
       if (AccessControl->Type == EFI_USER_INFO_ACCESS_SETUP) {
@@ -1729,6 +1729,7 @@ EvaluateExpression (
             //
             Status = GetValueByName (OpCode->VarStorage, OpCode->ValueName, &StrPtr);
             if (!EFI_ERROR (Status)) {
+              ASSERT (StrPtr != NULL);
               TempLength = StrLen (StrPtr);
               if (OpCode->ValueWidth >= ((TempLength + 1) / 2)) {
                 Value->Type = OpCode->ValueType;
@@ -1740,7 +1741,7 @@ EvaluateExpression (
                   if ((Index & 1) == 0) {
                     TempBuffer [Index/2] = DigitUint8;
                   } else {
-                    TempBuffer [Index/2] = (UINT8) ((DigitUint8 << 4) + TempStr [Index/2]);
+                    TempBuffer [Index/2] = (UINT8) ((DigitUint8 << 4) + TempBuffer [Index/2]);
                   }
                 }
               }                

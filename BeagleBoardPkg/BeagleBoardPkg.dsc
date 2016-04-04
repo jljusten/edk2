@@ -32,10 +32,12 @@
 
 
 [LibraryClasses.common]
-!if DEBUG_TARGET == RELEASE
+!if $(BUILD_TARGETS) == RELEASE
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  UncachedMemoryAllocationLib|ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
 !else
   DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
+  UncachedMemoryAllocationLib|ArmPkg/Library/DebugUncachedMemoryAllocationLib/DebugUncachedMemoryAllocationLib.inf
 !endif
 
   ArmLib|ArmPkg/Library/ArmLib/ArmV7/ArmV7Lib.inf
@@ -100,8 +102,6 @@
   UefiUsbLib|MdePkg/Library/UefiUsbLib/UefiUsbLib.inf
   EblAddExternalCommandLib|EmbeddedPkg/Library/EblAddExternalCommandLib/EblAddExternalCommandLib.inf
   
-  UncachedMemoryAllocationLib|ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
-#  UncachedMemoryAllocationLib|ArmPkg/Library/DebugUncachedMemoryAllocationLib/DebugUncachedMemoryAllocationLib.inf
 
   CpuLib|MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
 
@@ -111,6 +111,7 @@
   
   GdbSerialLib|Omap35xxPkg/Library/GdbSerialLib/GdbSerialLib.inf
   ArmDisassemblerLib|ArmPkg/Library/ArmDisassemblerLib/ArmDisassemblerLib.inf
+  DebugAgentLib|MdeModulePkg/Library/DebugAgentLibNull/DebugAgentLibNull.inf
 
 
 [LibraryClasses.common.SEC]
@@ -162,6 +163,11 @@
 
 
 [LibraryClasses.ARM]
+  #
+  # It is not possible to prevent the ARM compiler for generic intrinsic functions.
+  # This library provides the instrinsic functions generate by a given compiler.
+  # [LibraryClasses.ARM] and NULL mean link this library into all ARM images.
+  #
   NULL|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
 
 
@@ -203,9 +209,7 @@
   gEmbeddedTokenSpaceGuid.PcdPrePiProduceMemoryTypeInformationHob|TRUE
   gArmTokenSpaceGuid.PcdCpuDxeProduceDebugSupport|FALSE
 
-  #
-  # Beagle board Specific PCDs
-  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdTurnOffUsbLegacySupport|TRUE
   
 [PcdsFixedAtBuild.common]
   gEmbeddedTokenSpaceGuid.PcdEmbeddedPrompt|"BeagleEdk2"
@@ -287,7 +291,11 @@
   gEmbeddedTokenSpaceGuid.PcdPrePiHobBase|0x80001000
   gEmbeddedTokenSpaceGuid.PcdPrePiStackBase|0x87FE0000 # stack at top of memory
   gEmbeddedTokenSpaceGuid.PcdPrePiStackSize|0x20000  # 128K stack
-  gBeagleBoardTokenSpaceGuid.PcdBeagleBoardIRAMFullSize|0x00000000
+  
+  gEmbeddedTokenSpaceGuid.PcdMemoryBase|0x80000000
+  gEmbeddedTokenSpaceGuid.PcdMemorySize|0x10000000
+
+
   gArmTokenSpaceGuid.PcdCpuVectorBaseAddress|0x80000000
   gArmTokenSpaceGuid.PcdCpuResetAddress|0x80008000
   

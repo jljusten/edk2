@@ -10,7 +10,7 @@
 #    are licensed and made available under the terms and conditions of the BSD License
 #    which accompanies this distribution. The full text of the license may be found at
 #    http://opensource.org/licenses/bsd-license.php
-# 
+#
 #    THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 #    WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #
@@ -67,11 +67,9 @@
   DxeServicesLib|MdePkg/Library/DxeServicesLib/DxeServicesLib.inf
   PeCoffGetEntryPointLib|MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
   SecurityManagementLib|MdeModulePkg/Library/DxeSecurityManagementLib/DxeSecurityManagementLib.inf
+  DebugAgentLib|MdeModulePkg/Library/DebugAgentLibNull/DebugAgentLibNull.inf
 
-  EfiFileLib|EmbeddedPkg/Library/EfiFileLib/EfiFileLib.inf
-  EblCmdLib|EmbeddedPkg/Library/EblCmdLibNull/EblCmdLibNull.inf
-  EblNetworkLib|EmbeddedPkg/Library/EblNetworkLib/EblNetworkLib.inf
-  
+
 
 [LibraryClasses.common.USER_DEFINED]
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
@@ -235,7 +233,7 @@
   gEfiUnixPkgTokenSpaceGuid.PcdUnixFlashNvStorageEventLogSize|0x2000
   gEfiUnixPkgTokenSpaceGuid.PcdUnixFlashFvRecoveryBase|0x0
   gEfiUnixPkgTokenSpaceGuid.PcdUnixFlashFvRecoverySize|0x280000
-  
+
   gEfiUnixPkgTokenSpaceGuid.PcdUnixMemorySizeForSecMain|L"64!64"|VOID*|10
   gEfiUnixPkgTokenSpaceGuid.PcdUnixFirmwareVolume|L"../FV/FV_RECOVERY.fd"|VOID*|52
 
@@ -280,9 +278,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize|0x400
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxHardwareErrorVariableSize|0x8000
   gEfiMdeModulePkgTokenSpaceGuid.PcdVariableStoreSize|0x10000
-  
-  
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedPrompt|"%a"
+
 
 [PcdsFeatureFlag]
   gEfiEdkModulePkgTokenSpaceGuid.PcdStatusCodeUseSerial|FALSE
@@ -304,7 +300,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdPciBusHotplugDeviceSupport|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutUgaSupport|TRUE
   #gEfiMdeModulePkgTokenSpaceGuid.PcdConOutGopSupport|FALSE
-  
+
 [PcdsFeatureFlag.IA32]
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseTraverseEnabled|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseCallbackOnSetEnabled|TRUE
@@ -313,7 +309,6 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiPcdDatabaseSetEnabled|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode|FALSE
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSupportUefiDecompress|TRUE
-  gEfiMdeModulePkgTokenSpaceGuid.PcdDxePcdDatabaseTraverseEnabled|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeUseSerial|FALSE
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdStatusCodeUseOEM|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdSupportUpdateCapsuleReset|FALSE
@@ -398,7 +393,7 @@
   UnixPkg/UnixFirmwareVolumePei/UnixFwh.inf
   UnixPkg/UnixThunkPpiToProtocolPei/UnixThunkPpiToProtocol.inf
   MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf
-  
+
   ##
   #  DXE Phase modules
   ##
@@ -445,7 +440,7 @@
   MdeModulePkg/Bus/Scsi/ScsiDiskDxe/ScsiDiskDxe.inf
   IntelFrameworkModulePkg/Bus/Pci/IdeBusDxe/IdeBusDxe.inf
   UnixPkg/UnixBusDriverDxe/UnixBusDriver.inf
- 
+
   UnixPkg/UnixBlockIoDxe/UnixBlockIo.inf
   UnixPkg/UnixSerialIoDxe/UnixSerialIo.inf
   UnixPkg/UnixUgaDxe/UnixUga.inf
@@ -463,6 +458,7 @@
   MdeModulePkg/Universal/Network/Ip4ConfigDxe/Ip4ConfigDxe.inf
   MdeModulePkg/Universal/Network/Ip4Dxe/Ip4Dxe.inf
   MdeModulePkg/Universal/Network/MnpDxe/MnpDxe.inf
+  MdeModulePkg/Universal/Network/VlanConfigDxe/VlanConfigDxe.inf
   MdeModulePkg/Universal/Network/Mtftp4Dxe/Mtftp4Dxe.inf
   MdeModulePkg/Universal/Network/Tcp4Dxe/Tcp4Dxe.inf
   MdeModulePkg/Universal/Network/Udp4Dxe/Udp4Dxe.inf
@@ -477,5 +473,4 @@
   }
 
   #FatPkg/EnhancedFatDxe/Fat.inf
-  
-  #EmbeddedPkg/Ebl/Ebl.inf
+

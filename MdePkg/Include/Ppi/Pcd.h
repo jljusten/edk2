@@ -1,14 +1,19 @@
 /** @file
-  Platform Configuration Database (PCD) PPI
+  Native Platform Configuration Database (PCD) PPI
+  
+  Different with the EFI_PCD_PPI defined in PI 1.2 specification, the native
+  PCD PPI provide interfaces for dynamic and dynamic-ex type PCD. 
+  The interfaces for dynamic type PCD do not require the token space guid as parameter,
+  but interfaces for dynamic-ex type PCD require token space guid as parameter.
 
-  Copyright (c) 2006 - 2008, Intel Corporation                                                         
-  All rights reserved. This program and the accompanying materials                          
-  are licensed and made available under the terms and conditions of the BSD License         
-  which accompanies this distribution.  The full text of the license may be found at        
-  http://opensource.org/licenses/bsd-license.php                                            
+Copyright (c) 2006 - 2010, Intel Corporation.  All rights reserved<BR>
+This program and the accompanying materials are licensed and made available under 
+the terms and conditions of the BSD License that accompanies this distribution.  
+The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php.                                            
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
 **/
 
@@ -358,7 +363,7 @@ UINTN
   @param[in]  TokenNumber The PCD token number. 
   @param[in]  Value       The value to set for the PCD token.
 
-  @retval EFI_SUCCESS           Procedure returned successfully.
+  @retval EFI_SUCCESS           The procedure returned successfully.
   @retval EFI_INVALID_PARAMETER The PCD service determined that the size of the data 
                                 being set was incompatible with a call to this function.  
                                 Use GetSize() to retrieve the size of the target data.
@@ -384,7 +389,7 @@ EFI_STATUS
   @param[in]  TokenNumber The PCD token number. 
   @param[in]  Value       The value to set for the PCD token.
 
-  @retval EFI_SUCCESS           Procedure returned successfully.
+  @retval EFI_SUCCESS           The procedure returned successfully.
   @retval EFI_INVALID_PARAMETER The PCD service determined that the size of the data 
                                 being set was incompatible with a call to this function.  
                                 Use GetSize() to retrieve the size of the target data.
@@ -410,7 +415,7 @@ EFI_STATUS
   @param[in]  TokenNumber The PCD token number. 
   @param[in]  Value       The value to set for the PCD token.
 
-  @retval EFI_SUCCESS           Procedure returned successfully.
+  @retval EFI_SUCCESS           The procedure returned successfully.
   @retval EFI_INVALID_PARAMETER The PCD service determined that the size of the data 
                                 being set was incompatible with a call to this function.  
                                 Use GetSize() to retrieve the size of the target data.
@@ -436,7 +441,7 @@ EFI_STATUS
   @param[in]  TokenNumber The PCD token number. 
   @param[in]  Value       The value to set for the PCD token.
 
-  @retval EFI_SUCCESS           Procedure returned successfully.
+  @retval EFI_SUCCESS           The procedure returned successfully.
   @retval EFI_INVALID_PARAMETER The PCD service determined that the size of the data 
                                 being set was incompatible with a call to this function.  
                                 Use GetSize() to retrieve the size of the target data.
@@ -464,7 +469,7 @@ EFI_STATUS
                                the maximum size supported for this TokenNumber.
   @param[in]      Buffer       The buffer to set for the PCD token.
 
-  @retval EFI_SUCCESS           Procedure returned successfully.
+  @retval EFI_SUCCESS           The procedure returned successfully.
   @retval EFI_INVALID_PARAMETER The PCD service determined that the size of the data 
                                 being set was incompatible with a call to this function.  
                                 Use GetSize() to retrieve the size of the target data.
@@ -489,7 +494,7 @@ EFI_STATUS
   @param[in]  TokenNumber The PCD token number. 
   @param[in]  Value       The value to set for the PCD token.
 
-  @retval EFI_SUCCESS           Procedure returned successfully.
+  @retval EFI_SUCCESS           The procedure returned successfully.
   @retval EFI_INVALID_PARAMETER The PCD service determined that the size of the data 
                                 being set was incompatible with a call to this function.  
                                 Use GetSize() to retrieve the size of the target data.
@@ -516,7 +521,7 @@ EFI_STATUS
   @param[in]  TokenNumber The PCD token number. 
   @param[in]  Value       The value to set for the PCD token.
 
-  @retval EFI_SUCCESS           Procedure returned successfully.
+  @retval EFI_SUCCESS           The procedure returned successfully.
   @retval EFI_INVALID_PARAMETER The PCD service determined that the size of the data 
                                 being set was incompatible with a call to this function.  
                                 Use GetSize() to retrieve the size of the target data.
@@ -544,7 +549,7 @@ EFI_STATUS
   @param[in]  TokenNumber The PCD token number. 
   @param[in]  Value       The value to set for the PCD token.
 
-  @retval EFI_SUCCESS           Procedure returned successfully.
+  @retval EFI_SUCCESS           The procedure returned successfully.
   @retval EFI_INVALID_PARAMETER The PCD service determined that the size of the data 
                                 being set was incompatible with a call to this function.  
                                 Use GetSize() to retrieve the size of the target data.
@@ -572,7 +577,7 @@ EFI_STATUS
   @param[in]  TokenNumber The PCD token number. 
   @param[in]  Value       The value to set for the PCD token.
 
-  @retval EFI_SUCCESS           Procedure returned successfully.
+  @retval EFI_SUCCESS           The procedure returned successfully.
   @retval EFI_INVALID_PARAMETER The PCD service determined that the size of the data 
                                 being set was incompatible with a call to this function.  
                                 Use GetSize() to retrieve the size of the target data.
@@ -600,7 +605,7 @@ EFI_STATUS
   @param[in]  TokenNumber The PCD token number. 
   @param[in]  Value       The value to set for the PCD token.
 
-  @retval EFI_SUCCESS           Procedure returned successfully.
+  @retval EFI_SUCCESS           The procedure returned successfully.
   @retval EFI_INVALID_PARAMETER The PCD service determined that the size of the data 
                                 being set was incompatible with a call to this function.  
                                 Use GetSize() to retrieve the size of the target data.
@@ -632,7 +637,7 @@ EFI_STATUS
                                the maximum size supported for this TokenNumber.
   @param[in]      Buffer       The buffer to set for the PCD token.
 
-  @retval EFI_SUCCESS           Procedure returned successfully.
+  @retval EFI_SUCCESS           The procedure returned successfully.
   @retval EFI_INVALID_PARAMETER The PCD service determined that the size of the data 
                                 being set was incompatible with a call to this function.  
                                 Use GetSize() to retrieve the size of the target data.
@@ -659,7 +664,7 @@ EFI_STATUS
   @param[in]  TokenNumber The PCD token number. 
   @param[in]  Value       The value to set for the PCD token.
 
-  @retval EFI_SUCCESS           Procedure returned successfully.
+  @retval EFI_SUCCESS           The procedure returned successfully.
   @retval EFI_INVALID_PARAMETER The PCD service determined that the size of the data 
                                 being set was incompatible with a call to this function.  
                                 Use GetSize() to retrieve the size of the target data.
@@ -798,7 +803,7 @@ EFI_STATUS
   @param[in, out]  Guid An indirect pointer to EFI_GUID.  On input it designates a known 
                         token namespace from which the search will start. On output, it designates 
                         the next valid token namespace on the platform. If the input token namespace 
-                        does not exist on the platform, an error is returned and the value of *Guid is 
+                        does not exist on the platform, an error is returned, and the value of *Guid is 
                         undefined.
 
   @retval EFI_SUCCESS  The PCD service has retrieved the next valid token namespace. 

@@ -2,7 +2,7 @@
   Language Library implementation that provides functions for language conversion
   between ISO 639-2 and RFC 4646 language codes.
 
-  Copyright (c) 2009, Intel Corporation<BR>
+  Copyright (c) 2009 - 2010, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -384,7 +384,7 @@ ConvertRfc4646ToIso639 (
   
   @retval NULL                Invalid ISO 639-2 language code found.
   @retval NULL                Out of memory.
-  @retval !NULL               Pointer to the allocate buffer containing the Null-terminated converted language codes string.
+  @return                     Pointer to the allocate buffer containing the Null-terminated converted language codes string.
                               This string is composed of one or more RFC4646 language codes each of which has only
                               ISO 639-1 2-letter primary language subtag.
 
@@ -406,7 +406,7 @@ ConvertLanguagesIso639ToRfc4646 (
   // The length of ISO 639-2 lanugage codes string must be multiple of 3
   //
   Length = AsciiStrLen (Iso639Languages);
-  if (Length % 3) {
+  if (Length % 3 != 0) {
     return NULL;
   }
   
@@ -442,7 +442,7 @@ ConvertLanguagesIso639ToRfc4646 (
   
   @retval NULL                 Invalid or unsupported RFC 4646 language code found.
   @retval NULL                 Out of memory.
-  @retval !NULL                Pointer to the allocate buffer containing the Null-terminated converted language codes string.
+  @return                      Pointer to the allocate buffer containing the Null-terminated converted language codes string.
                                This string is composed of one or more ISO 639-2 language codes.
 
 **/

@@ -5,14 +5,14 @@
   information from configuration applications, routing the
   results to the appropriate drivers.
   
-  Copyright (c) 2006 - 2009, Intel Corporation
-  All rights reserved. This program and the accompanying materials                          
-  are licensed and made available under the terms and conditions of the BSD License         
-  which accompanies this distribution.  The full text of the license may be found at        
-  http://opensource.org/licenses/bsd-license.php                                            
-
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+Copyright (c) 2006 - 2010, Intel Corporation.  All rights reserved<BR>
+This program and the accompanying materials are licensed and made available under 
+the terms and conditions of the BSD License that accompanies this distribution.  
+The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php.                                          
+    
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
 **/
 
@@ -30,10 +30,10 @@ typedef struct _EFI_HII_CONFIG_ROUTING_PROTOCOL EFI_HII_CONFIG_ROUTING_PROTOCOL;
   This function allows the caller to request the current
   configuration for one or more named elements from one or more
   drivers. The resulting string is in the standard HII
-  configuration string format. If Successful Results contains an
+  configuration string format. If Successful, Results contains an
   equivalent string with "=" and the values associated with all
   names added in. The expected implementation is for each
-  <ConfigRequest> substring in the Request, call the HII
+  <ConfigRequest> substring in the Request to call the HII
   Configuration Routing Protocol ExtractProtocol function for the
   driver corresponding to the <ConfigHdr> at the start of the
   <ConfigRequest> substring. The request fails if no driver
@@ -56,25 +56,20 @@ typedef struct _EFI_HII_CONFIG_ROUTING_PROTOCOL EFI_HII_CONFIG_ROUTING_PROTOCOL;
   @param This       Points to the EFI_HII_CONFIG_ROUTING_PROTOCOL
                     instance.
 
-  @param Request    A null-terminated string in <MultiConfigRequest>
-                    format. If a NULL is passed in for the Request field,
-                    all of the settings being abstracted by this function
-                    will be returned in the Results field.
+  @param Request    A null-terminated string in <MultiConfigRequest> format.
 
   @param Progress   On return, points to a character in the
                     Request string. Points to the string's null
-                    terminator if request was successful. Points
+                    terminator if the request was successful. Points
                     to the most recent '&' before the first
                     failing name / value pair (or the beginning
                     of the string if the failure is in the first
                     name / value pair) if the request was not
                     successful
 
-  @param Results    A null-terminated string in <ConfigAltResp> format
+  @param Results    A null-terminated string in <MultiConfigAltResp> format
                     which has all values filled in for the names in the
-                    Request string. If the Request string was NULL, the data
-                    returned is in <MultiConfigAltResp> format. String to be
-                    allocated by the called function.
+                    Request string.
 
   @retval EFI_SUCCESS             The Results string is filled with the
                                   values corresponding to all requested
@@ -101,8 +96,8 @@ typedef struct _EFI_HII_CONFIG_ROUTING_PROTOCOL EFI_HII_CONFIG_ROUTING_PROTOCOL;
                                   configuration extraction.
 
   @retval EFI_INVALID_PARAMETER   Illegal syntax. Progress set
-                                  to most recent & before the
-                                  error or the beginning of the
+                                  to the most recent & before the
+                                  error, or the beginning of the
                                   string.
   @retval EFI_INVALID_PARAMETER   Unknown name.
 
@@ -177,7 +172,7 @@ EFI_STATUS
                         offset of the most recent '&' before the
                         first failing name / value pair (or the
                         beginning of the string if the failure is in
-                        the first name / value pair) or the
+                        the first name / value pair), or the
                         terminating NULL if all was successful.
 
   @retval EFI_SUCCESS             The results have been distributed or are
@@ -192,8 +187,8 @@ EFI_STATUS
                                   Results parameter would result
                                   in this type of error.
   
-  @retval EFI_NOT_FOUND           Target for the specified routing data
-                                  was not found
+  @retval EFI_NOT_FOUND           The target for the specified routing data
+                                  was not found.
 
 **/
 typedef
@@ -221,20 +216,21 @@ EFI_STATUS
 
   @param ConfigRequest  A null-terminated string in <ConfigRequest> format.
 
-  @param Block      Array of bytes defining the block's
+  @param Block      An array of bytes defining the block's
                     configuration.
 
-  @param BlockSize  Length in bytes of Block.
+  @param BlockSize  The length in bytes of Block.
 
-  @param Config     Filled-in configuration string. String
+  @param Config     The filled-in configuration string. String
                     allocated by the function. Returned only if
-                    call is successful.
+                    call is successful. The null-terminated string 
+                    will be <ConfigResp> format.
 
   @param Progress   A pointer to a string filled in with the
                     offset of the most recent '&' before the
                     first failing name / value pair (or the
                     beginning of the string if the failure is in
-                    the first name / value pair) or the
+                    the first name / value pair), or the
                     terminating NULL if all was successful.
 
   @retval EFI_SUCCESS             The request succeeded. Progress points
@@ -252,11 +248,11 @@ EFI_STATUS
                                   to the first character of
                                   ConfigRequest.
 
-  @retval EFI_NOT_FOUND           Target for the specified routing data
+  @retval EFI_NOT_FOUND           The target for the specified routing data
                                   was not found. Progress points to the
                                   'G' in "GUID" of the errant routing
                                   data. 
-  @retval EFI_DEVICE_ERROR        Block not large enough. Progress undefined.
+  @retval EFI_DEVICE_ERROR        The block is not large enough. Progress undefined.
 
   @retval EFI_INVALID_PARAMETER   Encountered non <BlockName>
                                   formatted string. Block is
@@ -304,7 +300,7 @@ EFI_STATUS
                         BlockLength parameter is (on input)
                         shorter than required by the
                         Configuration string, only the BlockSize
-                        parameter is updated and an appropriate
+                        parameter is updated, and an appropriate
                         status (see below) is returned.
 
   @param BlockSize      The length of the Block in units of UINT8.
@@ -317,7 +313,7 @@ EFI_STATUS
                         of the most recent "&" before the first
                         failing name / value pair (or the beginning
                         of the string if the failure is in the first
-                        name / value pair) or the terminating NULL
+                        name / value pair), or the terminating NULL
                         if all was successful.
 
   @retval EFI_SUCCESS            The request succeeded. Progress points to the null
@@ -349,7 +345,7 @@ EFI_STATUS
   a larger configuration string.
           
   @param This              A pointer to the EFI_HII_CONFIG_ROUTING_PROTOCOL instance.
-  @param Configuration     A null-terminated string in <MultiConfigAltResp> format.
+  @param ConfigResp        A null-terminated string in <ConfigAltResp> format.
   @param Guid              A pointer to the GUID value to search for in the 
                            routing portion of the ConfigResp string when retrieving 
                            the requested data. If Guid is NULL, then all GUID 
@@ -369,18 +365,19 @@ EFI_STATUS
   @param AltCfgResp        A pointer to a buffer which will be allocated by the 
                            function which contains the retrieved string as requested.  
                            This buffer is only allocated if the call was successful. 
+                           The null-terminated string will be <ConfigResp> format.
   
   @retval EFI_SUCCESS             The request succeeded. The requested data was extracted 
                                   and placed in the newly allocated AltCfgResp buffer.
   @retval EFI_OUT_OF_RESOURCES    Not enough memory to allocate AltCfgResp.    
   @retval EFI_INVALID_PARAMETER   Any parameter is invalid.
-  @retval EFI_NOT_FOUND           Target for the specified routing data was not found.
+  @retval EFI_NOT_FOUND           The target for the specified routing data was not found.
 **/
 typedef
 EFI_STATUS 
 (EFIAPI * EFI_HII_GET_ALT_CFG)(
   IN  CONST EFI_HII_CONFIG_ROUTING_PROTOCOL    *This, 
-  IN  CONST EFI_STRING                         Configuration, 
+  IN  CONST EFI_STRING                         ConfigResp, 
   IN  CONST EFI_GUID                           *Guid, 
   IN  CONST EFI_STRING                         Name, 
   IN  CONST EFI_DEVICE_PATH_PROTOCOL           *DevicePath,  

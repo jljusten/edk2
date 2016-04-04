@@ -1,14 +1,14 @@
 /** @file
   Processor or Compiler specific defines and types for Intel Itanium(TM) processors.
 
-  Copyright (c) 2006 - 2010, Intel Corporation<BR>
-  All rights reserved. This program and the accompanying materials
-  are licensed and made available under the terms and conditions of the BSD License
-  which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved. <BR>
+This program and the accompanying materials are licensed and made available 
+under the terms and conditions of the BSD License which accompanies this
+distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php.
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -17,7 +17,7 @@
 
 
 ///
-/// Define the processor type so other code can make processor-based choices
+/// Define the processor type so other code can make processor-based choices.
 ///
 #define MDE_CPU_IPF
 
@@ -106,231 +106,114 @@
 
 #endif
 
-
-#if !defined (__STDC_VERSION__) || (__STDC_VERSION__) < 199901L
+#if defined(_MSC_EXTENSIONS)
   //
-  // No ANSI C 2000 stdint.h integer width declarations, so define equivalents
+  // use Microsoft C compiler dependent integer width types
   //
 
-  #if defined(_MSC_EXTENSIONS)
-    //
-    // use Microsoft C compiler dependent integer width types
-    //
-
-    ///
-    /// 8-byte unsigned value
-    ///
-    typedef unsigned __int64    UINT64;
-    ///
-    /// 8-byte signed value
-    ///
-    typedef __int64             INT64;
-    ///
-    /// 4-byte unsigned value
-    ///
-    typedef unsigned __int32    UINT32;
-    ///
-    /// 4-byte signed value
-    ///
-    typedef __int32             INT32;
-    ///
-    /// 2-byte unsigned value
-    ///
-    typedef unsigned short      UINT16;
-    ///
-    /// 2-byte Character.  Unless otherwise specified all strings are stored in the
-    /// UTF-16 encoding format as defined by Unicode 2.1 and ISO/IEC 10646 standards.
-    ///
-    typedef unsigned short      CHAR16;
-    ///
-    /// 2-byte signed value
-    ///
-    typedef short               INT16;
-    ///
-    /// Logical Boolean.  1-byte value containing 0 for FALSE or a 1 for TRUE.  Other
-    /// values are undefined.
-    ///
-    typedef unsigned char       BOOLEAN;
-    ///
-    /// 1-byte unsigned value
-    ///
-    typedef unsigned char       UINT8;
-    ///
-    /// 1-byte Character
-    ///
-    typedef char                CHAR8;
-    ///
-    /// 1-byte signed value
-    ///
-    typedef char                INT8;
-  #else
-    #if defined(_EFI_P64)
-      //
-      // P64 - pointers being 64-bit and longs and ints are 32-bits.
-      //
-
-      ///
-      /// 8-byte unsigned value
-      ///
-      typedef unsigned long long  UINT64;
-      ///
-      /// 8-byte signed value
-      ///
-      typedef long long           INT64;
-      ///
-      /// 4-byte unsigned value
-      ///
-      typedef unsigned int        UINT32;
-      ///
-      /// 4-byte signed value
-      ///
-      typedef int                 INT32;
-      ///
-      /// 2-byte Character.  Unless otherwise specified all strings are stored in the
-      /// UTF-16 encoding format as defined by Unicode 2.1 and ISO/IEC 10646 standards.
-      ///
-      typedef unsigned short      CHAR16;
-      ///
-      /// 2-byte unsigned value
-      ///
-      typedef unsigned short      UINT16;
-      ///
-      /// 2-byte signed value
-      ///
-      typedef short               INT16;
-      ///
-      /// Logical Boolean.  1-byte value containing 0 for FALSE or a 1 for TRUE.  Other
-      /// values are undefined.
-      ///
-      typedef unsigned char       BOOLEAN;
-      ///
-      /// 1-byte unsigned value
-      ///
-      typedef unsigned char       UINT8;
-      ///
-      /// 1-byte Character
-      ///
-      typedef char                CHAR8;
-      ///
-      /// 1-byte signed value
-      ///
-      typedef char                INT8;
-    #else
-      //
-      // Assume LP64 - longs and pointers are 64-bit. Ints are 32-bit.
-      //
-
-      ///
-      /// 8-byte unsigned value
-      ///
-      typedef unsigned long   UINT64;
-      ///
-      /// 8-byte signed value
-      ///
-      typedef long            INT64;
-      ///
-      /// 4-byte unsigned value
-      ///
-      typedef unsigned int    UINT32;
-      ///
-      /// 4-byte signed value
-      ///
-      typedef int             INT32;
-      ///
-      /// 2-byte unsigned value
-      ///
-      typedef unsigned short  UINT16;
-      ///
-      /// 2-byte Character.  Unless otherwise specified all strings are stored in the
-      /// UTF-16 encoding format as defined by Unicode 2.1 and ISO/IEC 10646 standards.
-      ///
-      typedef unsigned short  CHAR16;
-      ///
-      /// 2-byte signed value
-      ///
-      typedef short           INT16;
-      ///
-      /// Logical Boolean.  1-byte value containing 0 for FALSE or a 1 for TRUE.  Other
-      /// values are undefined.
-      ///
-      typedef unsigned char   BOOLEAN;
-      ///
-      /// 1-byte unsigned value
-      ///
-      typedef unsigned char   UINT8;
-      ///
-      /// 1-byte Character
-      ///
-      typedef char            CHAR8;
-      ///
-      /// 1-byte signed value
-      ///
-      typedef char            INT8;
-    #endif
-  #endif
-#else
-  //
-  // Use ANSI C 2000 stdint.h integer width declarations
-  //
-  #include <stdint.h>
-
   ///
-  /// Logical Boolean.  1-byte value containing 0 for FALSE or a 1 for TRUE.  Other
-  /// values are undefined.
+  /// 8-byte unsigned value.
   ///
-  typedef uint8_t   BOOLEAN;
+  typedef unsigned __int64    UINT64;
   ///
-  /// 1-byte signed value
+  /// 8-byte signed value.
   ///
-  typedef int8_t    INT8;
+  typedef __int64             INT64;
   ///
-  /// 1-byte unsigned value
+  /// 4-byte unsigned value.
   ///
-  typedef uint8_t   UINT8;
+  typedef unsigned __int32    UINT32;
   ///
-  /// 2-byte signed value
+  /// 4-byte signed value.
   ///
-  typedef int16_t   INT16;
+  typedef __int32             INT32;
   ///
-  /// 2-byte unsigned value
+  /// 2-byte unsigned value.
   ///
-  typedef uint16_t  UINT16;
-  ///
-  /// 4-byte signed value
-  ///
-  typedef int32_t   INT32;
-  ///
-  /// 4-byte unsigned value
-  ///
-  typedef uint32_t  UINT32;
-  ///
-  /// 8-byte signed value
-  ///
-  typedef int64_t   INT64;
-  ///
-  /// 8-byte unsigned value
-  ///
-  typedef uint64_t  UINT64;
-  ///
-  /// 1-byte Character
-  ///
-  typedef char      CHAR8;
+  typedef unsigned short      UINT16;
   ///
   /// 2-byte Character.  Unless otherwise specified all strings are stored in the
   /// UTF-16 encoding format as defined by Unicode 2.1 and ISO/IEC 10646 standards.
   ///
-  typedef uint16_t  CHAR16;
-
+  typedef unsigned short      CHAR16;
+  ///
+  /// 2-byte signed value.
+  ///
+  typedef short               INT16;
+  ///
+  /// Logical Boolean.  1-byte value containing 0 for FALSE or a 1 for TRUE.  Other
+  /// values are undefined.
+  ///
+  typedef unsigned char       BOOLEAN;
+  ///
+  /// 1-byte unsigned value.
+  ///
+  typedef unsigned char       UINT8;
+  ///
+  /// 1-byte Character.
+  ///
+  typedef char                CHAR8;
+  ///
+  /// 1-byte signed value.
+  ///
+  typedef char                INT8;
+#else
+  ///
+  /// 8-byte unsigned value.
+  ///
+  typedef unsigned long long  UINT64;
+  ///
+  /// 8-byte signed value.
+  ///
+  typedef long long           INT64;
+  ///
+  /// 4-byte unsigned value.
+  ///
+  typedef unsigned int        UINT32;
+  ///
+  /// 4-byte signed value.
+  ///
+  typedef int                 INT32;
+  ///
+  /// 2-byte unsigned value.
+  ///
+  typedef unsigned short      UINT16;
+  ///
+  /// 2-byte Character.  Unless otherwise specified all strings are stored in the
+  /// UTF-16 encoding format as defined by Unicode 2.1 and ISO/IEC 10646 standards.
+  ///
+  typedef unsigned short      CHAR16;
+  ///
+  /// 2-byte signed value.
+  ///
+  typedef short               INT16;
+  ///
+  /// Logical Boolean.  1-byte value containing 0 for FALSE or a 1 for TRUE.  Other
+  /// values are undefined.
+  ///
+  typedef unsigned char       BOOLEAN;
+  ///
+  /// 1-byte unsigned value.
+  ///
+  typedef unsigned char       UINT8;
+  ///
+  /// 1-byte Character.
+  ///
+  typedef char                CHAR8;
+  ///
+  /// 1-byte signed value.
+  ///
+  typedef char                INT8;
 #endif
 
 ///
-/// Unsigned value of native width.  (4 bytes on supported 32-bit processor instructions,
-/// 8 bytes on supported 64-bit processor instructions)
+/// Unsigned value of native width.  (4 bytes on supported 32-bit processor instructions;
+/// 8 bytes on supported 64-bit processor instructions.)
 ///
 typedef UINT64  UINTN;
 ///
-/// Signed value of native width.  (4 bytes on supported 32-bit processor instructions,
-/// 8 bytes on supported 64-bit processor instructions)
+/// Signed value of native width.  (4 bytes on supported 32-bit processor instructions;
+/// 8 bytes on supported 64-bit processor instructions.)
 ///
 typedef INT64   INTN;
 
@@ -349,7 +232,7 @@ typedef INT64   INTN;
 #define MAX_2_BITS  0xC000000000000000ULL
 
 ///
-/// Maximum legal Itanium-based address
+/// The maximum legal Itanium-based address
 ///
 #define MAX_ADDRESS   0xFFFFFFFFFFFFFFFFULL
 
@@ -370,7 +253,7 @@ typedef INT64   INTN;
   ///
 #elif defined(_MSC_EXTENSIONS)
   ///
-  /// Microsoft* compiler specific method for EFIAPI calling convension
+  /// Microsoft* compiler-specific method for EFIAPI calling convention.
   /// 
   #define EFIAPI __cdecl
 #else

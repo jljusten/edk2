@@ -755,7 +755,7 @@ PeiFfsFindFileByName (
   Returns information about a specific file.
 
   @param FileHandle       Handle of the file.
-  @param FileInfo         Upon exit, points to the file’s information.
+  @param FileInfo         Upon exit, points to the file's information.
 
   @retval EFI_INVALID_PARAMETER If FileInfo is NULL.
   @retval EFI_INVALID_PARAMETER If FileHandle does not represent a valid file.
@@ -1391,6 +1391,7 @@ FindNextCoreFvHandle (
     }
   }
 
+  ASSERT (Private->FvCount <= FixedPcdGet32 (PcdPeiCoreMaxFvSupported));
   if (Instance >= Private->FvCount) {
     return NULL;
   }
@@ -1473,7 +1474,7 @@ AddUnknownFormatFvInfo (
 {
   PEI_CORE_UNKNOW_FORMAT_FV_INFO    *NewUnknownFv;
   
-  if (PrivateData->UnknownFvInfoCount + 1 >= FixedPcdGet32 (PcdPeiCoreMaxPeimPerFv)) {
+  if (PrivateData->UnknownFvInfoCount + 1 >= FixedPcdGet32 (PcdPeiCoreMaxFvSupported)) {
     return EFI_OUT_OF_RESOURCES;
   }
   
@@ -1606,6 +1607,12 @@ ThirdPartyFvPpiNotifyCallback (
       continue;
     }
     
+    if (PrivateData->FvCount >= FixedPcdGet32 (PcdPeiCoreMaxFvSupported)) {
+      DEBUG ((EFI_D_ERROR, "The number of Fv Images (%d) exceed the max supported FVs (%d) in Pei", PrivateData->FvCount + 1, FixedPcdGet32 (PcdPeiCoreMaxFvSupported)));
+      DEBUG ((EFI_D_ERROR, "PcdPeiCoreMaxFvSupported value need be reconfigurated in DSC"));
+      ASSERT (FALSE);
+    }
+        
     //
     // Update internal PEI_CORE_FV array.
     //

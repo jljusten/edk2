@@ -2,14 +2,14 @@
   GUID and data structures for communication between SMM Base on SMM Base2 Thunk driver
   and SmmBaseHelper driver.
 
-  Copyright (c) 2009 - 2010, Intel Corporation
-  All rights reserved. This program and the accompanying materials
-  are licensed and made available under the terms and conditions of the BSD License
-  which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+Copyright (c) 2009 - 2010, Intel Corporation.  All rights reserved<BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php.
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 #ifndef  _SMM_BASE_THUNK_COMMUNICATION_H_
@@ -65,18 +65,19 @@ typedef union {
 } SMMBASE_FUNCTION_ARGS;
 
 typedef enum {
-  SMMBASE_REGISTER,
-  SMMBASE_UNREGISTER,
-  SMMBASE_REGISTER_CALLBACK,
-  SMMBASE_ALLOCATE_POOL,
-  SMMBASE_FREE_POOL,
-  SMMBASE_COMMUNICATE,
+  SmmBaseFunctionRegister,
+  SmmBaseFunctionUnregister,
+  SmmBaseFunctionRegisterCallback,
+  SmmBaseFunctionAllocatePool,
+  SmmBaseFunctionFreePool,
+  SmmBaseFunctionCommunicate
 } SMMBASE_FUNCTION;
 
 typedef struct {
-  SMMBASE_FUNCTION               Function;
-  EFI_STATUS                     Status;
-  SMMBASE_FUNCTION_ARGS          Args;
+  SMMBASE_FUNCTION       Function;
+  EFI_STATUS             Status;
+  SMMBASE_FUNCTION_ARGS  Args;
+  EFI_HANDLE             SmmBaseImageHandle;
 } SMMBASE_FUNCTION_DATA;
 
 #pragma pack(1)
