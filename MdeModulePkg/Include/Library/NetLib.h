@@ -2,8 +2,8 @@
   This library is only intended to be used by UEFI network stack modules.
   It provides basic functions for the UEFI network stack.
 
-Copyright (c) 2005 - 2010, Intel Corporation.<BR>
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2005 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at<BR>
 http://opensource.org/licenses/bsd-license.php
@@ -286,6 +286,7 @@ typedef struct {
 
 **/
 CHAR8 *
+EFIAPI
 NetDebugASPrint (
   IN CHAR8                  *Format,
   ...
@@ -309,6 +310,7 @@ NetDebugASPrint (
                                 than the mNetDebugLevelMax. Or, it has been sent out.
 **/
 EFI_STATUS
+EFIAPI
 NetDebugOutput (
   IN UINT32                    Level,
   IN UINT8                     *Module,
@@ -400,6 +402,7 @@ NetIp4IsUnicast (
 
 **/
 BOOLEAN
+EFIAPI
 NetIp6IsValidUnicast (
   IN EFI_IPv6_ADDRESS       *Ip6
   );
@@ -415,6 +418,7 @@ NetIp6IsValidUnicast (
 
 **/
 BOOLEAN
+EFIAPI
 NetIp6IsUnspecifiedAddr (
   IN EFI_IPv6_ADDRESS       *Ip6
   );
@@ -429,6 +433,7 @@ NetIp6IsUnspecifiedAddr (
 
 **/
 BOOLEAN
+EFIAPI
 NetIp6IsLinkLocalAddr (
   IN EFI_IPv6_ADDRESS *Ip6
   );
@@ -445,6 +450,7 @@ NetIp6IsLinkLocalAddr (
 
 **/
 BOOLEAN
+EFIAPI
 NetIp6IsNetEqual (
   EFI_IPv6_ADDRESS *Ip1,
   EFI_IPv6_ADDRESS *Ip2,
@@ -464,6 +470,7 @@ NetIp6IsNetEqual (
 
 **/
 EFI_IPv6_ADDRESS *
+EFIAPI
 Ip6Swap128 (
   EFI_IPv6_ADDRESS *Ip6
   );
@@ -507,7 +514,7 @@ NetGetUint32 (
   byte stream.
 
   @param[in, out]  Buf          The buffer in which to put the UINT32.
-  @param[in]      Data          The data to put.
+  @param[in]       Data         The data to be converted and put into the byte stream.
 
 **/
 VOID
@@ -888,7 +895,7 @@ NetMapRemoveTail (
 
 typedef
 EFI_STATUS
-(*NET_MAP_CALLBACK) (
+(EFIAPI *NET_MAP_CALLBACK) (
   IN NET_MAP                *Map,
   IN NET_MAP_ITEM           *Item,
   IN VOID                   *Arg
@@ -1097,17 +1104,18 @@ NetLibGetMacString (
 
   The underlying UNDI driver may or may not support reporting media status from
   GET_STATUS command (PXE_STATFLAGS_GET_STATUS_NO_MEDIA_SUPPORTED). This routine
-  will try to invoke Snp->GetStatus() to get the media status. Iif media is already
-  present, it returns directly. If media  isnot present, it will stop SNP and then
-  restart SNP to get the latest media status.  This provides an opportunity to get 
+  will try to invoke Snp->GetStatus() to get the media status. If media is already
+  present, it returns directly. If media is not present, it will stop SNP and then
+  restart SNP to get the latest media status. This provides an opportunity to get 
   the correct media status for old UNDI driver, which doesn't support reporting 
   media status from GET_STATUS command.
   Note: there are two limitations for the current algorithm:
   1) For UNDI with this capability, when the cable is not attached, there will
      be an redundant Stop/Start() process.
-  2) For UNDI without this capability, when the cable is attached, the UNDI
-     initializes while unattached. Later, NetLibDetectMedia() will report
-     MediaPresent as TRUE, causing upper layer apps to wait for timeout time.
+  2) for UNDI without this capability, in case that network cable is attached when
+     Snp->Initialize() is invoked while network cable is unattached later,
+     NetLibDetectMedia() will report MediaPresent as TRUE, causing upper layer
+     apps to wait for timeout time.
 
   @param[in]   ServiceHandle    The handle where network service binding protocols are
                                 installed.
@@ -1240,6 +1248,7 @@ NetLibDefaultUnload (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibAsciiStrToIp4 (
   IN CONST CHAR8                 *String,
   OUT      EFI_IPv4_ADDRESS      *Ip4Address
@@ -1257,6 +1266,7 @@ NetLibAsciiStrToIp4 (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibAsciiStrToIp6 (
   IN CONST CHAR8                 *String,
   OUT      EFI_IPv6_ADDRESS      *Ip6Address
@@ -1274,6 +1284,7 @@ NetLibAsciiStrToIp6 (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibStrToIp4 (
   IN CONST CHAR16                *String,
   OUT      EFI_IPv4_ADDRESS      *Ip4Address
@@ -1292,6 +1303,7 @@ NetLibStrToIp4 (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibStrToIp6 (
   IN CONST CHAR16                *String,
   OUT      EFI_IPv6_ADDRESS      *Ip6Address
@@ -1312,6 +1324,7 @@ NetLibStrToIp6 (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibStrToIp6andPrefix (
   IN CONST CHAR16                *String,
   OUT      EFI_IPv6_ADDRESS      *Ip6Address,
@@ -1342,7 +1355,7 @@ typedef struct {
   UINT8               *Bulk;      // The block's Data
 } NET_BLOCK;
 
-typedef VOID (*NET_VECTOR_EXT_FREE) (VOID *Arg);
+typedef VOID (EFIAPI *NET_VECTOR_EXT_FREE) (VOID *Arg);
 
 //
 //NET_VECTOR contains several blocks to hold all packet's
@@ -1868,8 +1881,8 @@ NetbufQueCopy (
   );
 
 /**
-  Trim Len bytes of data from the queue header and release any net buffer
-  that is trimmed wholely.
+  Trim Len bytes of data from the buffer queue and free any net buffer
+  that is completely trimmed.
 
   The trimming operation is the same as NetbufTrim but applies to the net buffer
   queue instead of the net buffer.
@@ -1982,6 +1995,7 @@ NetPseudoHeadChecksum (
 
 **/
 UINT16
+EFIAPI
 NetIp6PseudoHeadChecksum (
   IN EFI_IPv6_ADDRESS       *Src,
   IN EFI_IPv6_ADDRESS       *Dst,

@@ -88,8 +88,6 @@ UINTN gRegisterOffsets[] = {
   0x00000F72,
   0x00000F73,
   0x00000FFF,                               // fps
-  0x00000FFF,                               
-  0x00000FFF,                               
   OFFSET_OF(EFI_SYSTEM_CONTEXT_ARM, CPSR)
 };
 

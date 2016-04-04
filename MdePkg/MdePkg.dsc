@@ -1,10 +1,10 @@
 ## @file
 # EFI/PI MdePkg Package
 #
-# Copyright (c) 2007 - 2010, Intel Corporation<BR>
-# Portions copyright (c) 2008-2009 Apple Inc. All rights reserved.<BR>
+# Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+# Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
 #
-#  All rights reserved. This program and the accompanying materials
+#    This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
 #    which accompanies this distribution. The full text of the license may be found at
 #    http://opensource.org/licenses/bsd-license.php
@@ -103,6 +103,7 @@
   MdePkg/Library/DxeServicesLib/DxeServicesLib.inf
   MdePkg/Library/DxeServicesTableLib/DxeServicesTableLib.inf
   MdePkg/Library/DxeSmbusLib/DxeSmbusLib.inf
+  MdePkg/Library/DxeIoLibCpuIo2/DxeIoLibCpuIo2.inf
 
   MdePkg/Library/DxeRuntimePciExpressLib/DxeRuntimePciExpressLib.inf
 

@@ -8,8 +8,8 @@
   SMM BASE Protocol can be published immediately after SMM Base2 Protocol is installed to
   make SMM Base Protocol.InSmm() as early as possible.
 
-  Copyright (c) 2009 - 2010, Intel Corporation
-  All rights reserved. This program and the accompanying materials
+  Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
+  This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
   http://opensource.org/licenses/bsd-license.php
@@ -44,6 +44,7 @@ EFI_HANDLE                         mSmmBaseHandle = NULL;
 EFI_SMM_BASE2_PROTOCOL             *mSmmBase2 = NULL;
 EFI_SMM_COMMUNICATION_PROTOCOL     *mSmmCommunication = NULL;
 EFI_SMM_BASE_HELPER_READY_PROTOCOL *mSmmBaseHelperReady = NULL;
+BOOLEAN                            mAtRuntime = FALSE;
 
 /**
   Determine if in SMM mode.
@@ -133,7 +134,7 @@ SmmBaseRegister (
   IN      BOOLEAN                   LegacyIA32Binary
   )
 {
-  if (LegacyIA32Binary) {
+  if (mAtRuntime || LegacyIA32Binary) {
     return EFI_UNSUPPORTED;
   }
 
@@ -166,6 +167,10 @@ SmmBaseUnregister (
   IN      EFI_HANDLE                ImageHandle
   )
 {
+  if (mAtRuntime) {
+    return EFI_UNSUPPORTED;
+  }
+
   mCommunicationData.FunctionData.Function = SmmBaseFunctionUnregister;
   mCommunicationData.FunctionData.Args.UnRegister.ImageHandle = ImageHandle;
 
@@ -201,6 +206,10 @@ SmmBaseCommunicate (
   ///
   /// Note this is a runtime interface
   ///
+
+  if (CommunicationBuffer == NULL || BufferSize == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
 
   mCommunicationData.FunctionData.Function = SmmBaseFunctionCommunicate;
   mCommunicationData.FunctionData.Args.Communicate.ImageHandle = ImageHandle;
@@ -304,6 +313,10 @@ SmmBaseSmmAllocatePool (
   OUT     VOID                      **Buffer
   )
 {
+  if (mAtRuntime) {
+    return EFI_UNSUPPORTED;
+  }
+
   mCommunicationData.FunctionData.Function = SmmBaseFunctionAllocatePool;
   mCommunicationData.FunctionData.Args.AllocatePool.PoolType = PoolType;
   mCommunicationData.FunctionData.Args.AllocatePool.Size = Size;
@@ -332,6 +345,10 @@ SmmBaseSmmFreePool (
   IN      VOID                      *Buffer
   )
 {
+  if (mAtRuntime) {
+    return EFI_UNSUPPORTED;
+  }
+
   mCommunicationData.FunctionData.Function = SmmBaseFunctionFreePool;
   mCommunicationData.FunctionData.Args.FreePool.Buffer = Buffer;
 
@@ -405,6 +422,24 @@ EFI_SMM_BASE_PROTOCOL  mSmmBase = {
 };
 
 /**
+  Notification function on Exit Boot Services Event.
+
+  This function sets a flag indicating it is in Runtime phase.
+
+  @param  Event        Event whose notification function is being invoked
+  @param  Context      Pointer to the notification function's context
+**/
+VOID
+EFIAPI
+SmmBaseExitBootServicesEventNotify (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  )
+{
+  mAtRuntime = TRUE;
+}
+
+/**
   Entry Point for SMM Base Protocol on SMM Base2 Protocol Thunk driver.
 
   @param[in] ImageHandle  Image handle of this driver.
@@ -435,7 +470,7 @@ SmmBaseThunkMain (
   // Assume only one instance of SMM Communication Protocol in the system
   // Locate SMM Communication Protocol
   //
-  gBS->LocateProtocol (&gEfiSmmCommunicationProtocolGuid, NULL, (VOID **) &mSmmCommunication);
+  Status = gBS->LocateProtocol (&gEfiSmmCommunicationProtocolGuid, NULL, (VOID **) &mSmmCommunication);
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -443,6 +478,19 @@ SmmBaseThunkMain (
   // Locate SMM Base Helper Ready Protocol
   //
   Status = gBS->LocateProtocol (&gEfiSmmBaseHelperReadyProtocolGuid, NULL, (VOID **) &mSmmBaseHelperReady);
+  ASSERT_EFI_ERROR (Status);
+
+  //
+  // Create event notification on Exit Boot Services event.
+  //
+  Status = gBS->CreateEventEx (
+                  EVT_NOTIFY_SIGNAL,
+                  TPL_NOTIFY,
+                  SmmBaseExitBootServicesEventNotify,
+                  NULL,
+                  &gEfiEventExitBootServicesGuid,
+                  &Event
+                  );
   ASSERT_EFI_ERROR (Status);
 
   //

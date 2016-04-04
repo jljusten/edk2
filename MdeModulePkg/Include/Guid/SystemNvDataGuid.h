@@ -4,7 +4,7 @@
   this FV image contains NV data, such as NV variable data.
   This guid can also be used as the signature of FTW working block header.
 
-Copyright (c) 2006 - 2010, Intel Corporation.  All rights reserved<BR>
+Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials are licensed and made available under 
 the terms and conditions of the BSD License that accompanies this distribution.  
 The full text of the license may be found at
@@ -55,8 +55,8 @@ typedef struct {
   UINT64    WriteQueueSize;
   ///
   /// Write Queue data.
-  /// 
-  UINT8                WriteQueue[WriteQueueSize];
-  // } EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER;
+  /// UINT8  WriteQueue[WriteQueueSize];
+  ///
+} EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER;
 
 #endif

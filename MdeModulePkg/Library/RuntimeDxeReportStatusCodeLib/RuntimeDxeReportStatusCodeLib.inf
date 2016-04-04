@@ -1,9 +1,9 @@
 ## @file
 #  Report status code library instance which supports logging message in DXE & runtime phase.
 #
-#  Copyright (c) 2006 - 2010, Intel Corporation.
+#  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
 #
-#  All rights reserved. This program and the accompanying materials
+#  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution. The full text of the license may be found at
 #  http://opensource.org/licenses/bsd-license.php
@@ -16,7 +16,7 @@
 [Defines]
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = RuntimeDxeReportStatusCodeLib
-  FILE_GUID                      = D65D9F72-7BCE-4f73-A673-47AF446A1A31
+  FILE_GUID                      = 07D25BBB-F832-41bb-BBA0-612E9F033067
   MODULE_TYPE                    = DXE_RUNTIME_DRIVER
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = ReportStatusCodeLib|DXE_CORE DXE_DRIVER DXE_RUNTIME_DRIVER UEFI_APPLICATION UEFI_DRIVER

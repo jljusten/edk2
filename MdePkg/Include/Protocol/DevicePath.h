@@ -5,7 +5,7 @@
   from a software point of view. The path must persist from boot to boot, so 
   it can not contain things like PCI bus numbers that change from boot to boot.
 
-Copyright (c) 2006 - 2010, Intel Corporation.  All rights reserved<BR>
+Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials are licensed and made available under 
 the terms and conditions of the BSD License that accompanies this distribution.  
 The full text of the license may be found at
@@ -686,6 +686,9 @@ typedef struct {
   ///
   UINT32                          FlowControlMap;
 } UART_FLOW_CONTROL_DEVICE_PATH;
+
+#define UART_FLOW_CONTROL_HARDWARE         0x00000001
+#define UART_FLOW_CONTROL_XON_XOFF         0x00000010
 
 #define DEVICE_PATH_MESSAGING_SAS                 EFI_SAS_DEVICE_PATH_GUID
 ///

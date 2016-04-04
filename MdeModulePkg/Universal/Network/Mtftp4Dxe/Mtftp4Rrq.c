@@ -1,8 +1,8 @@
 /** @file
   Routines to process Rrq (download).
   
-Copyright (c) 2006 - 2009, Intel Corporation<BR>
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2006 - 2009, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php<BR>
@@ -26,6 +26,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 VOID
+EFIAPI
 Mtftp4RrqInput (
   IN NET_BUF                *UdpPacket,
   IN UDP_END_POINT          *EndPoint,
@@ -379,6 +380,7 @@ Mtftp4RrqOackValid (
 
 **/
 EFI_STATUS
+EFIAPI
 Mtftp4RrqConfigMcastPort (
   IN UDP_IO                 *McastIo,
   IN VOID                   *Context
@@ -605,6 +607,7 @@ Mtftp4RrqHandleOack (
 
 **/
 VOID
+EFIAPI
 Mtftp4RrqInput (
   IN NET_BUF                *UdpPacket,
   IN UDP_END_POINT          *EndPoint,

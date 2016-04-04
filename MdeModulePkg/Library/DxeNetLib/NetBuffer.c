@@ -1,8 +1,8 @@
 /** @file
   Network library functions providing net buffer operation support.
 
-Copyright (c) 2005 - 2010, Intel Corporation.<BR>
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2005 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -497,6 +497,7 @@ NetbufSetBlockOp (
 
 **/
 VOID
+EFIAPI
 NetbufGetFragmentFree (
   IN VOID                   *Arg
   )
@@ -1556,8 +1557,8 @@ NetbufQueCopy (
 
 
 /**
-  Trim Len bytes of data from the queue header, release any of the net buffer
-  whom is trimmed wholely.
+  Trim Len bytes of data from the buffer queue and free any net buffer
+  that is completely trimmed.
 
   The trimming operation is the same as NetbufTrim but applies to the net buffer
   queue instead of the net buffer.
@@ -1817,6 +1818,7 @@ NetPseudoHeadChecksum (
 
 **/
 UINT16
+EFIAPI
 NetIp6PseudoHeadChecksum (
   IN EFI_IPv6_ADDRESS       *Src,
   IN EFI_IPv6_ADDRESS       *Dst,

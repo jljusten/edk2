@@ -1,8 +1,8 @@
 /** @file
   Ip4 internal functions and type defintions.
   
-Copyright (c) 2005 - 2009, Intel Corporation.<BR>                                                         
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2005 - 2009, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -345,6 +345,7 @@ Ip4TimerTicking (
 
 **/
 EFI_STATUS
+EFIAPI
 Ip4SentPacketTicking (
   IN NET_MAP                *Map,
   IN NET_MAP_ITEM           *Item,
@@ -373,6 +374,7 @@ Ip4SentPacketTicking (
 
 **/
 VOID
+EFIAPI
 Ip4FreeTxToken (
   IN VOID                   *Context
   );

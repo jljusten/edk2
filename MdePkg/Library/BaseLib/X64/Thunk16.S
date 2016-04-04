@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 #
-# Copyright (c) 2006 - 2009, Intel Corporation
-# All rights reserved. This program and the accompanying materials
+# Copyright (c) 2006 - 2009, Intel Corporation. All rights reserved.<BR>
+# This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
 # http://opensource.org/licenses/bsd-license.php
@@ -262,7 +262,7 @@ ASM_PFX(InternalAsmThunk16):
     movl    %edx,%eax                   # eax <- transition code address
     andl    $0xf,%edx
     shll    $12,%eax                    # segment address in high order 16 bits
-    lea     (_BackFromUserCode - ASM_PFX(m16Start))(%rdx), %ax
+    lea     (ASM_PFX(BackFromUserCode) - ASM_PFX(m16Start))(%rdx), %ax
     stosl                               # [edi] <- return address of user code
     sgdt    0x60(%rsp)                  # save GDT stack in argument space
     movzwq  0x60(%rsp), %r10            # r10 <- GDT limit 

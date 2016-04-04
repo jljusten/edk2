@@ -2,8 +2,8 @@
   UEFI Dynamic Host Configuration Protocol 6 Definition, which is used to get IPv6
   addresses and other configuration parameters from DHCPv6 servers.
 
-  Copyright (c) 2008 - 2010, Intel Corporation                                                         
-  All rights reserved. This program and the accompanying materials                          
+  Copyright (c) 2008 - 2010, Intel Corporation. All rights reserved.<BR>
+  This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
   http://opensource.org/licenses/bsd-license.php                                            
@@ -321,7 +321,7 @@ typedef struct {
 **/
 typedef 
 EFI_STATUS 
-(*EFI_DHCP6_CALLBACK)(
+(EFIAPI *EFI_DHCP6_CALLBACK)(
   IN EFI_DHCP6_PROTOCOL        *This,
   IN VOID                      *Context,
   IN EFI_DHCP6_STATE           CurrentState,
@@ -400,7 +400,7 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(*EFI_DHCP6_INFO_CALLBACK)(
+(EFIAPI *EFI_DHCP6_INFO_CALLBACK)(
   IN EFI_DHCP6_PROTOCOL        *This,
   IN VOID                      *Context,
   IN EFI_DHCP6_PACKET          *Packet

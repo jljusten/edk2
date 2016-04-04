@@ -1,8 +1,8 @@
 /** @file
   Implementation of receiving a packet from a network interface.
 
-Copyright (c) 2004 - 2010, Intel Corporation. <BR>
-All rights reserved. This program and the accompanying materials are licensed
+Copyright (c) 2004 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials are licensed
 and made available under the terms and conditions of the BSD License which
 accompanies this distribution. The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -130,6 +130,16 @@ PxeReceive (
     // We need to do the byte swapping
     //
     *Protocol = (UINT16) PXE_SWAP_UINT16 (Db->Protocol);
+  }
+
+  //
+  // We have received a packet from network interface, which implies that the
+  // network cable should be present. While, some UNDI driver may not report
+  // correct media status during Snp->Initialize(). So, we need ensure
+  // MediaPresent in SNP mode data is set to correct value.
+  //
+  if (Snp->Mode.MediaPresentSupported && !Snp->Mode.MediaPresent) {
+    Snp->Mode.MediaPresent = TRUE;
   }
 
   return (*BufferSize <= BuffSize) ? EFI_SUCCESS : EFI_BUFFER_TOO_SMALL;

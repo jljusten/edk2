@@ -25,7 +25,6 @@
 #include <Library/DebugLib.h>
 #include <Library/EfiResetSystemLib.h>
 
-#include <Library/BeagleBoardSystemLib.h>
 
 /**
   Resets the entire platform.
@@ -59,7 +58,7 @@ LibResetSystem (
   default:
     // Perform cold reset of the system.
     MmioOr32 (PRM_RSTCTRL, RST_DPLL3);
-    while ((MmioRead32(PRM_RSTST) & GLOBAL_COLD_RST) != 0x1);
+    while ((MmioRead32 (PRM_RSTST) & GLOBAL_COLD_RST) != 0x1);
     break;
   }
 

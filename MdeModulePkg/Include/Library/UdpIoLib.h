@@ -2,8 +2,8 @@
   This library is used to share code between UEFI network stack modules.
   It provides the helper routines to access UDP service. It is used by both DHCP and MTFTP.
 
-Copyright (c) 2006 - 2010, Intel Corporation.<BR>
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at<BR>
 http://opensource.org/licenses/bsd-license.php
@@ -60,7 +60,7 @@ typedef struct {
 **/
 typedef
 VOID
-(*UDP_IO_CALLBACK) (
+(EFIAPI *UDP_IO_CALLBACK) (
   IN NET_BUF                *Packet,
   IN UDP_END_POINT          *EndPoint,
   IN EFI_STATUS             IoStatus,
@@ -173,7 +173,7 @@ struct _UDP_IO {
 **/
 typedef
 EFI_STATUS
-(*UDP_IO_CONFIG) (
+(EFIAPI *UDP_IO_CONFIG) (
   IN UDP_IO                 *UdpIo,
   IN VOID                   *Context
   );
@@ -190,7 +190,7 @@ EFI_STATUS
 **/
 typedef
 BOOLEAN
-(*UDP_IO_TO_CANCEL) (
+(EFIAPI *UDP_IO_TO_CANCEL) (
   IN UDP_TX_TOKEN           *Token,
   IN VOID                   *Context
   );

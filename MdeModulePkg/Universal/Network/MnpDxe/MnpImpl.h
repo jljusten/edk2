@@ -1,8 +1,8 @@
 /** @file
   Declaration of structures and functions of MnpDxe driver.
 
-Copyright (c) 2005 - 2010, Intel Corporation.<BR>
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2005 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions
 of the BSD License which accompanies this distribution.  The full
 text of the license may be found at<BR>
@@ -234,6 +234,7 @@ MnpInitializeInstanceData (
 
 **/
 EFI_STATUS
+EFIAPI
 MnpTokenExist (
   IN NET_MAP         *Map,
   IN NET_MAP_ITEM    *Item,
@@ -256,6 +257,7 @@ MnpTokenExist (
 
 **/
 EFI_STATUS
+EFIAPI
 MnpCancelTokens (
   IN OUT NET_MAP         *Map,
   IN OUT NET_MAP_ITEM    *Item,

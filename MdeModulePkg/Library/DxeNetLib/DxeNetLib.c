@@ -1,8 +1,8 @@
 /** @file
   Network library.
 
-Copyright (c) 2005 - 2010, Intel Corporation.<BR>
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2005 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -443,6 +443,7 @@ SyslogBuildPacket (
 
 **/
 CHAR8 *
+EFIAPI
 NetDebugASPrint (
   IN CHAR8                  *Format,
   ...
@@ -482,6 +483,7 @@ NetDebugASPrint (
                                 than the mNetDebugLevelMax. Or, it has been sent out.
 **/
 EFI_STATUS
+EFIAPI
 NetDebugOutput (
   IN UINT32                    Level,
   IN UINT8                     *Module,
@@ -676,6 +678,7 @@ NetIp4IsUnicast (
 
 **/
 BOOLEAN
+EFIAPI
 NetIp6IsValidUnicast (
   IN EFI_IPv6_ADDRESS       *Ip6
   )
@@ -712,6 +715,7 @@ NetIp6IsValidUnicast (
 
 **/
 BOOLEAN
+EFIAPI
 NetIp6IsUnspecifiedAddr (
   IN EFI_IPv6_ADDRESS       *Ip6
   )
@@ -737,6 +741,7 @@ NetIp6IsUnspecifiedAddr (
 
 **/
 BOOLEAN
+EFIAPI
 NetIp6IsLinkLocalAddr (
   IN EFI_IPv6_ADDRESS *Ip6
   )
@@ -774,6 +779,7 @@ NetIp6IsLinkLocalAddr (
 
 **/
 BOOLEAN
+EFIAPI
 NetIp6IsNetEqual (
   EFI_IPv6_ADDRESS *Ip1,
   EFI_IPv6_ADDRESS *Ip2,
@@ -823,6 +829,7 @@ NetIp6IsNetEqual (
 
 **/
 EFI_IPv6_ADDRESS *
+EFIAPI
 Ip6Swap128 (
   EFI_IPv6_ADDRESS *Ip6
   )
@@ -901,7 +908,7 @@ NetGetUint32 (
   byte stream.
 
   @param[in, out]  Buf          The buffer to put the UINT32.
-  @param[in]      Data          The data to put.
+  @param[in]       Data         The data to be converted and put into the byte stream.
 
 **/
 VOID
@@ -2158,9 +2165,10 @@ NetLibGetMacString (
   Note: there will be two limitations for current algorithm:
   1) for UNDI with this capability, in case of cable is not attached, there will
      be an redundant Stop/Start() process;
-  2) for UNDI without this capability, in case cable is attached in UNDI
-     initialize while unattached latter, NetLibDetectMedia() will report
-     MediaPresent as TRUE, this cause upper layer apps wait for timeout time.
+  2) for UNDI without this capability, in case that network cable is attached when
+     Snp->Initialize() is invoked while network cable is unattached later,
+     NetLibDetectMedia() will report MediaPresent as TRUE, causing upper layer
+     apps to wait for timeout time.
 
   @param[in]   ServiceHandle    The handle where network service binding protocols are
                                 installed on.
@@ -2629,6 +2637,7 @@ NetLibGetNicHandle (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibAsciiStrToIp4 (
   IN CONST CHAR8                 *String,
   OUT      EFI_IPv4_ADDRESS      *Ip4Address
@@ -2695,6 +2704,7 @@ NetLibAsciiStrToIp4 (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibAsciiStrToIp6 (
   IN CONST CHAR8                 *String,
   OUT      EFI_IPv6_ADDRESS      *Ip6Address
@@ -2838,6 +2848,7 @@ NetLibAsciiStrToIp6 (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibStrToIp4 (
   IN CONST CHAR16                *String,
   OUT      EFI_IPv4_ADDRESS      *Ip4Address
@@ -2878,6 +2889,7 @@ NetLibStrToIp4 (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibStrToIp6 (
   IN CONST CHAR16                *String,
   OUT      EFI_IPv6_ADDRESS      *Ip6Address
@@ -2919,6 +2931,7 @@ NetLibStrToIp6 (
 
 **/
 EFI_STATUS
+EFIAPI
 NetLibStrToIp6andPrefix (
   IN CONST CHAR16                *String,
   OUT      EFI_IPv6_ADDRESS      *Ip6Address,

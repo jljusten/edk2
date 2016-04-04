@@ -2,8 +2,8 @@
 
   EHCI transfer scheduling routines.
 
-Copyright (c) 2007 - 2010, Intel Corporation
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -904,7 +904,12 @@ EhcUpdateAsyncRequest (
       QtdHw->ErrCnt     = QTD_MAX_ERR;
       QtdHw->CurPage    = 0;
       QtdHw->TotalBytes = (UINT32) Qtd->DataLen;
-      QtdHw->Page[0]    = EHC_LOW_32BIT (Qtd->Data);
+      //
+      // calculate physical address by offset.
+      //
+      PciAddr = (UINTN)Urb->DataPhy + ((UINTN)Qtd->Data - (UINTN)Urb->Data); 
+      QtdHw->Page[0]    = EHC_LOW_32BIT (PciAddr);
+      QtdHw->PageHigh[0]= EHC_HIGH_32BIT (PciAddr);
     }
 
     //

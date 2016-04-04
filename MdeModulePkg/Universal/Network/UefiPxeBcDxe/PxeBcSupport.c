@@ -1,8 +1,8 @@
 /** @file
   Support routines for PxeBc.
 
-Copyright (c) 2007 - 2010, Intel Corporation.<BR>
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -194,7 +194,7 @@ PxeBcConfigureUdpWriteInstance (
 
   ZeroMem (&Udp4CfgData, sizeof (Udp4CfgData));
 
-  Udp4CfgData.ReceiveTimeout = 1000;
+  Udp4CfgData.ReceiveTimeout = PXEBC_DEFAULT_LIFETIME;
   Udp4CfgData.TypeOfService  = DEFAULT_ToS;
   Udp4CfgData.TimeToLive     = DEFAULT_TTL;
   Udp4CfgData.AllowDuplicatePort = TRUE;

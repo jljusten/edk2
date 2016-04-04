@@ -2,7 +2,7 @@
   This library is only intended to be used by UEFI network stack modules.
   It provides the combined IpIo layer on the EFI IP4 Protocol and EFI IP6 protocol.
 
-Copyright (c) 2005 - 2010, Intel Corporation.  All rights reserved<BR>
+Copyright (c) 2005 - 2010, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials are licensed and made available under 
 the terms and conditions of the BSD License that accompanies this distribution.  
 The full text of the license may be found at
@@ -181,7 +181,7 @@ typedef struct _EFI_NET_SESSION_DATA {
 **/
 typedef
 VOID
-(*PKT_RCVD_NOTIFY) (
+(EFIAPI *PKT_RCVD_NOTIFY) (
   IN EFI_STATUS           Status, 
   IN UINT8                IcmpErr,
   IN EFI_NET_SESSION_DATA *NetSession,
@@ -201,7 +201,7 @@ VOID
 **/
 typedef
 VOID
-(*PKT_SENT_NOTIFY) (
+(EFIAPI *PKT_SENT_NOTIFY) (
   IN EFI_STATUS  Status,
   IN VOID        *Context,
   IN VOID        *Sender,
@@ -529,10 +529,9 @@ IpIoFindSender (
 
   @param[in]   IcmpError             IcmpError Type.
   @param[in]   IpVersion             The version of the IP protocol to use,
-                                     either IPv4 or IPv6.
-  
-  @param[out]  IsHard                Whether it is a hard error.
-  @param[out]  Notify                Whether it need to notify SockError.
+                                     either IPv4 or IPv6. 
+  @param[out]  IsHard                If TRUE, indicates that it is a hard error.
+  @param[out]  Notify                If TRUE, SockError needs to be notified.
 
   @return The ICMP Error Status, such as EFI_NETWORK_UNREACHABLE.
 

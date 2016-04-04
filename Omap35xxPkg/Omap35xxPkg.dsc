@@ -86,9 +86,9 @@
 
 
 [BuildOptions]
-  XCODE:*_*_ARM_ARCHCC_FLAGS     == -arch armv6 -march=armv6
-  XCODE:*_*_ARM_ARCHASM_FLAGS    == -arch armv6
-  XCODE:*_*_ARM_ARCHDLINK_FLAGS  == -arch armv6
+  XCODE:*_*_ARM_ARCHCC_FLAGS     == -arch armv7 -march=armv7
+  XCODE:*_*_ARM_ARCHASM_FLAGS    == -arch armv7
+  XCODE:*_*_ARM_ARCHDLINK_FLAGS  == -arch armv7
 
   RVCT:*_*_ARM_ARCHCC_FLAGS     == --cpu 7-A
   RVCT:*_*_ARM_ARCHASM_FLAGS    == --cpu 7-A
@@ -136,30 +136,24 @@
   gEmbeddedTokenSpaceGuid.PcdPrePiBfvSize|0
   gEmbeddedTokenSpaceGuid.PcdFlashFvMainBase|0
   gEmbeddedTokenSpaceGuid.PcdFlashFvMainSize|0
-
-
-
-#
-# Beagle board Specific PCDs
-#
   gEmbeddedTokenSpaceGuid.PcdPrePiHobBase|0x80001000
   gEmbeddedTokenSpaceGuid.PcdPrePiStackBase|0x87FE0000 # stack at top of memory
   gEmbeddedTokenSpaceGuid.PcdPrePiStackSize|0x20000  # 128K stack
   gArmTokenSpaceGuid.PcdCpuVectorBaseAddress|0x80000000
   gArmTokenSpaceGuid.PcdCpuResetAddress|0x80008000
   
-  gOmap35xxTokenSpaceGuid.PcdBeagleGpmcOffset|0x6E000000
-  gOmap35xxTokenSpaceGuid.PcdBeagleMMCHS1Base|0x4809C000
+  gOmap35xxTokenSpaceGuid.PcdOmap35xxGpmcOffset|0x6E000000
+  gOmap35xxTokenSpaceGuid.PcdOmap35xxMMCHS1Base|0x4809C000
 
   # Console  
-  gOmap35xxTokenSpaceGuid.PcdBeagleConsoleUart|3
+  gOmap35xxTokenSpaceGuid.PcdOmap35xxConsoleUart|3
   
   # Timers
-  gOmap35xxTokenSpaceGuid.PcdBeagleArchTimer|3
-  gOmap35xxTokenSpaceGuid.PcdBeagleFreeTimer|4
+  gOmap35xxTokenSpaceGuid.PcdOmap35xxArchTimer|3
+  gOmap35xxTokenSpaceGuid.PcdOmap35xxFreeTimer|4
   gEmbeddedTokenSpaceGuid.PcdTimerPeriod|100000
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedFdPerformanceCounterPeriodInNanoseconds|77
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedFdPerformanceCounterFrequencyInHz|13000000
+  gEmbeddedTokenSpaceGuid.PcdEmbeddedPerformanceCounterPeriodInNanoseconds|77
+  gEmbeddedTokenSpaceGuid.PcdEmbeddedPerformanceCounterFrequencyInHz|13000000
   
   #
   # ARM Pcds
@@ -172,7 +166,7 @@
 #
 ################################################################################
 [Components.common]
-  Omap35xxPkg/Library/BeagleBoardTimerLib/BeagleBoardTimerLib.inf  
+  Omap35xxPkg/Library/Omap35xxTimerLib/Omap35xxTimerLib.inf  
   Omap35xxPkg/Library/OmapLib/OmapLib.inf
   
   Omap35xxPkg/Flash/Flash.inf

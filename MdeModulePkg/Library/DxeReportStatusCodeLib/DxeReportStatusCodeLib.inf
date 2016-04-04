@@ -2,9 +2,9 @@
 #  DXE report status code library
 #
 #  Retrieve status code and report status code in DXE phase
-#  Copyright (c) 2006 - 2010, Intel Corporation.
+#  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
 #
-#  All rights reserved. This program and the accompanying materials
+#  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution. The full text of the license may be found at
 #  http://opensource.org/licenses/bsd-license.php
@@ -17,7 +17,7 @@
 [Defines]
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = DxeReportStatusCodeLib
-  FILE_GUID                      = 3ddc3b12-99ea-4364-b315-6310a2050be5
+  FILE_GUID                      = EBF144C8-70F5-4e09-ADE2-F41F5C59AFDA
   MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = ReportStatusCodeLib|DXE_CORE DXE_DRIVER DXE_RUNTIME_DRIVER DXE_SAL_DRIVER DXE_SMM_DRIVER UEFI_APPLICATION UEFI_DRIVER SMM_CORE

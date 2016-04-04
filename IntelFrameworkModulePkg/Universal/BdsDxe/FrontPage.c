@@ -1,8 +1,8 @@
 /** @file
   FrontPage routines to handle the callbacks and browser calls
 
-Copyright (c) 2004 - 2009, Intel Corporation. <BR>
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2004 - 2009, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -310,7 +310,6 @@ InitializeFrontPage (
   EFI_IFR_GUID_LABEL          *StartLabel;
   EFI_IFR_GUID_LABEL          *EndLabel;
   BOOLEAN                     FirstFlag;
-  EFI_STRING_ID               Temp;
 
   if (InitializeHiiData) {
     //
@@ -425,12 +424,10 @@ InitializeFrontPage (
       GetNextLanguage (&LangCode, Lang);
       OptionCount ++;
     }
-    gFrontPagePrivate.LanguageToken = AllocatePool ((OptionCount + 1) * sizeof (EFI_STRING_ID));
+    gFrontPagePrivate.LanguageToken = AllocatePool (OptionCount * sizeof (EFI_STRING_ID));
     ASSERT (gFrontPagePrivate.LanguageToken != NULL);
     FirstFlag = TRUE;
   }
-
-  Status = gHiiString->NewString (gHiiString, HiiHandle, &Temp, "de-DE", L"Dedede", L"TEST", NULL);
 
   OptionCount = 0;
   LangCode = LanguageString;

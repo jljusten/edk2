@@ -1,8 +1,8 @@
 /** @file
   EFI UDPv4 protocol implementation.
    
-Copyright (c) 2006 - 2009, Intel Corporation.<BR>
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2006 - 2009, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -562,6 +562,7 @@ Udp4ValidateTxToken (
 
 **/
 EFI_STATUS
+EFIAPI
 Udp4TokenExist (
   IN NET_MAP       *Map,
   IN NET_MAP_ITEM  *Item,
@@ -615,6 +616,7 @@ Udp4RemoveToken (
 
 **/
 EFI_STATUS
+EFIAPI
 Udp4LeaveGroup (
   IN OUT NET_MAP       *Map,
   IN     NET_MAP_ITEM  *Item,
@@ -679,6 +681,7 @@ Udp4ReportIcmpError (
 
 **/
 VOID
+EFIAPI
 Udp4NetVectorExtFree (
   VOID  *Context
   );

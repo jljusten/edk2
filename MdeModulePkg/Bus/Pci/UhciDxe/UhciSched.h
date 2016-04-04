@@ -2,8 +2,8 @@
 
   The definition for EHCI register operation routines.
 
-Copyright (c) 2007 - 2010, Intel Corporation
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -190,7 +190,6 @@ UhciExecuteTransfer (
   @param  EndPoint               EndPoint Address.
   @param  DataLen                Data length.
   @param  Interval               Polling Interval when inserted to frame list.
-  @param  Mapping                Mapping value.
   @param  Data                   Data buffer, unmapped.
   @param  Callback               Callback after interrupt transfeer.
   @param  Context                Callback Context passed as function parameter.
@@ -210,7 +209,6 @@ UhciCreateAsyncReq (
   IN UINT8                            EndPoint,
   IN UINTN                            DataLen,
   IN UINTN                            Interval,
-  IN VOID                             *Mapping,
   IN UINT8                            *Data,
   IN EFI_ASYNC_USB_TRANSFER_CALLBACK  Callback,
   IN VOID                             *Context,

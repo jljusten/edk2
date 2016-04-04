@@ -1,7 +1,7 @@
 /** @file
   SMM Core Main Entry Point
 
-  Copyright (c) 2009 - 2010, Intel Corporation.  All rights reserved.<BR>
+  Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials are licensed and made available 
   under the terms and conditions of the BSD License which accompanies this 
   distribution.  The full text of the license may be found at        
@@ -276,19 +276,19 @@ SmmEntryPoint (
     // Synchronous SMI for SMM Core or request from Communicate protocol
     //
     CommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)gSmmCorePrivate->CommunicationBuffer;
-    *gSmmCorePrivate->BufferSize -= OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
+    gSmmCorePrivate->BufferSize -= OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
     Status = SmiManage (
                &CommunicateHeader->HeaderGuid, 
                NULL, 
                CommunicateHeader->Data, 
-               gSmmCorePrivate->BufferSize
+               &gSmmCorePrivate->BufferSize
                );
 
     //
     // Update CommunicationBuffer, BufferSize and ReturnStatus
     // Communicate service finished, reset the pointer to CommBuffer to NULL
     //
-    *gSmmCorePrivate->BufferSize += OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
+    gSmmCorePrivate->BufferSize += OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
     gSmmCorePrivate->CommunicationBuffer = NULL;
     gSmmCorePrivate->ReturnStatus = (Status == EFI_WARN_INTERRUPT_SOURCE_QUIESCED) ? EFI_SUCCESS : EFI_NOT_FOUND;
   } else {

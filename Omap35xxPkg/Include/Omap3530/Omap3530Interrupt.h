@@ -39,8 +39,10 @@
 #define INTCPS_PENDING_FIQ(n) (INTERRUPT_BASE + 0x009C + (0x20 * (n)))
 #define INTCPS_ILR(m)         (INTERRUPT_BASE + 0x0100 + (0x04 * (m)))
 
+#define INTCPS_ILR_FIQ            BIT0
 #define INTCPS_SIR_IRQ_MASK       (0x7F)
-#define INTCPS_CONTROL_NEWIRQAGR  (1UL << 0)
+#define INTCPS_CONTROL_NEWIRQAGR  BIT0
+#define INTCPS_CONTROL_NEWFIQAGR  BIT1
 
 #endif // __OMAP3530INTERRUPT_H__
 

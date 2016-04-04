@@ -1,8 +1,8 @@
 /** @file
   Include for Serial Driver
   
-Copyright (c) 2006 - 2009, Intel Corporation.<BR>
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2006 - 2009, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -116,7 +116,17 @@ typedef struct {
 //
 #define SERIAL_PORT_DEFAULT_RECEIVE_FIFO_DEPTH  1
 #define SERIAL_PORT_DEFAULT_TIMEOUT             1000000
-#define SERIAL_PORT_DEFAULT_CONTROL_MASK        0
+#define SERIAL_PORT_SUPPORT_CONTROL_MASK        (EFI_SERIAL_CLEAR_TO_SEND                | \
+                                                 EFI_SERIAL_DATA_SET_READY               | \
+                                                 EFI_SERIAL_RING_INDICATE                | \
+                                                 EFI_SERIAL_CARRIER_DETECT               | \
+                                                 EFI_SERIAL_REQUEST_TO_SEND              | \
+                                                 EFI_SERIAL_DATA_TERMINAL_READY          | \
+                                                 EFI_SERIAL_HARDWARE_LOOPBACK_ENABLE     | \
+                                                 EFI_SERIAL_SOFTWARE_LOOPBACK_ENABLE     | \
+                                                 EFI_SERIAL_HARDWARE_FLOW_CONTROL_ENABLE | \
+                                                 EFI_SERIAL_OUTPUT_BUFFER_EMPTY          | \
+                                                 EFI_SERIAL_INPUT_BUFFER_EMPTY)
 
 
 //

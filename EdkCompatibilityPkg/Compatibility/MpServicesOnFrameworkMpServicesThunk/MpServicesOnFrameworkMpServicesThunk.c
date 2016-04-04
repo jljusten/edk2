@@ -4,8 +4,8 @@ Produces PI MP Services Protocol on top of Framework MP Services Protocol.
 Intel's Framework MP Services Protocol is replaced by EFI_MP_SERVICES_PROTOCOL in PI 1.1.
 This module produces PI MP Services Protocol on top of Framework MP Services Protocol.
 
-Copyright (c) 2009 - 2010 Intel Corporation. <BR>
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -1444,6 +1444,8 @@ PrepareAPStartupVector (
 {
   MP_ASSEMBLY_ADDRESS_MAP   AddressMap;
   IA32_DESCRIPTOR           GdtrForBSP;
+  EFI_PHYSICAL_ADDRESS      GdtForAP;
+  EFI_STATUS                Status;
 
   //
   // Get the address map of startup code for AP,
@@ -1481,7 +1483,22 @@ PrepareAPStartupVector (
   mExchangeInfo->StackSize  = AP_STACK_SIZE;
 
   AsmReadGdtr (&GdtrForBSP);
-  mExchangeInfo->GdtrProfile.Base  = GdtrForBSP.Base;
+
+  //
+  // Allocate memory under 4G to hold GDT for APs
+  //
+  GdtForAP = 0xffffffff;
+  Status   = gBS->AllocatePages (
+                    AllocateMaxAddress,
+                    EfiBootServicesData,
+                    EFI_SIZE_TO_PAGES (GdtrForBSP.Limit + 1),
+                    &GdtForAP
+                    );
+  ASSERT_EFI_ERROR (Status);
+
+  CopyMem ((VOID *) (UINTN) GdtForAP, (VOID *) GdtrForBSP.Base, GdtrForBSP.Limit + 1);
+
+  mExchangeInfo->GdtrProfile.Base  = (UINTN) GdtForAP;
   mExchangeInfo->GdtrProfile.Limit = GdtrForBSP.Limit;
 
   mExchangeInfo->BufferStart = (UINT32) mStartupVector;

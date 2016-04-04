@@ -6,7 +6,7 @@
   module loading address relative to these two addresses.
   
 
-Copyright (c) 2010, Intel Corporation.  All rights reserved<BR>
+Copyright (c) 2010, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials are licensed and made available under 
 the terms and conditions of the BSD License that accompanies this distribution.  
 The full text of the license may be found at
@@ -27,8 +27,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 extern EFI_GUID gLoadFixedAddressConfigurationTableGuid;
 
 typedef struct {
-  EFI_PHYSICAL_ADDRESS    DxeCodeTopAddress;             ///< The top address below which the Dxe runtime code and below which the Dxe runtime/boot code and PEI code.
-  EFI_PHYSICAL_ADDRESS    SmramBase;                      ///< SMM RAME base. build tool will assigned an offset relative to SMRAM base for SMM driver.
+  EFI_PHYSICAL_ADDRESS    DxeCodeTopAddress;   ///< The top address below which the Dxe runtime code and below which the Dxe runtime/boot code and PEI code.
+  EFI_PHYSICAL_ADDRESS    SmramBase;           ///< SMRAM base address. The build tool assigns an offset relative to the SMRAM base for a SMM driver.
 } EFI_LOAD_FIXED_ADDRESS_CONFIGURATION_TABLE;
 
 #endif

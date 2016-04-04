@@ -2,8 +2,8 @@
   The driver internal functions are implmented here.
   They build Pei PCD database, and provide access service to PCD database.
 
-Copyright (c) 2006 - 2010, Intel Corporation
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -28,6 +28,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
   @retval EFI_NOT_FOUND If the PCD Entry is not found according to Token Number and GUID space.
   @retval EFI_OUT_OF_RESOURCES If the callback function can't be registered because there is not free
                                 slot left in the CallbackFnTable.
+  @retval EFI_INVALID_PARAMETER If the callback function want to be de-registered can not be found.
 **/
 EFI_STATUS
 PeiRegisterCallBackWorker (
@@ -100,7 +101,7 @@ PeiRegisterCallBackWorker (
     }
   }
 
-  return Register? EFI_OUT_OF_RESOURCES : EFI_NOT_FOUND;
+  return Register? EFI_OUT_OF_RESOURCES : EFI_INVALID_PARAMETER;
 
 }
 
@@ -384,8 +385,14 @@ SetWorker (
 
   LocalTokenNumber = PeiPcdDb->Init.LocalTokenNumberTable[TokenNumber];
 
-  if ((!PtrType) && (PeiPcdGetSize(TokenNumber + 1) != *Size)) {
-    return EFI_INVALID_PARAMETER;
+  if (PtrType) {
+    if (*Size > PeiPcdGetSize (TokenNumber + 1)) {
+      return EFI_INVALID_PARAMETER;
+    }
+  } else {
+    if (*Size != PeiPcdGetSize (TokenNumber + 1)) {
+      return EFI_INVALID_PARAMETER;
+    }
   }
 
   //

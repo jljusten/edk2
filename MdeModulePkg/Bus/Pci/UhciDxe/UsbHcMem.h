@@ -2,8 +2,8 @@
 
   This file contains the definination for host controller memory management routines
 
-Copyright (c) 2007 - 2010, Intel Corporation
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -141,4 +141,21 @@ UsbHcFreeMem (
   IN VOID                 *Mem,
   IN UINTN                Size
   );
+
+/**
+  Calculate the corresponding pci bus address according to the Mem parameter.
+
+  @param  Pool           The memory pool of the host controller.
+  @param  Mem            The pointer to host memory.
+  @param  Size           The size of the memory region.
+
+  @return the pci memory address
+**/
+EFI_PHYSICAL_ADDRESS
+UsbHcGetPciAddressForHostMem (
+  IN USBHC_MEM_POOL       *Pool,
+  IN VOID                 *Mem,
+  IN UINTN                Size
+  );
+
 #endif

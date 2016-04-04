@@ -1,8 +1,8 @@
 /** @file
   UEFI Memory page management functions.
 
-Copyright (c) 2007 - 2008, Intel Corporation. <BR>
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -829,6 +829,9 @@ CoreConvertPages (
     // Add our new range in
     //
     CoreAddRange (NewType, Start, RangeEnd, Attribute);
+    if (NewType == EfiConventionalMemory) {
+      DEBUG_CLEAR_MEMORY ((VOID *)(UINTN) Start, (UINTN) (RangeEnd - Start + 1));
+    }
 
     //
     // Move any map descriptor stack to general pool
@@ -1168,8 +1171,8 @@ CoreFreePages (
     }
   }
   if (Link == &gMemoryMap) {
-    CoreReleaseMemoryLock ();
-    return EFI_NOT_FOUND;
+    Status = EFI_NOT_FOUND;
+    goto Done;
   }
 
   Alignment = EFI_DEFAULT_PAGE_ALLOCATION_ALIGNMENT;
@@ -1185,8 +1188,8 @@ CoreFreePages (
   }
 
   if ((Memory & (Alignment - 1)) != 0) {
-    CoreReleaseMemoryLock ();
-    return EFI_INVALID_PARAMETER;
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
   }
 
   NumberOfPages += EFI_SIZE_TO_PAGES (Alignment) - 1;
@@ -1194,19 +1197,12 @@ CoreFreePages (
 
   Status = CoreConvertPages (Memory, NumberOfPages, EfiConventionalMemory);
 
-  CoreReleaseMemoryLock ();
-
   if (EFI_ERROR (Status)) {
-    return Status;
+    goto Done;
   }
 
-  //
-  // Destroy the contents
-  //
-  if (Memory < MAX_ADDRESS) {
-    DEBUG_CLEAR_MEMORY ((VOID *)(UINTN)Memory, NumberOfPages << EFI_PAGE_SHIFT);
-  }
-
+Done:
+  CoreReleaseMemoryLock ();
   return Status;
 }
 
