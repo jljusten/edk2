@@ -35,6 +35,7 @@
   UefiDriverEntryPoint
   MemoryAllocationLib
   IoLib
+  OmapDmaLib
 
 [Guids]
   
@@ -46,6 +47,7 @@
 
 [Pcd]
   gOmap35xxTokenSpaceGuid.PcdOmap35xxMMCHS1Base
+  gOmap35xxTokenSpaceGuid.PcdMmchsTimerFreq100NanoSeconds
 
 [depex]
   gEmbeddedExternalDeviceProtocolGuid
