@@ -1,6 +1,7 @@
 /** @file
   Main file for mv shell level 2 function.
 
+  Copyright (c) 2013, Hewlett-Packard Development Company, L.P.
   Copyright (c) 2009 - 2013, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -136,8 +137,8 @@ GetDestinationLocation(
   EFI_SHELL_FILE_INFO       *DestList;
   EFI_SHELL_FILE_INFO       *Node;
   CHAR16                    *DestPath;
-  CHAR16                    *TempLocation;
   UINTN                     NewSize;
+  UINTN                     CurrentSize;
 
   DestList = NULL;
   DestPath = NULL;
@@ -152,6 +153,13 @@ GetDestinationLocation(
     }
     StrCpy(DestPath, Cwd);
     while (PathRemoveLastItem(DestPath)) ;
+
+    //
+    // Append DestDir beyond '\' which may be present
+    //
+    CurrentSize = StrSize(DestPath);
+    StrnCatGrow(&DestPath, &CurrentSize, &DestDir[1], 0);
+
     *DestPathPointer =  DestPath;
     return (SHELL_SUCCESS);
   }
@@ -163,7 +171,7 @@ GetDestinationLocation(
     //
     // Not existing... must be renaming
     //
-    if ((TempLocation = StrStr(DestDir, L":")) == NULL) {
+    if (StrStr(DestDir, L":") == NULL) {
       if (Cwd == NULL) {
         ShellCloseFileMetaArg(&DestList);
         return (SHELL_INVALID_PARAMETER);

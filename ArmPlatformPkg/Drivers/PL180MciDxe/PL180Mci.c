@@ -217,12 +217,17 @@ MciReadBlockData (
   UINTN Status;
   EFI_STATUS RetVal;
   UINTN  DataCtrlReg;
+  EFI_TPL Tpl;
 
   RetVal = EFI_SUCCESS;
 
   // Read data from the RX FIFO
   Loop   = 0;
   Finish = MMCI0_BLOCKLEN / 4;
+  
+  // Raise the TPL at the highest level to disable Interrupts.
+  Tpl = gBS->RaiseTPL (TPL_HIGH_LEVEL);
+
   do {
     // Read the Status flags
     Status = MmioRead32 (MCI_STATUS_REG);
@@ -270,6 +275,9 @@ MciReadBlockData (
     }
   } while ((Loop < Finish));
 
+  // Restore Tpl
+  gBS->RestoreTPL (Tpl);
+
   // Clear Status flags
   MmioWrite32 (MCI_CLEAR_STATUS_REG, MCI_CLR_ALL_STATUS);
 
@@ -294,6 +302,7 @@ MciWriteBlockData (
   UINTN Status;
   EFI_STATUS RetVal;
   UINTN  DataCtrlReg;
+  EFI_TPL Tpl;
 
   RetVal = EFI_SUCCESS;
 
@@ -301,6 +310,10 @@ MciWriteBlockData (
   Loop   = 0;
   Finish = MMCI0_BLOCKLEN / 4;
   Timer  = MMCI0_TIMEOUT * 100;
+
+  // Raise the TPL at the highest level to disable Interrupts.
+  Tpl = gBS->RaiseTPL (TPL_HIGH_LEVEL);
+
   do {
     // Read the Status flags
     Status = MmioRead32 (MCI_STATUS_REG);
@@ -323,7 +336,7 @@ MciWriteBlockData (
       Loop++;
       MmioWrite32(MCI_FIFO_REG, Buffer[Loop]);
       Loop++;
-    } else if ((Status & MCI_STATUS_CMD_TXFIFOEMPTY)) {
+    } else if (!(Status & MCI_STATUS_CMD_TXFIFOFULL)) {
         MmioWrite32(MCI_FIFO_REG, Buffer[Loop]);
         Loop++;
     } else {
@@ -344,6 +357,9 @@ MciWriteBlockData (
       }
     }
   } while (Loop < Finish);
+
+  // Restore Tpl
+  gBS->RestoreTPL (Tpl);
 
   // Wait for FIFO to drain
   Timer  = MMCI0_TIMEOUT * 60;

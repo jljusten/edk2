@@ -273,13 +273,13 @@ GetBlockEntryListFromAddress (
   ASSERT ((*BlockEntrySize & (SIZE_4KB - 1)) == 0);
 
   //
-  // Calculate LastBlockEntry from T0SZ
+  // Calculate LastBlockEntry from T0SZ - this is the last block entry of the root Translation table
   //
   T0SZ = ArmGetTCR () & TCR_T0SZ_MASK;
   // Get the Table info from T0SZ
   GetRootTranslationTableInfo (T0SZ, &RootTableLevel, &RootTableEntryCount);
   // The last block of the root table depends on the number of entry in this table
-  *LastBlockEntry = (UINT64*)((UINTN)RootTable + (RootTableEntryCount * sizeof(UINT64)));
+  *LastBlockEntry = TT_LAST_BLOCK_ADDRESS(RootTable, RootTableEntryCount);
 
   // If the start address is 0x0 then we use the size of the region to identify the alignment
   if (RegionStart == 0) {
@@ -301,8 +301,10 @@ GetBlockEntryListFromAddress (
   // Identify the Page Level the RegionStart must belongs to
   PageLevel = 3 - ((BaseAddressAlignment - 12) / 9);
 
-  // If the required size is smaller than the current block size then we need to go to the page bellow.
-  if (*BlockEntrySize < TT_ADDRESS_AT_LEVEL(PageLevel)) {
+  // If the required size is smaller than the current block size then we need to go to the page below.
+  // The PageLevel was calculated on the Base Address alignment but did not take in account the alignment
+  // of the allocation size
+  if (*BlockEntrySize < TT_BLOCK_ENTRY_SIZE_AT_LEVEL (PageLevel)) {
     // It does not fit so we need to go a page level above
     PageLevel++;
   }
@@ -311,7 +313,7 @@ GetBlockEntryListFromAddress (
   *TableLevel = PageLevel;
 
   // Now, we have the Table Level we can get the Block Size associated to this table
-  *BlockEntrySize = TT_ADDRESS_AT_LEVEL(PageLevel);
+  *BlockEntrySize = TT_BLOCK_ENTRY_SIZE_AT_LEVEL (PageLevel);
 
   //
   // Get the Table Descriptor for the corresponding PageLevel. We need to decompose RegionStart to get appropriate entries
@@ -331,7 +333,7 @@ GetBlockEntryListFromAddress (
         BlockEntry = (UINT64*)TT_GET_ENTRY_FOR_ADDRESS (TranslationTable, IndexLevel + 1, RegionStart);
 
         // Set the last block for this new table
-        *LastBlockEntry = (UINT64*)((UINTN)TranslationTable + (TT_ENTRY_COUNT * sizeof(UINT64)));
+        *LastBlockEntry = TT_LAST_BLOCK_ADDRESS(TranslationTable, TT_ENTRY_COUNT);
       }
     } else if ((*BlockEntry & TT_TYPE_MASK) == TT_TYPE_BLOCK_ENTRY) {
       // If we are not at the last level then we need to split this BlockEntry
@@ -357,8 +359,8 @@ GetBlockEntryListFromAddress (
         // Shift back to right to set zero before the effective address
         BlockEntryAddress = BlockEntryAddress << TT_ADDRESS_OFFSET_AT_LEVEL(IndexLevel);
 
-        // Set the correct entry type
-        if (IndexLevel + 1 == 3) {
+        // Set the correct entry type for the next page level
+        if ((IndexLevel + 1) == 3) {
           Attributes |= TT_TYPE_BLOCK_ENTRY_LEVEL3;
         } else {
           Attributes |= TT_TYPE_BLOCK_ENTRY;
@@ -371,8 +373,10 @@ GetBlockEntryListFromAddress (
         }
         TranslationTable = (UINT64*)((UINTN)TranslationTable & TT_ADDRESS_MASK_DESCRIPTION_TABLE);
 
-        // Fill the new BlockEntry with the TranslationTable
+        // Fill the BlockEntry with the new TranslationTable
         *BlockEntry = ((UINTN)TranslationTable & TT_ADDRESS_MASK_DESCRIPTION_TABLE) | TableAttributes | TT_TYPE_TABLE_ENTRY;
+        // Update the last block entry with the newly created translation table
+        *LastBlockEntry = TT_LAST_BLOCK_ADDRESS(TranslationTable, TT_ENTRY_COUNT);
 
         // Populate the newly created lower level table
         BlockEntry = TranslationTable;
@@ -532,8 +536,10 @@ ArmConfigureMmu (
   //
   // Set TCR that allows us to retrieve T0SZ in the subsequent functions
   //
-  if ((ArmReadCurrentEL () == AARCH64_EL2) || (ArmReadCurrentEL () == AARCH64_EL3)) {
-    //Note: Bits 23 and 31 are reserved bits in TCR_EL2 and TCR_EL3
+  // Ideally we will be running at EL2, but should support EL1 as well.
+  // UEFI should not run at EL3.
+  if (ArmReadCurrentEL () == AARCH64_EL2) {
+    //Note: Bits 23 and 31 are reserved(RES1) bits in TCR_EL2
     TCR = T0SZ | (1UL << 31) | (1UL << 23) | TCR_TG0_4KB;
 
     // Set the Physical Address Size using MaxAddress
@@ -550,12 +556,33 @@ ArmConfigureMmu (
     } else if (MaxAddress < SIZE_256TB) {
       TCR |= TCR_PS_256TB;
     } else {
-      DEBUG ((EFI_D_ERROR, "ArmConfigureMmu: The MaxAddress 0x%lX is not supported by this MMU support.\n", MaxAddress));
+      DEBUG ((EFI_D_ERROR, "ArmConfigureMmu: The MaxAddress 0x%lX is not supported by this MMU configuration.\n", MaxAddress));
+      ASSERT (0); // Bigger than 48-bit memory space are not supported
+      return RETURN_UNSUPPORTED;
+    }
+  } else if (ArmReadCurrentEL () == AARCH64_EL1) {
+    TCR = T0SZ | TCR_TG0_4KB;
+
+    // Set the Physical Address Size using MaxAddress
+    if (MaxAddress < SIZE_4GB) {
+      TCR |= TCR_IPS_4GB;
+    } else if (MaxAddress < SIZE_64GB) {
+      TCR |= TCR_IPS_64GB;
+    } else if (MaxAddress < SIZE_1TB) {
+      TCR |= TCR_IPS_1TB;
+    } else if (MaxAddress < SIZE_4TB) {
+      TCR |= TCR_IPS_4TB;
+    } else if (MaxAddress < SIZE_16TB) {
+      TCR |= TCR_IPS_16TB;
+    } else if (MaxAddress < SIZE_256TB) {
+      TCR |= TCR_IPS_256TB;
+    } else {
+      DEBUG ((EFI_D_ERROR, "ArmConfigureMmu: The MaxAddress 0x%lX is not supported by this MMU configuration.\n", MaxAddress));
       ASSERT (0); // Bigger than 48-bit memory space are not supported
       return RETURN_UNSUPPORTED;
     }
   } else {
-    ASSERT (0); // Bigger than 48-bit memory space are not supported
+    ASSERT (0); // UEFI is only expected to run at EL2 and EL1, not EL3.
     return RETURN_UNSUPPORTED;
   }
 

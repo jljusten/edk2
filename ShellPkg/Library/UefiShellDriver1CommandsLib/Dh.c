@@ -1,7 +1,7 @@
 /** @file
   Main file for Dh shell Driver1 function.
 
-  Copyright (c) 2010 - 2012, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2010 - 2013, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -60,7 +60,6 @@ GetDriverName (
   )
 {
   CHAR8                             *Lang;
-  CHAR8                             *TempChar;
   EFI_STATUS                        Status;
   EFI_COMPONENT_NAME2_PROTOCOL      *CompName2;
   CHAR16                            *NameToReturn;
@@ -87,23 +86,7 @@ GetDriverName (
   if (EFI_ERROR(Status)) {
     return (EFI_NOT_FOUND);
   }
-  if (Language == NULL) {
-    Lang = AllocateZeroPool(AsciiStrSize(CompName2->SupportedLanguages));
-    if (Lang == NULL) {
-      return (EFI_OUT_OF_RESOURCES);
-    }
-    AsciiStrCpy(Lang, CompName2->SupportedLanguages);
-    TempChar = AsciiStrStr(Lang, ";");
-    if (TempChar != NULL){
-      *TempChar = CHAR_NULL;
-    }
-  } else {
-    Lang = AllocateZeroPool(AsciiStrSize(Language));
-    if (Lang == NULL) {
-      return (EFI_OUT_OF_RESOURCES);
-    }
-    AsciiStrCpy(Lang, Language);
-  }
+  Lang = GetBestLanguageForDriver (CompName2->SupportedLanguages, Language, FALSE);
   Status = CompName2->GetDriverName(CompName2, Lang, &NameToReturn);
   FreePool(Lang);
 
@@ -260,7 +243,7 @@ GetDriverImageName (
     return (Status);
   }
   DevicePath = LoadedImage->FilePath;
-  *Name = gDevPathToText->ConvertDevicePathToText(DevicePath, TRUE, TRUE);
+  *Name = ConvertDevicePathToText(DevicePath, TRUE, TRUE);
   return (EFI_SUCCESS);
 }
 
@@ -354,7 +337,7 @@ DisplayDriverModelHandle (
     ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_DH_OUTPUT_DRIVER1), gShellDriver1HiiHandle, TempStringPointer!=NULL?TempStringPointer:L"<Unknown>");
     SHELL_FREE_NON_NULL(TempStringPointer);
   
-    TempStringPointer = gDevPathToText->ConvertDevicePathToText(DevicePath, TRUE, FALSE);
+    TempStringPointer = ConvertDevicePathToText(DevicePath, TRUE, FALSE);
     ShellPrintHiiEx(
       -1, 
       -1, 

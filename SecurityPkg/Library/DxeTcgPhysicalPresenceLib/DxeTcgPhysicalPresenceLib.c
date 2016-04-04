@@ -22,6 +22,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <PiDxe.h>
 
 #include <Protocol/TcgService.h>
+#include <Protocol/VariableLock.h>
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
@@ -896,11 +897,12 @@ UserConfirm (
   Check if there is a valid physical presence command request. Also updates parameter value 
   to whether the requested physical presence command already confirmed by user
  
-   @param[in]  TcgPpData                 EFI TCG Physical Presence request data. 
-   @param[out] RequestConfirmed            If the physical presence operation command required user confirm from UI.
-                                             True, it indicates the command doesn't require user confirm, or already confirmed 
-                                                   in last boot cycle by user.
-                                             False, it indicates the command need user confirm from UI.
+   @param[in]  TcgPpData           EFI TCG Physical Presence request data.
+   @param[in]  Flags               The physical presence interface flags. 
+   @param[out] RequestConfirmed    If the physical presence operation command required user confirm from UI.
+                                   True, it indicates the command doesn't require user confirm, or already confirmed 
+                                   in last boot cycle by user.
+                                   False, it indicates the command need user confirm from UI.
 
    @retval  TRUE        Physical Presence operation command is valid.
    @retval  FALSE       Physical Presence operation command is invalid.
@@ -909,12 +911,11 @@ UserConfirm (
 BOOLEAN
 HaveValidTpmRequest  (
   IN      EFI_PHYSICAL_PRESENCE     *TcgPpData,
+  IN      UINT8                     Flags,
   OUT     BOOLEAN                   *RequestConfirmed
   )
 {
-  UINT8                             Flags;
-  
-  Flags = TcgPpData->Flags;
+
   *RequestConfirmed = FALSE;
 
   switch (TcgPpData->PPRequest) {
@@ -998,19 +999,22 @@ HaveValidTpmRequest  (
 
   @param[in] TcgProtocol          EFI TCG Protocol instance. 
   @param[in] TcgPpData            Point to the physical presence NV variable.
+  @param[in] Flags                The physical presence interface flags.
 
 **/
 VOID
 ExecutePendingTpmRequest (
   IN      EFI_TCG_PROTOCOL          *TcgProtocol,
-  IN      EFI_PHYSICAL_PRESENCE     *TcgPpData
+  IN      EFI_PHYSICAL_PRESENCE     *TcgPpData,
+  IN      UINT8                     Flags
   )
 {
   EFI_STATUS                        Status;
   UINTN                             DataSize;
   BOOLEAN                           RequestConfirmed;
+  UINT8                             NewFlags;
 
-  if (!HaveValidTpmRequest(TcgPpData, &RequestConfirmed)) {
+  if (!HaveValidTpmRequest(TcgPpData, Flags, &RequestConfirmed)) {
     //
     // Invalid operation request.
     //
@@ -1039,14 +1043,29 @@ ExecutePendingTpmRequest (
   // Execute requested physical presence command
   //
   TcgPpData->PPResponse = TPM_PP_USER_ABORT;
+  NewFlags = Flags;
   if (RequestConfirmed) {
-    TcgPpData->PPResponse = ExecutePhysicalPresence (TcgProtocol, TcgPpData->PPRequest, &TcgPpData->Flags);
+    TcgPpData->PPResponse = ExecutePhysicalPresence (TcgProtocol, TcgPpData->PPRequest, &NewFlags);
   }
+
+  //
+  // Save the flags if it is updated.
+  //
+  if (Flags != NewFlags) {
+    Status   = gRT->SetVariable (
+                      PHYSICAL_PRESENCE_FLAGS_VARIABLE,
+                      &gEfiPhysicalPresenceGuid,
+                      EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
+                      sizeof (UINT8),
+                      &NewFlags
+                      ); 
+  }
+
 
   //
   // Clear request
   //
-  if ((TcgPpData->Flags & FLAG_RESET_TRACK) == 0) {
+  if ((NewFlags & FLAG_RESET_TRACK) == 0) {
     TcgPpData->LastPPRequest = TcgPpData->PPRequest;
     TcgPpData->PPRequest = PHYSICAL_PRESENCE_NO_ACTION;    
   }
@@ -1123,10 +1142,55 @@ TcgPhysicalPresenceLibProcessRequest (
   UINTN                             DataSize;
   EFI_PHYSICAL_PRESENCE             TcgPpData;
   EFI_TCG_PROTOCOL                  *TcgProtocol;
+  EDKII_VARIABLE_LOCK_PROTOCOL      *VariableLockProtocol;
+  UINT8                             PpiFlags;
   
   Status = gBS->LocateProtocol (&gEfiTcgProtocolGuid, NULL, (VOID **)&TcgProtocol);
   if (EFI_ERROR (Status)) {
     return ;
+  }
+
+  //
+  // Initialize physical presence flags.
+  //
+  DataSize = sizeof (UINT8);
+  Status = gRT->GetVariable (
+                  PHYSICAL_PRESENCE_FLAGS_VARIABLE,
+                  &gEfiPhysicalPresenceGuid,
+                  NULL,
+                  &DataSize,
+                  &PpiFlags
+                  );
+  if (EFI_ERROR (Status)) {
+    if (Status == EFI_NOT_FOUND) {
+      PpiFlags = FLAG_NO_PPI_PROVISION;
+      Status   = gRT->SetVariable (
+                        PHYSICAL_PRESENCE_FLAGS_VARIABLE,
+                        &gEfiPhysicalPresenceGuid,
+                        EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
+                        sizeof (UINT8),
+                        &PpiFlags
+                        );
+    }
+    ASSERT_EFI_ERROR (Status);
+  }
+      DEBUG ((EFI_D_ERROR, "[TPM] PpiFlags = %x, Status = %r\n", PpiFlags, Status));
+
+  //
+  // This flags variable controls whether physical presence is required for TPM command. 
+  // It should be protected from malicious software. We set it as read-only variable here.
+  //
+  Status = gBS->LocateProtocol (&gEdkiiVariableLockProtocolGuid, NULL, (VOID **)&VariableLockProtocol);
+  if (!EFI_ERROR (Status)) {
+    Status = VariableLockProtocol->RequestToLock (
+                                     VariableLockProtocol,
+                                     PHYSICAL_PRESENCE_FLAGS_VARIABLE,
+                                     &gEfiPhysicalPresenceGuid
+                                     );
+    if (EFI_ERROR (Status)) {
+      DEBUG ((EFI_D_ERROR, "[TPM] Error when lock variable %s, Status = %r\n", PHYSICAL_PRESENCE_FLAGS_VARIABLE, Status));
+      ASSERT_EFI_ERROR (Status);
+    }
   }
   
   //
@@ -1143,7 +1207,6 @@ TcgPhysicalPresenceLibProcessRequest (
   if (EFI_ERROR (Status)) {
     if (Status == EFI_NOT_FOUND) {
       ZeroMem ((VOID*)&TcgPpData, sizeof (TcgPpData));
-      TcgPpData.Flags |= FLAG_NO_PPI_PROVISION;
       DataSize = sizeof (EFI_PHYSICAL_PRESENCE);
       Status   = gRT->SetVariable (
                         PHYSICAL_PRESENCE_VARIABLE,
@@ -1156,7 +1219,7 @@ TcgPhysicalPresenceLibProcessRequest (
     ASSERT_EFI_ERROR (Status);
   }
 
-  DEBUG ((EFI_D_INFO, "[TPM] Flags=%x, PPRequest=%x\n", TcgPpData.Flags, TcgPpData.PPRequest));
+  DEBUG ((EFI_D_INFO, "[TPM] Flags=%x, PPRequest=%x\n", PpiFlags, TcgPpData.PPRequest));
 
   if (TcgPpData.PPRequest == PHYSICAL_PRESENCE_NO_ACTION) {
     //
@@ -1191,7 +1254,7 @@ TcgPhysicalPresenceLibProcessRequest (
   //
   // Execute pending TPM request.
   //  
-  ExecutePendingTpmRequest (TcgProtocol, &TcgPpData);
+  ExecutePendingTpmRequest (TcgProtocol, &TcgPpData, PpiFlags);
   DEBUG ((EFI_D_INFO, "[TPM] PPResponse = %x\n", TcgPpData.PPResponse));
 
   //
@@ -1223,7 +1286,8 @@ TcgPhysicalPresenceLibNeedUserConfirm(
   BOOLEAN                 LifetimeLock;
   BOOLEAN                 CmdEnable;
   EFI_TCG_PROTOCOL        *TcgProtocol;
-
+  UINT8                   PpiFlags;
+  
   Status = gBS->LocateProtocol (&gEfiTcgProtocolGuid, NULL, (VOID **)&TcgProtocol);
   if (EFI_ERROR (Status)) {
     return FALSE;
@@ -1244,6 +1308,18 @@ TcgPhysicalPresenceLibNeedUserConfirm(
     return FALSE;
   }
 
+  DataSize = sizeof (UINT8);
+  Status = gRT->GetVariable (
+                  PHYSICAL_PRESENCE_FLAGS_VARIABLE,
+                  &gEfiPhysicalPresenceGuid,
+                  NULL,
+                  &DataSize,
+                  &PpiFlags
+                  );
+  if (EFI_ERROR (Status)) {
+    return FALSE;
+  }
+  
   if (TcgPpData.PPRequest == PHYSICAL_PRESENCE_NO_ACTION) {
     //
     // No operation request
@@ -1251,7 +1327,7 @@ TcgPhysicalPresenceLibNeedUserConfirm(
     return FALSE;
   }
 
-  if (!HaveValidTpmRequest(&TcgPpData, &RequestConfirmed)) {
+  if (!HaveValidTpmRequest(&TcgPpData, PpiFlags, &RequestConfirmed)) {
     //
     // Invalid operation request.
     //

@@ -1,6 +1,6 @@
 /**@file
 
-Copyright (c) 2006 - 2012, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -529,7 +529,7 @@ Returns:
   BlockIo = &Private->BlockIo;
   BlockIo->Revision = EFI_BLOCK_IO_PROTOCOL_REVISION;
   BlockIo->Media = &Private->Media;
-  BlockIo->Media->BlockSize = Private->BlockSize;
+  BlockIo->Media->BlockSize = (UINT32)Private->BlockSize;
   BlockIo->Media->LastBlock = Private->NumberOfBlocks - 1;
   BlockIo->Media->MediaId = 0;;
 
@@ -626,10 +626,10 @@ Returns:
   //
   Private->NtHandle = Private->WinNtThunk->CreateFile (
                                             Private->Filename,
-                                            Private->ReadMode,
-                                            Private->ShareMode,
+                                            (DWORD)Private->ReadMode,
+                                            (DWORD)Private->ShareMode,
                                             NULL,
-                                            Private->OpenMode,
+                                            (DWORD)Private->OpenMode,
                                             0,
                                             NULL
                                             );
@@ -658,7 +658,7 @@ Returns:
   Status = SetFilePointer64 (Private, 0, &FileSize, FILE_END);
 
   if (EFI_ERROR (Status)) {
-    FileSize = MultU64x32 (Private->NumberOfBlocks, Private->BlockSize);
+    FileSize = MultU64x32 (Private->NumberOfBlocks, (UINT32)Private->BlockSize);
     if (Private->DeviceType == EfiWinNtVirtualDisks) {
       DEBUG ((EFI_D_ERROR, "PlOpenBlock: Could not get filesize of %s\n", Private->Filename));
       Status = EFI_UNSUPPORTED;
@@ -667,10 +667,10 @@ Returns:
   }
 
   if (Private->NumberOfBlocks == 0) {
-    Private->NumberOfBlocks = DivU64x32 (FileSize, Private->BlockSize);
+    Private->NumberOfBlocks = DivU64x32 (FileSize, (UINT32)Private->BlockSize);
   }
 
-  EndOfFile = MultU64x32 (Private->NumberOfBlocks, Private->BlockSize);
+  EndOfFile = MultU64x32 (Private->NumberOfBlocks, (UINT32)Private->BlockSize);
 
   if (FileSize != EndOfFile) {
     //
@@ -832,7 +832,7 @@ Returns:
     return EFI_MEDIA_CHANGED;
   }
 
-  if ((UINT32) Buffer % Private->Media.IoAlign != 0) {
+  if ((UINTN) Buffer % Private->Media.IoAlign != 0) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -858,7 +858,7 @@ Returns:
   //
   // Seek to End of File
   //
-  DistanceToMove = MultU64x32 (Lba, BlockSize);
+  DistanceToMove = MultU64x32 (Lba, (UINT32)BlockSize);
   Status = SetFilePointer64 (Private, DistanceToMove, &DistanceMoved, FILE_BEGIN);
 
   if (EFI_ERROR (Status)) {
@@ -990,11 +990,15 @@ WinNtBlockIoWriteBlocks (
   // According the Windows requirement, first need to lock the volume before 
   // write to it.
   //
-  Locked = Private->WinNtThunk->DeviceIoControl (Private->NtHandle, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &BytesReturned, NULL);
-  if (Locked == 0) {
-    DEBUG ((EFI_D_INIT, "ReadBlocks: Lock volume failed. (%d)\n", Private->WinNtThunk->GetLastError ()));
-    Status = WinNtBlockIoError (Private);
-    goto Done;
+  if (Private->DeviceType == EfiWinNtPhysicalDisks) {
+    Locked = Private->WinNtThunk->DeviceIoControl (Private->NtHandle, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &BytesReturned, NULL);
+    if (Locked == 0) {
+      DEBUG ((EFI_D_INIT, "ReadBlocks: Lock volume failed. (%d)\n", Private->WinNtThunk->GetLastError ()));
+      Status = WinNtBlockIoError (Private);
+      goto Done;
+    }
+  } else {
+    Locked = 0;
   }
   Flag = Private->WinNtThunk->WriteFile (Private->NtHandle, Buffer, (DWORD) BufferSize, (LPDWORD) &BytesWritten, NULL);
   if (Locked != 0) {

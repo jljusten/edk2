@@ -1,7 +1,7 @@
 /** @file
   Provides interface to advanced shell functionality for parsing both handle and protocol database.
 
-  Copyright (c) 2010 - 2012, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2010 - 2013, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -414,19 +414,15 @@ DevicePathProtocolDumpInformation(
   CHAR16                            *Temp;
   CHAR16                            *Temp2;
   EFI_STATUS                        Status;
-  EFI_DEVICE_PATH_TO_TEXT_PROTOCOL  *DevPathToText;
   Temp = NULL;
 
-  Status = gBS->LocateProtocol(&gEfiDevicePathToTextProtocolGuid, NULL, (VOID**)&DevPathToText);
+  Status = gBS->OpenProtocol(TheHandle, &gEfiDevicePathProtocolGuid, (VOID**)&DevPath, gImageHandle, NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
   if (!EFI_ERROR(Status)) {
-    Status = gBS->OpenProtocol(TheHandle, &gEfiDevicePathProtocolGuid, (VOID**)&DevPath, gImageHandle, NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-    if (!EFI_ERROR(Status)) {
-      //
-      // I cannot decide whether to allow shortcuts here (the second BOOLEAN on the next line)
-      //
-      Temp = DevPathToText->ConvertDevicePathToText(DevPath, TRUE, TRUE);
-      gBS->CloseProtocol(TheHandle, &gEfiDevicePathProtocolGuid, gImageHandle, NULL);
-    }
+    //
+    // I cannot decide whether to allow shortcuts here (the second BOOLEAN on the next line)
+    //
+    Temp = ConvertDevicePathToText(DevPath, TRUE, TRUE);
+    gBS->CloseProtocol(TheHandle, &gEfiDevicePathProtocolGuid, gImageHandle, NULL);
   }
   if (!Verbose && Temp != NULL && StrLen(Temp) > 30) {
     Temp2 = NULL;
@@ -782,18 +778,21 @@ GetGuidFromStringName(
 /**
   Get best support language for this driver.
   
-  First base on the current platform used language to search,Second base on the 
-  default language to search. The caller need to free the buffer of the best 
-  language.
+  First base on the user input language  to search, second base on the current 
+  platform used language to search, third get the first language from the 
+  support language list. The caller need to free the buffer of the best language.
 
   @param[in] SupportedLanguages      The support languages for this driver.
+  @param[in] InputLanguage           The user input language.
   @param[in] Iso639Language          Whether get language for ISO639.
 
   @return                            The best support language for this driver.
 **/
 CHAR8 *
+EFIAPI
 GetBestLanguageForDriver (
-  IN CONST CHAR8  *SupportedLanguages, 
+  IN CONST CHAR8  *SupportedLanguages,
+  IN CONST CHAR8  *InputLanguage,
   IN BOOLEAN      Iso639Language
   )
 {
@@ -805,8 +804,9 @@ GetBestLanguageForDriver (
   BestLanguage = GetBestLanguage(
                    SupportedLanguages,
                    Iso639Language,
+                   (InputLanguage != NULL) ? InputLanguage : "",
                    (LanguageVariable != NULL) ? LanguageVariable : "",
-                   Iso639Language ? "en" : "en-US",
+                   SupportedLanguages,
                    NULL
                    );
 
@@ -849,12 +849,8 @@ GetStringNameFromHandle(
     NULL,
     EFI_OPEN_PROTOCOL_GET_PROTOCOL);
   if (!EFI_ERROR(Status)) {
-    if (Language == NULL) {
-      BestLang = GetBestLanguageForDriver (CompNameStruct->SupportedLanguages, FALSE);
-      Language = BestLang;
-    }
-    Status = CompNameStruct->GetDriverName(CompNameStruct, (CHAR8*)Language, &RetVal);
-
+    BestLang = GetBestLanguageForDriver (CompNameStruct->SupportedLanguages, Language, FALSE);
+    Status = CompNameStruct->GetDriverName(CompNameStruct, BestLang, &RetVal);
     if (BestLang != NULL) {
       FreePool (BestLang);
       BestLang = NULL;
@@ -871,12 +867,8 @@ GetStringNameFromHandle(
     NULL,
     EFI_OPEN_PROTOCOL_GET_PROTOCOL);
   if (!EFI_ERROR(Status)) {
-    if (Language == NULL) {
-      BestLang = GetBestLanguageForDriver (CompNameStruct->SupportedLanguages, FALSE);
-      Language = BestLang;
-    }
-    Status = CompNameStruct->GetDriverName(CompNameStruct, (CHAR8*)Language, &RetVal);
-    
+    BestLang = GetBestLanguageForDriver (CompNameStruct->SupportedLanguages, Language, FALSE);
+    Status = CompNameStruct->GetDriverName(CompNameStruct, BestLang, &RetVal);
     if (BestLang != NULL) {
       FreePool (BestLang);
     }

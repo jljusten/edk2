@@ -29,10 +29,10 @@
 
 [FD.ArmRealViewEb_EFI]
 BaseAddress   = 0x40000000|gArmTokenSpaceGuid.PcdFdBaseAddress
-Size          = 0x00150000|gArmTokenSpaceGuid.PcdFdSize
+Size          = 0x00200000|gArmTokenSpaceGuid.PcdFdSize
 ErasePolarity = 1
 BlockSize     = 0x00010000
-NumBlocks     = 0x15
+NumBlocks     = 0x20
 
 ################################################################################
 #
@@ -54,7 +54,7 @@ NumBlocks     = 0x15
 gArmTokenSpaceGuid.PcdSecureFvBaseAddress|gArmTokenSpaceGuid.PcdSecureFvSize
 FV = FVMAIN_SEC
 
-0x00050000|0x00100000
+0x00050000|0x00150000
 gArmTokenSpaceGuid.PcdFvBaseAddress|gArmTokenSpaceGuid.PcdFvSize
 FV = FVMAIN_COMPACT
 
@@ -139,7 +139,7 @@ READ_LOCK_STATUS   = TRUE
   INF MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
   INF EmbeddedPkg/SerialDxe/SerialDxe.inf
   
-  INF ArmPkg/Drivers/PL390Gic/PL390GicDxe.inf
+  INF ArmPkg/Drivers/ArmGic/ArmGicDxe.inf
   INF ArmPlatformPkg/Drivers/SP804TimerDxe/SP804TimerDxe.inf
   
   INF ArmPlatformPkg/Drivers/NorFlashDxe/NorFlashDxe.inf

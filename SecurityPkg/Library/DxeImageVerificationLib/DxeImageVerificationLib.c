@@ -72,6 +72,25 @@ HASH_TABLE mHash[] = {
 };
 
 /**
+  SecureBoot Hook for processing image verification.
+
+  @param[in] VariableName                 Name of Variable to be found.
+  @param[in] VendorGuid                   Variable vendor GUID.
+  @param[in] DataSize                     Size of Data found. If size is less than the
+                                          data, this value contains the required size.
+  @param[in] Data                         Data pointer.
+
+**/
+VOID
+EFIAPI
+SecureBootHook (
+  IN CHAR16                                 *VariableName,
+  IN EFI_GUID                               *VendorGuid,
+  IN UINTN                                  DataSize,
+  IN VOID                                   *Data
+  );
+
+/**
   Reads contents of a PE/COFF image in memory buffer.
 
   Caution: This function may receive untrusted input.
@@ -846,6 +865,7 @@ IsSignatureFoundInDatabase (
           // Find the signature in database.
           //
           IsFound = TRUE;
+          SecureBootHook (VariableName, &gEfiImageSecurityDatabaseGuid, CertList->SignatureSize, Cert);
           break;
         }
 
@@ -948,6 +968,7 @@ IsPkcsSignedDataVerifiedBySignatureList (
                            mImageDigestSize
                            );
           if (VerifyStatus) {
+            SecureBootHook (VariableName, VendorGuid, CertList->SignatureSize, Cert);
             goto Done;
           }
           Cert = (EFI_SIGNATURE_DATA *) ((UINT8 *) Cert + CertList->SignatureSize);
@@ -1084,6 +1105,14 @@ DxeImageVerificationHandler (
     return EFI_SUCCESS;
   } else if (Policy == NEVER_EXECUTE) {
     return EFI_ACCESS_DENIED;
+  }
+
+  //
+  // The policy QUERY_USER_ON_SECURITY_VIOLATION violates the UEFI spec and has been removed.
+  //
+  ASSERT (Policy != QUERY_USER_ON_SECURITY_VIOLATION);
+  if (Policy == QUERY_USER_ON_SECURITY_VIOLATION) {
+    CpuDeadLoop ();
   }
 
   GetEfiGlobalVariable2 (EFI_SECURE_BOOT_MODE_NAME, (VOID**)&SecureBoot, NULL);

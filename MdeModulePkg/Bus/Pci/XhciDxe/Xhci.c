@@ -164,6 +164,11 @@ XhcReset (
   // Flow through, same behavior as Host Controller Reset
   //
   case EFI_USB_HC_RESET_HOST_CONTROLLER:
+    if ((Xhc->DebugCapSupOffset != 0xFFFFFFFF) && ((XhcReadExtCapReg (Xhc, Xhc->DebugCapSupOffset) & 0xFF) == XHC_CAP_USB_DEBUG) &&
+        ((XhcReadExtCapReg (Xhc, Xhc->DebugCapSupOffset + XHC_DC_DCCTRL) & BIT0) != 0)) {
+      Status = EFI_SUCCESS;
+      goto ON_EXIT;
+    }
     //
     // Host Controller must be Halt when Reset it
     //
@@ -900,11 +905,24 @@ XhcControlTransfer (
     Status = EFI_SUCCESS;
   } else if (*TransferResult == EFI_USB_ERR_STALL) {
     RecoveryStatus = XhcRecoverHaltedEndpoint(Xhc, Urb);
-    ASSERT_EFI_ERROR (RecoveryStatus);
+    if (EFI_ERROR (RecoveryStatus)) {
+      DEBUG ((EFI_D_ERROR, "XhcControlTransfer: XhcRecoverHaltedEndpoint failed\n"));
+    }
     Status = EFI_DEVICE_ERROR;
     goto FREE_URB;
   } else {
     goto FREE_URB;
+  }
+
+  Xhc->PciIo->Flush (Xhc->PciIo);
+  
+  if (Urb->DataMap != NULL) {
+    Status = Xhc->PciIo->Unmap (Xhc->PciIo, Urb->DataMap);
+    ASSERT_EFI_ERROR (Status);
+    if (EFI_ERROR (Status)) {
+      Status = EFI_DEVICE_ERROR;
+      goto FREE_URB;
+    }  
   }
 
   //
@@ -936,7 +954,6 @@ XhcControlTransfer (
         } else {
           Status = XhcEvaluateContext64 (Xhc, SlotId, MaxPacket0);
         }
-        ASSERT_EFI_ERROR (Status);
     } else if (DescriptorType == USB_DESC_TYPE_CONFIG) {
       ASSERT (Data != NULL);
       if (*DataLength == ((UINT16 *)Data)[1]) {
@@ -972,7 +989,6 @@ XhcControlTransfer (
       } else {
         Status = XhcConfigHubContext64 (Xhc, SlotId, HubDesc->NumPorts, TTT, MTT);
       }
-      ASSERT_EFI_ERROR (Status);
     }
   } else if ((Request->Request     == USB_REQ_SET_CONFIG) &&
              (Request->RequestType == USB_REQUEST_TYPE (EfiUsbNoData, USB_REQ_TYPE_STANDARD, USB_TARGET_DEVICE))) {
@@ -986,7 +1002,6 @@ XhcControlTransfer (
         } else {
           Status = XhcSetConfigCmd64 (Xhc, SlotId, DeviceSpeed, Xhc->UsbDevContext[SlotId].ConfDesc[Index]);
         }
-        ASSERT_EFI_ERROR (Status);
         break;
       }
     }
@@ -1181,11 +1196,14 @@ XhcBulkTransfer (
     Status = EFI_SUCCESS;
   } else if (*TransferResult == EFI_USB_ERR_STALL) {
     RecoveryStatus = XhcRecoverHaltedEndpoint(Xhc, Urb);
-    ASSERT_EFI_ERROR (RecoveryStatus);
+    if (EFI_ERROR (RecoveryStatus)) {
+      DEBUG ((EFI_D_ERROR, "XhcBulkTransfer: XhcRecoverHaltedEndpoint failed\n"));
+    }
     Status = EFI_DEVICE_ERROR;
   }
 
-  FreePool (Urb);
+  Xhc->PciIo->Flush (Xhc->PciIo);
+  XhcFreeUrb (Xhc, Urb);
 
 ON_EXIT:
 
@@ -1351,6 +1369,7 @@ XhcAsyncInterruptTransfer (
   Status = RingIntTransferDoorBell (Xhc, Urb);
 
 ON_EXIT:
+  Xhc->PciIo->Flush (Xhc->PciIo);
   gBS->RestoreTPL (OldTpl);
 
   return Status;
@@ -1478,11 +1497,14 @@ XhcSyncInterruptTransfer (
     Status = EFI_SUCCESS;
   } else if (*TransferResult == EFI_USB_ERR_STALL) {
     RecoveryStatus = XhcRecoverHaltedEndpoint(Xhc, Urb);
-    ASSERT_EFI_ERROR (RecoveryStatus);
+    if (EFI_ERROR (RecoveryStatus)) {
+      DEBUG ((EFI_D_ERROR, "XhcSyncInterruptTransfer: XhcRecoverHaltedEndpoint failed\n"));
+    }
     Status = EFI_DEVICE_ERROR;
   }
 
-  FreePool (Urb);
+  Xhc->PciIo->Flush (Xhc->PciIo);
+  XhcFreeUrb (Xhc, Urb);
 
 ON_EXIT:
   if (EFI_ERROR (Status)) {
@@ -1738,7 +1760,8 @@ XhcCreateUsbHc (
 
   ExtCapReg            = (UINT16) (Xhc->HcCParams.Data.ExtCapReg);
   Xhc->ExtCapRegBase   = ExtCapReg << 2;
-  Xhc->UsbLegSupOffset = XhcGetLegSupCapAddr (Xhc);
+  Xhc->UsbLegSupOffset = XhcGetCapabilityAddr (Xhc, XHC_CAP_USB_LEGACY);
+  Xhc->DebugCapSupOffset = XhcGetCapabilityAddr (Xhc, XHC_CAP_USB_DEBUG);
 
   DEBUG ((EFI_D_INFO, "XhcCreateUsb3Hc: Capability length 0x%x\n", Xhc->CapLength));
   DEBUG ((EFI_D_INFO, "XhcCreateUsb3Hc: HcSParams1 0x%x\n", Xhc->HcSParams1));
@@ -1747,6 +1770,7 @@ XhcCreateUsbHc (
   DEBUG ((EFI_D_INFO, "XhcCreateUsb3Hc: DBOff 0x%x\n", Xhc->DBOff));
   DEBUG ((EFI_D_INFO, "XhcCreateUsb3Hc: RTSOff 0x%x\n", Xhc->RTSOff));
   DEBUG ((EFI_D_INFO, "XhcCreateUsb3Hc: UsbLegSupOffset 0x%x\n", Xhc->UsbLegSupOffset));
+  DEBUG ((EFI_D_INFO, "XhcCreateUsb3Hc: DebugCapSupOffset 0x%x\n", Xhc->DebugCapSupOffset));
 
   //
   // Create AsyncRequest Polling Timer

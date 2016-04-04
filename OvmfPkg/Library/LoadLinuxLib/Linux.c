@@ -280,8 +280,12 @@ SetupLinuxMemmap (
   // Enlarge space here, because we will allocate pool now.
   //
   MemoryMapSize += EFI_PAGE_SIZE;
-  MemoryMap = AllocatePool (MemoryMapSize);
-  ASSERT (MemoryMap != NULL);
+  Status = gBS->AllocatePool (
+                  EfiLoaderData,
+                  MemoryMapSize,
+                  (VOID **) &MemoryMap
+                  );
+  ASSERT_EFI_ERROR (Status);
 
   //
   // Get System MemoryMap
@@ -643,7 +647,7 @@ LoadLinux (
 
   Bp->hdr.code32_start = (UINT32)(UINTN) Kernel;
   if (Bp->hdr.version >= 0x20c && Bp->hdr.handover_offset &&
-      (Bp->hdr.load_flags & (sizeof (UINTN) == 4 ? BIT2 : BIT3))) {
+      (Bp->hdr.xloadflags & (sizeof (UINTN) == 4 ? BIT2 : BIT3))) {
     DEBUG ((EFI_D_INFO, "Jumping to kernel EFI handover point at ofs %x\n", Bp->hdr.handover_offset));
 
     DisableInterrupts ();

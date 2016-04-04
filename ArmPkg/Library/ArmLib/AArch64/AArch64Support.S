@@ -123,7 +123,7 @@ ASM_PFX(ArmEnableMmu):
 3: mrs     x0, sctlr_el3       // Read System control register EL3
 4: orr     x0, x0, #CTRL_M_BIT // Set MMU enable bit
    EL1_OR_EL2_OR_EL3(x1)
-1: tlbi    alle1
+1: tlbi    vmalle1
    isb
    msr     sctlr_el1, x0       // Write back
    b       4f
@@ -149,7 +149,7 @@ ASM_PFX(ArmDisableMmu):
 4: bic     x0, x0, #CTRL_M_BIT  // Clear MMU enable bit
    EL1_OR_EL2_OR_EL3(x1)
 1: msr     sctlr_el1, x0        // Write back
-   tlbi    alle1
+   tlbi    vmalle1
    b       4f
 2: msr     sctlr_el2, x0        // Write back
    tlbi    alle2
@@ -320,7 +320,8 @@ ASM_PFX(AArch64AllDataCachesOperation):
   mov   x1, x0                  // Save Function call in x1
   mrs   x6, clidr_el1           // Read EL1 CLIDR
   and   x3, x6, #0x7000000      // Mask out all but Level of Coherency (LoC)
-  lsr   x3, x3, #23             // Left align cache level value
+  lsr   x3, x3, #23             // Left align cache level value - the level is shifted by 1 to the
+                                // right to ease the access to CSSELR and the Set/Way operation.
   cbz   x3, L_Finished          // No need to clean if LoC is 0
   mov   x10, #0                 // Start clean at cache level 0
   b     Loop1
@@ -332,7 +333,8 @@ ASM_PFX(AArch64PerformPoUDataCacheOperation):
   mov   x1, x0                  // Save Function call in x1
   mrs   x6, clidr_el1           // Read EL1 CLIDR
   and   x3, x6, #0x38000000     // Mask out all but Point of Unification (PoU)
-  lsr   x3, x3, #26             // Left align cache level value
+  lsr   x3, x3, #26             // Left align cache level value - the level is shifted by 1 to the
+                                // right to ease the access to CSSELR and the Set/Way operation.
   cbz   x3, L_Finished          // No need to clean if LoC is 0
   mov   x10, #0                 // Start clean at cache level 0
 
@@ -441,7 +443,7 @@ ASM_PFX(ArmCallWFI):
 
 ASM_PFX(ArmInvalidateInstructionAndDataTlb):
    EL1_OR_EL2_OR_EL3(x0)
-1: tlbi  alle1
+1: tlbi  vmalle1
    b     4f
 2: tlbi  alle2
    b     4f

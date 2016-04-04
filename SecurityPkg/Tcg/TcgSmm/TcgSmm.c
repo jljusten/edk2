@@ -8,7 +8,7 @@
 
   PhysicalPresenceCallback() and MemoryClearCallback() will receive untrusted input and do some check.
 
-Copyright (c) 2011 - 2012, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2011 - 2013, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials 
 are licensed and made available under the terms and conditions of the BSD License 
 which accompanies this distribution.  The full text of the license may be found at 
@@ -103,7 +103,22 @@ PhysicalPresenceCallback (
     }
     mTcgNvs->PhysicalPresence.ReturnCode = PP_SUBMIT_REQUEST_SUCCESS;
   } else if (mTcgNvs->PhysicalPresence.Parameter == ACPI_FUNCTION_GET_USER_CONFIRMATION_STATUS_FOR_REQUEST) {
-    Flags = PpData.Flags;  
+    //
+    // Get the Physical Presence flags
+    //
+    DataSize = sizeof (UINT8);
+    Status = mSmmVariable->SmmGetVariable (
+                             PHYSICAL_PRESENCE_FLAGS_VARIABLE,
+                             &gEfiPhysicalPresenceGuid,
+                             NULL,
+                             &DataSize,
+                             &Flags
+                             );
+    if (EFI_ERROR (Status)) {
+      mTcgNvs->PhysicalPresence.ReturnCode = PP_SUBMIT_REQUEST_GENERAL_FAILURE;
+      return EFI_SUCCESS;
+    }
+
     RequestConfirmed = FALSE;
 
     switch (mTcgNvs->PhysicalPresence.Request) {
@@ -324,6 +339,7 @@ PublishAcpiTable (
 
 
   ASSERT (Table->OemTableId == SIGNATURE_64 ('T', 'c', 'g', 'T', 'a', 'b', 'l', 'e'));
+  CopyMem (Table->OemId, PcdGetPtr (PcdAcpiDefaultOemId), sizeof (Table->OemId) );
   mTcgNvs = AssignOpRegion (Table, SIGNATURE_32 ('T', 'N', 'V', 'S'), (UINT16) sizeof (TCG_NVS));
   ASSERT (mTcgNvs != NULL);
 
@@ -369,6 +385,11 @@ InitializeTcgSmm (
   EFI_SMM_SW_DISPATCH2_PROTOCOL  *SwDispatch;
   EFI_SMM_SW_REGISTER_CONTEXT    SwContext;
   EFI_HANDLE                     SwHandle;
+
+  if (!CompareGuid (PcdGetPtr(PcdTpmInstanceGuid), &gEfiTpmDeviceInstanceTpm12Guid)){
+    DEBUG ((EFI_D_ERROR, "No TPM12 instance required!\n"));
+    return EFI_UNSUPPORTED;
+  }
 
   Status = PublishAcpiTable ();
   ASSERT_EFI_ERROR (Status);

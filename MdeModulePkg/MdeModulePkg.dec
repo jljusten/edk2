@@ -98,6 +98,10 @@
   #
   CpuExceptionHandlerLib|Include/Library/CpuExceptionHandlerLib.h
   
+  ##  @libraryclass    Provides platform specific display interface.
+  #
+  CustomizedDisplayLib|Include/Library/CustomizedDisplayLib.h
+
 [Guids]
   ## MdeModule package token space guid
   # Include/Guid/MdeModulePkgTokenSpace.h
@@ -361,6 +365,12 @@
   ## Include/Protocol/BootLogo.h
   gEfiBootLogoProtocolGuid = { 0xcdea2bd3, 0xfc25, 0x4c1c, { 0xb9, 0x7c, 0xb3, 0x11, 0x86, 0x6, 0x49, 0x90 } }
 
+  ## Include/Protocol/DisplayProtocol.h
+  gEdkiiFormDisplayEngineProtocolGuid = { 0x9bbe29e9, 0xfda1, 0x41ec, { 0xad, 0x52, 0x45, 0x22, 0x13, 0x74, 0x2d, 0x2e } }
+
+  ## Include/Protocol/FormBrowserEx2.h
+  gEdkiiFormBrowserEx2ProtocolGuid = { 0xa770c357, 0xb693, 0x4e6d, { 0xa6, 0xcf, 0xd2, 0x1c, 0x72, 0x8e, 0x55, 0xb } }
+
 [PcdsFeatureFlag]
   ## Indicate whether platform can support update capsule across a system reset
   gEfiMdeModulePkgTokenSpaceGuid.PcdSupportUpdateCapsuleReset|FALSE|BOOLEAN|0x0001001d
@@ -564,9 +574,9 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdCapsuleCoalesceFile|{ 0xA6, 0xE4, 0xFD, 0xF7, 0x4C, 0x29, 0x3c, 0x49, 0xB5, 0x0F, 0x97, 0x34, 0x55, 0x3B, 0xB7, 0x57 }|VOID*|0x30000017
 
   ## Flag of enabling/disabling the feature of Loading Module at Fixed Address 
-  #  -1: Enable the feature as fixed offset to TOLM
-  #   0: Disable the feature.
-  #  Positive Value:  Enable the feature as fixed absolute address, and the value is the top memory address 
+  #  0xFFFFFFFFFFFFFFFF: Enable the feature as fixed offset to TOLM
+  #  0:                  Disable the feature
+  #  Other Value:        Enable the feature as fixed absolute address, and the value is the top memory address 
   gEfiMdeModulePkgTokenSpaceGuid.PcdLoadModuleAtFixAddressEnable|0|UINT64|0x30001015
 
   ## Smbios version
@@ -651,6 +661,24 @@
   #  boundary as close to the top of memory as feasible.
   #
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxEfiSystemTablePointerAddress|0x0|UINT64|0x30001027
+
+  ## This PCD specifies whether to shadow PEIM on S3 boot path after memory is ready. 
+  gEfiMdeModulePkgTokenSpaceGuid.PcdShadowPeimOnS3Boot|FALSE|BOOLEAN|0x30001028
+
+  ## Default OEM ID for ACPI table creation, its length must be 0x6 bytes to follow ACPI specification.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemId|"INTEL "|VOID*|0x30001034
+
+  ## Default OEM Table ID for ACPI table creation, it is "EDK2    ".
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemTableId|0x20202020324B4445|UINT64|0x30001035
+
+  ## Default OEM Revision for ACPI table creation.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemRevision|0x00000002|UINT32|0x30001036
+
+  ## Default Creator ID for ACPI table creation.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorId|0x20202020|UINT32|0x30001037
+
+  ## Default Creator Revision for ACPI table creation.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultCreatorRevision|0x01000013|UINT32|0x30001038
 
 [PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
   ## This PCD defines the Console output column and the default value is 25 according to UEFI spec.

@@ -167,6 +167,7 @@ APRIORI PEI {
   INF  Nt32Pkg/WinNtOemHookStatusCodeHandlerPei/WinNtOemHookStatusCodeHandlerPei.inf
   }
 APRIORI DXE {
+  INF  MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
   INF  MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
   INF  Nt32Pkg/MetronomeDxe/MetronomeDxe.inf
   }
@@ -232,6 +233,7 @@ INF  MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
 INF  MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
 INF  MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
 INF  MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
+INF  MdeModulePkg/Universal/DisplayEngineDxe/DisplayEngineDxe.inf
 INF  MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
 INF  MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
 INF  RuleOverride = TIANOCOMPRESSED MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
@@ -268,13 +270,9 @@ INF  MdeModulePkg/Universal/Network/IScsiDxe/IScsiDxe.inf
 # for binary shell, binary fat and logo module.
 #
 ################################################################################
-FILE APPLICATION = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdShellFile) {
-    SECTION PE32 = EdkShellBinPkg/FullShell/Ia32/Shell_Full.efi
-  }
+INF EdkShellBinPkg/FullShell/FullShell.inf
 
-FILE DRIVER = 961578FE-B6B7-44c3-AF35-6BC705CD2B1F {
-    SECTION PE32 = FatBinPkg/EnhancedFatDxe/Ia32/Fat.efi
-  }
+INF FatBinPkg/EnhancedFatDxe/Fat.inf
 
 FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
     SECTION RAW = MdeModulePkg/Logo/Logo.bmp
@@ -384,6 +382,29 @@ FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
     COMPRESS PI_STD {
       GUIDED {
         PE32     PE32                    $(INF_OUTPUT)/$(MODULE_NAME).efi
+        UI       STRING="$(MODULE_NAME)" Optional
+        VERSION  STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
+      }
+    }
+  }
+
+[Rule.Common.UEFI_APPLICATION.BINARY]
+  FILE APPLICATION = $(NAMED_GUID) {
+    COMPRESS PI_STD {
+      GUIDED {
+        PE32     PE32                    |.efi
+        UI       STRING="$(MODULE_NAME)" Optional
+        VERSION  STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
+      }
+    }
+  }
+
+[Rule.Common.UEFI_DRIVER.BINARY]
+  FILE DRIVER = $(NAMED_GUID) {
+    DXE_DEPEX    DXE_DEPEX Optional      |.depex
+    COMPRESS PI_STD {
+      GUIDED {
+        PE32     PE32                    |.efi
         UI       STRING="$(MODULE_NAME)" Optional
         VERSION  STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
       }
