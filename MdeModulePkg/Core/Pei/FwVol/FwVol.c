@@ -368,8 +368,8 @@ FirmwareVolmeInfoPpiNotifyCallback (
   Status       = EFI_SUCCESS;
   PrivateData  = PEI_CORE_INSTANCE_FROM_PS_THIS (PeiServices);
 
-  if (PrivateData->FvCount >= PcdGet32 (PcdPeiCoreMaxFvSupported)) {
-    DEBUG ((EFI_D_ERROR, "The number of Fv Images (%d) exceed the max supported FVs (%d) in Pei", PrivateData->FvCount + 1, PcdGet32 (PcdPeiCoreMaxFvSupported)));
+  if (PrivateData->FvCount >= FixedPcdGet32 (PcdPeiCoreMaxFvSupported)) {
+    DEBUG ((EFI_D_ERROR, "The number of Fv Images (%d) exceed the max supported FVs (%d) in Pei", PrivateData->FvCount + 1, FixedPcdGet32 (PcdPeiCoreMaxFvSupported)));
     DEBUG ((EFI_D_ERROR, "PcdPeiCoreMaxFvSupported value need be reconfigurated in DSC"));
     ASSERT (FALSE);
   }
@@ -1156,7 +1156,7 @@ PeiFfs2FvPpiGetFileInfo (
     return EFI_INVALID_PARAMETER;
   }
 
-  if (CoreFvHandle->FvHeader->Attributes & EFI_FVB2_ERASE_POLARITY) {
+  if ((CoreFvHandle->FvHeader->Attributes & EFI_FVB2_ERASE_POLARITY) != 0) {
     ErasePolarity = 1;
   } else {
     ErasePolarity = 0;
@@ -1348,14 +1348,34 @@ FindNextCoreFvHandle (
     //
     FvHob = (EFI_HOB_FIRMWARE_VOLUME *)GetFirstHob (EFI_HOB_TYPE_FV);
     while (FvHob != NULL) {
+      //
+      // Search whether FvHob has been installed into PeiCore's FV database.
+      // If found, no need install new FvInfoPpi for it.
+      //
       for (Index = 0, Match = FALSE; Index < Private->FvCount; Index++) {
         if ((EFI_PEI_FV_HANDLE)(UINTN)FvHob->BaseAddress == Private->Fv[Index].FvHeader) {
           Match = TRUE;
           break;
         }
       }
+      
       //
-      // If Not Found, Install FvInfo Ppi for it.
+      // Search whether FvHob has been cached into PeiCore's Unknown FV database.
+      // If found, no need install new FvInfoPpi for it.
+      //
+      if (!Match) {
+        for (Index = 0; Index < Private->UnknownFvInfoCount; Index ++) {
+          if ((UINTN)FvHob->BaseAddress == (UINTN)Private->UnknownFvInfo[Index].FvInfo) {
+            Match = TRUE;
+            break;
+          }
+        }
+      }
+
+      //
+      // If the Fv in FvHob has not been installed into PeiCore's FV database and has
+      // not been cached into PeiCore's Unknown FV database, install a new FvInfoPpi
+      // for it then PeiCore will dispatch it in callback of FvInfoPpi.
       //
       if (!Match) {
         PeiServicesInstallFvInfoPpi (
@@ -1366,6 +1386,7 @@ FindNextCoreFvHandle (
           NULL
           );
       }
+      
       FvHob = (EFI_HOB_FIRMWARE_VOLUME *)GetNextHob (EFI_HOB_TYPE_FV, (VOID *)((UINTN)FvHob + FvHob->Header.HobLength)); 
     }
   }
@@ -1417,7 +1438,7 @@ PeiReinitializeFv (
   //
   // Fixup all FvPpi pointers for the implementation in flash to permanent memory.
   //
-  for (Index = 0; Index < PcdGet32 (PcdPeiCoreMaxFvSupported); Index ++) {
+  for (Index = 0; Index < FixedPcdGet32 (PcdPeiCoreMaxFvSupported); Index ++) {
     if (PrivateData->Fv[Index].FvPpi == OldFfs2FvPpi) {
       PrivateData->Fv[Index].FvPpi = &mPeiFfs2FvPpi;
     }
@@ -1452,7 +1473,7 @@ AddUnknownFormatFvInfo (
 {
   PEI_CORE_UNKNOW_FORMAT_FV_INFO    *NewUnknownFv;
   
-  if (PrivateData->UnknownFvInfoCount + 1 >= PcdGet32 (PcdPeiCoreMaxPeimPerFv)) {
+  if (PrivateData->UnknownFvInfoCount + 1 >= FixedPcdGet32 (PcdPeiCoreMaxPeimPerFv)) {
     return EFI_OUT_OF_RESOURCES;
   }
   

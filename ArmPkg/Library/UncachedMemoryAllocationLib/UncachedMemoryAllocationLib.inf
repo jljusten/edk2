@@ -20,6 +20,7 @@
   MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = UncachedMemoryAllocationLib
+  CONSTRUCTOR                    = UncachedMemoryAllocationLibConstructor
 
 [Sources.common]
   UncachedMemoryAllocationLib.c
@@ -32,8 +33,10 @@
   gEfiCpuArchProtocolGuid
 
 [LibraryClasses]
+  BaseLib
   ArmLib
+  MemoryAllocationLib
+  DxeServicesTableLib
 
-[FixedPcd]
-  gArmTokenSpaceGuid.PcdArmUncachedMemoryMask
-  
+[Depex]
+  gEfiCpuArchProtocolGuid    

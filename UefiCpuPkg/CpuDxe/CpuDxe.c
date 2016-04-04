@@ -852,10 +852,9 @@ RefreshGcdMemoryAttributes (
   UINTN                               NumberOfDescriptors;
   EFI_GCD_MEMORY_SPACE_DESCRIPTOR     *MemorySpaceMap;
   UINT64                              DefaultAttributes;
-  VARIABLE_MTRR                       VariableMtrr[MAX_MTRR_NUMBER_OF_VARIABLE_MTRR];
+  VARIABLE_MTRR                       VariableMtrr[MTRR_NUMBER_OF_VARIABLE_MTRR];
   MTRR_FIXED_SETTINGS                 MtrrFixedSettings;
   UINT32                              FirmwareVariableMtrrCount;
-  UINT32                              UsedMtrr;
 
   FirmwareVariableMtrrCount = GetFirmwareVariableMtrrCount ();
 
@@ -871,11 +870,9 @@ RefreshGcdMemoryAttributes (
   //
   // Get the memory attribute of variable MTRRs
   //
-  UsedMtrr = MAX_MTRR_NUMBER_OF_VARIABLE_MTRR;
   MtrrGetMemoryAttributeInVariableMtrr (
     mValidMtrrBitsMask,
     mValidMtrrAddressMask,
-    &UsedMtrr,
     VariableMtrr
     );
 
@@ -1014,6 +1011,7 @@ InitInterruptDescriptorTable (
   IA32_DESCRIPTOR *IdtPtr;
   UINTN           Index;
   UINTN           CurrentHandler;
+  BOOLEAN         InterruptState;
 
   SetMem (ExternalVectorTable, sizeof(ExternalVectorTable), 0);
 
@@ -1040,7 +1038,19 @@ InitInterruptDescriptorTable (
   IdtPtr = ALIGN_POINTER (IdtPtrAlignmentBuffer, 16);
   IdtPtr->Base = (UINT32)(((UINTN)(VOID*) gIdtTable) & (BASE_4GB-1));
   IdtPtr->Limit = sizeof (gIdtTable) - 1;
+
+  //
+  // Disable interrupts and save the current interrupt state
+  //
+  InterruptState = SaveAndDisableInterrupts ();
+
   AsmWriteIdtr (IdtPtr);
+
+  //
+  // Restore the interrupt state
+  //
+  SetInterruptState (InterruptState);
+
   FreePool (IdtPtrAlignmentBuffer);
 
   //

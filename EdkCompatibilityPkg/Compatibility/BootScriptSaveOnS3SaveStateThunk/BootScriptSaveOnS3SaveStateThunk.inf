@@ -1,4 +1,4 @@
-#/** @file
+## @file
 #  To implement Framework Boot Script Save protocol based on PI S3 Save State protocol
 # 
 #  Intel's Framework Boot Script Save Protocol is replaced by S3 Save State Protocol in PI.
@@ -15,7 +15,7 @@
 #
 #
 #
-#**/
+##
 
 [Defines]
   INF_VERSION                    = 0x00010005
@@ -32,7 +32,7 @@
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
 #
 
-[Sources.common]
+[Sources]
   ScriptSave.c
   ScriptSave.h
 

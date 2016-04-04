@@ -186,8 +186,16 @@ EblGetCommand (
   UINTN               BestMatchCount;
   UINTN               Length;
   EBL_COMMAND_TABLE   *Match;
+  CHAR8               *Str;
 
   Length = AsciiStrLen (CommandName);
+  Str = AsciiStrStr (CommandName, ".");
+  if (Str != NULL) {
+    // If the command includes a trailing . command extension skip it for the match.
+    // Example: hexdump.4
+    Length = (UINTN)(Str - CommandName); 
+  }
+  
   for (Index = 0, BestMatchCount = 0, Match = NULL; Index < mCmdTableNextFreeIndex; Index++) {
     if (AsciiStriCmp (mCmdTable[Index]->Name,  CommandName) == 0) {
       // match a command exactly
@@ -212,6 +220,26 @@ EblGetCommand (
 }
 
 
+UINTN
+CountNewLines (
+  IN CHAR8  *Str
+  )
+{
+  UINTN Count;
+  
+  if (Str == NULL) {
+    return 0;
+  }
+  
+  for (Count = 0; *Str != '\0'; Str++) {
+    if (Str[Count] == '\n') {
+      Count++;
+    }
+  }
+  
+  return Count;
+}
+
 
 /**
   List out help information on all the commands or print extended information 
@@ -235,16 +263,22 @@ EblHelpCmd (
 {
   UINTN   Index;
   CHAR8   *Ptr;
-  UINTN   CurrentRow;
+  UINTN   CurrentRow = 0;
 
   if (Argc == 1) {
     // Print all the commands
     AsciiPrint ("Embedded Boot Loader (EBL) commands (help command for more info):\n");
+    CurrentRow++;
     for (Index = 0; Index < mCmdTableNextFreeIndex; Index++) {
       EblSetTextColor (EFI_YELLOW);
       AsciiPrint (" %a", mCmdTable[Index]->Name);
       EblSetTextColor (0);
       AsciiPrint ("%a\n", mCmdTable[Index]->HelpSummary);
+      // Handle multi line help summaries
+      CurrentRow += CountNewLines (mCmdTable[Index]->HelpSummary);
+      if (EblAnyKeyToContinueQtoQuit (&CurrentRow, FALSE)) {
+        break;
+      }
     }
   } else if (Argv[1] != NULL) {
     // Print specific help 
@@ -252,6 +286,8 @@ EblHelpCmd (
       if (AsciiStriCmp (Argv[1], mCmdTable[Index]->Name) == 0) {
         Ptr = (mCmdTable[Index]->Help == NULL) ? mCmdTable[Index]->HelpSummary : mCmdTable[Index]->Help;
         AsciiPrint ("%a%a\n", Argv[1], Ptr);
+        // Handle multi line help summaries
+        CurrentRow += CountNewLines (Ptr);
         if (EblAnyKeyToContinueQtoQuit (&CurrentRow, FALSE)) {
           break;
         }
@@ -525,12 +561,9 @@ ConvertToTextLine (
   IN CHAR8  Character
   )
 {
-  if (Character < ' ' || Character > '~')
-  {
+  if (Character < ' ' || Character > '~') {
     return '.';
-  }
-  else
-  {
+  } else {
     return Character;
   }
 }
@@ -543,15 +576,15 @@ GetBytes (
 {
   UINTN Result = 0;
 
-  if (Bytes >= 1)
+  if (Bytes >= 1) {
     Result = *Address++;
-    
-  if (Bytes >= 2)
+  }
+  if (Bytes >= 2) {
     Result = (Result << 8) + *Address++;
-    
-  if (Bytes >= 3)
+  }  
+  if (Bytes >= 3) {
     Result = (Result << 8) + *Address++;
-
+  }
   return Result;
 }
 
@@ -574,26 +607,20 @@ OutputData (
   CHAR8 Blanks[80];
 
   AsciiStrCpy (Blanks, mBlanks);
-  for (EndAddress = Address + Length; Address < EndAddress; Offset += Line)
-  {
+  for (EndAddress = Address + Length; Address < EndAddress; Offset += Line) {
     AsciiPrint ("%08x: ", Offset);
-    for (Line = 0; (Line < 0x10) && (Address < EndAddress);)
-    {
+    for (Line = 0; (Line < 0x10) && (Address < EndAddress);) {
       Bytes = EndAddress - Address;
             
-      switch (Width)
-      {
+      switch (Width) {
         case 4:
-          if (Bytes >= 4)
-          {
+          if (Bytes >= 4) {
             AsciiPrint ("%08x ", *((UINT32 *)Address));
             TextLine[Line++] = ConvertToTextLine(*Address++);
             TextLine[Line++] = ConvertToTextLine(*Address++);
             TextLine[Line++] = ConvertToTextLine(*Address++);
             TextLine[Line++] = ConvertToTextLine(*Address++);
-          }
-          else
-          {
+          } else {
             AsciiPrint ("%08x ", GetBytes(Address, Bytes));
             Address += Bytes;
             Line    += Bytes;
@@ -601,14 +628,11 @@ OutputData (
           break;
 
         case 2:
-          if (Bytes >= 2)
-          {
+          if (Bytes >= 2) {
             AsciiPrint ("%04x ", *((UINT16 *)Address));
             TextLine[Line++] = ConvertToTextLine(*Address++);
             TextLine[Line++] = ConvertToTextLine(*Address++);
-          }
-          else
-          {
+          } else {
             AsciiPrint ("%04x ", GetBytes(Address, Bytes));
             Address += Bytes;
             Line    += Bytes;
@@ -627,10 +651,8 @@ OutputData (
     }
 
     // Pad spaces
-    if (Line < 0x10)
-    {
-      switch (Width)
-      {
+    if (Line < 0x10) {
+      switch (Width) {
         case 4:
           Spaces = 9 * ((0x10 - Line)/4);
           break;
@@ -652,22 +674,72 @@ OutputData (
     TextLine[Line] = 0;
     AsciiPrint ("|%a|\n", TextLine);
 
-    if (EblAnyKeyToContinueQtoQuit(&CurrentRow, FALSE))
-    {
+    if (EblAnyKeyToContinueQtoQuit (&CurrentRow, FALSE)) {
       return EFI_END_OF_FILE;
     }
   }
 
-  if (Length % Width != 0)
-  {
+  if (Length % Width != 0) {
     AsciiPrint ("%08x\n", Offset);
   }
   
   return EFI_SUCCESS;
 }
 
+
+/**
+  See if command contains .# where # is a number. Return # as the Width
+  or 1 as the default Width for commands. 
+  
+  Example hexdump.4 returns a width of 4.
+
+  @param  Argv   Argv[0] is the comamnd name
+
+  @return Width of command
+
+**/
+UINTN
+WidthFromCommandName (
+  IN CHAR8  *Argv,
+  IN UINTN  Default
+  )
+{
+  CHAR8         *Str;
+  UINTN         Width;
+  
+  //Hexdump.2 HexDump.4 mean use a different width
+  Str = AsciiStrStr (Argv, ".");
+  if (Str != NULL) {
+    Width = AsciiStrDecimalToUintn (Str + 1);
+    if (Width == 0) {
+      Width = Default;
+    }
+  } else {
+    // Default answer
+    return Default;
+  }
+
+  return Width;
+}
+
 #define HEXDUMP_CHUNK 1024
 
+/**
+  Toggle page break global. This turns on and off prompting to Quit or hit any
+  key to continue when a command is about to scroll the screen with its output
+
+  Argv[0] - "hexdump"[.#]  # is optional 1,2, or 4 for width  
+  Argv[1] - Device or File to dump. 
+  Argv[2] - Optional offset to start dumping
+  Argv[3] - Optional number of bytes to dump
+
+  @param  Argc   Number of command arguments in Argv
+  @param  Argv   Array of strings that represent the parsed command line. 
+                 Argv[0] is the comamnd name
+
+  @return EFI_SUCCESS
+
+**/
 EFI_STATUS
 EblHexdumpCmd (
   IN UINTN  Argc,
@@ -677,49 +749,52 @@ EblHexdumpCmd (
   EFI_OPEN_FILE *File;
   VOID          *Location;
   UINTN         Size;
-  UINTN         Width = 1;
+  UINTN         Width;
   UINTN         Offset = 0;
   EFI_STATUS    Status;
   UINTN         Chunk = HEXDUMP_CHUNK;
 
-  if ((Argc < 2) || (Argc > 3))
-  {
+  if ((Argc < 2) || (Argc > 4)) {
     return EFI_INVALID_PARAMETER;
   }
   
-  if (Argc == 3)
-  {
-      Width = AsciiStrDecimalToUintn(Argv[2]);
-  }
-  
-  if ((Width != 1) && (Width != 2) && (Width != 4))
-  {
+  Width = WidthFromCommandName (Argv[0], 1);
+  if ((Width != 1) && (Width != 2) && (Width != 4)) {
     return EFI_INVALID_PARAMETER;
   }
 
-  File = EfiOpen(Argv[1], EFI_FILE_MODE_READ, 0);
-  if (File == NULL)
-  {
+  File = EfiOpen (Argv[1], EFI_FILE_MODE_READ, 0);
+  if (File == NULL) {
     return EFI_NOT_FOUND;
   }
 
-  Location = AllocatePool(Chunk);
-  Size     = EfiTell(File, NULL);
+  Location = AllocatePool (Chunk);
+  Size     = (Argc > 3) ? AsciiStrHexToUintn (Argv[3]) : EfiTell (File, NULL);
 
-  for (Offset = 0; Offset + HEXDUMP_CHUNK <= Size; Offset += Chunk)
-  {
+  Offset = 0;
+  if (Argc > 2) {
+    Offset = AsciiStrHexToUintn (Argv[2]);
+    if (Offset > 0) {
+      // Make sure size includes the part of the file we have skipped
+      Size += Offset;
+    }
+  } 
+
+  Status = EfiSeek (File, Offset, EfiSeekStart);
+  if (EFI_ERROR (Status)) {
+    goto Exit;
+  }
+  
+  for (; Offset + HEXDUMP_CHUNK <= Size; Offset += Chunk) {
     Chunk = HEXDUMP_CHUNK;
-    
-    Status = EfiRead(File, Location, &Chunk);
-    if (EFI_ERROR(Status))
-    {
+    Status = EfiRead (File, Location, &Chunk);
+    if (EFI_ERROR(Status)) {
       AsciiPrint ("Error reading file content\n");
       goto Exit;
     }
 
-    Status = OutputData(Location, Chunk, Width, File->BaseOffset + Offset);
-    if (EFI_ERROR(Status))
-    {
+    Status = OutputData (Location, Chunk, Width, File->BaseOffset + Offset);
+    if (EFI_ERROR(Status)) {
       if (Status == EFI_END_OF_FILE) {
         Status = EFI_SUCCESS;
       }
@@ -728,19 +803,16 @@ EblHexdumpCmd (
   }
   
   // Any left over?
-  if (Offset < Size)
-  {
+  if (Offset < Size) {
     Chunk = Size - Offset;
-    Status = EfiRead(File, Location, &Chunk);
-    if (EFI_ERROR(Status))
-    {
+    Status = EfiRead (File, Location, &Chunk);
+    if (EFI_ERROR(Status)) {
       AsciiPrint ("Error reading file content\n");
       goto Exit;
     }
 
-    Status = OutputData(Location, Chunk, Width, File->BaseOffset + Offset);
-    if (EFI_ERROR(Status))
-    {
+    Status = OutputData (Location, Chunk, Width, File->BaseOffset + Offset);
+    if (EFI_ERROR(Status)) {
       if (Status == EFI_END_OF_FILE) {
         Status = EFI_SUCCESS;
       }
@@ -749,141 +821,13 @@ EblHexdumpCmd (
   }
 
 Exit:
-  EfiClose(File);
+  EfiClose (File);
 
-  FreePool(Location);
+  FreePool (Location);
 
   return EFI_SUCCESS;
 }
 
-#define USE_DISKIO 1
-
-EFI_STATUS
-EblDiskIoCmd (
-  IN UINTN Argc,
-  IN CHAR8 **Argv
-  )
-{
-  EFI_STATUS Status;
-  UINTN Offset;
-  UINT8 *EndOffset;
-  UINTN Length;
-  UINTN Line;
-  UINT8 *Buffer;
-  UINT8 *BufferOffset;
-  CHAR8 TextLine[0x11];
-#if USE_DISKIO
-  EFI_DISK_IO_PROTOCOL  *DiskIo;
-#else
-  EFI_BLOCK_IO_PROTOCOL *BlockIo;
-  UINTN                 Lba;
-#endif  
-
-  if (AsciiStrCmp(Argv[1], "r") == 0)
-  {  
-    Offset = AsciiStrHexToUintn(Argv[2]);
-    Length = AsciiStrHexToUintn(Argv[3]);
-
-#if USE_DISKIO
-    Status = gBS->LocateProtocol(&gEfiDiskIoProtocolGuid, NULL, (VOID **)&DiskIo);
-    if (EFI_ERROR(Status))
-    {
-      AsciiPrint("Did not locate DiskIO\n");
-      return Status;
-    }
-
-    Buffer = AllocatePool(Length);
-    BufferOffset = Buffer;
-    
-    Status = DiskIo->ReadDisk(DiskIo, SIGNATURE_32('f','l','s','h'), Offset, Length, Buffer);
-    if (EFI_ERROR(Status))
-    {
-      AsciiPrint("DiskIO read failed\n");
-      gBS->FreePool(Buffer);
-      return Status;
-    }    
-#else
-    Status = gBS->LocateProtocol(&gEfiBlockIoProtocolGuid, NULL, (VOID **)&BlockIo);
-    if (EFI_ERROR(Status))
-    {
-      AsciiPrint("Did not locate BlockIo\n");
-      return Status;
-    }
-    
-    Length = BlockIo->Media->BlockSize;
-    Buffer = AllocatePool(Length);
-    BufferOffset = Buffer;
-    Lba = Offset/BlockIo->Media->BlockSize;
-    
-    Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, Lba, Length, Buffer);
-    if (EFI_ERROR(Status))
-    {
-      AsciiPrint("BlockIo read failed\n");
-      gBS->FreePool(Buffer);
-      return Status;
-    }
-    
-    // Whack offset to what we actually read from
-    Offset = Lba * BlockIo->Media->BlockSize;
-    
-    Length = 0x100;
-#endif
-
-    for (EndOffset = BufferOffset + Length; BufferOffset < EndOffset; Offset += 0x10)
-    {
-      AsciiPrint ("%08x: ", Offset);
-      
-      for (Line = 0; Line < 0x10; Line++)
-      {
-        AsciiPrint ("%02x ", *BufferOffset);
-
-        if (*BufferOffset < ' ' || *BufferOffset > '~')
-          TextLine[Line] = '.';
-        else
-          TextLine[Line] = *BufferOffset;
-          
-        BufferOffset++;
-      }
-
-      TextLine[Line] = '\0';
-      AsciiPrint ("|%a|\n", TextLine);
-    }
-    
-    gBS->FreePool(Buffer);
-
-    return EFI_SUCCESS;
-  }
-  else if (AsciiStrCmp(Argv[1], "w") == 0)
-  {
-    Offset = AsciiStrHexToUintn(Argv[2]);
-    Length = AsciiStrHexToUintn(Argv[3]);
-    Buffer = (UINT8 *)AsciiStrHexToUintn(Argv[4]);
-    
-#if USE_DISKIO
-    Status = gBS->LocateProtocol(&gEfiDiskIoProtocolGuid, NULL, (VOID **)&DiskIo);
-    if (EFI_ERROR(Status))
-    {
-      AsciiPrint("Did not locate DiskIO\n");
-      return Status;
-    }
-
-    Status = DiskIo->WriteDisk(DiskIo, SIGNATURE_32('f','l','s','h'), Offset, Length, Buffer);
-    if (EFI_ERROR(Status))
-    {
-      AsciiPrint("DiskIO write failed\n");
-      return Status;
-    }
-
-#else
-#endif
-
-    return EFI_SUCCESS;
-  }
-  else
-  {
-    return EFI_INVALID_PARAMETER;
-  }
-}
 
 GLOBAL_REMOVE_IF_UNREFERENCED const EBL_COMMAND_TABLE mCmdTemplate[] =
 {
@@ -931,16 +875,10 @@ GLOBAL_REMOVE_IF_UNREFERENCED const EBL_COMMAND_TABLE mCmdTemplate[] =
   },
   {
     "hexdump",
-    " filename ; dump a file as hex bytes",
+    "[.{1|2|4}] filename [Offset] [Size]; dump a file as hex .width",
     NULL,
     EblHexdumpCmd
-  },
-  {
-    "diskio",
-    " [r|w] offset [length [dataptr]]; do a DiskIO read or write ",
-    NULL,
-    EblDiskIoCmd
-  }  
+  }
 };
 
 

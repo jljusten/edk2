@@ -14,9 +14,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "Service.h"
 
-PCD_DATABASE * mPcdDatabase;
+PCD_DATABASE  *mPcdDatabase;
 
-LIST_ENTRY *mCallbackFnTable;
+LIST_ENTRY    *mCallbackFnTable;
 
 /**
   Get the PCD entry pointer in PCD database.
@@ -122,6 +122,7 @@ GetWorker (
       RetPtr = (VOID *) (UINTN) (PcdGet32 (PcdVpdBaseAddress) + VpdHead->Offset);
       break;
       
+    case PCD_TYPE_HII|PCD_TYPE_STRING:
     case PCD_TYPE_HII:
       if (IsPeiDb) {
         GuidTable = (EFI_GUID *) (&mPcdDatabase->PeiDb.Init.GuidTable[0]);
@@ -130,34 +131,56 @@ GetWorker (
       }
                               
       VariableHead = (VARIABLE_HEAD *) (PcdDb + Offset);
-      
       Guid = GuidTable + VariableHead->GuidTableIndex;
       Name = (UINT16*)(StringTable + VariableHead->StringIndex);
-      VaraiableDefaultBuffer = (UINT8 *) PcdDb + VariableHead->DefaultValueOffset;
-
-      Status = GetHiiVariable (Guid, Name, &Data, &DataSize);
-      if (Status == EFI_SUCCESS) {
-        if (GetSize == 0) {
-          //
-          // It is a pointer type. So get the MaxSize reserved for
-          // this PCD entry.
-          //
-          GetPtrTypeSize (TmpTokenNumber, &GetSize);
+      
+      if ((LocalTokenNumber & PCD_TYPE_ALL_SET) == (PCD_TYPE_HII|PCD_TYPE_STRING)) {
+	    //
+		// If a HII type PCD's datum type is VOID*, the DefaultValueOffset is the index of 
+		// string array in string table.
+		//
+        StringTableIdx = *(UINT16*)((UINT8 *) PcdDb + VariableHead->DefaultValueOffset);   
+        VaraiableDefaultBuffer = (VOID *) (StringTable + StringTableIdx);     
+        Status = GetHiiVariable (Guid, Name, &Data, &DataSize);
+        if (Status == EFI_SUCCESS) {
+          if (GetSize == 0) {
+            //
+            // It is a pointer type. So get the MaxSize reserved for
+            // this PCD entry.
+            //
+            GetPtrTypeSize (TmpTokenNumber, &GetSize);
+          }
+          CopyMem (VaraiableDefaultBuffer, Data + VariableHead->Offset, GetSize);
+          FreePool (Data);
         }
-        CopyMem (VaraiableDefaultBuffer, Data + VariableHead->Offset, GetSize);
-        FreePool (Data);
+        RetPtr = (VOID *) VaraiableDefaultBuffer;                
+      } else {
+        VaraiableDefaultBuffer = (UINT8 *) PcdDb + VariableHead->DefaultValueOffset;
+  
+        Status = GetHiiVariable (Guid, Name, &Data, &DataSize);
+        if (Status == EFI_SUCCESS) {
+          if (GetSize == 0) {
+            //
+            // It is a pointer type. So get the MaxSize reserved for
+            // this PCD entry.
+            //
+            GetPtrTypeSize (TmpTokenNumber, &GetSize);
+          }
+          CopyMem (VaraiableDefaultBuffer, Data + VariableHead->Offset, GetSize);
+          FreePool (Data);
+        }
+        //
+        // If the operation is successful, we copy the data
+        // to the default value buffer in the PCD Database.
+        // So that we can free the Data allocated in GetHiiVariable.
+        //
+        //
+        // If the operation is not successful, 
+        // Return 1) either the default value specified by Platform Integrator 
+        //        2) Or the value Set by a PCD set operation.
+        //
+        RetPtr = (VOID *) VaraiableDefaultBuffer;
       }
-      //
-      // If the operation is successful, we copy the data
-      // to the default value buffer in the PCD Database.
-      // So that we can free the Data allocated in GetHiiVariable.
-      //
-      //
-      // If the operation is not successful, 
-      // Return 1) either the default value specified by Platform Integrator 
-      //        2) Or the value Set by a PCD set operation.
-      //
-      RetPtr = (VOID *) VaraiableDefaultBuffer;
       break;
 
     case PCD_TYPE_STRING:
@@ -213,11 +236,9 @@ DxeRegisterCallBackWorker (
   //
   // TokenNumber Zero is reserved as PCD_INVALID_TOKEN_NUMBER.
   // We have to decrement TokenNumber by 1 to make it usable
-  // as the array index.
+  // as the array index of mCallbackFnTable[].
   //
-  TokenNumber--;
-
-  ListHead = &mCallbackFnTable[TokenNumber];
+  ListHead = &mCallbackFnTable[TokenNumber - 1];
   ListNode = GetFirstNode (ListHead);
 
   while (ListNode != ListHead) {
@@ -274,11 +295,9 @@ DxeUnRegisterCallBackWorker (
   //
   // TokenNumber Zero is reserved as PCD_INVALID_TOKEN_NUMBER.
   // We have to decrement TokenNumber by 1 to make it usable
-  // as the array index.
+  // as the array index of mCallbackFnTable[].
   //
-  TokenNumber--;
-
-  ListHead = &mCallbackFnTable[TokenNumber];
+  ListHead = &mCallbackFnTable[TokenNumber - 1];
   ListNode = GetFirstNode (ListHead);
 
   while (ListNode != ListHead) {
@@ -624,15 +643,13 @@ InvokeCallbackOnSet (
   //
   // TokenNumber Zero is reserved as PCD_INVALID_TOKEN_NUMBER.
   // We have to decrement TokenNumber by 1 to make it usable
-  // as the array index.
+  // as the array index of mCallbackFnTable[].
   //
-  TokenNumber--;
-  
-  ListHead = &mCallbackFnTable[TokenNumber];
+  ListHead = &mCallbackFnTable[TokenNumber - 1];
   ListNode = GetFirstNode (ListHead);
 
   while (ListNode != ListHead) {
-    FnTableEntry = CR_FNENTRY_FROM_LISTNODE(ListNode, CALLBACK_FN_ENTRY, Node);
+    FnTableEntry = CR_FNENTRY_FROM_LISTNODE (ListNode, CALLBACK_FN_ENTRY, Node);
 
     FnTableEntry->CallbackFn(Guid, 
                     (Guid == NULL) ? TokenNumber : ExTokenNumber,
@@ -708,11 +725,6 @@ SetWorker (
   UINTN               TmpTokenNumber;
 
   //
-  // Aquire lock to prevent reentrance from TPL_CALLBACK level
-  //
-  EfiAcquireLock (&mPcdDatabaseLock);
-
-  //
   // TokenNumber Zero is reserved as PCD_INVALID_TOKEN_NUMBER.
   // We have to decrement TokenNumber by 1 to make it usable
   // as the array index.
@@ -731,16 +743,6 @@ SetWorker (
   if ((!PtrType) && (*Size != DxePcdGetSize (TokenNumber + 1))) {
     return EFI_INVALID_PARAMETER;
   }
-  
-  //
-  // EBC compiler is very choosy. It may report warning about comparison
-  // between UINTN and 0 . So we add 1 in each size of the 
-  // comparison.
-  //
-  IsPeiDb = (BOOLEAN) ((TokenNumber + 1 < PEI_LOCAL_TOKEN_NUMBER + 1) ? TRUE : FALSE);
-
-  LocalTokenNumberTable  = IsPeiDb ? mPcdDatabase->PeiDb.Init.LocalTokenNumberTable : 
-                                     mPcdDatabase->DxeDb.Init.LocalTokenNumberTable;
 
   //
   // EBC compiler is very choosy. It may report warning about comparison
@@ -751,6 +753,21 @@ SetWorker (
       (TokenNumber + 1 >= PEI_LOCAL_TOKEN_NUMBER + 1 || TokenNumber + 1 < (PEI_LOCAL_TOKEN_NUMBER + DXE_NEX_TOKEN_NUMBER + 1))) {
     InvokeCallbackOnSet (0, NULL, TokenNumber + 1, Data, *Size);
   }
+
+  //
+  // Aquire lock to prevent reentrance from TPL_CALLBACK level
+  //
+  EfiAcquireLock (&mPcdDatabaseLock);
+
+  //
+  // EBC compiler is very choosy. It may report warning about comparison
+  // between UINTN and 0 . So we add 1 in each size of the 
+  // comparison.
+  //
+  IsPeiDb = (BOOLEAN) ((TokenNumber + 1 < PEI_LOCAL_TOKEN_NUMBER + 1) ? TRUE : FALSE);
+
+  LocalTokenNumberTable  = IsPeiDb ? mPcdDatabase->PeiDb.Init.LocalTokenNumberTable : 
+                                     mPcdDatabase->DxeDb.Init.LocalTokenNumberTable;
 
   TokenNumber = IsPeiDb ? TokenNumber
                         : TokenNumber - PEI_LOCAL_TOKEN_NUMBER;
@@ -794,6 +811,7 @@ SetWorker (
       }
       break;
 
+    case PCD_TYPE_HII|PCD_TYPE_STRING:
     case PCD_TYPE_HII:
       if (PtrType) {
         if (!SetPtrTypeSize (TmpTokenNumber, Size)) {
@@ -813,13 +831,20 @@ SetWorker (
       Guid = GuidTable + VariableHead->GuidTableIndex;
       Name = (UINT16*) (StringTable + VariableHead->StringIndex);
       VariableOffset = VariableHead->Offset;
-
       Status = SetHiiVariable (Guid, Name, Data, *Size, VariableOffset);
-
+      
       if (EFI_NOT_FOUND == Status) {
-        CopyMem (PcdDb + VariableHead->DefaultValueOffset, Data, *Size);
+        if ((LocalTokenNumber & PCD_TYPE_ALL_SET) == (PCD_TYPE_HII|PCD_TYPE_STRING))  {
+          CopyMem (
+            StringTable + *(UINT16 *)(PcdDb + VariableHead->DefaultValueOffset),
+            Data,
+            *Size
+            );
+        } else {
+          CopyMem (PcdDb + VariableHead->DefaultValueOffset, Data, *Size);
+        } 
         Status = EFI_SUCCESS;
-      } 
+      }
       break;
       
     case PCD_TYPE_DATA:

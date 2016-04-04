@@ -1,3 +1,4 @@
+## @file
 # This is DUET FDF file with UEFI HII features enabled
 #
 # Copyright (c) 2007 - 2010, Intel Corporation
@@ -81,11 +82,13 @@ INF  MdeModulePkg/Universal/SmbiosDxe/SmbiosDxe.inf
 INF  DuetPkg/SmbiosGenDxe/SmbiosGen.inf
 #INF  DuetPkg/FvbRuntimeService/DUETFwh.inf
 INF  IntelFrameworkModulePkg/Universal/BdsDxe/BdsDxe.inf
+INF  MdeModulePkg/Universal/EbcDxe/EbcDxe.inf
+INF  MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
 INF  UefiCpuPkg/CpuIo2Dxe/CpuIo2Dxe.inf
 INF  DuetPkg/CpuDxe/Cpu.inf
 
 INF  PcAtChipsetPkg/8259InterruptControllerDxe/8259.inf
-INF  PcAtChipsetPkg/KbcResetDxe/Reset.inf
+INF  DuetPkg/AcpiResetDxe/Reset.inf
 INF  DuetPkg/LegacyMetronome/Metronome.inf
 INF  PcAtChipsetPkg/8254TimerDxe/8254Timer.inf
 INF  PcAtChipsetPkg/PcatRealTimeClockRuntimeDxe/PcatRealTimeClockRuntimeDxe.inf

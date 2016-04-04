@@ -11,7 +11,7 @@
 #  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #
-#**/
+##
 
 [Defines]
   INF_VERSION                    = 0x00010005
@@ -44,6 +44,7 @@
   PeCoffLib
   DevicePathLib
   CacheMaintenanceLib
+  MemoryAllocationLib
 
 [Guids]
   gEfiSmmBaseThunkCommunicationGuid
@@ -54,6 +55,8 @@
   gEfiLoadedImageProtocolGuid            # PROTOCOL ALWAYS_CONSUMED
   gEfiLoadedImageDevicePathProtocolGuid  # PROTOCOL ALWAYS_CONSUMED
   gEfiSmmCpuSaveStateProtocolGuid        # PROTOCOL ALWAYS_CONSUMED
+  gEfiMpServiceProtocolGuid              # PROTOCOL ALWAYS_CONSUMED
+  gEfiSmmCpuIo2ProtocolGuid              # PROTOCOL ALWAYS_CONSUMED
   
 [Depex]
-  gEfiSmmCpuProtocolGuid
+  gEfiSmmCpuProtocolGuid AND gEfiMpServiceProtocolGuid AND gEfiSmmCpuIo2ProtocolGuid

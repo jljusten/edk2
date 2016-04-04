@@ -28,8 +28,8 @@ EFI_PEI_PPI_DESCRIPTOR     gPpiLoadFilePpiList = {
 
 /**
 
-  Support routine for the PE/COFF Loader that reads a buffer from a PE/COFF file
-
+  Support routine for the PE/COFF Loader that reads a buffer from a PE/COFF file.
+  The function is used for XIP code to have optimized memory copy.
 
   @param FileHandle      - The handle to the PE/COFF file
   @param FileOffset      - The offset, in bytes, into the file to read
@@ -42,6 +42,40 @@ EFI_PEI_PPI_DESCRIPTOR     gPpiLoadFilePpiList = {
 EFI_STATUS
 EFIAPI
 PeiImageRead (
+  IN     VOID    *FileHandle,
+  IN     UINTN   FileOffset,
+  IN     UINTN   *ReadSize,
+  OUT    VOID    *Buffer
+  )
+{
+  CHAR8 *Destination8;
+  CHAR8 *Source8;
+  
+  Destination8  = Buffer;
+  Source8       = (CHAR8 *) ((UINTN) FileHandle + FileOffset);
+  if (Destination8 != Source8) {
+    CopyMem (Destination8, Source8, *ReadSize);
+  }
+
+  return EFI_SUCCESS;
+}
+
+/**
+
+  Support routine for the PE/COFF Loader that reads a buffer from a PE/COFF file.
+  The function is implemented as PIC so as to support shadowing.
+
+  @param FileHandle      - The handle to the PE/COFF file
+  @param FileOffset      - The offset, in bytes, into the file to read
+  @param ReadSize        - The number of bytes to read from the file starting at FileOffset
+  @param Buffer          - A pointer to the buffer to read the data into.
+
+  @return EFI_SUCCESS - ReadSize bytes of data were read into Buffer from the PE/COFF file starting at FileOffset
+
+**/
+EFI_STATUS
+EFIAPI
+PeiImageReadForShadow (
   IN     VOID    *FileHandle,
   IN     UINTN   FileOffset,
   IN     UINTN   *ReadSize,
@@ -86,12 +120,14 @@ GetImageReadFunction (
   if (!Private->PeiMemoryInstalled || (Private->HobList.HandoffInformationTable->BootMode == BOOT_ON_S3_RESUME)) {
     ImageContext->ImageRead = PeiImageRead;
   } else {
-    MemoryBuffer = AllocatePages (0x400 / EFI_PAGE_SIZE + 1);
-    ASSERT (MemoryBuffer != NULL);
+    if (Private->ShadowedImageRead == NULL) {
+      MemoryBuffer = AllocatePages (0x400 / EFI_PAGE_SIZE + 1);
+      ASSERT (MemoryBuffer != NULL);
+      CopyMem (MemoryBuffer, (CONST VOID *) (UINTN) PeiImageReadForShadow, 0x400);
+      Private->ShadowedImageRead = (PE_COFF_LOADER_READ_FILE) (UINTN) MemoryBuffer;
+    }
 
-    CopyMem (MemoryBuffer, (CONST VOID *) (UINTN) PeiImageRead, 0x400);
-
-    ImageContext->ImageRead = (PE_COFF_LOADER_READ_FILE) (UINTN) MemoryBuffer;
+    ImageContext->ImageRead = Private->ShadowedImageRead;
   }
 
   return EFI_SUCCESS;
@@ -251,7 +287,7 @@ GetPeCoffImageFixLoadingAssignedAddress(
          //
          // Found first section header that doesn't point to code section.
          //
-         if ((INT64)FixedPcdGet64(PcdLoadModuleAtFixAddressEnable) > 0) {
+         if ((INT64)PcdGet64(PcdLoadModuleAtFixAddressEnable) > 0) {
            //
            // When LMFA feature is configured as Load Module at Fixed Absolute Address mode, PointerToRelocations & PointerToLineNumbers field
            // hold the absolute address of image base runing in memory
@@ -279,7 +315,7 @@ GetPeCoffImageFixLoadingAssignedAddress(
      }
      SectionHeaderOffset += sizeof (EFI_IMAGE_SECTION_HEADER);
    }
-   DEBUG ((EFI_D_INFO|EFI_D_LOAD, "LOADING MODULE FIXED INFO: Loading module at fixed address %lx. Status= %r \n", FixLoaddingAddress, Status));
+   DEBUG ((EFI_D_INFO|EFI_D_LOAD, "LOADING MODULE FIXED INFO: Loading module at fixed address 0x%11p. Status= %r \n", (VOID *)(UINTN)FixLoaddingAddress, Status));
    return Status;
 }
 /**
@@ -336,7 +372,7 @@ LoadAndRelocatePeCoffImage (
   // Allocate Memory for the image when memory is ready, boot mode is not S3, and image is relocatable.
   //
   if ((!ImageContext.RelocationsStripped) && (Private->PeiMemoryInstalled) && (Private->HobList.HandoffInformationTable->BootMode != BOOT_ON_S3_RESUME)) {
-    if (FixedPcdGet64(PcdLoadModuleAtFixAddressEnable) != 0) {
+    if (PcdGet64(PcdLoadModuleAtFixAddressEnable) != 0) {
       Status = GetPeCoffImageFixLoadingAssignedAddress(&ImageContext, Private);
       if (EFI_ERROR (Status)){
         DEBUG ((EFI_D_INFO|EFI_D_LOAD, "LOADING MODULE FIXED ERROR: Failed to load module at fixed address. \n"));

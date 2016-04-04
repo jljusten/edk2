@@ -57,6 +57,7 @@
 
 CHAR8 *gCwd = NULL;
 
+CONST EFI_GUID gZeroGuid  = { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
 
 #define EFI_OPEN_FILE_GUARD_HEADER  0x4B4D4641
 #define EFI_OPEN_FILE_GUARD_FOOTER  0x444D5A56
@@ -518,6 +519,8 @@ EblFvFileDevicePath (
   EFI_LBA                             Lba;
   UINTN                               BlockSize;
   UINTN                               NumberOfBlocks;
+  EFI_FIRMWARE_VOLUME_HEADER          *FvHeader = NULL;
+  UINTN                               Index;
 
 
   Status = gBS->HandleProtocol (File->EfiHandle, &gEfiFirmwareVolume2ProtocolGuid, (VOID **)&File->Fv);
@@ -525,10 +528,33 @@ EblFvFileDevicePath (
     return Status;
   }
 
+  // Get FVB Info about the handle
+  Status = gBS->HandleProtocol (File->EfiHandle, &gEfiFirmwareVolumeBlockProtocolGuid, (VOID **)&Fvb);
+  if (!EFI_ERROR (Status)) {
+    Status = Fvb->GetPhysicalAddress (Fvb, &File->FvStart);
+    if (!EFI_ERROR (Status)) {
+      FvHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)File->FvStart;
+      File->FvHeaderSize = sizeof (EFI_FIRMWARE_VOLUME_HEADER);
+      for (Index = 0; FvHeader->BlockMap[Index].Length !=0; Index++) {
+        File->FvHeaderSize += sizeof (EFI_FV_BLOCK_MAP_ENTRY);
+      }
+      
+      for (Lba = 0, File->FvSize = 0, NumberOfBlocks = 0; ; File->FvSize += (BlockSize * NumberOfBlocks), Lba += NumberOfBlocks) {
+        Status = Fvb->GetBlockSize (Fvb, Lba, &BlockSize, &NumberOfBlocks);
+        if (EFI_ERROR (Status)) {
+          break;
+        }
+      }
+    }
+  }
+
+
   DevicePath = DevicePathFromHandle (File->EfiHandle);
 
   if (*FileName == '\0') {
     File->DevicePath = DuplicateDevicePath (DevicePath);
+    File->Size = File->FvSize;
+    File->MaxPosition = File->Size;
   } else {
     Key = 0;
     do {
@@ -542,14 +568,13 @@ EblFvFileDevicePath (
                                       &File->Size
                                       );
       if (!EFI_ERROR (GetNextFileStatus)) {
-        Section = NULL;
-
         // Compare GUID first
         Status = CompareGuidToString (&File->FvNameGuid, FileName);
         if (!EFI_ERROR(Status)) {
           break;
         }
             
+        Section = NULL;
         Status = File->Fv->ReadSection (
                             File->Fv,
                             &File->FvNameGuid,
@@ -574,26 +599,30 @@ EblFvFileDevicePath (
       return GetNextFileStatus;
     }
 
+    if (OpenMode != EFI_SECTION_ALL) {
+      // Calculate the size of the section we are targeting
+      Section = NULL;
+      File->Size = 0;
+      Status = File->Fv->ReadSection (
+                          File->Fv,
+                          &File->FvNameGuid,
+                          OpenMode,
+                          0,
+                          &Section,
+                          &File->Size,
+                          &AuthenticationStatus
+                          );
+      if (EFI_ERROR (Status)) {
+        return Status;
+      }
+    }
+
     File->MaxPosition = File->Size;
     EfiInitializeFwVolDevicepathNode (&DevicePathNode, &File->FvNameGuid);
     File->DevicePath = AppendDevicePathNode (DevicePath, (EFI_DEVICE_PATH_PROTOCOL *)&DevicePathNode);
   }
 
-  
-  // Get FVB Info about the handle
-  Status = gBS->HandleProtocol (File->EfiHandle, &gEfiFirmwareVolumeBlockProtocolGuid, (VOID **)&Fvb);
-  if (!EFI_ERROR (Status)) {
-    Status = Fvb->GetPhysicalAddress (Fvb, &File->FvStart);
-    if (!EFI_ERROR (Status)) {
-      for (Lba = 0, File->FvSize = 0; ; File->FvSize += (BlockSize * NumberOfBlocks), Lba += NumberOfBlocks) {
-        Status = Fvb->GetBlockSize (Fvb, Lba, &BlockSize, &NumberOfBlocks);
-        if (EFI_ERROR (Status)) {
-          break;
-        }
-      }
-    }
-  }
-  
+    
   // FVB not required if FV was soft loaded...
   return EFI_SUCCESS;
 }
@@ -639,15 +668,16 @@ EfiOpen (
   UINTN                     Size;
   EFI_IP_ADDRESS            Ip;
   CHAR8                     *CwdPlusPathName;
+  UINTN                     Index;
+  EFI_SECTION_TYPE          ModifiedSectionType;
 
   EblUpdateDeviceLists ();
  
   File = &FileData;
   ZeroMem (File, sizeof (EFI_OPEN_FILE));
-  File->FvSectionType = SectionType;
 
   StrLen = AsciiStrSize (PathName);
-  if (StrLen <= 2) {
+  if (StrLen <= 1) {
     // Smallest valid path is 1 char and a null
     return NULL;
   }
@@ -659,30 +689,54 @@ EfiOpen (
     }
   }
 
-  if (FileStart == 0) {
-    if (gCwd == NULL) {
-      // No CWD
-      return NULL;
-    }
-    
-    // We could add a current working diretory concept 
-    CwdPlusPathName = AllocatePool (AsciiStrSize (gCwd) + AsciiStrSize (PathName));
-    if (CwdPlusPathName == NULL) {
-      return NULL;
-    }
-    
-    AsciiStrCpy (CwdPlusPathName, gCwd);
-    AsciiStrCat (CwdPlusPathName, PathName);
-    File = EfiOpen (CwdPlusPathName, OpenMode, SectionType);
-    FreePool (CwdPlusPathName);
-    return File;
-  }
-
   //
   // Matching volume name has precedence over handle based names
   //
   VolumeNameMatch = EblMatchVolumeName (PathName, FileStart, &DevNumber);
   if (!VolumeNameMatch) {
+    if (FileStart == StrLen) {
+      // No Volume name or device name, so try Current Working Directory
+      if (gCwd == NULL) {
+        // No CWD
+        return NULL;
+      }
+      
+      // We could add a current working diretory concept 
+      CwdPlusPathName = AllocatePool (AsciiStrSize (gCwd) + AsciiStrSize (PathName));
+      if (CwdPlusPathName == NULL) {
+        return NULL;
+      }
+      
+      if ((PathName[0] == '/') || (PathName[0] == '\\')) {
+        // PathName starts in / so this means we go to the root of the device in the CWD. 
+        CwdPlusPathName[0] = '\0';
+        for (FileStart = 0; gCwd[FileStart] != '\0'; FileStart++) {
+          CwdPlusPathName[FileStart] = gCwd[FileStart];
+          if (gCwd[FileStart] == ':') {
+            FileStart++;
+            CwdPlusPathName[FileStart] = '\0';
+            break;
+          }
+        }
+      } else {
+        AsciiStrCpy (CwdPlusPathName, gCwd);
+        StrLen = AsciiStrLen (gCwd);
+        if ((*PathName != '/') && (*PathName != '\\') && (gCwd[StrLen-1] != '/') && (gCwd[StrLen-1] != '\\')) {
+          AsciiStrCat (CwdPlusPathName, "\\");
+        }
+      }
+      
+      AsciiStrCat (CwdPlusPathName, PathName);
+      if (AsciiStrStr (CwdPlusPathName, ":") == NULL) {
+        // Extra error check to make sure we don't recusre and blow stack
+        return NULL;
+      }
+          
+      File = EfiOpen (CwdPlusPathName, OpenMode, SectionType);
+      FreePool (CwdPlusPathName);
+      return File;
+    }
+
     DevNumber = EblConvertDevStringToNumber ((CHAR8 *)PathName); 
   }
 
@@ -690,6 +744,10 @@ EfiOpen (
   AsciiStrCpy (File->DeviceName, PathName);
   File->DeviceName[FileStart - 1] = '\0';
   File->FileName = &File->DeviceName[FileStart];
+  if (File->FileName[0] == '\0') {
+    // if it is just a file name use / as root
+    File->FileName = "\\";
+  } 
 
   //
   // Use best match algorithm on the dev names so we only need to look at the
@@ -717,7 +775,19 @@ EfiOpen (
         // Skip leading / as its not really needed for the FV since no directories are supported
         FileStart++;
       }
-      Status = EblFvFileDevicePath (File, &PathName[FileStart], OpenMode);
+      
+      // Check for 2nd :
+      ModifiedSectionType = SectionType;
+      for (Index = FileStart; PathName[Index] != '\0'; Index++) {
+        if (PathName[Index] == ':') {
+          // Support fv0:\DxeCore:0x10
+          // This means open the PE32 Section of the file 
+          ModifiedSectionType = AsciiStrHexToUintn (&PathName[Index + 1]);
+          PathName[Index] = '\0';
+        }
+      }
+      File->FvSectionType = ModifiedSectionType;
+      Status = EblFvFileDevicePath (File, &PathName[FileStart], ModifiedSectionType);
     }
   } else if ((*PathName == 'A') || (*PathName == 'a')) {
     // Handle a:0x10000000:0x1234 address form a:ADDRESS:SIZE
@@ -852,14 +922,14 @@ EfiCopyFile (
   UINTN         Offset;
   UINTN         Chunk = FILE_COPY_CHUNK;
   
-  Source = EfiOpen(SourceFile, EFI_FILE_MODE_READ, 0);
+  Source = EfiOpen (SourceFile, EFI_FILE_MODE_READ, 0);
   if (Source == NULL) {
     AsciiPrint("Source file open error.\n");
     Status = EFI_NOT_FOUND;
     goto Exit;
   }
   
-  Destination = EfiOpen(DestinationFile, EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
+  Destination = EfiOpen (DestinationFile, EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
   if (Destination == NULL) {
     AsciiPrint("Destination file open error.\n");
     Status = EFI_NOT_FOUND;
@@ -1018,7 +1088,8 @@ EfiClose (
   }
 
   if ((File->Type == EfiOpenLoadFile) || 
-      ((File->Type == EfiOpenTftp) && (File->IsBufferValid == TRUE))) {
+      ((File->Type == EfiOpenTftp) && (File->IsBufferValid == TRUE)) ||
+      ((File->Type == EfiOpenFirmwareVolume) && (File->IsBufferValid == TRUE))) {
     EblFreePool(File->Buffer);
   }
 
@@ -1135,8 +1206,8 @@ EfiSeek (
     return EFI_INVALID_PARAMETER;
   }
 
-  if (File->Type == EfiOpenLoadFile || File->Type == EfiOpenFirmwareVolume) {
-    // LoadFile and FV do not support Seek
+  if (File->Type == EfiOpenLoadFile) {
+    // LoadFile does not support Seek
     return EFI_UNSUPPORTED;
   }
 
@@ -1262,12 +1333,6 @@ EfiRead (
   }
 
   switch (File->Type) {
-  case EfiOpenMemoryBuffer:
-    CopyMem (Buffer, File->Buffer + File->CurrentPosition, *BufferSize);
-    File->CurrentPosition += *BufferSize;
-    Status = EFI_SUCCESS;
-    break;
-
   case EfiOpenLoadFile:
     // Figure out the File->Size
     EfiTell (File, NULL);
@@ -1276,27 +1341,50 @@ EfiRead (
     break;
   
   case EfiOpenFirmwareVolume:
-    if (File->FvSectionType == EFI_SECTION_ALL) {
-      Status = File->Fv->ReadFile (
-                            File->Fv,
-                            &File->FvNameGuid,
-                            &Buffer,
-                            BufferSize,
-                            &File->FvType,
-                            &File->FvAttributes,
-                            &AuthenticationStatus
-                            );
+    if (CompareGuid (&File->FvNameGuid, &gZeroGuid)) {
+      // This is the entire FV device, so treat like a memory buffer 
+      CopyMem (Buffer, (VOID *)(UINTN)(File->FvStart + File->CurrentPosition), *BufferSize);
+      File->CurrentPosition += *BufferSize;
+      Status = EFI_SUCCESS;
     } else {
-      Status = File->Fv->ReadSection (
-                            File->Fv,
-                            &File->FvNameGuid,
-                            File->FvSectionType,
-                            0,
-                            &Buffer,
-                            BufferSize,
-                            &AuthenticationStatus
-                            );
+      if (File->Buffer == NULL) {
+        if (File->FvSectionType == EFI_SECTION_ALL) {
+          Status = File->Fv->ReadFile (
+                                File->Fv,
+                                &File->FvNameGuid,
+                                (VOID **)&File->Buffer,
+                                &File->Size,
+                                &File->FvType,
+                                &File->FvAttributes,
+                                &AuthenticationStatus
+                                );
+        } else {
+          Status = File->Fv->ReadSection (
+                                File->Fv,
+                                &File->FvNameGuid,
+                                File->FvSectionType,
+                                0,
+                                (VOID **)&File->Buffer,
+                                &File->Size,
+                                &AuthenticationStatus
+                                );
+        }
+        if (EFI_ERROR (Status)) {
+          return Status;
+        }
+        File->IsBufferValid = TRUE;
+      }
+      // Operate on the cached buffer so Seek will work
+      CopyMem (Buffer, File->Buffer + File->CurrentPosition, *BufferSize);
+      File->CurrentPosition += *BufferSize;
+      Status = EFI_SUCCESS;
     }
+    break;
+    
+  case EfiOpenMemoryBuffer:
+    CopyMem (Buffer, File->Buffer + File->CurrentPosition, *BufferSize);
+    File->CurrentPosition += *BufferSize;
+    Status = EFI_SUCCESS;
     break;
 
   case EfiOpenFileSystem:
@@ -1500,6 +1588,82 @@ EfiWrite (
 }
 
 
+/**
+  Given Cwd expand Path to remove .. and replace them with real 
+  directory names.
+  
+  @param  Cwd     Current Working Directory
+  @param  Path    Path to expand
+
+  @return NULL     Cwd or Path are not valid
+  @return 'other'  Path with .. expanded
+
+**/
+CHAR8 *
+ExpandPath (
+  IN CHAR8    *Cwd,
+  IN CHAR8    *Path
+  )
+{
+  CHAR8   *NewPath;
+  CHAR8   *Work, *Start, *End;
+  UINTN   StrLen;
+  UINTN   i;
+  
+  if (Cwd == NULL || Path == NULL) {
+    return NULL;
+  }
+  
+  StrLen = AsciiStrSize (Cwd);
+  if (StrLen <= 2) {
+    // Smallest valid path is 1 char and a null
+    return NULL;
+  }
+
+  StrLen = AsciiStrSize (Path);
+  NewPath = AllocatePool (AsciiStrSize (Cwd) + StrLen + 1);
+  if (NewPath == NULL) {
+    return NULL;
+  }
+  AsciiStrCpy (NewPath, Cwd);
+  
+  End = Path + StrLen;
+  for (Start = Path ;;) {
+    Work = AsciiStrStr (Start, "..") ;
+    if (Work == NULL) {
+      // Remaining part of Path contains no more ..
+      break;
+    } 
+ 
+    // append path prior to .. 
+    AsciiStrnCat (NewPath, Start, Work - Start);
+    StrLen = AsciiStrLen (NewPath);
+    for (i = StrLen; i >= 0; i--) {
+      if (NewPath[i] == ':') {
+        // too many ..
+        return NULL;
+      }
+      if (NewPath[i] == '/' || NewPath[i] == '\\') {
+        if ((i > 0) && (NewPath[i-1] == ':')) {
+          // leave the / before a :
+          NewPath[i+1] = '\0';
+        } else {
+          // replace / will Null to remove trailing file/dir reference
+          NewPath[i] = '\0';
+        }
+        break;
+      }
+    }
+    
+    Start = Work + 3;
+  } 
+  
+  // Handle the path that remains after the ..
+  AsciiStrnCat (NewPath, Start, End - Start);
+  
+  return NewPath;
+}
+
 
 /**
   Set the Curent Working Directory (CWD). If a call is made to EfiOpen () and 
@@ -1518,23 +1682,65 @@ EfiSetCwd (
   ) 
 {
   EFI_OPEN_FILE *File;
+  UINTN         Len;
+  CHAR8         *Path;
   
-  File = EfiOpen (Cwd, EFI_FILE_MODE_READ, 0);
-  if (File == NULL) {
+  if (Cwd == NULL) {
     return EFI_INVALID_PARAMETER;
   }
   
-  EfiClose (File);
+  if (AsciiStrCmp (Cwd, ".") == 0) {
+    // cd . is a no-op
+    return EFI_SUCCESS;
+  }
   
+  Path = Cwd;
+  if (AsciiStrStr (Cwd, "..") != NULL) {
+    if (gCwd == NULL) {
+      // no parent 
+      return EFI_SUCCESS;
+    }
+    
+    Len = AsciiStrLen (gCwd);
+    if ((gCwd[Len-2] == ':') && ((gCwd[Len-1] == '/') || (gCwd[Len-1] == '\\'))) {
+      // parent is device so nothing to do
+      return EFI_SUCCESS;
+    }
+    
+    // Expand .. in Cwd, given we know current working directory
+    Path = ExpandPath (gCwd, Cwd);
+    if (Path == NULL) {
+      return EFI_NOT_FOUND;
+    }
+  }
+  
+  File = EfiOpen (Path, EFI_FILE_MODE_READ, 0);
+  if (File == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+    
   if (gCwd != NULL) {
     FreePool (gCwd);
   }
   
-  gCwd = AllocatePool (AsciiStrSize (Cwd));
+  // Use the info returned from EfiOpen as it can add in CWD if needed. So Cwd could be
+  // relative to the current gCwd or not.
+  gCwd = AllocatePool (AsciiStrSize (File->DeviceName) + AsciiStrSize (File->FileName) + 10);
   if (gCwd == NULL) {
     return EFI_INVALID_PARAMETER;
   }
-  AsciiStrCpy (gCwd, Cwd);
+  AsciiStrCpy (gCwd, File->DeviceName);
+  if (File->FileName == NULL) {
+    AsciiStrCat (gCwd, ":\\");
+  } else {
+    AsciiStrCat (gCwd, ":");
+    AsciiStrCat (gCwd, File->FileName);
+  }
+  
+  EfiClose (File);
+  if (Path != Cwd) {
+    FreePool (Path);
+  }
   return EFI_SUCCESS;
 }
 
@@ -1549,15 +1755,18 @@ EfiSetCwd (
   @param  Cwd     Current Working Directory 
 
 
-  @return NULL    No CWD set
+  @return ""      No CWD set
   @return 'other' Returns buffer that contains CWD.
   
 **/
 CHAR8 *
-EfiGettCwd (
+EfiGetCwd (
   VOID
   )
 {
+  if (gCwd == NULL) {
+    return "";
+  }
   return gCwd;
 }
 

@@ -1,11 +1,11 @@
-#/** @file
+## @file
 #  
 #  Capsule Runtime Driver produces two UEFI capsule runtime services.
 #  (UpdateCapsule, QueryCapsuleCapabilities)
 #  It installs the Capsule Architectural Protocol defined in PI1.0a to signify 
 #  the capsule runtime services are ready.
 #  
-#  Copyright (c) 2006 - 2009, Intel Corporation. <BR>
+#  Copyright (c) 2006 - 2010, Intel Corporation. <BR>
 #  All rights reserved. This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution.  The full text of the license may be found at
@@ -14,7 +14,7 @@
 #  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #  
-#**/
+##
 
 [Defines]
   INF_VERSION                    = 0x00010005
@@ -30,7 +30,7 @@
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
 #
 
-[Sources.common]
+[Sources]
   CapsuleService.c
 
 [Packages]
@@ -45,6 +45,8 @@
   UefiDriverEntryPoint
   CapsuleLib
   UefiRuntimeLib
+  BaseLib
+  PrintLib
 
 [Guids]
   gEfiCapsuleVendorGuid                         ## SOMETIMES_PRODUCED (Process across reset capsule image) ## Variable:L"CapsuleUpdateData" for capsule updated data

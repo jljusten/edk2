@@ -30,6 +30,11 @@ EFI_BDS_ARCH_PROTOCOL             *gBds           = NULL;
 EFI_WATCHDOG_TIMER_ARCH_PROTOCOL  *gWatchdogTimer = NULL;
 
 //
+// DXE Core globals for optional protocol dependencies
+//
+EFI_SMM_BASE2_PROTOCOL            *gSmmBase2      = NULL;
+
+//
 // DXE Core Global used to update core loaded image protocol handle
 //
 EFI_GUID                           *gDxeCoreFileName;
@@ -295,7 +300,7 @@ DxeMain (
   // Configuration Table so that user could easily to retrieve the top address to load Dxe and PEI
   // Code and Tseg base to load SMM driver. 
   //
-  if (FixedPcdGet64(PcdLoadModuleAtFixAddressEnable) != 0) {
+  if (PcdGet64(PcdLoadModuleAtFixAddressEnable) != 0) {
     Status = CoreInstallConfigurationTable (&gLoadFixedAddressConfigurationTableGuid, &gLoadModuleAtFixAddressConfigurationTable);
     ASSERT_EFI_ERROR (Status);
   }
@@ -326,7 +331,7 @@ DxeMain (
 
     for (Hob.Raw = HobStart; !END_OF_HOB_LIST(Hob); Hob.Raw = GET_NEXT_HOB(Hob)) {
       if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_MEMORY_ALLOCATION) {
-        DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Memory Allocation %08x %0lx - %0lx\n", \
+        DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Memory Allocation 0x%08x 0x%0lx - 0x%0lx\n", \
           Hob.MemoryAllocation->AllocDescriptor.MemoryType,                      \
           Hob.MemoryAllocation->AllocDescriptor.MemoryBaseAddress,               \
           Hob.MemoryAllocation->AllocDescriptor.MemoryBaseAddress + Hob.MemoryAllocation->AllocDescriptor.MemoryLength - 1));
@@ -334,9 +339,9 @@ DxeMain (
     }
     for (Hob.Raw = HobStart; !END_OF_HOB_LIST(Hob); Hob.Raw = GET_NEXT_HOB(Hob)) {
       if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV2) {
-        DEBUG ((DEBUG_INFO | DEBUG_LOAD, "FV2 Hob           %08x %0lx - %0lx\n", Hob.FirmwareVolume2->BaseAddress, Hob.FirmwareVolume2->BaseAddress + Hob.FirmwareVolume2->Length - 1, Hob.ResourceDescriptor->ResourceType));
+        DEBUG ((DEBUG_INFO | DEBUG_LOAD, "FV2 Hob           0x%0lx - 0x%0lx\n", Hob.FirmwareVolume2->BaseAddress, Hob.FirmwareVolume2->BaseAddress + Hob.FirmwareVolume2->Length - 1));
       } else if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV) {
-        DEBUG ((DEBUG_INFO | DEBUG_LOAD, "FV Hob            %08x %0lx - %0lx\n", Hob.FirmwareVolume->BaseAddress, Hob.FirmwareVolume->BaseAddress + Hob.FirmwareVolume2->Length - 1, Hob.ResourceDescriptor->ResourceType));
+        DEBUG ((DEBUG_INFO | DEBUG_LOAD, "FV Hob            0x%0lx - 0x%0lx\n", Hob.FirmwareVolume->BaseAddress, Hob.FirmwareVolume->BaseAddress + Hob.FirmwareVolume2->Length - 1));
       }
     }
   DEBUG_CODE_END ();
@@ -373,8 +378,9 @@ DxeMain (
   //
   // Register for the GUIDs of the Architectural Protocols, so the rest of the
   // EFI Boot Services and EFI Runtime Services tables can be filled in.
+  // Also register for the GUIDs of optional protocols.
   //
-  CoreNotifyOnArchProtocolInstallation ();
+  CoreNotifyOnProtocolInstallation ();
 
   //
   // Produce Firmware Volume Protocols, one for each FV in the HOB list.
