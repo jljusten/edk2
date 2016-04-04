@@ -93,7 +93,7 @@ EfiLoader (
   // Decompress the image
   //
 
-  AsciiSPrint (PrintBuffer, 256, "Decompress BFV image, Image Address=0x%x! Offset=0x%x\n", 
+  AsciiSPrint (PrintBuffer, 256, "Decompress BFV image, Image Address=0x%x Offset=0x%x\n", 
                (UINTN)(EFILDR_HEADER_ADDRESS + EFILDRImage->Offset),
                EFILDRImage->Offset);
   PrintString (PrintBuffer);
@@ -145,7 +145,7 @@ EfiLoader (
   //
   // Decompress the image
   //
-  AsciiSPrint (PrintBuffer, 256, "Decompress DxeIpl image, Image Address=0x%x! Offset=0x%x\n", 
+  AsciiSPrint (PrintBuffer, 256, "Decompress DxeIpl image, Image Address=0x%x Offset=0x%x\n", 
                (UINTN)(EFILDR_HEADER_ADDRESS + EFILDRImage->Offset),
                EFILDRImage->Offset);
   PrintString (PrintBuffer);
@@ -310,4 +310,15 @@ PrintHeader ('F');
 
   SystemHang();
 }
+
+EFI_STATUS
+EFIAPI
+_ModuleEntryPoint (
+  UINT32    BiosMemoryMapBaseAddress
+  )
+{
+  EfiLoader(BiosMemoryMapBaseAddress);
+  return EFI_SUCCESS;
+}
+
 

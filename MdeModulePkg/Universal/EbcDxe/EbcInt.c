@@ -1,9 +1,9 @@
 /** @file
   Top level module for the EBC virtual machine implementation.
-  Provides auxilliary support routines for the VM. That is, routines
+  Provides auxiliary support routines for the VM. That is, routines
   that are not particularly related to VM execution of EBC instructions.
 
-Copyright (c) 2006, Intel Corporation
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -34,40 +34,98 @@ typedef struct _EBC_IMAGE_LIST {
   EBC_THUNK_LIST          *ThunkList;
 } EBC_IMAGE_LIST;
 
-STATIC
+/**
+  This routine is called by the core when an image is being unloaded from
+  memory. Basically we now have the opportunity to do any necessary cleanup.
+  Typically this will include freeing any memory allocated for thunk-creation.
+
+  @param  This                  A pointer to the EFI_EBC_PROTOCOL instance.
+  @param  ImageHandle           Handle of image for which the thunk is being
+                                created.
+
+  @retval EFI_INVALID_PARAMETER The ImageHandle passed in was not found in the
+                                internal list of EBC image handles.
+  @retval EFI_SUCCESS           The function completed successfully.
+
+**/
 EFI_STATUS
 EFIAPI
 EbcUnloadImage (
-  IN EFI_EBC_PROTOCOL     *This,
-  IN EFI_HANDLE           ImageHandle
+  IN EFI_EBC_PROTOCOL   *This,
+  IN EFI_HANDLE         ImageHandle
   );
 
-STATIC
+/**
+  This is the top-level routine plugged into the EBC protocol. Since thunks
+  are very processor-specific, from here we dispatch directly to the very
+  processor-specific routine EbcCreateThunks().
+
+  @param  This                  A pointer to the EFI_EBC_PROTOCOL instance.
+  @param  ImageHandle           Handle of image for which the thunk is being
+                                created. The EBC interpreter may use this to
+                                keep track of any resource allocations
+                                performed in loading and executing the image.
+  @param  EbcEntryPoint         Address of the actual EBC entry point or
+                                protocol service the thunk should call.
+  @param  Thunk                 Returned pointer to a thunk created.
+
+  @retval EFI_SUCCESS           The function completed successfully.
+  @retval EFI_INVALID_PARAMETER Image entry point is not 2-byte aligned.
+  @retval EFI_OUT_OF_RESOURCES  Memory could not be allocated for the thunk.
+
+**/
 EFI_STATUS
 EFIAPI
 EbcCreateThunk (
-  IN EFI_EBC_PROTOCOL     *This,
-  IN EFI_HANDLE           ImageHandle,
-  IN VOID                 *EbcEntryPoint,
-  OUT VOID                **Thunk
+  IN EFI_EBC_PROTOCOL   *This,
+  IN EFI_HANDLE         ImageHandle,
+  IN VOID               *EbcEntryPoint,
+  OUT VOID              **Thunk
   );
 
-STATIC
+/**
+  Called to get the version of the interpreter.
+
+  @param  This                  A pointer to the EFI_EBC_PROTOCOL instance.
+  @param  Version               Pointer to where to store the returned version
+                                of the interpreter.
+   
+  @retval EFI_SUCCESS           The function completed successfully.
+  @retval EFI_INVALID_PARAMETER Version pointer is NULL.
+
+**/
 EFI_STATUS
 EFIAPI
 EbcGetVersion (
-  IN EFI_EBC_PROTOCOL     *This,
-  IN OUT UINT64           *Version
+  IN EFI_EBC_PROTOCOL   *This,
+  IN OUT UINT64         *Version
   );
 
-STATIC
+/**
+  To install default Callback function for the VM interpreter.
+
+  @param  This                  A pointer to the EFI_DEBUG_SUPPORT_PROTOCOL
+                                instance.
+
+  @retval EFI_SUCCESS           The function completed successfully.
+  @retval Others                Some error occurs when creating periodic event.
+
+**/
 EFI_STATUS
 EFIAPI
 InitializeEbcCallback (
   IN EFI_DEBUG_SUPPORT_PROTOCOL  *This
   );
 
-STATIC
+/**
+  The default Exception Callback for the VM interpreter.
+  In this function, we report status code, and print debug information
+  about EBC_CONTEXT, then dead loop.
+
+  @param  InterruptType          Interrupt type.
+  @param  SystemContext          EBC system context.
+
+**/
 VOID
 EFIAPI
 CommonEbcExceptionHandler (
@@ -75,7 +133,14 @@ CommonEbcExceptionHandler (
   IN EFI_SYSTEM_CONTEXT   SystemContext
   );
 
-STATIC
+/**
+  The periodic callback function for EBC VM interpreter, which is used
+  to support the EFI debug support protocol.
+
+  @param  Event                  The Periodic Callback Event.
+  @param  Context                It should be the address of VM_CONTEXT pointer.
+
+**/
 VOID
 EFIAPI
 EbcPeriodicNotifyFunction (
@@ -83,7 +148,16 @@ EbcPeriodicNotifyFunction (
   IN VOID          *Context
   );
 
-STATIC
+/**
+  The VM interpreter calls this function on a periodic basis to support
+  the EFI debug support protocol.
+
+  @param  VmPtr                  Pointer to a VM context for passing info to the
+                                 debugger.
+
+  @retval EFI_SUCCESS            The function completed successfully.
+
+**/
 EFI_STATUS
 EFIAPI
 EbcDebugPeriodic (
@@ -94,61 +168,152 @@ EbcDebugPeriodic (
 // These two functions and the  GUID are used to produce an EBC test protocol.
 // This functionality is definitely not required for execution.
 //
-STATIC
+/**
+  Produces an EBC VM test protocol that can be used for regression tests.
+
+  @param  IHandle                Handle on which to install the protocol.
+
+  @retval EFI_OUT_OF_RESOURCES   Memory allocation failed.
+  @retval EFI_SUCCESS            The function completed successfully.
+
+**/
 EFI_STATUS
 InitEbcVmTestProtocol (
-  IN EFI_HANDLE     *Handle
+  IN EFI_HANDLE     *IHandle
   );
 
-STATIC
+/**
+  Returns the EFI_UNSUPPORTED Status.
+   
+  @return EFI_UNSUPPORTED  This function always return EFI_UNSUPPORTED status.
+
+**/
 EFI_STATUS
 EbcVmTestUnsupported (
   VOID
   );
 
-STATIC
+/**
+  Registers a callback function that the EBC interpreter calls to flush the
+  processor instruction cache following creation of thunks. 
+
+  @param  This        A pointer to the EFI_EBC_PROTOCOL instance.
+  @param  Flush       Pointer to a function of type EBC_ICACH_FLUSH.
+   
+  @retval EFI_SUCCESS The function completed successfully.
+
+**/
 EFI_STATUS
 EFIAPI
 EbcRegisterICacheFlush (
-  IN EFI_EBC_PROTOCOL               *This,
-  IN EBC_ICACHE_FLUSH               Flush
+  IN EFI_EBC_PROTOCOL   *This,
+  IN EBC_ICACHE_FLUSH   Flush
   );
 
-STATIC
+/**
+  This EBC debugger protocol service is called by the debug agent
+
+  @param  This                  A pointer to the EFI_DEBUG_SUPPORT_PROTOCOL
+                                instance.
+  @param  MaxProcessorIndex     Pointer to a caller-allocated UINTN in which the
+                                maximum supported processor index is returned.
+
+  @retval EFI_SUCCESS           The function completed successfully.
+
+**/
 EFI_STATUS
 EFIAPI
 EbcDebugGetMaximumProcessorIndex (
-  IN EFI_DEBUG_SUPPORT_PROTOCOL     *This,
-  OUT UINTN                         *MaxProcessorIndex
+  IN EFI_DEBUG_SUPPORT_PROTOCOL          *This,
+  OUT UINTN                              *MaxProcessorIndex
   );
 
-STATIC
+/**
+  This protocol service is called by the debug agent to register a function
+  for us to call on a periodic basis.
+
+  @param  This                  A pointer to the EFI_DEBUG_SUPPORT_PROTOCOL
+                                instance.
+  @param  ProcessorIndex        Specifies which processor the callback function
+                                applies to.
+  @param  PeriodicCallback      A pointer to a function of type
+                                PERIODIC_CALLBACK that is the main periodic
+                                entry point of the debug agent. It receives as a
+                                parameter a pointer to the full context of the
+                                interrupted execution thread.
+
+  @retval EFI_SUCCESS           The function completed successfully.
+  @retval EFI_ALREADY_STARTED   Non-NULL PeriodicCallback parameter when a
+                                callback function was previously registered.
+  @retval EFI_INVALID_PARAMETER Null PeriodicCallback parameter when no
+                                callback function was previously registered.
+
+**/
 EFI_STATUS
 EFIAPI
 EbcDebugRegisterPeriodicCallback (
-  IN EFI_DEBUG_SUPPORT_PROTOCOL     *This,
-  IN UINTN                          ProcessorIndex,
-  IN EFI_PERIODIC_CALLBACK          PeriodicCallback
+  IN EFI_DEBUG_SUPPORT_PROTOCOL  *This,
+  IN UINTN                       ProcessorIndex,
+  IN EFI_PERIODIC_CALLBACK       PeriodicCallback
   );
 
-STATIC
+/**
+  This protocol service is called by the debug agent to register a function
+  for us to call when we detect an exception.
+
+  @param  This                  A pointer to the EFI_DEBUG_SUPPORT_PROTOCOL
+                                instance.
+  @param  ProcessorIndex        Specifies which processor the callback function
+                                applies to.
+  @param  ExceptionCallback     A pointer to a function of type
+                                EXCEPTION_CALLBACK that is called when the
+                                processor exception specified by ExceptionType
+                                occurs. Passing NULL unregisters any previously
+                                registered function associated with
+                                ExceptionType.
+  @param  ExceptionType         Specifies which processor exception to hook.
+
+  @retval EFI_SUCCESS           The function completed successfully.
+  @retval EFI_ALREADY_STARTED   Non-NULL ExceptionCallback parameter when a
+                                callback function was previously registered.
+  @retval EFI_INVALID_PARAMETER ExceptionType parameter is negative or exceeds
+                                MAX_EBC_EXCEPTION.
+  @retval EFI_INVALID_PARAMETER Null ExceptionCallback parameter when no
+                                callback function was previously registered.
+
+**/
 EFI_STATUS
 EFIAPI
 EbcDebugRegisterExceptionCallback (
-  IN EFI_DEBUG_SUPPORT_PROTOCOL     *This,
-  IN UINTN                          ProcessorIndex,
-  IN EFI_EXCEPTION_CALLBACK         ExceptionCallback,
-  IN EFI_EXCEPTION_TYPE             ExceptionType
+  IN EFI_DEBUG_SUPPORT_PROTOCOL  *This,
+  IN UINTN                       ProcessorIndex,
+  IN EFI_EXCEPTION_CALLBACK      ExceptionCallback,
+  IN EFI_EXCEPTION_TYPE          ExceptionType
   );
 
-STATIC
+/**
+  This EBC debugger protocol service is called by the debug agent.  Required
+  for DebugSupport compliance but is only stubbed out for EBC.
+
+  @param  This                  A pointer to the EFI_DEBUG_SUPPORT_PROTOCOL
+                                instance.
+  @param  ProcessorIndex        Specifies which processor the callback function
+                                applies to.
+  @param  Start                 StartSpecifies the physical base of the memory
+                                range to be invalidated.
+  @param  Length                Specifies the minimum number of bytes in the
+                                processor's instruction cache to invalidate. 
+
+  @retval EFI_SUCCESS           The function completed successfully.
+
+**/
 EFI_STATUS
 EFIAPI
 EbcDebugInvalidateInstructionCache (
-  IN EFI_DEBUG_SUPPORT_PROTOCOL     *This,
-  IN UINTN                          ProcessorIndex,
-  IN VOID                           *Start,
-  IN UINT64                         Length
+  IN EFI_DEBUG_SUPPORT_PROTOCOL          *This,
+  IN UINTN                               ProcessorIndex,
+  IN VOID                                *Start,
+  IN UINT64                              Length
   );
 
 //
@@ -157,28 +322,28 @@ EbcDebugInvalidateInstructionCache (
 // also be global since the execution of an EBC image does not provide
 // a This pointer.
 //
-static EBC_IMAGE_LIST         *mEbcImageList = NULL;
+STATIC EBC_IMAGE_LIST         *mEbcImageList = NULL;
 
 //
 // Callback function to flush the icache after thunk creation
 //
-static EBC_ICACHE_FLUSH       mEbcICacheFlush;
+STATIC EBC_ICACHE_FLUSH       mEbcICacheFlush;
 
 //
 // These get set via calls by the debug agent
 //
-static EFI_PERIODIC_CALLBACK  mDebugPeriodicCallback                            = NULL;
-static EFI_EXCEPTION_CALLBACK mDebugExceptionCallback[MAX_EBC_EXCEPTION + 1] = {NULL};
-static EFI_GUID               mEfiEbcVmTestProtocolGuid = EFI_EBC_VM_TEST_PROTOCOL_GUID;
+STATIC EFI_PERIODIC_CALLBACK  mDebugPeriodicCallback                            = NULL;
+STATIC EFI_EXCEPTION_CALLBACK mDebugExceptionCallback[MAX_EBC_EXCEPTION + 1] = {NULL};
+STATIC EFI_GUID               mEfiEbcVmTestProtocolGuid = EFI_EBC_VM_TEST_PROTOCOL_GUID;
 
-static VOID*      mStackBuffer[MAX_STACK_NUM];
-static EFI_HANDLE mStackBufferIndex[MAX_STACK_NUM];
-static UINTN      mStackNum = 0;
+STATIC VOID*      mStackBuffer[MAX_STACK_NUM];
+STATIC EFI_HANDLE mStackBufferIndex[MAX_STACK_NUM];
+STATIC UINTN      mStackNum = 0;
 
 //
 // Event for Periodic callback
 //
-static EFI_EVENT              mEbcPeriodicEvent;
+STATIC EFI_EVENT              mEbcPeriodicEvent;
 VM_CONTEXT                    *mVmPtr = NULL;
 
 
@@ -378,19 +543,20 @@ ErrorExit:
   are very processor-specific, from here we dispatch directly to the very
   processor-specific routine EbcCreateThunks().
 
-  @param  This                   protocol instance pointer
-  @param  ImageHandle            handle to the image. The EBC interpreter may use
-                                 this to keep track of any resource allocations
-                                 performed in loading and executing the image.
-  @param  EbcEntryPoint          the entry point for the image (as defined in the
-                                 file header)
-  @param  Thunk                  pointer to thunk pointer where the address of the
-                                 created thunk is returned.
+  @param  This                  A pointer to the EFI_EBC_PROTOCOL instance.
+  @param  ImageHandle           Handle of image for which the thunk is being
+                                created. The EBC interpreter may use this to
+                                keep track of any resource allocations
+                                performed in loading and executing the image.
+  @param  EbcEntryPoint         Address of the actual EBC entry point or
+                                protocol service the thunk should call.
+  @param  Thunk                 Returned pointer to a thunk created.
 
-  @return EFI_STATUS
+  @retval EFI_SUCCESS           The function completed successfully.
+  @retval EFI_INVALID_PARAMETER Image entry point is not 2-byte aligned.
+  @retval EFI_OUT_OF_RESOURCES  Memory could not be allocated for the thunk.
 
 **/
-STATIC
 EFI_STATUS
 EFIAPI
 EbcCreateThunk (
@@ -415,15 +581,14 @@ EbcCreateThunk (
 /**
   This EBC debugger protocol service is called by the debug agent
 
-  @param  This                   pointer to the caller's debug support protocol
-                                 interface
-  @param  MaxProcessorIndex      pointer to a caller allocated UINTN in which the
-                                 maximum processor index is returned.
+  @param  This                  A pointer to the EFI_DEBUG_SUPPORT_PROTOCOL
+                                instance.
+  @param  MaxProcessorIndex     Pointer to a caller-allocated UINTN in which the
+                                maximum supported processor index is returned.
 
-  @return Standard EFI_STATUS
+  @retval EFI_SUCCESS           The function completed successfully.
 
 **/
-STATIC
 EFI_STATUS
 EFIAPI
 EbcDebugGetMaximumProcessorIndex (
@@ -440,14 +605,23 @@ EbcDebugGetMaximumProcessorIndex (
   This protocol service is called by the debug agent to register a function
   for us to call on a periodic basis.
 
-  @param  This                   pointer to the caller's debug support protocol
-                                 interface
-  @param  PeriodicCallback       pointer to the function to call periodically
+  @param  This                  A pointer to the EFI_DEBUG_SUPPORT_PROTOCOL
+                                instance.
+  @param  ProcessorIndex        Specifies which processor the callback function
+                                applies to.
+  @param  PeriodicCallback      A pointer to a function of type
+                                PERIODIC_CALLBACK that is the main periodic
+                                entry point of the debug agent. It receives as a
+                                parameter a pointer to the full context of the
+                                interrupted execution thread.
 
-  @return Always EFI_SUCCESS
+  @retval EFI_SUCCESS           The function completed successfully.
+  @retval EFI_ALREADY_STARTED   Non-NULL PeriodicCallback parameter when a
+                                callback function was previously registered.
+  @retval EFI_INVALID_PARAMETER Null PeriodicCallback parameter when no
+                                callback function was previously registered.
 
 **/
-STATIC
 EFI_STATUS
 EFIAPI
 EbcDebugRegisterPeriodicCallback (
@@ -472,14 +646,27 @@ EbcDebugRegisterPeriodicCallback (
   This protocol service is called by the debug agent to register a function
   for us to call when we detect an exception.
 
-  @param  This                   pointer to the caller's debug support protocol
-                                 interface
-  @param  ExceptionCallback      pointer to the function to the exception
+  @param  This                  A pointer to the EFI_DEBUG_SUPPORT_PROTOCOL
+                                instance.
+  @param  ProcessorIndex        Specifies which processor the callback function
+                                applies to.
+  @param  ExceptionCallback     A pointer to a function of type
+                                EXCEPTION_CALLBACK that is called when the
+                                processor exception specified by ExceptionType
+                                occurs. Passing NULL unregisters any previously
+                                registered function associated with
+                                ExceptionType.
+  @param  ExceptionType         Specifies which processor exception to hook.
 
-  @return Always EFI_SUCCESS
+  @retval EFI_SUCCESS           The function completed successfully.
+  @retval EFI_ALREADY_STARTED   Non-NULL ExceptionCallback parameter when a
+                                callback function was previously registered.
+  @retval EFI_INVALID_PARAMETER ExceptionType parameter is negative or exceeds
+                                MAX_EBC_EXCEPTION.
+  @retval EFI_INVALID_PARAMETER Null ExceptionCallback parameter when no
+                                callback function was previously registered.
 
 **/
-STATIC
 EFI_STATUS
 EFIAPI
 EbcDebugRegisterExceptionCallback (
@@ -507,11 +694,18 @@ EbcDebugRegisterExceptionCallback (
   This EBC debugger protocol service is called by the debug agent.  Required
   for DebugSupport compliance but is only stubbed out for EBC.
 
+  @param  This                  A pointer to the EFI_DEBUG_SUPPORT_PROTOCOL
+                                instance.
+  @param  ProcessorIndex        Specifies which processor the callback function
+                                applies to.
+  @param  Start                 StartSpecifies the physical base of the memory
+                                range to be invalidated.
+  @param  Length                Specifies the minimum number of bytes in the
+                                processor's instruction cache to invalidate. 
 
-  @return EFI_SUCCESS
+  @retval EFI_SUCCESS           The function completed successfully.
 
 **/
-STATIC
 EFI_STATUS
 EFIAPI
 EbcDebugInvalidateInstructionCache (
@@ -528,10 +722,12 @@ EbcDebugInvalidateInstructionCache (
 /**
   The VM interpreter calls this function when an exception is detected.
 
-  @param  VmPtr                  pointer to a VM context for passing info to the
+  @param  ExceptionType          Specifies the processor exception detected.
+  @param  ExceptionFlags         Specifies the exception context. 
+  @param  VmPtr                  Pointer to a VM context for passing info to the
                                  EFI debugger.
 
-  @return EFI_SUCCESS if it returns at all
+  @retval EFI_SUCCESS            This function completed successfully.
 
 **/
 EFI_STATUS
@@ -554,7 +750,7 @@ EbcDebugSignalException (
   // If it's a fatal exception, then flag it in the VM context in case an
   // attached debugger tries to return from it.
   //
-  if (ExceptionFlags & EXCEPTION_FLAG_FATAL) {
+  if ((ExceptionFlags & EXCEPTION_FLAG_FATAL) != 0) {
     VmPtr->StopFlags |= STOPFLAG_APP_DONE;
   }
 
@@ -605,13 +801,15 @@ EbcDebugSignalException (
 /**
   To install default Callback function for the VM interpreter.
 
-  @param  This                   pointer to the instance of DebugSupport protocol
+  @param  This                  A pointer to the EFI_DEBUG_SUPPORT_PROTOCOL
+                                instance.
 
-  @return None
+  @retval EFI_SUCCESS           The function completed successfully.
+  @retval Others                Some error occurs when creating periodic event.
 
 **/
-STATIC
 EFI_STATUS
+EFIAPI
 InitializeEbcCallback (
   IN EFI_DEBUG_SUPPORT_PROTOCOL  *This
   )
@@ -666,11 +864,9 @@ InitializeEbcCallback (
   @param  InterruptType          Interrupt type.
   @param  SystemContext          EBC system context.
 
-  @return None
-
 **/
-STATIC
 VOID
+EFIAPI
 CommonEbcExceptionHandler (
   IN EFI_EXCEPTION_TYPE   InterruptType,
   IN EFI_SYSTEM_CONTEXT   SystemContext
@@ -692,10 +888,7 @@ CommonEbcExceptionHandler (
   @param  Event                  The Periodic Callback Event.
   @param  Context                It should be the address of VM_CONTEXT pointer.
 
-  @return None.
-
 **/
-STATIC
 VOID
 EFIAPI
 EbcPeriodicNotifyFunction (
@@ -719,14 +912,14 @@ EbcPeriodicNotifyFunction (
   The VM interpreter calls this function on a periodic basis to support
   the EFI debug support protocol.
 
-  @param  VmPtr                  pointer to a VM context for passing info to the
+  @param  VmPtr                  Pointer to a VM context for passing info to the
                                  debugger.
 
-  @return Standard EFI status.
+  @retval EFI_SUCCESS            The function completed successfully.
 
 **/
-STATIC
 EFI_STATUS
+EFIAPI
 EbcDebugPeriodic (
   IN VM_CONTEXT *VmPtr
   )
@@ -781,15 +974,15 @@ EbcDebugPeriodic (
   memory. Basically we now have the opportunity to do any necessary cleanup.
   Typically this will include freeing any memory allocated for thunk-creation.
 
-  @param  This                   protocol instance pointer
-  @param  ImageHandle            handle to the image being unloaded.
+  @param  This                  A pointer to the EFI_EBC_PROTOCOL instance.
+  @param  ImageHandle           Handle of image for which the thunk is being
+                                created.
 
-  @retval EFI_INVALID_PARAMETER  the ImageHandle passed in was not found in the
-                                 internal list of EBC image handles.
-  @retval EFI_STATUS             completed successfully
+  @retval EFI_INVALID_PARAMETER The ImageHandle passed in was not found in the
+                                internal list of EBC image handles.
+  @retval EFI_SUCCESS           The function completed successfully.
 
 **/
-STATIC
 EFI_STATUS
 EFIAPI
 EbcUnloadImage (
@@ -855,12 +1048,12 @@ EbcUnloadImage (
   Also flush the instruction cache since we've written thunk code
   to memory that will be executed eventually.
 
-  @param  ImageHandle            the image handle to which the thunk is tied
-  @param  ThunkBuffer            the buffer we've created/allocated
-  @param  ThunkSize              the size of the thunk memory allocated
+  @param  ImageHandle            The image handle to which the thunk is tied.
+  @param  ThunkBuffer            The buffer that has been created/allocated.
+  @param  ThunkSize              The size of the thunk memory allocated.
 
-  @retval EFI_OUT_OF_RESOURCES   memory allocation failed
-  @retval EFI_SUCCESS            successful completion
+  @retval EFI_OUT_OF_RESOURCES   Memory allocation failed.
+  @retval EFI_SUCCESS            The function completed successfully.
 
 **/
 EFI_STATUS
@@ -925,7 +1118,16 @@ EbcAddImageThunk (
   return EFI_SUCCESS;
 }
 
-STATIC
+/**
+  Registers a callback function that the EBC interpreter calls to flush the
+  processor instruction cache following creation of thunks. 
+
+  @param  This        A pointer to the EFI_EBC_PROTOCOL instance.
+  @param  Flush       Pointer to a function of type EBC_ICACH_FLUSH.
+   
+  @retval EFI_SUCCESS The function completed successfully.
+
+**/
 EFI_STATUS
 EFIAPI
 EbcRegisterICacheFlush (
@@ -937,7 +1139,17 @@ EbcRegisterICacheFlush (
   return EFI_SUCCESS;
 }
 
-STATIC
+/**
+  Called to get the version of the interpreter.
+
+  @param  This                  A pointer to the EFI_EBC_PROTOCOL instance.
+  @param  Version               Pointer to where to store the returned version
+                                of the interpreter.
+   
+  @retval EFI_SUCCESS           The function completed successfully.
+  @retval EFI_INVALID_PARAMETER Version pointer is NULL.
+
+**/
 EFI_STATUS
 EFIAPI
 EbcGetVersion (
@@ -953,11 +1165,24 @@ EbcGetVersion (
   return EFI_SUCCESS;
 }
 
+/**
+  Returns the stack index and buffer assosicated with the Handle parameter.
+
+  @param  Handle                The EFI handle as the index to the EBC stack. 
+  @param  StackBuffer           A pointer to hold the returned stack buffer.
+  @param  BufferIndex           A pointer to hold the returned stack index.
+   
+  @retval EFI_OUT_OF_RESOURCES  The Handle parameter does not correspond to any
+                                existing EBC stack.
+  @retval EFI_SUCCESS           The stack index and buffer were found and
+                                returned to the caller.
+
+**/
 EFI_STATUS
 GetEBCStack(
-  EFI_HANDLE Handle,
-  VOID       **StackBuffer,
-  UINTN      *BufferIndex
+  IN  EFI_HANDLE Handle,
+  OUT VOID       **StackBuffer,
+  OUT UINTN      *BufferIndex
   )
 {
   UINTN   Index;
@@ -978,18 +1203,34 @@ GetEBCStack(
   return EFI_SUCCESS;
 }
 
+/**
+  Returns from the EBC stack by stack Index. 
+   
+  @param  Index        Specifies which EBC stack to return from.
+   
+  @retval EFI_SUCCESS  The function completed successfully.
+
+**/
 EFI_STATUS
 ReturnEBCStack(
-  UINTN Index
+  IN UINTN Index
   )
 {
-  mStackBufferIndex[Index] =NULL;
+  mStackBufferIndex[Index] = NULL;
   return EFI_SUCCESS;
 }
 
+/**
+  Returns from the EBC stack associated with the Handle parameter. 
+   
+  @param  Handle      Specifies the EFI handle to find the EBC stack with.
+   
+  @retval EFI_SUCCESS The function completed successfully.
+
+**/
 EFI_STATUS
 ReturnEBCStackByHandle(
-  EFI_HANDLE Handle
+  IN EFI_HANDLE Handle
   )
 {
   UINTN Index;
@@ -1005,6 +1246,13 @@ ReturnEBCStackByHandle(
   return EFI_SUCCESS;
 }
 
+/**
+  Allocates memory to hold all the EBC stacks.
+
+  @retval EFI_SUCCESS          The EBC stacks were allocated successfully. 
+  @retval EFI_OUT_OF_RESOURCES Not enough memory available for EBC stacks.
+
+**/
 EFI_STATUS
 InitEBCStack (
   VOID
@@ -1023,6 +1271,13 @@ InitEBCStack (
   return EFI_SUCCESS;
 }
 
+
+/**
+  Free all EBC stacks allocated before.
+
+  @retval EFI_SUCCESS   All the EBC stacks were freed.
+
+**/
 EFI_STATUS
 FreeEBCStack(
   VOID
@@ -1036,15 +1291,14 @@ FreeEBCStack(
 }
 
 /**
-  Produce an EBC VM test protocol that can be used for regression tests.
+  Produces an EBC VM test protocol that can be used for regression tests.
 
-  @param  IHandle                handle on which to install the protocol.
+  @param  IHandle                Handle on which to install the protocol.
 
-  @retval EFI_OUT_OF_RESOURCES   memory allocation failed
-  @retval EFI_SUCCESS            successful completion
+  @retval EFI_OUT_OF_RESOURCES   Memory allocation failed.
+  @retval EFI_SUCCESS            The function completed successfully.
 
 **/
-STATIC
 EFI_STATUS
 InitEbcVmTestProtocol (
   IN EFI_HANDLE     *IHandle
@@ -1078,9 +1332,18 @@ InitEbcVmTestProtocol (
   }
   return Status;
 }
-STATIC
+
+
+/**
+  Returns the EFI_UNSUPPORTED Status.
+   
+  @return EFI_UNSUPPORTED  This function always return EFI_UNSUPPORTED status.
+
+**/
 EFI_STATUS
-EbcVmTestUnsupported ()
+EbcVmTestUnsupported (
+  VOID
+  )
 {
   return EFI_UNSUPPORTED;
 }

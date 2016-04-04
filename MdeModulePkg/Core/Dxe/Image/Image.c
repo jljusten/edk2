@@ -1,8 +1,7 @@
-/** @file 
-
+/** @file
   Core image handling services to load and unload PeImage.
 
-Copyright (c) 2006 - 2008, Intel Corporation
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -72,26 +71,20 @@ LOADED_IMAGE_PRIVATE_DATA mCorePrivateImage  = {
 };
 
 
+
+/**
+  Add the Image Services to EFI Boot Services Table and install the protocol
+  interfaces for this image.
+
+  @param  HobStart                The HOB to initialize
+
+  @return Status code.
+
+**/
 EFI_STATUS
 CoreInitializeImageServices (
   IN  VOID *HobStart
   )
-/*++
-
-Routine Description:
-
-  Add the Image Services to EFI Boot Services Table and install the protocol
-  interfaces for this image.
-
-Arguments:
-
-  HobStart        - The HOB to initialize
-
-Returns:
-
-  Status code.
-
---*/
 {
   EFI_STATUS                        Status;
   LOADED_IMAGE_PRIVATE_DATA         *Image;
@@ -161,41 +154,37 @@ Returns:
            );
 }
 
+
+/**
+  Loads, relocates, and invokes a PE/COFF image
+
+  @param  BootPolicy              If TRUE, indicates that the request originates
+                                  from the boot manager, and that the boot
+                                  manager is attempting to load FilePath as a
+                                  boot selection.
+  @param  Pe32Handle              The handle of PE32 image
+  @param  Image                   PE image to be loaded
+  @param  DstBuffer               The buffer to store the image
+  @param  EntryPoint              A pointer to the entry point
+  @param  Attribute               The bit mask of attributes to set for the load
+                                  PE image
+
+  @retval EFI_SUCCESS             The file was loaded, relocated, and invoked
+  @retval EFI_OUT_OF_RESOURCES    There was not enough memory to load and
+                                  relocate the PE/COFF file
+  @retval EFI_INVALID_PARAMETER   Invalid parameter
+  @retval EFI_BUFFER_TOO_SMALL    Buffer for image is too small
+
+**/
 EFI_STATUS
 CoreLoadPeImage (
-  IN BOOLEAN                     BootPolicy,  
+  IN BOOLEAN                     BootPolicy,
   IN VOID                        *Pe32Handle,
   IN LOADED_IMAGE_PRIVATE_DATA   *Image,
   IN EFI_PHYSICAL_ADDRESS        DstBuffer    OPTIONAL,
   OUT EFI_PHYSICAL_ADDRESS       *EntryPoint  OPTIONAL,
   IN  UINT32                     Attribute
   )
-/*++
-
-Routine Description:
-
-  Loads, relocates, and invokes a PE/COFF image
-
-Arguments:
-  BootPolicy       - If TRUE, indicates that the request originates from the boot manager,
-                     and that the boot manager is attempting to load FilePath as a boot selection.
-  Pe32Handle       - The handle of PE32 image
-  Image            - PE image to be loaded
-  DstBuffer        - The buffer to store the image
-  EntryPoint       - A pointer to the entry point
-  Attribute        - The bit mask of attributes to set for the load PE image
-
-Returns:
-
-  EFI_SUCCESS          - The file was loaded, relocated, and invoked
-
-  EFI_OUT_OF_RESOURCES - There was not enough memory to load and relocate the PE/COFF file
-
-  EFI_INVALID_PARAMETER - Invalid parameter
-
-  EFI_BUFFER_TOO_SMALL  - Buffer for image is too small
-
---*/
 {
   EFI_STATUS                Status;
   BOOLEAN                   DstBufAlocated;
@@ -227,7 +216,7 @@ Returns:
       return EFI_UNSUPPORTED;
     }
   }
-  
+
   //
   // Set EFI memory type based on ImageType
   //
@@ -342,7 +331,7 @@ Returns:
   // is used to relocate the image when SetVirtualAddressMap() is called. The
   // relocation is done by the Runtime AP.
   //
-  if (Attribute & EFI_LOAD_PE_IMAGE_ATTRIBUTE_RUNTIME_REGISTRATION) {
+  if ((Attribute & EFI_LOAD_PE_IMAGE_ATTRIBUTE_RUNTIME_REGISTRATION) != 0) {
     if (Image->ImageContext.ImageType == EFI_IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER) {
       Image->ImageContext.FixupData = CoreAllocateRuntimePool ((UINTN)(Image->ImageContext.FixupDataSize));
       if (Image->ImageContext.FixupData == NULL) {
@@ -407,6 +396,7 @@ Returns:
     //
     Status = CoreLocateProtocol (&gEfiEbcProtocolGuid, NULL, (VOID **)&Image->Ebc);
     if (EFI_ERROR(Status)) {
+      DEBUG ((DEBUG_LOAD | DEBUG_ERROR, "CoreLoadPeImage: There is no EBC interpreter for an EBC image.\n"));
       goto Done;
     }
 
@@ -442,7 +432,7 @@ Returns:
   Image->Info.ImageSize     = Image->ImageContext.ImageSize;
   Image->Info.ImageCodeType = (EFI_MEMORY_TYPE) (Image->ImageContext.ImageCodeMemoryType);
   Image->Info.ImageDataType = (EFI_MEMORY_TYPE) (Image->ImageContext.ImageDataMemoryType);
-  if (Attribute & EFI_LOAD_PE_IMAGE_ATTRIBUTE_RUNTIME_REGISTRATION) {
+  if ((Attribute & EFI_LOAD_PE_IMAGE_ATTRIBUTE_RUNTIME_REGISTRATION) != 0) {
     if (Image->ImageContext.ImageType == EFI_IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER) {
       //
       // Make a list off all the RT images so we can let the RT AP know about them.
@@ -475,22 +465,22 @@ Returns:
     UINTN Index;
     UINTN StartIndex;
     CHAR8 EfiFileName[256];
-    
+
     if (Image->ImageContext.Machine != IMAGE_FILE_MACHINE_IA64) {
-      DEBUG ((EFI_D_INFO | EFI_D_LOAD, 
-              "Loading driver at 0x%10p EntryPoint=0x%10p ", 
-              (VOID *)(UINTN)Image->ImageContext.ImageAddress, 
+      DEBUG ((DEBUG_INFO | DEBUG_LOAD,
+              "Loading driver at 0x%10p EntryPoint=0x%10p ",
+              (VOID *)(UINTN)Image->ImageContext.ImageAddress,
               (VOID *)(UINTN)Image->ImageContext.EntryPoint));
     } else {
       //
       // For IPF Image, the real entry point should be print.
-      //      
-      DEBUG ((EFI_D_INFO | EFI_D_LOAD, 
-              "Loading driver at 0x%10p EntryPoint=0x%10p ", 
-              (VOID *)(UINTN)Image->ImageContext.ImageAddress, 
+      //
+      DEBUG ((DEBUG_INFO | DEBUG_LOAD,
+              "Loading driver at 0x%10p EntryPoint=0x%10p ",
+              (VOID *)(UINTN)Image->ImageContext.ImageAddress,
               (VOID *)(UINTN)(*(UINT64 *)(UINTN)Image->ImageContext.EntryPoint)));
     }
-    
+
     //
     // Print Module Name by Pdb file path
     //
@@ -517,9 +507,9 @@ Returns:
           break;
         }
       }
-      DEBUG ((EFI_D_INFO | EFI_D_LOAD, "%a", EfiFileName)); // &Image->ImageContext.PdbPointer[StartIndex]));
+      DEBUG ((DEBUG_INFO | DEBUG_LOAD, "%a", EfiFileName)); // &Image->ImageContext.PdbPointer[StartIndex]));
     }
-    DEBUG ((EFI_D_INFO | EFI_D_LOAD, "\n"));
+    DEBUG ((DEBUG_INFO | DEBUG_LOAD, "\n"));
 
   DEBUG_CODE_END ();
 
@@ -543,25 +533,19 @@ Done:
 }
 
 
+
+/**
+  Get the image's private data from its handle.
+
+  @param  ImageHandle             The image handle
+
+  @return Return the image private data associated with ImageHandle.
+
+**/
 LOADED_IMAGE_PRIVATE_DATA *
 CoreLoadedImageInfo (
   IN EFI_HANDLE  ImageHandle
   )
-/*++
-
-Routine Description:
-
-  Get the image's private data from its handle.
-
-Arguments:
-
-  ImageHandle     - The image handle
-
-Returns:
-
-  Return the image private data associated with ImageHandle.
-
---*/
 {
   EFI_STATUS                 Status;
   EFI_LOADED_IMAGE_PROTOCOL  *LoadedImage;
@@ -575,14 +559,50 @@ Returns:
   if (!EFI_ERROR (Status)) {
     Image = LOADED_IMAGE_PRIVATE_DATA_FROM_THIS (LoadedImage);
   } else {
-    DEBUG ((EFI_D_LOAD, "CoreLoadedImageInfo: Not an ImageHandle %x\n", ImageHandle));
+    DEBUG ((DEBUG_LOAD, "CoreLoadedImageInfo: Not an ImageHandle %x\n", ImageHandle));
     Image = NULL;
   }
 
   return Image;
 }
 
-STATIC
+
+/**
+  Loads an EFI image into memory and returns a handle to the image.
+
+  @param  BootPolicy              If TRUE, indicates that the request originates
+                                  from the boot manager, and that the boot
+                                  manager is attempting to load FilePath as a
+                                  boot selection.
+  @param  ParentImageHandle       The caller's image handle.
+  @param  FilePath                The specific file path from which the image is
+                                  loaded.
+  @param  SourceBuffer            If not NULL, a pointer to the memory location
+                                  containing a copy of the image to be loaded.
+  @param  SourceSize              The size in bytes of SourceBuffer.
+  @param  DstBuffer               The buffer to store the image
+  @param  NumberOfPages           If not NULL, it inputs a pointer to the page
+                                  number of DstBuffer and outputs a pointer to
+                                  the page number of the image. If this number is
+                                  not enough,  return EFI_BUFFER_TOO_SMALL and
+                                  this parameter contains the required number.
+  @param  ImageHandle             Pointer to the returned image handle that is
+                                  created when the image is successfully loaded.
+  @param  EntryPoint              A pointer to the entry point
+  @param  Attribute               The bit mask of attributes to set for the load
+                                  PE image
+
+  @retval EFI_SUCCESS             The image was loaded into memory.
+  @retval EFI_NOT_FOUND           The FilePath was not found.
+  @retval EFI_INVALID_PARAMETER   One of the parameters has an invalid value.
+  @retval EFI_BUFFER_TOO_SMALL    The buffer is too small
+  @retval EFI_UNSUPPORTED         The image type is not supported, or the device
+                                  path cannot be parsed to locate the proper
+                                  protocol for loading the file.
+  @retval EFI_OUT_OF_RESOURCES    Image was not loaded due to insufficient
+                                  resources.
+
+**/
 EFI_STATUS
 CoreLoadImageCommon (
   IN  BOOLEAN                          BootPolicy,
@@ -596,40 +616,6 @@ CoreLoadImageCommon (
   OUT EFI_PHYSICAL_ADDRESS             *EntryPoint         OPTIONAL,
   IN  UINT32                           Attribute
   )
-/*++
-
-Routine Description:
-
-  Loads an EFI image into memory and returns a handle to the image.
-
-Arguments:
-
-  BootPolicy          - If TRUE, indicates that the request originates from the boot manager,
-                        and that the boot manager is attempting to load FilePath as a boot selection.
-  ParentImageHandle   - The caller's image handle.
-  FilePath            - The specific file path from which the image is loaded.
-  SourceBuffer        - If not NULL, a pointer to the memory location containing a copy of
-                        the image to be loaded.
-  SourceSize          - The size in bytes of SourceBuffer.
-  DstBuffer           - The buffer to store the image
-  NumberOfPages       - If not NULL, it inputs a pointer to the page number of DstBuffer and outputs
-                        a pointer to the page number of the image. If this number is not enough, 
-                        return EFI_BUFFER_TOO_SMALL and this parameter contains the required number.
-  ImageHandle         - Pointer to the returned image handle that is created when the image
-                        is successfully loaded.
-  EntryPoint          - A pointer to the entry point
-  Attribute           - The bit mask of attributes to set for the load PE image
-
-Returns:
-
-  EFI_SUCCESS            - The image was loaded into memory.
-  EFI_NOT_FOUND          - The FilePath was not found.
-  EFI_INVALID_PARAMETER  - One of the parameters has an invalid value.
-  EFI_BUFFER_TOO_SMALL   - The buffer is too small
-  EFI_UNSUPPORTED        - The image type is not supported, or the device path cannot be
-                           parsed to locate the proper protocol for loading the file.
-  EFI_OUT_OF_RESOURCES   - Image was not loaded due to insufficient resources.
---*/
 {
   LOADED_IMAGE_PRIVATE_DATA  *Image;
   LOADED_IMAGE_PRIVATE_DATA  *ParentImage;
@@ -656,7 +642,7 @@ Returns:
 
   ParentImage = CoreLoadedImageInfo (ParentImageHandle);
   if (ParentImage == NULL) {
-    DEBUG((EFI_D_LOAD|EFI_D_ERROR, "LoadImageEx: Parent handle not an image handle\n"));
+    DEBUG((DEBUG_LOAD|DEBUG_ERROR, "LoadImageEx: Parent handle not an image handle\n"));
     return EFI_INVALID_PARAMETER;
   }
 
@@ -721,7 +707,7 @@ Returns:
   Image->Signature         = LOADED_IMAGE_PRIVATE_DATA_SIGNATURE;
   Image->Info.SystemTable  = gDxeCoreST;
   Image->Info.DeviceHandle = DeviceHandle;
-  Image->Info.Revision     = EFI_LOADED_IMAGE_INFORMATION_REVISION;
+  Image->Info.Revision     = EFI_LOADED_IMAGE_PROTOCOL_REVISION;
   Image->Info.FilePath     = CoreDuplicateDevicePath (FilePath);
   Image->Info.ParentHandle = ParentImageHandle;
 
@@ -762,12 +748,12 @@ Returns:
 
   if (NumberOfPages != NULL) {
     *NumberOfPages = Image->NumberOfPages;
-  }  
+  }
 
   //
   // Register the image in the Debug Image Info Table if the attribute is set
   //
-  if (Attribute & EFI_LOAD_PE_IMAGE_ATTRIBUTE_DEBUG_IMAGE_INFO_TABLE_REGISTRATION) {
+  if ((Attribute & EFI_LOAD_PE_IMAGE_ATTRIBUTE_DEBUG_IMAGE_INFO_TABLE_REGISTRATION) != 0) {
     CoreNewDebugImageInfoEntry (EFI_DEBUG_IMAGE_INFO_TYPE_NORMAL, &Image->Info, Image->Handle);
   }
 
@@ -836,6 +822,33 @@ Done:
 
 
 
+
+/**
+  Loads an EFI image into memory and returns a handle to the image.
+
+  @param  BootPolicy              If TRUE, indicates that the request originates
+                                  from the boot manager, and that the boot
+                                  manager is attempting to load FilePath as a
+                                  boot selection.
+  @param  ParentImageHandle       The caller's image handle.
+  @param  FilePath                The specific file path from which the image is
+                                  loaded.
+  @param  SourceBuffer            If not NULL, a pointer to the memory location
+                                  containing a copy of the image to be loaded.
+  @param  SourceSize              The size in bytes of SourceBuffer.
+  @param  ImageHandle             Pointer to the returned image handle that is
+                                  created when the image is successfully loaded.
+
+  @retval EFI_SUCCESS             The image was loaded into memory.
+  @retval EFI_NOT_FOUND           The FilePath was not found.
+  @retval EFI_INVALID_PARAMETER   One of the parameters has an invalid value.
+  @retval EFI_UNSUPPORTED         The image type is not supported, or the device
+                                  path cannot be parsed to locate the proper
+                                  protocol for loading the file.
+  @retval EFI_OUT_OF_RESOURCES    Image was not loaded due to insufficient
+                                  resources.
+
+**/
 EFI_STATUS
 EFIAPI
 CoreLoadImage (
@@ -846,33 +859,6 @@ CoreLoadImage (
   IN UINTN                      SourceSize,
   OUT EFI_HANDLE                *ImageHandle
   )
-/*++
-
-Routine Description:
-
-  Loads an EFI image into memory and returns a handle to the image.
-
-Arguments:
-
-  BootPolicy          - If TRUE, indicates that the request originates from the boot manager,
-                        and that the boot manager is attempting to load FilePath as a boot selection.
-  ParentImageHandle   - The caller's image handle.
-  FilePath            - The specific file path from which the image is loaded.
-  SourceBuffer        - If not NULL, a pointer to the memory location containing a copy of
-                        the image to be loaded.
-  SourceSize          - The size in bytes of SourceBuffer.
-  ImageHandle         - Pointer to the returned image handle that is created when the image
-                        is successfully loaded.
-
-Returns:
-
-  EFI_SUCCESS            - The image was loaded into memory.
-  EFI_NOT_FOUND          - The FilePath was not found.
-  EFI_INVALID_PARAMETER  - One of the parameters has an invalid value.
-  EFI_UNSUPPORTED        - The image type is not supported, or the device path cannot be
-                           parsed to locate the proper protocol for loading the file.
-  EFI_OUT_OF_RESOURCES   - Image was not loaded due to insufficient resources.
---*/
 {
   EFI_STATUS    Status;
 
@@ -897,6 +883,36 @@ Returns:
 }
 
 
+
+/**
+  Loads an EFI image into memory and returns a handle to the image with extended parameters.
+
+  @param  This                    Calling context
+  @param  ParentImageHandle       The caller's image handle.
+  @param  FilePath                The specific file path from which the image is
+                                  loaded.
+  @param  SourceBuffer            If not NULL, a pointer to the memory location
+                                  containing a copy of the image to be loaded.
+  @param  SourceSize              The size in bytes of SourceBuffer.
+  @param  DstBuffer               The buffer to store the image.
+  @param  NumberOfPages           For input, specifies the space size of the
+                                  image by caller if not NULL. For output,
+                                  specifies the actual space size needed.
+  @param  ImageHandle             Image handle for output.
+  @param  EntryPoint              Image entry point for output.
+  @param  Attribute               The bit mask of attributes to set for the load
+                                  PE image.
+
+  @retval EFI_SUCCESS             The image was loaded into memory.
+  @retval EFI_NOT_FOUND           The FilePath was not found.
+  @retval EFI_INVALID_PARAMETER   One of the parameters has an invalid value.
+  @retval EFI_UNSUPPORTED         The image type is not supported, or the device
+                                  path cannot be parsed to locate the proper
+                                  protocol for loading the file.
+  @retval EFI_OUT_OF_RESOURCES    Image was not loaded due to insufficient
+                                  resources.
+
+**/
 EFI_STATUS
 EFIAPI
 CoreLoadImageEx (
@@ -911,36 +927,6 @@ CoreLoadImageEx (
   OUT EFI_PHYSICAL_ADDRESS             *EntryPoint         OPTIONAL,
   IN  UINT32                           Attribute
   )
-/*++
-
-Routine Description:
-
-  Loads an EFI image into memory and returns a handle to the image with extended parameters.
-
-Arguments:
-
-  This                - Calling context
-  ParentImageHandle   - The caller's image handle.
-  FilePath            - The specific file path from which the image is loaded.
-  SourceBuffer        - If not NULL, a pointer to the memory location containing a copy of
-                        the image to be loaded.
-  SourceSize          - The size in bytes of SourceBuffer.
-  DstBuffer           - The buffer to store the image.
-  NumberOfPages       - For input, specifies the space size of the image by caller if not NULL.
-                        For output, specifies the actual space size needed.
-  ImageHandle         - Image handle for output.
-  EntryPoint          - Image entry point for output.
-  Attribute           - The bit mask of attributes to set for the load PE image.
-
-Returns:
-
-  EFI_SUCCESS            - The image was loaded into memory.
-  EFI_NOT_FOUND          - The FilePath was not found.
-  EFI_INVALID_PARAMETER  - One of the parameters has an invalid value.
-  EFI_UNSUPPORTED        - The image type is not supported, or the device path cannot be
-                           parsed to locate the proper protocol for loading the file.
-  EFI_OUT_OF_RESOURCES   - Image was not loaded due to insufficient resources.
---*/
 {
   return CoreLoadImageCommon (
            TRUE,
@@ -956,6 +942,25 @@ Returns:
            );
 }
 
+
+/**
+  Transfer control to a loaded image's entry point.
+
+  @param  ImageHandle             Handle of image to be started.
+  @param  ExitDataSize            Pointer of the size to ExitData
+  @param  ExitData                Pointer to a pointer to a data buffer that
+                                  includes a Null-terminated Unicode string,
+                                  optionally followed by additional binary data.
+                                  The string is a description that the caller may
+                                  use to further indicate the reason for the
+                                  image's exit.
+
+  @retval EFI_INVALID_PARAMETER   Invalid parameter
+  @retval EFI_OUT_OF_RESOURCES    No enough buffer to allocate
+  @retval EFI_SUCCESS             Successfully transfer control to the image's
+                                  entry point.
+
+**/
 EFI_STATUS
 EFIAPI
 CoreStartImage (
@@ -963,32 +968,6 @@ CoreStartImage (
   OUT UINTN      *ExitDataSize,
   OUT CHAR16     **ExitData  OPTIONAL
   )
-/*++
-
-Routine Description:
-
-  Transfer control to a loaded image's entry point.
-
-Arguments:
-
-  ImageHandle     - Handle of image to be started.
-
-  ExitDataSize    - Pointer of the size to ExitData
-
-  ExitData        - Pointer to a pointer to a data buffer that includes a Null-terminated
-                    Unicode string, optionally followed by additional binary data. The string
-                    is a description that the caller may use to further indicate the reason for
-                    the image's exit.
-
-Returns:
-
-  EFI_INVALID_PARAMETER     - Invalid parameter
-
-  EFI_OUT_OF_RESOURCES       - No enough buffer to allocate
-
-  EFI_SUCCESS               - Successfully transfer control to the image's entry point.
-
---*/
 {
   EFI_STATUS                    Status;
   LOADED_IMAGE_PRIVATE_DATA     *Image;
@@ -1034,7 +1013,7 @@ Returns:
   // The initial call to SetJump() must always return 0.
   // Subsequent calls to LongJump() cause a non-zero value to be returned by SetJump().
   //
-  if (!SetJumpFlag) {
+  if (SetJumpFlag == 0) {
     //
     // Call the image's entry point
     //
@@ -1048,7 +1027,7 @@ Returns:
     //
     DEBUG_CODE_BEGIN ();
       if (EFI_ERROR (Image->Status)) {
-        DEBUG ((EFI_D_ERROR, "Error: Image at %10p start failed: %r\n", Image->Info.ImageBase, Image->Status));
+        DEBUG ((DEBUG_ERROR, "Error: Image at %10p start failed: %r\n", Image->Info.ImageBase, Image->Status));
       }
     DEBUG_CODE_END ();
 
@@ -1083,15 +1062,15 @@ Returns:
     if (Image->ExitDataSize != 0 || Image->ExitData != NULL) {
 
       DEBUG (
-        (EFI_D_LOAD,
+        (DEBUG_LOAD,
         "StartImage: ExitDataSize %d, ExitData %x",
                             Image->ExitDataSize,
         Image->ExitData)
         );
       if (Image->ExitData != NULL) {
-        DEBUG ((EFI_D_LOAD, " (%hs)", Image->ExitData));
+        DEBUG ((DEBUG_LOAD, " (%hs)", Image->ExitData));
       }
-      DEBUG ((EFI_D_LOAD, "\n"));
+      DEBUG ((DEBUG_LOAD, "\n"));
     }
   DEBUG_CODE_END ();
 
@@ -1130,27 +1109,19 @@ Returns:
 }
 
 
+
+/**
+  Unloads EFI image from memory.
+
+  @param  Image                   EFI image
+  @param  FreePage                Free allocated pages
+
+**/
 VOID
 CoreUnloadAndCloseImage (
   IN LOADED_IMAGE_PRIVATE_DATA  *Image,
   IN BOOLEAN                    FreePage
   )
-/*++
-
-Routine Description:
-
-  Unloads EFI image from memory.
-
-Arguments:
-
-  Image      - EFI image
-  FreePage   - Free allocated pages
-
-Returns:
-
-  None
-
---*/
 {
   EFI_STATUS                          Status;
   UINTN                               HandleCount;
@@ -1281,6 +1252,30 @@ Returns:
 
 
 
+
+/**
+  Terminates the currently loaded EFI image and returns control to boot services.
+
+  @param  ImageHandle             Handle that identifies the image. This
+                                  parameter is passed to the image on entry.
+  @param  Status                  The image's exit code.
+  @param  ExitDataSize            The size, in bytes, of ExitData. Ignored if
+                                  ExitStatus is EFI_SUCCESS.
+  @param  ExitData                Pointer to a data buffer that includes a
+                                  Null-terminated Unicode string, optionally
+                                  followed by additional binary data. The string
+                                  is a description that the caller may use to
+                                  further indicate the reason for the image's
+                                  exit.
+
+  @retval EFI_INVALID_PARAMETER   Image handle is NULL or it is not current
+                                  image.
+  @retval EFI_SUCCESS             Successfully terminates the currently loaded
+                                  EFI image.
+  @retval EFI_ACCESS_DENIED       Should never reach there.
+  @retval EFI_OUT_OF_RESOURCES    Could not allocate pool
+
+**/
 EFI_STATUS
 EFIAPI
 CoreExit (
@@ -1289,35 +1284,6 @@ CoreExit (
   IN UINTN       ExitDataSize,
   IN CHAR16      *ExitData  OPTIONAL
   )
-/*++
-
-Routine Description:
-
-  Terminates the currently loaded EFI image and returns control to boot services.
-
-Arguments:
-
-  ImageHandle       - Handle that identifies the image. This parameter is passed to the image
-                      on entry.
-  Status            - The image's exit code.
-  ExitDataSize      - The size, in bytes, of ExitData. Ignored if ExitStatus is
-                      EFI_SUCCESS.
-  ExitData          - Pointer to a data buffer that includes a Null-terminated Unicode string,
-                      optionally followed by additional binary data. The string is a
-                      description that the caller may use to further indicate the reason for
-                      the image's exit.
-
-Returns:
-
-  EFI_INVALID_PARAMETER     - Image handle is NULL or it is not current image.
-
-  EFI_SUCCESS               - Successfully terminates the currently loaded EFI image.
-
-  EFI_ACCESS_DENIED         - Should never reach there.
-
-  EFI_OUT_OF_RESOURCES      - Could not allocate pool
-
---*/
 {
   LOADED_IMAGE_PRIVATE_DATA  *Image;
   EFI_TPL                    OldTpl;
@@ -1325,9 +1291,9 @@ Returns:
   //
   // Prevent possible reentrance to this function
   // for the same ImageHandle
-  // 
-  OldTpl = CoreRaiseTpl (TPL_NOTIFY); 
- 
+  //
+  OldTpl = CoreRaiseTpl (TPL_NOTIFY);
+
   Image = CoreLoadedImageInfo (ImageHandle);
   if (Image == NULL_HANDLE) {
     Status = EFI_INVALID_PARAMETER;
@@ -1347,7 +1313,7 @@ Returns:
   // Image has been started, verify this image can exit
   //
   if (Image != mCurrentImage) {
-    DEBUG ((EFI_D_LOAD|EFI_D_ERROR, "Exit: Image is not exitable image\n"));
+    DEBUG ((DEBUG_LOAD|DEBUG_ERROR, "Exit: Image is not exitable image\n"));
     Status = EFI_INVALID_PARAMETER;
     goto Done;
   }
@@ -1388,28 +1354,24 @@ Done:
 
 
 
+
+/**
+  Unloads an image.
+
+  @param  ImageHandle             Handle that identifies the image to be
+                                  unloaded.
+
+  @retval EFI_SUCCESS             The image has been unloaded.
+  @retval EFI_UNSUPPORTED         The image has been sarted, and does not support
+                                  unload.
+  @retval EFI_INVALID_PARAMPETER  ImageHandle is not a valid image handle.
+
+**/
 EFI_STATUS
 EFIAPI
 CoreUnloadImage (
   IN EFI_HANDLE  ImageHandle
   )
-/*++
-
-Routine Description:
-
-  Unloads an image.
-
-Arguments:
-
-  ImageHandle           - Handle that identifies the image to be unloaded.
-
-Returns:
-
- EFI_SUCCESS            - The image has been unloaded.
- EFI_UNSUPPORTED        - The image has been sarted, and does not support unload.
- EFI_INVALID_PARAMPETER - ImageHandle is not a valid image handle.
-
---*/
 {
   EFI_STATUS                 Status;
   LOADED_IMAGE_PRIVATE_DATA  *Image;
@@ -1418,9 +1380,9 @@ Returns:
   //
   // Prevent possible reentrance to this function
   // for the same ImageHandle
-  // 
+  //
   OldTpl = CoreRaiseTpl (TPL_NOTIFY);
- 
+
   Image = CoreLoadedImageInfo (ImageHandle);
   if (Image == NULL ) {
     //
@@ -1460,33 +1422,24 @@ Done:
 }
 
 
+
+/**
+  Unload the specified image.
+
+  @param  This                    Indicates the calling context.
+  @param  ImageHandle             The specified image handle.
+
+  @retval EFI_INVALID_PARAMETER   Image handle is NULL.
+  @retval EFI_UNSUPPORTED         Attempt to unload an unsupported image.
+  @retval EFI_SUCCESS             Image successfully unloaded.
+
+**/
 EFI_STATUS
 EFIAPI
 CoreUnloadImageEx (
   IN EFI_PE32_IMAGE_PROTOCOL  *This,
   IN EFI_HANDLE                         ImageHandle
   )
-/*++
-
-Routine Description:
-
-  Unload the specified image.
-
-Arguments:
-
-  This              - Indicates the calling context.
-
-  ImageHandle       - The specified image handle.
-
-Returns:
-
-  EFI_INVALID_PARAMETER       - Image handle is NULL.
-
-  EFI_UNSUPPORTED             - Attempt to unload an unsupported image.
-
-  EFI_SUCCESS                 - Image successfully unloaded.
-
---*/
 {
   return CoreUnloadImage (ImageHandle);
 }

@@ -99,12 +99,10 @@ STATIC HII_DATABASE_PRIVATE_DATA mPrivate = {
     0x00000000,
     0x0000,
     0x0000,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
   },
   NULL
 };
-
-//@MT: EFI_DRIVER_ENTRY_POINT (InitializeHiiDatabase)
 
 EFI_STATUS
 EFIAPI
@@ -130,8 +128,6 @@ Returns:
   EFI_HANDLE                             Handle;
   EFI_HANDLE                             *HandleBuffer;
   UINTN                                  HandleCount;
-
-  //@MT: EfiInitializeDriverLib (ImageHandle, SystemTable);
 
   //
   // There will be only one HII Database in the system

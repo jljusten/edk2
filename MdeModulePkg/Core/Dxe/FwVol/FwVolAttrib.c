@@ -1,40 +1,36 @@
-/** @file 
-
+/** @file
   Implements get/set firmware volume attributes
 
-Copyright (c) 2006 - 2008, Intel Corporation                                                         
-All rights reserved. This program and the accompanying materials                          
-are licensed and made available under the terms and conditions of the BSD License         
-which accompanies this distribution.  The full text of the license may be found at        
-http://opensource.org/licenses/bsd-license.php                                            
-                                                                                          
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
+
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
 #include <DxeMain.h>
 
+
+/**
+  Retrieves attributes, insures positive polarity of attribute bits, returns
+  resulting attributes in output parameter.
+
+  @param  This             Calling context 
+  @param  Attributes       output buffer which contains attributes 
+
+  @retval EFI_SUCCESS      Successfully got volume attributes
+
+**/
 EFI_STATUS
 EFIAPI
 FvGetVolumeAttributes (
   IN  CONST EFI_FIRMWARE_VOLUME2_PROTOCOL *This,
   OUT       EFI_FV_ATTRIBUTES             *Attributes
   )
-/*++
-
-Routine Description:
-    Retrieves attributes, insures positive polarity of attribute bits, returns
-    resulting attributes in output parameter
-
-Arguments:
-    This        - Calling context
-    Attributes  - output buffer which contains attributes
-
-Returns:
-    EFI_SUCCESS         - Successfully got volume attributes
-
---*/
 {
   EFI_STATUS                                Status;
   FV_DEVICE                                 *FvDevice;
@@ -67,30 +63,41 @@ Returns:
 }
 
 
+
+/**
+  Sets current attributes for volume
+
+  @param  This             Calling context 
+  @param  Attributes       At input, contains attributes to be set.  At output 
+                           contains new value of FV 
+
+  @retval EFI_UNSUPPORTED  Could not be set.
+
+**/
 EFI_STATUS
 EFIAPI
 FvSetVolumeAttributes (
   IN     CONST EFI_FIRMWARE_VOLUME2_PROTOCOL  *This,
   IN OUT       EFI_FV_ATTRIBUTES              *Attributes
   )
-/*++
-
-Routine Description:
-    Sets current attributes for volume
-
-Arguments:
-    This       - Calling context
-    Attributes - At input, contains attributes to be set.  At output contains
-      new value of FV
-
-Returns:
-    EFI_UNSUPPORTED   - Could not be set.
-
---*/
 {
   return EFI_UNSUPPORTED;
 }
 
+
+/**
+  Return information of type InformationType for the requested firmware
+  volume.
+
+  @param  This             Pointer to EFI_FIRMWARE_VOLUME2_PROTOCOL. 
+  @param  InformationType  InformationType for requested. 
+  @param  BufferSize       On input, size of Buffer.On output, the amount of data 
+                           returned in Buffer. 
+  @param  Buffer           A poniter to the data buffer to return. 
+
+  @retval EFI_SUCCESS      Successfully got volume Information.
+
+**/
 EFI_STATUS
 EFIAPI
 FvGetVolumeInfo (
@@ -99,27 +106,25 @@ FvGetVolumeInfo (
   IN OUT UINTN                                  *BufferSize,
   OUT VOID                                      *Buffer
   )
-/*++
-
-Routine Description:
-  Return information of type InformationType for the requested firmware
-  volume.
-  
-Arguments:
-    This                - Pointer to EFI_FIRMWARE_VOLUME2_PROTOCOL.
-    InformationType     - InformationType for requested.
-    BufferSize          - On input, size of Buffer.On output, the amount of
-                          data returned in Buffer.
-    Buffer              - A poniter to the data buffer to return.
-Returns:
-    EFI_SUCCESS         - Successfully got volume Information.
-
---*/
 {
   return EFI_UNSUPPORTED;
 }
 
 
+
+/**
+  Set information of type InformationType for the requested firmware
+  volume.
+
+  @param  This             Pointer to EFI_FIRMWARE_VOLUME2_PROTOCOL. 
+  @param  InformationType  InformationType for requested. 
+  @param  BufferSize       On input, size of Buffer.On output, the amount of data 
+                           returned in Buffer. 
+  @param  Buffer           A poniter to the data buffer to return. 
+
+  @retval EFI_SUCCESS      Successfully set volume Information.
+
+**/
 EFI_STATUS
 EFIAPI
 FvSetVolumeInfo (
@@ -128,24 +133,9 @@ FvSetVolumeInfo (
   IN  UINTN                                     BufferSize,
   IN CONST  VOID                                *Buffer
   )
-/*++
-
-Routine Description:
-  Set information of type InformationType for the requested firmware
-  volume.
-
-Arguments:
-    This                - Pointer to EFI_FIRMWARE_VOLUME2_PROTOCOL.
-    InformationType     - InformationType for requested.
-    BufferSize          - On input, size of Buffer.On output, the amount of
-                          data returned in Buffer.
-    Buffer              - A poniter to the data buffer to return.
-Returns:
-    EFI_SUCCESS         - Successfully set volume Information.
-
---*/
 {
   return EFI_UNSUPPORTED;
 }
+
 
 

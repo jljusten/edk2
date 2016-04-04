@@ -1,5 +1,5 @@
 /** @file
-  Unicode Collation Protocol (English)
+  Driver to implement English version of Unicode Collation Protocol.
 
 Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
@@ -79,33 +79,25 @@ GLOBAL_REMOVE_IF_UNREFERENCED EFI_UNICODE_COLLATION_PROTOCOL  Unicode2Eng = {
   "en"
 };
 
-//
-// Driver entry point.
-//
+/**
+  The user Entry Point for English module.
+ 
+  This function initializes unicode character mapping and then installs Unicode
+  Collation & Unicode Collation 2 Protocols based on the feature flags.  
+
+  @param  ImageHandle    The firmware allocated handle for the EFI image.  
+  @param  SystemTable    A pointer to the EFI System Table.
+  
+  @retval EFI_SUCCESS    The entry point is executed successfully.
+  @retval other          Some error occurs when executing this entry point.
+
+**/
 EFI_STATUS
 EFIAPI
 InitializeUnicodeCollationEng (
   IN EFI_HANDLE       ImageHandle,
   IN EFI_SYSTEM_TABLE *SystemTable
   )
-/*++
-
-Routine Description:
-
-  Initializes the Unicode Collation Driver
-
-Arguments:
-
-  ImageHandle -
-
-  SystemTable -
-
-Returns:
-
-  EFI_SUCCESS
-  EFI_OUT_OF_RESOURCES
-
---*/
 {
   EFI_STATUS  Status;
   UINTN       Index;
@@ -130,7 +122,7 @@ Returns:
     }
   }
 
-  for (Index = 0; mOtherChars[Index]; Index++) {
+  for (Index = 0; mOtherChars[Index] != 0; Index++) {
     Index2 = mOtherChars[Index];
     mEngInfoMap[Index2] |= CHAR_FAT_VALID;
   }
@@ -177,102 +169,96 @@ Returns:
   return Status;
 }
 
+
+/**
+  Performs a case-insensitive comparison of two Null-terminated Unicode 
+  strings.
+
+  @param  This Protocol instance pointer.
+  @param  Str1 A pointer to a Null-terminated Unicode string.
+  @param  Str2 A pointer to a Null-terminated Unicode string.
+
+  @retval 0   Str1 is equivalent to Str2
+  @retval > 0 Str1 is lexically greater than Str2
+  @retval < 0 Str1 is lexically less than Str2
+
+**/
 INTN
 EFIAPI
 EngStriColl (
   IN EFI_UNICODE_COLLATION_PROTOCOL   *This,
-  IN CHAR16                           *s1,
-  IN CHAR16                           *s2
+  IN CHAR16                           *Str1,
+  IN CHAR16                           *Str2
   )
-/*++
-
-Routine Description:
-
-  Performs a case-insensitive comparison of two Null-terminated Unicode strings.
-
-Arguments:
-
-  This
-  s1
-  s2
-
-Returns:
-
---*/
 {
-  while (*s1) {
-    if (ToUpper (*s1) != ToUpper (*s2)) {
+  while (*Str1 != 0) {
+    if (TO_UPPER (*Str1) != TO_UPPER (*Str2)) {
       break;
     }
 
-    s1 += 1;
-    s2 += 1;
+    Str1 += 1;
+    Str2 += 1;
   }
 
-  return ToUpper (*s1) - ToUpper (*s2);
+  return TO_UPPER (*Str1) - TO_UPPER (*Str2);
 }
 
+
+/**
+  Converts all the Unicode characters in a Null-terminated Unicode string to 
+  lower case Unicode characters.
+
+  @param  This   Protocol instance pointer.
+  @param  Str    A pointer to a Null-terminated Unicode string.
+
+**/
 VOID
 EFIAPI
 EngStrLwr (
   IN EFI_UNICODE_COLLATION_PROTOCOL   *This,
   IN OUT CHAR16                       *Str
   )
-/*++
-
-Routine Description:
-
-  Converts all the Unicode characters in a Null-terminated Unicode string
-  to lower case Unicode characters.
-
-Arguments:
-
-  This - A pointer to the EFI_UNICODE_COLLATION_PROTOCOL instance.
-  Str1  - A pointer to a Null-terminated Unicode string.
-  Str2  - A pointer to a Null-terminated Unicode string.
-
-Returns:
-
-  0   - s1 is equivalent to s2.
-  > 0 - s1 is lexically greater than s2.
-  < 0 - s1 is lexically less than s2.
-
---*/
 {
-  while (*Str) {
-    *Str = ToLower (*Str);
+  while (*Str != 0) {
+    *Str = TO_LOWER (*Str);
     Str += 1;
   }
 }
 
+
+/**
+  Converts all the Unicode characters in a Null-terminated Unicode string to upper
+  case Unicode characters.
+
+  @param  This   Protocol instance pointer.
+  @param  Str    A pointer to a Null-terminated Unicode string.
+
+**/
 VOID
 EFIAPI
 EngStrUpr (
   IN EFI_UNICODE_COLLATION_PROTOCOL   *This,
   IN OUT CHAR16                       *Str
   )
-/*++
-
-Routine Description:
-
-  Converts all the Unicode characters in a Null-terminated
-  Unicode string to upper case Unicode characters.
-
-Arguments:
-  This
-  Str
-
-Returns:
-  None
-
---*/
 {
-  while (*Str) {
-    *Str = ToUpper (*Str);
+  while (*Str != 0) {
+    *Str = TO_UPPER (*Str);
     Str += 1;
   }
 }
 
+/**
+  Performs a case-insensitive comparison of a Null-terminated Unicode 
+  pattern string and a Null-terminated Unicode string.
+
+  @param  This    Protocol instance pointer.
+  @param  String  A pointer to a Null-terminated Unicode string.
+  @param  Pattern A pointer to a Null-terminated Unicode pattern string.
+
+  @retval TRUE    Pattern was found in String.
+  @retval FALSE   Pattern was not found in String.
+
+**/
 BOOLEAN
 EFIAPI
 EngMetaiMatch (
@@ -280,28 +266,6 @@ EngMetaiMatch (
   IN CHAR16                           *String,
   IN CHAR16                           *Pattern
   )
-/*++
-
-Routine Description:
-
-  Performs a case-insensitive comparison between a Null-terminated
-  Unicode pattern string and a Null-terminated Unicode string.
-
-  The pattern string can use the '?' wildcard to match any character,
-  and the '*' wildcard to match any sub-string.
-
-Arguments:
-
-  This     - A pointer to the EFI_UNICODE_COLLATION_PROTOCOL instance.
-  String   - A pointer to a Null-terminated Unicode string.
-  Pattern  - A pointer to a Null-terminated Unicode pattern string.
-
-Returns:
-
-  TRUE  - Pattern was found in String.
-  FALSE - Pattern was not found in String.
-
---*/
 {
   CHAR16  CharC;
   CHAR16  CharP;
@@ -316,7 +280,7 @@ Returns:
       //
       // End of pattern.  If end of string, TRUE match
       //
-      if (*String) {
+      if (*String != 0) {
         return FALSE;
       } else {
         return TRUE;
@@ -326,7 +290,7 @@ Returns:
       //
       // Match zero or more chars
       //
-      while (*String) {
+      while (*String != 0) {
         if (EngMetaiMatch (This, String, Pattern)) {
           return TRUE;
         }
@@ -340,7 +304,7 @@ Returns:
       //
       // Match any one char
       //
-      if (!*String) {
+      if (*String == 0) {
         return FALSE;
       }
 
@@ -352,7 +316,7 @@ Returns:
       // Match char set
       //
       CharC = *String;
-      if (!CharC) {
+      if (CharC == 0) {
         //
         // syntax problem
         //
@@ -361,7 +325,7 @@ Returns:
 
       Index3  = 0;
       CharP   = *Pattern++;
-      while (CharP) {
+      while (CharP != 0) {
         if (CharP == ']') {
           return FALSE;
         }
@@ -378,7 +342,7 @@ Returns:
             return FALSE;
           }
 
-          if (ToUpper (CharC) >= ToUpper (Index3) && ToUpper (CharC) <= ToUpper (CharP)) {
+          if (TO_UPPER (CharC) >= TO_UPPER (Index3) && TO_UPPER (CharC) <= TO_UPPER (CharP)) {
             //
             // if in range, it's a match
             //
@@ -387,7 +351,7 @@ Returns:
         }
 
         Index3 = CharP;
-        if (ToUpper (CharC) == ToUpper (CharP)) {
+        if (TO_UPPER (CharC) == TO_UPPER (CharP)) {
           //
           // if char matches
           //
@@ -399,7 +363,7 @@ Returns:
       //
       // skip to end of match char set
       //
-      while (CharP && CharP != ']') {
+      while ((CharP != 0) && (CharP != ']')) {
         CharP = *Pattern;
         Pattern += 1;
       }
@@ -409,7 +373,7 @@ Returns:
 
     default:
       CharC = *String;
-      if (ToUpper (CharC) != ToUpper (CharP)) {
+      if (TO_UPPER (CharC) != TO_UPPER (CharP)) {
         return FALSE;
       }
 
@@ -419,6 +383,19 @@ Returns:
   }
 }
 
+
+/**
+  Converts an 8.3 FAT file name in an OEM character set to a Null-terminated 
+  Unicode string.
+
+  @param  This    Protocol instance pointer.
+  @param  FatSize The size of the string Fat in bytes.
+  @param  Fat     A pointer to a Null-terminated string that contains an 8.3 file
+                  name using an OEM character set.
+  @param  String  A pointer to a Null-terminated Unicode string. The string must
+                  be preallocated to hold FatSize Unicode characters.
+
+**/
 VOID
 EFIAPI
 EngFatToStr (
@@ -427,29 +404,11 @@ EngFatToStr (
   IN CHAR8                            *Fat,
   OUT CHAR16                          *String
   )
-/*++
-
-Routine Description:
-
-  Converts an 8.3 FAT file name using an OEM character set
-  to a Null-terminated Unicode string.
-
-  BUGBUG: Function has to expand DBCS FAT chars, currently not.
-
-Arguments:
-  This
-  FatSize
-  Fat
-  String
-
-Returns:
-
---*/
 {
   //
   // No DBCS issues, just expand and add null terminate to end of string
   //
-  while (*Fat && FatSize) {
+  while ((*Fat != 0) && (FatSize != 0)) {
     *String = *Fat;
     String += 1;
     Fat += 1;
@@ -459,6 +418,22 @@ Returns:
   *String = 0;
 }
 
+
+/**
+  Converts a Null-terminated Unicode string to legal characters in a FAT 
+  filename using an OEM character set. 
+
+  @param  This    Protocol instance pointer.
+  @param  String  A pointer to a Null-terminated Unicode string. The string must
+                  be preallocated to hold FatSize Unicode characters.
+  @param  FatSize The size of the string Fat in bytes.
+  @param  Fat     A pointer to a Null-terminated string that contains an 8.3 file
+                  name using an OEM character set.
+
+  @retval TRUE    Fat is a Long File Name
+  @retval FALSE   Fat is an 8.3 file name
+
+**/
 BOOLEAN
 EFIAPI
 EngStrToFat (
@@ -467,31 +442,11 @@ EngStrToFat (
   IN UINTN                            FatSize,
   OUT CHAR8                           *Fat
   )
-/*++
-
-Routine Description:
-
-  Converts a Null-terminated Unicode string to legal characters
-  in a FAT filename using an OEM character set.
-
-  Functions has to crunch string to a fat string. Replacing
-  any chars that can't be represented in the fat name.
-
-Arguments:
-  This
-  String
-  FatSize
-  Fat
-
-Returns:
-  TRUE
-  FALSE
---*/
 {
   BOOLEAN SpecialCharExist;
 
   SpecialCharExist = FALSE;
-  while (*String && FatSize) {
+  while ((*String != 0) && (FatSize != 0)) {
     //
     // Skip '.' or ' ' when making a fat name
     //
@@ -500,7 +455,7 @@ Returns:
       // If this is a valid fat char, move it.
       // Otherwise, move a '_' and flag the fact that the name needs an Lfn
       //
-      if (*String < 0x100 && (mEngInfoMap[*String] & CHAR_FAT_VALID)) {
+      if (*String < 0x100 && ((mEngInfoMap[*String] & CHAR_FAT_VALID) != 0)) {
         *Fat = mEngUpperMap[*String];
       } else {
         *Fat              = '_';

@@ -1,8 +1,7 @@
-/** @file 
-
+/** @file
   UEFI Miscellaneous boot Services Stall service implementation
 
-Copyright (c) 2006 - 2008, Intel Corporation
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -20,29 +19,22 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <DxeMain.h>
 
 
+
+/**
+  Introduces a fine-grained stall.
+
+  @param  Microseconds           The number of microseconds to stall execution.
+
+  @retval EFI_SUCCESS            Execution was stalled for at least the requested 
+                                 amount of microseconds. 
+  @retval EFI_NOT_AVAILABLE_YET  gMetronome is not available yet
+
+**/
 EFI_STATUS
 EFIAPI
 CoreStall (
   IN UINTN            Microseconds
   )
-/*++
-
-Routine Description:
-
-  Introduces a fine-grained stall.
-
-Arguments:
-
-  Microseconds      The number of microseconds to stall execution
-
-Returns:
-
-  EFI_SUCCESS            - Execution was stalled for at least the requested amount
-                           of microseconds.
-
-  EFI_NOT_AVAILABLE_YET  - gMetronome is not available yet
-
---*/
 {
   UINT32  Counter;
   UINT32  Remainder;

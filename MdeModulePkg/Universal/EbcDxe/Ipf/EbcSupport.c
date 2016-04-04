@@ -2,7 +2,7 @@
   This module contains EBC support routines that are customized based on
   the target processor.
 
-Copyright (c) 2006, Intel Corporation
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -17,7 +17,23 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "EbcExecute.h"
 #include "EbcSupport.h"
 
-STATIC
+/**
+  Given raw bytes of Itanium based code, format them into a bundle and
+  write them out.
+
+  @param  MemPtr                 pointer to memory location to write the bundles
+                                 to.
+  @param  Template               5-bit template.
+  @param  Slot0                  Instruction slot 0 data for the bundle.
+  @param  Slot1                  Instruction slot 1 data for the bundle.
+  @param  Slot2                  Instruction slot 2 data for the bundle.
+
+  @retval EFI_INVALID_PARAMETER  Pointer is not aligned
+  @retval EFI_INVALID_PARAMETER  No more than 5 bits in template
+  @retval EFI_INVALID_PARAMETER  More than 41 bits used in code
+  @retval EFI_SUCCESS            All data is written.
+
+**/
 EFI_STATUS
 WriteBundle (
   IN    VOID    *MemPtr,
@@ -27,11 +43,17 @@ WriteBundle (
   IN    UINT64  Slot2
   );
 
-STATIC
+/**
+  Pushes a 64 bit unsigned value to the VM stack.
+
+  @param VmPtr  The pointer to current VM context.
+  @param Arg    The value to be pushed.
+
+**/
 VOID
 PushU64 (
-  VM_CONTEXT *VmPtr,
-  UINT64     Arg
+  IN VM_CONTEXT *VmPtr,
+  IN UINT64     Arg
   )
 {
   //
@@ -42,7 +64,21 @@ PushU64 (
   *(UINT64 *) VmPtr->R[0] = Arg;
 }
 
-STATIC
+/**
+  Begin executing an EBC image. The address of the entry point is passed
+  in via a processor register, so we'll need to make a call to get the
+  value.
+
+  This is a thunk function. Microsoft x64 compiler only provide fast_call
+  calling convention, so the first four arguments are passed by rcx, rdx,
+  r8, and r9, while other arguments are passed in stack.
+
+  @param  Arg1                  The 1st argument.
+  @param  ...                   The variable arguments list.
+
+  @return The value returned by the EBC application we're going to run.
+
+**/
 UINT64
 EbcInterpret (
   UINT64      Arg1,
@@ -189,20 +225,17 @@ EbcInterpret (
 
 
 /**
-  IPF implementation.
   Begin executing an EBC image. The address of the entry point is passed
   in via a processor register, so we'll need to make a call to get the
   value.
 
-  @param  ImageHandle            image handle for the EBC application we're
-                                 executing
-  @param  SystemTable            standard system table passed into an driver's
-                                 entry point
+  @param  ImageHandle      image handle for the EBC application we're executing
+  @param  SystemTable      standard system table passed into an driver's entry
+                           point
 
   @return The value returned by the EBC application we're going to run.
 
 **/
-STATIC
 UINT64
 ExecuteEbcImageEntryPoint (
   IN EFI_HANDLE           ImageHandle,
@@ -312,21 +345,26 @@ ExecuteEbcImageEntryPoint (
 /**
   Create thunks for an EBC image entry point, or an EBC protocol service.
 
-  @param  ImageHandle            Image handle for the EBC image. If not null, then
-                                 we're creating a thunk for an image entry point.
-  @param  EbcEntryPoint          Address of the EBC code that the thunk is to call
-  @param  Thunk                  Returned thunk we create here
-  @param  Flags                  Flags indicating options for creating the thunk
+  @param  ImageHandle           Image handle for the EBC image. If not null, then
+                                we're creating a thunk for an image entry point.
+  @param  EbcEntryPoint         Address of the EBC code that the thunk is to call
+  @param  Thunk                 Returned thunk we create here
+  @param  Flags                 Flags indicating options for creating the thunk
 
-  @return Standard EFI status.
+  @retval EFI_SUCCESS           The thunk was created successfully.
+  @retval EFI_INVALID_PARAMETER The parameter of EbcEntryPoint is not 16-bit
+                                aligned.
+  @retval EFI_OUT_OF_RESOURCES  There is not enough memory to created the EBC
+                                Thunk.
+  @retval EFI_BUFFER_TOO_SMALL  EBC_THUNK_SIZE is not larger enough.
 
 **/
 EFI_STATUS
 EbcCreateThunks (
-  IN EFI_HANDLE   ImageHandle,
-  IN VOID         *EbcEntryPoint,
-  OUT VOID        **Thunk,
-  IN  UINT32      Flags
+  IN EFI_HANDLE           ImageHandle,
+  IN VOID                 *EbcEntryPoint,
+  OUT VOID                **Thunk,
+  IN  UINT32              Flags
   )
 {
   UINT8       *Ptr;
@@ -334,11 +372,11 @@ EbcCreateThunks (
   UINT64      Addr;
   UINT64      Code[3];    // Code in a bundle
   UINT64      RegNum;     // register number for MOVL
-  UINT64      I;          // bits of MOVL immediate data
-  UINT64      Ic;         // bits of MOVL immediate data
-  UINT64      Imm5c;      // bits of MOVL immediate data
-  UINT64      Imm9d;      // bits of MOVL immediate data
-  UINT64      Imm7b;      // bits of MOVL immediate data
+  UINT64      BitI;       // bits of MOVL immediate data
+  UINT64      BitIc;         // bits of MOVL immediate data
+  UINT64      BitImm5c;      // bits of MOVL immediate data
+  UINT64      BitImm9d;      // bits of MOVL immediate data
+  UINT64      BitImm7b;      // bits of MOVL immediate data
   UINT64      Br;         // branch register for loading and jumping
   UINT64      *Data64Ptr;
   UINT32      ThunkSize;
@@ -436,23 +474,23 @@ EbcCreateThunks (
   // Extract bits from the address for insertion into the instruction
   // i = Addr[63:63]
   //
-  I = RShiftU64 (Addr, 63) & 0x01;
+  BitI = RShiftU64 (Addr, 63) & 0x01;
   //
   // ic = Addr[21:21]
   //
-  Ic = RShiftU64 (Addr, 21) & 0x01;
+  BitIc = RShiftU64 (Addr, 21) & 0x01;
   //
   // imm5c = Addr[20:16] for 5 bits
   //
-  Imm5c = RShiftU64 (Addr, 16) & 0x1F;
+  BitImm5c = RShiftU64 (Addr, 16) & 0x1F;
   //
   // imm9d = Addr[15:7] for 9 bits
   //
-  Imm9d = RShiftU64 (Addr, 7) & 0x1FF;
+  BitImm9d = RShiftU64 (Addr, 7) & 0x1FF;
   //
   // imm7b = Addr[6:0] for 7 bits
   //
-  Imm7b = Addr & 0x7F;
+  BitImm7b = Addr & 0x7F;
 
   //
   // The EBC entry point will be put into r8, so r8 can be used here
@@ -463,12 +501,12 @@ EbcCreateThunks (
   //
   // Next is jumbled data, including opcode and rest of address
   //
-  Code[2] = LShiftU64 (Imm7b, 13);
+  Code[2] = LShiftU64 (BitImm7b, 13);
   Code[2] = Code[2] | LShiftU64 (0x00, 20);   // vc
-  Code[2] = Code[2] | LShiftU64 (Ic, 21);
-  Code[2] = Code[2] | LShiftU64 (Imm5c, 22);
-  Code[2] = Code[2] | LShiftU64 (Imm9d, 27);
-  Code[2] = Code[2] | LShiftU64 (I, 36);
+  Code[2] = Code[2] | LShiftU64 (BitIc, 21);
+  Code[2] = Code[2] | LShiftU64 (BitImm5c, 22);
+  Code[2] = Code[2] | LShiftU64 (BitImm9d, 27);
+  Code[2] = Code[2] | LShiftU64 (BitI, 36);
   Code[2] = Code[2] | LShiftU64 ((UINT64)MOVL_OPCODE, 37);
   Code[2] = Code[2] | LShiftU64 ((RegNum & 0x7F), 6);
 
@@ -501,23 +539,23 @@ EbcCreateThunks (
   // Extract bits from the address for insertion into the instruction
   // i = Addr[63:63]
   //
-  I = RShiftU64 (Addr, 63) & 0x01;
+  BitI = RShiftU64 (Addr, 63) & 0x01;
   //
   // ic = Addr[21:21]
   //
-  Ic = RShiftU64 (Addr, 21) & 0x01;
+  BitIc = RShiftU64 (Addr, 21) & 0x01;
   //
   // imm5c = Addr[20:16] for 5 bits
   //
-  Imm5c = RShiftU64 (Addr, 16) & 0x1F;
+  BitImm5c = RShiftU64 (Addr, 16) & 0x1F;
   //
   // imm9d = Addr[15:7] for 9 bits
   //
-  Imm9d = RShiftU64 (Addr, 7) & 0x1FF;
+  BitImm9d = RShiftU64 (Addr, 7) & 0x1FF;
   //
   // imm7b = Addr[6:0] for 7 bits
   //
-  Imm7b = Addr & 0x7F;
+  BitImm7b = Addr & 0x7F;
 
   //
   // Put the EBC entry point in r8, which is the location of the return value
@@ -528,12 +566,12 @@ EbcCreateThunks (
   //
   // Next is jumbled data, including opcode and rest of address
   //
-  Code[2] = LShiftU64 (Imm7b, 13);
+  Code[2] = LShiftU64 (BitImm7b, 13);
   Code[2] = Code[2] | LShiftU64 (0x00, 20);   // vc
-  Code[2] = Code[2] | LShiftU64 (Ic, 21);
-  Code[2] = Code[2] | LShiftU64 (Imm5c, 22);
-  Code[2] = Code[2] | LShiftU64 (Imm9d, 27);
-  Code[2] = Code[2] | LShiftU64 (I, 36);
+  Code[2] = Code[2] | LShiftU64 (BitIc, 21);
+  Code[2] = Code[2] | LShiftU64 (BitImm5c, 22);
+  Code[2] = Code[2] | LShiftU64 (BitImm9d, 27);
+  Code[2] = Code[2] | LShiftU64 (BitI, 36);
   Code[2] = Code[2] | LShiftU64 ((UINT64)MOVL_OPCODE, 37);
   Code[2] = Code[2] | LShiftU64 ((RegNum & 0x7F), 6);
 
@@ -549,7 +587,7 @@ EbcCreateThunks (
   // to the address of the entry point of the interpreter.
   //
   Ptr += 16;
-  if (Flags & FLAG_THUNK_ENTRY_POINT) {
+  if ((Flags & FLAG_THUNK_ENTRY_POINT) != 0) {
     Addr = (UINT64) ExecuteEbcImageEntryPoint;
   } else {
     Addr = (UINT64) EbcInterpret;
@@ -573,23 +611,23 @@ EbcCreateThunks (
   // Extract bits from the address for insertion into the instruction
   // i = Addr[63:63]
   //
-  I = RShiftU64 (Addr, 63) & 0x01;
+  BitI = RShiftU64 (Addr, 63) & 0x01;
   //
   // ic = Addr[21:21]
   //
-  Ic = RShiftU64 (Addr, 21) & 0x01;
+  BitIc = RShiftU64 (Addr, 21) & 0x01;
   //
   // imm5c = Addr[20:16] for 5 bits
   //
-  Imm5c = RShiftU64 (Addr, 16) & 0x1F;
+  BitImm5c = RShiftU64 (Addr, 16) & 0x1F;
   //
   // imm9d = Addr[15:7] for 9 bits
   //
-  Imm9d = RShiftU64 (Addr, 7) & 0x1FF;
+  BitImm9d = RShiftU64 (Addr, 7) & 0x1FF;
   //
   // imm7b = Addr[6:0] for 7 bits
   //
-  Imm7b = Addr & 0x7F;
+  BitImm7b = Addr & 0x7F;
 
   //
   // Put it in r31, a scratch register
@@ -599,12 +637,12 @@ EbcCreateThunks (
   //
   // Next is jumbled data, including opcode and rest of address
   //
-  Code[2] =   LShiftU64(Imm7b, 13);
+  Code[2] =   LShiftU64(BitImm7b, 13);
   Code[2] = Code[2] | LShiftU64 (0x00, 20);   // vc
-  Code[2] = Code[2] | LShiftU64 (Ic, 21);
-  Code[2] = Code[2] | LShiftU64 (Imm5c, 22);
-  Code[2] = Code[2] | LShiftU64 (Imm9d, 27);
-  Code[2] = Code[2] | LShiftU64 (I, 36);
+  Code[2] = Code[2] | LShiftU64 (BitIc, 21);
+  Code[2] = Code[2] | LShiftU64 (BitImm5c, 22);
+  Code[2] = Code[2] | LShiftU64 (BitImm9d, 27);
+  Code[2] = Code[2] | LShiftU64 (BitI, 36);
   Code[2] = Code[2] | LShiftU64 ((UINT64)MOVL_OPCODE, 37);
   Code[2] = Code[2] | LShiftU64 ((RegNum & 0x7F), 6);
 
@@ -667,17 +705,19 @@ EbcCreateThunks (
   Given raw bytes of Itanium based code, format them into a bundle and
   write them out.
 
-  @param  MemPtr                 pointer to memory location to write the bundles to
-  @param  Template               5-bit template
-  @param  Slot0-2                instruction slot data for the bundle
+  @param  MemPtr                 pointer to memory location to write the bundles
+                                 to.
+  @param  Template               5-bit template.
+  @param  Slot0                  Instruction slot 0 data for the bundle.
+  @param  Slot1                  Instruction slot 1 data for the bundle.
+  @param  Slot2                  Instruction slot 2 data for the bundle.
 
   @retval EFI_INVALID_PARAMETER  Pointer is not aligned
-  @retval      No                more than 5 bits in template
-  @retval      More              than 41 bits used in code
+  @retval EFI_INVALID_PARAMETER  No more than 5 bits in template
+  @retval EFI_INVALID_PARAMETER  More than 41 bits used in code
   @retval EFI_SUCCESS            All data is written.
 
 **/
-STATIC
 EFI_STATUS
 WriteBundle (
   IN    VOID    *MemPtr,
@@ -701,13 +741,13 @@ WriteBundle (
   //
   // Verify no more than 5 bits in template
   //
-  if (Template &~0x1F) {
+  if ((Template &~0x1F) != 0) {
     return EFI_INVALID_PARAMETER;
   }
   //
   // Verify max of 41 bits used in code
   //
-  if ((Slot0 | Slot1 | Slot2) &~0x1ffffffffff) {
+  if (((Slot0 | Slot1 | Slot2) &~0x1ffffffffff) != 0) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -745,13 +785,11 @@ WriteBundle (
   otherwise, set the VM->IP to target EBC code directly to avoid another VM
   be startup which cost time and stack space.
 
-  @param  VmPtr                  Pointer to a VM context.
-  @param  FuncAddr               Callee's address
-  @param  NewStackPointer        New stack pointer after the call
-  @param  FramePtr               New frame pointer after the call
-  @param  Size                   The size of call instruction
-
-  @return None.
+  @param  VmPtr            Pointer to a VM context.
+  @param  FuncAddr         Callee's address
+  @param  NewStackPointer  New stack pointer after the call
+  @param  FramePtr         New frame pointer after the call
+  @param  Size             The size of call instruction
 
 **/
 VOID

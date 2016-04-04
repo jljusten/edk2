@@ -48,7 +48,7 @@
   OemHookStatusCodeLib|IntelFrameworkModulePkg/Library/OemHookStatusCodeLibNull/OemHookStatusCodeLibNull.inf
   PrintLib|MdePkg/Library/BasePrintLib/BasePrintLib.inf
   IoLib|MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
-  TimerLib|MdePkg/Library/SecPeiDxeTimerLibCpu/SecPeiDxeTimerLibCpu.inf
+  TimerLib|DuetPkg/Library/DuetTimerLib/DuetTimerLib.inf
 
 [LibraryClasses.common.DXE_DRIVER]
   MemoryAllocationLib|MdePkg/Library/DxeMemoryAllocationLib/DxeMemoryAllocationLib.inf
@@ -79,7 +79,6 @@
   ReportStatusCodeLib|IntelFrameworkModulePkg/Library/DxeReportStatusCodeLibFramework/DxeReportStatusCodeLib.inf
   SerialPortLib|DuetPkg/Library/DuetSerialIoLib/DuetSerialIoLib.inf
   IoLib|MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
-  #TimerLib|MdePkg/Library/BaseTimerLibNullTemplate/BaseTimerLibNullTemplate.inf
   DebugLib|IntelFrameworkModulePkg/Library/PeiDxeDebugLibReportStatusCode/PeiDxeDebugLibReportStatusCode.inf
 
 [LibraryClasses.common.UEFI_DRIVER]
@@ -106,7 +105,10 @@
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdStatusCodeUseHardSerial|TRUE
 
 [Components.common]
-  DuetPkg/DxeIpl/DxeIpl.inf
+  DuetPkg/DxeIpl/DxeIpl.inf {
+    <LibraryClasses>
+      DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  }
 
   MdeModulePkg/Core/Dxe/DxeMain.inf
   MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
@@ -131,7 +133,10 @@
   
   DuetPkg/DataHubGenDxe/DataHubGen.inf
   #DuetPkg/FvbRuntimeService/DUETFwh.inf
-  DuetPkg/EfiLdr/EfiLdr.inf
+  DuetPkg/EfiLdr/EfiLdr.inf {
+    <LibraryClasses>
+      DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  }
   MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
   DuetPkg/CpuIoDxe/CpuIo.inf
   DuetPkg/CpuDxe/Cpu.inf
@@ -154,7 +159,6 @@
   MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
   MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
   MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
-  MdeModulePkg/Bus/Usb/UsbMouseDxe/UsbMouseDxe.inf
   
   # ISA Support
   DuetPkg/IsaAcpiDxe/IsaAcpi.inf
@@ -168,9 +172,9 @@
   MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
 
   DuetPkg/BootSector/BootSector.inf
-  FatPkg/EnhancedFatDxe/Fat.inf
 
 [BuildOptions.common]
   MSFT:*_*_*_CC_FLAGS = /Fa$* /FAsc /FR$(@R).SBR
   MSFT:*_*_IA32_CC_FLAGS = /D EFI32
-  MSFT:*_*_X64_CC_FLAGS = /D EFI64
+  MSFT:*_*_X64_CC_FLAGS = /D EFIX64
+  MSFT:*_*_IPF_CC_FLAGS = /D EFI64

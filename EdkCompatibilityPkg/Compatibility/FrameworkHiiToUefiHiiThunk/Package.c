@@ -17,6 +17,10 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "HiiDatabase.h"
 
 
+BOOLEAN mInFrameworkHiiNewPack = FALSE;
+BOOLEAN mInFrameworkHiiRemovePack = FALSE;
+
+
 EFI_STATUS
 GetIfrAndStringPackNum (
   IN CONST EFI_HII_PACKAGES               *Packages,
@@ -118,21 +122,6 @@ LibExportPackageLists (
   return Status;
 }
 
-BOOLEAN
-IsOnlyStringPackagesInPackageList (
-  IN CONST EFI_HII_PACKAGE_LIST_HEADER *StringPackageListHeader
-  )
-{
-  EFI_HII_PACKAGE_HEADER *PackageHeader;
-
-  PackageHeader = (EFI_HII_PACKAGE_HEADER *) (StringPackageListHeader + 1);
-
-  while (PackageHeader->Type != EFI_HII_PACKAGE_END) {
-    PackageHeader = (EFI_HII_PACKAGE_HEADER *) (PackageHeader );
-  }
-}
-  
-
 EFI_STATUS
 InsertStringPackagesToIfrPackageList (
   IN CONST EFI_HII_PACKAGE_LIST_HEADER *StringPackageListHeader,
@@ -196,7 +185,7 @@ AddStringPackagesToMatchingIfrPackageList (
 EFI_HII_PACKAGE_LIST_HEADER *
 PrepareUefiPackageListFromFrameworkHiiPackages (
   IN CONST EFI_HII_PACKAGES            *Packages,
-  IN CONST EFI_GUID                    *GuidId  OPTIONAL
+  IN CONST EFI_GUID                    *PackageListGuid
   )
 {
   UINTN                       NumberOfPackages;
@@ -207,6 +196,9 @@ PrepareUefiPackageListFromFrameworkHiiPackages (
   EFI_HII_PACKAGE_HEADER      PackageHeader;
   UINTN                       Index;
   TIANO_AUTOGEN_PACKAGES_HEADER **TianoAutogenPackageHdrArray;
+
+  ASSERT (Packages != NULL);
+  ASSERT (PackageListGuid != NULL);
 
   TianoAutogenPackageHdrArray = (TIANO_AUTOGEN_PACKAGES_HEADER **) ((UINT8 *) &Packages->GuidId + sizeof (Packages->GuidId));
   NumberOfPackages = Packages->NumberOfPackages;
@@ -227,11 +219,8 @@ PrepareUefiPackageListFromFrameworkHiiPackages (
   PackageListLength += sizeof (EFI_HII_PACKAGE_HEADER);
   PackageListHeader = AllocateZeroPool (PackageListLength);
   ASSERT (PackageListHeader != NULL);
-  if (GuidId == NULL) {
-    CopyMem (&PackageListHeader->PackageListGuid, Packages->GuidId, sizeof (EFI_GUID));
-  } else {
-    CopyMem (&PackageListHeader->PackageListGuid, GuidId, sizeof (EFI_GUID));
-  }
+
+  CopyMem (&PackageListHeader->PackageListGuid, PackageListGuid, sizeof (EFI_GUID));
   PackageListHeader->PackageLength = PackageListLength;
 
   PackageListData = ((UINT8 *) PackageListHeader) + sizeof (EFI_HII_PACKAGE_LIST_HEADER);
@@ -324,9 +313,8 @@ UefiRegisterPackageList(
   EFI_HII_PACKAGE_LIST_HEADER *UefiPackageListHeader;
   HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *HandleMappingEntry;
   EFI_GUID                    GuidId;
-  EFI_HANDLE                  UefiHiiDriverHandle;
 
-  UefiHiiDriverHandle = NULL;
+  UefiPackageListHeader = NULL;
 
   Status = GetIfrAndStringPackNum (Packages, &IfrPackNum, &StringPackNum);
   ASSERT_EFI_ERROR (Status);
@@ -342,7 +330,10 @@ UefiRegisterPackageList(
   ASSERT (HandleMappingEntry != NULL);
   
   HandleMappingEntry->Signature = HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY_SIGNATURE;
-  HandleMappingEntry->FrameworkHiiHandle = Private->StaticHiiHandle++;
+  Status = AssignHiiHandle (Private, &HandleMappingEntry->FrameworkHiiHandle);
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
 
   //
   // Packages->GuidId may be NULL. In such case, caller of FramworkHii->NewPack is registering
@@ -351,6 +342,8 @@ UefiRegisterPackageList(
   if (Packages->GuidId == NULL) {
     Packages->GuidId = &GuidId;
     GenerateGuidId (&mAGuid, Packages->GuidId);
+  } else {
+    CopyGuid (&GuidId, Packages->GuidId);
   }
   
   CopyGuid (&HandleMappingEntry->TagGuid, Packages->GuidId);
@@ -369,13 +362,13 @@ UefiRegisterPackageList(
   // that Setup Utility can load the Buffer Storage using this protocol.
   //
   if (IfrPackNum != 0) {
-    InstallDefaultUefiConfigAccessProtocol (Packages, &UefiHiiDriverHandle, HandleMappingEntry);
+    InstallDefaultUefiConfigAccessProtocol (Packages, HandleMappingEntry);
   }
   UefiPackageListHeader = PrepareUefiPackageListFromFrameworkHiiPackages (Packages, &GuidId);
   Status = mHiiDatabase->NewPackageList (
               mHiiDatabase,
               UefiPackageListHeader,  
-              UefiHiiDriverHandle,
+              HandleMappingEntry->UefiHiiDriverHandle,
               &HandleMappingEntry->UefiHiiHandle
               );
   ASSERT_EFI_ERROR (Status);
@@ -429,10 +422,11 @@ Done:
     *Handle = HandleMappingEntry->FrameworkHiiHandle;
   }
 
-  FreePool (UefiPackageListHeader);
+  SafeFreePool (UefiPackageListHeader);
   
   return Status;
 }
+
 
 EFI_STATUS
 EFIAPI
@@ -462,6 +456,7 @@ Returns:
 {
   EFI_STATUS                 Status;
   EFI_HII_THUNK_PRIVATE_DATA *Private;
+  EFI_TPL                    OldTpl;
 
   if (Handle == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -471,6 +466,16 @@ Returns:
     return EFI_INVALID_PARAMETER;
   }
 
+  OldTpl = gBS->RaiseTPL (TPL_NOTIFY);
+  
+  //
+  // We use a simple Global variable to inform NewPackNotify
+  // that the package list registered here is already registered
+  // in the HII Thunk Layer. So NewPackNotify does not need to
+  // call RegisterUefiHiiHandle () to registered it.
+  //
+  mInFrameworkHiiNewPack = TRUE;
+
   Private = EFI_HII_THUNK_PRIVATE_DATA_FROM_THIS(This);
 
   Status = UefiRegisterPackageList (
@@ -478,6 +483,10 @@ Returns:
               Packages,
               Handle
             );
+
+  mInFrameworkHiiNewPack = FALSE;
+
+  gBS->RestoreTPL (OldTpl);
 
   return Status;
 }
@@ -502,41 +511,54 @@ Returns:
   EFI_STATUS                 Status;
   EFI_HII_THUNK_PRIVATE_DATA *Private;
   HII_TRHUNK_HANDLE_MAPPING_DATABASE_ENTRY *HandleMapEntry;
-  EFI_DEVICE_PATH_PROTOCOL   *Path;
+  EFI_TPL                    OldTpl;
+  EFI_HII_CONFIG_ACCESS_PROTOCOL *ConfigAccess;
+
+  OldTpl = gBS->RaiseTPL (TPL_NOTIFY);
+
+  mInFrameworkHiiRemovePack = TRUE;
 
   Private = EFI_HII_THUNK_PRIVATE_DATA_FROM_THIS(This);
 
   HandleMapEntry = FrameworkHiiHandleToMapDatabaseEntry (Private, Handle);
 
-  if (HandleMapEntry->UefiHiiHandle != NULL) {
+  if (HandleMapEntry != NULL) {
     Status = mHiiDatabase->RemovePackageList (
                                           mHiiDatabase,
                                           HandleMapEntry->UefiHiiHandle
                                           );
     ASSERT_EFI_ERROR (Status);
 
+    HiiLibDestroyHiiDriverHandle (HandleMapEntry->UefiHiiHandle);
+
     Status = gBS->HandleProtocol (
-                    HandleMapEntry->UefiHiiHandle,
-                    &gEfiDevicePathProtocolGuid,
-                    &Path
+                    HandleMapEntry->UefiHiiDriverHandle,
+                    &gEfiHiiConfigAccessProtocolGuid,
+                    (VOID **) &ConfigAccess
                     );
 
     if (!EFI_ERROR (Status)) {
       Status = gBS->UninstallProtocolInterface (
-                      HandleMapEntry->UefiHiiHandle,
-                      &gEfiDevicePathProtocolGuid,
-                      Path
+                      HandleMapEntry->UefiHiiDriverHandle,
+                      &gEfiHiiConfigAccessProtocolGuid,
+                      ConfigAccess
                       );
-      if (!EFI_ERROR (Status)) {
-        FreePool (Path);
-      }
+      ASSERT_EFI_ERROR (Status);
+    } else {
+      Status = EFI_SUCCESS;
     }
 
     RemoveEntryList (&HandleMapEntry->List);
 
     FreePool (HandleMapEntry);
-    return Status;
+
+  }else {
+    Status = EFI_NOT_FOUND;
   }
 
-  return EFI_NOT_FOUND;
+  mInFrameworkHiiRemovePack = FALSE;
+  
+  gBS->RestoreTPL (OldTpl);
+
+  return Status;
 }

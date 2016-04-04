@@ -99,11 +99,27 @@ typedef union {
 
 #pragma pack()
 
+
+
+/**
+  Allocates and fills in the Page Directory and Page Table Entries to
+  establish a 1:1 Virtual to Physical mapping.
+
+  @param  NumberOfProcessorPhysicalAddressBits  Number of processor address bits 
+                                                to use. Limits the number of page 
+                                                table entries  to the physical 
+                                                address space. 
+
+  @return EFI_SUCCESS           The 1:1 Virtual to Physical identity mapping was created
+
+**/
 UINTN
 CreateIdentityMappingPageTables (
   VOID
-  )
-;
+  );
+
+
+
 
 
 /**
@@ -113,7 +129,7 @@ CreateIdentityMappingPageTables (
   @param VectorBase   Base address of the vector handler.
  
   @param VectorNum    Index of vector.
- 
+
 **/
 VOID
 EFIAPI
@@ -123,6 +139,9 @@ AsmVectorFixup (
   );
 
 
+
+
+
 /**
  
   Get the information of vector template.
@@ -130,7 +149,7 @@ AsmVectorFixup (
   @param TemplateBase   Base address of the template code.
  
   @return               Size of the Template code.
- 
+
 **/
 UINTN
 EFIAPI

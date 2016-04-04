@@ -17,6 +17,18 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "Partition.h"
 
 
+/**
+  Install child handles if the Handle supports GPT partition structure.
+
+  @param[in]  BlockIo     Parent BlockIo interface
+  @param[in]  DiskIo      Disk Io protocol.
+  @param[in]  Lba         The starting Lba of the Partition Table
+  @param[out] PartHeader  Stores the partition table that is read
+
+  @retval TRUE      The partition table is valid
+  @retval FALSE     The partition table is not valid
+
+**/
 BOOLEAN
 PartitionValidGptTable (
   IN  EFI_BLOCK_IO_PROTOCOL       *BlockIo,
@@ -26,6 +38,18 @@ PartitionValidGptTable (
   );
 
 
+/**
+  Check if the CRC field in the Partition table header is valid
+  for Partition entry array.
+
+  @param[in]  BlockIo     Parent BlockIo interface
+  @param[in]  DiskIo      Disk Io Protocol.
+  @param[in]  PartHeader  Partition table header structure
+
+  @retval TRUE      the CRC is valid
+  @retval FALSE     the CRC is invalid
+
+**/
 BOOLEAN
 PartitionCheckGptEntryArrayCRC (
   IN  EFI_BLOCK_IO_PROTOCOL       *BlockIo,
@@ -34,6 +58,18 @@ PartitionCheckGptEntryArrayCRC (
   );
 
 
+/**
+  Restore Partition Table to its alternate place
+  (Primary -> Backup or Backup -> Primary)
+
+  @param[in]  BlockIo     Parent BlockIo interface
+  @param[in]  DiskIo      Disk Io Protocol.
+  @param[in]  PartHeader  Partition table header structure
+
+  @retval TRUE      Restoring succeeds
+  @retval FALSE     Restoring failed
+
+**/
 BOOLEAN
 PartitionRestoreGptTable (
   IN  EFI_BLOCK_IO_PROTOCOL       *BlockIo,
@@ -42,6 +78,16 @@ PartitionRestoreGptTable (
   );
 
 
+/**
+  Restore Partition Table to its alternate place.
+  (Primary -> Backup or Backup -> Primary)
+
+  @param[in]    PartHeader    Partition table header structure
+  @param[in]    PartEntry     The partition entry array
+  @param[out]   PEntryStatus  the partition entry status array 
+                              recording the status of each partition
+
+**/
 VOID
 PartitionCheckGptEntry (
   IN  EFI_PARTITION_TABLE_HEADER  *PartHeader,
@@ -50,6 +96,17 @@ PartitionCheckGptEntry (
   );
 
 
+/**
+  Checks the CRC32 value in the table header.
+
+  @param  MaxSize   Max Size limit
+  @param  Size      The size of the table
+  @param  Hdr       Table to check
+
+  @return TRUE    CRC Valid
+  @return FALSE   CRC Invalid
+
+**/
 BOOLEAN
 PartitionCheckCrcAltSize (
   IN UINTN                 MaxSize,
@@ -58,6 +115,16 @@ PartitionCheckCrcAltSize (
   );
 
 
+/**
+  Checks the CRC32 value in the table header.
+
+  @param  MaxSize   Max Size limit
+  @param  Hdr       Table to check
+
+  @return TRUE      CRC Valid
+  @return FALSE     CRC Invalid
+
+**/
 BOOLEAN
 PartitionCheckCrc (
   IN UINTN                 MaxSize,
@@ -65,6 +132,13 @@ PartitionCheckCrc (
   );
 
 
+/**
+  Updates the CRC32 value in the table header.
+
+  @param  Size   The size of the table
+  @param  Hdr    Table to update
+
+**/
 VOID
 PartitionSetCrcAltSize (
   IN UINTN                 Size,
@@ -72,6 +146,12 @@ PartitionSetCrcAltSize (
   );
 
 
+/**
+  Updates the CRC32 value in the table header.
+
+  @param  Hdr    Table to update
+
+**/
 VOID
 PartitionSetCrc (
   IN OUT EFI_TABLE_HEADER *Hdr
@@ -325,7 +405,7 @@ Done:
   @param[in]  BlockIo     Parent BlockIo interface
   @param[in]  DiskIo      Disk Io protocol.
   @param[in]  Lba         The starting Lba of the Partition Table
-  @param[in]  PartHeader  Stores the partition table that is read
+  @param[out] PartHeader  Stores the partition table that is read
 
   @retval TRUE      The partition table is valid
   @retval FALSE     The partition table is not valid
@@ -539,13 +619,14 @@ Done:
 
 
 /**
-  Restore Partition Table to its alternate place
+  Restore Partition Table to its alternate place.
   (Primary -> Backup or Backup -> Primary)
 
   @param[in]    PartHeader    Partition table header structure
   @param[in]    PartEntry     The partition entry array
   @param[out]   PEntryStatus  the partition entry status array 
                               recording the status of each partition
+
 **/
 VOID
 PartitionCheckGptEntry (
@@ -600,9 +681,9 @@ PartitionCheckGptEntry (
 
 
 /**
-  Updates the CRC32 value in the table header
+  Updates the CRC32 value in the table header.
 
-  @param[in,out]  Hdr    Table to update
+  @param  Hdr    Table to update
 
 **/
 VOID
@@ -615,10 +696,10 @@ PartitionSetCrc (
 
 
 /**
-  Updates the CRC32 value in the table header
+  Updates the CRC32 value in the table header.
 
-  @param[in]      Size   The size of the table
-  @param[in,out]  Hdr    Table to update
+  @param  Size   The size of the table
+  @param  Hdr    Table to update
 
 **/
 VOID
@@ -626,7 +707,6 @@ PartitionSetCrcAltSize (
   IN UINTN                 Size,
   IN OUT EFI_TABLE_HEADER  *Hdr
   )
-
 {
   UINT32  Crc;
 
@@ -637,13 +717,13 @@ PartitionSetCrcAltSize (
 
 
 /**
-  Checks the CRC32 value in the table header
+  Checks the CRC32 value in the table header.
 
-  @param[in]      MaxSize   Max Size limit
-  @param[in,out]  Hdr       Table to check
+  @param  MaxSize   Max Size limit
+  @param  Hdr       Table to check
 
-  @return TRUE    CRC Valid
-  @return FALSE   CRC Invalid
+  @return TRUE      CRC Valid
+  @return FALSE     CRC Invalid
 
 **/
 BOOLEAN
@@ -657,11 +737,11 @@ PartitionCheckCrc (
 
 
 /**
-  Checks the CRC32 value in the table header
+  Checks the CRC32 value in the table header.
 
-  @param[in]      MaxSize   Max Size limit
-  @param[in]      Size      The size of the table
-  @param[in,out]  Hdr       Table to check
+  @param  MaxSize   Max Size limit
+  @param  Size      The size of the table
+  @param  Hdr       Table to check
 
   @return TRUE    CRC Valid
   @return FALSE   CRC Invalid
@@ -687,7 +767,7 @@ PartitionCheckCrcAltSize (
     return FALSE;
   }
 
-  if (MaxSize && Size > MaxSize) {
+  if ((MaxSize != 0) && (Size > MaxSize)) {
     DEBUG ((EFI_D_ERROR, "CheckCrc32: Size > MaxSize\n"));
     return FALSE;
   }

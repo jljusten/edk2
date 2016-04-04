@@ -1,15 +1,14 @@
-/** @file 
-
+/** @file
   UEFI Event support functions and structure.
 
-Copyright (c) 2006 - 2008, Intel Corporation                                                         
-All rights reserved. This program and the accompanying materials                          
-are licensed and made available under the terms and conditions of the BSD License         
-which accompanies this distribution.  The full text of the license may be found at        
-http://opensource.org/licenses/bsd-license.php                                            
-                                                                                          
-THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
+
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -73,121 +72,72 @@ typedef struct {
 // Internal prototypes
 //
 
+
+/**
+  Dispatches all pending events.
+
+  @param  Priority               The task priority level of event notifications 
+                                 to dispatch
+
+**/
 VOID
 CoreDispatchEventNotifies (
   IN EFI_TPL      Priority
-  )
-/*++
-
-Routine Description:
-
-  Dispatches all pending events. 
-
-Arguments:
-
-  Priority - The task priority level of event notifications to dispatch
-    
-Returns:
-
-  None
-
---*/
-;
+  );
 
 
+
+/**
+  Return the highest set bit.
+
+  @param  Number  The value to check 
+
+  @return Bit position of the highest set bit
+
+**/
 UINTN
 CoreHighestSetBit (
-  IN UINTN         Number
-  )
-/*++
-
-Routine Description:
-  
-  Return the highest set bit
-  
-Arguments:
-  
-  Number - The value to check
-  
-Returns:
-  
-  Bit position of the highest set bit
-
---*/
-;
+  IN UINTN     Number
+  );
 
 
+
+/**
+  Disables CPU interrupts.
+
+  @retval EFI_SUCCESS            If interrupts were disabled in the CPU. 
+  @retval EFI_INVALID_PARAMETER  State is NULL.
+
+**/
 BOOLEAN
 GetInterruptState (
   VOID               
-  )
-/*++
-
-Routine Description:
-
-  Disables CPU interrupts.
-
-Arguments:
-
-  This                - Protocol instance structure
-
-  State               - Pointer to the CPU's current interrupt state
-
-Returns: 
-
-  EFI_SUCCESS           - If interrupts were disabled in the CPU.
-
-  EFI_INVALID_PARAMETER - State is NULL.
-  
---*/
-;
+  );
 
 //
 // Exported functions
 //
 
+
+/**
+  A function out of date, should be removed.
+
+**/
 VOID
 CoreEventVirtualAddressFixup (
   VOID
-  )
-/*++
-
-Routine Description:
-
-  A function out of date, should be removed.
-
-Arguments:
-
-  None
-    
-Returns:
-
-  None
-
---*/
-;
+  );
 
 
+
+/**
+  Initializes timer support.
+
+**/
 VOID
 CoreInitializeTimer (
   VOID
-  )
-/*++
-
-Routine Description:
-
-  Initializes timer support
-
-Arguments:
-
-  None
-    
-Returns:
-
-  None
-
---*/
-;
+  );
 
 //
 // extern data declarations
@@ -197,6 +147,5 @@ extern EFI_LOCK       gEventQueueLock;
 extern UINTN          gEventPending;
 extern LIST_ENTRY     gEventQueue[];
 extern LIST_ENTRY     gEventSignalQueue;
-extern UINT8          gHSB[];
 
 #endif

@@ -1,10 +1,9 @@
-/** @file 
-
+/** @file
   This file deals with Architecture Protocol (AP) registration in
   the Dxe Core. The mArchProtocols[] array represents a list of
   events that represent the Architectural Protocols.
 
-Copyright (c) 2006 - 2008, Intel Corporation
+Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -45,23 +44,19 @@ ARCHITECTURAL_PROTOCOL_ENTRY  mArchProtocols[] = {
 };
 
 
+
+/**
+  Return TRUE if all AP services are availible.
+
+
+  @retval EFI_SUCCESS    All AP services are available 
+  @retval EFI_NOT_FOUND  At least one AP service is not available
+
+**/
 EFI_STATUS
 CoreAllEfiServicesAvailable (
   VOID
   )
-/*++
-
-Routine Description:
-  Return TRUE if all AP services are availible.
-
-Arguments:
-  NONE
-
-Returns:
-  EFI_SUCCESS   - All AP services are available
-  EFI_NOT_FOUND - At least one AP service is not available
-
---*/
 {
   ARCHITECTURAL_PROTOCOL_ENTRY  *Entry;
 
@@ -74,33 +69,24 @@ Returns:
   return EFI_SUCCESS;
 }
 
-STATIC
-VOID
-EFIAPI
-GenericArchProtocolNotify (
-  IN	EFI_EVENT       Event,
-  IN	VOID            *Context
-  )
-/*++
 
-Routine Description:
+/**
   Notification event handler registered by CoreNotifyOnArchProtocolInstallation ().
   This notify function is registered for every architectural protocol. This handler
   updates mArchProtocol[] array entry with protocol instance data and sets it's
   present flag to TRUE. If any constructor is required it is executed. The EFI
   System Table headers are updated.
 
-Arguments:
+  @param  Event          The Event that is being processed, not used. 
+  @param  Context        Event Context, not used.
 
-  Event   - The Event that is being processed, not used.
-
-  Context - Event Context, not used.
-
-Returns:
-
-  None
-
---*/
+**/
+VOID
+EFIAPI
+GenericArchProtocolNotify (
+  IN  EFI_EVENT       Event,
+  IN  VOID            *Context
+  )
 {
   EFI_STATUS                      Status;
   ARCHITECTURAL_PROTOCOL_ENTRY    *Entry;
@@ -184,22 +170,15 @@ Returns:
 
 
 
+
+/**
+  Creates an event that is fired everytime a Protocol of a specific type is installed.
+
+**/
 VOID
 CoreNotifyOnArchProtocolInstallation (
   VOID
   )
-/*++
-
-Routine Description:
-  Creates an event that is fired everytime a Protocol of a specific type is installed
-
-Arguments:
-  NONE
-
-Returns:
-  NONE
-
---*/
 {
   EFI_STATUS                      Status;
   ARCHITECTURAL_PROTOCOL_ENTRY    *Entry;
@@ -239,7 +218,7 @@ typedef struct {
   CHAR16                       *GuidString;
 } GUID_TO_STRING_PROTOCOL_ENTRY;
 
-static const GUID_TO_STRING_PROTOCOL_ENTRY MissingProtocols[] = {
+STATIC CONST GUID_TO_STRING_PROTOCOL_ENTRY MissingProtocols[] = {
   { &gEfiSecurityArchProtocolGuid,         (CHAR16 *)L"Security"           },
   { &gEfiCpuArchProtocolGuid,              (CHAR16 *)L"CPU"                },
   { &gEfiMetronomeArchProtocolGuid,        (CHAR16 *)L"Metronome"          },
@@ -256,23 +235,16 @@ static const GUID_TO_STRING_PROTOCOL_ENTRY MissingProtocols[] = {
   { &gEfiRealTimeClockArchProtocolGuid,    (CHAR16 *)L"Real Time Clock"    }
 };
 
+
+/**
+  Displays Architectural protocols that were not loaded and are required for DXE
+  core to function.  Only used in Debug Builds.
+
+**/
 VOID
 CoreDisplayMissingArchProtocols (
   VOID
   )
-/*++
-
-Routine Description:
-  Displays Architectural protocols that were not loaded and are required for DXE core to function
-  Only used in Debug Builds
-
-Arguments:
-  NONE
-
-Returns:
-  NONE
-
---*/
 {
   const GUID_TO_STRING_PROTOCOL_ENTRY  *MissingEntry;
   ARCHITECTURAL_PROTOCOL_ENTRY         *Entry;
@@ -282,7 +254,7 @@ Returns:
       MissingEntry = MissingProtocols;
       for (MissingEntry = MissingProtocols; TRUE ; MissingEntry++) {
         if (CompareGuid (Entry->ProtocolGuid, MissingEntry->ProtocolGuid)) {
-          DEBUG ((EFI_D_ERROR, "\n%s Arch Protocol not present!!\n", MissingEntry->GuidString));
+          DEBUG ((DEBUG_ERROR, "\n%s Arch Protocol not present!!\n", MissingEntry->GuidString));
           break;
         }
       }
