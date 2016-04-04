@@ -270,7 +270,7 @@ GetNameFromHandle (
     //
     // Get the current platform language setting
     //
-    GetEfiGlobalVariable2 (L"PlatformLang", &PlatformLanguage, NULL);
+    GetEfiGlobalVariable2 (L"PlatformLang", (VOID**)&PlatformLanguage, NULL);
     Status = ComponentName2->GetDriverName (
                                ComponentName2,
                                PlatformLanguage != NULL ? PlatformLanguage : "en-US",
@@ -289,7 +289,7 @@ GetNameFromHandle (
                   &gEfiLoadedImageDevicePathProtocolGuid,
                   (VOID **) &LoadedImageDevicePath
                   );
-  if (!EFI_ERROR (Status)) {
+  if (!EFI_ERROR (Status) && (LoadedImageDevicePath != NULL)) {
     DevicePath = LoadedImageDevicePath;
 
     //
