@@ -89,6 +89,21 @@ CreateStatement (
   return Statement;
 }
 
+/**
+  Convert a numeric value to a Unicode String and insert it to String Package.
+  This string is used as the Unicode Name for the EFI Variable. This is to support
+  the deprecated vareqval opcode.
+  
+  @param FormSet        The FormSet.
+  @param Statement      The numeric question whose VarStoreInfo.VarName is the
+                        numeric value which is used to produce the Unicode Name
+                        for the EFI Variable.
+                        
+  If the Statement is NULL, the ASSERT.
+  If the opcode is not Numeric, then ASSERT.
+  
+  @retval EFI_SUCCESS The funtion always succeeds.
+**/
 EFI_STATUS
 UpdateCheckBoxStringToken (
   IN CONST FORM_BROWSER_FORMSET *FormSet,
@@ -115,6 +130,14 @@ UpdateCheckBoxStringToken (
   return EFI_SUCCESS;
 }
 
+/**
+  Check if the next opcode is the EFI_IFR_EXTEND_OP_VAREQNAME.
+  
+  @param OpCodeData     The current opcode.
+                        
+  @retval TRUE Yes.
+  @retval FALSE No.
+**/
 BOOLEAN
 IsNextOpCodeGuidedVarEqName (
   UINT8 *OpCodeData
@@ -412,7 +435,7 @@ InitializeRequestElement (
     NewStr = AllocateZeroPool (StringSize + CONFIG_REQUEST_STRING_INCREMENTAL * sizeof (CHAR16));
     if (Storage->ConfigRequest != NULL) {
       CopyMem (NewStr, Storage->ConfigRequest, StringSize);
-      gBS->FreePool (Storage->ConfigRequest);
+      FreePool (Storage->ConfigRequest);
     }
     Storage->ConfigRequest = NewStr;
     Storage->SpareStrLen   = CONFIG_REQUEST_STRING_INCREMENTAL;
@@ -453,7 +476,7 @@ DestroyExpression (
   //
   // Free this Expression
   //
-  gBS->FreePool (Expression);
+  FreePool (Expression);
 }
 
 
@@ -537,7 +560,7 @@ DestroyStatement (
     Default = QUESTION_DEFAULT_FROM_LINK (Link);
     RemoveEntryList (&Default->Link);
 
-    gBS->FreePool (Default);
+    FreePool (Default);
   }
 
   //
@@ -548,7 +571,7 @@ DestroyStatement (
     Option = QUESTION_OPTION_FROM_LINK (Link);
     RemoveEntryList (&Option->Link);
 
-    gBS->FreePool (Option);
+    FreePool (Option);
   }
 
   //
@@ -622,7 +645,7 @@ DestroyForm (
   //
   // Free this Form
   //
-  gBS->FreePool (Form);
+  FreePool (Form);
 }
 
 
@@ -669,7 +692,7 @@ DestroyFormSet (
       DefaultStore = FORMSET_DEFAULTSTORE_FROM_LINK (Link);
       RemoveEntryList (&DefaultStore->Link);
 
-      gBS->FreePool (DefaultStore);
+      FreePool (DefaultStore);
     }
   }
 

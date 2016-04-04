@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2005 - 2007, Intel Corporation                                                         
+Copyright (c) 2005 - 2008, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -635,7 +635,7 @@ PcatRootBridgeIoMap (
   // map the DMA transfer to a buffer below 4GB.
   //
   PhysicalAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)HostAddress;
-  if ((PhysicalAddress + *NumberOfBytes) > 0x100000000) {
+  if ((PhysicalAddress + *NumberOfBytes) > 0x100000000ULL) {
 
     //
     // Common Buffer operations can not be remapped.  If the common buffer
@@ -653,7 +653,7 @@ PcatRootBridgeIoMap (
     Status = gBS->AllocatePool (
                     EfiBootServicesData, 
                     sizeof(MAP_INFO), 
-                    &MapInfo
+                    (VOID **)&MapInfo
                     );
     if (EFI_ERROR (Status)) {
       *NumberOfBytes = 0;
@@ -706,7 +706,7 @@ PcatRootBridgeIoMap (
 	Status =gBS->AllocatePool (
                     EfiBootServicesData, 
                     sizeof(MAP_INFO_INSTANCE), 
-                    &MapInstance
+                    (VOID **)&MapInstance
                     );                    
     if (EFI_ERROR(Status)) {
       gBS->FreePages (MapInfo->MappedHostAddress,MapInfo->NumberOfPages);
@@ -1013,7 +1013,7 @@ Returns:
   UINTN  OutStride;
 
 
-  Width     = Width & 0x03;
+  Width     = (EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH) (Width & 0x03);
   Stride    = (UINTN)1 << Width;
   InStride  = InStrideFlag  ? Stride : 0;
   OutStride = OutStrideFlag ? Stride : 0;

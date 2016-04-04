@@ -1,8 +1,8 @@
 #/** @file
-# Component description file for Runtime module.
 #
-# This module is used to produce the EFI runtime virtual switch over services.
-# Copyright (c) 2006 - 2007, Intel Corporation
+#  This module is used to produce the EFI runtime virtual switch over services.
+#
+#  Copyright (c) 2006 - 2008, Intel Corporation
 #
 #  All rights reserved. This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -21,8 +21,6 @@
   FILE_GUID                      = B601F8C4-43B7-4784-95B1-F4226CB40CEE
   MODULE_TYPE                    = DXE_RUNTIME_DRIVER
   VERSION_STRING                 = 1.0
-  EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
 
   ENTRY_POINT                    = RuntimeDriverInitialize
 
@@ -45,6 +43,7 @@
   PeCoffLib
   CacheMaintenanceLib
   UefiBootServicesTableLib
+  UefiLib
   UefiRuntimeServicesTableLib
   ReportStatusCodeLib
   DebugLib

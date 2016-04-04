@@ -1,14 +1,14 @@
 /** @file
-  Timer Library Functions.
+  Provides calibrated delay and performance counter services.
 
-  Copyright (c) 2006 - 2008, Intel Corporation
-  All rights reserved. This program and the accompanying materials
-  are licensed and made available under the terms and conditions of the BSD License
-  which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+Copyright (c) 2006 - 2008, Intel Corporation
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -16,6 +16,8 @@
 #define __TIMER_LIB__
 
 /**
+  Stalls the CPU for at least the given number of microseconds.
+
   Stalls the CPU for the number of microseconds specified by MicroSeconds.
 
   @param  MicroSeconds  The minimum number of microseconds to delay.
@@ -30,6 +32,8 @@ MicroSecondDelay (
   );
 
 /**
+  Stalls the CPU for at least the given number of nanoseconds.
+
   Stalls the CPU for the number of nanoseconds specified by NanoSeconds.
 
   @param  NanoSeconds The minimum number of nanoseconds to delay.
@@ -44,7 +48,8 @@ NanoSecondDelay (
   );
 
 /**
-  Retrieves the current value of a 64-bit free running performance counter. 
+  Retrieves the current value of a 64-bit free running performance counter.
+
   The counter can either count up by 1 or count down by 1. If the physical
   performance counter counts by a larger increment, then the counter values
   must be translated. The properties of the counter can be retrieved from

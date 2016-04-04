@@ -1,7 +1,7 @@
 /** @file
 Private functions used by PCD PEIM.
 
-Copyright (c) 2006, Intel Corporation
+Copyright (c) 2006 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,9 +9,6 @@ http://opensource.org/licenses/bsd-license.php
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-
-Module Name: Service.h
 
 **/
 
@@ -67,8 +64,6 @@ Module Name: Service.h
 
   @param[in]  SkuId The SKU value that will be used when the PCD service will retrieve and 
               set values associated with a PCD token.
-
-  @retval VOID
 
 **/
 VOID
@@ -928,7 +923,7 @@ PeiRegisterCallBackWorker (
   IN  CONST EFI_GUID         *Guid, OPTIONAL
   IN  PCD_PPI_CALLBACK   CallBackFunction,
   IN  BOOLEAN            Register
-);
+  );
 
 /**
   The function builds the PCD database.
@@ -1009,11 +1004,13 @@ SetPtrTypeSize (
   IN          PEI_PCD_DATABASE  *Database
   );
 
-
 extern EFI_GUID gPcdDataBaseHobGuid;
 
 extern EFI_GUID gPcdPeiCallbackFnTableHobGuid;
 
+//
+// The init Database created by PCD Database generation tool
+//
 extern PEI_PCD_DATABASE_INIT gPEIPcdDbInit;
 
 #endif

@@ -1,14 +1,14 @@
 /** @file
-  Library that provides services to measure module execution performance
+  Provides services to log the execution times and retrieve them later.
 
-  Copyright (c) 2006, Intel Corporation.
-  All rights reserved. This program and the accompanying materials                          
-  are licensed and made available under the terms and conditions of the BSD License         
-  which accompanies this distribution.  The full text of the license may be found at        
-  http://opensource.org/licenses/bsd-license.php                                            
+Copyright (c) 2006 - 2008 Intel Corporation.
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -38,6 +38,7 @@
 
   @retval RETURN_SUCCESS          The start of the measurement was recorded.
   @retval RETURN_OUT_OF_RESOURCES There are not enough resources to record the measurement.
+  @retval RETURN_DEVICE_ERROR     A device error reading the time stamp.
 
 **/
 RETURN_STATUS
@@ -70,6 +71,7 @@ StartPerformanceMeasurement (
 
   @retval RETURN_SUCCESS          The end of  the measurement was recorded.
   @retval RETURN_NOT_FOUND        The specified measurement record could not be found.
+  @retval RETURN_DEVICE_ERROR     A device error reading the time stamp.
 
 **/
 RETURN_STATUS

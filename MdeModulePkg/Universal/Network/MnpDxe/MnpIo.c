@@ -124,8 +124,6 @@ MnpIsValidTxToken (
   @param  PktLen                Pointer to a UINT32 variable used to record the
                                 packet's length.
 
-  @return None.
-
 **/
 VOID
 MnpBuildTxPacket (
@@ -433,8 +431,6 @@ MnpDeliverPacket (
 
   @param  Event                 The event this notify function registered to.
   @param  Context               Pointer to the context data registerd to the Event.
-
-  @return None.
 
 **/
 VOID
@@ -1007,9 +1003,7 @@ EXIT:
   @param  Event                 The event this notify function registered to.
   @param  Context               Pointer to the context data registered to the
                                 event.
-
-  @return None.
-
+   
 **/
 VOID
 EFIAPI
@@ -1048,9 +1042,12 @@ MnpCheckPacketTimeout (
 
       RxDataWrap = NET_LIST_USER_STRUCT (RxEntry, MNP_RXDATA_WRAP, WrapEntry);
 
-      if (RxDataWrap->TimeoutTick >= MNP_TIMEOUT_CHECK_INTERVAL) {
+      //
+      // TimeoutTick unit is ms, MNP_TIMEOUT_CHECK_INTERVAL unit is 100ns.
+      //
+      if (RxDataWrap->TimeoutTick >= (MNP_TIMEOUT_CHECK_INTERVAL / 10)) {
 
-        RxDataWrap->TimeoutTick -= MNP_TIMEOUT_CHECK_INTERVAL;
+        RxDataWrap->TimeoutTick -= (MNP_TIMEOUT_CHECK_INTERVAL / 10);
       } else {
         //
         // Drop the timeout packet.

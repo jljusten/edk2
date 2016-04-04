@@ -1,14 +1,15 @@
 /** @file
-  Memory-only library functions with no library constructor/destructor
+  Provides string functions, linked list functions, math functions, synchronization
+  functions, and CPU architecture specific functions.
 
-  Copyright (c) 2006 - 2008, Intel Corporation
-  All rights reserved. This program and the accompanying materials
-  are licensed and made available under the terms and conditions of the BSD License
-  which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+Copyright (c) 2006 - 2008, Intel Corporation<BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -38,7 +39,9 @@ typedef struct {
 
 #define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 4
 
-#elif defined (MDE_CPU_IPF)
+#endif // defined (MDE_CPU_IA32)
+
+#if defined (MDE_CPU_IPF)
 
 ///
 /// IPF context buffer used by SetJump() and LongJump()
@@ -86,9 +89,11 @@ typedef struct {
 
 #define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 0x10
 
-#elif defined (MDE_CPU_X64)
+#endif // defined (MDE_CPU_IPF)
+
+#if defined (MDE_CPU_X64)
 ///
-/// X64 context buffer used by SetJump() and LongJump()
+/// x64 context buffer used by SetJump() and LongJump()
 ///
 typedef struct {
   UINT64                            Rbx;
@@ -105,7 +110,9 @@ typedef struct {
 
 #define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 8
 
-#elif defined (MDE_CPU_EBC)
+#endif // defined (MDE_CPU_X64)
+
+#if defined (MDE_CPU_EBC)
 ///
 /// EBC context buffer used by SetJump() and LongJump()
 ///
@@ -119,9 +126,7 @@ typedef struct {
 
 #define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 8
 
-#else
-#error Unknown Processor Type
-#endif
+#endif // defined (MDE_CPU_EBC)
 
 //
 // String Services
@@ -147,7 +152,7 @@ typedef struct {
   @param  Destination Pointer to a Null-terminated Unicode string.
   @param  Source      Pointer to a Null-terminated Unicode string.
 
-  @return Destiantion
+  @return Destination.
 
 **/
 CHAR16 *
@@ -159,9 +164,8 @@ StrCpy (
 
 
 /**
-  Copies one Null-terminated Unicode string with a maximum length to another
-  Null-terminated Unicode string with a maximum length and returns the new
-  Unicode string.
+  Copies up to a specified length from one Null-terminated Unicode string  to 
+  another Null-terminated Unicode string and returns the new Unicode string.
 
   This function copies the contents of the Unicode string Source to the Unicode
   string Destination, and returns Destination. At most, Length Unicode
@@ -174,7 +178,7 @@ StrCpy (
   If Length > 0 and Destination is NULL, then ASSERT().
   If Length > 0 and Destination is not aligned on a 16-bit boundary, then ASSERT().
   If Length > 0 and Source is NULL, then ASSERT().
-  If Length > 0 and Source is not aligned on a 16-bit bounadry, then ASSERT().
+  If Length > 0 and Source is not aligned on a 16-bit boundary, then ASSERT().
   If Source and Destination overlap, then ASSERT().
   If PcdMaximumUnicodeStringLength is not zero, and Source contains more than
   PcdMaximumUnicodeStringLength Unicode characters not including the
@@ -184,7 +188,7 @@ StrCpy (
   @param  Source      Pointer to a Null-terminated Unicode string.
   @param  Length      Maximum number of Unicode characters to copy.
 
-  @return Destination
+  @return Destination.
 
 **/
 CHAR16 *
@@ -224,8 +228,8 @@ StrLen (
   Returns the size of a Null-terminated Unicode string in bytes, including the
   Null terminator.
 
-  This function returns the size, in bytes, of the Null-terminated Unicode
-  string specified by String.
+  This function returns the size, in bytes, of the Null-terminated Unicode string 
+  specified by String.
 
   If String is NULL, then ASSERT().
   If String is not aligned on a 16-bit boundary, then ASSERT().
@@ -282,9 +286,9 @@ StrCmp (
 
 
 /**
-  Compares two Null-terminated Unicode strings with maximum lengths, and
-  returns the difference between the first mismatched Unicode characters.
-
+  Compares up to a specified length the contents of two Null-terminated Unicode strings,
+  and returns the difference between the first mismatched Unicode characters.
+  
   This function compares the Null-terminated Unicode string FirstString to the
   Null-terminated Unicode string SecondString. At most, Length Unicode
   characters will be compared. If Length is 0, then 0 is returned. If
@@ -293,9 +297,9 @@ StrCmp (
   subtracted from the first mismatched Unicode character in FirstString.
 
   If Length > 0 and FirstString is NULL, then ASSERT().
-  If Length > 0 and FirstString is not aligned on a 16-bit bounadary, then ASSERT().
+  If Length > 0 and FirstString is not aligned on a 16-bit boundary, then ASSERT().
   If Length > 0 and SecondString is NULL, then ASSERT().
-  If Length > 0 and SecondString is not aligned on a 16-bit bounadary, then ASSERT().
+  If Length > 0 and SecondString is not aligned on a 16-bit boundary, then ASSERT().
   If PcdMaximumUnicodeStringLength is not zero, and FirstString contains more
   than PcdMaximumUnicodeStringLength Unicode characters not including the
   Null-terminator, then ASSERT().
@@ -331,9 +335,9 @@ StrnCmp (
   results are undefined.
 
   If Destination is NULL, then ASSERT().
-  If Destination is not aligned on a 16-bit bounadary, then ASSERT().
+  If Destination is not aligned on a 16-bit boundary, then ASSERT().
   If Source is NULL, then ASSERT().
-  If Source is not aligned on a 16-bit bounadary, then ASSERT().
+  If Source is not aligned on a 16-bit boundary, then ASSERT().
   If Source and Destination overlap, then ASSERT().
   If PcdMaximumUnicodeStringLength is not zero, and Destination contains more
   than PcdMaximumUnicodeStringLength Unicode characters not including the
@@ -349,7 +353,7 @@ StrnCmp (
   @param  Destination Pointer to a Null-terminated Unicode string.
   @param  Source      Pointer to a Null-terminated Unicode string.
 
-  @return Destination
+  @return Destination.
 
 **/
 CHAR16 *
@@ -361,8 +365,8 @@ StrCat (
 
 
 /**
-  Concatenates one Null-terminated Unicode string with a maximum length to the
-  end of another Null-terminated Unicode string, and returns the concatenated
+  Concatenates up to a specified length one Null-terminated Unicode to the end 
+  of another Null-terminated Unicode string, and returns the concatenated 
   Unicode string.
 
   This function concatenates two Null-terminated Unicode strings. The contents
@@ -394,7 +398,7 @@ StrCat (
   @param  Length      Maximum number of Unicode characters to concatenate from
                       Source.
 
-  @return Destination
+  @return Destination.
 
 **/
 CHAR16 *
@@ -406,7 +410,7 @@ StrnCat (
   );
 
 /**
-  Returns the first occurance of a Null-terminated Unicode sub-string
+  Returns the first occurrence of a Null-terminated Unicode sub-string
   in a Null-terminated Unicode string.
 
   This function scans the contents of the Null-terminated Unicode string
@@ -424,8 +428,8 @@ StrnCat (
   or String contains more than PcdMaximumUnicodeStringLength Unicode
   characters not including the Null-terminator, then ASSERT().
 
-  @param  String				  Pointer to a Null-terminated Unicode string.
-  @param  SearchString	Pointer to a Null-terminated Unicode string to search for.
+  @param  String          Pointer to a Null-terminated Unicode string.
+  @param  SearchString    Pointer to a Null-terminated Unicode string to search for.
 
   @retval NULL            If the SearchString does not appear in String.
   @return others          If there is a match.
@@ -434,8 +438,8 @@ StrnCat (
 CHAR16 *
 EFIAPI
 StrStr (
-  IN      CONST CHAR16      	      *String,
-  IN      CONST CHAR16      	      *SearchString
+  IN      CONST CHAR16              *String,
+  IN      CONST CHAR16              *SearchString
   );
 
 /**
@@ -467,7 +471,7 @@ StrStr (
   more than PcdMaximumUnicodeStringLength Unicode characters not including
   the Null-terminator, then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated Unicode string.
+  @param  String      Pointer to a Null-terminated Unicode string.
 
   @retval Value translated from String.
 
@@ -475,7 +479,7 @@ StrStr (
 UINTN
 EFIAPI
 StrDecimalToUintn (
-  IN      CONST CHAR16      	      *String
+  IN      CONST CHAR16              *String
   );
 
 /**
@@ -507,7 +511,7 @@ StrDecimalToUintn (
   more than PcdMaximumUnicodeStringLength Unicode characters not including
   the Null-terminator, then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated Unicode string.
+  @param  String          Pointer to a Null-terminated Unicode string.
 
   @retval Value translated from String.
 
@@ -515,7 +519,7 @@ StrDecimalToUintn (
 UINT64
 EFIAPI
 StrDecimalToUint64 (
-  IN      CONST CHAR16      	      *String
+  IN      CONST CHAR16              *String
   );
  
 
@@ -549,7 +553,7 @@ StrDecimalToUint64 (
   PcdMaximumUnicodeStringLength Unicode characters not including the Null-terminator,
   then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated Unicode string.
+  @param  String          Pointer to a Null-terminated Unicode string.
 
   @retval Value translated from String.
 
@@ -557,7 +561,7 @@ StrDecimalToUint64 (
 UINTN
 EFIAPI
 StrHexToUintn (
-  IN      CONST CHAR16      	      *String
+  IN      CONST CHAR16              *String
   );
 
 
@@ -591,7 +595,7 @@ StrHexToUintn (
   PcdMaximumUnicodeStringLength Unicode characters not including the Null-terminator,
   then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated Unicode string.
+  @param  String          Pointer to a Null-terminated Unicode string.
 
   @retval Value translated from String.
 
@@ -599,140 +603,11 @@ StrHexToUintn (
 UINT64
 EFIAPI
 StrHexToUint64 (
-  IN      CONST CHAR16      	      *String
+  IN      CONST CHAR16             *String
   );
 
 /**
-  Convert a nibble in the low 4 bits of a byte to a Unicode hexadecimal character.
-
-  This function converts a nibble in the low 4 bits of a byte to a Unicode hexadecimal 
-  character  For example, the nibble  0x01 and 0x0A will converted to L'1' and L'A' 
-  respectively.
-
-  The upper nibble in the input byte will be masked off.
-
-  @param Nibble     The nibble which is in the low 4 bits of the input byte.
-
-  @retval  CHAR16   The Unicode hexadecimal character.
-  
-**/
-CHAR16
-EFIAPI
-NibbleToHexChar (
-  IN UINT8      Nibble
-  );
-
-/** 
-  Convert binary buffer to a Unicode String in a specified sequence. 
-
-  This function converts bytes in the memory block pointed by Buffer to a Unicode String Str. 
-  Each byte will be represented by two Unicode characters. For example, byte 0xA1 will 
-  be converted into two Unicode character L'A' and L'1'. In the output String, the Unicode Character 
-  for the Most Significant Nibble will be put before the Unicode Character for the Least Significant
-  Nibble. The output string for the buffer containing a single byte 0xA1 will be L"A1". 
-  For a buffer with multiple bytes, the Unicode character produced by the first byte will be put into the 
-  the last character in the output string. The one next to first byte will be put into the
-  character before the last character. This rules applies to the rest of the bytes. The Unicode
-  character by the last byte will be put into the first character in the output string. For example,
-  the input buffer for a 64-bits unsigned integrer 0x12345678abcdef1234 will be converted to
-  a Unicode string equal to L"12345678abcdef1234".
-
-  @param String                        On input, String is pointed to the buffer allocated for the convertion.
-  @param StringLen                     The Length of String buffer to hold the output String. The length must include the tailing '\0' character.
-                                       The StringLen required to convert a N bytes Buffer will be a least equal to or greater 
-                                       than 2*N + 1.
-  @param Buffer                        The pointer to a input buffer.
-  @param BufferSizeInBytes             Lenth in bytes of the input buffer.
-  
-
-  @retval  EFI_SUCCESS                 The convertion is successfull. All bytes in Buffer has been convert to the corresponding
-                                       Unicode character and placed into the right place in String.
-  @retval  EFI_BUFFER_TOO_SMALL        StringSizeInBytes is smaller than 2 * N + 1the number of bytes required to
-                                       complete the convertion. 
-**/
-RETURN_STATUS
-EFIAPI
-BufToHexString (
-  IN OUT       CHAR16               *String,
-  IN OUT       UINTN                *StringLen,
-  IN     CONST UINT8                *Buffer,
-  IN           UINTN                BufferSizeInBytes
-  );
-
-
-/**
-  Convert a Unicode string consisting of hexadecimal characters to a output byte buffer.
-
-  This function converts a Unicode string consisting of characters in the range of Hexadecimal
-  character (L'0' to L'9', L'A' to L'F' and L'a' to L'f') to a output byte buffer. The function will stop
-  at the first non-hexadecimal character or the NULL character. The convertion process can be
-  simply viewed as the reverse operations defined by BufToHexString. Two Unicode characters will be 
-  converted into one byte. The first Unicode character represents the Most Significant Nibble and the
-  second Unicode character represents the Least Significant Nibble in the output byte. 
-  The first pair of Unicode characters represents the last byte in the output buffer. The second pair of Unicode 
-  characters represent the  the byte preceding the last byte. This rule applies to the rest pairs of bytes. 
-  The last pair represent the first byte in the output buffer. 
-
-  For example, a Unciode String L"12345678" will be converted into a buffer wil the following bytes 
-  (first byte is the byte in the lowest memory address): "0x78, 0x56, 0x34, 0x12".
-
-  If String has N valid hexadecimal characters for conversion,  the caller must make sure Buffer is at least 
-  N/2 (if N is even) or (N+1)/2 (if N if odd) bytes. 
-
-  @param Buffer                      The output buffer allocated by the caller.
-  @param BufferSizeInBytes           On input, the size in bytes of Buffer. On output, it is updated to 
-                                     contain the size of the Buffer which is actually used for the converstion.
-                                     For Unicode string with 2*N hexadecimal characters (not including the 
-                                     tailing NULL character), N bytes of Buffer will be used for the output.
-  @param String                      The input hexadecimal string.
-  @param ConvertedStrLen             The number of hexadecimal characters used to produce content in output
-                                     buffer Buffer.
-
-  @retval  RETURN_BUFFER_TOO_SMALL   The input BufferSizeInBytes is too small to hold the output. BufferSizeInBytes
-                                     will be updated to the size required for the converstion.
-  @retval  RETURN_SUCCESS            The convertion is successful or the first Unicode character from String
-                                     is hexadecimal. If ConvertedStrLen is not NULL, it is updated
-                                     to the number of hexadecimal character used for the converstion.
-**/
-RETURN_STATUS
-EFIAPI
-HexStringToBuf (
-  OUT          UINT8                    *Buffer,   
-  IN OUT       UINTN                    *BufferSizeInBytes,
-  IN     CONST CHAR16                   *String,
-  OUT          UINTN                    *ConvertedStrLen  OPTIONAL
-  );
-
-
-/**
-  Test if  a Unicode character is a hexadecimal digit. If true, the input
-  Unicode character is converted to a byte. 
-
-  This function tests if a Unicode character is a hexadecimal digit. If true, the input
-  Unicode character is converted to a byte. For example, Unicode character
-  L'A' will be converted to 0x0A. 
-
-  If Digit is NULL, then ASSERT.
-
-  @param  Digit       The output hexadecimal digit.
-
-  @param  Char        The input Unicode character.
-
-  @retval TRUE        Char is in the range of Hexadecimal number. Digit is updated
-                      to the byte value of the number.
-  @retval FALSE       Char is not in the range of Hexadecimal number. Digit is keep
-                      intact.
-  
-**/
-BOOLEAN
-EFIAPI
-IsHexDigit (
-  OUT UINT8      *Digit,
-  IN  CHAR16      Char
-  );
-
-/**
-  Convert one Null-terminated Unicode string to a Null-terminated
+  Convert a Null-terminated Unicode string to a Null-terminated
   ASCII string and returns the ASCII string.
 
   This function converts the content of the Unicode string Source
@@ -758,14 +633,14 @@ IsHexDigit (
   @param  Source        Pointer to a Null-terminated Unicode string.
   @param  Destination   Pointer to a Null-terminated ASCII string.
 
-  @return Destination
+  @return Destination.
 
 **/
 CHAR8 *
 EFIAPI
 UnicodeStrToAsciiStr (
-  IN      CONST CHAR16      	      *Source,
-  OUT 	  CHAR8  	                  *Destination
+  IN      CONST CHAR16              *Source,
+  OUT     CHAR8                     *Destination
   );
 
 
@@ -799,9 +674,8 @@ AsciiStrCpy (
 
 
 /**
-  Copies one Null-terminated ASCII string with a maximum length to another
-  Null-terminated ASCII string with a maximum length and returns the new ASCII
-  string.
+  Copies up to a specified length one Null-terminated ASCII string to another 
+  Null-terminated ASCII string and returns the new ASCII string.
 
   This function copies the contents of the ASCII string Source to the ASCII
   string Destination, and returns Destination. At most, Length ASCII characters
@@ -903,8 +777,8 @@ AsciiStrSize (
   @param  FirstString   Pointer to a Null-terminated ASCII string.
   @param  SecondString  Pointer to a Null-terminated ASCII string.
 
-  @retval 0      FirstString is identical to SecondString.
-  @return others FirstString is not identical to SecondString.
+  @retval ==0      FirstString is identical to SecondString.
+  @retval !=0      FirstString is not identical to SecondString.
 
 **/
 INTN
@@ -938,9 +812,9 @@ AsciiStrCmp (
   @param  FirstString   Pointer to a Null-terminated ASCII string.
   @param  SecondString  Pointer to a Null-terminated ASCII string.
 
-  @retval 0      FirstString is identical to SecondString using case insensitive
+  @retval ==0    FirstString is identical to SecondString using case insensitive
                  comparisons.
-  @return others FirstString is not identical to SecondString using case
+  @retval !=0    FirstString is not identical to SecondString using case
                  insensitive comparisons.
 
 **/
@@ -976,8 +850,8 @@ AsciiStriCmp (
   @param  SecondString  Pointer to a Null-terminated ASCII string.
   @param  Length        Maximum number of ASCII characters for compare.
   
-  @retval 0      FirstString is identical to SecondString.
-  @return others FirstString is not identical to SecondString.
+  @retval ==0       FirstString is identical to SecondString.
+  @retval !=0       FirstString is not identical to SecondString.
 
 **/
 INTN
@@ -1025,9 +899,9 @@ AsciiStrCat (
 
 
 /**
-  Concatenates one Null-terminated ASCII string with a maximum length to the
-  end of another Null-terminated ASCII string, and returns the concatenated
-  ASCII string.
+  Concatenates up to a specified length one Null-terminated ASCII string to 
+  the end of another Null-terminated ASCII string, and returns the 
+  concatenated ASCII string.
 
   This function concatenates two Null-terminated ASCII strings. The contents
   of Null-terminated ASCII string Source are concatenated to the end of Null-
@@ -1068,7 +942,7 @@ AsciiStrnCat (
 
 
 /**
-  Returns the first occurance of a Null-terminated ASCII sub-string
+  Returns the first occurrence of a Null-terminated ASCII sub-string
   in a Null-terminated ASCII string.
 
   This function scans the contents of the ASCII string specified by String
@@ -1087,14 +961,15 @@ AsciiStrnCat (
   @param  SearchString    Pointer to a Null-terminated ASCII string to search for.
 
   @retval NULL            If the SearchString does not appear in String.
-  @return others          If there is a match.
+  @retval others          If there is a match return the first occurrence of SearchingString.
+                          If the length of SearchString is zero,return String.
 
 **/
 CHAR8 *
 EFIAPI
 AsciiStrStr (
-  IN      CONST CHAR8      	        *String,
-  IN      CONST CHAR8      	        *SearchString
+  IN      CONST CHAR8               *String,
+  IN      CONST CHAR8               *SearchString
   );
 
 
@@ -1123,7 +998,7 @@ AsciiStrStr (
   PcdMaximumAsciiStringLength ASCII characters not including the Null-terminator,
   then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated ASCII string.
+  @param  String          Pointer to a Null-terminated ASCII string.
 
   @retval Value translated from String.
 
@@ -1160,7 +1035,7 @@ AsciiStrDecimalToUintn (
   PcdMaximumAsciiStringLength ASCII characters not including the Null-terminator,
   then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated ASCII string.
+  @param  String          Pointer to a Null-terminated ASCII string.
 
   @retval Value translated from String.
 
@@ -1168,7 +1043,7 @@ AsciiStrDecimalToUintn (
 UINT64
 EFIAPI
 AsciiStrDecimalToUint64 (
-  IN      CONST CHAR8       	      *String
+  IN      CONST CHAR8               *String
   );
 
 
@@ -1201,7 +1076,7 @@ AsciiStrDecimalToUint64 (
   and String contains more than PcdMaximumAsciiStringLength ASCII characters not including
   the Null-terminator, then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated ASCII string.
+  @param  String          Pointer to a Null-terminated ASCII string.
 
   @retval Value translated from String.
 
@@ -1209,7 +1084,7 @@ AsciiStrDecimalToUint64 (
 UINTN
 EFIAPI
 AsciiStrHexToUintn (
-  IN      CONST CHAR8       	      *String
+  IN      CONST CHAR8               *String
   );
 
 
@@ -1242,7 +1117,7 @@ AsciiStrHexToUintn (
   and String contains more than PcdMaximumAsciiStringLength ASCII characters not including
   the Null-terminator, then ASSERT().
 
-  @param  String			    Pointer to a Null-terminated ASCII string.
+  @param  String          Pointer to a Null-terminated ASCII string.
 
   @retval Value translated from String.
 
@@ -1250,7 +1125,7 @@ AsciiStrHexToUintn (
 UINT64
 EFIAPI
 AsciiStrHexToUint64 (
-  IN      CONST CHAR8      	        *String
+  IN      CONST CHAR8                *String
   );
 
 
@@ -1278,14 +1153,14 @@ AsciiStrHexToUint64 (
   @param  Source        Pointer to a Null-terminated ASCII string.
   @param  Destination   Pointer to a Null-terminated Unicode string.
 
-  @return Destination
+  @return Destination.
 
 **/
 CHAR16 *
 EFIAPI
 AsciiStrToUnicodeStr (
-  IN      CONST CHAR8       	      *Source,
-  OUT 	  CHAR16  	                *Destination
+  IN      CONST CHAR8               *Source,
+  OUT     CHAR16                    *Destination
   );
 
 
@@ -1299,7 +1174,7 @@ AsciiStrToUnicodeStr (
 
   @param  Value The 8-bit value to convert to BCD. Range 0..99.
 
-  @return The BCD value
+  @return The BCD value.
 
 **/
 UINT8
@@ -1345,10 +1220,10 @@ BcdToDecimal8 (
   instead if calling the InitializeListHead() function to perform the
   equivalent operation.
 
-  @param  ListHead  The head note of a list to initiailize.
+  @param  ListHead  The head note of a list to initialize.
 
 **/
-#define INITIALIZE_LIST_HEAD_VARIABLE(ListHead)  {&ListHead, &ListHead}
+#define INITIALIZE_LIST_HEAD_VARIABLE(ListHead)  {&(ListHead), &(ListHead)}
 
 
 /**
@@ -1383,7 +1258,8 @@ InitializeListHead (
 
   If ListHead is NULL, then ASSERT().
   If Entry is NULL, then ASSERT().
-  If ListHead was not initialized with InitializeListHead(), then ASSERT().
+  If ListHead was not initialized with INTIALIZE_LIST_HEAD_VARIABLE() or
+  InitializeListHead(), then ASSERT().
   If PcdMaximumLinkedListLenth is not zero, and prior to insertion the number
   of nodes in ListHead, including the ListHead node, is greater than or
   equal to PcdMaximumLinkedListLength, then ASSERT().
@@ -1412,7 +1288,8 @@ InsertHeadList (
 
   If ListHead is NULL, then ASSERT().
   If Entry is NULL, then ASSERT().
-  If ListHead was not initialized with InitializeListHead(), then ASSERT().
+  If ListHead was not initialized with INTIALIZE_LIST_HEAD_VARIABLE() or 
+  InitializeListHead(), then ASSERT().
   If PcdMaximumLinkedListLenth is not zero, and prior to insertion the number
   of nodes in ListHead, including the ListHead node, is greater than or
   equal to PcdMaximumLinkedListLength, then ASSERT().
@@ -1435,12 +1312,13 @@ InsertTailList (
 /**
   Retrieves the first node of a doubly linked list.
 
-  Returns the first node of a doubly linked list. List must have been
-  initialized with InitializeListHead(). If List is empty, then NULL is
-  returned.
+  Returns the first node of a doubly linked list.  List must have been 
+  initialized with INTIALIZE_LIST_HEAD_VARIABLE() or InitializeListHead().
+  If List is empty, then List is returned.
 
   If List is NULL, then ASSERT().
-  If List was not initialized with InitializeListHead(), then ASSERT().
+  If List was not initialized with INTIALIZE_LIST_HEAD_VARIABLE() or 
+  InitializeListHead(), then ASSERT().
   If PcdMaximumLinkedListLenth is not zero, and the number of nodes
   in List, including the List node, is greater than or equal to
   PcdMaximumLinkedListLength, then ASSERT().
@@ -1461,13 +1339,14 @@ GetFirstNode (
 /**
   Retrieves the next node of a doubly linked list.
 
-  Returns the node of a doubly linked list that follows Node. List must have
-  been initialized with InitializeListHead(). If List is empty, then List is
-  returned.
+  Returns the node of a doubly linked list that follows Node.  
+  List must have been initialized with INTIALIZE_LIST_HEAD_VARIABLE()
+  or InitializeListHead().  If List is empty, then List is returned.
 
   If List is NULL, then ASSERT().
   If Node is NULL, then ASSERT().
-  If List was not initialized with InitializeListHead(), then ASSERT().
+  If List was not initialized with INTIALIZE_LIST_HEAD_VARIABLE() or 
+  InitializeListHead(), then ASSERT().
   If PcdMaximumLinkedListLenth is not zero, and List contains more than
   PcdMaximumLinkedListLenth nodes, then ASSERT().
   If Node is not a node in List, then ASSERT().
@@ -1494,7 +1373,8 @@ GetNextNode (
   zero nodes, this function returns TRUE. Otherwise, it returns FALSE.
 
   If ListHead is NULL, then ASSERT().
-  If ListHead was not initialized with InitializeListHead(), then ASSERT().
+  If ListHead was not initialized with INTIALIZE_LIST_HEAD_VARIABLE() or 
+  InitializeListHead(), then ASSERT().
   If PcdMaximumLinkedListLenth is not zero, and the number of nodes
   in List, including the List node, is greater than or equal to
   PcdMaximumLinkedListLength, then ASSERT().
@@ -1519,11 +1399,12 @@ IsListEmpty (
 
   Returns TRUE if Node is equal to List.  Returns FALSE if Node is one of the
   nodes in the doubly linked list specified by List.  List must have been
-  initialized with InitializeListHead().
+  initialized with INTIALIZE_LIST_HEAD_VARIABLE() or InitializeListHead().
 
   If List is NULL, then ASSERT().
   If Node is NULL, then ASSERT().
-  If List was not initialized with InitializeListHead(), then ASSERT().
+  If List was not initialized with INTIALIZE_LIST_HEAD_VARIABLE() or InitializeListHead(), 
+  then ASSERT().
   If PcdMaximumLinkedListLenth is not zero, and the number of nodes
   in List, including the List node, is greater than or equal to
   PcdMaximumLinkedListLength, then ASSERT().
@@ -1549,11 +1430,12 @@ IsNull (
 
   Returns TRUE if Node is the last node in the doubly linked list specified by
   List. Otherwise, FALSE is returned. List must have been initialized with
-  InitializeListHead().
+  INTIALIZE_LIST_HEAD_VARIABLE() or InitializeListHead().
 
   If List is NULL, then ASSERT().
   If Node is NULL, then ASSERT().
-  If List was not initialized with InitializeListHead(), then ASSERT().
+  If List was not initialized with INTIALIZE_LIST_HEAD_VARIABLE() or
+  InitializeListHead(), then ASSERT().
   If PcdMaximumLinkedListLenth is not zero, and the number of nodes
   in List, including the List node, is greater than or equal to
   PcdMaximumLinkedListLength, then ASSERT().
@@ -1582,8 +1464,8 @@ IsNodeAtEnd (
   Otherwise, the location of the FirstEntry node is swapped with the location
   of the SecondEntry node in a doubly linked list. SecondEntry must be in the
   same double linked list as FirstEntry and that double linked list must have
-  been initialized with InitializeListHead(). SecondEntry is returned after the
-  nodes are swapped.
+  been initialized with INTIALIZE_LIST_HEAD_VARIABLE() or InitializeListHead(). 
+  SecondEntry is returned after the nodes are swapped.
 
   If FirstEntry is NULL, then ASSERT().
   If SecondEntry is NULL, then ASSERT().
@@ -1596,7 +1478,7 @@ IsNodeAtEnd (
   @param  FirstEntry  A pointer to a node in a linked list.
   @param  SecondEntry A pointer to another node in the same linked list.
   
-  @return SecondEntry
+  @return SecondEntry.
 
 **/
 LIST_ENTRY *
@@ -1623,9 +1505,9 @@ SwapListEntries (
   linked list containing Entry, including the Entry node, is greater than
   or equal to PcdMaximumLinkedListLength, then ASSERT().
 
-  @param  Entry A pointer to a node in a linked list
+  @param  Entry A pointer to a node in a linked list.
 
-  @return Entry
+  @return Entry.
 
 **/
 LIST_ENTRY *
@@ -1650,7 +1532,7 @@ RemoveEntryList (
   @param  Operand The 64-bit operand to shift left.
   @param  Count   The number of bits to shift left.
 
-  @return Operand << Count
+  @return Operand << Count.
 
 **/
 UINT64
@@ -1720,7 +1602,7 @@ ARShiftU64 (
   @param  Operand The 32-bit operand to rotate left.
   @param  Count   The number of bits to rotate left.
 
-  @return Operand <<< Count
+  @return Operand << Count
 
 **/
 UINT32
@@ -1744,7 +1626,7 @@ LRotU32 (
   @param  Operand The 32-bit operand to rotate right.
   @param  Count   The number of bits to rotate right.
 
-  @return Operand >>> Count
+  @return Operand >> Count
 
 **/
 UINT32
@@ -1768,7 +1650,7 @@ RRotU32 (
   @param  Operand The 64-bit operand to rotate left.
   @param  Count   The number of bits to rotate left.
 
-  @return Operand <<< Count
+  @return Operand << Count
 
 **/
 UINT64
@@ -1792,7 +1674,7 @@ LRotU64 (
   @param  Operand The 64-bit operand to rotate right.
   @param  Count   The number of bits to rotate right.
 
-  @return Operand >>> Count
+  @return Operand >> Count
 
 **/
 UINT64
@@ -1812,8 +1694,8 @@ RRotU64 (
 
   @param  Operand The 32-bit operand to evaluate.
 
-  @return Position of the lowest bit set in Operand if found.
-  @retval -1 Operand is zero.
+  @retval 0..31  The lowest bit set in Operand was found.
+  @retval -1    Operand is zero.
 
 **/
 INTN
@@ -1832,8 +1714,9 @@ LowBitSet32 (
 
   @param  Operand The 64-bit operand to evaluate.
 
-  @return Position of the lowest bit set in Operand if found.
-  @retval -1  Operand is zero.
+  @retval 0..63  The lowest bit set in Operand was found.
+  @retval -1    Operand is zero.
+
 
 **/
 INTN
@@ -1853,8 +1736,8 @@ LowBitSet64 (
 
   @param  Operand The 32-bit operand to evaluate.
 
-  @return Position of the highest bit set in Operand if found.
-  @retval -1  Operand is zero.
+  @retval 0..31  Position of the highest bit set in Operand if found.
+  @retval -1    Operand is zero.
 
 **/
 INTN
@@ -1874,8 +1757,8 @@ HighBitSet32 (
 
   @param  Operand The 64-bit operand to evaluate.
 
-  @return Position of the highest bit set in Operand if found.
-  @retval -1  Operand is zero.
+  @retval 0..63   Position of the highest bit set in Operand if found.
+  @retval -1     Operand is zero.
 
 **/
 INTN
@@ -1887,7 +1770,7 @@ HighBitSet64 (
 
 /**
   Returns the value of the highest bit set in a 32-bit value. Equivalent to
-  1 << HighBitSet32(x).
+  1 << log2(x).
 
   This function computes the value of the highest bit set in the 32-bit value
   specified by Operand. If Operand is zero, then zero is returned.
@@ -1907,7 +1790,7 @@ GetPowerOfTwo32 (
 
 /**
   Returns the value of the highest bit set in a 64-bit value. Equivalent to
-  1 << HighBitSet64(x).
+  1 << log2(x).
 
   This function computes the value of the highest bit set in the 64-bit value
   specified by Operand. If Operand is zero, then zero is returned.
@@ -1932,9 +1815,9 @@ GetPowerOfTwo64 (
   from little endian to big endian or vice versa. The byte swapped value is
   returned.
 
-  @param  Value Operand A 16-bit unsigned value.
+  @param  Value A 16-bit unsigned value.
 
-  @return The byte swaped Operand.
+  @return The byte swapped Value.
 
 **/
 UINT16
@@ -1951,9 +1834,9 @@ SwapBytes16 (
   from little endian to big endian or vice versa. The byte swapped value is
   returned.
 
-  @param  Value Operand A 32-bit unsigned value.
+  @param  Value A 32-bit unsigned value.
 
-  @return The byte swaped Operand.
+  @return The byte swapped Value.
 
 **/
 UINT32
@@ -1970,9 +1853,9 @@ SwapBytes32 (
   from little endian to big endian or vice versa. The byte swapped value is
   returned.
 
-  @param  Value Operand A 64-bit unsigned value.
+  @param  Value A 64-bit unsigned value.
 
-  @return The byte swaped Operand.
+  @return The byte swapped Value.
 
 **/
 UINT64
@@ -1989,8 +1872,6 @@ SwapBytes64 (
   This function multiples the 64-bit unsigned value Multiplicand by the 32-bit
   unsigned value Multiplier and generates a 64-bit unsigned result. This 64-
   bit unsigned result is returned.
-
-  If the result overflows, then ASSERT().
 
   @param  Multiplicand  A 64-bit unsigned value.
   @param  Multiplier    A 32-bit unsigned value.
@@ -2014,8 +1895,6 @@ MultU64x32 (
   unsigned value Multiplier and generates a 64-bit unsigned result. This 64-
   bit unsigned result is returned.
 
-  If the result overflows, then ASSERT().
-
   @param  Multiplicand  A 64-bit unsigned value.
   @param  Multiplier    A 64-bit unsigned value.
 
@@ -2037,8 +1916,6 @@ MultU64x64 (
   This function multiples the 64-bit signed value Multiplicand by the 64-bit
   signed value Multiplier and generates a 64-bit signed result. This 64-bit
   signed result is returned.
-
-  If the result overflows, then ASSERT().
 
   @param  Multiplicand  A 64-bit signed value.
   @param  Multiplier    A 64-bit signed value.
@@ -2166,6 +2043,10 @@ DivU64x64Remainder (
   value Divisor and generates a 64-bit signed quotient. If Remainder is not
   NULL, then the 64-bit signed remainder is returned in Remainder. This
   function returns the 64-bit signed quotient.
+
+  It is the caller's responsibility to not call this function with a Divisor of 0.
+  If Divisor is 0, then the quotient and remainder should be assumed to be 
+  the largest negative integer.
 
   If Divisor is 0, then ASSERT().
 
@@ -2426,7 +2307,7 @@ BitFieldWrite8 (
   Reads a bit field from an 8-bit value, performs a bitwise OR, and returns the
   result.
 
-  Performs a bitwise inclusive OR between the bit field specified by StartBit
+  Performs a bitwise OR between the bit field specified by StartBit
   and EndBit in Operand and the value specified by OrData. All other bits in
   Operand are preserved. The new 8-bit value is returned.
 
@@ -2493,8 +2374,8 @@ BitFieldAnd8 (
   bitwise OR, and returns the result.
 
   Performs a bitwise AND between the bit field specified by StartBit and EndBit
-  in Operand and the value specified by AndData, followed by a bitwise
-  inclusive OR with value specified by OrData. All other bits in Operand are
+  in Operand and the value specified by AndData, followed by a bitwise 
+  OR with value specified by OrData. All other bits in Operand are
   preserved. The new 8-bit value is returned.
 
   If 8-bit operations are not supported, then ASSERT().
@@ -2588,7 +2469,7 @@ BitFieldWrite16 (
   Reads a bit field from a 16-bit value, performs a bitwise OR, and returns the
   result.
 
-  Performs a bitwise inclusive OR between the bit field specified by StartBit
+  Performs a bitwise OR between the bit field specified by StartBit
   and EndBit in Operand and the value specified by OrData. All other bits in
   Operand are preserved. The new 16-bit value is returned.
 
@@ -2655,8 +2536,8 @@ BitFieldAnd16 (
   bitwise OR, and returns the result.
 
   Performs a bitwise AND between the bit field specified by StartBit and EndBit
-  in Operand and the value specified by AndData, followed by a bitwise
-  inclusive OR with value specified by OrData. All other bits in Operand are
+  in Operand and the value specified by AndData, followed by a bitwise 
+  OR with value specified by OrData. All other bits in Operand are
   preserved. The new 16-bit value is returned.
 
   If 16-bit operations are not supported, then ASSERT().
@@ -2750,7 +2631,7 @@ BitFieldWrite32 (
   Reads a bit field from a 32-bit value, performs a bitwise OR, and returns the
   result.
 
-  Performs a bitwise inclusive OR between the bit field specified by StartBit
+  Performs a bitwise OR between the bit field specified by StartBit
   and EndBit in Operand and the value specified by OrData. All other bits in
   Operand are preserved. The new 32-bit value is returned.
 
@@ -2817,8 +2698,8 @@ BitFieldAnd32 (
   bitwise OR, and returns the result.
 
   Performs a bitwise AND between the bit field specified by StartBit and EndBit
-  in Operand and the value specified by AndData, followed by a bitwise
-  inclusive OR with value specified by OrData. All other bits in Operand are
+  in Operand and the value specified by AndData, followed by a bitwise 
+  OR with value specified by OrData. All other bits in Operand are
   preserved. The new 32-bit value is returned.
 
   If 32-bit operations are not supported, then ASSERT().
@@ -2912,7 +2793,7 @@ BitFieldWrite64 (
   Reads a bit field from a 64-bit value, performs a bitwise OR, and returns the
   result.
 
-  Performs a bitwise inclusive OR between the bit field specified by StartBit
+  Performs a bitwise OR between the bit field specified by StartBit
   and EndBit in Operand and the value specified by OrData. All other bits in
   Operand are preserved. The new 64-bit value is returned.
 
@@ -2979,8 +2860,8 @@ BitFieldAnd64 (
   bitwise OR, and returns the result.
 
   Performs a bitwise AND between the bit field specified by StartBit and EndBit
-  in Operand and the value specified by AndData, followed by a bitwise
-  inclusive OR with value specified by OrData. All other bits in Operand are
+  in Operand and the value specified by AndData, followed by a bitwise 
+  OR with value specified by OrData. All other bits in Operand are
   preserved. The new 64-bit value is returned.
 
   If 64-bit operations are not supported, then ASSERT().
@@ -3077,7 +2958,7 @@ InitializeSpinLock (
 
   @param  SpinLock  A pointer to the spin lock to place in the acquired state.
 
-  @return SpinLock accquired lock.
+  @return SpinLock acquired lock.
 
 **/
 SPIN_LOCK *
@@ -3263,7 +3144,7 @@ InterlockedCompareExchangePointer (
 //
 
 /**
-  Calculate the sum of all elements in a buffer in unit of UINT8.
+  Returns the sum of all elements in a buffer in unit of UINT8.
   During calculation, the carry bits are dropped.
 
   This function calculates the sum of all elements in a buffer
@@ -3275,7 +3156,7 @@ InterlockedCompareExchangePointer (
   If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT().
 
   @param  Buffer      Pointer to the buffer to carry out the sum operation.
-  @param  Length      The size, in bytes, of Buffer .
+  @param  Length      The size, in bytes, of Buffer.
 
   @return Sum         The sum of Buffer with carry bits dropped during additions.
 
@@ -3283,8 +3164,8 @@ InterlockedCompareExchangePointer (
 UINT8
 EFIAPI
 CalculateSum8 (
-  IN      CONST UINT8     	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT8              *Buffer,
+  IN      UINTN                     Length
   );
 
 
@@ -3303,14 +3184,14 @@ CalculateSum8 (
   @param  Buffer      Pointer to the buffer to carry out the checksum operation.
   @param  Length      The size, in bytes, of Buffer.
 
-  @return Checksum	  The 2's complement checksum of Buffer.
+  @return Checksum    The 2's complement checksum of Buffer.
 
 **/
 UINT8
 EFIAPI
 CalculateCheckSum8 (
-  IN      CONST UINT8     	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT8              *Buffer,
+  IN      UINTN                     Length
   );
 
 
@@ -3336,8 +3217,8 @@ CalculateCheckSum8 (
 UINT16
 EFIAPI
 CalculateSum16 (
-  IN      CONST UINT16    	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT16             *Buffer,
+  IN      UINTN                     Length
   );
 
 
@@ -3358,24 +3239,24 @@ CalculateSum16 (
   @param  Buffer      Pointer to the buffer to carry out the checksum operation.
   @param  Length      The size, in bytes, of Buffer.
 
-  @return Checksum	  The 2's complement checksum of Buffer.
+  @return Checksum    The 2's complement checksum of Buffer.
 
 **/
 UINT16
 EFIAPI
 CalculateCheckSum16 (
-  IN      CONST UINT16    	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT16             *Buffer,
+  IN      UINTN                     Length
   );
 
 
 /**
-  Returns the sum of all elements in a buffer of 32-bit values.  During
+  Returns the sum of all elements in a buffer of 32-bit values. During
   calculation, the carry bits are dropped.
 
   This function calculates the sum of the 32-bit values in the buffer
   specified by Buffer and Length. The carry bits in result of addition are dropped.
-  The 32-bit result is returned.  If Length is 0, then 0 is returned.
+  The 32-bit result is returned. If Length is 0, then 0 is returned.
 
   If Buffer is NULL, then ASSERT().
   If Buffer is not aligned on a 32-bit boundary, then ASSERT().
@@ -3391,8 +3272,8 @@ CalculateCheckSum16 (
 UINT32
 EFIAPI
 CalculateSum32 (
-  IN      CONST UINT32    	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT32             *Buffer,
+  IN      UINTN                     Length
   );
 
 
@@ -3413,14 +3294,14 @@ CalculateSum32 (
   @param  Buffer      Pointer to the buffer to carry out the checksum operation.
   @param  Length      The size, in bytes, of Buffer.
 
-  @return Checksum	  The 2's complement checksum of Buffer.
+  @return Checksum    The 2's complement checksum of Buffer.
 
 **/
 UINT32
 EFIAPI
 CalculateCheckSum32 (
-  IN      CONST UINT32    	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT32             *Buffer,
+  IN      UINTN                     Length
   );
 
 
@@ -3446,8 +3327,8 @@ CalculateCheckSum32 (
 UINT64
 EFIAPI
 CalculateSum64 (
-  IN      CONST UINT64    	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT64             *Buffer,
+  IN      UINTN                     Length
   );
 
 
@@ -3468,20 +3349,28 @@ CalculateSum64 (
   @param  Buffer      Pointer to the buffer to carry out the checksum operation.
   @param  Length      The size, in bytes, of Buffer.
 
-  @return Checksum	  The 2's complement checksum of Buffer.
+  @return Checksum    The 2's complement checksum of Buffer.
 
 **/
 UINT64
 EFIAPI
 CalculateCheckSum64 (
-  IN      CONST UINT64    	        *Buffer,
-  IN      UINTN		  	              Length
+  IN      CONST UINT64             *Buffer,
+  IN      UINTN                     Length
   );
 
 
-///
-/// Base Library CPU Functions
-///
+//
+// Base Library CPU Functions
+//
+
+/**
+  Function entry point used when a stack switch is requested with SwitchStack()
+
+  @param  Context1        Context1 parameter passed into SwitchStack().
+  @param  Context2        Context2 parameter passed into SwitchStack().
+
+**/
 typedef
 VOID
 (EFIAPI *SWITCH_STACK_ENTRY_POINT)(
@@ -3514,6 +3403,11 @@ MemoryFence (
 
   If JumpBuffer is NULL, then ASSERT().
   For IPF CPUs, if JumpBuffer is not aligned on a 16-byte boundary, then ASSERT().
+  
+  NOTE: The structure BASE_LIBRARY_JUMP_BUFFER is CPU architecture specific.
+  The same structure must never be used for more than one CPU architecture context.
+  For example, a BASE_LIBRARY_JUMP_BUFFER allocated by an IA-32 module must never be used from an x64 module. 
+  SetJump()/LongJump() is not currently supported for the EBC processor type.   
 
   @param  JumpBuffer  A pointer to CPU context buffer.
 
@@ -3674,7 +3568,10 @@ CpuPause (
                       function.
   @param  NewStack    A pointer to the new stack to use for the EntryPoint
                       function.
-  @param  ...         Extended parameters.
+  @param  ...         This variable argument list is ignored for IA32, x64, and EBC.  
+                      For IPF, this variable argument list is expected to contain 
+                      a single parameter of type VOID * that specifies the new backing 
+                      store pointer.
 
 
 **/
@@ -3717,22 +3614,20 @@ EFIAPI
 CpuDeadLoop (
   VOID
   );
-
-
+ 
 #if defined (MDE_CPU_IPF)
 
 /**
   Flush a range of  cache lines in the cache coherency domain of the calling
   CPU.
 
-  Invalidates the  cache lines specified by Address and Length. If Address is
-  not aligned on a cache line boundary, then entire cache line containing
-  Address is invalidated. If Address + Length is not aligned on a cache line
-  boundary, then the entire instruction cache line containing Address + Length
-  -1 is invalidated. This function may choose to invalidate the entire
-  instruction cache if that is more efficient than invalidating the specified
-  range. If Length is 0, the no instruction cache lines are invalidated.
-  Address is returned.
+  Flushes the cache lines specified by Address and Length.  If Address is not aligned 
+  on a cache line boundary, then entire cache line containing Address is flushed.  
+  If Address + Length is not aligned on a cache line boundary, then the entire cache 
+  line containing Address + Length - 1 is flushed.  This function may choose to flush 
+  the entire cache if that is more efficient than flushing the specified range.  If 
+  Length is 0, the no cache lines are flushed.  Address is returned.   
+  This function is only available on IPF.
 
   If Length is greater than (MAX_ADDRESS - Address + 1), then ASSERT().
 
@@ -3743,12 +3638,12 @@ CpuDeadLoop (
 
   @param  Length  The number of bytes to invalidate from the instruction cache.
 
-  @return Address
+  @return Address.
 
 **/
 VOID *
 EFIAPI
-IpfFlushCacheRange (
+AsmFlushCacheRange (
   IN      VOID                      *Address,
   IN      UINTN                     Length
   );
@@ -3760,7 +3655,7 @@ IpfFlushCacheRange (
   The cache line size affected is at least 32-bytes (aligned on a 32-byte boundary).
   An implementation may flush a larger region.  This function is only available on IPF.
 
-  @param Address  	The Address of cache line to be flushed.
+  @param Address    The Address of cache line to be flushed.
 
   @return The address of FC instruction executed.
 
@@ -3778,7 +3673,7 @@ AsmFc (
   The cache line size affected is at least 32-bytes (aligned on a 32-byte boundary).
   An implementation may flush a larger region.  This function is only available on IPF.
 
-  @param Address  	The Address of cache line to be flushed.
+  @param Address    The Address of cache line to be flushed.
 
   @return The address of FC.I instruction executed.
 
@@ -3792,6 +3687,8 @@ AsmFci (
 
 /**
   Reads the current value of a Processor Identifier Register (CPUID).
+  
+  Reads and returns the current value of Processor Identifier Register specified by Index. 
   The Index of largest implemented CPUID (One less than the number of implemented CPUID
   registers) is determined by CPUID [3] bits {7:0}.
   No parameter checking is performed on Index.  If the Index value is beyond the
@@ -3799,7 +3696,7 @@ AsmFci (
   must either guarantee that Index is valid, or the caller must set up fault handlers to
   catch the faults.  This function is only available on IPF.
 
-  @param Index		The 8-bit Processor Identifier Register index to read.
+  @param Index    The 8-bit Processor Identifier Register index to read.
 
   @return The current value of Processor Identifier Register specified by Index.
 
@@ -3827,11 +3724,13 @@ AsmReadPsr (
 
 /**
   Writes the current value of 64-bit Processor Status Register (PSR).
-  No parameter checking is performed on Value.  All bits of Value corresponding to
-  reserved fields of PSR must be 0 or a Reserved Register/Field fault may occur.  The caller must either guarantee that Value is valid, or the caller must set up fault handlers to catch the faults.
-  This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to PSR.
+  No parameter checking is performed on Value.  All bits of Value corresponding to
+  reserved fields of PSR must be 0 or a Reserved Register/Field fault may occur.
+  The caller must either guarantee that Value is valid, or the caller must set up
+  fault handlers to catch the faults. This function is only available on IPF.
+
+  @param Value    The 64-bit value to write to PSR.
 
   @return The 64-bit value written to the PSR.
 
@@ -3845,6 +3744,8 @@ AsmWritePsr (
 
 /**
   Reads the current value of 64-bit Kernel Register #0 (KR0).
+  
+  Reads and returns the current value of KR0. 
   This function is only available on IPF.
 
   @return The current value of KR0.
@@ -3859,6 +3760,8 @@ AsmReadKr0 (
 
 /**
   Reads the current value of 64-bit Kernel Register #1 (KR1).
+
+  Reads and returns the current value of KR1. 
   This function is only available on IPF.
 
   @return The current value of KR1.
@@ -3873,6 +3776,8 @@ AsmReadKr1 (
 
 /**
   Reads the current value of 64-bit Kernel Register #2 (KR2).
+
+  Reads and returns the current value of KR2. 
   This function is only available on IPF.
 
   @return The current value of KR2.
@@ -3887,6 +3792,8 @@ AsmReadKr2 (
 
 /**
   Reads the current value of 64-bit Kernel Register #3 (KR3).
+
+  Reads and returns the current value of KR3. 
   This function is only available on IPF.
 
   @return The current value of KR3.
@@ -3901,8 +3808,10 @@ AsmReadKr3 (
 
 /**
   Reads the current value of 64-bit Kernel Register #4 (KR4).
-  This function is only available on IPF.
 
+  Reads and returns the current value of KR4. 
+  This function is only available on IPF.
+  
   @return The current value of KR4.
 
 **/
@@ -3915,6 +3824,8 @@ AsmReadKr4 (
 
 /**
   Reads the current value of 64-bit Kernel Register #5 (KR5).
+
+  Reads and returns the current value of KR5. 
   This function is only available on IPF.
 
   @return The current value of KR5.
@@ -3929,6 +3840,8 @@ AsmReadKr5 (
 
 /**
   Reads the current value of 64-bit Kernel Register #6 (KR6).
+
+  Reads and returns the current value of KR6. 
   This function is only available on IPF.
 
   @return The current value of KR6.
@@ -3943,6 +3856,8 @@ AsmReadKr6 (
 
 /**
   Reads the current value of 64-bit Kernel Register #7 (KR7).
+
+  Reads and returns the current value of KR7. 
   This function is only available on IPF.
 
   @return The current value of KR7.
@@ -3957,9 +3872,11 @@ AsmReadKr7 (
 
 /**
   Write the current value of 64-bit Kernel Register #0 (KR0).
-  This function is only available on IPF.
+  
+  Writes the current value of KR0.  The 64-bit value written to 
+  the KR0 is returned. This function is only available on IPF.
 
-  @param  Value 	The 64-bit value to write to KR0.
+  @param  Value   The 64-bit value to write to KR0.
 
   @return The 64-bit value written to the KR0.
 
@@ -3973,9 +3890,11 @@ AsmWriteKr0 (
 
 /**
   Write the current value of 64-bit Kernel Register #1 (KR1).
-  This function is only available on IPF.
 
-  @param  Value 	The 64-bit value to write to KR1.
+  Writes the current value of KR1.  The 64-bit value written to 
+  the KR1 is returned. This function is only available on IPF.
+
+  @param  Value   The 64-bit value to write to KR1.
 
   @return The 64-bit value written to the KR1.
 
@@ -3989,9 +3908,11 @@ AsmWriteKr1 (
 
 /**
   Write the current value of 64-bit Kernel Register #2 (KR2).
-  This function is only available on IPF.
 
-  @param  Value 	The 64-bit value to write to KR2.
+  Writes the current value of KR2.  The 64-bit value written to 
+  the KR2 is returned. This function is only available on IPF.
+
+  @param  Value   The 64-bit value to write to KR2.
 
   @return The 64-bit value written to the KR2.
 
@@ -4005,9 +3926,11 @@ AsmWriteKr2 (
 
 /**
   Write the current value of 64-bit Kernel Register #3 (KR3).
-  This function is only available on IPF.
 
-  @param  Value 	The 64-bit value to write to KR3.
+  Writes the current value of KR3.  The 64-bit value written to 
+  the KR3 is returned. This function is only available on IPF.
+
+  @param  Value   The 64-bit value to write to KR3.
 
   @return The 64-bit value written to the KR3.
 
@@ -4021,9 +3944,11 @@ AsmWriteKr3 (
 
 /**
   Write the current value of 64-bit Kernel Register #4 (KR4).
-  This function is only available on IPF.
 
-  @param  Value 	The 64-bit value to write to KR4.
+  Writes the current value of KR4.  The 64-bit value written to 
+  the KR4 is returned. This function is only available on IPF.
+
+  @param  Value   The 64-bit value to write to KR4.
 
   @return The 64-bit value written to the KR4.
 
@@ -4037,9 +3962,11 @@ AsmWriteKr4 (
 
 /**
   Write the current value of 64-bit Kernel Register #5 (KR5).
-  This function is only available on IPF.
 
-  @param  Value 	The 64-bit value to write to KR5.
+  Writes the current value of KR5.  The 64-bit value written to 
+  the KR5 is returned. This function is only available on IPF.
+
+  @param  Value   The 64-bit value to write to KR5.
 
   @return The 64-bit value written to the KR5.
 
@@ -4053,9 +3980,11 @@ AsmWriteKr5 (
 
 /**
   Write the current value of 64-bit Kernel Register #6 (KR6).
-  This function is only available on IPF.
 
-  @param  Value 	The 64-bit value to write to KR6.
+  Writes the current value of KR6.  The 64-bit value written to 
+  the KR6 is returned. This function is only available on IPF.
+
+  @param  Value   The 64-bit value to write to KR6.
 
   @return The 64-bit value written to the KR6.
 
@@ -4069,9 +3998,11 @@ AsmWriteKr6 (
 
 /**
   Write the current value of 64-bit Kernel Register #7 (KR7).
-  This function is only available on IPF.
 
-  @param  Value 	The 64-bit value to write to KR7.
+  Writes the current value of KR7.  The 64-bit value written to 
+  the KR7 is returned. This function is only available on IPF.
+
+  @param  Value   The 64-bit value to write to KR7.
 
   @return The 64-bit value written to the KR7.
 
@@ -4085,6 +4016,8 @@ AsmWriteKr7 (
 
 /**
   Reads the current value of Interval Timer Counter Register (ITC).
+  
+  Reads and returns the current value of ITC.
   This function is only available on IPF.
 
   @return The current value of ITC.
@@ -4099,6 +4032,8 @@ AsmReadItc (
 
 /**
   Reads the current value of Interval Timer Vector Register (ITV).
+  
+  Reads and returns the current value of ITV. 
   This function is only available on IPF.
 
   @return The current value of ITV.
@@ -4113,6 +4048,8 @@ AsmReadItv (
 
 /**
   Reads the current value of Interval Timer Match Register (ITM).
+  
+  Reads and returns the current value of ITM.
   This function is only available on IPF.
 
   @return The current value of ITM.
@@ -4126,9 +4063,11 @@ AsmReadItm (
 
 /**
   Writes the current value of 64-bit Interval Timer Counter Register (ITC).
+  
+  Writes the current value of ITC.  The 64-bit value written to the ITC is returned. 
   This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to ITC.
+  @param Value    The 64-bit value to write to ITC.
 
   @return The 64-bit value written to the ITC.
 
@@ -4142,9 +4081,11 @@ AsmWriteItc (
 
 /**
   Writes the current value of 64-bit Interval Timer Match Register (ITM).
+  
+  Writes the current value of ITM.  The 64-bit value written to the ITM is returned. 
   This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to ITM.
+  @param Value    The 64-bit value to write to ITM.
 
   @return The 64-bit value written to the ITM.
 
@@ -4158,13 +4099,15 @@ AsmWriteItm (
 
 /**
   Writes the current value of 64-bit Interval Timer Vector Register (ITV).
+  
+  Writes the current value of ITV.  The 64-bit value written to the ITV is returned.  
   No parameter checking is performed on Value.  All bits of Value corresponding to
   reserved fields of ITV must be 0 or a Reserved Register/Field fault may occur.
   The caller must either guarantee that Value is valid, or the caller must set up
   fault handlers to catch the faults.
   This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to ITV.
+  @param Value    The 64-bit value to write to ITV.
 
   @return The 64-bit value written to the ITV.
 
@@ -4178,7 +4121,8 @@ AsmWriteItv (
 
 /**
   Reads the current value of Default Control Register (DCR).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of DCR.  This function is only available on IPF.
 
   @return The current value of DCR.
 
@@ -4192,7 +4136,8 @@ AsmReadDcr (
 
 /**
   Reads the current value of Interruption Vector Address Register (IVA).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of IVA.  This function is only available on IPF.
 
   @return The current value of IVA.
 **/
@@ -4205,7 +4150,8 @@ AsmReadIva (
 
 /**
   Reads the current value of Page Table Address Register (PTA).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of PTA.  This function is only available on IPF.
 
   @return The current value of PTA.
 
@@ -4219,13 +4165,15 @@ AsmReadPta (
 
 /**
   Writes the current value of 64-bit Default Control Register (DCR).
+  
+  Writes the current value of DCR.  The 64-bit value written to the DCR is returned. 
   No parameter checking is performed on Value.  All bits of Value corresponding to
   reserved fields of DCR must be 0 or a Reserved Register/Field fault may occur.
   The caller must either guarantee that Value is valid, or the caller must set up
   fault handlers to catch the faults.
   This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to DCR.
+  @param Value    The 64-bit value to write to DCR.
 
   @return The 64-bit value written to the DCR.
 
@@ -4239,11 +4187,13 @@ AsmWriteDcr (
 
 /**
   Writes the current value of 64-bit Interruption Vector Address Register (IVA).
+  
+  Writes the current value of IVA.  The 64-bit value written to the IVA is returned.  
   The size of vector table is 32 K bytes and is 32 K bytes aligned
   the low 15 bits of Value is ignored when written.
   This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to IVA.
+  @param Value    The 64-bit value to write to IVA.
 
   @return The 64-bit value written to the IVA.
 
@@ -4257,13 +4207,15 @@ AsmWriteIva (
 
 /**
   Writes the current value of 64-bit Page Table Address Register (PTA).
+  
+  Writes the current value of PTA.  The 64-bit value written to the PTA is returned. 
   No parameter checking is performed on Value.  All bits of Value corresponding to
   reserved fields of DCR must be 0 or a Reserved Register/Field fault may occur.
   The caller must either guarantee that Value is valid, or the caller must set up
   fault handlers to catch the faults.
   This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to PTA.
+  @param Value    The 64-bit value to write to PTA.
 
   @return The 64-bit value written to the PTA.
 **/
@@ -4276,7 +4228,8 @@ AsmWritePta (
 
 /**
   Reads the current value of Local Interrupt ID Register (LID).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of LID.  This function is only available on IPF.
 
   @return The current value of LID.
 
@@ -4290,7 +4243,8 @@ AsmReadLid (
 
 /**
   Reads the current value of External Interrupt Vector Register (IVR).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of IVR.  This function is only available on IPF. 
 
   @return The current value of IVR.
 
@@ -4304,7 +4258,8 @@ AsmReadIvr (
 
 /**
   Reads the current value of Task Priority Register (TPR).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of TPR.  This function is only available on IPF. 
 
   @return The current value of TPR.
 
@@ -4318,7 +4273,8 @@ AsmReadTpr (
 
 /**
   Reads the current value of External Interrupt Request Register #0 (IRR0).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of IRR0.  This function is only available on IPF.  
 
   @return The current value of IRR0.
 
@@ -4332,7 +4288,8 @@ AsmReadIrr0 (
 
 /**
   Reads the current value of External Interrupt Request Register #1 (IRR1).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of IRR1.  This function is only available on IPF. 
 
   @return The current value of IRR1.
 
@@ -4346,7 +4303,8 @@ AsmReadIrr1 (
 
 /**
   Reads the current value of External Interrupt Request Register #2 (IRR2).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of IRR2.  This function is only available on IPF.
 
   @return The current value of IRR2.
 
@@ -4360,7 +4318,8 @@ AsmReadIrr2 (
 
 /**
   Reads the current value of External Interrupt Request Register #3 (IRR3).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of IRR3.  This function is only available on IPF.  
 
   @return The current value of IRR3.
 
@@ -4374,7 +4333,8 @@ AsmReadIrr3 (
 
 /**
   Reads the current value of Performance Monitor Vector Register (PMV).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of PMV.  This function is only available on IPF. 
 
   @return The current value of PMV.
 
@@ -4388,7 +4348,8 @@ AsmReadPmv (
 
 /**
   Reads the current value of Corrected Machine Check Vector Register (CMCV).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of CMCV.  This function is only available on IPF.
 
   @return The current value of CMCV.
 
@@ -4402,7 +4363,8 @@ AsmReadCmcv (
 
 /**
   Reads the current value of Local Redirection Register #0 (LRR0).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of LRR0.  This function is only available on IPF. 
 
   @return The current value of LRR0.
 
@@ -4416,7 +4378,8 @@ AsmReadLrr0 (
 
 /**
   Reads the current value of Local Redirection Register #1 (LRR1).
-  This function is only available on IPF.
+  
+  Reads and returns the current value of LRR1.  This function is only available on IPF.
 
   @return The current value of LRR1.
 
@@ -4430,13 +4393,15 @@ AsmReadLrr1 (
 
 /**
   Writes the current value of 64-bit Page Local Interrupt ID Register (LID).
+  
+  Writes the current value of LID.  The 64-bit value written to the LID is returned.  
   No parameter checking is performed on Value.  All bits of Value corresponding to
   reserved fields of LID must be 0 or a Reserved Register/Field fault may occur.
   The caller must either guarantee that Value is valid, or the caller must set up
   fault handlers to catch the faults.
   This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to LID.
+  @param Value    The 64-bit value to write to LID.
 
   @return The 64-bit value written to the LID.
 
@@ -4450,13 +4415,15 @@ AsmWriteLid (
 
 /**
   Writes the current value of 64-bit Task Priority Register (TPR).
+  
+  Writes the current value of TPR.  The 64-bit value written to the TPR is returned. 
   No parameter checking is performed on Value.  All bits of Value corresponding to
   reserved fields of TPR must be 0 or a Reserved Register/Field fault may occur.
   The caller must either guarantee that Value is valid, or the caller must set up
   fault handlers to catch the faults.
   This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to TPR.
+  @param Value    The 64-bit value to write to TPR.
 
   @return The 64-bit value written to the TPR.
 
@@ -4470,6 +4437,7 @@ AsmWriteTpr (
 
 /**
   Performs a write operation on End OF External Interrupt Register (EOI).
+  
   Writes a value of 0 to the EOI Register.  This function is only available on IPF.
 
 **/
@@ -4482,13 +4450,15 @@ AsmWriteEoi (
 
 /**
   Writes the current value of 64-bit Performance Monitor Vector Register (PMV).
+  
+  Writes the current value of PMV.  The 64-bit value written to the PMV is returned.  
   No parameter checking is performed on Value.  All bits of Value corresponding
   to reserved fields of PMV must be 0 or a Reserved Register/Field fault may occur.
   The caller must either guarantee that Value is valid, or the caller must set up
   fault handlers to catch the faults.
   This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to PMV.
+  @param Value    The 64-bit value to write to PMV.
 
   @return The 64-bit value written to the PMV.
 
@@ -4502,13 +4472,15 @@ AsmWritePmv (
 
 /**
   Writes the current value of 64-bit Corrected Machine Check Vector Register (CMCV).
+  
+  Writes the current value of CMCV.  The 64-bit value written to the CMCV is returned. 
   No parameter checking is performed on Value.  All bits of Value corresponding
   to reserved fields of CMCV must be 0 or a Reserved Register/Field fault may occur.
   The caller must either guarantee that Value is valid, or the caller must set up
   fault handlers to catch the faults.
   This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to CMCV.
+  @param Value    The 64-bit value to write to CMCV.
 
   @return The 64-bit value written to the CMCV.
 
@@ -4522,13 +4494,15 @@ AsmWriteCmcv (
 
 /**
   Writes the current value of 64-bit Local Redirection Register #0 (LRR0).
+  
+  Writes the current value of LRR0.  The 64-bit value written to the LRR0 is returned.  
   No parameter checking is performed on Value.  All bits of Value corresponding
   to reserved fields of LRR0 must be 0 or a Reserved Register/Field fault may occur.
   The caller must either guarantee that Value is valid, or the caller must set up
   fault handlers to catch the faults.
   This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to LRR0.
+  @param Value    The 64-bit value to write to LRR0.
 
   @return The 64-bit value written to the LRR0.
 
@@ -4542,13 +4516,15 @@ AsmWriteLrr0 (
 
 /**
   Writes the current value of 64-bit Local Redirection Register #1 (LRR1).
+  
+  Writes the current value of LRR1.  The 64-bit value written to the LRR1 is returned. 
   No parameter checking is performed on Value.  All bits of Value corresponding
   to reserved fields of LRR1 must be 0 or a Reserved Register/Field fault may occur.
   The caller must either guarantee that Value is valid, or the caller must
   set up fault handlers to catch the faults.
   This function is only available on IPF.
 
-  @param Value		The 64-bit value to write to LRR1.
+  @param Value    The 64-bit value to write to LRR1.
 
   @return The 64-bit value written to the LRR1.
 
@@ -4573,7 +4549,7 @@ AsmWriteLrr1 (
   set up fault handlers to catch the faults.
   This function is only available on IPF.
 
-  @param Index		The 8-bit Instruction Breakpoint Register index to read.
+  @param Index    The 8-bit Instruction Breakpoint Register index to read.
 
   @return The current value of Instruction Breakpoint Register specified by Index.
 
@@ -4598,7 +4574,7 @@ AsmReadIbr (
   fault handlers to catch the faults.
   This function is only available on IPF.
 
-  @param Index		The 8-bit Data Breakpoint Register index to read.
+  @param Index    The 8-bit Data Breakpoint Register index to read.
 
   @return The current value of Data Breakpoint Register specified by Index.
 
@@ -4623,10 +4599,10 @@ AsmReadDbr (
   zero value will be returned.
   This function is only available on IPF.
 
-  @param Index		The 8-bit Performance Monitor Configuration Register index to read.
+  @param Index    The 8-bit Performance Monitor Configuration Register index to read.
 
-  @return The current value of Performance Monitor Configuration Register
-  specified by Index.
+  @return   The current value of Performance Monitor Configuration Register
+            specified by Index.
 
 **/
 UINT64
@@ -4649,7 +4625,7 @@ AsmReadPmc (
   zero value will be returned.
   This function is only available on IPF.
 
-  @param Index		The 8-bit Performance Monitor Data Register index to read.
+  @param Index    The 8-bit Performance Monitor Data Register index to read.
 
   @return The current value of Performance Monitor Data Register specified by Index.
 
@@ -4675,8 +4651,8 @@ AsmReadPmd (
   set up fault handlers to catch the faults.
   This function is only available on IPF.
 
-  @param Index		The 8-bit Instruction Breakpoint Register index to write.
-  @param Value		The 64-bit value to write to IBR.
+  @param Index    The 8-bit Instruction Breakpoint Register index to write.
+  @param Value    The 64-bit value to write to IBR.
 
   @return The 64-bit value written to the IBR.
 
@@ -4703,8 +4679,8 @@ AsmWriteIbr (
   catch the faults.
   This function is only available on IPF.
 
-  @param Index		The 8-bit Data Breakpoint Register index to write.
-  @param Value		The 64-bit value to write to DBR.
+  @param Index    The 8-bit Data Breakpoint Register index to write.
+  @param Value    The 64-bit value to write to DBR.
 
   @return The 64-bit value written to the DBR.
 
@@ -4730,8 +4706,8 @@ AsmWriteDbr (
   beyond the implemented PMC register range, the write is ignored.
   This function is only available on IPF.
 
-  @param Index		The 8-bit Performance Monitor Configuration Register index to write.
-  @param Value		The 64-bit value to write to PMC.
+  @param Index    The 8-bit Performance Monitor Configuration Register index to write.
+  @param Value    The 64-bit value to write to PMC.
 
   @return The 64-bit value written to the PMC.
 
@@ -4757,8 +4733,8 @@ AsmWritePmc (
   Index value is beyond the implemented PMD register range, the write is ignored.
   This function is only available on IPF.
 
-  @param Index		The 8-bit Performance Monitor Data Register index to write.
-  @param Value		The 64-bit value to write to PMD.
+  @param Index    The 8-bit Performance Monitor Data Register index to write.
+  @param Value    The 64-bit value to write to PMD.
 
   @return The 64-bit value written to the PMD.
 
@@ -4822,6 +4798,149 @@ AsmReadSp (
   );
 
 
+///
+/// Valid Index value for AsmReadControlRegister()
+///
+#define IPF_CONTROL_REGISTER_DCR   0
+#define IPF_CONTROL_REGISTER_ITM   1
+#define IPF_CONTROL_REGISTER_IVA   2
+#define IPF_CONTROL_REGISTER_PTA   8
+#define IPF_CONTROL_REGISTER_IPSR  16
+#define IPF_CONTROL_REGISTER_ISR   17
+#define IPF_CONTROL_REGISTER_IIP   19
+#define IPF_CONTROL_REGISTER_IFA   20
+#define IPF_CONTROL_REGISTER_ITIR  21
+#define IPF_CONTROL_REGISTER_IIPA  22
+#define IPF_CONTROL_REGISTER_IFS   23
+#define IPF_CONTROL_REGISTER_IIM   24
+#define IPF_CONTROL_REGISTER_IHA   25
+#define IPF_CONTROL_REGISTER_LID   64
+#define IPF_CONTROL_REGISTER_IVR   65
+#define IPF_CONTROL_REGISTER_TPR   66
+#define IPF_CONTROL_REGISTER_EOI   67
+#define IPF_CONTROL_REGISTER_IRR0  68
+#define IPF_CONTROL_REGISTER_IRR1  69
+#define IPF_CONTROL_REGISTER_IRR2  70
+#define IPF_CONTROL_REGISTER_IRR3  71
+#define IPF_CONTROL_REGISTER_ITV   72
+#define IPF_CONTROL_REGISTER_PMV   73
+#define IPF_CONTROL_REGISTER_CMCV  74
+#define IPF_CONTROL_REGISTER_LRR0  80
+#define IPF_CONTROL_REGISTER_LRR1  81
+
+/**
+  Reads a 64-bit control register.
+
+  Reads and returns the control register specified by Index. The valid Index valued are defined
+  above in "Related Definitions".
+  If Index is invalid then 0xFFFFFFFFFFFFFFFF is returned.  This function is only available on IPF.
+
+  @param  Index                     The index of the control register to read.
+
+  @return The control register specified by Index.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegister (
+  IN UINT64  Index
+  );
+
+
+///
+/// Valid Index value for AsmReadApplicationRegister()
+///
+#define IPF_APPLICATION_REGISTER_K0        0
+#define IPF_APPLICATION_REGISTER_K1        1
+#define IPF_APPLICATION_REGISTER_K2        2
+#define IPF_APPLICATION_REGISTER_K3        3
+#define IPF_APPLICATION_REGISTER_K4        4
+#define IPF_APPLICATION_REGISTER_K5        5
+#define IPF_APPLICATION_REGISTER_K6        6
+#define IPF_APPLICATION_REGISTER_K7        7
+#define IPF_APPLICATION_REGISTER_RSC       16
+#define IPF_APPLICATION_REGISTER_BSP       17
+#define IPF_APPLICATION_REGISTER_BSPSTORE  18
+#define IPF_APPLICATION_REGISTER_RNAT      19
+#define IPF_APPLICATION_REGISTER_FCR       21
+#define IPF_APPLICATION_REGISTER_EFLAG     24
+#define IPF_APPLICATION_REGISTER_CSD       25
+#define IPF_APPLICATION_REGISTER_SSD       26
+#define IPF_APPLICATION_REGISTER_CFLG      27
+#define IPF_APPLICATION_REGISTER_FSR       28
+#define IPF_APPLICATION_REGISTER_FIR       29
+#define IPF_APPLICATION_REGISTER_FDR       30
+#define IPF_APPLICATION_REGISTER_CCV       32
+#define IPF_APPLICATION_REGISTER_UNAT      36
+#define IPF_APPLICATION_REGISTER_FPSR      40
+#define IPF_APPLICATION_REGISTER_ITC       44
+#define IPF_APPLICATION_REGISTER_PFS       64
+#define IPF_APPLICATION_REGISTER_LC        65
+#define IPF_APPLICATION_REGISTER_EC        66
+
+/**
+  Reads a 64-bit application register.
+
+  Reads and returns the application register specified by Index. The valid Index valued are defined
+  above in "Related Definitions".
+  If Index is invalid then 0xFFFFFFFFFFFFFFFF is returned.  This function is only available on IPF.
+
+  @param  Index                     The index of the application register to read.
+
+  @return The application register specified by Index.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegister (
+  IN UINT64  Index
+  );
+
+
+/**
+  Reads the current value of a Machine Specific Register (MSR).
+
+  Reads and returns the current value of the Machine Specific Register specified by Index.  No
+  parameter checking is performed on Index, and if the Index value is beyond the implemented MSR
+  register range, a Reserved Register/Field fault may occur.  The caller must either guarantee that
+  Index is valid, or the caller must set up fault handlers to catch the faults.  This function is
+  only available on IPF.
+
+  @param  Index                     The 8-bit Machine Specific Register index to read.
+
+  @return The current value of the Machine Specific Register specified by Index.  
+
+**/
+UINT64
+EFIAPI
+AsmReadMsr (
+  IN UINT8   Index  
+  );
+
+
+/**
+  Writes the current value of a Machine Specific Register (MSR).
+
+  Writes Value to the Machine Specific Register specified by Index.  Value is returned.  No
+  parameter checking is performed on Index, and if the Index value is beyond the implemented MSR
+  register range, a Reserved Register/Field fault may occur.  The caller must either guarantee that
+  Index is valid, or the caller must set up fault handlers to catch the faults.  This function is
+  only available on IPF.
+
+  @param  Index                     The 8-bit Machine Specific Register index to write.
+  @param  Value                     The 64-bit value to write to the Machine Specific Register.
+
+  @return The 64-bit value to write to the Machine Specific Register.  
+
+**/
+UINT64
+EFIAPI
+AsmWriteMsr (
+  IN UINT8   Index, 
+  IN UINT64  Value  
+  );
+
+
 /**
   Determines if the CPU is currently executing in virtual, physical, or mixed mode.
 
@@ -4832,9 +4951,9 @@ AsmReadSp (
   and -1 is returned.
   This function is only available on IPF.
 
-  @return  1  The CPU is in virtual mode.
-  @return  0  The CPU is in physical mode.
-  @return -1  The CPU is in mixed mode.
+  @retval  1  The CPU is in virtual mode.
+  @retval  0  The CPU is in physical mode.
+  @retval -1  The CPU is in mixed mode.
 
 **/
 INT64
@@ -4866,11 +4985,11 @@ AsmCpuVirtual (
   PAL entry point then the system behavior is undefined.  This function is only
   available on IPF.
 
-  @param PalEntryPoint	The PAL procedure calls entry point.
-  @param Index			    The PAL procedure Index number.
-  @param Arg2			      The 2nd parameter for PAL procedure calls.
-  @param Arg3			      The 3rd parameter for PAL procedure calls.
-  @param Arg4			      The 4th parameter for PAL procedure calls.
+  @param PalEntryPoint  The PAL procedure calls entry point.
+  @param Index          The PAL procedure Index number.
+  @param Arg2           The 2nd parameter for PAL procedure calls.
+  @param Arg3           The 3rd parameter for PAL procedure calls.
+  @param Arg4           The 4th parameter for PAL procedure calls.
 
   @return structure returned from the PAL Call procedure, including the status and return value.
 
@@ -4884,90 +5003,30 @@ AsmPalCall (
   IN UINT64  Arg3,
   IN UINT64  Arg4
   );
+#endif
 
-
-/**
-  Transfers control to a function starting with a new stack.
-
-  Transfers control to the function specified by EntryPoint using the new stack
-  specified by NewStack and passing in the parameters specified by Context1 and
-  Context2. Context1 and Context2 are optional and may be NULL. The function
-  EntryPoint must never return.
-
-  If EntryPoint is NULL, then ASSERT().
-  If NewStack is NULL, then ASSERT().
-
-  @param  EntryPoint  A pointer to function to call with the new stack.
-  @param  Context1    A pointer to the context to pass into the EntryPoint
-                      function.
-  @param  Context2    A pointer to the context to pass into the EntryPoint
-                      function.
-  @param  NewStack    A pointer to the new stack to use for the EntryPoint
-                      function.
-  @param  NewBsp      A pointer to the new memory location for RSE backing
-                      store.
-
-**/
-VOID
-EFIAPI
-AsmSwitchStackAndBackingStore (
-  IN      SWITCH_STACK_ENTRY_POINT  EntryPoint,
-  IN      VOID                      *Context1,  OPTIONAL
-  IN      VOID                      *Context2,  OPTIONAL
-  IN      VOID                      *NewStack,
-  IN      VOID                      *NewBsp
-  );
-
-/**
-  @todo   This call should be removed after the PalCall
-          Instance issue has been fixed.
-
-  Performs a PAL call using static calling convention.
-
-  An internal function to perform a PAL call using static calling convention.
-
-  @param  PalEntryPoint The entry point address of PAL. The address in ar.kr5
-                        would be used if this parameter were NULL on input.
-  @param  Arg1          The first argument of a PAL call.
-  @param  Arg2          The second argument of a PAL call.
-  @param  Arg3          The third argument of a PAL call.
-  @param  Arg4          The fourth argument of a PAL call.
-
-  @return The values returned in r8, r9, r10 and r11.
-
-**/
-PAL_CALL_RETURN
-PalCallStatic (
-  IN      CONST VOID                *PalEntryPoint,
-  IN      UINT64                    Arg1,
-  IN      UINT64                    Arg2,
-  IN      UINT64                    Arg3,
-  IN      UINT64                    Arg4
-  );
-
-
-#elif defined (MDE_CPU_IA32) || defined (MDE_CPU_X64)
+#if defined (MDE_CPU_IA32) || defined (MDE_CPU_X64)
 ///
-/// IA32 and X64 Specific Functions
+/// IA32 and x64 Specific Functions
 /// Byte packed structure for 16-bit Real Mode EFLAGS
 ///
 typedef union {
   struct {
-    UINT32  CF:1;           /// Carry Flag
-    UINT32  Reserved_0:1;   /// Reserved
-    UINT32  PF:1;           /// Parity Flag
-    UINT32  Reserved_1:1;   /// Reserved
-    UINT32  AF:1;           /// Auxiliary Carry Flag
-    UINT32  Reserved_2:1;   /// Reserved
-    UINT32  ZF:1;           /// Zero Flag
-    UINT32  SF:1;           /// Sign Flag
-    UINT32  TF:1;           /// Trap Flag
-    UINT32  IF:1;           /// Interrupt Enable Flag
-    UINT32  DF:1;           /// Direction Flag
-    UINT32  OF:1;           /// Overflow Flag
-    UINT32  IOPL:2;         /// I/O Privilege Level
-    UINT32  NT:1;           /// Nested Task
-    UINT32  Reserved_3:1;   /// Reserved
+    UINT32  CF:1;           ///< Carry Flag
+    UINT32  Reserved_0:1;   ///< Reserved
+    UINT32  PF:1;           ///< Parity Flag
+    UINT32  Reserved_1:1;   ///< Reserved
+    UINT32  AF:1;           ///< Auxiliary Carry Flag
+    UINT32  Reserved_2:1;   ///< Reserved
+    UINT32  ZF:1;           ///< Zero Flag
+    UINT32  SF:1;           ///< Sign Flag
+    UINT32  TF:1;           ///< Trap Flag
+    UINT32  IF:1;           ///< Interrupt Enable Flag
+    UINT32  DF:1;           ///< Direction Flag
+    UINT32  OF:1;           ///< Overflow Flag
+    UINT32  IOPL:2;         ///< I/O Privilege Level
+    UINT32  NT:1;           ///< Nested Task
+    UINT32  Reserved_3:1;   ///< Reserved
   } Bits;
   UINT16    Uint16;
 } IA32_FLAGS16;
@@ -4975,32 +5034,32 @@ typedef union {
 ///
 /// Byte packed structure for EFLAGS/RFLAGS
 /// 32-bits on IA-32
-/// 64-bits on X64.  The upper 32-bits on X64 are reserved
+/// 64-bits on x64.  The upper 32-bits on x64 are reserved
 ///
 typedef union {
   struct {
-    UINT32  CF:1;           /// Carry Flag
-    UINT32  Reserved_0:1;   /// Reserved
-    UINT32  PF:1;           /// Parity Flag
-    UINT32  Reserved_1:1;   /// Reserved
-    UINT32  AF:1;           /// Auxiliary Carry Flag
-    UINT32  Reserved_2:1;   /// Reserved
-    UINT32  ZF:1;           /// Zero Flag
-    UINT32  SF:1;           /// Sign Flag
-    UINT32  TF:1;           /// Trap Flag
-    UINT32  IF:1;           /// Interrupt Enable Flag
-    UINT32  DF:1;           /// Direction Flag
-    UINT32  OF:1;           /// Overflow Flag
-    UINT32  IOPL:2;         /// I/O Privilege Level
-    UINT32  NT:1;           /// Nested Task
-    UINT32  Reserved_3:1;   /// Reserved
-    UINT32  RF:1;           /// Resume Flag
-    UINT32  VM:1;           /// Virtual 8086 Mode
-    UINT32  AC:1;           /// Alignment Check
-    UINT32  VIF:1;          /// Virtual Interrupt Flag
-    UINT32  VIP:1;          /// Virtual Interrupt Pending
-    UINT32  ID:1;           /// ID Flag
-    UINT32  Reserved_4:10;  /// Reserved
+    UINT32  CF:1;           ///< Carry Flag
+    UINT32  Reserved_0:1;   ///< Reserved
+    UINT32  PF:1;           ///< Parity Flag
+    UINT32  Reserved_1:1;   ///< Reserved
+    UINT32  AF:1;           ///< Auxiliary Carry Flag
+    UINT32  Reserved_2:1;   ///< Reserved
+    UINT32  ZF:1;           ///< Zero Flag
+    UINT32  SF:1;           ///< Sign Flag
+    UINT32  TF:1;           ///< Trap Flag
+    UINT32  IF:1;           ///< Interrupt Enable Flag
+    UINT32  DF:1;           ///< Direction Flag
+    UINT32  OF:1;           ///< Overflow Flag
+    UINT32  IOPL:2;         ///< I/O Privilege Level
+    UINT32  NT:1;           ///< Nested Task
+    UINT32  Reserved_3:1;   ///< Reserved
+    UINT32  RF:1;           ///< Resume Flag
+    UINT32  VM:1;           ///< Virtual 8086 Mode
+    UINT32  AC:1;           ///< Alignment Check
+    UINT32  VIF:1;          ///< Virtual Interrupt Flag
+    UINT32  VIP:1;          ///< Virtual Interrupt Pending
+    UINT32  ID:1;           ///< ID Flag
+    UINT32  Reserved_4:10;  ///< Reserved
   } Bits;
   UINTN     UintN;
 } IA32_EFLAGS32;
@@ -5008,24 +5067,24 @@ typedef union {
 ///
 /// Byte packed structure for Control Register 0 (CR0)
 /// 32-bits on IA-32
-/// 64-bits on X64.  The upper 32-bits on X64 are reserved
+/// 64-bits on x64.  The upper 32-bits on x64 are reserved
 ///
 typedef union {
   struct {
-    UINT32  PE:1;           /// Protection Enable
-    UINT32  MP:1;           /// Monitor Coprocessor
-    UINT32  EM:1;           /// Emulation
-    UINT32  TS:1;           /// Task Switched
-    UINT32  ET:1;           /// Extension Type
-    UINT32  NE:1;           /// Numeric Error
-    UINT32  Reserved_0:10;  /// Reserved
-    UINT32  WP:1;           /// Write Protect
-    UINT32  Reserved_1:1;   /// Reserved
-    UINT32  AM:1;           /// Alignment Mask
-    UINT32  Reserved_2:10;  /// Reserved
-    UINT32  NW:1;           /// Mot Write-through
-    UINT32  CD:1;           /// Cache Disable
-    UINT32  PG:1;           /// Paging
+    UINT32  PE:1;           ///< Protection Enable
+    UINT32  MP:1;           ///< Monitor Coprocessor
+    UINT32  EM:1;           ///< Emulation
+    UINT32  TS:1;           ///< Task Switched
+    UINT32  ET:1;           ///< Extension Type
+    UINT32  NE:1;           ///< Numeric Error
+    UINT32  Reserved_0:10;  ///< Reserved
+    UINT32  WP:1;           ///< Write Protect
+    UINT32  Reserved_1:1;   ///< Reserved
+    UINT32  AM:1;           ///< Alignment Mask
+    UINT32  Reserved_2:10;  ///< Reserved
+    UINT32  NW:1;           ///< Mot Write-through
+    UINT32  CD:1;           ///< Cache Disable
+    UINT32  PG:1;           ///< Paging
   } Bits;
   UINTN     UintN;
 } IA32_CR0;
@@ -5033,35 +5092,34 @@ typedef union {
 ///
 /// Byte packed structure for Control Register 4 (CR4)
 /// 32-bits on IA-32
-/// 64-bits on X64.  The upper 32-bits on X64 are reserved
+/// 64-bits on x64.  The upper 32-bits on x64 are reserved
 ///
 typedef union {
   struct {
-    UINT32  VME:1;          /// Virtual-8086 Mode Extensions
-    UINT32  PVI:1;          /// Protected-Mode Virtual Interrupts
-    UINT32  TSD:1;          /// Time Stamp Disable
-    UINT32  DE:1;           /// Debugging Extensions
-    UINT32  PSE:1;          /// Page Size Extensions
-    UINT32  PAE:1;          /// Physical Address Extension
-    UINT32  MCE:1;          /// Machine Check Enable
-    UINT32  PGE:1;          /// Page Global Enable
-    UINT32  PCE:1;          /// Performance Monitoring Counter
-                            /// Enable
-    UINT32  OSFXSR:1;       /// Operating System Support for
-                            /// FXSAVE and FXRSTOR instructions
-    UINT32  OSXMMEXCPT:1;   /// Operating System Support for
-                            /// Unmasked SIMD Floating Point
-                            /// Exceptions
-    UINT32  Reserved_0:2;   /// Reserved
-    UINT32  VMXE:1;         /// VMX Enable
-    UINT32  Reserved_1:18;  /// Reseved
+    UINT32  VME:1;          ///< Virtual-8086 Mode Extensions
+    UINT32  PVI:1;          ///< Protected-Mode Virtual Interrupts
+    UINT32  TSD:1;          ///< Time Stamp Disable
+    UINT32  DE:1;           ///< Debugging Extensions
+    UINT32  PSE:1;          ///< Page Size Extensions
+    UINT32  PAE:1;          ///< Physical Address Extension
+    UINT32  MCE:1;          ///< Machine Check Enable
+    UINT32  PGE:1;          ///< Page Global Enable
+    UINT32  PCE:1;          ///< Performance Monitoring Counter
+                            ///< Enable
+    UINT32  OSFXSR:1;       ///< Operating System Support for
+                            ///< FXSAVE and FXRSTOR instructions
+    UINT32  OSXMMEXCPT:1;   ///< Operating System Support for
+                            ///< Unmasked SIMD Floating Point
+                            ///< Exceptions
+    UINT32  Reserved_0:2;   ///< Reserved
+    UINT32  VMXE:1;         ///< VMX Enable
+    UINT32  Reserved_1:18;  ///< Reserved
   } Bits;
   UINTN     UintN;
 } IA32_CR4;
 
 ///
 /// Byte packed structure for an IDTR, GDTR, LDTR descriptor
-/// @todo  How to make this structure byte-packed in a compiler independent way?
 ///
 #pragma pack (1)
 typedef struct {
@@ -5076,18 +5134,18 @@ typedef struct {
 #define IA32_IDT_GATE_TYPE_INTERRUPT_32  0x8E
 #define IA32_IDT_GATE_TYPE_TRAP_32       0x8F
 
-///
-/// Byte packed structure for an Interrupt Gate Descriptor
-///
-#if defined (MDE_CPU_IA32)
 
+#if defined (MDE_CPU_IA32)
+///
+/// Byte packed structure for an IA32 Interrupt Gate Descriptor
+///
 typedef union {
   struct {
-    UINT32  OffsetLow:16;   // Offset bits 15..0
-    UINT32  Selector:16;    // Selector
-    UINT32  Reserved_0:8;   // Reserved
-    UINT32  GateType:8;     // Gate Type.  See #defines above
-    UINT32  OffsetHigh:16;  // Offset bits 31..16
+    UINT32  OffsetLow:16;   ///< Offset bits 15..0
+    UINT32  Selector:16;    ///< Selector
+    UINT32  Reserved_0:8;   ///< Reserved
+    UINT32  GateType:8;     ///< Gate Type.  See #defines above
+    UINT32  OffsetHigh:16;  ///< Offset bits 31..16
   } Bits;
   UINT64  Uint64;
 } IA32_IDT_GATE_DESCRIPTOR;
@@ -5095,19 +5153,23 @@ typedef union {
 #endif
 
 #if defined (MDE_CPU_X64)
-
+///
+/// Byte packed structure for an x64 Interrupt Gate Descriptor
+///
 typedef union {
   struct {
-    UINT32  OffsetLow:16;   // Offset bits 15..0
-    UINT32  Selector:16;    // Selector
-    UINT32  Reserved_0:8;   // Reserved
-    UINT32  GateType:8;     // Gate Type.  See #defines above
-    UINT32  OffsetHigh:16;  // Offset bits 31..16
-    UINT32  OffsetUpper:32; // Offset bits 63..32
-    UINT32  Reserved_1:32;  // Reserved
+    UINT32  OffsetLow:16;   ///< Offset bits 15..0
+    UINT32  Selector:16;    ///< Selector
+    UINT32  Reserved_0:8;   ///< Reserved
+    UINT32  GateType:8;     ///< Gate Type.  See #defines above
+    UINT32  OffsetHigh:16;  ///< Offset bits 31..16
+    UINT32  OffsetUpper:32; ///< Offset bits 63..32
+    UINT32  Reserved_1:32;  ///< Reserved
   } Bits;
-  UINT64  Uint64;
-  UINT64  Uint64_1;
+  struct {
+    UINT64  Uint64;
+    UINT64  Uint64_1;
+  } Uint128;   
 } IA32_IDT_GATE_DESCRIPTOR;
 
 #endif
@@ -5208,7 +5270,7 @@ typedef struct {
   If Ebx is not NULL, then the value of EBX after CPUID is returned in Ebx.
   If Ecx is not NULL, then the value of ECX after CPUID is returned in Ecx.
   If Edx is not NULL, then the value of EDX after CPUID is returned in Edx.
-  This function is only available on IA-32 and X64.
+  This function is only available on IA-32 and x64.
 
   @param  Index The 32-bit value to load into EAX prior to invoking the CPUID
                 instruction.
@@ -5221,7 +5283,7 @@ typedef struct {
   @param  Edx   Pointer to the 32-bit EDX value returned by the CPUID
                 instruction. This is an optional parameter that may be NULL.
 
-  @return Index
+  @return Index.
 
 **/
 UINT32
@@ -5264,7 +5326,7 @@ AsmCpuid (
                     instruction. This is an optional parameter that may be
                     NULL.
 
-  @return Index
+  @return Index.
 
 **/
 UINT32
@@ -5280,13 +5342,41 @@ AsmCpuidEx (
 
 
 /**
+  Set CD bit and clear NW bit of CR0 followed by a WBINVD.
+
+  Disables the caches by setting the CD bit of CR0 to 1, clearing the NW bit of CR0 to 0,
+  and executing a WBINVD instruction.  This function is only available on IA-32 and x64.
+
+**/
+VOID
+EFIAPI
+AsmDisableCache (
+  VOID
+  );
+
+
+/**
+  Perform a WBINVD and clear both the CD and NW bits of CR0.
+
+  Enables the caches by executing a WBINVD instruction and then clear both the CD and NW
+  bits of CR0 to 0.  This function is only available on IA-32 and x64.
+
+**/
+VOID
+EFIAPI
+AsmEnableCache (
+  VOID
+  );
+
+
+/**
   Returns the lower 32-bits of a Machine Specific Register(MSR).
 
   Reads and returns the lower 32-bits of the MSR specified by Index.
   No parameter checking is performed on Index, and some Index values may cause
   CPU exceptions. The caller must either guarantee that Index is valid, or the
   caller must set up exception handlers to catch the exceptions. This function
-  is only available on IA-32 and X64.
+  is only available on IA-32 and x64.
 
   @param  Index The 32-bit MSR index to read.
 
@@ -5301,14 +5391,15 @@ AsmReadMsr32 (
 
 
 /**
-  Zero-extend a 32-bit value and writes it to a Machine Specific Register(MSR).
+  Writes a 32-bit value to a Machine Specific Register(MSR), and returns the value.
+  The upper 32-bits of the MSR are set to zero.
 
   Writes the 32-bit value specified by Value to the MSR specified by Index. The
   upper 32-bits of the MSR write are set to zero. The 32-bit value written to
   the MSR is returned. No parameter checking is performed on Index or Value,
   and some of these may cause CPU exceptions. The caller must either guarantee
   that Index and Value are valid, or the caller must establish proper exception
-  handlers. This function is only available on IA-32 and X64.
+  handlers. This function is only available on IA-32 and x64.
 
   @param  Index The 32-bit MSR index to write.
   @param  Value The 32-bit value to write to the MSR.
@@ -5325,17 +5416,17 @@ AsmWriteMsr32 (
 
 
 /**
-  Reads a 64-bit MSR, performs a bitwise inclusive OR on the lower 32-bits, and
+  Reads a 64-bit MSR, performs a bitwise OR on the lower 32-bits, and
   writes the result back to the 64-bit MSR.
 
-  Reads the 64-bit MSR specified by Index, performs a bitwise inclusive OR
+  Reads the 64-bit MSR specified by Index, performs a bitwise OR
   between the lower 32-bits of the read result and the value specified by
   OrData, and writes the result to the 64-bit MSR specified by Index. The lower
   32-bits of the value written to the MSR is returned. No parameter checking is
   performed on Index or OrData, and some of these may cause CPU exceptions. The
   caller must either guarantee that Index and OrData are valid, or the caller
   must establish proper exception handlers. This function is only available on
-  IA-32 and X64.
+  IA-32 and x64.
 
   @param  Index   The 32-bit MSR index to write.
   @param  OrData  The value to OR with the read value from the MSR.
@@ -5362,7 +5453,7 @@ AsmMsrOr32 (
   on Index or AndData, and some of these may cause CPU exceptions. The caller
   must either guarantee that Index and AndData are valid, or the caller must
   establish proper exception handlers. This function is only available on IA-32
-  and X64.
+  and x64.
 
   @param  Index   The 32-bit MSR index to write.
   @param  AndData The value to AND with the read value from the MSR.
@@ -5379,19 +5470,19 @@ AsmMsrAnd32 (
 
 
 /**
-  Reads a 64-bit MSR, performs a bitwise AND followed by a bitwise inclusive OR
+  Reads a 64-bit MSR, performs a bitwise AND followed by a bitwise OR
   on the lower 32-bits, and writes the result back to the 64-bit MSR.
 
   Reads the 64-bit MSR specified by Index, performs a bitwise AND between the
   lower 32-bits of the read result and the value specified by AndData
-  preserving the upper 32-bits, performs a bitwise inclusive OR between the
+  preserving the upper 32-bits, performs a bitwise OR between the
   result of the AND operation and the value specified by OrData, and writes the
   result to the 64-bit MSR specified by Address. The lower 32-bits of the value
   written to the MSR is returned. No parameter checking is performed on Index,
   AndData, or OrData, and some of these may cause CPU exceptions. The caller
   must either guarantee that Index, AndData, and OrData are valid, or the
   caller must establish proper exception handlers. This function is only
-  available on IA-32 and X64.
+  available on IA-32 and x64.
 
   @param  Index   The 32-bit MSR index to write.
   @param  AndData The value to AND with the read value from the MSR.
@@ -5416,7 +5507,7 @@ AsmMsrAndThenOr32 (
   specified by the StartBit and the EndBit. The value of the bit field is
   returned. The caller must either guarantee that Index is valid, or the caller
   must set up exception handlers to catch the exceptions. This function is only
-  available on IA-32 and X64.
+  available on IA-32 and x64.
 
   If StartBit is greater than 31, then ASSERT().
   If EndBit is greater than 31, then ASSERT().
@@ -5443,13 +5534,12 @@ AsmMsrBitFieldRead32 (
 /**
   Writes a bit field to an MSR.
 
-  Writes Value to a bit field in the lower 32-bits of a  64-bit MSR. The bit
+  Writes Value to a bit field in the lower 32-bits of a 64-bit MSR. The bit
   field is specified by the StartBit and the EndBit. All other bits in the
   destination MSR are preserved. The lower 32-bits of the MSR written is
-  returned. Extra left bits in Value are stripped. The caller must either
-  guarantee that Index and the data written is valid, or the caller must set up
-  exception handlers to catch the exceptions. This function is only available
-  on IA-32 and X64.
+  returned. The caller must either guarantee that Index and the data written 
+  is valid, or the caller must set up exception handlers to catch the exceptions. 
+  This function is only available on IA-32 and x64.
 
   If StartBit is greater than 31, then ASSERT().
   If EndBit is greater than 31, then ASSERT().
@@ -5479,13 +5569,13 @@ AsmMsrBitFieldWrite32 (
   Reads a bit field in a 64-bit MSR, performs a bitwise OR, and writes the
   result back to the bit field in the 64-bit MSR.
 
-  Reads the 64-bit MSR specified by Index, performs a bitwise inclusive OR
+  Reads the 64-bit MSR specified by Index, performs a bitwise OR
   between the read result and the value specified by OrData, and writes the
   result to the 64-bit MSR specified by Index. The lower 32-bits of the value
   written to the MSR are returned. Extra left bits in OrData are stripped. The
   caller must either guarantee that Index and the data written is valid, or
   the caller must set up exception handlers to catch the exceptions. This
-  function is only available on IA-32 and X64.
+  function is only available on IA-32 and x64.
 
   If StartBit is greater than 31, then ASSERT().
   If EndBit is greater than 31, then ASSERT().
@@ -5521,7 +5611,7 @@ AsmMsrBitFieldOr32 (
   MSR are returned. Extra left bits in AndData are stripped. The caller must
   either guarantee that Index and the data written is valid, or the caller must
   set up exception handlers to catch the exceptions. This function is only
-  available on IA-32 and X64.
+  available on IA-32 and x64.
 
   If StartBit is greater than 31, then ASSERT().
   If EndBit is greater than 31, then ASSERT().
@@ -5549,17 +5639,17 @@ AsmMsrBitFieldAnd32 (
 
 /**
   Reads a bit field in a 64-bit MSR, performs a bitwise AND followed by a
-  bitwise inclusive OR, and writes the result back to the bit field in the
+  bitwise OR, and writes the result back to the bit field in the
   64-bit MSR.
 
   Reads the 64-bit MSR specified by Index, performs a bitwise AND followed by a
-  bitwise inclusive OR between the read result and the value specified by
+  bitwise OR between the read result and the value specified by
   AndData, and writes the result to the 64-bit MSR specified by Index. The
   lower 32-bits of the value written to the MSR are returned. Extra left bits
   in both AndData and OrData are stripped. The caller must either guarantee
   that Index and the data written is valid, or the caller must set up exception
   handlers to catch the exceptions. This function is only available on IA-32
-  and X64.
+  and x64.
 
   If StartBit is greater than 31, then ASSERT().
   If EndBit is greater than 31, then ASSERT().
@@ -5594,7 +5684,7 @@ AsmMsrBitFieldAndThenOr32 (
   performed on Index, and some Index values may cause CPU exceptions. The
   caller must either guarantee that Index is valid, or the caller must set up
   exception handlers to catch the exceptions. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   @param  Index The 32-bit MSR index to read.
 
@@ -5617,7 +5707,7 @@ AsmReadMsr64 (
   performed on Index or Value, and some of these may cause CPU exceptions. The
   caller must either guarantee that Index and Value are valid, or the caller
   must establish proper exception handlers. This function is only available on
-  IA-32 and X64.
+  IA-32 and x64.
 
   @param  Index The 32-bit MSR index to write.
   @param  Value The 64-bit value to write to the MSR.
@@ -5634,16 +5724,16 @@ AsmWriteMsr64 (
 
 
 /**
-  Reads a 64-bit MSR, performs a bitwise inclusive OR, and writes the result
+  Reads a 64-bit MSR, performs a bitwise OR, and writes the result
   back to the 64-bit MSR.
 
-  Reads the 64-bit MSR specified by Index, performs a bitwise inclusive OR
+  Reads the 64-bit MSR specified by Index, performs a bitwise OR
   between the read result and the value specified by OrData, and writes the
   result to the 64-bit MSR specified by Index. The value written to the MSR is
   returned. No parameter checking is performed on Index or OrData, and some of
   these may cause CPU exceptions. The caller must either guarantee that Index
   and OrData are valid, or the caller must establish proper exception handlers.
-  This function is only available on IA-32 and X64.
+  This function is only available on IA-32 and x64.
 
   @param  Index   The 32-bit MSR index to write.
   @param  OrData  The value to OR with the read value from the MSR.
@@ -5669,7 +5759,7 @@ AsmMsrOr64 (
   parameter checking is performed on Index or OrData, and some of these may
   cause CPU exceptions. The caller must either guarantee that Index and OrData
   are valid, or the caller must establish proper exception handlers. This
-  function is only available on IA-32 and X64.
+  function is only available on IA-32 and x64.
 
   @param  Index   The 32-bit MSR index to write.
   @param  AndData The value to AND with the read value from the MSR.
@@ -5686,18 +5776,18 @@ AsmMsrAnd64 (
 
 
 /**
-  Reads a 64-bit MSR, performs a bitwise AND followed by a bitwise inclusive
+  Reads a 64-bit MSR, performs a bitwise AND followed by a bitwise 
   OR, and writes the result back to the 64-bit MSR.
 
   Reads the 64-bit MSR specified by Index, performs a bitwise AND between read
-  result and the value specified by AndData, performs a bitwise inclusive OR
+  result and the value specified by AndData, performs a bitwise OR
   between the result of the AND operation and the value specified by OrData,
   and writes the result to the 64-bit MSR specified by Index. The value written
   to the MSR is returned. No parameter checking is performed on Index, AndData,
   or OrData, and some of these may cause CPU exceptions. The caller must either
   guarantee that Index, AndData, and OrData are valid, or the caller must
   establish proper exception handlers. This function is only available on IA-32
-  and X64.
+  and x64.
 
   @param  Index   The 32-bit MSR index to write.
   @param  AndData The value to AND with the read value from the MSR.
@@ -5722,7 +5812,7 @@ AsmMsrAndThenOr64 (
   StartBit and the EndBit. The value of the bit field is returned. The caller
   must either guarantee that Index is valid, or the caller must set up
   exception handlers to catch the exceptions. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   If StartBit is greater than 63, then ASSERT().
   If EndBit is greater than 63, then ASSERT().
@@ -5751,10 +5841,9 @@ AsmMsrBitFieldRead64 (
 
   Writes Value to a bit field in a 64-bit MSR. The bit field is specified by
   the StartBit and the EndBit. All other bits in the destination MSR are
-  preserved. The MSR written is returned. Extra left bits in Value are
-  stripped. The caller must either guarantee that Index and the data written is
-  valid, or the caller must set up exception handlers to catch the exceptions.
-  This function is only available on IA-32 and X64.
+  preserved. The MSR written is returned. The caller must either guarantee 
+  that Index and the data written is valid, or the caller must set up exception 
+  handlers to catch the exceptions. This function is only available on IA-32 and x64.
 
   If StartBit is greater than 63, then ASSERT().
   If EndBit is greater than 63, then ASSERT().
@@ -5781,16 +5870,16 @@ AsmMsrBitFieldWrite64 (
 
 
 /**
-  Reads a bit field in a 64-bit MSR, performs a bitwise inclusive OR, and
+  Reads a bit field in a 64-bit MSR, performs a bitwise OR, and
   writes the result back to the bit field in the 64-bit MSR.
 
-  Reads the 64-bit MSR specified by Index, performs a bitwise inclusive OR
+  Reads the 64-bit MSR specified by Index, performs a bitwise OR
   between the read result and the value specified by OrData, and writes the
   result to the 64-bit MSR specified by Index. The value written to the MSR is
   returned. Extra left bits in OrData are stripped. The caller must either
   guarantee that Index and the data written is valid, or the caller must set up
   exception handlers to catch the exceptions. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   If StartBit is greater than 63, then ASSERT().
   If EndBit is greater than 63, then ASSERT().
@@ -5826,7 +5915,7 @@ AsmMsrBitFieldOr64 (
   Extra left bits in AndData are stripped. The caller must either guarantee
   that Index and the data written is valid, or the caller must set up exception
   handlers to catch the exceptions. This function is only available on IA-32
-  and X64.
+  and x64.
 
   If StartBit is greater than 63, then ASSERT().
   If EndBit is greater than 63, then ASSERT().
@@ -5854,16 +5943,16 @@ AsmMsrBitFieldAnd64 (
 
 /**
   Reads a bit field in a 64-bit MSR, performs a bitwise AND followed by a
-  bitwise inclusive OR, and writes the result back to the bit field in the
+  bitwise OR, and writes the result back to the bit field in the
   64-bit MSR.
 
   Reads the 64-bit MSR specified by Index, performs a bitwise AND followed by
-  a bitwise inclusive OR between the read result and the value specified by
+  a bitwise OR between the read result and the value specified by
   AndData, and writes the result to the 64-bit MSR specified by Index. The
   value written to the MSR is returned. Extra left bits in both AndData and
   OrData are stripped. The caller must either guarantee that Index and the data
   written is valid, or the caller must set up exception handlers to catch the
-  exceptions. This function is only available on IA-32 and X64.
+  exceptions. This function is only available on IA-32 and x64.
 
   If StartBit is greater than 63, then ASSERT().
   If EndBit is greater than 63, then ASSERT().
@@ -5895,10 +5984,10 @@ AsmMsrBitFieldAndThenOr64 (
   Reads the current value of the EFLAGS register.
 
   Reads and returns the current value of the EFLAGS register. This function is
-  only available on IA-32 and X64. This returns a 32-bit value on IA-32 and a
-  64-bit value on X64.
+  only available on IA-32 and x64. This returns a 32-bit value on IA-32 and a
+  64-bit value on x64.
 
-  @return EFLAGS on IA-32 or RFLAGS on X64.
+  @return EFLAGS on IA-32 or RFLAGS on x64.
 
 **/
 UINTN
@@ -5912,8 +6001,8 @@ AsmReadEflags (
   Reads the current value of the Control Register 0 (CR0).
 
   Reads and returns the current value of CR0. This function is only available
-  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
-  X64.
+  on IA-32 and x64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  x64.
 
   @return The value of the Control Register 0 (CR0).
 
@@ -5929,8 +6018,8 @@ AsmReadCr0 (
   Reads the current value of the Control Register 2 (CR2).
 
   Reads and returns the current value of CR2. This function is only available
-  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
-  X64.
+  on IA-32 and x64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  x64.
 
   @return The value of the Control Register 2 (CR2).
 
@@ -5946,8 +6035,8 @@ AsmReadCr2 (
   Reads the current value of the Control Register 3 (CR3).
 
   Reads and returns the current value of CR3. This function is only available
-  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
-  X64.
+  on IA-32 and x64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  x64.
 
   @return The value of the Control Register 3 (CR3).
 
@@ -5963,8 +6052,8 @@ AsmReadCr3 (
   Reads the current value of the Control Register 4 (CR4).
 
   Reads and returns the current value of CR4. This function is only available
-  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
-  X64.
+  on IA-32 and x64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  x64.
 
   @return The value of the Control Register 4 (CR4).
 
@@ -5980,7 +6069,7 @@ AsmReadCr4 (
   Writes a value to Control Register 0 (CR0).
 
   Writes and returns a new value to CR0. This function is only available on
-  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+  IA-32 and x64. This writes a 32-bit value on IA-32 and a 64-bit value on x64.
 
   @param  Cr0 The value to write to CR0.
 
@@ -5998,7 +6087,7 @@ AsmWriteCr0 (
   Writes a value to Control Register 2 (CR2).
 
   Writes and returns a new value to CR2. This function is only available on
-  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+  IA-32 and x64. This writes a 32-bit value on IA-32 and a 64-bit value on x64.
 
   @param  Cr2 The value to write to CR2.
 
@@ -6016,7 +6105,7 @@ AsmWriteCr2 (
   Writes a value to Control Register 3 (CR3).
 
   Writes and returns a new value to CR3. This function is only available on
-  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+  IA-32 and x64. This writes a 32-bit value on IA-32 and a 64-bit value on x64.
 
   @param  Cr3 The value to write to CR3.
 
@@ -6034,7 +6123,7 @@ AsmWriteCr3 (
   Writes a value to Control Register 4 (CR4).
 
   Writes and returns a new value to CR4. This function is only available on
-  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+  IA-32 and x64. This writes a 32-bit value on IA-32 and a 64-bit value on x64.
 
   @param  Cr4 The value to write to CR4.
 
@@ -6052,8 +6141,8 @@ AsmWriteCr4 (
   Reads the current value of Debug Register 0 (DR0).
 
   Reads and returns the current value of DR0. This function is only available
-  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
-  X64.
+  on IA-32 and x64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  x64.
 
   @return The value of Debug Register 0 (DR0).
 
@@ -6069,8 +6158,8 @@ AsmReadDr0 (
   Reads the current value of Debug Register 1 (DR1).
 
   Reads and returns the current value of DR1. This function is only available
-  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
-  X64.
+  on IA-32 and x64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  x64.
 
   @return The value of Debug Register 1 (DR1).
 
@@ -6086,8 +6175,8 @@ AsmReadDr1 (
   Reads the current value of Debug Register 2 (DR2).
 
   Reads and returns the current value of DR2. This function is only available
-  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
-  X64.
+  on IA-32 and x64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  x64.
 
   @return The value of Debug Register 2 (DR2).
 
@@ -6103,8 +6192,8 @@ AsmReadDr2 (
   Reads the current value of Debug Register 3 (DR3).
 
   Reads and returns the current value of DR3. This function is only available
-  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
-  X64.
+  on IA-32 and x64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  x64.
 
   @return The value of Debug Register 3 (DR3).
 
@@ -6120,8 +6209,8 @@ AsmReadDr3 (
   Reads the current value of Debug Register 4 (DR4).
 
   Reads and returns the current value of DR4. This function is only available
-  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
-  X64.
+  on IA-32 and x64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  x64.
 
   @return The value of Debug Register 4 (DR4).
 
@@ -6137,8 +6226,8 @@ AsmReadDr4 (
   Reads the current value of Debug Register 5 (DR5).
 
   Reads and returns the current value of DR5. This function is only available
-  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
-  X64.
+  on IA-32 and x64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  x64.
 
   @return The value of Debug Register 5 (DR5).
 
@@ -6154,8 +6243,8 @@ AsmReadDr5 (
   Reads the current value of Debug Register 6 (DR6).
 
   Reads and returns the current value of DR6. This function is only available
-  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
-  X64.
+  on IA-32 and x64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  x64.
 
   @return The value of Debug Register 6 (DR6).
 
@@ -6171,8 +6260,8 @@ AsmReadDr6 (
   Reads the current value of Debug Register 7 (DR7).
 
   Reads and returns the current value of DR7. This function is only available
-  on IA-32 and X64. This returns a 32-bit value on IA-32 and a 64-bit value on
-  X64.
+  on IA-32 and x64. This returns a 32-bit value on IA-32 and a 64-bit value on
+  x64.
 
   @return The value of Debug Register 7 (DR7).
 
@@ -6188,7 +6277,7 @@ AsmReadDr7 (
   Writes a value to Debug Register 0 (DR0).
 
   Writes and returns a new value to DR0. This function is only available on
-  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+  IA-32 and x64. This writes a 32-bit value on IA-32 and a 64-bit value on x64.
 
   @param  Dr0 The value to write to Dr0.
 
@@ -6206,7 +6295,7 @@ AsmWriteDr0 (
   Writes a value to Debug Register 1 (DR1).
 
   Writes and returns a new value to DR1. This function is only available on
-  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+  IA-32 and x64. This writes a 32-bit value on IA-32 and a 64-bit value on x64.
 
   @param  Dr1 The value to write to Dr1.
 
@@ -6224,7 +6313,7 @@ AsmWriteDr1 (
   Writes a value to Debug Register 2 (DR2).
 
   Writes and returns a new value to DR2. This function is only available on
-  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+  IA-32 and x64. This writes a 32-bit value on IA-32 and a 64-bit value on x64.
 
   @param  Dr2 The value to write to Dr2.
 
@@ -6242,7 +6331,7 @@ AsmWriteDr2 (
   Writes a value to Debug Register 3 (DR3).
 
   Writes and returns a new value to DR3. This function is only available on
-  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+  IA-32 and x64. This writes a 32-bit value on IA-32 and a 64-bit value on x64.
 
   @param  Dr3 The value to write to Dr3.
 
@@ -6260,7 +6349,7 @@ AsmWriteDr3 (
   Writes a value to Debug Register 4 (DR4).
 
   Writes and returns a new value to DR4. This function is only available on
-  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+  IA-32 and x64. This writes a 32-bit value on IA-32 and a 64-bit value on x64.
 
   @param  Dr4 The value to write to Dr4.
 
@@ -6278,7 +6367,7 @@ AsmWriteDr4 (
   Writes a value to Debug Register 5 (DR5).
 
   Writes and returns a new value to DR5. This function is only available on
-  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+  IA-32 and x64. This writes a 32-bit value on IA-32 and a 64-bit value on x64.
 
   @param  Dr5 The value to write to Dr5.
 
@@ -6296,7 +6385,7 @@ AsmWriteDr5 (
   Writes a value to Debug Register 6 (DR6).
 
   Writes and returns a new value to DR6. This function is only available on
-  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+  IA-32 and x64. This writes a 32-bit value on IA-32 and a 64-bit value on x64.
 
   @param  Dr6 The value to write to Dr6.
 
@@ -6314,7 +6403,7 @@ AsmWriteDr6 (
   Writes a value to Debug Register 7 (DR7).
 
   Writes and returns a new value to DR7. This function is only available on
-  IA-32 and X64. This writes a 32-bit value on IA-32 and a 64-bit value on X64.
+  IA-32 and x64. This writes a 32-bit value on IA-32 and a 64-bit value on x64.
 
   @param  Dr7 The value to write to Dr7.
 
@@ -6332,7 +6421,7 @@ AsmWriteDr7 (
   Reads the current value of Code Segment Register (CS).
 
   Reads and returns the current value of CS. This function is only available on
-  IA-32 and X64.
+  IA-32 and x64.
 
   @return The current value of CS.
 
@@ -6348,7 +6437,7 @@ AsmReadCs (
   Reads the current value of Data Segment Register (DS).
 
   Reads and returns the current value of DS. This function is only available on
-  IA-32 and X64.
+  IA-32 and x64.
 
   @return The current value of DS.
 
@@ -6364,7 +6453,7 @@ AsmReadDs (
   Reads the current value of Extra Segment Register (ES).
 
   Reads and returns the current value of ES. This function is only available on
-  IA-32 and X64.
+  IA-32 and x64.
 
   @return The current value of ES.
 
@@ -6380,7 +6469,7 @@ AsmReadEs (
   Reads the current value of FS Data Segment Register (FS).
 
   Reads and returns the current value of FS. This function is only available on
-  IA-32 and X64.
+  IA-32 and x64.
 
   @return The current value of FS.
 
@@ -6396,7 +6485,7 @@ AsmReadFs (
   Reads the current value of GS Data Segment Register (GS).
 
   Reads and returns the current value of GS. This function is only available on
-  IA-32 and X64.
+  IA-32 and x64.
 
   @return The current value of GS.
 
@@ -6412,7 +6501,7 @@ AsmReadGs (
   Reads the current value of Stack Segment Register (SS).
 
   Reads and returns the current value of SS. This function is only available on
-  IA-32 and X64.
+  IA-32 and x64.
 
   @return The current value of SS.
 
@@ -6428,7 +6517,7 @@ AsmReadSs (
   Reads the current value of Task Register (TR).
 
   Reads and returns the current value of TR. This function is only available on
-  IA-32 and X64.
+  IA-32 and x64.
 
   @return The current value of TR.
 
@@ -6444,7 +6533,7 @@ AsmReadTr (
   Reads the current Global Descriptor Table Register(GDTR) descriptor.
 
   Reads and returns the current GDTR descriptor and returns it in Gdtr. This
-  function is only available on IA-32 and X64.
+  function is only available on IA-32 and x64.
 
   If Gdtr is NULL, then ASSERT().
 
@@ -6462,7 +6551,7 @@ AsmReadGdtr (
   Writes the current Global Descriptor Table Register (GDTR) descriptor.
 
   Writes and the current GDTR descriptor specified by Gdtr. This function is
-  only available on IA-32 and X64.
+  only available on IA-32 and x64.
 
   If Gdtr is NULL, then ASSERT().
 
@@ -6477,10 +6566,10 @@ AsmWriteGdtr (
 
 
 /**
-  Reads the current Interrupt Descriptor Table Register(GDTR) descriptor.
+  Reads the current Interrupt Descriptor Table Register(IDTR) descriptor.
 
   Reads and returns the current IDTR descriptor and returns it in Idtr. This
-  function is only available on IA-32 and X64.
+  function is only available on IA-32 and x64.
 
   If Idtr is NULL, then ASSERT().
 
@@ -6495,10 +6584,10 @@ AsmReadIdtr (
 
 
 /**
-  Writes the current Interrupt Descriptor Table Register(GDTR) descriptor.
+  Writes the current Interrupt Descriptor Table Register(IDTR) descriptor.
 
   Writes the current IDTR descriptor and returns it in Idtr. This function is
-  only available on IA-32 and X64.
+  only available on IA-32 and x64.
 
   If Idtr is NULL, then ASSERT().
 
@@ -6516,7 +6605,7 @@ AsmWriteIdtr (
   Reads the current Local Descriptor Table Register(LDTR) selector.
 
   Reads and returns the current 16-bit LDTR descriptor value. This function is
-  only available on IA-32 and X64.
+  only available on IA-32 and x64.
 
   @return The current selector of LDT.
 
@@ -6529,10 +6618,10 @@ AsmReadLdtr (
 
 
 /**
-  Writes the current Local Descriptor Table Register (GDTR) selector.
+  Writes the current Local Descriptor Table Register (LDTR) selector.
 
   Writes and the current LDTR descriptor specified by Ldtr. This function is
-  only available on IA-32 and X64.
+  only available on IA-32 and x64.
 
   @param  Ldtr  16-bit LDTR selector value.
 
@@ -6549,7 +6638,7 @@ AsmWriteLdtr (
 
   Saves the current floating point/SSE/SSE2 state to the buffer specified by
   Buffer. Buffer must be aligned on a 16-byte boundary. This function is only
-  available on IA-32 and X64.
+  available on IA-32 and x64.
 
   If Buffer is NULL, then ASSERT().
   If Buffer is not aligned on a 16-byte boundary, then ASSERT().
@@ -6569,7 +6658,7 @@ AsmFxSave (
 
   Restores the current floating point/SSE/SSE2 state from the buffer specified
   by Buffer. Buffer must be aligned on a 16-byte boundary. This function is
-  only available on IA-32 and X64.
+  only available on IA-32 and x64.
 
   If Buffer is NULL, then ASSERT().
   If Buffer is not aligned on a 16-byte boundary, then ASSERT().
@@ -6589,7 +6678,7 @@ AsmFxRestore (
   Reads the current value of 64-bit MMX Register #0 (MM0).
 
   Reads and returns the current value of MM0. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   @return The current value of MM0.
 
@@ -6605,7 +6694,7 @@ AsmReadMm0 (
   Reads the current value of 64-bit MMX Register #1 (MM1).
 
   Reads and returns the current value of MM1. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   @return The current value of MM1.
 
@@ -6621,7 +6710,7 @@ AsmReadMm1 (
   Reads the current value of 64-bit MMX Register #2 (MM2).
 
   Reads and returns the current value of MM2. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   @return The current value of MM2.
 
@@ -6637,7 +6726,7 @@ AsmReadMm2 (
   Reads the current value of 64-bit MMX Register #3 (MM3).
 
   Reads and returns the current value of MM3. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   @return The current value of MM3.
 
@@ -6653,7 +6742,7 @@ AsmReadMm3 (
   Reads the current value of 64-bit MMX Register #4 (MM4).
 
   Reads and returns the current value of MM4. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   @return The current value of MM4.
 
@@ -6669,7 +6758,7 @@ AsmReadMm4 (
   Reads the current value of 64-bit MMX Register #5 (MM5).
 
   Reads and returns the current value of MM5. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   @return The current value of MM5.
 
@@ -6685,7 +6774,7 @@ AsmReadMm5 (
   Reads the current value of 64-bit MMX Register #6 (MM6).
 
   Reads and returns the current value of MM6. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   @return The current value of MM6.
 
@@ -6701,7 +6790,7 @@ AsmReadMm6 (
   Reads the current value of 64-bit MMX Register #7 (MM7).
 
   Reads and returns the current value of MM7. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   @return The current value of MM7.
 
@@ -6717,7 +6806,7 @@ AsmReadMm7 (
   Writes the current value of 64-bit MMX Register #0 (MM0).
 
   Writes the current value of MM0. This function is only available on IA32 and
-  X64.
+  x64.
 
   @param  Value The 64-bit value to write to MM0.
 
@@ -6733,7 +6822,7 @@ AsmWriteMm0 (
   Writes the current value of 64-bit MMX Register #1 (MM1).
 
   Writes the current value of MM1. This function is only available on IA32 and
-  X64.
+  x64.
 
   @param  Value The 64-bit value to write to MM1.
 
@@ -6749,7 +6838,7 @@ AsmWriteMm1 (
   Writes the current value of 64-bit MMX Register #2 (MM2).
 
   Writes the current value of MM2. This function is only available on IA32 and
-  X64.
+  x64.
 
   @param  Value The 64-bit value to write to MM2.
 
@@ -6765,7 +6854,7 @@ AsmWriteMm2 (
   Writes the current value of 64-bit MMX Register #3 (MM3).
 
   Writes the current value of MM3. This function is only available on IA32 and
-  X64.
+  x64.
 
   @param  Value The 64-bit value to write to MM3.
 
@@ -6781,7 +6870,7 @@ AsmWriteMm3 (
   Writes the current value of 64-bit MMX Register #4 (MM4).
 
   Writes the current value of MM4. This function is only available on IA32 and
-  X64.
+  x64.
 
   @param  Value The 64-bit value to write to MM4.
 
@@ -6797,7 +6886,7 @@ AsmWriteMm4 (
   Writes the current value of 64-bit MMX Register #5 (MM5).
 
   Writes the current value of MM5. This function is only available on IA32 and
-  X64.
+  x64.
 
   @param  Value The 64-bit value to write to MM5.
 
@@ -6813,7 +6902,7 @@ AsmWriteMm5 (
   Writes the current value of 64-bit MMX Register #6 (MM6).
 
   Writes the current value of MM6. This function is only available on IA32 and
-  X64.
+  x64.
 
   @param  Value The 64-bit value to write to MM6.
 
@@ -6829,7 +6918,7 @@ AsmWriteMm6 (
   Writes the current value of 64-bit MMX Register #7 (MM7).
 
   Writes the current value of MM7. This function is only available on IA32 and
-  X64.
+  x64.
 
   @param  Value The 64-bit value to write to MM7.
 
@@ -6845,7 +6934,7 @@ AsmWriteMm7 (
   Reads the current value of Time Stamp Counter (TSC).
 
   Reads and returns the current value of TSC. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   @return The current value of TSC
 
@@ -6861,7 +6950,7 @@ AsmReadTsc (
   Reads the current value of a Performance Counter (PMC).
 
   Reads and returns the current value of performance counter specified by
-  Index. This function is only available on IA-32 and X64.
+  Index. This function is only available on IA-32 and x64.
 
   @param  Index The 32-bit Performance Counter index to read.
 
@@ -6879,7 +6968,7 @@ AsmReadPmc (
   Sets up a monitor buffer that is used by AsmMwait().
 
   Executes a MONITOR instruction with the register state specified by Eax, Ecx
-  and Edx. Returns Eax. This function is only available on IA-32 and X64.
+  and Edx. Returns Eax. This function is only available on IA-32 and x64.
 
   @param  Eax The value to load into EAX or RAX before executing the MONITOR
               instruction.
@@ -6904,7 +6993,7 @@ AsmMonitor (
   Executes an MWAIT instruction.
 
   Executes an MWAIT instruction with the register state specified by Eax and
-  Ecx. Returns Eax. This function is only available on IA-32 and X64.
+  Ecx. Returns Eax. This function is only available on IA-32 and x64.
 
   @param  Eax The value to load into EAX or RAX before executing the MONITOR
               instruction.
@@ -6926,7 +7015,7 @@ AsmMwait (
   Executes a WBINVD instruction.
 
   Executes a WBINVD instruction. This function is only available on IA-32 and
-  X64.
+  x64.
 
 **/
 VOID
@@ -6940,7 +7029,7 @@ AsmWbinvd (
   Executes a INVD instruction.
 
   Executes a INVD instruction. This function is only available on IA-32 and
-  X64.
+  x64.
 
 **/
 VOID
@@ -6955,7 +7044,7 @@ AsmInvd (
   coherency domain of the CPU.
 
   Flushed the cache line specified by LinearAddress, and returns LinearAddress.
-  This function is only available on IA-32 and X64.
+  This function is only available on IA-32 and x64.
 
   @param  LinearAddress The address of the cache line to flush. If the CPU is
                         in a physical addressing mode, then LinearAddress is a
@@ -7080,7 +7169,7 @@ AsmDisablePaging32 (
   If EntryPoint is 0, then ASSERT().
   If NewStack is 0, then ASSERT().
 
-  @param  CodeSelector The 16-bit selector to load in the CS before EntryPoint
+  @param  Cs          The 16-bit selector to load in the CS before EntryPoint
                       is called. The descriptor in the GDT that this selector
                       references must be setup for long mode.
   @param  EntryPoint  The 64-bit virtual address of the function to call with
@@ -7098,7 +7187,7 @@ AsmDisablePaging32 (
 VOID
 EFIAPI
 AsmEnablePaging64 (
-  IN      UINT16                    CodeSelector,
+  IN      UINT16                    Cs,
   IN      UINT64                    EntryPoint,
   IN      UINT64                    Context1,  OPTIONAL
   IN      UINT64                    Context2,  OPTIONAL
@@ -7111,7 +7200,7 @@ AsmEnablePaging64 (
 
   Disables the 64-bit paging mode on the CPU and returns to 32-bit protected
   mode. This function assumes the current execution mode is 64-paging mode.
-  This function is only available on X64. After the 64-bit paging mode is
+  This function is only available on x64. After the 64-bit paging mode is
   disabled, control is transferred to the function specified by EntryPoint
   using the new stack specified by NewStack and passing in the parameters
   specified by Context1 and Context2. Context1 and Context2 are optional and
@@ -7121,7 +7210,7 @@ AsmEnablePaging64 (
   If EntryPoint is 0, then ASSERT().
   If NewStack is 0, then ASSERT().
 
-  @param  CodeSelector The 16-bit selector to load in the CS before EntryPoint
+  @param  Cs          The 16-bit selector to load in the CS before EntryPoint
                       is called. The descriptor in the GDT that this selector
                       references must be setup for 32-bit protected mode.
   @param  EntryPoint  The 64-bit virtual address of the function to call with
@@ -7139,7 +7228,7 @@ AsmEnablePaging64 (
 VOID
 EFIAPI
 AsmDisablePaging64 (
-  IN      UINT16                    CodeSelector,
+  IN      UINT16                    Cs,
   IN      UINT32                    EntryPoint,
   IN      UINT32                    Context1,  OPTIONAL
   IN      UINT32                    Context2,  OPTIONAL
@@ -7202,11 +7291,47 @@ AsmPrepareThunk16 (
   Transfers control to a 16-bit real mode entry point and returns the results.
 
   Transfers control to a 16-bit real mode entry point and returns the results.
-  AsmPrepareThunk16() must be called with ThunkContext before this function is
-  used.
+  AsmPrepareThunk16() must be called with ThunkContext before this function is used.
+  This function must be called with interrupts disabled.
 
+  The register state from the RealModeState field of ThunkContext is restored just prior 
+  to calling the 16-bit real mode entry point.  This includes the EFLAGS field of RealModeState, 
+  which is used to set the interrupt state when a 16-bit real mode entry point is called.
+  Control is transferred to the 16-bit real mode entry point specified by the CS and Eip fields of RealModeState.
+  The stack is initialized to the SS and ESP fields of RealModeState.  Any parameters passed to 
+  the 16-bit real mode code must be populated by the caller at SS:ESP prior to calling this function.  
+  The 16-bit real mode entry point is invoked with a 16-bit CALL FAR instruction,
+  so when accessing stack contents, the 16-bit real mode code must account for the 16-bit segment 
+  and 16-bit offset of the return address that were pushed onto the stack. The 16-bit real mode entry 
+  point must exit with a RETF instruction. The register state is captured into RealModeState immediately 
+  after the RETF instruction is executed.
+  
+  If EFLAGS specifies interrupts enabled, or any of the 16-bit real mode code enables interrupts, 
+  or any of the 16-bit real mode code makes a SW interrupt, then the caller is responsible for making sure 
+  the IDT at address 0 is initialized to handle any HW or SW interrupts that may occur while in 16-bit real mode. 
+  
+  If EFLAGS specifies interrupts enabled, or any of the 16-bit real mode code enables interrupts, 
+  then the caller is responsible for making sure the 8259 PIC is in a state compatible with 16-bit real mode.  
+  This includes the base vectors, the interrupt masks, and the edge/level trigger mode.
+  
+  If THUNK_ATTRIBUTE_BIG_REAL_MODE is set in the ThunkAttributes field of ThunkContext, then the user code 
+  is invoked in big real mode.  Otherwise, the user code is invoked in 16-bit real mode with 64KB segment limits.
+  
+  If neither THUNK_ATTRIBUTE_DISABLE_A20_MASK_INT_15 nor THUNK_ATTRIBUTE_DISABLE_A20_MASK_KBD_CTRL are set in 
+  ThunkAttributes, then it is assumed that the user code did not enable the A20 mask, and no attempt is made to 
+  disable the A20 mask.
+  
+  If THUNK_ATTRIBUTE_DISABLE_A20_MASK_INT_15 is set and THUNK_ATTRIBUTE_DISABLE_A20_MASK_KBD_CTRL is clear in 
+  ThunkAttributes, then attempt to use the INT 15 service to disable the A20 mask.  If this INT 15 call fails, 
+  then attempt to disable the A20 mask by directly accessing the 8042 keyboard controller I/O ports.
+  
+  If THUNK_ATTRIBUTE_DISABLE_A20_MASK_INT_15 is clear and THUNK_ATTRIBUTE_DISABLE_A20_MASK_KBD_CTRL is set in 
+  ThunkAttributes, then attempt to disable the A20 mask by directly accessing the 8042 keyboard controller I/O ports.
+    
   If ThunkContext is NULL, then ASSERT().
   If AsmPrepareThunk16() was not previously called with ThunkContext, then ASSERT().
+  If both THUNK_ATTRIBUTE_DISABLE_A20_MASK_INT_15 and THUNK_ATTRIBUTE_DISABLE_A20_MASK_KBD_CTRL are set in 
+  ThunkAttributes, then ASSERT().
 
   @param  ThunkContext  A pointer to the context structure that describes the
                         16-bit real mode code to call.
@@ -7230,7 +7355,7 @@ AsmThunk16 (
   real mode thunk, then it is more efficient if AsmPrepareThunk16() is called
   once and AsmThunk16() can be called for each 16-bit real mode thunk.
 
-  If ThunkContext is NULL, then ASSERT().
+  See AsmPrepareThunk16() and AsmThunk16() for the detailed description and ASSERT() conditions.
 
   @param  ThunkContext  A pointer to the context structure that describes the
                         16-bit real mode code to call.

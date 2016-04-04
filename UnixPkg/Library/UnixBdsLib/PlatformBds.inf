@@ -72,8 +72,8 @@
   BaseMemoryLib
   DebugLib
   PcdLib
-  GraphicsLib
   GenericBdsLib
+  DevicePathLib
 
 
 [Guids]

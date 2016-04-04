@@ -318,14 +318,14 @@ PxeBcDriverBindingStart (
     goto ON_ERROR;
   }
   ZeroMem (&Private->Udp4CfgData, sizeof (EFI_UDP4_CONFIG_DATA));
-  Private->Udp4CfgData.AcceptBroadcast    = FALSE;
+  Private->Udp4CfgData.AcceptBroadcast    = TRUE;
   Private->Udp4CfgData.AcceptPromiscuous  = FALSE;
   Private->Udp4CfgData.AcceptAnyPort      = TRUE;
   Private->Udp4CfgData.AllowDuplicatePort = TRUE;
   Private->Udp4CfgData.TypeOfService      = DEFAULT_ToS;
   Private->Udp4CfgData.TimeToLive         = DEFAULT_TTL;
   Private->Udp4CfgData.DoNotFragment      = FALSE;
-  Private->Udp4CfgData.ReceiveTimeout     = 50000;  // 50 milliseconds
+  Private->Udp4CfgData.ReceiveTimeout     = 10000;  // 10 milliseconds
   Private->Udp4CfgData.UseDefaultAddress  = FALSE;
 
   PxeBcInitSeedPacket (&Private->SeedPacket, Private->Udp4Read);

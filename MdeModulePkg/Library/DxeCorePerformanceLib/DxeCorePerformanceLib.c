@@ -1,5 +1,14 @@
 /** @file
-  Support for measurement of DXE performance
+  Performance library instance mainly used by DxeCore.
+
+  This library provides the performance measurement interfaces and initializes performance
+  logging for DXE phase. It first initializes its private global data structure for
+  performance logging and saves the performance GUIDed HOB passed from PEI phase. 
+  It initializes DXE phase performance logging by publishing the Performance Protocol,
+  which is consumed by DxePerformanceLib to logging performance data in DXE phase.
+
+  This library is mainly used by DxeCore to start performance logging to ensure that
+  Performance Protocol is installed at the very beginning of DXE phase.
 
 Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
@@ -13,127 +22,34 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 
-#include <PiDxe.h>
+#include "DxeCorePerformanceLibInternal.h"
 
-#include <Protocol/Performance.h>
-#include <Guid/PeiPerformanceHob.h>
-
-#include <Library/PerformanceLib.h>
-#include <Library/DebugLib.h>
-#include <Library/HobLib.h>
-#include <Library/BaseLib.h>
-#include <Library/BaseMemoryLib.h>
-#include <Library/TimerLib.h>
-#include <Library/PcdLib.h>
-#include <Library/UefiBootServicesTableLib.h>
-#include <Library/MemoryAllocationLib.h>
 
 //
-// Interface declarations for Performance Protocol.
-//
-/**
-  Adds a record at the end of the performance measurement log
-  that records the start time of a performance measurement.
-
-  Adds a record to the end of the performance measurement log
-  that contains the Handle, Token, and Module.
-  The end time of the new record must be set to zero.
-  If TimeStamp is not zero, then TimeStamp is used to fill in the start time in the record.
-  If TimeStamp is zero, the start time in the record is filled in with the value
-  read from the current time stamp.
-
-  @param  Handle                  Pointer to environment specific context used
-                                  to identify the component being measured.
-  @param  Token                   Pointer to a Null-terminated ASCII string
-                                  that identifies the component being measured.
-  @param  Module                  Pointer to a Null-terminated ASCII string
-                                  that identifies the module being measured.
-  @param  TimeStamp               64-bit time stamp.
-
-  @retval EFI_SUCCESS             The data was read correctly from the device.
-  @retval EFI_OUT_OF_RESOURCES    There are not enough resources to record the measurement.
-
-**/
-EFI_STATUS
-EFIAPI
-StartGauge (
-  IN CONST VOID   *Handle,  OPTIONAL
-  IN CONST CHAR8  *Token,   OPTIONAL
-  IN CONST CHAR8  *Module,  OPTIONAL
-  IN UINT64       TimeStamp
-  );
-
-/**
-  Searches the performance measurement log from the beginning of the log
-  for the first matching record that contains a zero end time and fills in a valid end time.
-
-  Searches the performance measurement log from the beginning of the log
-  for the first record that matches Handle, Token, and Module and has an end time value of zero.
-  If the record can not be found then return EFI_NOT_FOUND.
-  If the record is found and TimeStamp is not zero,
-  then the end time in the record is filled in with the value specified by TimeStamp.
-  If the record is found and TimeStamp is zero, then the end time in the matching record
-  is filled in with the current time stamp value.
-
-  @param  Handle                  Pointer to environment specific context used
-                                  to identify the component being measured.
-  @param  Token                   Pointer to a Null-terminated ASCII string
-                                  that identifies the component being measured.
-  @param  Module                  Pointer to a Null-terminated ASCII string
-                                  that identifies the module being measured.
-  @param  TimeStamp               64-bit time stamp.
-
-  @retval EFI_SUCCESS             The end of  the measurement was recorded.
-  @retval EFI_NOT_FOUND           The specified measurement record could not be found.
-
-**/
-EFI_STATUS
-EFIAPI
-EndGauge (
-  IN CONST VOID   *Handle,  OPTIONAL
-  IN CONST CHAR8  *Token,   OPTIONAL
-  IN CONST CHAR8  *Module,  OPTIONAL
-  IN UINT64       TimeStamp
-  );
-
-/**
-  Retrieves a previously logged performance measurement.
-
-  Retrieves the performance log entry from the performance log specified by LogEntryKey.
-  If it stands for a valid entry, then EFI_SUCCESS is returned and
-  GaugeDataEntry stores the pointer to that entry.
-
-  @param  LogEntryKey             The key for the previous performance measurement log entry.
-                                  If 0, then the first performance measurement log entry is retrieved.
-  @param  GaugeDataEntry          The indirect pointer to the gauge data entry specified by LogEntryKey
-                                  if the retrieval is successful.
-
-  @retval EFI_SUCCESS             The GuageDataEntry is successfuly found based on LogEntryKey.
-  @retval EFI_NOT_FOUND           The LogEntryKey is the last entry (equals to the total entry number).
-  @retval EFI_INVALIDE_PARAMETER  The LogEntryKey is not a valid entry (greater than the total entry number).
-  @retval EFI_INVALIDE_PARAMETER  GaugeDataEntry is NULL.
-
-**/
-EFI_STATUS
-EFIAPI
-GetGauge (
-  IN  UINTN               LogEntryKey,
-  OUT GAUGE_DATA_ENTRY    **GaugeDataEntry
-  );
-
-//
-// Definition for global variables.
+// The data structure to hold global performance data.
 //
 GAUGE_DATA_HEADER    *mGaugeData;
+
+//
+// The current maximum number of logging entries. If current number of 
+// entries exceeds this value, it will re-allocate a larger array and
+// migration the old data to the larger array.
+//
 UINT32               mMaxGaugeRecords;
 
+//
+// The handle to install Performance Protocol instance.
+//
 EFI_HANDLE           mHandle = NULL;
+
+//
+// Interfaces for performance protocol.
+//
 PERFORMANCE_PROTOCOL mPerformanceInterface = {
   StartGauge,
   EndGauge,
   GetGauge
   };
-
 
 /**
   Searches in the gauge array with keyword Handle, Token and Module.
@@ -228,7 +144,7 @@ StartGauge (
   Index = mGaugeData->NumberOfEntries;
   if (Index >= mMaxGaugeRecords) {
     //
-    // Try to enlarge the scale of gauge arrary.
+    // Try to enlarge the scale of gauge array.
     //
     OldGaugeData      = mGaugeData;
     OldGaugeDataSize  = sizeof (GAUGE_DATA_HEADER) + sizeof (GAUGE_DATA_ENTRY) * mMaxGaugeRecords;
@@ -241,7 +157,7 @@ StartGauge (
       return EFI_OUT_OF_RESOURCES;
     }
     //
-    // Initialize new data arry and migrate old data one.
+    // Initialize new data array and migrate old data one.
     //
     mGaugeData = CopyMem (mGaugeData, OldGaugeData, OldGaugeDataSize);
 
@@ -330,7 +246,7 @@ EndGauge (
   @param  GaugeDataEntry          The indirect pointer to the gauge data entry specified by LogEntryKey
                                   if the retrieval is successful.
 
-  @retval EFI_SUCCESS             The GuageDataEntry is successfuly found based on LogEntryKey.
+  @retval EFI_SUCCESS             The GuageDataEntry is successfully found based on LogEntryKey.
   @retval EFI_NOT_FOUND           The LogEntryKey is the last entry (equals to the total entry number).
   @retval EFI_INVALIDE_PARAMETER  The LogEntryKey is not a valid entry (greater than the total entry number).
   @retval EFI_INVALIDE_PARAMETER  GaugeDataEntry is NULL.
@@ -556,7 +472,7 @@ EndPerformanceMeasurement (
 
   @param  LogEntryKey             On entry, the key of the performance measurement log entry to retrieve.
                                   0, then the first performance measurement log entry is retrieved.
-                                  On exit, the key of the next performance lof entry entry.
+                                  On exit, the key of the next performance log entry.
   @param  Handle                  Pointer to environment specific context used to identify the component
                                   being measured.
   @param  Token                   Pointer to a Null-terminated ASCII string that identifies the component

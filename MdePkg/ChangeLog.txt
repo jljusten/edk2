@@ -154,7 +154,7 @@ EDK_5869:  Non-Compatible: qhuang8
 			Modules using this macro, it needs to adapt to new interface.
 			
 EDK_5939:  Non-Compatible: qwang12
-  Library API moved frrom HiiLib to UefiLib.
+  Library API moved from HiiLib to UefiLib.
   
 		Code Change:
 			Change HiiLibGetCurrentLanguage to GetCurrentLanguage and moved it from HiiLib to UefiLib.
@@ -206,3 +206,71 @@ Possible Impacts:
 			Customer's module that reference SafeFreePool need to updated. Otherwise
 			a build break may occur.
 			
+EDK_6455-6460:  Non-Compatible: klu2
+    1. Clean up device path protocol header file, move device path utility macros to MdePkg\Include\DevicePathLib.h.
+    2. I remove "Efi" prefix for this utility function macro name. 
+    3. The upacked device path type is removed. Should use device path utility macro to access structure's member.
+
+Possible Impacts:
+    1. Customer's module that access device path node's structure need use DevicePathLib
+    2. Should not use unpacked type device path node, this type is retired.
+    3. If want to access private member in device path node, customer module need DuplicateDevicePath() at first to 
+       make sure node is in alignment.
+              
+EDK_6496-6519:  Non-Compatible: qhuang8
+
+	A bundle of library class/instance renames, moves and merges:
+	1.  Rename library class UsbLib to UefiUsbLib
+	2.  Rename library class ScsiLib to UefiScsiLib
+	3.  Rename library class PalCallLib to PalLib
+	4.  Rename library class DxePiLib to DxeSerivcesLib and drop the prefix "PiLib" to all its APIs.
+	5.  Merge library class PiPeiLib to PeiServicesLib and rename the PiLibInstallFvInfoPpi() to PeiServicesInstallFvInfoPpi()
+	6.  Move library class HiiLib to MdeModulePkg
+	7.  Move library class IfrSupportLib to MdeModulePkg
+	8.  Move library class FvbServiceLib to MdeModulePkg
+	9.  Rename library instance of BasePalCallLibNull to BasePalLibNull
+	10. Move library instance UefiHiiLib to MdeModulePkg
+	11. Move library instance UefiIfrSupportLib to MdeModulePkg
+
+Possible Impacts:
+	 Every change listed above is non-backward compatible for MdePkg and other packages. It is required to update module
+	 sources (*.c;*.h), module meta data files (*.inf) and update the platform DSC files to fix the build break.
+	 However, it is less likely to bring about functional issue for these updates.
+
+
+EDK_6565:  Non-Compatible: qhuang8
+	
+	Remove some macro in UefiScsiLib:
+	EFI_SCSI_STALL_1_MICROSECOND, EFI_SCSI_STALL_1_MILLISECOND, EFI_SCSI_STALL_1_SECOND & EFI_SCSI_STALL_SECONDS(a)  
+	
+Possible Impacts:
+	Modules depending on UefiScsiLib for these macros should update the source to use new UefiLib macros
+	EFI_TIMER_PERIOD_MICROSECONDS(X), EFI_TIMER_PERIOD_MILLISECONDS(X) and EFI_TIMER_PERIOD_SECONDS(X) for managing Timer Events.
+	Especailly, EFI_SCSI_STALL_SECONDS(a) is simply replaced by EFI_TIMER_PERIOD_SECONDS(a)
+
+EDK_6886:  Non-Compatible: mdkinney
+	
+	Rename _CR macro defined in MdePkg/Include/Base.h to BASE_CR macro aligned to MdeLib spec.
+
+Possible Impacts:
+	All source codes that depends on _CR macro must be changed to use BASE_CR.	
+
+EDK_6935:  Non-Compatible: lgao4
+	
+	In MdePkg/Include/Guid/FileSystemVolumeLabelInfo.h file, to follow UEFI specification.
+	Rename EFI_FILE_SYSTEM_VOLUME_LABEL_INFO_ID_GUID to EFI_FILE_SYSTEM_VOLUME_LABEL_ID
+	Rename EFI_FILE_SYSTEM_VOLUME_LABEL_INFO to EFI_FILE_SYSTEM_VOLUME_LABEL.
+
+Possible Impacts:
+	All source codes that refer to EFI_FILE_SYSTEM_VOLUME_LABEL_INFO_ID_GUID or EFI_FILE_SYSTEM_VOLUME_LABEL_INFO
+	must be changed to use their definitions from UEFI specification.	
+
+EDK_6974:  Non-Compatible: lgao4
+	
+	In MdePkg/Include/Uefi/UefiSpec.h file, to follow UEFI2.1 specification.
+	Rename struct EFI_KEY_OPTION.KeyOptions to EFI_KEY_OPTION.KeyData
+
+Possible Impacts:
+	All source codes that refer to EFI_KEY_OPTION.KeyOptions
+	must be changed to use EFI_KEY_OPTION.KeyData from UEFI specification.	
+

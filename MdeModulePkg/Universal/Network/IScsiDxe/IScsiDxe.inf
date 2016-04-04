@@ -1,17 +1,16 @@
-#/** @file
-#  Component description file for IScsi module.
-#
-#  Copyright (c) 2006 - 2007, Intel Corporation
-#  All rights reserved. This program and the accompanying materials
-#  are licensed and made available under the terms and conditions of the BSD License
-#  which accompanies this distribution. The full text of the license may be found at
-#  http://opensource.org/licenses/bsd-license.php
-#
-#  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-#
-#
-#**/
+/** @file
+  Component description file for IScsi module.
+
+Copyright (c) 2004 - 2008, Intel Corporation.<BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
+
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+
+**/
 
 [Defines]
   INF_VERSION                    = 0x00010005
@@ -19,9 +18,6 @@
   FILE_GUID                      = 4579B72D-7EC4-4dd4-8486-083C86B182A7
   MODULE_TYPE                    = UEFI_DRIVER
   VERSION_STRING                 = 1.0
-  EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
-
   ENTRY_POINT                    = IScsiDriverEntryPoint
   UNLOAD_IMAGE                   = EfiIScsiUnload
 
@@ -32,6 +28,7 @@
 #
 #  DRIVER_BINDING                =  gIScsiDriverBinding
 #  COMPONENT_NAME                =  gIScsiComponentName
+#  COMPONENT_NAME2               =  gIScsiComponentName2
 #
 
 [Sources.common]
@@ -44,6 +41,9 @@
   IScsiDhcp.h
   IScsiCommon.h
   IScsiCHAP.h
+  IScsiInitiatorName.h
+  ComponentName.h
+  Md5.h
   IScsiTcp4Io.c
   IScsiProto.c
   IScsiMisc.c

@@ -24,44 +24,52 @@ Abstract:
 #ifndef __EFI_IP4_IF_H__
 #define __EFI_IP4_IF_H__
 
-enum {
+typedef enum {
   IP4_FRAME_RX_SIGNATURE  = EFI_SIGNATURE_32 ('I', 'P', 'F', 'R'),
   IP4_FRAME_TX_SIGNATURE  = EFI_SIGNATURE_32 ('I', 'P', 'F', 'T'),
   IP4_FRAME_ARP_SIGNATURE = EFI_SIGNATURE_32 ('I', 'P', 'F', 'A'),
   IP4_INTERFACE_SIGNATURE = EFI_SIGNATURE_32 ('I', 'P', 'I', 'F')
-};
+} IP4_IF_ENUM_TYPES;
 
-//
-// This prototype is used by both receive and transmission.
-// When receiving Netbuf is allocated by IP4_INTERFACE, and
-// released by IP4. Flag shows whether the frame is received
-// as link broadcast/multicast...
-//
-// When transmitting, the Netbuf is from IP4, and provided
-// to the callback as a reference. Flag isn't used.
-//
-// IpInstance can be NULL which means that it is the IP4 driver
-// itself sending the packets. IP4 driver may send packets that
-// don't belong to any instance, such as ICMP errors, ICMP echo
-// responses, or IGMP packets. IpInstance is used as a tag in
-// this module.
-//
+/**
+  This prototype is used by both receive and transmission.
+  When receiving Netbuf is allocated by IP4_INTERFACE, and
+  released by IP4. Flag shows whether the frame is received
+  as link broadcast/multicast...
+
+  When transmitting, the Netbuf is from IP4, and provided
+  to the callback as a reference. Flag isn't used.
+
+  @param IpInstance The instance that sent or received the packet.
+                    IpInstance can be NULL which means that it is the IP4 driver
+                    itself sending the packets. IP4 driver may send packets that
+                    don't belong to any instance, such as ICMP errors, ICMP echo
+                    responses, or IGMP packets. IpInstance is used as a tag in
+                    this module.
+  @param Packet     The sent or received packet.
+  @param IoStatus   Status of sending or receiving.
+  @param LinkFlag   Indicate if the frame is received as link broadcast/multicast.
+                    When transmitting, it is not used.
+  @param Context    Additional data for callback.
+
+  @return None.
+**/
 typedef
 VOID
-(*IP4_FRAME_CALLBACK) (
-  IP4_PROTOCOL              *IpInstance,       OPTIONAL
-  NET_BUF                   *Packet,
-  EFI_STATUS                IoStatus,
-  UINT32                    LinkFlag,
-  VOID                      *Context
+(*IP4_FRAME_CALLBACK)(
+  IN IP4_PROTOCOL              *IpInstance,       OPTIONAL
+  IN NET_BUF                   *Packet,
+  IN EFI_STATUS                IoStatus,
+  IN UINT32                    LinkFlag,
+  IN VOID                      *Context
   );
 
-//
-// Each receive request is wrapped in an IP4_LINK_RX_TOKEN.
-// Upon completion, the Callback will be called. Only one
-// receive request is send to MNP. IpInstance is always NULL.
-// Reference MNP's spec for information.
-//
+///
+/// Each receive request is wrapped in an IP4_LINK_RX_TOKEN.
+/// Upon completion, the Callback will be called. Only one
+/// receive request is send to MNP. IpInstance is always NULL.
+/// Reference MNP's spec for information.
+///
 typedef struct {
   UINT32                                Signature;
   IP4_INTERFACE                         *Interface;
@@ -73,10 +81,10 @@ typedef struct {
   EFI_MANAGED_NETWORK_COMPLETION_TOKEN  MnpToken;
 } IP4_LINK_RX_TOKEN;
 
-//
-// Each transmit request is wrapped in an IP4_LINK_TX_TOKEN.
-// Upon completion, the Callback will be called.
-//
+///
+/// Each transmit request is wrapped in an IP4_LINK_TX_TOKEN.
+/// Upon completion, the Callback will be called.
+///
 typedef struct {
   UINT32                                Signature;
   LIST_ENTRY                            Link;
@@ -95,12 +103,12 @@ typedef struct {
   EFI_MANAGED_NETWORK_TRANSMIT_DATA     MnpTxData;
 } IP4_LINK_TX_TOKEN;
 
-//
-// Only one ARP request is requested for all the frames in
-// a time. It is started for the first frames to the Ip. Any
-// subsequent transmission frame will be linked to Frames, and
-// be sent all at once the ARP requests succeed.
-//
+///
+/// Only one ARP request is requested for all the frames in
+/// a time. It is started for the first frames to the Ip. Any
+/// subsequent transmission frame will be linked to Frames, and
+/// be sent all at once the ARP requests succeed.
+///
 typedef struct {
   UINT32                  Signature;
   LIST_ENTRY              Link;
@@ -116,13 +124,19 @@ typedef struct {
   EFI_MAC_ADDRESS         Mac;
 } IP4_ARP_QUE;
 
-//
-// Callback to select which frame to cancel. Caller can cancel a
-// single frame, or all the frame from an IP instance.
-//
+/**
+  Callback to select which frame to cancel. Caller can cancel a
+  single frame, or all the frame from an IP instance.
+
+  @param Frame      The sending frame to check for cancellation.
+  @param Context    Additional data for callback.
+
+  @retval TRUE      The sending of the frame should be cancelled.
+  @retval FALSE     Do not cancel the frame sending.
+**/
 typedef
 BOOLEAN
-(*IP4_FRAME_TO_CANCEL) (
+(*IP4_FRAME_TO_CANCEL)(
   IP4_LINK_TX_TOKEN       *Frame,
   VOID                    *Context
   );
@@ -184,6 +198,19 @@ struct _IP4_INTERFACE {
   BOOLEAN                       PromiscRecv;
 };
 
+/**
+  Create an IP4_INTERFACE. Delay the creation of ARP instance until
+  the interface is configured.
+
+  @param  Mnp                   The shared MNP child of this IP4 service binding
+                                instance
+  @param  Controller            The controller this IP4 service binding instance
+                                is installed. Most like the UNDI handle.
+  @param  ImageHandle           This driver's image handle
+
+  @return Point to the created IP4_INTERFACE, otherwise NULL.
+
+**/
 IP4_INTERFACE *
 Ip4CreateInterface (
   IN  EFI_MANAGED_NETWORK_PROTOCOL  *Mnp,
@@ -191,19 +218,68 @@ Ip4CreateInterface (
   IN  EFI_HANDLE                    ImageHandle
   );
 
+/**
+  Set the interface's address, create and configure
+  the ARP child if necessary.
+
+  @param  Interface             The interface to set the address
+  @param  IpAddr                The interface's IP address
+  @param  SubnetMask            The interface's netmask
+
+  @retval EFI_SUCCESS           The interface is configured with Ip/netmask pair,
+                                and a ARP is created for it.
+  @retval Others                Failed to set the interface's address.
+
+**/
 EFI_STATUS
 Ip4SetAddress (
-  IN  IP4_INTERFACE         *Interface,
-  IN  IP4_ADDR              IpAddr,
-  IN  IP4_ADDR              SubnetMask
+  IN OUT IP4_INTERFACE      *Interface,
+  IN     IP4_ADDR           IpAddr,
+  IN     IP4_ADDR           SubnetMask
   );
 
+/**
+  Free the interface used by IpInstance. All the IP instance with
+  the same Ip/Netmask pair share the same interface. It is reference
+  counted. All the frames haven't been sent will be cancelled.
+  Because the IpInstance is optional, the caller must remove
+  IpInstance from the interface's instance list itself.
+
+  @param  Interface             The interface used by the IpInstance
+  @param  IpInstance            The Ip instance that free the interface. NULL if
+                                the Ip driver is releasing the default interface.
+
+  @retval EFI_SUCCESS           The interface use IpInstance is freed.
+
+**/
 EFI_STATUS
 Ip4FreeInterface (
   IN  IP4_INTERFACE         *Interface,
-  IN  IP4_PROTOCOL          *IpInstance       OPTIONAL
+  IN  IP4_PROTOCOL          *IpInstance           OPTIONAL
   );
 
+/**
+  Send a frame from the interface. If the next hop is broadcast or
+  multicast address, it is transmitted immediately. If the next hop
+  is a unicast, it will consult ARP to resolve the NextHop's MAC.
+  If some error happened, the CallBack won't be called. So, the caller
+  must test the return value, and take action when there is an error.
+
+  @param  Interface             The interface to send the frame from
+  @param  IpInstance            The IP child that request the transmission.  NULL
+                                if it is the IP4 driver itself.
+  @param  Packet                The packet to transmit.
+  @param  NextHop               The immediate destination to transmit the packet
+                                to.
+  @param  CallBack              Function to call back when transmit finished.
+  @param  Context               Opaque parameter to the call back.
+
+  @retval EFI_OUT_OF_RESOURCES  Failed to allocate resource to send the frame
+  @retval EFI_NO_MAPPING        Can't resolve the MAC for the nexthop
+  @retval EFI_SUCCESS           The packet is successfully transmitted.
+  @retval other                 Other error occurs.
+
+**/
 EFI_STATUS
 Ip4SendFrame (
   IN  IP4_INTERFACE         *Interface,
@@ -214,6 +290,21 @@ Ip4SendFrame (
   IN  VOID                  *Context
   );
 
+/**
+  Remove all the frames on the interface that pass the FrameToCancel,
+  either queued on ARP queues or that have already been delivered to
+  MNP and not yet recycled.
+
+  @param  Interface             Interface to remove the frames from
+  @param  IoStatus              The transmit status returned to the frames'
+                                callback
+  @param  FrameToCancel         Function to select the frame to cancel, NULL to
+                                select all
+  @param  Context               Opaque parameters passed to FrameToCancel
+
+  @return NONE
+
+**/
 VOID
 Ip4CancelFrames (
   IN IP4_INTERFACE          *Interface,
@@ -222,11 +313,40 @@ Ip4CancelFrames (
   IN VOID                   *Context
   );
 
+/**
+  If there is a pending receive request, cancel it. Don't call
+  the receive request's callback because this function can be only
+  called if the instance or driver is tearing itself down. It
+  doesn't make sense to call it back. But it is necessary to call
+  the transmit token's callback to give it a chance to free the
+  packet and update the upper layer's transmit request status, say
+  that from the UDP.
+
+  @param  Interface             The interface used by the IpInstance
+
+  @return None
+
+**/
 VOID
 Ip4CancelReceive (
   IN IP4_INTERFACE          *Interface
   );
 
+/**
+  Request to receive the packet from the interface.
+
+  @param  Interface             The interface to receive the frames from
+  @param  IpInstance            The instance that requests the receive. NULL for
+                                the driver itself.
+  @param  CallBack              Function to call when receive finished.
+  @param  Context               Opaque parameter to the callback
+
+  @retval EFI_ALREADY_STARTED   There is already a pending receive request.
+  @retval EFI_OUT_OF_RESOURCES  Failed to allocate resource to receive
+  @retval EFI_SUCCESS           The recieve request has been started.
+  @retval other                 Other error occurs.
+
+**/
 EFI_STATUS
 Ip4ReceiveFrame (
   IN  IP4_INTERFACE         *Interface,

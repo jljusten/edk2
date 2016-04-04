@@ -32,7 +32,7 @@ Abstract:
 #include <Library/PcdLib.h>
 #include <Library/GenericBdsLib.h>
 #include <Library/PlatformBdsLib.h>
-#include <Library/GraphicsLib.h>
+#include <Library/DevicePathLib.h>
 
 #include <Protocol/UnixThunk.h>
 #include <Protocol/UnixIo.h>
@@ -106,16 +106,6 @@ BdsMemoryTest (
   )
 ;
 
-EFI_STATUS
-PlatformBdsShowProgress (
-  EFI_GRAPHICS_OUTPUT_BLT_PIXEL TitleForeground,
-  EFI_GRAPHICS_OUTPUT_BLT_PIXEL TitleBackground,
-  CHAR16                        *Title,
-  EFI_GRAPHICS_OUTPUT_BLT_PIXEL ProgressColor,
-  UINTN                         Progress,
-  UINTN                         PreviousValue
-  )
-;
 
 VOID
 PlatformBdsConnectSequence (

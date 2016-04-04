@@ -26,12 +26,25 @@
 #include <Protocol/SimpleTextOut.h>
 
 ///
-/// Enumeration of memory allocation.
+/// Enumeration of EFI memory allocation types.
 ///
 typedef enum {
+  ///
+  /// Allocate any available range of pages that satisfies the request
+  ///
   AllocateAnyPages,
+  ///
+  /// Allocate any available range of pages whose uppermost address is less than 
+  /// or equal to a specified maximum address
+  ///
   AllocateMaxAddress,
+  ///
+  /// Allocate pages at a specified address
+  ///
   AllocateAddress,
+  ///
+  /// Maximum enumeration value that may be used for bounds checking
+  ///
   MaxAllocateType
 } EFI_ALLOCATE_TYPE;
 
@@ -71,25 +84,34 @@ typedef enum {
 #define EFI_MEMORY_DESCRIPTOR_VERSION 1
 
 ///
-/// Definition of memory descriptor
+/// Definition of an EFI memory descriptor
 ///
 typedef struct {
+  ///
+  /// Type of the memory region.  See EFI_MEMORY_TYPE
+  ///
   UINT32                Type;
+  ///
+  /// Physical address of the first byte of the memory region.  Must aligned 
+  /// on a 4 KB boundary.
+  ///
   EFI_PHYSICAL_ADDRESS  PhysicalStart;
+  ///
+  /// Virtual address of the first byte of the memory region.  Must aligned 
+  /// on a 4 KB boundary.
+  ///
   EFI_VIRTUAL_ADDRESS   VirtualStart;
+  ///
+  /// Number of 4KB pages in the memory region.
+  ///
   UINT64                NumberOfPages;
+  ///
+  /// Attributes of the memory region that describe the bit mask of capabilities
+  /// for that memory region, and not necessarily the current settings for that 
+  /// memory region.
+  ///
   UINT64                Attribute;
 } EFI_MEMORY_DESCRIPTOR;
-
-///
-/// Build macros to find next EFI_MEMORY_DESCRIPTOR.
-///
-#define NEXT_MEMORY_DESCRIPTOR(_Ptr, _Size)   ((EFI_MEMORY_DESCRIPTOR *) (((UINT8 *) (_Ptr)) + (_Size)))
-
-///
-/// Declare forward referenced data structures
-///
-typedef struct _EFI_SYSTEM_TABLE   EFI_SYSTEM_TABLE;
 
 /**
   Allocates memory pages from the system.
@@ -306,7 +328,6 @@ EFI_STATUS
 // ConvertPointer DebugDisposition type.
 //
 #define EFI_OPTIONAL_PTR     0x00000001
-#define EFI_OPTIONAL_POINTER EFI_OPTIONAL_PTR
 
 /**
   Determines the new virtual address that is to be used on subsequent memory accesses.
@@ -427,8 +448,17 @@ EFI_STATUS
 /// Timer delay types
 ///
 typedef enum {
+  ///
+  /// An event's timer settings is to be cancelled and not trigger time is to be set
+  ///
   TimerCancel,
+  ///
+  /// An event is to be signalled periodically at a specified interval from the current time.
+  ///
   TimerPeriodic,
+  ///
+  /// An event is to be signalled once at a specified interval from the current time.
+  ///
   TimerRelative
 } EFI_TIMER_DELAY;
 
@@ -658,8 +688,27 @@ EFI_STATUS
 /// real time clock device as exposed through the EFI interfaces.
 ///
 typedef struct {
+  ///
+  /// Provides the reporting resolution of the real-time clock device in
+  /// counts per second. For a normal PC-AT CMOS RTC device, this
+  /// value would be 1 Hz, or 1, to indicate that the device only reports
+  /// the time to the resolution of 1 second.
+  ///
   UINT32    Resolution;
+  ///
+  /// Provides the timekeeping accuracy of the real-time clock in an
+  /// error rate of 1E-6 parts per million. For a clock with an accuracy
+  /// of 50 parts per million, the value in this field would be
+  /// 50,000,000.
+  ///
   UINT32    Accuracy;
+  ///
+  /// A TRUE indicates that a time set operation clears the device's
+  /// time below the Resolution reporting level. A FALSE
+  /// indicates that the state below the Resolution level of the
+  /// device is not cleared when the time is set. Normal PC-AT CMOS
+  /// RTC devices set this value to FALSE.
+  ///
   BOOLEAN   SetsToZero;
 } EFI_TIME_CAPABILITIES;
 
@@ -741,25 +790,6 @@ EFI_STATUS
 (EFIAPI *EFI_SET_WAKEUP_TIME)(
   IN  BOOLEAN                      Enable,
   IN  EFI_TIME                     *Time   OPTIONAL
-  );
-
-/**
-  This is the declaration of an EFI image entry point. This entry point is
-  the same for UEFI Applications, UEFI OS Loaders, and UEFI Drivers including
-  both device drivers and bus drivers.
-
-  @param  ImageHandle           The firmware allocated handle for the UEFI image.
-  @param  SystemTable           A pointer to the EFI System Table.
-
-  @retval EFI_SUCCESS           The operation completed successfully.
-  @retval EFI_OUT_OF_RESOURCES  The request could not be completed due to a lack of resources.
-
-**/
-typedef
-EFI_STATUS
-(EFIAPI *EFI_IMAGE_ENTRY_POINT)(
-  IN  EFI_HANDLE                   ImageHandle,
-  IN  EFI_SYSTEM_TABLE             *SystemTable
   );
 
 /**
@@ -851,8 +881,6 @@ EFI_STATUS
 
   @retval EFI_SUCCESS           The image has been unloaded.
   @retval EFI_INVALID_PARAMETER ImageHandle is not a valid image handle.
-  @retval EFI_UNSUPPORTED       The image has been started, and does not support unload.
-  @return Exit code from the image's unload handler
 
 **/
 typedef
@@ -922,10 +950,25 @@ EFI_STATUS
 /// Enumeration of reset types.
 ///
 typedef enum {
+  ///
+  /// Used to induce a system-wide reset. This sets all circuitry within the 
+  /// system to its initial state.  This type of reset is asynchronous to system
+  /// operation and operates withgout regard to cycle boundaries.  EfiColdReset 
+  /// is tantamount to a system power cycle.
+  ///
   EfiResetCold,
+  ///
+  /// Used to induce a system-wide initialization. The processors are set to their
+  /// initial state, and pending cycles are not corrupted.  If the system does 
+  /// not support this reset type, then an EfiResetCold must be performed.
+  ///
   EfiResetWarm,
-  EfiResetShutdown,
-  EfiResetUpdate
+  ///
+  /// Used to induce en entry into power state equivalent to the ACPI G2/S5 or G3
+  /// state.  If the system does not support this reset type, then when the system
+  /// is rebooted, it should exhibit the EfiResetCold attributes.
+  ///
+  EfiResetShutdown
 } EFI_RESET_TYPE;
 
 /**
@@ -945,7 +988,7 @@ VOID
   IN EFI_RESET_TYPE           ResetType,
   IN EFI_STATUS               ResetStatus,
   IN UINTN                    DataSize,
-  IN CHAR16                   *ResetData OPTIONAL
+  IN VOID                     *ResetData OPTIONAL
   );
 
 /**
@@ -1035,11 +1078,13 @@ VOID
   IN UINT8    Value
   );
 
-
-//
-// Protocol handler functions
-//
+///
+/// Enumeration of EFI Interface Types
+///
 typedef enum {
+  ///
+  /// Indicates that the supplied protocol interface is supplied in native form.
+  ///
   EFI_NATIVE_INTERFACE
 } EFI_INTERFACE_TYPE;
 
@@ -1262,7 +1307,9 @@ EFI_STATUS
   IN EFI_HANDLE               ControllerHandle
   );
 
-
+///
+/// EFI Oprn Protocol Information Entry
+///
 typedef struct {
   EFI_HANDLE  AgentHandle;
   EFI_HANDLE  ControllerHandle;
@@ -1346,10 +1393,22 @@ EFI_STATUS
   OUT VOID                     **Registration
   );
 
-
+///
+/// Enumeration of EFI Locate Search Types
+///
 typedef enum {
+  ///
+  /// Retrieve all the handles in the handle database.
+  ///
   AllHandles,
+  ///
+  /// Retrieve the next handle fron a RegisterProtocolNotify() event.
+  ///
   ByRegisterNotify,
+  ///
+  /// Retrieve the set of handles from the handle database that support a 
+  /// specified protocol.
+  ///
   ByProtocol
 } EFI_LOCATE_SEARCH_TYPE;
 
@@ -1429,7 +1488,6 @@ EFI_STATUS
   IN VOID                     *Table
   );
 
-
 /**
   Returns an array of handles that support the requested protocol in a buffer allocated from pool.
 
@@ -1483,28 +1541,69 @@ EFI_STATUS
   OUT VOID      **Interface
   );
 
+///
+/// EFI Capsule Block Descriptor
+///
 typedef struct {
-  UINT64                            Length;
+  ///
+  /// Length in bytes of the data pointed to by DataBlock/ContinuationPointer.
+  ///
+  UINT64                  Length;
   union {
+    ///
+    /// Physical address of the data block. This member of the union is
+    /// used if Length is not equal to zero.
+    ///
     EFI_PHYSICAL_ADDRESS  DataBlock;
+    ///
+    /// Physical address of another block of
+    /// EFI_CAPSULE_BLOCK_DESCRIPTOR structures. This
+    /// member of the union is used if Length is equal to zero. If
+    /// ContinuationPointer is zero this entry represents the end of the list.
+    ///
     EFI_PHYSICAL_ADDRESS  ContinuationPointer;
   } Union;
 } EFI_CAPSULE_BLOCK_DESCRIPTOR;
 
+///
+/// EFI Capsule Header
+///
 typedef struct {
+  ///
+  /// A GUID that defines the contents of a capsule.
+  ///
   EFI_GUID          CapsuleGuid;
+  ///
+  /// The size of the capsule header. This may be larger than the size of
+  /// the EFI_CAPSULE_HEADER since CapsuleGuid may imply
+  /// extended header entries
+  ///
   UINT32            HeaderSize;
+  ///
+  /// Bit-mapped list describing the capsule attributes. The Flag values
+  /// of 0x0000 - 0xFFFF are defined by CapsuleGuid. Flag values
+  /// of 0x10000 - 0xFFFF0000 are defined by this specification
+  ///
   UINT32            Flags;
+  ///
+  /// Size in bytes of the capsule.
+  ///
   UINT32            CapsuleImageSize;
 } EFI_CAPSULE_HEADER;
 
-//
-// The EFI System Table entry must point to an array of capsules
-// that contain the same CapsuleGuid value. The array must be
-// prefixed by a UINT32 that represents the size of the array of capsules.
-//
+///
+/// The EFI System Table entry must point to an array of capsules
+/// that contain the same CapsuleGuid value. The array must be
+/// prefixed by a UINT32 that represents the size of the array of capsules.
+///
 typedef struct {
+  ///
+  /// the size of the array of capsules.
+  ///
   UINT32   CapsuleArrayNumber;
+  ///
+  /// Point to an array of capsules that contain the same CapsuleGuid value.
+  ///
   VOID*    CapsulePtr[1];
 } EFI_CAPSULE_TABLE;
 
@@ -1606,14 +1705,14 @@ EFI_STATUS
 //
 // EFI Runtime Services Table
 //
-#define EFI_SYSTEM_TABLE_SIGNATURE      0x5453595320494249ULL
-#define EFI_SYSTEM_TABLE_REVISION       ((2<<16) | (10))
-#define EFI_2_10_SYSTEM_TABLE_REVISION  ((2<<16) | (10))
-#define EFI_2_00_SYSTEM_TABLE_REVISION  ((2<<16) | (00))
-#define EFI_1_10_SYSTEM_TABLE_REVISION  ((1<<16) | (10))
-#define EFI_1_02_SYSTEM_TABLE_REVISION  ((1<<16) | (02))
+#define EFI_SYSTEM_TABLE_SIGNATURE      EFI_SIGNATURE_64 ('I','B','I',' ','S','Y','S','T')
+#define EFI_SYSTEM_TABLE_REVISION       ((2 << 16) | (10))
+#define EFI_2_10_SYSTEM_TABLE_REVISION  ((2 << 16) | (10))
+#define EFI_2_00_SYSTEM_TABLE_REVISION  ((2 << 16) | (00))
+#define EFI_1_10_SYSTEM_TABLE_REVISION  ((1 << 16) | (10))
+#define EFI_1_02_SYSTEM_TABLE_REVISION  ((1 << 16) | (02))
 
-#define EFI_RUNTIME_SERVICES_SIGNATURE  0x56524553544e5552ULL
+#define EFI_RUNTIME_SERVICES_SIGNATURE  EFI_SIGNATURE_64 ('R','U','N','T','S','E','R','V')
 #define EFI_RUNTIME_SERVICES_REVISION   EFI_2_10_SYSTEM_TABLE_REVISION
 
 ///
@@ -1665,7 +1764,7 @@ typedef struct {
 } EFI_RUNTIME_SERVICES;
 
 
-#define EFI_BOOT_SERVICES_SIGNATURE   0x56524553544f4f42ULL
+#define EFI_BOOT_SERVICES_SIGNATURE   EFI_SIGNATURE_64 ('B','O','O','T','S','E','R','V')
 #define EFI_BOOT_SERVICES_REVISION    EFI_2_10_SYSTEM_TABLE_REVISION
 
 ///
@@ -1770,7 +1869,7 @@ typedef struct {
 /// Contains a set of GUID/pointer pairs comprised of the ConfigurationTable field in the
 /// EFI System Table.
 ///
-typedef struct{
+typedef struct {
   ///
   /// The 128-bit GUID value that uniquely identifies the system configuration table.
   ///
@@ -1784,7 +1883,7 @@ typedef struct{
 ///
 /// EFI System Table
 ///
-struct _EFI_SYSTEM_TABLE {
+typedef struct {
   ///
   /// The table header for the EFI System Table.
   ///
@@ -1843,7 +1942,25 @@ struct _EFI_SYSTEM_TABLE {
   /// The number of entries in the table is NumberOfTableEntries.
   ///
   EFI_CONFIGURATION_TABLE           *ConfigurationTable;
-};
+} EFI_SYSTEM_TABLE;
+
+/**
+  This is the declaration of an EFI image entry point. This entry point is
+  the same for UEFI Applications, UEFI OS Loaders, and UEFI Drivers including
+  both device drivers and bus drivers.
+
+  @param  ImageHandle           The firmware allocated handle for the UEFI image.
+  @param  SystemTable           A pointer to the EFI System Table.
+
+  @retval EFI_SUCCESS           The operation completed successfully.
+  @retval Others                Some unexpected error happened.
+**/
+typedef
+EFI_STATUS
+(EFIAPI *EFI_IMAGE_ENTRY_POINT)(
+  IN  EFI_HANDLE                   ImageHandle,
+  IN  EFI_SYSTEM_TABLE             *SystemTable
+  );
 
 //
 // EFI Load Options Attributes
@@ -1860,26 +1977,75 @@ struct _EFI_SYSTEM_TABLE {
 #define EFI_BOOT_OPTION_SUPPORT_APP   0x00000002
 #define EFI_BOOT_OPTION_SUPPORT_COUNT 0x00000300
 
+///
+/// EFI Boot Key Data
+///
 typedef union {
   struct {
+    ///
+    /// Indicates the revision of the EFI_KEY_OPTION structure. This revision level should be 0.
+    ///
     UINT32  Revision        : 8;
+    ///
+    /// Either the left or right Shift keys must be pressed (1) or must not be pressed (0).
+    ///
     UINT32  ShiftPressed    : 1;
+    ///
+    /// Either the left or right Control keys must be pressed (1) or must not be pressed (0).
+    ///
     UINT32  ControlPressed  : 1;
+    ///
+    /// Either the left or right Alt keys must be pressed (1) or must not be pressed (0).
+    ///
     UINT32  AltPressed      : 1;
+    ///
+    /// Either the left or right Logo keys must be pressed (1) or must not be pressed (0).
+    ///
     UINT32  LogoPressed     : 1;
+    ///
+    /// The Menu key must be pressed (1) or must not be pressed (0).
+    ///
     UINT32  MenuPressed     : 1;
+    ///
+    /// The SysReq key must be pressed (1) or must not be pressed (0).
+    ///
     UINT32  SysReqPessed    : 1;
     UINT32  Reserved        : 16;
+    ///
+    /// Specifies the actual number of entries in EFI_KEY_OPTION.Keys, from 0-3. If
+    /// zero, then only the shift state is considered. If more than one, then the boot option will
+    /// only be launched if all of the specified keys are pressed with the same shift state.
+    ///
     UINT32  InputKeyCount   : 2;
   } Options;
   UINT32  PackedValue;
-} HOT_KEY_EFI_KEY_DATA;
+} EFI_BOOT_KEY_DATA;
 
+///
+/// EFI Key Option
+///
 typedef struct {
-  HOT_KEY_EFI_KEY_DATA  KeyOptions;
-  UINT32                BootOptionCrc;
-  UINT16                BootOption;
-//EFI_INPUT_KEY         Keys[];
+  ///
+  /// Specifies options about how the key will be processed.
+  ///
+  EFI_BOOT_KEY_DATA  KeyData;
+  ///
+  /// The CRC-32 which should match the CRC-32 of the entire EFI_LOAD_OPTION to
+  /// which BootOption refers. If the CRC-32s do not match this value, then this key
+  /// option is ignored.
+  ///
+  UINT32             BootOptionCrc;
+  ///
+  /// The Boot#### option which will be invoked if this key is pressed and the boot option
+  /// is active (LOAD_OPTION_ACTIVE is set).
+  ///
+  UINT16             BootOption;
+  ///
+  /// The key codes to compare against those returned by the
+  /// EFI_SIMPLE_TEXT_INPUT and EFI_SIMPLE_TEXT_INPUT_EX protocols.
+  /// The number of key codes (0-3) is specified by the EFI_KEY_CODE_COUNT field in KeyOptions.
+  ///
+  //EFI_INPUT_KEY      Keys[];
 } EFI_KEY_OPTION;
 
 #define EFI_KEY_OPTION_SHIFT     0x00000001
@@ -1889,7 +2055,6 @@ typedef struct {
 #define EFI_KEY_OPTION_MENU      0x00000010
 #define EFI_KEY_OPTION_SYSREQ    0x00000020
 #define EFI_KEY_CODE_COUNT       0x00000300
-
 
 //
 // EFI File location to boot from on removable media devices

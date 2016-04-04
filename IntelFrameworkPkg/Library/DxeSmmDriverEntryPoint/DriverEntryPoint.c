@@ -21,10 +21,10 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/SmmBase.h>
 #include <Protocol/DevicePath.h>
 
-#include <Library/DxeSmmDriverEntryPoint.h>
+#include <Library/UefiDriverEntryPoint.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/DebugLib.h>
-
+#include <Library/DevicePathLib.h>
 
 /**
   This function returns the size, in bytes,
@@ -52,8 +52,8 @@ SmmGetDevicePathSize (
   // Search for the end of the device path structure
   //
   Start = DevicePath;
-  while (!EfiIsDevicePathEnd (DevicePath)) {
-    DevicePath = EfiNextDevicePathNode (DevicePath);
+  while (!IsDevicePathEnd (DevicePath)) {
+    DevicePath = NextDevicePathNode (DevicePath);
   }
 
   //
@@ -204,7 +204,7 @@ _ModuleEntryPoint (
   //
   if (!InSmm) {
     //
-    // Retrieve the Device Path Protocol from the DeviceHandle tha this driver was loaded from
+    // Retrieve the Device Path Protocol from the DeviceHandle from which this driver was loaded
     //
     Status = gBS->HandleProtocol (
                     LoadedImage->DeviceHandle,

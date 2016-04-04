@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#ifndef _BDS_PLATFORM_H
-#define _BDS_PLATFORM_H
+#ifndef _BDS_PLATFORM_H_
+#define _BDS_PLATFORM_H_
 
 #include <PiDxe.h>
 
@@ -25,6 +25,5 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/PcdLib.h>
 #include <Library/GenericBdsLib.h>
 #include <Library/PlatformBdsLib.h>
-#include <Library/GraphicsLib.h>
 
 #endif // _BDS_PLATFORM_H

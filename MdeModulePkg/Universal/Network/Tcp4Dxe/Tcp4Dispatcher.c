@@ -1,20 +1,13 @@
 /** @file
 
-Copyright (c) 2005 - 2006, Intel Corporation
+Copyright (c) 2005 - 2006, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
-http://opensource.org/licenses/bsd-license.php
+http://opensource.org/licenses/bsd-license.php<BR>
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  Tcp4Dispatcher.c
-
-Abstract:
-
 
 **/
 
@@ -23,42 +16,33 @@ Abstract:
 #define TCP_COMP_VAL(Min, Max, Default, Val) \
   ((((Val) <= (Max)) && ((Val) >= (Min))) ? (Val) : (Default))
 
+/**
+  Add or remove a route entry in the IP route table associated with this TCP instance.
+
+  @param  Tcb                   Pointer to the TCP_CB of this TCP instance.
+  @param  RouteInfo             Pointer to the route info to be processed.
+
+  @retval EFI_SUCCESS           The operation completed successfully.
+  @retval EFI_NOT_STARTED       The driver instance has not been started.
+  @retval EFI_NO_MAPPING        When using the default address, configuration(DHCP,
+                                BOOTP, RARP, etc.) is not finished yet.
+  @retval EFI_OUT_OF_RESOURCES  Could not add the entry to the routing table.
+  @retval EFI_NOT_FOUND         This route is not in the routing table
+                                (when RouteInfo->DeleteRoute is TRUE).
+  @retval EFI_ACCESS_DENIED     The route is already defined in the routing table
+                                (when RouteInfo->DeleteRoute is FALSE).
+**/
 EFI_STATUS
 Tcp4Route (
   IN TCP_CB           *Tcb,
   IN TCP4_ROUTE_INFO  *RouteInfo
   )
-/*++
-
-Routine Description:
-
-  Add or remove a route entry in the IP route table associated
-  with this TCP instance.
-
-Arguments:
-
-  Tcb       - Pointer to the TCP_CB of this TCP instance.
-  RouteInfo - Pointer to the route info to be processed.
-
-Returns:
-
-  EFI_SUCCESS          - The operation completed successfully.
-  EFI_NOT_STARTED      - The driver instance has not been started.
-  EFI_NO_MAPPING       - When using the default address, configuration(DHCP,
-                         BOOTP, RARP, etc.) is not finished yet.
-  EFI_OUT_OF_RESOURCES - Could not add the entry to the routing table.
-  EFI_NOT_FOUND        - This route is not in the routing table
-                         (when RouteInfo->DeleteRoute is TRUE).
-  EFI_ACCESS_DENIED    - The route is already defined in the routing table
-                         (when RouteInfo->DeleteRoute is FALSE).
-
---*/
 {
   EFI_IP4_PROTOCOL  *Ip;
 
   Ip = Tcb->IpInfo->Ip;
 
-  ASSERT (Ip);
+  ASSERT (Ip != NULL);
 
   return Ip->Routes (
               Ip,
@@ -67,7 +51,7 @@ Returns:
               RouteInfo->SubnetMask,
               RouteInfo->GatewayAddress
               );
-
+              
 }
 
 
@@ -101,11 +85,11 @@ Tcp4GetMode (
     return EFI_NOT_STARTED;
   }
 
-  if (Mode->Tcp4State) {
+  if (Mode->Tcp4State != NULL) {
     *(Mode->Tcp4State) = (EFI_TCP4_CONNECTION_STATE) Tcb->State;
   }
 
-  if (Mode->Tcp4ConfigData) {
+  if (Mode->Tcp4ConfigData != NULL) {
 
     ConfigData                      = Mode->Tcp4ConfigData;
     AccessPoint                     = &(ConfigData->AccessPoint);
@@ -147,7 +131,7 @@ Tcp4GetMode (
   }
 
   Ip = Tcb->IpInfo->Ip;
-  ASSERT (Ip);
+  ASSERT (Ip != NULL);
 
   return Ip->GetModeData (Ip, Mode->Ip4ModeData, Mode->MnpConfigData, Mode->SnpModeData);
 }
@@ -220,11 +204,9 @@ Tcp4Bind (
 
 
 /**
-  Flush the Tcb add its associated protocols..
+  Flush the Tcb add its associated protocols.
 
   @param  Tcb                    Pointer to the TCP_CB to be flushed.
-
-  @retval EFI_SUCCESS            The operation is completed successfully.
 
 **/
 VOID
@@ -260,6 +242,15 @@ Tcp4FlushPcb (
   NetbufFreeList (&Tcb->RcvQue);
 }
 
+/**
+  Attach a Pcb to the socket.
+
+  @param  Sk                     Pointer to the socket of this TCP instance.
+  
+  @retval EFI_SUCCESS            The operation is completed successfully.
+  @retval EFI_OUT_OF_RESOURCES   Failed due to resource limit.
+
+**/
 EFI_STATUS
 Tcp4AttachPcb (
   IN SOCKET  *Sk
@@ -302,6 +293,12 @@ Tcp4AttachPcb (
   return EFI_SUCCESS;
 }
 
+/**
+  Detach the Pcb of the socket.
+
+  @param  Sk                     Pointer to the socket of this TCP instance.
+  
+**/
 VOID
 Tcp4DetachPcb (
   IN SOCKET  *Sk
@@ -326,10 +323,9 @@ Tcp4DetachPcb (
 
 
 /**
-  Configure the Tcb using CfgData.
+  Configure the Pcb using CfgData.
 
   @param  Sk                     Pointer to the socket of this TCP instance.
-  @param  SkTcb                  Pointer to the TCP_CB of this TCP instance.
   @param  CfgData                Pointer to the TCP configuration data.
 
   @retval EFI_SUCCESS            The operation is completed successfully.
@@ -350,7 +346,7 @@ Tcp4ConfigurePcb (
   TCP4_PROTO_DATA     *TcpProto;
   TCP_CB              *Tcb;
 
-  ASSERT (CfgData && Sk && Sk->SockHandle);
+  ASSERT ((CfgData != NULL) && (Sk != NULL) && (Sk->SockHandle != NULL));
 
   TcpProto = (TCP4_PROTO_DATA *) Sk->ProtoReserved;
   Tcb      = TcpProto->TcpPcb;
@@ -618,13 +614,13 @@ Tcp4Dispatcher (
     // notify TCP using this message to give it a chance to send out
     // window update information
     //
-    ASSERT (Tcb);
+    ASSERT (Tcb != NULL);
     TcpOnAppConsume (Tcb);
     break;
 
   case SOCK_SND:
 
-    ASSERT (Tcb);
+    ASSERT (Tcb != NULL);
     TcpOnAppSend (Tcb);
     break;
 
@@ -687,7 +683,7 @@ Tcp4Dispatcher (
 
   case SOCK_MODE:
 
-    ASSERT (Data && Tcb);
+    ASSERT ((Data != NULL) && (Tcb != NULL));
 
     return Tcp4GetMode (Tcb, (TCP4_MODE_DATA *) Data);
 
@@ -695,7 +691,7 @@ Tcp4Dispatcher (
 
   case SOCK_ROUTE:
 
-    ASSERT (Data && Tcb);
+    ASSERT ((Data != NULL) && (Tcb != NULL));
 
     return Tcp4Route (Tcb, (TCP4_ROUTE_INFO *) Data);
 

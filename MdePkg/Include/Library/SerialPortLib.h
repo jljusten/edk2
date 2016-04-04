@@ -1,14 +1,14 @@
 /** @file
-  Serial I/O Port library functions definition.
+  This library class provides common serial I/O port functions.
 
-  Copyright (c) 2006 - 2008, Intel Corporation
-  All rights reserved. This program and the accompanying materials
-  are licensed and made available under the terms and conditions of the BSD License
-  which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+Copyright (c) 2006 - 2008, Intel Corporation
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -38,9 +38,7 @@ SerialPortInitialize (
   Writes NumberOfBytes data bytes from Buffer to the serial device.  
   The number of bytes actually written to the serial device is returned.
   If the return value is less than NumberOfBytes, then the write operation failed.
-
   If Buffer is NULL, then ASSERT(). 
-
   If NumberOfBytes is zero, then return 0.
 
   @param  Buffer           Pointer to the data buffer to be written.
@@ -54,8 +52,8 @@ SerialPortInitialize (
 UINTN
 EFIAPI
 SerialPortWrite (
-  IN UINT8 	   *Buffer,
-  IN UINTN 	   NumberOfBytes
+  IN UINT8     *Buffer,
+  IN UINTN     NumberOfBytes
   );
 
 
@@ -65,23 +63,21 @@ SerialPortWrite (
   Reads NumberOfBytes data bytes from a serial device into the buffer
   specified by Buffer. The number of bytes actually read is returned. 
   If the return value is less than NumberOfBytes, then the rest operation failed.
-
   If Buffer is NULL, then ASSERT(). 
-
   If NumberOfBytes is zero, then return 0.
 
   @param  Buffer           Pointer to the data buffer to store the data read from the serial device.
   @param  NumberOfBytes    Number of bytes which will be read.
 
   @retval 0                Read data failed, No data is to be read.
-  @retval !0               Aactual number of bytes read from serial device.
+  @retval >0               Aactual number of bytes read from serial device.
 
 **/
 UINTN
 EFIAPI
 SerialPortRead (
-  OUT UINT8 	*Buffer,
-  IN  UINTN 	NumberOfBytes
+  OUT UINT8   *Buffer,
+  IN  UINTN   NumberOfBytes
   );
 
 /**

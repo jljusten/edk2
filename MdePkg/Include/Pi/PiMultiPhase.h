@@ -86,15 +86,31 @@ typedef UINT32 EFI_STATUS_CODE_VALUE;
 /// the structure and is Size bytes long.
 ///
 typedef struct {
+  ///
+  /// The size of the structure. This is specified to enable future expansion.
+  ///
   UINT16    HeaderSize;
+  ///
+  /// The size of the data in bytes. This does not include the size of the header structure.
+  ///
   UINT16    Size;
+  ///
+  /// The GUID defining the type of the data.
+  ///
   EFI_GUID  Type;
 } EFI_STATUS_CODE_DATA;
 
 
-//
-// Bit values for Authentication Status
-//
+///
+/// Bit values for Authentication Status
+///
+/// xx00 Image was not signed.
+/// xxx1 Platform security policy override. Assumes same meaning as 0010 (the image was signed, the
+///      signature was tested, and the signature passed authentication test).
+/// 0010 Image was signed, the signature was tested, and the signature passed authentication test.
+/// 0110 Image was signed and the signature was not tested.
+/// 1010 Image was signed, the signature was tested, and the signature failed the authentication test.
+///
 #define EFI_AUTH_STATUS_PLATFORM_OVERRIDE   0x01
 #define EFI_AUTH_STATUS_IMAGE_SIGNED        0x02
 #define EFI_AUTH_STATUS_NOT_TESTED          0x04

@@ -25,41 +25,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "mousehid.h"
 
-//
-// Prototypes
-// Driver model protocol interface
-//
-EFI_STATUS
-EFIAPI
-USBMouseAbsolutePointerDriverBindingEntryPoint (
-  IN EFI_HANDLE           ImageHandle,
-  IN EFI_SYSTEM_TABLE     *SystemTable
-  );
-
-EFI_STATUS
-EFIAPI
-USBMouseAbsolutePointerDriverBindingSupported (
-  IN EFI_DRIVER_BINDING_PROTOCOL    *This,
-  IN EFI_HANDLE                     Controller,
-  IN EFI_DEVICE_PATH_PROTOCOL       *RemainingDevicePath
-  );
-
-EFI_STATUS
-EFIAPI
-USBMouseAbsolutePointerDriverBindingStart (
-  IN EFI_DRIVER_BINDING_PROTOCOL    *This,
-  IN EFI_HANDLE                     Controller,
-  IN EFI_DEVICE_PATH_PROTOCOL       *RemainingDevicePath
-  );
-
-EFI_STATUS
-EFIAPI
-USBMouseAbsolutePointerDriverBindingStop (
-  IN  EFI_DRIVER_BINDING_PROTOCOL   *This,
-  IN  EFI_HANDLE                    Controller,
-  IN  UINTN                         NumberOfChildren,
-  IN  EFI_HANDLE                    *ChildHandleBuffer
-  );
 
 EFI_GUID  gEfiUsbMouseAbsolutePointerDriverGuid = {
   0xa579f729, 0xa71d, 0x4b45, { 0xbe, 0xd7, 0xd, 0xb0, 0xa8, 0x7c, 0x3e, 0x8d }
@@ -229,7 +194,7 @@ USBMouseAbsolutePointerDriverBindingSupported (
   @retval EFI_DEVICE_ERROR      This driver cannot be started due to device Error
                                 EFI_OUT_OF_RESOURCES- Can't allocate memory
                                 resources
-  @retval EFI_ALREADY_STARTED   Thios driver has been started
+  @retval EFI_ALREADY_STARTED   This driver has been started
 
 **/
 EFI_STATUS
@@ -467,7 +432,7 @@ ErrorExit:
 
 
 /**
-  Stop this driver on ControllerHandle. Support stoping any child handles
+  Stop this driver on ControllerHandle. Support stopping any child handles
   created by this driver.
 
   @param  This                  Protocol instance pointer.

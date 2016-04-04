@@ -29,12 +29,8 @@
     0x9576e91, 0x6d3f, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b } \
   }
 
-//
-// Protocol GUID defined in EFI1.1.
-// 
-
 ///
-/// Device Path information
+/// Device Path guid definition for backward-compatible with EFI1.1.
 ///
 #define DEVICE_PATH_PROTOCOL  EFI_DEVICE_PATH_PROTOCOL_GUID
 
@@ -67,7 +63,7 @@ typedef struct {
 } EFI_DEVICE_PATH_PROTOCOL;
 
 ///
-/// For backward-compatible with EFI1.1.
+/// Device Path protocol definition for backward-compatible with EFI1.1.
 /// 
 typedef EFI_DEVICE_PATH_PROTOCOL  EFI_DEVICE_PATH;
 
@@ -76,56 +72,154 @@ typedef EFI_DEVICE_PATH_PROTOCOL  EFI_DEVICE_PATH;
 ///
 #define HARDWARE_DEVICE_PATH      0x01
 
+///
+/// PCI Device Path SubType
+///
 #define HW_PCI_DP                 0x01
+
+///
+/// PCI Device Path
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// PCI Function Number
+  ///
   UINT8                           Function;
+  ///
+  /// PCI Device Number
+  ///
   UINT8                           Device;
 } PCI_DEVICE_PATH;
 
+///
+/// PCCARD Device Path SubType
+///
 #define HW_PCCARD_DP              0x02
+
+///
+/// PCCARD Device Path
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Function Number (0 = First Function)
+  ///
   UINT8                           FunctionNumber;
 } PCCARD_DEVICE_PATH;
 
+///
+/// Memory Mapped Device Path SubType
+///
 #define HW_MEMMAP_DP              0x03
+
+///
+/// Memory Mapped Device Path
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// EFI_MEMORY_TYPE
+  ///
   UINT32                          MemoryType;
+  ///
+  /// Starting Memory Address.
+  ///
   EFI_PHYSICAL_ADDRESS            StartingAddress;
+  ///
+  /// Ending Memory Address
+  ///
   EFI_PHYSICAL_ADDRESS            EndingAddress;
 } MEMMAP_DEVICE_PATH;
 
+///
+/// Hardware Vendor Device Path SubType
+///
 #define HW_VENDOR_DP              0x04
+
+///
+/// The Vendor Device Path allows the creation of vendor-defined Device Paths. A vendor must
+/// allocate a Vendor GUID for a Device Path. The Vendor GUID can then be used to define the
+/// contents on the n bytes that follow in the Vendor Device Path node.
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Vendor-assigned GUID that defines the data that follows.
+  ///
   EFI_GUID                        Guid;
+  ///
+  /// Vendor-defined variable size data.
+  ///
 } VENDOR_DEVICE_PATH;
 
+///
+/// Controller Device Path SubType
+///
 #define HW_CONTROLLER_DP          0x05
+
+///
+/// Controller Device Path
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Controller number.
+  ///
   UINT32                          ControllerNumber;
 } CONTROLLER_DEVICE_PATH;
 
 ///
-/// ACPI Device Paths
+/// ACPI Device Paths 
 ///
 #define ACPI_DEVICE_PATH          0x02
 
+///
+/// ACPI Device Path SubType
+///
 #define ACPI_DP                   0x01
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Device's PnP hardware ID stored in a numeric 32-bit
+  /// compressed EISA-type ID. This value must match the
+  /// corresponding _HID in the ACPI name space.
+  ///
   UINT32                          HID;
+  ///
+  /// Unique ID that is required by ACPI if two devices have the
+  /// same _HID. This value must also match the corresponding
+  /// _UID/_HID pair in the ACPI name space. Only the 32-bit
+  /// numeric value type of _UID is supported; thus strings must
+  /// not be used for the _UID in the ACPI name space.
+  ///
   UINT32                          UID;
 } ACPI_HID_DEVICE_PATH;
 
+///
+/// Expanded ACPI Device Path SubType
+///
 #define ACPI_EXTENDED_DP          0x02
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Device's PnP hardware ID stored in a numeric 32-bit
+  /// compressed EISA-type ID. This value must match the
+  /// corresponding _HID in the ACPI name space.
+  ///
   UINT32                          HID;
+  ///
+  /// Unique ID that is required by ACPI if two devices have the
+  /// same _HID. This value must also match the corresponding
+  /// _UID/_HID pair in the ACPI name space.
+  ///
   UINT32                          UID;
+  ///
+  /// Device's compatible PnP hardware ID stored in a numeric
+  /// 32-bit compressed EISA-type ID. This value must match at
+  /// least one of the compatible device IDs returned by the
+  /// corresponding _CID in the ACPI name space.
+  ///
   UINT32                          CID;
   ///
   /// Optional variable length _HIDSTR
@@ -149,11 +243,27 @@ typedef struct {
 #define PNP_EISA_ID_MASK          0xffff
 #define EISA_ID_TO_NUM(_Id)       ((_Id) >> 16)
 
-
+///
+/// ACPI _ADR Device Path SubType
+///
 #define ACPI_ADR_DP               0x03
+
+///
+/// The _ADR device path is used to contain video output device attributes to support the Graphics
+/// Output Protocol. The device path can contain multiple _ADR entries if multiple video output
+/// devices are displaying the same output.
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// _ADR value. For video output devices the value of this
+  /// field comes from Table B-2 ACPI 3.0 specification. At
+  /// least one _ADR value is required.
+  ///
   UINT32                          ADR;
+  //
+  // This device path may optionally contain more than one _ADR entry.
+  //
 } ACPI_ADR_DEVICE_PATH;
 
 #define ACPI_ADR_DISPLAY_TYPE_OTHER             0
@@ -174,122 +284,325 @@ typedef struct {
 
 ///
 /// Messaging Device Paths
+/// This Device Path is used to describe the connection of devices outside the resource domain of the
+/// system. This Device Path can describe physical messaging information like SCSI ID, or abstract
+/// information like networking protocol IP addresses.
 ///
 #define MESSAGING_DEVICE_PATH     0x03
 
+///
+/// ATAPI Device Path SubType
+///
 #define MSG_ATAPI_DP              0x01
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Set to zero for primary or one for secondary
+  ///
   UINT8                           PrimarySecondary;
+  ///
+  /// Set to zero for master or one for slave mode
+  ///
   UINT8                           SlaveMaster;
+  ///
+  /// Logical Unit Number
+  ///
   UINT16                          Lun;
 } ATAPI_DEVICE_PATH;
 
+///
+/// SCSI Device Path SubType
+///
 #define MSG_SCSI_DP               0x02
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Target ID on the SCSI bus (PUN)
+  ///
   UINT16                          Pun;
+  ///
+  /// Logical Unit Number (LUN)
+  ///
   UINT16                          Lun;
 } SCSI_DEVICE_PATH;
 
+///
+/// Fibre Channel SubType
+///
 #define MSG_FIBRECHANNEL_DP       0x03
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Reserved for the future.
+  ///
   UINT32                          Reserved;
+  ///
+  /// Fibre Channel World Wide Number.
+  ///
   UINT64                          WWN;
+  ///
+  /// Fibre Channel Logical Unit Number.
+  ///
   UINT64                          Lun;
 } FIBRECHANNEL_DEVICE_PATH;
 
+///
+/// 1394 Device Path SubType
+///
 #define MSG_1394_DP               0x04
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Reserved for the future.
+  ///
   UINT32                          Reserved;
+  ///
+  /// 1394 Global Unique ID (GUID).
+  ///
   UINT64                          Guid;
 } F1394_DEVICE_PATH;
 
+///
+/// USB Device Path SubType
+///
 #define MSG_USB_DP                0x05
 typedef struct {
-    EFI_DEVICE_PATH_PROTOCOL      Header;
-    UINT8                         ParentPortNumber;
-    UINT8                         InterfaceNumber;
+  EFI_DEVICE_PATH_PROTOCOL      Header;
+  ///
+  /// USB Parent Port Number
+  ///
+  UINT8                         ParentPortNumber;
+  ///
+  /// USB Interface Number
+  ///
+  UINT8                         InterfaceNumber;
 } USB_DEVICE_PATH;
 
+///
+/// USB Class Device Path SubType
+///
 #define MSG_USB_CLASS_DP          0x0f
 typedef struct {
-    EFI_DEVICE_PATH_PROTOCOL      Header;
-    UINT16                        VendorId;
-    UINT16                        ProductId;
-    UINT8                         DeviceClass;
-    UINT8                         DeviceSubClass;
-    UINT8                         DeviceProtocol;
+  EFI_DEVICE_PATH_PROTOCOL      Header;
+  ///
+  /// Vendor ID assigned by USB-IF. A value of 0xFFFF will
+  /// match any Vendor ID.
+  ///
+  UINT16                        VendorId;
+  ///
+  /// Product ID assigned by USB-IF. A value of 0xFFFF will
+  /// match any Product ID.
+  ///
+  UINT16                        ProductId;
+  ///
+  /// The class code assigned by the USB-IF. A value of 0xFF
+  /// will match any class code.
+  ///
+  UINT8                         DeviceClass;
+  ///
+  /// The subclass code assigned by the USB-IF. A value of
+  /// 0xFF will match any subclass code.
+  ///
+  UINT8                         DeviceSubClass;
+  ///
+  /// The protocol code assigned by the USB-IF. A value of
+  /// 0xFF will match any protocol code.
+  ///
+  UINT8                         DeviceProtocol;
 } USB_CLASS_DEVICE_PATH;
 
+///
+/// USB WWID Device Path SubType
+///
 #define MSG_USB_WWID_DP           0x10
+
+///
+/// This device path describes a USB device using its serial number.
+///
 typedef struct {
-    EFI_DEVICE_PATH_PROTOCOL      Header;
-    UINT16                        InterfaceNumber;
-    UINT16                        VendorId;
-    UINT16                        ProductId;
-    // CHAR16                     SerialNumber[...];
+  EFI_DEVICE_PATH_PROTOCOL      Header;
+  ///
+  /// USB interface number
+  ///
+  UINT16                        InterfaceNumber;
+  ///
+  /// USB vendor id of the device
+  ///
+  UINT16                        VendorId;
+  ///
+  /// USB product id of the device
+  ///
+  UINT16                        ProductId;
+  ///
+  /// Last 64-or-fewer UTF-16 characters of the USB
+  /// serial number. The length of the string is
+  /// determined by the Length field less the offset of the
+  /// Serial Number field (10)
+  ///
+  /// CHAR16                     SerialNumber[...];
 } USB_WWID_DEVICE_PATH;
 
-
+///
+/// Device Logical Unit SubType
+///
 #define MSG_DEVICE_LOGICAL_UNIT_DP  0x11
 typedef struct {
-    EFI_DEVICE_PATH_PROTOCOL      Header;
-    UINT8                         Lun;
+  EFI_DEVICE_PATH_PROTOCOL      Header;
+  ///
+  /// Logical Unit Number for the interface
+  ///
+  UINT8                         Lun;
 } DEVICE_LOGICAL_UNIT_DEVICE_PATH;
 
+///
+/// SATA Device Path SubType
+///
 #define MSG_SATA_DP               0x12
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// The HBA port number that facilitates the connection to the
+  /// device or a port multiplier. The value 0xFFFF is reserved.
+  ///
   UINT16                          HBAPortNumber;
+  ///
+  /// The Port multiplier port number that facilitates the connection
+  /// to the device. Bit 15 should be set if the device is directly
+  /// connected to the HBA.
+  ///
   UINT16                          PortMultiplierPortNumber;
+  ///
+  /// Logical Unit Number.
+  ///
   UINT16                          Lun;
 } SATA_DEVICE_PATH;
 
+///
+/// I2O Device Path SubType
+///
 #define MSG_I2O_DP                0x06
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Target ID (TID) for a device
+  ///
   UINT32                          Tid;
 } I2O_DEVICE_PATH;
 
+///
+/// MAC Address Device Path SubType
+///
 #define MSG_MAC_ADDR_DP           0x0b
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// The MAC address for a network interface padded with 0s
+  ///
   EFI_MAC_ADDRESS                 MacAddress;
+  ///
+  /// Network interface type(i.e. 802.3, FDDI).
+  ///
   UINT8                           IfType;
 } MAC_ADDR_DEVICE_PATH;
 
+///
+/// IPv4 Device Path SubType
+///
 #define MSG_IPv4_DP               0x0c
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// The local IPv4 address
+  ///
   EFI_IPv4_ADDRESS                LocalIpAddress;
+  ///
+  /// The remote IPv4 address
+  ///
   EFI_IPv4_ADDRESS                RemoteIpAddress;
+  ///
+  /// The local port number
+  ///
   UINT16                          LocalPort;
+  ///
+  /// The remote port number
+  ///
   UINT16                          RemotePort;
+  ///
+  /// The network protocol(i.e. UDP, TCP).
+  ///
   UINT16                          Protocol;
+  ///
+  /// 0x00 - The Source IP Address was assigned though DHCP
+  /// 0x01 - The Source IP Address is statically bound
+  ///
   BOOLEAN                         StaticIpAddress;
 } IPv4_DEVICE_PATH;
 
+///
+/// IPv6 Device Path SubType
+///
 #define MSG_IPv6_DP               0x0d
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// The local IPv6 address
+  ///
   EFI_IPv6_ADDRESS                LocalIpAddress;
+  ///
+  /// The remote IPv6 address
+  ///
   EFI_IPv6_ADDRESS                RemoteIpAddress;
+  ///
+  /// The local port number
+  ///
   UINT16                          LocalPort;
+  ///
+  /// The remote port number
+  ///
   UINT16                          RemotePort;
+  ///
+  /// The network protocol(i.e. UDP, TCP).
+  ///
   UINT16                          Protocol;
+  ///
+  /// 0x00 - The Source IP Address was assigned though DHCP
+  /// 0x01 - The Source IP Address is statically bound
+  ///
   BOOLEAN                         StaticIpAddress;
 } IPv6_DEVICE_PATH;
 
+///
+/// InfiniBand Device Path SubType
+///
 #define MSG_INFINIBAND_DP         0x09
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Flags to help identify/manage InfiniBand device path elements:
+  /// Bit 0 - IOC/Service (0b = IOC, 1b = Service)
+  /// Bit 1 - Extend Boot Environment
+  /// Bit 2 - Console Protocol
+  /// Bit 3 - Storage Protocol
+  /// Bit 4 - Network Protocol
+  /// All other bits are reserved.
+  ///
   UINT32                          ResourceFlags;
+  ///
+  /// 128-bit Global Identifier for remote fabric port
+  ///
   UINT8                           PortGid[16];
+  ///
+  /// 64-bit unique identifier to remote IOC or server process.
+  /// Interpretation of field specified by Resource Flags (bit 0)
+  ///
   UINT64                          ServiceId;
+  ///
+  /// 64-bit persistent ID of remote IOC port
+  ///
   UINT64                          TargetPortId;
+  ///
+  /// 64-bit persistent ID of remote device
+  ///
   UINT64                          DeviceId;
 } INFINIBAND_DEVICE_PATH;
 
@@ -299,13 +612,43 @@ typedef struct {
 #define INFINIBAND_RESOURCE_FLAG_STORAGE_PROTOCOL           0x08
 #define INFINIBAND_RESOURCE_FLAG_NETWORK_PROTOCOL           0x10
 
+///
+/// UART Device Path SubType
+///
 #define MSG_UART_DP               0x0e
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Reserved
+  ///
   UINT32                          Reserved;
+  ///
+  /// The baud rate setting for the UART style device. A value of 0
+  /// means that the device's default baud rate will be used.
+  ///
   UINT64                          BaudRate;
+  ///
+  /// The number of data bits for the UART style device. A value
+  /// of 0 means that the device's default number of data bits will be used.
+  ///
   UINT8                           DataBits;
+  ///
+  /// The parity setting for the UART style device.
+  /// Parity 0x00 - Default Parity
+  /// Parity 0x01 - No Parity
+  /// Parity 0x02 - Even Parity
+  /// Parity 0x03 - Odd Parity
+  /// Parity 0x04 - Mark Parity
+  /// Parity 0x05 - Space Parity
+  ///
   UINT8                           Parity;
+  ///
+  /// The number of stop bits for the UART style device.
+  /// Stop Bits 0x00 - Default Stop Bits
+  /// Stop Bits 0x01 - 1 Stop Bit
+  /// Stop Bits 0x02 - 1.5 Stop Bits
+  /// Stop Bits 0x03 - 2 Stop Bits
+  ///
   UINT8                           StopBits;
 } UART_DEVICE_PATH;
 
@@ -322,32 +665,85 @@ typedef VENDOR_DEVICE_PATH        VENDOR_DEFINED_DEVICE_PATH;
 
 #define DEVICE_PATH_MESSAGING_UART_FLOW_CONTROL   EFI_UART_DEVICE_PATH_GUID
 
+///
+/// A new device path node is defined to declare flow control characteristics.
+/// UART Flow Control Messaging Device Path
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// DEVICE_PATH_MESSAGING_UART_FLOW_CONTROL GUID
+  ///
   EFI_GUID                        Guid;
+  ///
+  /// Bitmap of supported flow control types.
+  /// Bit 0 set indicates hardware flow control.
+  /// Bit 1 set indicates Xon/Xoff flow control.
+  /// All other bits are reserved and are clear.
+  ///
   UINT32                          FlowControlMap;
 } UART_FLOW_CONTROL_DEVICE_PATH;
 
 #define DEVICE_PATH_MESSAGING_SAS                 EFI_SAS_DEVICE_PATH_GUID
-
+///
+/// Serial Attached SCSI (SAS) devices.
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// DEVICE_PATH_MESSAGING_SAS GUID
+  ///
   EFI_GUID                        Guid;
+  ///
+  /// Reserved for future use.
+  ///
   UINT32                          Reserved;
+  ///
+  /// SAS Address for Serial Attached SCSI Target.
+  ///
   UINT64                          SasAddress;
+  ///
+  /// SAS Logical Unit Number.
+  ///
   UINT64                          Lun;
+  ///
+  /// More Information about the device and its interconnect
+  ///
   UINT16                          DeviceTopology;
+  ///
+  /// Relative Target Port (RTP)
+  ///
   UINT16                          RelativeTargetPort;
 } SAS_DEVICE_PATH;
 
+///
+/// iSCSI Device Path SubType
+///
 #define MSG_ISCSI_DP              0x13
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Network Protocol (0 = TCP, 1+ = reserved)
+  ///
   UINT16                          NetworkProtocol;
+  ///
+  /// iSCSI Login Options
+  ///
   UINT16                          LoginOption;
+  ///
+  /// iSCSI Logical Unit Number
+  ///
   UINT64                          Lun;
+  ///
+  /// iSCSI Target Portal group tag the initiator intends
+  /// to establish a session with.
+  ///
   UINT16                          TargetPortalGroupTag;
-  // CHAR8                        iSCSI Target Name
+  ///
+  /// iSCSI NodeTarget Name. The length of the name
+  /// is determined by subtracting the offset of this field from Length.
+  ///
+  /// CHAR8                        iSCSI Target Name
 } ISCSI_DEVICE_PATH;
 
 #define ISCSI_LOGIN_OPTION_NO_HEADER_DIGEST             0x0000
@@ -364,73 +760,177 @@ typedef struct {
 //
 #define MEDIA_DEVICE_PATH         0x04
 
+///
+/// Hard Drive Media Device Path SubType
+///
 #define MEDIA_HARDDRIVE_DP        0x01
+
+///
+/// The Hard Drive Media Device Path is used to represent a partition on a hard drive.
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Describes the entry in a partition table, starting with entry 1.
+  /// Partition number zero represents the entire device. Valid
+  /// partition numbers for a MBR partition are [1, 4]. Valid
+  /// partition numbers for a GPT partition are [1,
+  /// NumberOfPartitionEntries].
+  ///
   UINT32                          PartitionNumber;
+  ///
+  /// Starting LBA of the partition on the hard drive
+  ///
   UINT64                          PartitionStart;
+  ///
+  /// Size of the partition in units of Logical Blocks
+  ///
   UINT64                          PartitionSize;
+  ///
+  /// Signature unique to this partition
+  ///
   UINT8                           Signature[16];
+  ///
+  /// Partition Format: (Unused values reserved)
+  /// 0x01 - PC-AT compatible legacy MBR
+  /// 0x02 - GUID Partition Table
+  ///
   UINT8                           MBRType;
+  ///
+  /// Type of Disk Signature: (Unused values reserved)
+  /// 0x00 - No Disk Signature.
+  /// 0x01 - 32-bit signature from address 0x1b8 of the type 0x01 MBR.
+  /// 0x02 - GUID signature.
+  ///
   UINT8                           SignatureType;
 } HARDDRIVE_DEVICE_PATH;
 
 #define MBR_TYPE_PCAT             0x01
 #define MBR_TYPE_EFI_PARTITION_TABLE_HEADER 0x02
 
+#define NO_DISK_SIGNATURE         0x00
 #define SIGNATURE_TYPE_MBR        0x01
 #define SIGNATURE_TYPE_GUID       0x02
 
+///
+/// CD-ROM Media Device Path SubType
+///
 #define MEDIA_CDROM_DP            0x02
+
+///
+/// The CD-ROM Media Device Path is used to define a system partition that exists on a CD-ROM.
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Boot Entry number from the Boot Catalog. The Initial/Default entry is defined as zero.
+  ///
   UINT32                          BootEntry;
+  ///
+  /// Starting RBA of the partition on the medium. CD-ROMs use Relative logical Block Addressing.
+  ///
   UINT64                          PartitionStart;
+  ///
+  /// Size of the partition in units of Blocks, also called Sectors.
+  ///
   UINT64                          PartitionSize;
 } CDROM_DEVICE_PATH;
 
 //
 // Use VENDOR_DEVICE_PATH struct
 //
-#define MEDIA_VENDOR_DP           0x03
+#define MEDIA_VENDOR_DP           0x03  ///< Media vendor device path subtype
 
+///
+/// File Path Media Device Path SubType
+///
 #define MEDIA_FILEPATH_DP         0x04
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// A NULL-terminated Unicode Path string including directory and file names.
+  ///
   CHAR16                          PathName[1];
 } FILEPATH_DEVICE_PATH;
 
 #define SIZE_OF_FILEPATH_DEVICE_PATH  EFI_FIELD_OFFSET(FILEPATH_DEVICE_PATH,PathName)
 
+///
+/// Media Protocol Device Path SubType
+///
 #define MEDIA_PROTOCOL_DP         0x05
+
+///
+/// The Media Protocol Device Path is used to denote the protocol that is being 
+/// used in a device path at the location of the path specified. 
+/// Many protocols are inherent to the style of device path.
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// The ID of the protocol.
+  ///
   EFI_GUID                        Protocol;
 } MEDIA_PROTOCOL_DEVICE_PATH;
 
-
+///
+/// PIWG Firmware Volume Device Path SubType
+///
 #define MEDIA_PIWG_FW_VOL_DP      0x7
+
+///
+/// This device path is used by systems implementing the UEFI PI Specification 1.0 to describe a firmware volume.
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Firmware volume name.
+  ///
   EFI_GUID                        FvName;
 } MEDIA_FW_VOL_DEVICE_PATH;
 
-
+///
+/// PIWG Firmware Volume Device Path SubType
+///
 #define MEDIA_PIWG_FW_FILE_DP     0x6
+
+///
+/// This device path is used by systems implementing the UEFI PI Specification 1.0 to describe a firmware file.
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Firmware file name
+  ///
   EFI_GUID                        FvFileName;
 } MEDIA_FW_VOL_FILEPATH_DEVICE_PATH;
 
-//
-// BBS Device Path
-//
+///
+/// BIOS Boot Specification Device Path
+///
 #define BBS_DEVICE_PATH           0x05
+
+///
+/// BIOS Boot Specification Device Path SubType
+///
 #define BBS_BBS_DP                0x01
+
+///
+/// This Device Path is used to describe the booting of non-EFI-aware operating systems.
+///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Device Type as defined by the BIOS Boot Specification.
+  ///
   UINT16                          DeviceType;
+  ///
+  /// Status Flags as defined by the BIOS Boot Specification
+  ///
   UINT16                          StatusFlag;
+  ///
+  /// ASCIIZ string that describes the boot device to a user. 
+  ///
   CHAR8                           String[1];
 } BBS_BBS_DEVICE_PATH;
 
@@ -450,7 +950,6 @@ typedef struct {
 ///
 /// Union of all possible Device Paths and pointers to Device Paths
 ///
-
 typedef union {
   EFI_DEVICE_PATH_PROTOCOL             DevPath;
   PCI_DEVICE_PATH                      Pci;
@@ -526,55 +1025,9 @@ typedef union {
 
 #pragma pack()
                                              
-#define EFI_DP_TYPE_MASK                     0x7F
-#define EFI_DP_TYPE_UNPACKED                 0x80
 #define END_DEVICE_PATH_TYPE                 0x7f
-                                             
-#define EFI_END_ENTIRE_DEVICE_PATH           0xff
-#define EFI_END_ENTIRE_DEVICE_PATH_SUBTYPE   0xff
-#define EFI_END_INSTANCE_DEVICE_PATH         0x01
-#define END_ENTIRE_DEVICE_PATH_SUBTYPE       EFI_END_ENTIRE_DEVICE_PATH_SUBTYPE
-#define END_INSTANCE_DEVICE_PATH_SUBTYPE     EFI_END_INSTANCE_DEVICE_PATH
-                                             
-#define EFI_END_DEVICE_PATH_LENGTH           (sizeof (EFI_DEVICE_PATH_PROTOCOL))
-#define END_DEVICE_PATH_LENGTH               EFI_END_DEVICE_PATH_LENGTH
-                                             
-#define DP_IS_END_TYPE(a)                    
-#define DP_IS_END_SUBTYPE(a)                 (((a)->SubType == END_ENTIRE_DEVICE_PATH_SUBTYPE)
-#define DevicePathSubType(a)                 ((a)->SubType)
-#define IsDevicePathUnpacked(a)              ((a)->Type & EFI_DP_TYPE_UNPACKED)
-                                             
-#define EfiDevicePathNodeLength(a)           (((a)->Length[0]) | ((a)->Length[1] << 8))
-#define DevicePathNodeLength(a)              (EfiDevicePathNodeLength(a))
-#define EfiNextDevicePathNode(a)             ((EFI_DEVICE_PATH_PROTOCOL *) (((UINT8 *) (a)) + EfiDevicePathNodeLength (a)))
-#define NextDevicePathNode(a)                (EfiNextDevicePathNode(a)) 
-                                             
-#define EfiDevicePathType(a)                 (((a)->Type) & EFI_DP_TYPE_MASK)
-#define DevicePathType(a)                    (EfiDevicePathType(a))
-#define EfiIsDevicePathEndType(a)            (EfiDevicePathType (a) == END_DEVICE_PATH_TYPE)
-#define IsDevicePathEndType(a)               (EfiIsDevicePathEndType(a)) 
-                                             
-                                             
-#define EfiIsDevicePathEndSubType(a)         ((a)->SubType == EFI_END_ENTIRE_DEVICE_PATH_SUBTYPE)
-#define IsDevicePathEndSubType(a)            (EfiIsDevicePathEndSubType(a))
-#define EfiIsDevicePathEndInstanceSubType(a) ((a)->SubType == EFI_END_INSTANCE_DEVICE_PATH)
-                                             
-#define EfiIsDevicePathEnd(a)                (EfiIsDevicePathEndType (a) && EfiIsDevicePathEndSubType (a))
-#define IsDevicePathEnd(a)                   (EfiIsDevicePathEnd(a))
-#define EfiIsDevicePathEndInstance(a)        (EfiIsDevicePathEndType (a) && EfiIsDevicePathEndInstanceSubType (a))
-
-
-#define SetDevicePathNodeLength(a,l) {                           \
-          (a)->Length[0] = (UINT8) (l);                          \
-          (a)->Length[1] = (UINT8) ((l) >> 8);                   \
-          }
-
-#define SetDevicePathEndNode(a)  {                               \
-          (a)->Type = END_DEVICE_PATH_TYPE;                      \
-          (a)->SubType = END_ENTIRE_DEVICE_PATH_SUBTYPE;         \
-          (a)->Length[0] = sizeof(EFI_DEVICE_PATH_PROTOCOL);     \
-          (a)->Length[1] = 0;                                    \
-          }
+#define END_ENTIRE_DEVICE_PATH_SUBTYPE       0xFF
+#define END_INSTANCE_DEVICE_PATH_SUBTYPE     0x01
 
 extern EFI_GUID gEfiDevicePathProtocolGuid;
 

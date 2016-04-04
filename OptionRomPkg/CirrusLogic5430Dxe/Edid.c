@@ -112,13 +112,13 @@ ReadEdidData (
   UINTN                              *EdidSize
   )
 {
-  UINT8             Index;
+  UINTN             Index;
   UINT8             EdidData[EDID_BLOCK_SIZE * 2];
   UINT8             *ValidEdid;
   UINT64            Signature;
 
   for (Index = 0; Index < EDID_BLOCK_SIZE * 2; Index ++) {
-    I2cReadByte (Private->PciIo, 0xa0, Index, &EdidData[Index]);
+    I2cReadByte (Private->PciIo, 0xa0, (UINT8)Index, &EdidData[Index]);
   }
 
   //
@@ -397,7 +397,7 @@ CirrusLogic5430VideoModeSetup (
     // If EDID Override data doesn't exist or EFI_EDID_OVERRIDE_DONT_OVERRIDE returned,
     // read EDID information through I2C Bus
     //
-    if (ReadEdidData (Private, &EdidDiscoveredDataBlock, &EdidDiscoveredDataSize) == EFI_SUCCESS) {;
+    if (ReadEdidData (Private, &EdidDiscoveredDataBlock, &EdidDiscoveredDataSize) == EFI_SUCCESS) {
       Private->EdidDiscovered.SizeOfEdid = (UINT32) EdidDiscoveredDataSize;
      	Private->EdidDiscovered.Edid = (UINT8 *) AllocateCopyPool (
                                                           EdidDiscoveredDataSize,
@@ -509,7 +509,10 @@ CirrusLogic5430VideoModeSetup (
     Private->MaxMode = CIRRUS_LOGIC_5430_MODE_COUNT;
   }
 
-  FreePool (EdidOverrideDataBlock);
+  if (EdidOverrideDataBlock != NULL) {
+    FreePool (EdidOverrideDataBlock);
+  }
+
   return EFI_SUCCESS;
 
 Done:

@@ -1,27 +1,20 @@
 /** @file
 
-Copyright (c) 2005 - 2007, Intel Corporation
+Copyright (c) 2005 - 2007, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
-http://opensource.org/licenses/bsd-license.php
+http://opensource.org/licenses/bsd-license.php<BR>
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  Tcp4Driver.c
-
-Abstract:
-
 
 **/
 
 #include "Tcp4Main.h"
 
 
-UINT16                               mTcp4RandomPort;
+UINT16                                mTcp4RandomPort;
 extern EFI_COMPONENT_NAME_PROTOCOL    gTcp4ComponentName;
 extern EFI_COMPONENT_NAME2_PROTOCOL   gTcp4ComponentName2;
 
@@ -78,8 +71,6 @@ EFI_SERVICE_BINDING_PROTOCOL mTcp4ServiceBinding = {
 /**
   Create and start the heartbeat timer for TCP driver.
 
-  None.
-
   @retval EFI_SUCCESS            The timer is successfully created and started.
   @retval other                  The timer is not created.
 
@@ -123,11 +114,7 @@ Tcp4CreateTimer (
 
 /**
   Stop and destroy the heartbeat timer for TCP driver.
-
-  None.
-
-  @return None.
-
+  
 **/
 VOID
 Tcp4DestroyTimer (
@@ -147,32 +134,23 @@ Tcp4DestroyTimer (
   mTcp4Timer.TimerEvent = NULL;
 }
 
+/**
+  The entry point for Tcp4 driver, used to install Tcp4 driver on the ImageHandle.
 
+  @param  ImageHandle   The firmware allocated handle for this
+                        driver image.
+  @param  SystemTable   Pointer to the EFI system table.
+
+  @retval EFI_SUCCESS   Driver loaded.
+  @retval other         Driver not loaded.
+
+**/
 EFI_STATUS
 EFIAPI
 Tcp4DriverEntryPoint (
   IN EFI_HANDLE        ImageHandle,
   IN EFI_SYSTEM_TABLE  *SystemTable
   )
-/*++
-
-Routine Description:
-
-  The entry point for Tcp4 driver. used to install
-  Tcp4 driver on the ImageHandle.
-
-Arguments:
-
-  ImageHandle - The firmware allocated handle for this
-                driver image.
-  SystemTable - Pointer to the EFI system table.
-
-Returns:
-
-  EFI_SUCCESS - Driver loaded.
-  other       - Driver not loaded.
-
---*/
 {
   EFI_STATUS  Status;
   UINT32      Seed;
@@ -194,7 +172,7 @@ Returns:
   //
   Seed            = NetRandomInitSeed ();
   mTcpGlobalIss   = NET_RANDOM (Seed) % mTcpGlobalIss;
-  mTcp4RandomPort = (UINT16) ( TCP4_PORT_KNOWN +
+  mTcp4RandomPort = (UINT16) (TCP4_PORT_KNOWN +
                     (UINT16) (NET_RANDOM(Seed) % TCP4_PORT_KNOWN));
 
   return Status;
@@ -202,24 +180,40 @@ Returns:
 
 
 /**
-  Test to see if this driver supports ControllerHandle.
+  Tests to see if this driver supports a given controller.
+  
+  If a child device is provided, it further tests to see if this driver supports 
+  creating a handle for the specified child device.
 
-  @param  This                   Protocol instance pointer.
-  @param  ControllerHandle       Handle of device to test.
-  @param  RemainingDevicePath    Optional parameter use to pick a specific child
-                                 device to start.
+  @param  This                 A pointer to the EFI_DRIVER_BINDING_PROTOCOL instance.
+  @param  ControllerHandle     The handle of the controller to test. This handle 
+                               must support a protocol interface that supplies 
+                               an I/O abstraction to the driver.
+  @param  RemainingDevicePath  A pointer to the remaining portion of a device path. 
+                               This parameter is ignored by device drivers, and is optional for bus drivers.
 
-  @retval EFI_SUCCESS            This driver supports this device.
-  @retval EFI_ALREADY_STARTED    This driver is already running on this device.
-  @retval other                  This driver does not support this device.
 
+  @retval EFI_SUCCESS          The device specified by ControllerHandle and
+                               RemainingDevicePath is supported by the driver 
+                               specified by This.
+  @retval EFI_ALREADY_STARTED  The device specified by ControllerHandle and
+                               RemainingDevicePath is already being managed by 
+                               the driver specified by This.
+  @retval EFI_ACCESS_DENIED    The device specified by ControllerHandle and
+                               RemainingDevicePath is already being managed by a 
+                               different driver or an application that requires 
+                               exclusive access.
+  @retval EFI_UNSUPPORTED      The device specified by ControllerHandle and
+                               RemainingDevicePath is not supported by the driver 
+                               specified by This.
+                               
 **/
 EFI_STATUS
 EFIAPI
 Tcp4DriverBindingSupported (
-  IN EFI_DRIVER_BINDING_PROTOCOL  * This,
+  IN EFI_DRIVER_BINDING_PROTOCOL  *This,
   IN EFI_HANDLE                   ControllerHandle,
-  IN EFI_DEVICE_PATH_PROTOCOL     * RemainingDevicePath OPTIONAL
+  IN EFI_DEVICE_PATH_PROTOCOL     *RemainingDevicePath OPTIONAL
   )
 {
   EFI_STATUS  Status;
@@ -256,25 +250,40 @@ Tcp4DriverBindingSupported (
 
 
 /**
-  Start this driver on ControllerHandle.
+  Start this driver on ControllerHandle. 
+  
+  The Start() function is designed to be invoked from the EFI boot service 
+  ConnectController(). As a result, much of the error checking on the parameters 
+  to Start() has been moved into this common boot service. It is legal to call 
+  Start() from other locations, but the following calling restrictions must be 
+  followed or the system behavior will not be deterministic.
+  1. ControllerHandle must be a valid EFI_HANDLE.
+  2. If RemainingDevicePath is not NULL, then it must be a pointer to a naturally 
+     aligned EFI_DEVICE_PATH_PROTOCOL.
+  3. Prior to calling Start(), the Supported() function for the driver specified 
+     by This must have been called with the same calling parameters, and Supported() 
+     must have returned EFI_SUCCESS.
 
-  @param  This                   Protocol instance pointer.
-  @param  ControllerHandle       Handle of device to bind driver to.
-  @param  RemainingDevicePath    Optional parameter use to pick a specific child
-                                 device to start.
+  @param  This                 A pointer to the EFI_DRIVER_BINDING_PROTOCOL instance.
+  @param  ControllerHandle     The handle of the controller to start. This handle 
+                               must support a protocol interface that supplies 
+                               an I/O abstraction to the driver.
+  @param  RemainingDevicePath  A pointer to the remaining portion of a device path. 
+                               This parameter is ignored by device drivers, and is 
+                               optional for bus drivers.
 
-  @retval EFI_SUCCESS            The driver is added to ControllerHandle.
-  @retval EFI_OUT_OF_RESOURCES   There are not enough resources to start the
-                                 driver.
-  @retval other                  The driver cannot be added to ControllerHandle.
+  @retval EFI_SUCCESS          The device was started.
+  @retval EFI_ALREADY_STARTED  The device could not be started due to a device error.
+  @retval EFI_OUT_OF_RESOURCES The request could not be completed due to a lack 
+                               of resources.
 
 **/
 EFI_STATUS
 EFIAPI
 Tcp4DriverBindingStart (
-  IN EFI_DRIVER_BINDING_PROTOCOL  * This,
+  IN EFI_DRIVER_BINDING_PROTOCOL  *This,
   IN EFI_HANDLE                   ControllerHandle,
-  IN EFI_DEVICE_PATH_PROTOCOL     * RemainingDevicePath OPTIONAL
+  IN EFI_DEVICE_PATH_PROTOCOL     *RemainingDevicePath OPTIONAL
   )
 {
   EFI_STATUS               Status;
@@ -285,7 +294,7 @@ Tcp4DriverBindingStart (
 
   if (NULL == TcpServiceData) {
     DEBUG ((EFI_D_ERROR, "Tcp4DriverBindingStart: Have no enough"
-      " resource to create a Tcp Servcie Data!\n"));
+      " resource to create a Tcp Servcie Data\n"));
 
     return EFI_OUT_OF_RESOURCES;
   }
@@ -297,7 +306,7 @@ Tcp4DriverBindingStart (
   if (NULL == TcpServiceData->IpIo) {
 
     DEBUG ((EFI_D_ERROR, "Tcp4DriverBindingStart: Have no enough"
-      " resource to create an Ip Io!\n"));
+      " resource to create an Ip Io\n"));
 
     Status = EFI_OUT_OF_RESOURCES;
     goto ON_ERROR;
@@ -378,15 +387,29 @@ ON_ERROR:
 
 /**
   Stop this driver on ControllerHandle.
+  
+  The Stop() function is designed to be invoked from the EFI boot service 
+  DisconnectController(). As a result, much of the error checking on the parameters 
+  to Stop() has been moved into this common boot service. It is legal to call Stop() 
+  from other locations, but the following calling restrictions must be followed 
+  or the system behavior will not be deterministic.
+  1. ControllerHandle must be a valid EFI_HANDLE that was used on a previous call 
+     to this same driver's Start() function.
+  2. The first NumberOfChildren handles of ChildHandleBuffer must all be a valid
+     EFI_HANDLE. In addition, all of these handles must have been created in this 
+     driver's Start() function, and the Start() function must have called OpenProtocol() 
+     on ControllerHandle with an Attribute of EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER.
+  
+  @param  This              A pointer to the EFI_DRIVER_BINDING_PROTOCOL instance.
+  @param  ControllerHandle  A handle to the device being stopped. The handle must 
+                            support a bus specific I/O protocol for the driver 
+                            to use to stop the device.
+  @param  NumberOfChildren  The number of child device handles in ChildHandleBuffer.
+  @param  ChildHandleBuffer An array of child handles to be freed. May be NULL if 
+                            NumberOfChildren is 0.
 
-  @param  This                   Protocol instance pointer.
-  @param  ControllerHandle       Handle of device to stop driver on.
-  @param  NumberOfChildren       Number of Handles in ChildHandleBuffer. If number
-                                 of children is zero stop the entire bus driver.
-  @param  ChildHandleBuffer      List of Child Handles to Stop.
-
-  @retval EFI_SUCCESS            This driver is removed from ControllerHandle.
-  @retval other                  This driver is not removed from ControllerHandle.
+  @retval EFI_SUCCESS       The device was stopped.
+  @retval EFI_DEVICE_ERROR  The device could not be stopped due to a device error.
 
 **/
 EFI_STATUS
@@ -474,6 +497,17 @@ Tcp4DriverBindingStop (
   return Status;
 }
 
+/**
+  Open Ip4 and device path protocols for a created socket, and insert it in 
+  socket list.
+  
+  @param  This                Pointer to the socket just created
+  @param  Context             Context of the socket
+  
+  @retval EFI_SUCCESS         This protocol is installed successfully.
+  @retval other               Some error occured.
+  
+**/
 EFI_STATUS
 Tcp4CreateSocketCallback (
   IN SOCKET  *This,
@@ -529,6 +563,13 @@ Tcp4CreateSocketCallback (
   return Status;
 }
 
+/**
+  Close Ip4 and device path protocols for a socket, and remove it from socket list. 
+    
+  @param  This                Pointer to the socket to be removed
+  @param  Context             Context of the socket
+  
+**/
 VOID
 Tcp4DestroySocketCallback (
   IN SOCKET  *This,
@@ -566,18 +607,23 @@ Tcp4DestroySocketCallback (
 }
 
 /**
-  Creates a child handle with a set of TCP4 services.
+  Creates a child handle and installs a protocol.
+  
+  The CreateChild() function installs a protocol on ChildHandle. If ChildHandle 
+  is a pointer to NULL, then a new handle is created and returned in ChildHandle. 
+  If ChildHandle is not a pointer to NULL, then the protocol installs on the existing 
+  ChildHandle.
 
-  @param  This                   Protocol instance pointer.
-  @param  ChildHandle            Pointer to the handle of the child to create.  If
-                                 it is NULL, then a new handle is created. If it is
-                                 not NULL, then the I/O services are added to the
-                                 existing child handle.
+  @param  This        Pointer to the EFI_SERVICE_BINDING_PROTOCOL instance.
+  @param  ChildHandle Pointer to the handle of the child to create. If it is NULL, then 
+                      a new handle is created. If it is a pointer to an existing UEFI 
+                      handle, then the protocol is added to the existing UEFI handle.
 
-  @retval EFI_SUCCESS            The child handle is created.
-  @retval EFI_INVALID_PARAMETER  One or more parameters are invalid.
-  @retval EFI_OUT_OF_RESOURCES   There are not enough resources to create the
-                                 child.
+  @retval EFI_SUCCES            The protocol was added to ChildHandle.
+  @retval EFI_INVALID_PARAMETER ChildHandle is NULL.
+  @retval EFI_OUT_OF_RESOURCES  There are not enough resources availabe to create
+                                the child.
+  @retval other                 The child handle was not created.
 
 **/
 EFI_STATUS
@@ -627,16 +673,23 @@ Tcp4ServiceBindingCreateChild (
 
 
 /**
-  Destroys a child handle with a set of UDP4 services.
+  Destroys a child handle with a protocol installed on it.
+  
+  The DestroyChild() function does the opposite of CreateChild(). It removes a protocol 
+  that was installed by CreateChild() from ChildHandle. If the removed protocol is the 
+  last protocol on ChildHandle, then ChildHandle is destroyed.
 
-  @param  This                   Protocol instance pointer.
-  @param  ChildHandle            Handle of the child to be destroyed.
+  @param  This         Pointer to the EFI_SERVICE_BINDING_PROTOCOL instance.
+  @param  ChildHandle  Handle of the child to destroy
 
-  @retval EFI_SUCCESS            The TCP4 services are removed from  the child
-                                 handle.
-  @retval EFI_INVALID_PARAMETER  One or more parameters are invalid.
-  @retval other                  The child handle is not destroyed.
-
+  @retval EFI_SUCCES            The protocol was removed from ChildHandle.
+  @retval EFI_UNSUPPORTED       ChildHandle does not support the protocol that is 
+                                being removed.
+  @retval EFI_INVALID_PARAMETER Child handle is not a valid UEFI Handle.
+  @retval EFI_ACCESS_DENIED     The protocol could not be removed from the ChildHandle
+                                because its services are being used.
+  @retval other                 The child handle was not destroyed.
+  
 **/
 EFI_STATUS
 EFIAPI

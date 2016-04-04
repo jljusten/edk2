@@ -418,9 +418,9 @@ EFI_STATUS
   OUT       UINT32                        *AuthenticationStatus
 );
 
-//
-// EFI_FV_WRITE_POLICY
-//
+///
+/// EFI_FV_WRITE_POLICY, two policies (unreliable write and reliable write) are defined.
+///
 typedef UINT32 EFI_FV_WRITE_POLICY;
 #define EFI_FV_UNRELIABLE_WRITE   0x00000000
 #define EFI_FV_RELIABLE_WRITE     0x00000001
@@ -429,10 +429,25 @@ typedef UINT32 EFI_FV_WRITE_POLICY;
 // EFI_FV_WRITE_FILE_DATA
 //
 typedef struct {
+  ///
+  /// Pointer to a GUID, which is the file name to be written.
+  ///
   EFI_GUID                *NameGuid;
+  ///
+  /// Indicates the type of file to be written.
+  ///
   EFI_FV_FILETYPE         Type;
+  ///
+  /// Indicates the attributes for the file to be written.
+  ///
   EFI_FV_FILE_ATTRIBUTES  FileAttributes;
+  ///
+  /// Pointer to a buffer containing the file to be written.
+  ///
   VOID                    *Buffer;
+  ///
+  /// Indicates the size of the file image contained in Buffer.
+  ///
   UINT32                  BufferSize;
 } EFI_FV_WRITE_FILE_DATA;
 
@@ -513,8 +528,8 @@ EFI_STATUS
 
 
 /**
-	Retrieves information about the next file in the firmware volume store 
-	that matches the search criteria.
+  Retrieves information about the next file in the firmware volume store 
+  that matches the search criteria.
 
   GetNextFile() is the interface that is used to search a firmware
   volume for a particular file. It is called successively until

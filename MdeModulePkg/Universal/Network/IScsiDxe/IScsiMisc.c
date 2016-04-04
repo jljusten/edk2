@@ -1,7 +1,7 @@
 /** @file
   Miscellaneous routines for IScsi driver.
 
-Copyright (c) 2004 - 2008, Intel Corporation
+Copyright (c) 2004 - 2008, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -10,82 +10,71 @@ http://opensource.org/licenses/bsd-license.php
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-Module Name:
-
-  IScsiMisc.c
-
-Abstract:
-
-  Miscellaneous routines for IScsi driver.
-
 **/
 
 #include "IScsiImpl.h"
 
-CONST CHAR8  IScsiHexString[] = "0123456789ABCDEFabcdef";
+GLOBAL_REMOVE_IF_UNREFERENCED CONST CHAR8  IScsiHexString[] = "0123456789ABCDEFabcdef";
 
 /**
   Removes (trims) specified leading and trailing characters from a string.
 
-  @param  str[in][out] Pointer to the null-terminated string to be trimmed. On return, 
-                       str will hold the trimmed string. 
+  @param[in, out]  Str  Pointer to the null-terminated string to be trimmed. On return, 
+                        Str will hold the trimmed string. 
 
-  @param  CharC[in]    Character will be trimmed from str.
-
-  @retval NONE.
-
+  @param[in]      CharC Character will be trimmed from str.
 **/
 VOID
 StrTrim (
-  IN OUT CHAR16   *str,
+  IN OUT CHAR16   *Str,
   IN     CHAR16   CharC
   )
 {
-  CHAR16  *p1;
-  CHAR16  *p2;
+  CHAR16  *Pointer1;
+  CHAR16  *Pointer2;
   
-  if (*str == 0) {
+  if (*Str == 0) {
     return;
   }
   
   //
   // Trim off the leading and trailing characters c
   //
-  for (p1 = str; *p1 && *p1 == CharC; p1++) {
+  for (Pointer1 = Str; (*Pointer1 != 0) && (*Pointer1 == CharC); Pointer1++) {
     ;
   }
   
-  p2 = str;
-  if (p2 == p1) {
-    while (*p1) {
-      p2++;
-      p1++;
+  Pointer2 = Str;
+  if (Pointer2 == Pointer1) {
+    while (*Pointer1 != 0) {
+      Pointer2++;
+      Pointer1++;
     }
   } else {
-    while (*p1) {    
-    *p2 = *p1;    
-    p1++;
-    p2++;
+    while (*Pointer1 != 0) {    
+    *Pointer2 = *Pointer1;    
+    Pointer1++;
+    Pointer2++;
     }
-    *p2 = 0;
+    *Pointer2 = 0;
   }
   
   
-  for (p1 = str + StrLen(str) - 1; p1 >= str && *p1 == CharC; p1--) {
+  for (Pointer1 = Str + StrLen(Str) - 1; Pointer1 >= Str && *Pointer1 == CharC; Pointer1--) {
     ;
   }
-  if  (p1 !=  str + StrLen(str) - 1) { 
-    *(p1 + 1) = 0;
+  if  (Pointer1 !=  Str + StrLen(Str) - 1) { 
+    *(Pointer1 + 1) = 0;
   }
 }
 
 /**
   Calculate the prefix length of the IPv4 subnet mask.
 
-  @param  SubnetMask[in] The IPv4 subnet mask.
+  @param[in]  SubnetMask The IPv4 subnet mask.
 
-  @retval The prefix length of the subnet mask.
-
+  @return The prefix length of the subnet mask.
+  @retval 0 Other errors as indicated.
 **/
 UINT8
 IScsiGetSubnetMaskPrefixLength (
@@ -105,7 +94,7 @@ IScsiGetSubnetMaskPrefixLength (
   //
   ReverseMask = ~ReverseMask;
 
-  if (ReverseMask & (ReverseMask + 1)) {
+  if ((ReverseMask != 0) & ((ReverseMask + 1) != 0)) {
     return 0;
   }
 
@@ -122,14 +111,11 @@ IScsiGetSubnetMaskPrefixLength (
 /**
   Convert the hexadecimal encoded LUN string into the 64-bit LUN. 
 
-  @param  Str[in]               The hexadecimal encoded LUN string.
-
-  @param  Lun[out]              Storage to return the 64-bit LUN.
+  @param[in]   Str             The hexadecimal encoded LUN string.
+  @param[out]  Lun             Storage to return the 64-bit LUN.
 
   @retval EFI_SUCCESS           The 64-bit LUN is stored in Lun.
-
   @retval EFI_INVALID_PARAMETER The string is malformatted.
-
 **/
 EFI_STATUS
 IScsiAsciiStrToLun (
@@ -192,12 +178,8 @@ IScsiAsciiStrToLun (
 /**
   Convert the 64-bit LUN into the hexadecimal encoded LUN string.
 
-  @param  Lun[in]  The 64-bit LUN.
-
-  @param  Str[out] The storage to return the hexadecimal encoded LUN string.
-
-  @retval None.
-
+  @param[in]   Lun The 64-bit LUN.
+  @param[out]  Str The storage to return the hexadecimal encoded LUN string.
 **/
 VOID
 IScsiLunToUnicodeStr (
@@ -216,9 +198,9 @@ IScsiLunToUnicodeStr (
       StrCpy (TempStr, L"0-");
     } else {
       TempStr[0]  = (CHAR16) IScsiHexString[Lun[2 * Index] >> 4];
-      TempStr[1]  = (CHAR16) IScsiHexString[Lun[2 * Index] & 0xf];
+      TempStr[1]  = (CHAR16) IScsiHexString[Lun[2 * Index] & 0x0F];
       TempStr[2]  = (CHAR16) IScsiHexString[Lun[2 * Index + 1] >> 4];
-      TempStr[3]  = (CHAR16) IScsiHexString[Lun[2 * Index + 1] & 0xf];
+      TempStr[3]  = (CHAR16) IScsiHexString[Lun[2 * Index + 1] & 0x0F];
       TempStr[4]  = L'-';
       TempStr[5]  = 0;
 
@@ -242,12 +224,10 @@ IScsiLunToUnicodeStr (
 /**
   Convert the ASCII string into a UNICODE string.
 
-  @param  Source[out]      The ASCII string.
+  @param[in]   Source      The ASCII string.
+  @param[out]  Destination The storage to return the UNICODE string.
 
-  @param  Destination[out] The storage to return the UNICODE string.
-
-  @retval CHAR16 *         Pointer to the UNICODE string.
-
+  @return CHAR16 *         Pointer to the UNICODE string.
 **/
 CHAR16 *
 IScsiAsciiStrToUnicodeStr (
@@ -270,12 +250,10 @@ IScsiAsciiStrToUnicodeStr (
 /**
   Convert the UNICODE string into an ASCII string.
 
-  @param  Source[in]       The UNICODE string.
+  @param[in]  Source       The UNICODE string.
+  @param[out] Destination  The storage to return the ASCII string.
 
-  @param  Destination[out] The storage to return the ASCII string.
-
-  @retval CHAR8 *          Pointer to the ASCII string.
-
+  @return CHAR8 *          Pointer to the ASCII string.
 **/
 CHAR8 *
 IScsiUnicodeStrToAsciiStr (
@@ -303,14 +281,11 @@ IScsiUnicodeStrToAsciiStr (
 /**
   Convert the decimal dotted IPv4 address into the binary IPv4 address.
 
-  @param  Str[in]               The UNICODE string.
-
-  @param  Ip[out]               The storage to return the ASCII string.
+  @param[in]   Str             The UNICODE string.
+  @param[out]  Ip              The storage to return the ASCII string.
 
   @retval EFI_SUCCESS           The binary IP address is returned in Ip.
-
   @retval EFI_INVALID_PARAMETER The IP string is malformatted.
-
 **/
 EFI_STATUS
 IScsiAsciiStrToIp (
@@ -323,7 +298,7 @@ IScsiAsciiStrToIp (
 
   Index = 0;
 
-  while (*Str) {
+  while (*Str != 0) {
 
     if (Index > 3) {
       return EFI_INVALID_PARAMETER;
@@ -369,14 +344,9 @@ IScsiAsciiStrToIp (
 /**
   Convert the mac address into a hexadecimal encoded "-" seperated string.
 
-  @param  Mac[in]  The mac address.
-
-  @param  Len[in]  Length in bytes of the mac address.
-
-  @param  Str[out] The storage to return the mac string.
-
-  @retval None.
-
+  @param[in]  Mac The mac address.
+  @param[in]  Len  Length in bytes of the mac address.
+  @param[out] Str The storage to return the mac string.
 **/
 VOID
 IScsiMacAddrToStr (
@@ -388,8 +358,8 @@ IScsiMacAddrToStr (
   UINT32  Index;
 
   for (Index = 0; Index < Len; Index++) {
-    Str[3 * Index]      = NibbleToHexChar ((UINT8) (Mac->Addr[Index] >> 4));
-    Str[3 * Index + 1]  = NibbleToHexChar (Mac->Addr[Index]);
+    Str[3 * Index]      = (CHAR16) IScsiHexString[(Mac->Addr[Index] >> 4) & 0x0F];
+    Str[3 * Index + 1]  = (CHAR16) IScsiHexString[Mac->Addr[Index] & 0x0F];
     Str[3 * Index + 2]  = L'-';
   }
 
@@ -399,19 +369,15 @@ IScsiMacAddrToStr (
 /**
   Convert the binary encoded buffer into a hexadecimal encoded string.
 
-  @param  BinBuffer[in]        The buffer containing the binary data.
-
-  @param  BinLength[in]        Length of the binary buffer.
-
-  @param  HexStr[in][out]      Pointer to the string.
-
-  @param  HexLength[in][out]   The length of the string.
+  @param[in]       BinBuffer   The buffer containing the binary data.
+  @param[in]       BinLength   Length of the binary buffer.
+  @param[in, out]  HexStr      Pointer to the string.
+  @param[in, out]  HexLength   The length of the string.
 
   @retval EFI_SUCCESS          The binary data is converted to the hexadecimal string 
                                and the length of the string is updated.
-
   @retval EFI_BUFFER_TOO_SMALL The string is too small.
-
+  @retval EFI_INVALID_PARAMETER The IP string is malformatted.
 **/
 EFI_STATUS
 IScsiBinToHex (
@@ -441,7 +407,7 @@ IScsiBinToHex (
 
   for (Index = 0; Index < BinLength; Index++) {
     HexStr[Index * 2 + 2] = IScsiHexString[BinBuffer[Index] >> 4];
-    HexStr[Index * 2 + 3] = IScsiHexString[BinBuffer[Index] & 0xf];
+    HexStr[Index * 2 + 3] = IScsiHexString[BinBuffer[Index] & 0x0F];
   }
 
   HexStr[Index * 2 + 2] = '\0';
@@ -452,17 +418,13 @@ IScsiBinToHex (
 /**
   Convert the hexadecimal string into a binary encoded buffer.
 
-  @param  BinBuffer[in][out]   The binary buffer.
-
-  @param  BinLength[in][out]   Length of the binary buffer.
-
-  @param  HexStr[in]           The hexadecimal string.
+  @param[in, out]  BinBuffer   The binary buffer.
+  @param[in, out]  BinLength   Length of the binary buffer.
+  @param[in]       HexStr      The hexadecimal string.
 
   @retval EFI_SUCCESS          The hexadecimal string is converted into a binary
                                encoded buffer.
-
-  @retval EFI_BUFFER_TOO_SMALL The binary buffer is too small to hold the converted data.s
-
+  @retval EFI_BUFFER_TOO_SMALL The binary buffer is too small to hold the converted data.
 **/
 EFI_STATUS
 IScsiHexToBin (
@@ -525,12 +487,8 @@ IScsiHexToBin (
 /**
   Generate random numbers.
 
-  @param  Rand[in][out]  The buffer to contain random numbers.
-
-  @param  RandLength[in] The length of the Rand buffer.
-
-  @retval None.
-
+  @param[in, out]  Rand       The buffer to contain random numbers.
+  @param[in]       RandLength The length of the Rand buffer.
 **/
 VOID
 IScsiGenRandom (
@@ -550,12 +508,11 @@ IScsiGenRandom (
 /**
   Create the iSCSI driver data..
 
-  @param  Image[in]      The handle of the driver image.
+  @param[in] Image      The handle of the driver image.
+  @param[in] Controller The handle of the controller.
 
-  @param  Controller[in] The handle of the controller.
-
-  @retval The iSCSI driver data created.
-
+  @return The iSCSI driver data created.
+  @retval NULL Other errors as indicated.
 **/
 ISCSI_DRIVER_DATA *
 IScsiCreateDriverData (
@@ -625,10 +582,7 @@ IScsiCreateDriverData (
 /**
   Clean the iSCSI driver data.
 
-  @param  Private[in] The iSCSI driver data.
-
-  @retval None.
-
+  @param[in]  Private The iSCSI driver data.
 **/
 VOID
 IScsiCleanDriverData (
@@ -659,15 +613,13 @@ IScsiCleanDriverData (
 }
 
 /**
-
   Get the various configuration data of this iSCSI instance.
 
-  @param  Private[in]   The iSCSI driver data.
+  @param[in]  Private   The iSCSI driver data.
 
   @retval EFI_SUCCESS   The configuration of this instance is got.
-
-  @retval EFI_NOT_FOUND This iSCSI instance is not configured yet.
-
+  @retval EFI_ABORTED   The operation was aborted.
+  @retval Others        Other errors as indicated.
 **/
 EFI_STATUS
 IScsiGetConfigData (
@@ -754,10 +706,10 @@ IScsiGetConfigData (
 /**
   Get the device path of the iSCSI tcp connection and update it.
 
-  @param  Private[in] The iSCSI driver data.
+  @param[in]  Private The iSCSI driver data.
 
-  @retval The updated device path.
-
+  @return The updated device path.
+  @retval NULL Other errors as indicated.
 **/
 EFI_DEVICE_PATH_PROTOCOL *
 IScsiGetTcpConnDevicePath (
@@ -818,12 +770,8 @@ IScsiGetTcpConnDevicePath (
 /**
   Abort the session when the transition from BS to RT is initiated.
 
-  @param  Event[in]   The event signaled.
-
-  @param  Context[in] The iSCSI driver data.
-
-  @retval None.
-
+  @param[in]   Event  The event signaled.
+  @param[in]  Context The iSCSI driver data.
 **/
 VOID
 EFIAPI

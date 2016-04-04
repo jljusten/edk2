@@ -1,37 +1,55 @@
 /** @file
 
-Copyright (c) 2005 - 2006, Intel Corporation
+Copyright (c) 2005 - 2006, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
-http://opensource.org/licenses/bsd-license.php
+http://opensource.org/licenses/bsd-license.php<BR>
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  SockImpl.c
-
-Abstract:
-
 
 **/
 
 #include "SockImpl.h"
 
+/**
+  Get the length of the data that can be retrieved from the socket
+  receive buffer.
+
+  @param  SockBuffer            Pointer to the socket receive buffer.
+  @param  IsUrg                 Pointer to a BOOLEAN variable. If TRUE the data is
+                                OOB.
+  @param  BufLen                The maximum length of the data buffer to store the
+                                received data in socket layer.
+
+  @return The length of the data can be retreived.
+
+**/
 UINT32
 SockTcpDataToRcv (
-  IN  SOCK_BUFFER   *SockBuffer,
-  OUT BOOLEAN       *IsOOB,
-  IN  UINT32        BufLen
+  IN     SOCK_BUFFER    *SockBuffer,
+     OUT BOOLEAN        *IsUrg,
+  IN     UINT32         BufLen
   );
+  
+/**
+  Process the send token.
 
+  @param  Sock                  Pointer to the socket.
+
+**/
 VOID
 SockProcessSndToken (
   IN SOCKET *Sock
   );
 
+/**
+  Supporting function for both SockImpl and SockInterface.
+
+  @param Event             The Event this notify function registered to, ignored.
+  
+**/
 VOID
 SockFreeFoo (
   IN EFI_EVENT Event
@@ -56,9 +74,9 @@ SockFreeFoo (
 **/
 UINT32
 SockTcpDataToRcv (
-  IN  SOCK_BUFFER    *SockBuffer,
-  OUT BOOLEAN        *IsUrg,
-  IN  UINT32         BufLen
+  IN     SOCK_BUFFER    *SockBuffer,
+     OUT BOOLEAN        *IsUrg,
+  IN     UINT32         BufLen
   )
 {
   NET_BUF       *RcvBufEntry;
@@ -66,10 +84,10 @@ SockTcpDataToRcv (
   TCP_RSV_DATA  *TcpRsvData;
   BOOLEAN       Urg;
 
-  ASSERT (SockBuffer && IsUrg && (BufLen > 0));
+  ASSERT ((SockBuffer != NULL) && (IsUrg != NULL) && (BufLen > 0));
 
   RcvBufEntry = SockBufFirst (SockBuffer);
-  ASSERT (RcvBufEntry);
+  ASSERT (RcvBufEntry != NULL);
 
   TcpRsvData  = (TCP_RSV_DATA *) RcvBufEntry->ProtoData;
 
@@ -133,8 +151,6 @@ SockTcpDataToRcv (
   @param  RcvdBytes             The maximum length of the data can be copied.
   @param  IsOOB                 If TURE the data is OOB, else the data is normal.
 
-  @return None.
-
 **/
 VOID
 SockSetTcpRxData (
@@ -197,7 +213,7 @@ SockProcessRcvToken (
   EFI_TCP4_RECEIVE_DATA  *RxData;
   BOOLEAN                IsUrg;
 
-  ASSERT (Sock);
+  ASSERT (Sock != NULL);
 
   ASSERT (SOCK_STREAM == Sock->Type);
 
@@ -215,7 +231,8 @@ SockProcessRcvToken (
   //
   SockSetTcpRxData (Sock, RxData, TokenRcvdBytes, IsUrg);
 
-  SOCK_TRIM_RCV_BUFF (Sock, TokenRcvdBytes);
+  NetbufQueTrim (Sock->RcvBuffer.DataQueue, TokenRcvdBytes);
+//  SOCK_TRIM_RCV_BUFF (Sock, TokenRcvdBytes);
   SIGNAL_TOKEN (&(RcvToken->Token), EFI_SUCCESS);
 
   return TokenRcvdBytes;
@@ -305,9 +322,7 @@ SockProcessTcpSndData (
 
   @param  Sock                  Pointer to the socket.
   @param  PendingTokenList      Pointer to the token list to be flushed.
-
-  @return None.
-
+  
 **/
 VOID
 SockFlushPendingToken (
@@ -318,7 +333,7 @@ SockFlushPendingToken (
   SOCK_TOKEN            *SockToken;
   SOCK_COMPLETION_TOKEN *Token;
 
-  ASSERT (Sock && PendingTokenList);
+  ASSERT ((Sock != NULL) && (PendingTokenList != NULL));
 
   while (!IsListEmpty (PendingTokenList)) {
     SockToken = NET_LIST_HEAD (
@@ -337,13 +352,10 @@ SockFlushPendingToken (
 
 
 /**
-  Wake up the connection token while the connection is
-  successfully established, then try to process any
-  pending send token.
+  Wake up the connection token while the connection is successfully established, 
+  then try to process any pending send token.
 
   @param  Sock                  Pointer to the socket.
-
-  @return None.
 
 **/
 VOID
@@ -365,12 +377,9 @@ SockWakeConnToken (
 
 
 /**
-  Wake up the listen token while the connection is
-  established successfully.
+  Wake up the listen token while the connection is established successfully.
 
   @param  Sock                  Pointer to the socket.
-
-  @return None.
 
 **/
 VOID
@@ -384,7 +393,7 @@ SockWakeListenToken (
 
   Parent = Sock->Parent;
 
-  ASSERT (Parent && SOCK_IS_LISTENING (Parent) && SOCK_IS_CONNECTED (Sock));
+  ASSERT ((Parent != NULL) && SOCK_IS_LISTENING (Parent) && SOCK_IS_CONNECTED (Sock));
 
   if (!IsListEmpty (&Parent->ListenTokenList)) {
     SockToken = NET_LIST_HEAD (
@@ -404,7 +413,7 @@ SockWakeListenToken (
     RemoveEntryList (&Sock->ConnectionList);
 
     Parent->ConnCnt--;
-    DEBUG ((EFI_D_WARN, "SockWakeListenToken: accept a socket, now conncnt is %d", Parent->ConnCnt));
+    DEBUG ((EFI_D_INFO, "SockWakeListenToken: accept a socket, now conncnt is %d", Parent->ConnCnt));
 
     Sock->Parent = NULL;
   }
@@ -415,8 +424,6 @@ SockWakeListenToken (
   Wake up the receive token while some data is received.
 
   @param  Sock                  Pointer to the socket.
-
-  @return None.
 
 **/
 VOID
@@ -429,7 +436,7 @@ SockWakeRcvToken (
   SOCK_TOKEN    *SockToken;
   SOCK_IO_TOKEN *RcvToken;
 
-  ASSERT (Sock->RcvBuffer.DataQueue);
+  ASSERT (Sock->RcvBuffer.DataQueue != NULL);
 
   RcvdBytes = (Sock->RcvBuffer.DataQueue)->BufSize;
 
@@ -462,8 +469,6 @@ SockWakeRcvToken (
 
   @param  Sock                  Pointer to the socket.
 
-  @return None.
-
 **/
 VOID
 SockProcessSndToken (
@@ -477,7 +482,7 @@ SockProcessSndToken (
   EFI_TCP4_TRANSMIT_DATA  *TxData;
   EFI_STATUS              Status;
 
-  ASSERT (Sock && (SOCK_STREAM == Sock->Type));
+  ASSERT ((Sock != NULL) && (SOCK_STREAM == Sock->Type));
 
   FreeSpace = SockGetFreeSpace (Sock, SOCK_SND_BUF);
 
@@ -552,13 +557,13 @@ SockCreate (
   SOCKET      *Parent;
   EFI_STATUS  Status;
 
-  ASSERT (SockInitData && SockInitData->ProtoHandler);
+  ASSERT ((SockInitData != NULL) && (SockInitData->ProtoHandler != NULL));
   ASSERT (SockInitData->Type == SOCK_STREAM);
-  ASSERT (SockInitData->ProtoData && (SockInitData->DataSize <= PROTO_RESERVED_LEN));
+  ASSERT ((SockInitData->ProtoData != NULL) && (SockInitData->DataSize <= PROTO_RESERVED_LEN));
 
   Parent = SockInitData->Parent;
 
-  if (Parent && (Parent->ConnCnt == Parent->BackLog)) {
+  if ((Parent != NULL) && (Parent->ConnCnt == Parent->BackLog)) {
     DEBUG (
       (EFI_D_ERROR,
       "SockCreate: Socket parent has "
@@ -659,7 +664,7 @@ SockCreate (
     Parent->ConnCnt++;
 
     DEBUG (
-      (EFI_D_WARN,
+      (EFI_D_INFO,
       "SockCreate: Create a new socket and add to parent, now conncnt is %d\n",
       Parent->ConnCnt)
       );
@@ -706,8 +711,6 @@ OnError:
 
   @param  Sock                  Pointer to the socket.
 
-  @return None.
-
 **/
 VOID
 SockDestroy (
@@ -744,13 +747,13 @@ SockDestroy (
   //
   // Remove it from parent connection list if needed
   //
-  if (Sock->Parent) {
+  if (Sock->Parent != NULL) {
 
     RemoveEntryList (&(Sock->ConnectionList));
     (Sock->Parent->ConnCnt)--;
 
     DEBUG (
-      (EFI_D_WARN,
+      (EFI_D_INFO,
       "SockDestory: Delete a unaccepted socket from parent"
       "now conncnt is %d\n",
       Sock->Parent->ConnCnt)
@@ -807,8 +810,6 @@ FreeSock:
 
   @param  Sock                  Pointer to the socket.
 
-  @return None.
-
 **/
 VOID
 SockConnFlush (
@@ -817,7 +818,7 @@ SockConnFlush (
 {
   SOCKET  *Child;
 
-  ASSERT (Sock);
+  ASSERT (Sock != NULL);
 
   //
   // Clear the flag in this socket
@@ -875,8 +876,6 @@ SockConnFlush (
   @param  Sock                  Pointer to the socket.
   @param  State                 The new state to be set.
 
-  @return None.
-
 **/
 VOID
 SockSetState (
@@ -893,8 +892,7 @@ SockSetState (
 
   @param  Sock                  Pointer to the socket to be cloned.
 
-  @retval *                     Pointer to the newly cloned socket. If NULL, error
-                                condition occurred.
+  @return Pointer to the newly cloned socket. If NULL, error condition occurred.
 
 **/
 SOCKET *
@@ -905,22 +903,22 @@ SockClone (
   SOCKET          *ClonedSock;
   SOCK_INIT_DATA  InitData;
 
-  InitData.BackLog        = Sock->BackLog;
-  InitData.Parent         = Sock;
-  InitData.State          = Sock->State;
-  InitData.ProtoHandler   = Sock->ProtoHandler;
-  InitData.Type           = Sock->Type;
-  InitData.RcvBufferSize  = Sock->RcvBuffer.HighWater;
-  InitData.SndBufferSize  = Sock->SndBuffer.HighWater;
-  InitData.DriverBinding  = Sock->DriverBinding;
-  InitData.Protocol       = &(Sock->NetProtocol);
+  InitData.BackLog         = Sock->BackLog;
+  InitData.Parent          = Sock;
+  InitData.State           = Sock->State;
+  InitData.ProtoHandler    = Sock->ProtoHandler;
+  InitData.Type            = Sock->Type;
+  InitData.RcvBufferSize   = Sock->RcvBuffer.HighWater;
+  InitData.SndBufferSize   = Sock->SndBuffer.HighWater;
+  InitData.DriverBinding   = Sock->DriverBinding;
+  InitData.Protocol        = &(Sock->NetProtocol);
   InitData.CreateCallback  = Sock->CreateCallback;
   InitData.DestroyCallback = Sock->DestroyCallback;
   InitData.Context         = Sock->Context;
   InitData.ProtoData       = Sock->ProtoReserved;
   InitData.DataSize        = sizeof (Sock->ProtoReserved);
 
-  ClonedSock              = SockCreate (&InitData);
+  ClonedSock               = SockCreate (&InitData);
 
   if (NULL == ClonedSock) {
     DEBUG ((EFI_D_ERROR, "SockClone: no resource to create a cloned sock\n"));
@@ -935,16 +933,12 @@ SockClone (
 
 
 /**
-  Called by the low layer protocol to indicate the socket
-  a connection is established. This function just changes
-  the socket's state to SO_CONNECTED and signals the token
-  used for connection establishment.
+  Called by the low layer protocol to indicate the socket a connection is 
+  established. This function just changes the socket's state to SO_CONNECTED 
+  and signals the token used for connection establishment.
 
   @param  Sock                  Pointer to the socket associated with the
                                 established connection.
-
-  @return None.
-
 **/
 VOID
 SockConnEstablished (
@@ -967,22 +961,19 @@ SockConnEstablished (
 
 
 /**
-  Called by the low layer protocol to indicate the connection
-  is closed. This function flushes the socket, sets the state
-  to SO_CLOSED and signals the close token.
+  Called by the low layer protocol to indicate the connection is closed; This 
+  function flushes the socket, sets the state to SO_CLOSED and signals the close 
+  token.
 
   @param  Sock                  Pointer to the socket associated with the closed
                                 connection.
-
-  @return None.
-
 **/
 VOID
 SockConnClosed (
   IN SOCKET *Sock
   )
 {
-  if (Sock->CloseToken) {
+  if (Sock->CloseToken != NULL) {
     SIGNAL_TOKEN (Sock->CloseToken, EFI_SUCCESS);
     Sock->CloseToken = NULL;
   }
@@ -998,15 +989,12 @@ SockConnClosed (
 
 
 /**
-  Called by low layer protocol to indicate that some
-  data is sent or processed. This function trims the
-  sent data in the socket send buffer, signals the
-  data token if proper
+  Called by low layer protocol to indicate that some data is sent or processed; 
+  This function trims the sent data in the socket send buffer, signals the data 
+  token if proper.
 
   @param  Sock                  Pointer to the socket.
   @param  Count                 The length of the data processed or sent, in bytes.
-
-  @return None.
 
 **/
 VOID
@@ -1078,7 +1066,7 @@ SockGetDataToSend (
   IN UINT8       *Dest
   )
 {
-  ASSERT (Sock && SOCK_STREAM == Sock->Type);
+  ASSERT ((Sock != NULL) && SOCK_STREAM == Sock->Type);
 
   return NetbufQueCopy (
           Sock->SndBuffer.DataQueue,
@@ -1090,17 +1078,14 @@ SockGetDataToSend (
 
 
 /**
-  Called by the low layer protocol to deliver received data
-  to socket layer. This function will append the data to the
-  socket receive buffer, set ther urgent data length and then
-  check if any receive token can be signaled.
+  Called by the low layer protocol to deliver received data to socket layer; 
+  This function will append the data to the socket receive buffer, set ther 
+  urgent data length and then check if any receive token can be signaled.
 
   @param  Sock                  Pointer to the socket.
   @param  NetBuffer             Pointer to the buffer that contains the received
                                 data.
   @param  UrgLen                The length of the urgent data in the received data.
-
-  @return None.
 
 **/
 VOID
@@ -1110,7 +1095,7 @@ SockDataRcvd (
   IN UINT32    UrgLen
   )
 {
-  ASSERT (Sock && Sock->RcvBuffer.DataQueue &&
+  ASSERT ((Sock != NULL) && (Sock->RcvBuffer.DataQueue != NULL) &&
     UrgLen <= NetBuffer->TotalSize);
 
   NET_GET_REF (NetBuffer);
@@ -1143,7 +1128,7 @@ SockGetFreeSpace (
   UINT32      BufferCC;
   SOCK_BUFFER *SockBuffer;
 
-  ASSERT (Sock && ((SOCK_SND_BUF == Which) || (SOCK_RCV_BUF == Which)));
+  ASSERT ((Sock != NULL) && ((SOCK_SND_BUF == Which) || (SOCK_RCV_BUF == Which)));
 
   if (SOCK_SND_BUF == Which) {
     SockBuffer = &(Sock->SndBuffer);
@@ -1168,8 +1153,6 @@ SockGetFreeSpace (
 
   @param  Sock                  Pointer to the socket.
   @param  Error                 The error code received.
-
-  @return None.
 
 **/
 VOID
@@ -1202,14 +1185,12 @@ SockRcvdErr (
 
 /**
   Called by the low layer protocol to indicate that there
-  will be no more data from the communication peer. This
+  will be no more data from the communication peer; This
   function set the socket's state to SO_NO_MORE_DATA and
   signal all queued IO tokens with the error status
   EFI_CONNECTION_FIN.
 
   @param  Sock                  Pointer to the socket.
-
-  @return None.
 
 **/
 VOID
@@ -1270,7 +1251,8 @@ SockBufFirst (
   @param  SockEntry             Pointer to the buffer block prior to the required
                                 one.
 
-  @return Pointer to the buffer block next to SockEntry. NULL if SockEntry is the tail or head entry.
+  @return Pointer to the buffer block next to SockEntry. NULL if SockEntry is 
+          the tail or head entry.
 
 **/
 NET_BUF *
@@ -1285,8 +1267,7 @@ SockBufNext (
 
   if ((SockEntry->List.ForwardLink == NetbufList) ||
       (SockEntry->List.BackLink == &SockEntry->List) ||
-      (SockEntry->List.ForwardLink == &SockEntry->List)
-      ) {
+      (SockEntry->List.ForwardLink == &SockEntry->List)) {
 
     return NULL;
   }

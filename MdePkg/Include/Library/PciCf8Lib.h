@@ -1,14 +1,18 @@
 /** @file
-  PCI CF8 Library Services for PCI Segment #0
+  Provides services to access PCI Configuration Space using the I/O ports 0xCF8 and 0xCFC.
+  
+  This library is identical to the PCI Library, except the access method for performing PCI 
+  configuration cycles must be though I/O ports 0xCF8 and 0xCFC.  This library only allows 
+  access to PCI Segment #0.
 
-  Copyright (c) 2006 - 2008, Intel Corporation
-  All rights reserved. This program and the accompanying materials
-  are licensed and made available under the terms and conditions of the BSD License
-  which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+Copyright (c) 2006 - 2008, Intel Corporation<BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -34,6 +38,33 @@
 **/
 #define PCI_CF8_LIB_ADDRESS(Bus,Device,Function,Offset) \
   (((Offset) & 0xfff) | (((Function) & 0x07) << 12) | (((Device) & 0x1f) << 15) | (((Bus) & 0xff) << 20))
+
+/**
+  Registers a PCI device so PCI configuration registers may be accessed after 
+  SetVirtualAddressMap().
+  
+  Registers the PCI device specified by Address so all the PCI configuration registers 
+  associated with that PCI device may be accessed after SetVirtualAddressMap() is called.
+  
+  If Address > 0x0FFFFFFF, then ASSERT().
+
+  @param  Address Address that encodes the PCI Bus, Device, Function and
+                  Register.
+  
+  @retval RETURN_SUCCESS           The PCI device was registered for runtime access.
+  @retval RETURN_UNSUPPORTED       An attempt was made to call this function 
+                                   after ExitBootServices().
+  @retval RETURN_UNSUPPORTED       The resources required to access the PCI device
+                                   at runtime could not be mapped.
+  @retval RETURN_OUT_OF_RESOURCES  There are not enough resources available to
+                                   complete the registration.
+
+**/
+RETURN_STATUS
+EFIAPI
+PciCf8RegisterForRuntimeAccess (
+  IN UINTN  Address
+  );
 
 /**
   Reads an 8-bit PCI configuration register.
@@ -82,11 +113,11 @@ PciCf8Write8 (
   );
 
 /**
-  Performs a bitwise inclusive OR of an 8-bit PCI configuration register with
+  Performs a bitwise OR of an 8-bit PCI configuration register with
   an 8-bit value.
 
   Reads the 8-bit PCI configuration register specified by Address, performs a
-  bitwise inclusive OR between the read result and the value specified by
+  bitwise OR between the read result and the value specified by
   OrData, and writes the result to the 8-bit PCI configuration register
   specified by Address. The value written to the PCI configuration register is
   returned. This function must guarantee that all PCI read and write operations
@@ -139,11 +170,11 @@ PciCf8And8 (
 
 /**
   Performs a bitwise AND of an 8-bit PCI configuration register with an 8-bit
-  value, followed a  bitwise inclusive OR with another 8-bit value.
+  value, followed a  bitwise OR with another 8-bit value.
 
   Reads the 8-bit PCI configuration register specified by Address, performs a
   bitwise AND between the read result and the value specified by AndData,
-  performs a bitwise inclusive OR between the result of the AND operation and
+  performs a bitwise OR between the result of the AND operation and
   the value specified by OrData, and writes the result to the 8-bit PCI
   configuration register specified by Address. The value written to the PCI
   configuration register is returned. This function must guarantee that all PCI
@@ -236,7 +267,7 @@ PciCf8BitFieldWrite8 (
   writes the result back to the bit field in the 8-bit port.
 
   Reads the 8-bit PCI configuration register specified by Address, performs a
-  bitwise inclusive OR between the read result and the value specified by
+  bitwise OR between the read result and the value specified by
   OrData, and writes the result to the 8-bit PCI configuration register
   specified by Address. The value written to the PCI configuration register is
   returned. This function must guarantee that all PCI read and write operations
@@ -305,11 +336,11 @@ PciCf8BitFieldAnd8 (
 
 /**
   Reads a bit field in an 8-bit port, performs a bitwise AND followed by a
-  bitwise inclusive OR, and writes the result back to the bit field in the
+  bitwise OR, and writes the result back to the bit field in the
   8-bit port.
 
   Reads the 8-bit PCI configuration register specified by Address, performs a
-  bitwise AND followed by a bitwise inclusive OR between the read result and
+  bitwise AND followed by a bitwise OR between the read result and
   the value specified by AndData, and writes the result to the 8-bit PCI
   configuration register specified by Address. The value written to the PCI
   configuration register is returned. This function must guarantee that all PCI
@@ -392,11 +423,11 @@ PciCf8Write16 (
   );
 
 /**
-  Performs a bitwise inclusive OR of a 16-bit PCI configuration register with
+  Performs a bitwise OR of a 16-bit PCI configuration register with
   a 16-bit value.
 
   Reads the 16-bit PCI configuration register specified by Address, performs a
-  bitwise inclusive OR between the read result and the value specified by
+  bitwise OR between the read result and the value specified by
   OrData, and writes the result to the 16-bit PCI configuration register
   specified by Address. The value written to the PCI configuration register is
   returned. This function must guarantee that all PCI read and write operations
@@ -451,11 +482,11 @@ PciCf8And16 (
 
 /**
   Performs a bitwise AND of a 16-bit PCI configuration register with a 16-bit
-  value, followed a  bitwise inclusive OR with another 16-bit value.
+  value, followed a  bitwise OR with another 16-bit value.
 
   Reads the 16-bit PCI configuration register specified by Address, performs a
   bitwise AND between the read result and the value specified by AndData,
-  performs a bitwise inclusive OR between the result of the AND operation and
+  performs a bitwise OR between the result of the AND operation and
   the value specified by OrData, and writes the result to the 16-bit PCI
   configuration register specified by Address. The value written to the PCI
   configuration register is returned. This function must guarantee that all PCI
@@ -551,7 +582,7 @@ PciCf8BitFieldWrite16 (
   writes the result back to the bit field in the 16-bit port.
 
   Reads the 16-bit PCI configuration register specified by Address, performs a
-  bitwise inclusive OR between the read result and the value specified by
+  bitwise OR between the read result and the value specified by
   OrData, and writes the result to the 16-bit PCI configuration register
   specified by Address. The value written to the PCI configuration register is
   returned. This function must guarantee that all PCI read and write operations
@@ -622,11 +653,11 @@ PciCf8BitFieldAnd16 (
 
 /**
   Reads a bit field in a 16-bit port, performs a bitwise AND followed by a
-  bitwise inclusive OR, and writes the result back to the bit field in the
+  bitwise OR, and writes the result back to the bit field in the
   16-bit port.
 
   Reads the 16-bit PCI configuration register specified by Address, performs a
-  bitwise AND followed by a bitwise inclusive OR between the read result and
+  bitwise AND followed by a bitwise OR between the read result and
   the value specified by AndData, and writes the result to the 16-bit PCI
   configuration register specified by Address. The value written to the PCI
   configuration register is returned. This function must guarantee that all PCI
@@ -710,11 +741,11 @@ PciCf8Write32 (
   );
 
 /**
-  Performs a bitwise inclusive OR of a 32-bit PCI configuration register with
+  Performs a bitwise OR of a 32-bit PCI configuration register with
   a 32-bit value.
 
   Reads the 32-bit PCI configuration register specified by Address, performs a
-  bitwise inclusive OR between the read result and the value specified by
+  bitwise OR between the read result and the value specified by
   OrData, and writes the result to the 32-bit PCI configuration register
   specified by Address. The value written to the PCI configuration register is
   returned. This function must guarantee that all PCI read and write operations
@@ -769,11 +800,11 @@ PciCf8And32 (
 
 /**
   Performs a bitwise AND of a 32-bit PCI configuration register with a 32-bit
-  value, followed a  bitwise inclusive OR with another 32-bit value.
+  value, followed a  bitwise OR with another 32-bit value.
 
   Reads the 32-bit PCI configuration register specified by Address, performs a
   bitwise AND between the read result and the value specified by AndData,
-  performs a bitwise inclusive OR between the result of the AND operation and
+  performs a bitwise OR between the result of the AND operation and
   the value specified by OrData, and writes the result to the 32-bit PCI
   configuration register specified by Address. The value written to the PCI
   configuration register is returned. This function must guarantee that all PCI
@@ -869,7 +900,7 @@ PciCf8BitFieldWrite32 (
   writes the result back to the bit field in the 32-bit port.
 
   Reads the 32-bit PCI configuration register specified by Address, performs a
-  bitwise inclusive OR between the read result and the value specified by
+  bitwise OR between the read result and the value specified by
   OrData, and writes the result to the 32-bit PCI configuration register
   specified by Address. The value written to the PCI configuration register is
   returned. This function must guarantee that all PCI read and write operations
@@ -940,11 +971,11 @@ PciCf8BitFieldAnd32 (
 
 /**
   Reads a bit field in a 32-bit port, performs a bitwise AND followed by a
-  bitwise inclusive OR, and writes the result back to the bit field in the
+  bitwise OR, and writes the result back to the bit field in the
   32-bit port.
 
   Reads the 32-bit PCI configuration register specified by Address, performs a
-  bitwise AND followed by a bitwise inclusive OR between the read result and
+  bitwise AND followed by a bitwise OR between the read result and
   the value specified by AndData, and writes the result to the 32-bit PCI
   configuration register specified by Address. The value written to the PCI
   configuration register is returned. This function must guarantee that all PCI

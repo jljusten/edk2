@@ -26,7 +26,6 @@
   MODULE_TYPE                    = UEFI_DRIVER
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = UefiLib|DXE_CORE DXE_DRIVER DXE_RUNTIME_DRIVER DXE_SAL_DRIVER DXE_SMM_DRIVER UEFI_APPLICATION UEFI_DRIVER
-  EDK_RELEASE_VERSION            = 0x00020000
 
 
 #
@@ -54,8 +53,8 @@
   BaseMemoryLib
   BaseLib
   UefiBootServicesTableLib
-  UefiRuntimeServicesTableLib
-
+  DevicePathLib
+  
 [Guids]
   gEfiEventReadyToBootGuid                      # ALWAYS_CONSUMED
   gEfiEventLegacyBootGuid                       # ALWAYS_CONSUMED
@@ -63,23 +62,27 @@
 
 [Protocols]
   gEfiDriverBindingProtocolGuid                 # ALWAYS_CONSUMED
+  gEfiSimpleTextOutProtocolGuid                 # ALWAYS_CONSUMED
+  gEfiGraphicsOutputProtocolGuid                # ALWAYS_CONSUMED
+  gEfiHiiFontProtocolGuid                       # ALWAYS_CONSUMED
   gEfiComponentNameProtocolGuid                 # SOMETIMES_CONSUMED
-  gEfiComponentName2ProtocolGuid                 # SOMETIMES_CONSUMED
+  gEfiComponentName2ProtocolGuid                # SOMETIMES_CONSUMED
   gEfiDriverConfigurationProtocolGuid           # SOMETIMES_CONSUMED
+  gEfiDriverConfiguration2ProtocolGuid          # SOMETIMES_CONSUMED
   gEfiDriverDiagnosticsProtocolGuid             # SOMETIMES_CONSUMED
-  gEfiDriverDiagnostics2ProtocolGuid             # SOMETIMES_CONSUMED
+  gEfiDriverDiagnostics2ProtocolGuid            # SOMETIMES_CONSUMED
+  gEfiUgaDrawProtocolGuid                       # SOMETIMES_CONSUMED
+
 
 [Pcd.common]
   gEfiMdePkgTokenSpaceGuid.PcdUefiLibMaxPrintBufferSize
-  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultPlatformLang
 
 [FeaturePcd.common]
   gEfiMdePkgTokenSpaceGuid.PcdDriverDiagnosticsDisable
   gEfiMdePkgTokenSpaceGuid.PcdComponentNameDisable
   gEfiMdePkgTokenSpaceGuid.PcdDriverDiagnostics2Disable
   gEfiMdePkgTokenSpaceGuid.PcdComponentName2Disable
+  gEfiMdePkgTokenSpaceGuid.PcdUgaConsumeSupport
 
-[Guids]  
-  gEfiGlobalVariableGuid 
 
 

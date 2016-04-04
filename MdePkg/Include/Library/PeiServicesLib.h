@@ -1,14 +1,14 @@
 /** @file
-  Header file for PEI Services Library.
+  Provides library functions for all PEI Services.
 
-  Copyright (c) 2006 - 2007, Intel Corporation                                                         
-  All rights reserved. This program and the accompanying materials                          
-  are licensed and made available under the terms and conditions of the BSD License         
-  which accompanies this distribution.  The full text of the license may be found at        
-  http://opensource.org/licenses/bsd-license.php                                            
+Copyright (c) 2006 - 2008, Intel Corporation
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -16,7 +16,7 @@
 #define __PEI_SERVICES_LIB_H__
 
 /**
-  This service enables a given PEIM to register an interface into the PEI Foundation. 
+  This service enables a given PEIM to register an interface into the PEI Foundation.
 
   @param  PpiList               A pointer to the list of interfaces that the caller shall install.
 
@@ -98,7 +98,7 @@ PeiServicesNotifyPpi (
   );
 
 /**
-  This service enables PEIMs to ascertain the present value of the boot mode.  
+  This service enables PEIMs to ascertain the present value of the boot mode.
 
   @param  BootMode              A pointer to contain the value of the boot mode.
 
@@ -109,11 +109,11 @@ PeiServicesNotifyPpi (
 EFI_STATUS
 EFIAPI
 PeiServicesGetBootMode (
-  IN OUT EFI_BOOT_MODE          *BootMode
+  OUT EFI_BOOT_MODE          *BootMode
   );
 
 /**
-  This service enables PEIMs to update the boot mode variable.    
+  This service enables PEIMs to update the boot mode variable.
 
   @param  BootMode              The value of the boot mode to set.
 
@@ -165,7 +165,7 @@ PeiServicesCreateHob (
 
   @param  Instance              This instance of the firmware volume to find.  The value 0 is the
                                 Boot Firmware Volume (BFV).
-  @param  VolumeHandle          Pointer to the firmware volume header of the volume to return.
+  @param  VolumeHandle          Handle of the firmware volume header of the volume to return.
 
   @retval EFI_SUCCESS           The volume was found.
   @retval EFI_NOT_FOUND         The volume was not found.
@@ -185,7 +185,7 @@ PeiServicesFfsFindNextVolume (
   @param  SearchType            A filter to find files only of this type.
   @param  VolumeHandle          Pointer to the firmware volume header of the volume to search.
                                 This parameter must point to a valid FFS volume.
-  @param  FileHandle            Pointer to the current file from which to begin searching.
+  @param  FileHandle            Handle of the current file from which to begin searching.
 
   @retval EFI_SUCCESS           The file was found.
   @retval EFI_NOT_FOUND         The file was not found.
@@ -316,7 +316,7 @@ PeiServicesResetSystem (
 **/
 EFI_STATUS
 EFIAPI
-PeiServicesFfsFindByName (
+PeiServicesFfsFindFileByName (
   IN CONST  EFI_GUID            *FileName,
   IN CONST  EFI_PEI_FV_HANDLE   VolumeHandle,
   OUT       EFI_PEI_FILE_HANDLE *FileHandle
@@ -397,5 +397,38 @@ PeiServicesRegisterForShadow (
   IN  EFI_PEI_FILE_HANDLE FileHandle
   );
 
+/**
+  Install a EFI_PEI_FIRMWARE_VOLUME_INFO_PPI instance so the PEI Core will be notified about a new firmware volume.
+  
+  This function allocates, initializes, and installs a new EFI_PEI_FIRMWARE_VOLUME_INFO_PPI using 
+  the parameters passed in to initialize the fields of the EFI_PEI_FIRMWARE_VOLUME_INFO_PPI instance.
+  If the resources can not be allocated for EFI_PEI_FIRMWARE_VOLUME_INFO_PPI, then ASSERT().
+  If the EFI_PEI_FIRMWARE_VOLUME_INFO_PPI can not be installed, then ASSERT().
+
+  
+  @param  FvFormat             Unique identifier of the format of the memory-mapped firmware volume.
+                               This parameter is optional and may be NULL.  
+                               If NULL is specified, the EFI_FIRMWARE_FILE_SYSTEM2_GUID format is assumed.
+  @param  FvInfo               Points to a buffer which allows the EFI_PEI_FIRMWARE_VOLUME_PPI to process the volume. 
+                               The format of this buffer is specific to the FvFormat. For memory-mapped firmware volumes, 
+                               this typically points to the first byte of the firmware volume.
+  @param  FvInfoSize           The size, in bytes, of FvInfo. For memory-mapped firmware volumes, 
+                               this is typically the size of the firmware volume.
+  @param  ParentFvName         If the new firmware volume originated from a file in a different firmware volume, 
+                               then this parameter specifies the GUID name of the originating firmware volume.
+                               Otherwise, this parameter must be NULL.
+  @param  ParentFileName       If the new firmware volume originated from a file in a different firmware volume, 
+                               then this parameter specifies the GUID file name of the originating firmware file.
+                               Otherwise, this parameter must be NULL.
+**/
+VOID
+EFIAPI
+PeiServicesInstallFvInfoPpi (
+  IN CONST EFI_GUID                *FvFormat, OPTIONAL
+  IN CONST VOID                    *FvInfo,
+  IN       UINT32                  FvInfoSize,
+  IN CONST EFI_GUID                *ParentFvName, OPTIONAL
+  IN CONST EFI_GUID                *ParentFileName OPTIONAL
+  );
 
 #endif

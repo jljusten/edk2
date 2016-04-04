@@ -1,5 +1,5 @@
 /** @file
-  PEI Services Table Pointer Library for IA-32 and X64.
+  PEI Services Table Pointer Library for IA-32 and x64.
 
   According to PI specification, the peiservice pointer is stored prior at IDT
   table in IA32 and x64 architecture.
@@ -22,15 +22,14 @@
 #include <Library/DebugLib.h>
 
 /**
+  Retrieves the cached value of the PEI Services Table pointer.
+
+  Returns the cached value of the PEI Services Table pointer in a CPU specific manner 
+  as specified in the CPU binding section of the Platform Initialization Pre-EFI 
+  Initialization Core Interface Specification.
   
-  The function returns the pointer to PeiServicee following
-  PI1.0.
-  
-  For IA32, the four-bytes field immediately prior to new IDT
-  base addres is used to save the EFI_PEI_SERVICES**.
-  For x64, the eight-bytes field immediately prior to new IDT
-  base addres is used to save the EFI_PEI_SERVICES**
-  
+  If the cached PEI Services Table pointer is NULL, then ASSERT().
+
   @return  The pointer to PeiServices.
 
 **/
@@ -50,17 +49,17 @@ GetPeiServicesTablePointer (
 }
 
 /**
+  Caches a pointer PEI Services Table. 
+ 
+  Caches the pointer to the PEI Services Table specified by PeiServicesTablePointer 
+  in a CPU specific manner as specified in the CPU binding section of the Platform Initialization 
+  Pre-EFI Initialization Core Interface Specification. 
+  The function set the pointer of PEI services immediately preceding the IDT table
+  according to PI specification.
   
-  The function sets the pointer to PeiServicee following
-  PI1.0.
+  If PeiServicesTablePointer is NULL, then ASSERT().
   
-  For IA32, the four-bytes field immediately prior to new IDT
-  base addres is used to save the EFI_PEI_SERVICES**.
-  For x64, the eight-bytes field immediately prior to new IDT
-  base addres is used to save the EFI_PEI_SERVICES**
-  
-  @param PeiServicesTablePointer  The pointer to PeiServices.
-
+  @param    PeiServicesTablePointer   The address of PeiServices pointer.
 **/
 VOID
 EFIAPI
@@ -70,6 +69,7 @@ SetPeiServicesTablePointer (
 {
   IA32_DESCRIPTOR   Idtr;
   
+  ASSERT (PeiServicesTablePointer != NULL);
   AsmReadIdtr (&Idtr);
   (*(UINTN*)(Idtr.Base - sizeof (UINTN))) = (UINTN)PeiServicesTablePointer;
 }

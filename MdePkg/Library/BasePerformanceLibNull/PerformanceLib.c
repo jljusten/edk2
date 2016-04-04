@@ -38,14 +38,15 @@
 
   @retval RETURN_SUCCESS          The start of the measurement was recorded.
   @retval RETURN_OUT_OF_RESOURCES There are not enough resources to record the measurement.
+  @retval RETURN_DEVICE_ERROR     A device error reading the time stamp.
 
 **/
 RETURN_STATUS
 EFIAPI
 StartPerformanceMeasurement (
-  IN CONST VOID   *Handle,   OPTIONAL
-  IN CONST CHAR8  *Token,    OPTIONAL
-  IN CONST CHAR8  *Module,   OPTIONAL
+  IN CONST VOID   *Handle,  OPTIONAL
+  IN CONST CHAR8  *Token,   OPTIONAL
+  IN CONST CHAR8  *Module,  OPTIONAL
   IN UINT64       TimeStamp
   )
 {
@@ -73,6 +74,7 @@ StartPerformanceMeasurement (
 
   @retval RETURN_SUCCESS          The end of  the measurement was recorded.
   @retval RETURN_NOT_FOUND        The specified measurement record could not be found.
+  @retval RETURN_DEVICE_ERROR     A device error reading the time stamp.
 
 **/
 RETURN_STATUS

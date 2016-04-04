@@ -1,7 +1,7 @@
 ;/** @file
 ;  Low level x64 routines used by the debug support driver.
 ;
-;  Copyright (c) 2007 - 2008, Intel Corporation. <BR>
+;  Copyright (c) 2007 - 2008, Intel Corporation.
 ;  All rights reserved. This program and the accompanying materials
 ;  are licensed and made available under the terms and conditions of the BSD License
 ;  which accompanies this distribution.  The full text of the license may be found at
@@ -109,19 +109,6 @@ text SEGMENT
 externdef InterruptDistrubutionHub:near
 
 ;------------------------------------------------------------------------------
-;  VOID
-;  EfiWbinvd (
-;    VOID
-;    )
-;
-; Abstract: Writeback and invalidate cache
-;
-EfiWbinvd PROC    PUBLIC
-    wbinvd
-    ret
-EfiWbinvd ENDP
-
-;------------------------------------------------------------------------------
 ; BOOLEAN
 ; FxStorSupport (
 ;   void
@@ -144,59 +131,10 @@ FxStorSupport   PROC    PUBLIC
                 ret
 FxStorSupport   ENDP
 
-
-;------------------------------------------------------------------------------
-; DESCRIPTOR *
-; GetIdtr (
-;   void
-;   )
-;
-; Abstract: Returns physical address of IDTR
-;
-GetIdtr         PROC    PUBLIC
-                push    rbp
-                mov     rbp, rsp
-
-                sidt    QWORD PTR [rbp - 0ah]
-                mov     rax, QWORD PTR [rbp - 8h]
-
-                mov     rsp, rbp
-                pop     rbp
-                ret
-GetIdtr         ENDP
-
-
-;------------------------------------------------------------------------------
-; BOOLEAN
-; WriteInterruptFlag (
-;   BOOLEAN NewState // rcx
-;   )
-;
-; Abstract: Programs interrupt flag to the requested state and returns previous
-;           state.
-;
-WriteInterruptFlag  PROC PUBLIC
-
-                pushfq
-                pop     rax
-                and     rax, 200h
-                shr     rax, 9
-                cmp     rcx, 0
-                jnz     EnableIF
-                cli
-                ret
-EnableIF:
-                sti
-                ret
-
-WriteInterruptFlag  ENDP
-
-
-
 ;------------------------------------------------------------------------------
 ; void
 ; Vect2Desc (
-;   DESCRIPTOR * DestDesc,  // rcx
+;   IA32_IDT_GATE_DESCRIPTOR * DestDesc,  // rcx
 ;   void (*Vector) (void)   // rdx
 ;   )
 ;

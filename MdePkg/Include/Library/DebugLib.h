@@ -1,14 +1,17 @@
 /** @file
-  Public include file for the Debug Library
+  Provides services to print debug and assert messages to a debug output device.
+  
+  The Debug library supports debug print and asserts based on a combination of macros and code.
+  The debug library can be turned on and off so that the debug code does not increase the size of an image.
+  
+Copyright (c) 2006 - 2008, Intel Corporation<BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-  Copyright (c) 2006 - 2008, Intel Corporation                                                         
-  All rights reserved. This program and the accompanying materials                          
-  are licensed and made available under the terms and conditions of the BSD License         
-  which accompanies this distribution.  The full text of the license may be found at        
-  http://opensource.org/licenses/bsd-license.php                                            
-
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -35,6 +38,7 @@
 #define DEBUG_POOL      0x00000010  // Alloc & Free's
 #define DEBUG_PAGE      0x00000020  // Alloc & Free's
 #define DEBUG_INFO      0x00000040  // Verbose
+#define DEBUG_DISPATCH  0x00000080  // PEI/DXE Dispatchers
 #define DEBUG_VARIABLE  0x00000100  // Variable
 #define DEBUG_BM        0x00000400  // Boot Manager
 #define DEBUG_BLKIO     0x00001000  // BlkIo Driver
@@ -54,6 +58,7 @@
 #define EFI_D_POOL      DEBUG_POOL
 #define EFI_D_PAGE      DEBUG_PAGE
 #define EFI_D_INFO      DEBUG_INFO
+#define EFI_D_DISPATCH  DEBUG_DISPATCH
 #define EFI_D_VARIABLE  DEBUG_VARIABLE
 #define EFI_D_BM        DEBUG_BM
 #define EFI_D_BLKIO     DEBUG_BLKIO
@@ -64,7 +69,6 @@
 #define EFI_D_ERROR     DEBUG_ERROR
 
 /**
-
   Prints a debug message to the debug output device if the specified error level is enabled.
 
   If any bit in ErrorLevel is also set in PcdDebugPrintErrorLevel, then print 
@@ -75,7 +79,8 @@
 
   @param  ErrorLevel  The error level of the debug message.
   @param  Format      Format string for the debug message to print.
-  @param  ...         The variable argument list.
+  @param  ...         Variable argument list whose contents are accessed 
+                      based on the format string specified by Format.
 
 **/
 VOID
@@ -88,7 +93,6 @@ DebugPrint (
 
 
 /**
-
   Prints an assert message containing a filename, line number, and description.  
   This may be followed by a breakpoint or a dead loop.
 
@@ -102,7 +106,6 @@ DebugPrint (
   processing another DebugAssert(), then DebugAssert() must return immediately.
 
   If FileName is NULL, then a <FileName> string of "(NULL) Filename" is printed.
-
   If Description is NULL, then a <Description> string of "(NULL) Description" is printed.
 
   @param  FileName     Pointer to the name of the source file that generated the assert condition.
@@ -120,15 +123,13 @@ DebugAssert (
 
 
 /**
-
   Fills a target buffer with PcdDebugClearMemoryValue, and returns the target buffer.
 
   This function fills Length bytes of Buffer with the value specified by 
   PcdDebugClearMemoryValue, and returns Buffer.
 
   If Buffer is NULL, then ASSERT().
-
-  If Length is greater than (MAX_ADDRESS -Buffer + 1), then ASSERT(). 
+  If Length is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
 
   @param   Buffer  Pointer to the target buffer to be filled with PcdDebugClearMemoryValue.
   @param   Length  Number of bytes in Buffer to fill with zeros PcdDebugClearMemoryValue. 
@@ -145,7 +146,6 @@ DebugClearMemory (
 
 
 /**
-  
   Returns TRUE if ASSERT() macros are enabled.
 
   This function returns TRUE if the DEBUG_PROPERTY_DEBUG_ASSERT_ENABLED bit of 
@@ -162,9 +162,8 @@ DebugAssertEnabled (
   );
 
 
-/**
-  
-  Returns TRUE if DEBUG()macros are enabled.
+/**  
+  Returns TRUE if DEBUG() macros are enabled.
 
   This function returns TRUE if the DEBUG_PROPERTY_DEBUG_PRINT_ENABLED bit of 
   PcdDebugProperyMask is set.  Otherwise FALSE is returned.
@@ -180,9 +179,8 @@ DebugPrintEnabled (
   );
 
 
-/**
-  
-  Returns TRUE if DEBUG_CODE()macros are enabled.
+/**  
+  Returns TRUE if DEBUG_CODE() macros are enabled.
 
   This function returns TRUE if the DEBUG_PROPERTY_DEBUG_CODE_ENABLED bit of 
   PcdDebugProperyMask is set.  Otherwise FALSE is returned.
@@ -198,9 +196,8 @@ DebugCodeEnabled (
   );
 
 
-/**
-  
-  Returns TRUE if DEBUG_CLEAR_MEMORY()macro is enabled.
+/**  
+  Returns TRUE if DEBUG_CLEAR_MEMORY() macro is enabled.
 
   This function returns TRUE if the DEBUG_PROPERTY_CLEAR_MEMORY_ENABLED bit of 
   PcdDebugProperyMask is set.  Otherwise FALSE is returned.
@@ -216,8 +213,7 @@ DebugClearMemoryEnabled (
   );
 
 
-/**
-  
+/**  
   Internal worker macro that calls DebugAssert().
 
   This macro calls DebugAssert() passing in the filename, line number, and 
@@ -229,8 +225,7 @@ DebugClearMemoryEnabled (
 #define _ASSERT(Expression)  DebugAssert (__FILE__, __LINE__, #Expression)
 
 
-/**
-  
+/**  
   Internal worker macro that calls DebugPrint().
 
   This macro calls DebugPrint() passing in the debug error level, a format 
@@ -243,8 +238,7 @@ DebugClearMemoryEnabled (
 #define _DEBUG(Expression)   DebugPrint Expression
 
 
-/**
-  
+/**  
   Macro that calls DebugAssert() if a expression evaluates to FALSE.
 
   If the DEBUG_PROPERTY_DEBUG_ASSERT_ENABLED bit of PcdDebugProperyMask is set, 
@@ -265,8 +259,7 @@ DebugClearMemoryEnabled (
   } while (FALSE)
 
 
-/**
-  
+/**  
   Macro that calls DebugPrint().
 
   If the DEBUG_PROPERTY_DEBUG_PRINT_ENABLED bit of PcdDebugProperyMask is set, 
@@ -285,8 +278,7 @@ DebugClearMemoryEnabled (
   } while (FALSE)
 
 
-/**
-  
+/**  
   Macro that calls DebugAssert() if an EFI_STATUS evaluates to an error code.
 
   If the DEBUG_PROPERTY_DEBUG_ASSERT_ENABLED bit of PcdDebugProperyMask is set, 
@@ -308,8 +300,7 @@ DebugClearMemoryEnabled (
   } while (FALSE)
 
 
-/**
-  
+/**  
   Macro that calls DebugAssert() if a protocol is already installed in the 
   handle database.
 
@@ -361,8 +352,7 @@ DebugClearMemoryEnabled (
 #define DEBUG_CODE_BEGIN()  do { if (DebugCodeEnabled ()) { UINT8  __DebugCodeLocal
 
 
-/**
-  
+/**  
   Macro that marks the end of debug source code.
 
   If the DEBUG_PROPERTY_DEBUG_CODE_ENABLED bit of PcdDebugProperyMask is set, 
@@ -374,8 +364,7 @@ DebugClearMemoryEnabled (
 #define DEBUG_CODE_END()    __DebugCodeLocal = 0; __DebugCodeLocal++; } } while (FALSE)
 
 
-/**
-  
+/**  
   Macro that declares a section of debug source code.
 
   If the DEBUG_PROPERTY_DEBUG_CODE_ENABLED bit of PcdDebugProperyMask is set, 
@@ -389,8 +378,7 @@ DebugClearMemoryEnabled (
   DEBUG_CODE_END ()
 
 
-/**
-  
+/**  
   Macro that calls DebugClearMemory() to clear a buffer to a default value.
 
   If the DEBUG_PROPERTY_CLEAR_MEMORY_ENABLED bit of PcdDebugProperyMask is set, 
@@ -409,7 +397,6 @@ DebugClearMemoryEnabled (
 
 
 /**
-
   Macro that calls DebugAssert() if the containing record does not have a 
   matching signature.  If the signatures matches, then a pointer to the data 
   structure that contains a specified field of that data structure is returned.  
@@ -451,9 +438,9 @@ DebugClearMemoryEnabled (
   @param  TestSignature  The 32-bit signature value to match.
 
 **/
-#define CR(Record, TYPE, Field, TestSignature)                                          \
-  (DebugAssertEnabled () && (_CR (Record, TYPE, Field)->Signature != TestSignature)) ?  \
-  (TYPE *) (_ASSERT (CR has Bad Signature), Record) :                                   \
-  _CR (Record, TYPE, Field)
+#define CR(Record, TYPE, Field, TestSignature)                                                        \
+  (DebugAssertEnabled () && (BASE_CR (Record, TYPE, Field)->Signature != TestSignature)) ?  \
+  (TYPE *) (_ASSERT (CR has Bad Signature), Record) :                                                 \
+  BASE_CR (Record, TYPE, Field)
     
 #endif

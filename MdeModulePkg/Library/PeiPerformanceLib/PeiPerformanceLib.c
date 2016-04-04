@@ -1,5 +1,10 @@
 /** @file
-  Performance Library
+  Performance library instance used in PEI phase.
+
+  This file implements all APIs in Performance Library class in MdePkg. It creates
+  performance logging GUIDed HOB on the first performance logging and then logs the
+  performance data to the GUIDed HOB. Due to the limitation of temporary RAM, the maximum
+  number of performance logging entry is specified by PcdMaxPeiPerformanceLogEntries.  
 
 Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
@@ -80,6 +85,8 @@ InternalGetPerformanceHobLog (
   and its end time stamp is zero, then the index of that log entry is returned;
   otherwise, the the number of log entries in the array is returned.
 
+  @param  PeiPerformanceLog       Pointer to the data structure containing PEI 
+                                  performance data.
   @param  Handle                  Pointer to environment specific context used
                                   to identify the component being measured.
   @param  Token                   Pointer to a Null-terminated ASCII string

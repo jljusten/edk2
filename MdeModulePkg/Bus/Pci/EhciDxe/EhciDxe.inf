@@ -1,8 +1,12 @@
 #/** @file
-# Component name for module Ehci
+#  
+#  Component Description File For EhciDxe Module.
+# 
+#  EhciDxe driver is responsible for managing the behavior of EHCI controller. 
+#  It implements the interfaces of monitoring the status of all ports and transferring 
+#  Control, Bulk, Interrupt and Isochronous requests to Usb2.0 device.
 #
-# FIX ME!
-# Copyright (c) 2006, Intel Corporation. 
+#  Copyright (c) 2006 - 2008, Intel Corporation. 
 #
 #  All rights reserved. This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -21,8 +25,6 @@
   FILE_GUID                      = BDFE430E-8F2A-4db0-9991-6F856594777E
   MODULE_TYPE                    = UEFI_DRIVER
   VERSION_STRING                 = 1.0
-  EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
 
   ENTRY_POINT                    = EhcDriverEntryPoint
 
@@ -30,6 +32,10 @@
 # The following information is for reference only and not required by the build tools.
 #
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
+#
+#  DRIVER_BINDING                =  gEhciDriverBinding                        
+#  COMPONENT_NAME                =  gEhciComponentName
+#  COMPONENT_NAME2               =  gEhciComponentName2
 #
 
 [Sources.common]
@@ -42,6 +48,7 @@
   EhciReg.c
   EhciDebug.h
   ComponentName.c
+  ComponentName.h
   EhciUrb.h
   Ehci.h
   EhciSched.h

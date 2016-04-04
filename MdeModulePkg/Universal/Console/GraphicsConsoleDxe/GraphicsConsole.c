@@ -14,6 +14,91 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "GraphicsConsole.h"
 
+
+//
+// Graphics Console Devcie Private Data template
+//
+GRAPHICS_CONSOLE_DEV    mGraphicsConsoleDevTemplate = {
+  GRAPHICS_CONSOLE_DEV_SIGNATURE,
+  (EFI_GRAPHICS_OUTPUT_PROTOCOL *) NULL,
+  (EFI_UGA_DRAW_PROTOCOL *) NULL,
+  {
+    GraphicsConsoleConOutReset,
+    GraphicsConsoleConOutOutputString,
+    GraphicsConsoleConOutTestString,
+    GraphicsConsoleConOutQueryMode,
+    GraphicsConsoleConOutSetMode,
+    GraphicsConsoleConOutSetAttribute,
+    GraphicsConsoleConOutClearScreen,
+    GraphicsConsoleConOutSetCursorPosition,
+    GraphicsConsoleConOutEnableCursor,
+    (EFI_SIMPLE_TEXT_OUTPUT_MODE *) NULL
+  },
+  {
+    0,
+    0,
+    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK),
+    0,
+    0,
+    TRUE
+  },
+  {
+    { 80, 25, 0, 0, 0, 0 },  // Mode 0
+    { 80, 50, 0, 0, 0, 0 },  // Mode 1
+    { 100,31, 0, 0, 0, 0 },  // Mode 2
+    {  0,  0, 0, 0, 0, 0 }   // Mode 3
+  },
+  (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *) NULL,
+  (EFI_HII_HANDLE ) 0
+};
+
+EFI_HII_DATABASE_PROTOCOL   *mHiiDatabase;
+EFI_HII_FONT_PROTOCOL       *mHiiFont;
+BOOLEAN                     mFirstAccessFlag = TRUE;
+
+EFI_GUID             mFontPackageListGuid = {0xf5f219d3, 0x7006, 0x4648, {0xac, 0x8d, 0xd6, 0x1d, 0xfb, 0x7b, 0xc6, 0xad}};
+
+CHAR16               mCrLfString[3] = { CHAR_CARRIAGE_RETURN, CHAR_LINEFEED, CHAR_NULL };
+
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL        mEfiColors[16] = {
+  //
+  // B     G     R
+  //
+  {0x00, 0x00, 0x00, 0x00},  // BLACK
+  {0x98, 0x00, 0x00, 0x00},  // BLUE
+  {0x00, 0x98, 0x00, 0x00},  // GREEN
+  {0x98, 0x98, 0x00, 0x00},  // CYAN
+  {0x00, 0x00, 0x98, 0x00},  // RED
+  {0x98, 0x00, 0x98, 0x00},  // MAGENTA
+  {0x00, 0x98, 0x98, 0x00},  // BROWN
+  {0x98, 0x98, 0x98, 0x00},  // LIGHTGRAY
+  {0x30, 0x30, 0x30, 0x00},  // DARKGRAY - BRIGHT BLACK
+  {0xff, 0x00, 0x00, 0x00},  // LIGHTBLUE - ?
+  {0x00, 0xff, 0x00, 0x00},  // LIGHTGREEN - ?
+  {0xff, 0xff, 0x00, 0x00},  // LIGHTCYAN
+  {0x00, 0x00, 0xff, 0x00},  // LIGHTRED
+  {0xff, 0x00, 0xff, 0x00},  // LIGHTMAGENTA
+  {0x00, 0xff, 0xff, 0x00},  // LIGHTBROWN
+  {0xff, 0xff, 0xff, 0x00}  // WHITE
+};
+
+EFI_NARROW_GLYPH     mCursorGlyph = {
+  0x0000,
+  0x00,
+  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF }
+};
+
+CHAR16       SpaceStr[] = { NARROW_CHAR, ' ', 0 };
+
+EFI_DRIVER_BINDING_PROTOCOL gGraphicsConsoleDriverBinding = {
+  GraphicsConsoleControllerDriverSupported,
+  GraphicsConsoleControllerDriverStart,
+  GraphicsConsoleControllerDriverStop,
+  0xa,
+  NULL,
+  NULL
+};
+
 /**
   Gets Graphics Console devcie's foreground color and background color.
 
@@ -90,90 +175,6 @@ CheckModeSupported (
   IN  UINT32  VerticalResolution,
   OUT UINT32  *CurrentModeNumber
   );
-
-//
-// Graphics Console Devcie Private Data template
-//
-GRAPHICS_CONSOLE_DEV    mGraphicsConsoleDevTemplate = {
-  GRAPHICS_CONSOLE_DEV_SIGNATURE,
-  (EFI_GRAPHICS_OUTPUT_PROTOCOL *) NULL,
-  (EFI_UGA_DRAW_PROTOCOL *) NULL,
-  {
-    GraphicsConsoleConOutReset,
-    GraphicsConsoleConOutOutputString,
-    GraphicsConsoleConOutTestString,
-    GraphicsConsoleConOutQueryMode,
-    GraphicsConsoleConOutSetMode,
-    GraphicsConsoleConOutSetAttribute,
-    GraphicsConsoleConOutClearScreen,
-    GraphicsConsoleConOutSetCursorPosition,
-    GraphicsConsoleConOutEnableCursor,
-    (EFI_SIMPLE_TEXT_OUTPUT_MODE *) NULL
-  },
-  {
-    0,
-    0,
-    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK),
-    0,
-    0,
-    TRUE
-  },
-  {
-    { 80, 25, 0, 0, 0, 0 },  // Mode 0
-    { 80, 50, 0, 0, 0, 0 },  // Mode 1
-    { 100,31, 0, 0, 0, 0 },  // Mode 2
-    {  0,  0, 0, 0, 0, 0 }   // Mode 3
-  },
-  (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *) NULL,
-  (EFI_HII_HANDLE ) 0
-};
-
-EFI_HII_DATABASE_PROTOCOL   *mHiiDatabase;
-EFI_HII_FONT_PROTOCOL       *mHiiFont;
-BOOLEAN                     mFirstAccessFlag = TRUE;
-
-EFI_GUID             mFontPackageListGuid = {0xf5f219d3, 0x7006, 0x4648, 0xac, 0x8d, 0xd6, 0x1d, 0xfb, 0x7b, 0xc6, 0xad};
-
-CHAR16               mCrLfString[3] = { CHAR_CARRIAGE_RETURN, CHAR_LINEFEED, CHAR_NULL };
-
-EFI_GRAPHICS_OUTPUT_BLT_PIXEL        mEfiColors[16] = {
-  //
-  // B     G     R
-  //
-  {0x00, 0x00, 0x00, 0x00},  // BLACK
-  {0x98, 0x00, 0x00, 0x00},  // BLUE
-  {0x00, 0x98, 0x00, 0x00},  // GREEN
-  {0x98, 0x98, 0x00, 0x00},  // CYAN
-  {0x00, 0x00, 0x98, 0x00},  // RED
-  {0x98, 0x00, 0x98, 0x00},  // MAGENTA
-  {0x00, 0x98, 0x98, 0x00},  // BROWN
-  {0x98, 0x98, 0x98, 0x00},  // LIGHTGRAY
-  {0x30, 0x30, 0x30, 0x00},  // DARKGRAY - BRIGHT BLACK
-  {0xff, 0x00, 0x00, 0x00},  // LIGHTBLUE - ?
-  {0x00, 0xff, 0x00, 0x00},  // LIGHTGREEN - ?
-  {0xff, 0xff, 0x00, 0x00},  // LIGHTCYAN
-  {0x00, 0x00, 0xff, 0x00},  // LIGHTRED
-  {0xff, 0x00, 0xff, 0x00},  // LIGHTMAGENTA
-  {0x00, 0xff, 0xff, 0x00},  // LIGHTBROWN
-  {0xff, 0xff, 0xff, 0x00}  // WHITE
-};
-
-EFI_NARROW_GLYPH     mCursorGlyph = {
-  0x0000,
-  0x00,
-  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF }
-};
-
-CHAR16       SpaceStr[] = { NARROW_CHAR, ' ', 0 };
-
-EFI_DRIVER_BINDING_PROTOCOL gGraphicsConsoleDriverBinding = {
-  GraphicsConsoleControllerDriverSupported,
-  GraphicsConsoleControllerDriverStart,
-  GraphicsConsoleControllerDriverStop,
-  0xa,
-  NULL,
-  NULL
-};
 
 
 /**

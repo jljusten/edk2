@@ -1,27 +1,27 @@
 /** @file
-
-Copyright (c) 2005 - 2006, Intel Corporation
+  Routines to process TCP option.
+    
+Copyright (c) 2005 - 2006, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
-http://opensource.org/licenses/bsd-license.php
+http://opensource.org/licenses/bsd-license.php<BR>
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  Tcp4Option.c
-
-Abstract:
-
-  Routines to process TCP option.
-
 
 **/
 
 #include "Tcp4Main.h"
 
+/**
+    Get a UINT16 value from buffer.
+    
+    @param Buf                  Pointer to input buffer.
+    
+    @return                     The UINT16 value get from buffer.
+
+**/
 UINT16
 TcpGetUint16 (
   IN UINT8 *Buf
@@ -32,17 +32,14 @@ TcpGetUint16 (
   return NTOHS (Value);
 }
 
-// STATIC
-// VOID
-// TcpPutUint16 (
-//   IN UINT8  *Buf,
-//   IN UINT16 Data
-//   )
-// {
-//   Data = HTONS (Data);
-//   CopyMem (Buf, &Data, sizeof (UINT16));
-// }
+/**
+    Get a UINT32 value from buffer.
+    
+    @param Buf                  Pointer to input buffer.
+    
+    @return                     The UINT32 value get from buffer.
 
+**/
 UINT32
 TcpGetUint32 (
   IN UINT8 *Buf
@@ -53,6 +50,13 @@ TcpGetUint32 (
   return NTOHL (Value);
 }
 
+/**
+    Put a UINT32 value in buffer.
+    
+    @param Buf                  Pointer to the buffer.
+    @param Data                 The UINT32 Date to put in buffer 
+
+**/
 VOID
 TcpPutUint32 (
   IN UINT8  *Buf,
@@ -65,12 +69,11 @@ TcpPutUint32 (
 
 
 /**
-  Compute the window scale value according to the given
-  buffer size.
+  Compute the window scale value according to the given buffer size.
 
   @param  Tcb     Pointer to the TCP_CB of this TCP instance.
 
-  @retval UINT8   The scale value.
+  @return         The scale value.
 
 **/
 UINT8
@@ -81,7 +84,7 @@ TcpComputeScale (
   UINT8   Scale;
   UINT32  BufSize;
 
-  ASSERT (Tcb && Tcb->Sk);
+  ASSERT ((Tcb != NULL) && (Tcb->Sk != NULL));
 
   BufSize = GET_RCV_BUFFSIZE (Tcb->Sk);
 
@@ -102,7 +105,7 @@ TcpComputeScale (
   @param  Tcb     Pointer to the TCP_CB of this TCP instance.
   @param  Nbuf    Pointer to the buffer to store the options.
 
-  @return The total length of the TCP option field.
+  @return         The total length of the TCP option field.
 
 **/
 UINT16
@@ -114,7 +117,7 @@ TcpSynBuildOption (
   UINT8   *Data;
   UINT16  Len;
 
-  ASSERT (Tcb && Nbuf && !Nbuf->Tcp);
+  ASSERT ((Tcb != NULL) && (Nbuf != NULL) && (Nbuf->Tcp == NULL));
 
   Len = 0;
 
@@ -125,7 +128,7 @@ TcpSynBuildOption (
   //
   if (!TCP_FLG_ON (Tcb->CtrlFlag, TCP_CTRL_NO_TS) &&
       (!TCP_FLG_ON (TCPSEG_NETBUF (Nbuf)->Flag, TCP_FLG_ACK) ||
-      TCP_FLG_ON (Tcb->CtrlFlag, TCP_CTRL_RCVD_TS))) {
+        TCP_FLG_ON (Tcb->CtrlFlag, TCP_CTRL_RCVD_TS))) {
 
     Data = NetbufAllocSpace (
             Nbuf,
@@ -133,7 +136,7 @@ TcpSynBuildOption (
             NET_BUF_HEAD
             );
 
-    ASSERT (Data);
+    ASSERT (Data != NULL);
     Len += TCP_OPTION_TS_ALIGNED_LEN;
 
     TcpPutUint32 (Data, TCP_OPTION_TS_FAST);
@@ -148,7 +151,7 @@ TcpSynBuildOption (
   //
   if (!TCP_FLG_ON (Tcb->CtrlFlag, TCP_CTRL_NO_WS) &&
       (!TCP_FLG_ON (TCPSEG_NETBUF (Nbuf)->Flag, TCP_FLG_ACK) ||
-      TCP_FLG_ON (Tcb->CtrlFlag, TCP_CTRL_RCVD_WS))) {
+        TCP_FLG_ON (Tcb->CtrlFlag, TCP_CTRL_RCVD_WS))) {
 
     Data = NetbufAllocSpace (
             Nbuf,
@@ -156,7 +159,7 @@ TcpSynBuildOption (
             NET_BUF_HEAD
             );
 
-    ASSERT (Data);
+    ASSERT (Data != NULL);
 
     Len += TCP_OPTION_WS_ALIGNED_LEN;
     TcpPutUint32 (Data, TCP_OPTION_WS_FAST | TcpComputeScale (Tcb));
@@ -166,7 +169,7 @@ TcpSynBuildOption (
   // Build MSS option
   //
   Data = NetbufAllocSpace (Nbuf, TCP_OPTION_MSS_LEN, 1);
-  ASSERT (Data);
+  ASSERT (Data != NULL);
 
   Len += TCP_OPTION_MSS_LEN;
   TcpPutUint32 (Data, TCP_OPTION_MSS_FAST | Tcb->RcvMss);
@@ -181,7 +184,7 @@ TcpSynBuildOption (
   @param  Tcb     Pointer to the TCP_CB of this TCP instance.
   @param  Nbuf    Pointer to the buffer to store the options.
 
-  @return The total length of the TCP option field.
+  @return         The total length of the TCP option field.
 
 **/
 UINT16
@@ -193,7 +196,7 @@ TcpBuildOption (
   UINT8   *Data;
   UINT16  Len;
 
-  ASSERT (Tcb && Nbuf && !Nbuf->Tcp);
+  ASSERT ((Tcb != NULL) && (Nbuf != NULL) && (Nbuf->Tcp == NULL));
   Len = 0;
 
   //
@@ -208,7 +211,7 @@ TcpBuildOption (
             NET_BUF_HEAD
             );
 
-    ASSERT (Data);
+    ASSERT (Data != NULL);
     Len += TCP_OPTION_TS_ALIGNED_LEN;
 
     TcpPutUint32 (Data, TCP_OPTION_TS_FAST);
@@ -243,7 +246,7 @@ TcpParseOption (
   UINT8 Type;
   UINT8 Len;
 
-  ASSERT (Tcp && Option);
+  ASSERT ((Tcp != NULL) && (Option != NULL));
 
   Option->Flag  = 0;
 
@@ -333,7 +336,7 @@ TcpParseOption (
     default:
       Len = Head[Cur + 1];
 
-      if (TotalLen - Cur < Len || Len < 2) {
+      if ((TotalLen - Cur) < Len || Len < 2) {
         return -1;
       }
 

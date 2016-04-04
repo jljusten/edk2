@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2006 - 2007, Intel Corporation                                                         
+Copyright (c) 2006 - 2008, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -217,7 +217,7 @@ UpdateMemoryMap (
       Memory = MemoryDescHob.MemDesc[Index].PhysicalStart;
       Status = gBS->AllocatePages (
                       AllocateAddress,
-                      MemoryDescHob.MemDesc[Index].Type,
+                      (EFI_MEMORY_TYPE)MemoryDescHob.MemDesc[Index].Type,
                       (UINTN)MemoryDescHob.MemDesc[Index].NumberOfPages,
                       &Memory
                       );
@@ -1095,7 +1095,7 @@ Returns:
   // from the graphic lib
   //
   if (QuietBoot) {
-    Status = EnableQuietBootEx (&gEfiDefaultBmpLogoGuid, mBdsImageHandle);
+    Status = EnableQuietBoot (&gEfiDefaultBmpLogoGuid);
     if (EFI_ERROR (Status)) {
       DisableQuietBoot ();
       return;
@@ -1491,7 +1491,7 @@ Returns:
     Length--;
   }
   
-  return ((0xFF - CheckSum) + 1);
+  return (UINT8)((0xFF - CheckSum) + 1);
 }  
 
 EFI_STATUS

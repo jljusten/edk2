@@ -579,7 +579,7 @@ InternalLongJump (
   Reads the current Global Descriptor Table Register(GDTR) descriptor.
 
   Reads and returns the current GDTR descriptor and returns it in Gdtr. This
-  function is only available on IA-32 and X64.
+  function is only available on IA-32 and x64.
 
   @param  Gdtr  Pointer to a GDTR descriptor.
 
@@ -594,7 +594,7 @@ InternalX86ReadGdtr (
   Writes the current Global Descriptor Table Register (GDTR) descriptor.
 
   Writes and the current GDTR descriptor specified by Gdtr. This function is
-  only available on IA-32 and X64.
+  only available on IA-32 and x64.
 
   @param  Gdtr  Pointer to a GDTR descriptor.
 
@@ -609,7 +609,7 @@ InternalX86WriteGdtr (
   Reads the current Interrupt Descriptor Table Register(GDTR) descriptor.
 
   Reads and returns the current IDTR descriptor and returns it in Idtr. This
-  function is only available on IA-32 and X64.
+  function is only available on IA-32 and x64.
 
   @param  Idtr  Pointer to a IDTR descriptor.
 
@@ -624,7 +624,7 @@ InternalX86ReadIdtr (
   Writes the current Interrupt Descriptor Table Register(GDTR) descriptor.
 
   Writes the current IDTR descriptor and returns it in Idtr. This function is
-  only available on IA-32 and X64.
+  only available on IA-32 and x64.
 
   @param  Idtr  Pointer to a IDTR descriptor.
 
@@ -640,7 +640,7 @@ InternalX86WriteIdtr (
 
   Saves the current floating point/SSE/SSE2 state to the buffer specified by
   Buffer. Buffer must be aligned on a 16-byte boundary. This function is only
-  available on IA-32 and X64.
+  available on IA-32 and x64.
 
   @param  Buffer  Pointer to a buffer to save the floating point/SSE/SSE2 context.
 
@@ -656,7 +656,7 @@ InternalX86FxSave (
 
   Restores the current floating point/SSE/SSE2 state from the buffer specified
   by Buffer. Buffer must be aligned on a 16-byte boundary. This function is
-  only available on IA-32 and X64.
+  only available on IA-32 and x64.
 
   @param  Buffer  Pointer to a buffer to save the floating point/SSE/SSE2 context.
 
@@ -790,7 +790,7 @@ InternalX86EnablePaging64 (
 
   Disables the 64-bit paging mode on the CPU and returns to 32-bit protected
   mode. This function assumes the current execution mode is 64-paging mode.
-  This function is only available on X64. After the 64-bit paging mode is
+  This function is only available on x64. After the 64-bit paging mode is
   disabled, control is transferred to the function specified by EntryPoint
   using the new stack specified by NewStack and passing in the parameters
   specified by Context1 and Context2. Context1 and Context2 are optional and
@@ -827,6 +827,865 @@ InternalX86DisablePaging64 (
 //
 // IPF specific functions
 //
+
+//
+// Structure definition for look up table.
+//
+typedef struct {
+  UINT64 Index;
+  UINT64 (*Function) (VOID);
+} REGISTER_ENTRY;
+
+
+/**
+  Reads control register DCR.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_DCR
+
+  @return The 64-bit control register DCR.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterDcr (
+  VOID
+  );
+
+
+/**
+  Reads control register ITM.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_ITM
+
+  @return The 64-bit control register ITM.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterItm (
+  VOID
+  );
+
+
+/**
+  Reads control register IVA.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IVA
+
+  @return The 64-bit control register IVA.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIva (
+  VOID
+  );
+
+
+/**
+  Reads control register PTA.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_PTA
+
+  @return The 64-bit control register PTA.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterPta (
+  VOID
+  );
+
+
+/**
+  Reads control register IPSR.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IPSR
+
+  @return The 64-bit control register IPSR.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIpsr (
+  VOID
+  );
+
+
+/**
+  Reads control register ISR.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_ISR
+
+  @return The 64-bit control register ISR.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIsr (
+  VOID
+  );
+
+
+/**
+  Reads control register IIP.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IIP
+
+  @return The 64-bit control register IIP.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIip (
+  VOID
+  );
+
+
+/**
+  Reads control register IFA.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IFA
+
+  @return The 64-bit control register IFA.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIfa (
+  VOID
+  );
+
+
+/**
+  Reads control register ITIR.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_ITIR
+
+  @return The 64-bit control register ITIR.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterItir (
+  VOID
+  );
+
+
+/**
+  Reads control register IIPA.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IIPA
+
+  @return The 64-bit control register IIPA.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIipa (
+  VOID
+  );
+
+
+/**
+  Reads control register IFS.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IFS
+
+  @return The 64-bit control register IFS.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIfs (
+  VOID
+  );
+
+
+/**
+  Reads control register IIM.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IIM
+
+  @return The 64-bit control register IIM.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIim (
+  VOID
+  );
+
+
+/**
+  Reads control register IHA.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IHA
+
+  @return The 64-bit control register IHA.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIha (
+  VOID
+  );
+
+
+/**
+  Reads control register LID.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_LID
+
+  @return The 64-bit control register LID.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterLid (
+  VOID
+  );
+
+
+/**
+  Reads control register IVR.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IVR
+
+  @return The 64-bit control register IVR.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIvr (
+  VOID
+  );
+
+
+/**
+  Reads control register TPR.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_TPR
+
+  @return The 64-bit control register TPR.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterTpr (
+  VOID
+  );
+
+
+/**
+  Reads control register EOI.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_EOI
+
+  @return The 64-bit control register EOI.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterEoi (
+  VOID
+  );
+
+
+/**
+  Reads control register IRR0.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IRR0
+
+  @return The 64-bit control register IRR0.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIrr0 (
+  VOID
+  );
+
+
+/**
+  Reads control register IRR1.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IRR1
+
+  @return The 64-bit control register IRR1.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIrr1 (
+  VOID
+  );
+
+
+/**
+  Reads control register IRR2.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IRR2
+
+  @return The 64-bit control register IRR2.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIrr2 (
+  VOID
+  );
+
+
+/**
+  Reads control register IRR3.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_IRR3
+
+  @return The 64-bit control register IRR3.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterIrr3 (
+  VOID
+  );
+
+
+/**
+  Reads control register ITV.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_ITV
+
+  @return The 64-bit control register ITV.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterItv (
+  VOID
+  );
+
+
+/**
+  Reads control register PMV.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_PMV
+
+  @return The 64-bit control register PMV.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterPmv (
+  VOID
+  );
+
+
+/**
+  Reads control register CMCV.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_CMCV
+
+  @return The 64-bit control register CMCV.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterCmcv (
+  VOID
+  );
+
+
+/**
+  Reads control register LRR0.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_LRR0
+
+  @return The 64-bit control register LRR0.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterLrr0 (
+  VOID
+  );
+
+
+/**
+  Reads control register LRR1.
+
+  This is a worker function for AsmReadControlRegister()
+  when its parameter Index is IPF_CONTROL_REGISTER_LRR1
+
+  @return The 64-bit control register LRR1.
+
+**/
+UINT64
+EFIAPI
+AsmReadControlRegisterLrr1 (
+  VOID
+  );
+
+
+/**
+  Reads application register K0.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_K0
+
+  @return The 64-bit application register K0.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterK0 (
+  VOID
+  );
+
+
+
+/**
+  Reads application register K1.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_K1
+
+  @return The 64-bit application register K1.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterK1 (
+  VOID
+  );
+
+
+/**
+  Reads application register K2.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_K2
+
+  @return The 64-bit application register K2.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterK2 (
+  VOID
+  );
+
+
+/**
+  Reads application register K3.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_K3
+
+  @return The 64-bit application register K3.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterK3 (
+  VOID
+  );
+
+
+/**
+  Reads application register K4.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_K4
+
+  @return The 64-bit application register K4.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterK4 (
+  VOID
+  );
+
+
+/**
+  Reads application register K5.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_K5
+
+  @return The 64-bit application register K5.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterK5 (
+  VOID
+  );
+
+
+/**
+  Reads application register K6.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_K6
+
+  @return The 64-bit application register K6.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterK6 (
+  VOID
+  );
+
+
+/**
+  Reads application register K7.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_K7
+
+  @return The 64-bit application register K7.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterK7 (
+  VOID
+  );
+
+
+/**
+  Reads application register RSC.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_RSC
+
+  @return The 64-bit application register RSC.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterRsc (
+  VOID
+  );
+
+
+/**
+  Reads application register BSP.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_BSP
+
+  @return The 64-bit application register BSP.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterBsp (
+  VOID
+  );
+
+
+/**
+  Reads application register BSPSTORE.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_BSPSTORE
+
+  @return The 64-bit application register BSPSTORE.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterBspstore (
+  VOID
+  );
+
+
+/**
+  Reads application register RNAT.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_RNAT
+
+  @return The 64-bit application register RNAT.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterRnat (
+  VOID
+  );
+
+
+/**
+  Reads application register FCR.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_FCR
+
+  @return The 64-bit application register FCR.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterFcr (
+  VOID
+  );
+
+
+/**
+  Reads application register EFLAG.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_EFLAG
+
+  @return The 64-bit application register EFLAG.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterEflag (
+  VOID
+  );
+
+
+/**
+  Reads application register CSD.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_CSD
+
+  @return The 64-bit application register CSD.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterCsd (
+  VOID
+  );
+
+
+/**
+  Reads application register SSD.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_SSD
+
+  @return The 64-bit application register SSD.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterSsd (
+  VOID
+  );
+
+
+/**
+  Reads application register CFLG.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_CFLG
+
+  @return The 64-bit application register CFLG.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterCflg (
+  VOID
+  );
+
+
+/**
+  Reads application register FSR.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_FSR
+
+  @return The 64-bit application register FSR.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterFsr (
+  VOID
+  );
+
+
+/**
+  Reads application register FIR.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_FIR
+
+  @return The 64-bit application register FIR.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterFir (
+  VOID
+  );
+
+
+/**
+  Reads application register FDR.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_FDR
+
+  @return The 64-bit application register FDR.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterFdr (
+  VOID
+  );
+
+
+/**
+  Reads application register CCV.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_CCV
+
+  @return The 64-bit application register CCV.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterCcv (
+  VOID
+  );
+
+
+/**
+  Reads application register UNAT.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_UNAT
+
+  @return The 64-bit application register UNAT.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterUnat (
+  VOID
+  );
+
+
+/**
+  Reads application register FPSR.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_FPSR
+
+  @return The 64-bit application register FPSR.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterFpsr (
+  VOID
+  );
+
+
+/**
+  Reads application register ITC.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_ITC
+
+  @return The 64-bit application register ITC.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterItc (
+  VOID
+  );
+
+
+/**
+  Reads application register PFS.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_PFS
+
+  @return The 64-bit application register PFS.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterPfs (
+  VOID
+  );
+
+
+/**
+  Reads application register LC.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_LC
+
+  @return The 64-bit application register LC.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterLc (
+  VOID
+  );
+
+
+/**
+  Reads application register EC.
+
+  This is a worker function for AsmReadApplicationRegister()
+  when its parameter Index is IPF_APPLICATION_REGISTER_EC
+
+  @return The 64-bit application register EC.
+
+**/
+UINT64
+EFIAPI
+AsmReadApplicationRegisterEc (
+  VOID
+  );
+
+
 
 /**
   Transfers control to a function starting with a new stack.

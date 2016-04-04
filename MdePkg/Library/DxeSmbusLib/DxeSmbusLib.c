@@ -1,5 +1,5 @@
 /** @file
-Implementation of SmBusLib class library for PEI phase.
+Implementation of SmBusLib class library for DXE phase.
 
 Copyright (c) 2006, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
@@ -68,7 +68,7 @@ SmbusLibConstructor (
   @param  Status          Return status for the executed command.
                           This is an optional parameter and may be NULL.
 
-  @return The actual number of bytes that are executed for this operation..
+  @return The actual number of bytes that are executed for this operation.
 
 **/
 UINTN

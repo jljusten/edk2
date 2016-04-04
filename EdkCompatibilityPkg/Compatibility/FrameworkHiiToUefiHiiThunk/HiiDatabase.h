@@ -51,23 +51,28 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <MdeModuleHii.h>
 
+#include "UefiIfrParser.h"
+
 
 //
-// VARSTORE ID of 0 for Buffer Storage Type Storage is reserved in UEFI IFR form. But VARSTORE ID
-// 0 in Framework IFR is the default VarStore ID for storage without explicit declaration. So we have
-// to reseved 0x0001 in UEFI VARSTORE ID to represetn default storage id in Framework IFR.
-// Framework VFR has to be ported or pre-processed to change the default VARSTORE to a VARSTORE
-// with ID equal to 0x0001.
+// VARSTORE ID of 0 for Buffer Storage Type Storage is defined as invalid in UEFI 2.1 HII. VARSTORE ID
+// 0 is the default VarStore ID for storage without explicit declaration in Framework HII 0.92. EDK II UEFI VFR compiler
+// in compatible mode will assign 0x0001 as UEFI VARSTORE ID to this default storage id in Framework VFR without
+// VARSTORE declaration.
+// 
+// In addition, the Name of Default VarStore is assumed to be L"Setup" for those storage without explicit VARSTORE declaration in the formset
+// by Framework HII. EDK II UEFI VFR compiler in compatible mode hard-coded L"Setup" as VARSTORE name.
 //
-#define RESERVED_VARSTORE_ID 0x0001
+#define FRAMEWORK_RESERVED_VARSTORE_ID 0x0001
+#define FRAMEWORK_RESERVED_VARSTORE_NAME L"Setup"
 
 
-#pragma pack (push, 1)
+#pragma pack (1)
 typedef struct {
-  UINT32                  BinaryLength;
+  EFI_HII_PACK_HEADER     FrameworkPackageHeader;
   EFI_HII_PACKAGE_HEADER  PackageHeader;
 } TIANO_AUTOGEN_PACKAGES_HEADER;
-#pragma pack (pop)
+#pragma pack ()
 
 #define HII_THUNK_PRIVATE_DATA_FROM_THIS(Record)  CR(Record, HII_THUNK_PRIVATE_DATA, Hii, HII_THUNK_PRIVATE_DATA_SIGNATURE)
 #define HII_THUNK_PRIVATE_DATA_SIGNATURE            EFI_SIGNATURE_32 ('H', 'i', 'I', 'T')
@@ -86,32 +91,6 @@ typedef struct {
 } HII_THUNK_PRIVATE_DATA;
 
 
-
-#define ONE_OF_OPTION_MAP_ENTRY_FROM_LINK(Record) CR(Record, ONE_OF_OPTION_MAP_ENTRY, Link, ONE_OF_OPTION_MAP_ENTRY_SIGNATURE)
-#define ONE_OF_OPTION_MAP_ENTRY_SIGNATURE            EFI_SIGNATURE_32 ('O', 'O', 'M', 'E')
-typedef struct {
-  UINT32              Signature;
-  LIST_ENTRY          Link;
-
-  UINT16              FwKey;
-  EFI_IFR_TYPE_VALUE  Value;
-  
-} ONE_OF_OPTION_MAP_ENTRY;
-
-
-
-#define ONE_OF_OPTION_MAP_FROM_LINK(Record) CR(Record, ONE_OF_OPTION_MAP, Link, ONE_OF_OPTION_MAP_SIGNATURE)
-#define ONE_OF_OPTION_MAP_SIGNATURE            EFI_SIGNATURE_32 ('O', 'O', 'O', 'M')
-typedef struct {
-  UINT32            Signature;
-  LIST_ENTRY        Link;       
-
-  UINT8             ValueType; //EFI_IFR_TYPE_NUM_* 
-
-  EFI_QUESTION_ID   QuestionId;
-
-  LIST_ENTRY        OneOfOptionMapEntryListHead; //ONE_OF_OPTION_MAP_ENTRY
-} ONE_OF_OPTION_MAP;
 
 
 
@@ -153,7 +132,24 @@ typedef struct {
   BOOLEAN                   ByFrameworkHiiNewPack;
 
   //
-  // The field below is only valid if IsPackageListWithOnlyStringPack is TRUE.
+  // HII Thunk will use TagGuid to associate the String Package and Form Package togehter.
+  // See description for TagGuid. This field is to record if either one of the following condition 
+  // is TRUE:
+  // 1) if ((SharingStringPack == TRUE) && (StringPackageCount != 0 && IfrPackageCount == 0)), then this Package List only 
+  ///   has String Packages and provides Strings to other IFR package.
+  // 2) if ((SharingStringPack == TRUE) && (StringPackageCount == 0 && IfrPackageCount != 1)), then this Form Package
+  //    copied String Packages from other Package List.
+  // 3) if ((SharingStringPack == FALSE)), this Package does not provide String Package or copy String Packages from other
+  //    Package List.
+  //
+  //
+  // When a Hii->NewString() is called for this FwHiiHandle and SharingStringPack is TRUE, then all Package List that sharing
+  // the same TagGuid will update or create String in there respective String Packages. If SharingStringPack is FALSE, then
+  // only the String from String Packages in this Package List will be updated or created.
+  //
+  BOOLEAN                   SharingStringPack;
+
+  //
   // The HII 0.92 version of HII data implementation in EDK 1.03 and 1.04 make an the following assumption
   // in both HII Database implementation and all modules that registering packages:
   // If a Package List has only IFR package and no String Package, the IFR package will reference 
@@ -161,17 +157,10 @@ typedef struct {
   // TagGuid is the used to record this GuidId.
   EFI_GUID                   TagGuid;
 
-  LIST_ENTRY                 QuestionIdMapListHead; //QUESTION_ID_MAP
-
-  LIST_ENTRY                 OneOfOptionMapListHead; //ONE_OF_OPTION_MAP
-
   UINT8                      *NvMapOverride;
 
-  UINT16                     FormSetClass;
-  UINT16                     FormSetSubClass;
-  STRING_REF                 FormSetTitle;
-  STRING_REF                 FormSetHelp;
-  
+  FORM_BROWSER_FORMSET       *FormSet;
+
 } HII_THUNK_CONTEXT;
 
 
@@ -198,8 +187,6 @@ typedef struct {
   // Framework's callback
   //
   EFI_FORM_CALLBACK_PROTOCOL     *FormCallbackProtocol;
-
-  LIST_ENTRY                     BufferStorageListHead;
 
   HII_THUNK_CONTEXT              *ThunkContext;
 } CONFIG_ACCESS_PRIVATE;
@@ -437,6 +424,25 @@ NewOrAddPackNotify (
   IN EFI_HII_HANDLE                     Handle,
   IN EFI_HII_DATABASE_NOTIFY_TYPE       NotifyType
   );
+
+/**
+  Create a EFI_HII_UPDATE_DATA structure used to call IfrLibUpdateForm.
+
+  @param ThunkContext   The HII Thunk Context.
+  @param FwUpdateData   The Framework Update Data.
+  @param UefiUpdateData The UEFI Update Data.
+
+  @retval EFI_SUCCESS       The UEFI Update Data is created successfully.
+  @retval EFI_UNSUPPORTED   There is unsupported opcode in FwUpdateData.
+  @retval EFI_OUT_OF_RESOURCES There is not enough resource.
+**/
+EFI_STATUS
+FwUpdateDataToUefiUpdateData (
+  IN       HII_THUNK_CONTEXT                *ThunkContext,
+  IN CONST FRAMEWORK_EFI_HII_UPDATE_DATA    *FwUpdateData,
+  OUT      EFI_HII_UPDATE_DATA              **UefiUpdateData
+  )
+;
 
 #include "Utility.h"
 #include "ConfigAccess.h"

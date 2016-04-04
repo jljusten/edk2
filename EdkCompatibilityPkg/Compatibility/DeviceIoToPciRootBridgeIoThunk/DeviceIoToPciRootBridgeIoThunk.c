@@ -457,6 +457,8 @@ PciRootBridgeIoNotificationEvent (
       continue;
     }
 
+    Private->PciRootBridgeIo = PciRootBridgeIo;
+
     Status = gBS->HandleProtocol (
                     Handle,
                     &gEfiDevicePathProtocolGuid,
@@ -541,7 +543,7 @@ DeviceIoMemRead (
     return EFI_INVALID_PARAMETER;
   }
   if (Width >= MMIO_COPY_UINT8) {
-    Width = Width - MMIO_COPY_UINT8;
+    Width = (EFI_IO_WIDTH) (Width - MMIO_COPY_UINT8);
     Status = Private->PciRootBridgeIo->CopyMem (
                                          Private->PciRootBridgeIo,
                                          (EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH) Width,
@@ -600,7 +602,7 @@ DeviceIoMemWrite (
     return EFI_INVALID_PARAMETER;
   }
   if (Width >= MMIO_COPY_UINT8) {
-    Width = Width - MMIO_COPY_UINT8;
+    Width = (EFI_IO_WIDTH) (Width - MMIO_COPY_UINT8);
     Status = Private->PciRootBridgeIo->CopyMem (
                                          Private->PciRootBridgeIo,
                                          (EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH) Width,

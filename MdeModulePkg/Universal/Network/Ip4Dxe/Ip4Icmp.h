@@ -24,7 +24,7 @@ Abstract:
 #ifndef __EFI_IP4_ICMP_H__
 #define __EFI_IP4_ICMP_H__
 
-enum {
+typedef enum {
   //
   // ICMP type definations
   //
@@ -80,7 +80,7 @@ enum {
   ICMP_INVALID_MESSAGE      = 0,
   ICMP_ERROR_MESSAGE        = 1,
   ICMP_QUERY_MESSAGE        = 2
-};
+} ICMP_ENUM_TYPES;
 
 typedef struct {
   UINT8                   IcmpType;
@@ -90,10 +90,25 @@ typedef struct {
 extern IP4_ICMP_CLASS     mIcmpClass[];
 extern EFI_IP4_ICMP_TYPE  mIp4SupportedIcmp[];
 
+/**
+  Handle the ICMP packet. First validate the message format,
+  then according to the message types, process it as query or
+  error packet.
+
+  @param  IpSb                   The IP service that receivd the packet
+  @param  Head                   The IP head of the ICMP query packet
+  @param  Packet                 The content of the ICMP query with IP head
+                                 removed.
+
+  @retval EFI_INVALID_PARAMETER  The packet is malformated.
+  @retval EFI_SUCCESS            The ICMP message is successfully processed.
+  @retval Others                 Failed to handle ICMP packet.
+
+**/
 EFI_STATUS
 Ip4IcmpHandle (
-  IN IP4_SERVICE          *IpSb,
-  IN IP4_HEAD             *Header,
-  IN NET_BUF              *Packet
+  IN IP4_SERVICE            *IpSb,
+  IN IP4_HEAD               *Head,
+  IN NET_BUF                *Packet
   );
 #endif

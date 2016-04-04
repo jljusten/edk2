@@ -16,7 +16,7 @@
 #define __EFI_DRIVER_DIAGNOSTICS_H__
 
 ///
-/// Global ID for the Driver Diagnostics Protocol as defined in UEFI 2.0.
+/// Global ID for the Driver Diagnostics Protocol as defined in EFI 1.1.
 ///
 #define EFI_DRIVER_DIAGNOSTICS_PROTOCOL_GUID \
   { \
@@ -26,8 +26,19 @@
 typedef struct _EFI_DRIVER_DIAGNOSTICS_PROTOCOL  EFI_DRIVER_DIAGNOSTICS_PROTOCOL;
 
 typedef enum {
+  ///
+  /// Performs standard diagnostics on the controller.
+  ///
   EfiDriverDiagnosticTypeStandard     = 0,
+  ///
+  /// This is an optional diagnostic type that performs diagnostics on the controller that may
+  /// take an extended amount of time to execute.
+  ///
   EfiDriverDiagnosticTypeExtended     = 1,
+  ///
+  /// This is an optional diagnostic type that performs diagnostics on the controller that are
+  /// suitable for a manufacturing and test environment.
+  ///
   EfiDriverDiagnosticTypeManufacturing= 2,
   EfiDriverDiagnosticTypeMaximum
 } EFI_DRIVER_DIAGNOSTIC_TYPE;

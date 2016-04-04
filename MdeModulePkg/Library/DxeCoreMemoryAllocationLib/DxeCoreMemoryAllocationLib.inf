@@ -1,5 +1,4 @@
 #/** @file
-# Component description file for DxeCore Memory Allocation Library
 #
 # Memory Allocation Library instance dedicated to DXE Core.
 # The implementation borrows the DxeCore Memory Allocation services as the primitive
@@ -25,9 +24,7 @@
   MODULE_TYPE                    = DXE_CORE
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = MemoryAllocationLib|DXE_CORE
-  EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
-
+  
 #
 # The following information is for reference only and not required by the build tools.
 #

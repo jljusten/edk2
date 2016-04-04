@@ -24,27 +24,6 @@
 #include <IndustryStandard/Pci.h>
 
 /**
-   Convert EFI_PEI_PCI_CFG_PPI_PCI_ADDRESS to PCI_LIB_ADDRESS.
-
-   @param Address   PCI address with
-                    EFI_PEI_PCI_CFG_PPI_PCI_ADDRESS format.
-
-   @return The PCI address with PCI_LIB_ADDRESS format.
-
-**/
-UINTN
-PciCfgAddressConvert (
-  EFI_PEI_PCI_CFG_PPI_PCI_ADDRESS *Address
-  )
-{
-  if (Address->ExtendedRegister == 0) {
-    return PCI_LIB_ADDRESS (Address->Bus, Address->Device, Address->Function, Address->Register);
-  }
-
-  return PCI_LIB_ADDRESS (Address->Bus, Address->Device, Address->Function, Address->ExtendedRegister);
-}
-
-/**
   Reads from a given location in the PCI configuration space.
 
   @param  PeiServices     An indirect pointer to the PEI Services Table published by the PEI Foundation.
@@ -76,7 +55,7 @@ PciCfg2Read (
   IN        EFI_PEI_PCI_CFG_PPI_WIDTH Width,
   IN        UINT64                    Address,
   IN OUT    VOID                      *Buffer
-);
+  );
 
 /**
   Write to a given location in the PCI configuration space.
@@ -110,7 +89,7 @@ PciCfg2Write (
   IN        EFI_PEI_PCI_CFG_PPI_WIDTH Width,
   IN        UINT64                    Address,
   IN OUT    VOID                      *Buffer
-);
+  );
 
 
 /**
@@ -151,7 +130,7 @@ PciCfg2Modify (
   IN        UINT64                    Address,
   IN        VOID                      *SetBits,
   IN        VOID                      *ClearBits
-);
+  );
 
 
 
@@ -183,6 +162,29 @@ EFI_PEI_PPI_DESCRIPTOR gPciCfg2PpiList = {
   &gEfiPciCfg2PpiGuid,
   &gPciCfg2Ppi
 };
+
+
+/**
+   Convert EFI_PEI_PCI_CFG_PPI_PCI_ADDRESS to PCI_LIB_ADDRESS.
+
+   @param Address   PCI address with
+                    EFI_PEI_PCI_CFG_PPI_PCI_ADDRESS format.
+
+   @return The PCI address with PCI_LIB_ADDRESS format.
+
+**/
+UINTN
+PciCfgAddressConvert (
+  EFI_PEI_PCI_CFG_PPI_PCI_ADDRESS *Address
+  )
+{
+  if (Address->ExtendedRegister == 0) {
+    return PCI_LIB_ADDRESS (Address->Bus, Address->Device, Address->Function, Address->Register);
+  }
+
+  return PCI_LIB_ADDRESS (Address->Bus, Address->Device, Address->Function, Address->ExtendedRegister);
+}
+
 
 /**
   Reads from a given location in the PCI configuration space.
@@ -216,7 +218,7 @@ PciCfg2Read (
   IN        EFI_PEI_PCI_CFG_PPI_WIDTH Width,
   IN        UINT64                    Address,
   IN OUT    VOID                      *Buffer
-)
+  )
 {
   UINTN  PciLibAddress;
 
@@ -267,7 +269,7 @@ PciCfg2Write (
   IN        EFI_PEI_PCI_CFG_PPI_WIDTH Width,
   IN        UINT64                    Address,
   IN OUT    VOID                      *Buffer
-)
+  )
 {
   UINTN  PciLibAddress;
 
@@ -325,7 +327,7 @@ PciCfg2Modify (
   IN        UINT64                    Address,
   IN        VOID                      *SetBits,
   IN        VOID                      *ClearBits
-)
+  )
 {
   UINTN   PciLibAddress;
   UINT16  ClearValue16;
@@ -351,19 +353,27 @@ PciCfg2Modify (
   return EFI_SUCCESS;
 }
 
+/**
+  Module's entry function. 
+  This routine will install EFI_PEI_PCI_CFG2_PPI.
+  
+  @param  FileHandle  Handle of the file being invoked.
+  @param  PeiServices Describes the list of possible PEI Services.
 
+  @return Whether success to install service.
+**/
 EFI_STATUS
 EFIAPI
 PeimInitializePciCfg (
-  IN EFI_FFS_FILE_HEADER       *FfsHeader,
-  IN EFI_PEI_SERVICES          **PeiServices
+  IN       EFI_PEI_FILE_HANDLE  FileHandle,
+  IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
   EFI_STATUS            Status;
 
   ASSERT ((**PeiServices).Hdr.Revision >= PEI_SERVICES_REVISION);
 
-  (**PeiServices).PciCfg = &gPciCfg2Ppi;
+  (**(EFI_PEI_SERVICES **)PeiServices).PciCfg = &gPciCfg2Ppi;
   Status = (**PeiServices).InstallPpi ((CONST EFI_PEI_SERVICES **)PeiServices, &gPciCfg2PpiList);
 
   return Status;

@@ -163,12 +163,17 @@ Crc32GuidedSectionHandler (
 /**
   Register Crc32 section handler.
 
+  @param  ImageHandle  ImageHandle of the loaded driver.
+  @param  SystemTable  Pointer to the EFI System Table.
+
   @retval  RETURN_SUCCESS            Register successfully.
   @retval  RETURN_OUT_OF_RESOURCES   No enough memory to register this handler.
 **/
 EFI_STATUS
 EFIAPI
 DxeCrc32GuidedSectionExtractLibConstructor (
+  IN EFI_HANDLE        ImageHandle,
+  IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
   return ExtractGuidedSectionRegisterHandlers (

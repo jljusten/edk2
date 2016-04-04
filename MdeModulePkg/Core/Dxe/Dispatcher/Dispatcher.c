@@ -442,6 +442,7 @@ CoreDispatcher (
       // skip the LoadImage
       //
       if (DriverEntry->ImageHandle == NULL) {
+        DEBUG ((DEBUG_INFO, "Loading driver %g\n", &DriverEntry->FileName));
         Status = CoreLoadImage (
                         FALSE,
                         gDxeCoreImageHandle,
@@ -691,9 +692,7 @@ CoreFvToDevicePath (
     // Build a device path to the file in the FV to pass into gBS->LoadImage
     //
     EfiInitializeFwVolDevicepathNode (&mFvDevicePath.File, DriverName);
-    mFvDevicePath.End.Type = EFI_END_ENTIRE_DEVICE_PATH;
-    mFvDevicePath.End.SubType = END_ENTIRE_DEVICE_PATH_SUBTYPE;
-    SetDevicePathNodeLength (&mFvDevicePath.End, sizeof (EFI_DEVICE_PATH_PROTOCOL));
+    SetDevicePathEndNode (&mFvDevicePath.End);
 
     FileNameDevicePath = AppendDevicePath (
                             FvDevicePath,
@@ -1046,9 +1045,7 @@ CoreFwVolEventProtocolNotify (
                 // be initialized completely.
                 //
                 EfiInitializeFwVolDevicepathNode (&mFvDevicePath.File, &NameGuid);
-                mFvDevicePath.End.Type = EFI_END_ENTIRE_DEVICE_PATH;
-                mFvDevicePath.End.SubType = END_ENTIRE_DEVICE_PATH_SUBTYPE;
-                SetDevicePathNodeLength (&mFvDevicePath.End, sizeof (EFI_DEVICE_PATH_PROTOCOL));
+                SetDevicePathEndNode (&mFvDevicePath.End);
 
                 gDxeCoreLoadedImage->FilePath = DuplicateDevicePath (
                                                   (EFI_DEVICE_PATH_PROTOCOL *)&mFvDevicePath

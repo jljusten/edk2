@@ -15,9 +15,23 @@
 
 #include <PiPei.h>
 
+#include <Ppi/FirmwareVolumeInfo.h>
+#include <Guid/FirmwareFileSystem2.h>
 
 #include <Library/PeiServicesLib.h>
 #include <Library/PeiServicesTablePointerLib.h>
+#include <Library/DebugLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/BaseMemoryLib.h>
+
+
+GLOBAL_REMOVE_IF_UNREFERENCED CONST EFI_PEI_PPI_DESCRIPTOR     mPpiListTemplate [] = {
+  {
+    (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
+    &gEfiPeiFirmwareVolumeInfoPpiGuid,
+    NULL
+  }
+};
 
 /**
   This service enables a given PEIM to register an interface into the PEI Foundation.
@@ -137,7 +151,7 @@ PeiServicesNotifyPpi (
 EFI_STATUS
 EFIAPI
 PeiServicesGetBootMode (
-  IN OUT EFI_BOOT_MODE          *BootMode
+  OUT EFI_BOOT_MODE          *BootMode
   )
 {
   CONST EFI_PEI_SERVICES **PeiServices;
@@ -178,7 +192,7 @@ PeiServicesSetBootMode (
 EFI_STATUS
 EFIAPI
 PeiServicesGetHobList (
-  OUT VOID                   **HobList
+  OUT VOID                      **HobList
   )
 {
   CONST EFI_PEI_SERVICES **PeiServices;
@@ -268,7 +282,7 @@ PeiServicesFfsFindNextFile (
   This service enables PEIMs to discover sections of a given type within a valid FFS file.
 
   @param  SectionType           The value of the section type to find.
-  @param  FfsFileHeader         A pointer to the file header that contains the set of sections to
+  @param  FileHandle            A pointer to the file header that contains the set of sections to
                                 be searched.
   @param  SectionData           A pointer to the discovered section, if successful.
 
@@ -280,14 +294,14 @@ EFI_STATUS
 EFIAPI
 PeiServicesFfsFindSectionData (
   IN EFI_SECTION_TYPE           SectionType,
-  IN EFI_PEI_FILE_HANDLE        FfsFileHeader,
+  IN EFI_PEI_FILE_HANDLE        FileHandle,
   OUT VOID                      **SectionData
   )
 {
   CONST EFI_PEI_SERVICES **PeiServices;
 
   PeiServices = GetPeiServicesTablePointer ();
-  return (*PeiServices)->FfsFindSectionData (PeiServices, SectionType, FfsFileHeader, SectionData);
+  return (*PeiServices)->FfsFindSectionData (PeiServices, SectionType, FileHandle, SectionData);
 }
 
 /**
@@ -370,8 +384,6 @@ PeiServicesAllocatePool (
 /**
   Resets the entire platform.
 
-  @param  VOID
-
   @retval EFI_SUCCESS           The function completed successfully.
   @retval EFI_NOT_AVAILABLE_YET The service has not been installed yet.
 
@@ -411,10 +423,7 @@ PeiServicesRegisterForShadow (
   IN  EFI_PEI_FILE_HANDLE FileHandle
   )
 {
-  CONST EFI_PEI_SERVICES **PeiServices;
-
-  PeiServices = GetPeiServicesTablePointer ();
-  return (*PeiServices)->RegisterForShadow (FileHandle);
+  return (*GetPeiServicesTablePointer())->RegisterForShadow (FileHandle);
 }
 
 /**
@@ -436,16 +445,13 @@ PeiServicesRegisterForShadow (
   
 **/
 EFI_STATUS
-EFIAPI
+EFIAPI 
 PeiServicesFfsGetFileInfo (
   IN CONST  EFI_PEI_FILE_HANDLE   FileHandle,
   OUT EFI_FV_FILE_INFO            *FileInfo
   )
 {
-  CONST EFI_PEI_SERVICES **PeiServices;
-
-  PeiServices = GetPeiServicesTablePointer ();
-  return (*PeiServices)->FfsGetFileInfo (FileHandle, FileInfo);
+  return (*GetPeiServicesTablePointer())->FfsGetFileInfo (FileHandle, FileInfo);
 }
 
 
@@ -460,8 +466,7 @@ PeiServicesFfsGetFileInfo (
   @param VolumeHandle   The firmware volume to search FileHandle
                         Upon exit, points to the found file's
                         handle or NULL if it could not be found.
-
-  @param FileHandle     The filehandle found in volume.
+  @param FileHandle     Pointer to found file handle 
 
   @retval EFI_SUCCESS             File was found.
 
@@ -509,5 +514,66 @@ PeiServicesFfsGetVolumeInfo (
   )
 {
   return (*GetPeiServicesTablePointer())->FfsGetVolumeInfo (VolumeHandle, VolumeInfo);
+}
+
+/**
+  Install a EFI_PEI_FIRMWARE_VOLUME_INFO_PPI instance so the PEI Core will be notified about a new firmware volume.
+  
+  This function allocates, initializes, and installs a new EFI_PEI_FIRMWARE_VOLUME_INFO_PPI using 
+  the parameters passed in to initialize the fields of the EFI_PEI_FIRMWARE_VOLUME_INFO_PPI instance.
+  If the resources can not be allocated for EFI_PEI_FIRMWARE_VOLUME_INFO_PPI, then ASSERT().
+  If the EFI_PEI_FIRMWARE_VOLUME_INFO_PPI can not be installed, then ASSERT().
+
+  
+  @param  FvFormat             Unique identifier of the format of the memory-mapped firmware volume.
+                               This parameter is optional and may be NULL.  
+                               If NULL is specified, the EFI_FIRMWARE_FILE_SYSTEM2_GUID format is assumed.
+  @param  FvInfo               Points to a buffer which allows the EFI_PEI_FIRMWARE_VOLUME_PPI to process the volume. 
+                               The format of this buffer is specific to the FvFormat. For memory-mapped firmware volumes, 
+                               this typically points to the first byte of the firmware volume.
+  @param  FvInfoSize           The size, in bytes, of FvInfo. For memory-mapped firmware volumes, 
+                               this is typically the size of the firmware volume.
+  @param  ParentFvName         If the new firmware volume originated from a file in a different firmware volume, 
+                               then this parameter specifies the GUID name of the originating firmware volume.
+                               Otherwise, this parameter must be NULL.
+  @param  ParentFileName       If the new firmware volume originated from a file in a different firmware volume, 
+                               then this parameter specifies the GUID file name of the originating firmware file.
+                               Otherwise, this parameter must be NULL.
+**/
+VOID
+EFIAPI
+PeiServicesInstallFvInfoPpi (
+  IN CONST EFI_GUID                *FvFormat, OPTIONAL
+  IN CONST VOID                    *FvInfo,
+  IN       UINT32                  FvInfoSize,
+  IN CONST EFI_GUID                *ParentFvName, OPTIONAL
+  IN CONST EFI_GUID                *ParentFileName OPTIONAL
+  )
+{
+  EFI_STATUS                       Status;   
+  EFI_PEI_FIRMWARE_VOLUME_INFO_PPI *FvInfoPpi;
+  EFI_PEI_PPI_DESCRIPTOR           *FvInfoPpiDescriptor;
+
+  FvInfoPpi = AllocateZeroPool (sizeof (EFI_PEI_FIRMWARE_VOLUME_INFO_PPI));
+  ASSERT( FvInfoPpi != NULL);
+
+  if (FvFormat != NULL) {
+    CopyGuid (&FvInfoPpi->FvFormat, FvFormat);
+  } else {
+    CopyGuid (&FvInfoPpi->FvFormat, &gEfiFirmwareFileSystem2Guid);
+  }
+  FvInfoPpi->FvInfo = (VOID *) FvInfo;
+  FvInfoPpi->FvInfoSize = FvInfoSize;
+  FvInfoPpi->ParentFvName = (EFI_GUID *) ParentFvName;
+  FvInfoPpi->ParentFileName = (EFI_GUID *) ParentFileName;
+
+
+  FvInfoPpiDescriptor = AllocateCopyPool (sizeof(EFI_PEI_PPI_DESCRIPTOR), mPpiListTemplate);
+  ASSERT (FvInfoPpiDescriptor != NULL);
+
+  FvInfoPpiDescriptor->Ppi   = (VOID *) FvInfoPpi;
+  Status = PeiServicesInstallPpi (FvInfoPpiDescriptor);
+  ASSERT_EFI_ERROR (Status);
+
 }
 

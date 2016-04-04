@@ -39,10 +39,6 @@ typedef struct _EFI_NETWORK_INTERFACE_IDENTIFIER_PROTOCOL  EFI_NETWORK_INTERFACE
 /// 
 typedef EFI_NETWORK_INTERFACE_IDENTIFIER_PROTOCOL   EFI_NETWORK_INTERFACE_IDENTIFIER_INTERFACE;
 
-typedef enum {
-  EfiNetworkInterfaceUndi = 1
-} EFI_NETWORK_PROTOCOL_TYPE;
-
 ///
 /// An optional protocol that is used to describe details about the software 
 /// layer that is used to produce the Simple Network Protocol. 
@@ -67,6 +63,15 @@ struct _EFI_NETWORK_INTERFACE_IDENTIFIER_PROTOCOL {
                         ///< to the IFcnt field in the !PXE structure.
 
 };
+
+///
+///*******************************************************
+/// EFI_NETWORK_INTERFACE_TYPE
+///*******************************************************
+///
+typedef enum {
+  EfiNetworkInterfaceUndi = 1
+} EFI_NETWORK_INTERFACE_TYPE;
 
 extern EFI_GUID gEfiNetworkInterfaceIdentifierProtocolGuid;
 extern EFI_GUID gEfiNetworkInterfaceIdentifierProtocolGuid_31;

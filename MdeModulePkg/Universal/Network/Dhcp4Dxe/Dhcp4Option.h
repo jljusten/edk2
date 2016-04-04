@@ -24,9 +24,9 @@ Abstract:
 #ifndef __EFI_DHCP4_OPTION_H__
 #define __EFI_DHCP4_OPTION_H__
 
-//
-// DHCP option tags (types)
-//
+///
+/// DHCP option tags (types)
+///
 typedef enum {
   //
   // RFC1497 vendor extensions
@@ -158,19 +158,19 @@ typedef enum {
   DHCP_OVERLOAD_BOTH       = 3
 } DHCP_OVERLOAD_TYPE;
 
-//
-// The DHCP option structure. This structure extends the EFI_DHCP_OPTION
-// structure to support options longer than 255 bytes, such as classless route.
-//
+///
+/// The DHCP option structure. This structure extends the EFI_DHCP_OPTION
+/// structure to support options longer than 255 bytes, such as classless route.
+///
 typedef struct {
   UINT8                     Tag;
   UINT16                    Len;
   UINT8                     *Data;
 } DHCP_OPTION;
 
-//
-// Structures used to parse the DHCP options with RFC3396 support.
-//
+///
+/// Structures used to parse the DHCP options with RFC3396 support.
+///
 typedef struct {
   UINT8                     Index;
   UINT16                    Offset;
@@ -182,11 +182,11 @@ typedef struct {
   UINT8                     *Buf;
 } DHCP_OPTION_CONTEXT;
 
-//
-// The options that matters to DHCP driver itself. The user of
-// DHCP clients may be interested in other options, such as
-// classless route, who can parse the DHCP offer to get them.
-//
+///
+/// The options that matters to DHCP driver itself. The user of
+/// DHCP clients may be interested in other options, such as
+/// classless route, who can parse the DHCP offer to get them.
+///
 typedef struct {
   IP4_ADDR                  NetMask;  // DHCP_TAG_NETMASK
   IP4_ADDR                  Router;   // DHCP_TAG_ROUTER, only the first router is used
@@ -202,14 +202,14 @@ typedef struct {
   UINT32                    T2;       // DHCP_TAG_T2
 } DHCP_PARAMETER;
 
-//
-// Structure used to describe and validate the format of DHCP options.
-// Type is the options' data type, such as DHCP_OPTION_INT8. MinOccur
-// is the minium occurance of this data type. MaxOccur is defined
-// similarly. If MaxOccur is -1, it means that there is no limit on the
-// maximum occurance. Alert tells whether DHCP client should further
-// inspect the option to parse DHCP_PARAMETER.
-//
+///
+/// Structure used to describe and validate the format of DHCP options.
+/// Type is the options' data type, such as DHCP_OPTION_INT8. MinOccur
+/// is the minium occurance of this data type. MaxOccur is defined
+/// similarly. If MaxOccur is -1, it means that there is no limit on the
+/// maximum occurance. Alert tells whether DHCP client should further
+/// inspect the option to parse DHCP_PARAMETER.
+///
 typedef struct {
   UINT8                     Tag;
   INTN                      Type;
@@ -239,13 +239,13 @@ EFI_STATUS
   @param  Context                The opaque parameter for Check
 
   @retval EFI_SUCCESS            The DHCP packet's options are well formated
-  @retval Others                 The DHCP packet's options are not well formated
+  @retval EFI_INVALID_PARAMETER  The DHCP packet's options are not well formated
 
 **/
 EFI_STATUS
 DhcpIterateOptions (
   IN  EFI_DHCP4_PACKET      *Packet,
-  IN  DHCP_CHECK_OPTION     Check,          OPTIONAL
+  IN  DHCP_CHECK_OPTION     Check,        OPTIONAL
   IN  VOID                  *Context
   );
 
@@ -264,7 +264,7 @@ DhcpIterateOptions (
 EFI_STATUS
 DhcpValidateOptions (
   IN  EFI_DHCP4_PACKET      *Packet,
-  OUT DHCP_PARAMETER        **Para          OPTIONAL
+  OUT DHCP_PARAMETER        **Para       OPTIONAL
   );
 
 /**
@@ -277,7 +277,7 @@ DhcpValidateOptions (
   as a UINT8. It then iterates the DHCP packet to get data length of
   each option by calling DhcpIterOptions with DhcpGetOptionLen. Now, it
   knows the number of present options and their length. It allocates a
-  array of DHCP_OPTION and a continous buffer after the array to put
+  array of DHCP_OPTION and a continuous buffer after the array to put
   all the options' data. Each option's data is pointed to by the Data
   field in DHCP_OPTION structure. At last, it call DhcpIterateOptions
   with DhcpFillOption to fill each option's data to its position in the
@@ -315,10 +315,10 @@ DhcpParseOption (
 **/
 UINT8 *
 DhcpAppendOption (
-  IN UINT8                  *Buf,
-  IN UINT8                  Tag,
-  IN UINT16                 DataLen,
-  IN UINT8                  *Data
+  OUT UINT8                  *Buf,
+  IN  UINT8                  Tag,
+  IN  UINT16                 DataLen,
+  IN  UINT8                  *Data
   );
 
 /**
@@ -334,17 +334,18 @@ DhcpAppendOption (
                                  function.
 
   @retval EFI_OUT_OF_RESOURCES   Failed to allocate memory
+  @retval EFI_INVALID_PARAMETER  The options in SeekPacket are mal-formated
   @retval EFI_SUCCESS            The packet is build.
 
 **/
 EFI_STATUS
 DhcpBuild (
-  IN  EFI_DHCP4_PACKET         *SeedPacket,
-  IN  UINT32                   DeleteCount,
-  IN  UINT8                    *DeleteList OPTIONAL,
-  IN  UINT32                   AppendCount,
-  IN  EFI_DHCP4_PACKET_OPTION  *AppendList[] OPTIONAL,
-  OUT EFI_DHCP4_PACKET         **NewPacket
+  IN  EFI_DHCP4_PACKET        *SeedPacket,
+  IN  UINT32                  DeleteCount,
+  IN  UINT8                   *DeleteList     OPTIONAL,
+  IN  UINT32                  AppendCount,
+  IN  EFI_DHCP4_PACKET_OPTION *AppendList[]   OPTIONAL,
+  OUT EFI_DHCP4_PACKET        **NewPacket
   );
 
 #endif

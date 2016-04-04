@@ -1,7 +1,11 @@
 #/** @file
-# Component description file for DebugSupport module.
+# This driver installs Debug Support protocol for the selected processor.
 #
-# This driver installs DebugSupport protocol for the selected processor.
+# This driver provides the capabilities for debug-agent to gain control of the machine
+# when certain types of events occur, i.e. breakpoint, processor execptions, etc. It also
+# provides debug-agent to periodically gain control during operation of the machine to
+# check for asynchronous commands form the host.
+#
 # Copyright (c) 2006 - 2008, Intel Corporation
 #
 #  All rights reserved. This program and the accompanying materials
@@ -20,9 +24,6 @@
   FILE_GUID                      = 911D584C-35F7-4955-BEF9-B452769DDC3A
   MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
-  EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
-
   ENTRY_POINT                    = InitializeDebugSupportDriver
 
 #
@@ -35,14 +36,18 @@
   DebugSupport.c
 
 [Sources.Ia32]
+  Ia32/DebugSupport.h
   Ia32/PlDebugSupport.c
   Ia32/PlDebugSupport.h
+  Ia32/PlDebugSupportIa32.c
   Ia32/AsmFuncs.S
   Ia32/AsmFuncs.asm
 
 [Sources.X64]
-  X64/PlDebugSupport.c
+  Ia32/DebugSupport.h
+  Ia32/PlDebugSupport.c
   X64/PlDebugSupport.h
+  X64/PlDebugSupportX64.c
   X64/AsmFuncs.S
   X64/AsmFuncs.asm
 
@@ -76,7 +81,7 @@
 
 [Protocols]
   gEfiLoadedImageProtocolGuid                   # PROTOCOL ALWAYS_CONSUMED
-  gEfiDebugSupportProtocolGuid                  # PROTOCOL SOMETIMES_PRODUCED
+  gEfiDebugSupportProtocolGuid                  # PROTOCOL ALWAYS_PRODUCED
 
 
 [FeaturePcd.IA32]

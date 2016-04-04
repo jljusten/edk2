@@ -1,14 +1,17 @@
 /** @file
-  Cache Maintenance Functions
+  Provides services to maintain instruction and data caches.
+  
+  The Cache Maintenance Library provides abstractions for basic processor cache operations.
+  It removes the need to use assembly in C code.
+    
+Copyright (c) 2006 - 2008, Intel Corporation<BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-  Copyright (c) 2006, Intel Corporation
-  All rights reserved. This program and the accompanying materials
-  are licensed and made available under the terms and conditions of the BSD License
-  which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
-
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -16,9 +19,6 @@
 #define __CACHE_MAINTENANCE_LIB__
 
 /**
-  Invalidates the entire instruction cache in cache coherency domain of the
-  calling CPU.
-
   Invalidates the entire instruction cache in cache coherency domain of the
   calling CPU.
 
@@ -51,7 +51,7 @@ InvalidateInstructionCache (
 
   @param  Length  The number of bytes to invalidate from the instruction cache.
 
-  @return Address
+  @return Address.
 
 **/
 VOID *
@@ -100,7 +100,7 @@ WriteBackInvalidateDataCache (
   @param  Length  The number of bytes to write back and invalidate from the
                   data cache.
 
-  @return Address
+  @return Address of cache invalidation.
 
 **/
 VOID *
@@ -148,7 +148,7 @@ WriteBackDataCache (
                   mode, then Address is a virtual address.
   @param  Length  The number of bytes to write back from the data cache.
 
-  @return Address
+  @return Address of cache written in main memory.
 
 **/
 VOID *
@@ -199,7 +199,7 @@ InvalidateDataCache (
                   then Address is a virtual address.
   @param  Length  The number of bytes to invalidate from the data cache.
 
-  @return Address
+  @return Address.
 
 **/
 VOID *

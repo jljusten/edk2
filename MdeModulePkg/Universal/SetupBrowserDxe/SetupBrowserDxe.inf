@@ -1,8 +1,7 @@
 #/** @file
-# Component name for module SetupBrowser
+# The DXE driver produces FORM BROWSER protocols defined in UEFI HII 2.1 specificatin.
 #
-# FIX ME!
-# Copyright (c) 2007, Intel Corporation. All rights reserved.
+# Copyright (c) 2007 - 2008, Intel Corporation. All rights reserved.
 #
 #  All rights reserved. This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -21,9 +20,7 @@
   FILE_GUID                      = EBf342FE-B1D3-4EF8-957C-8048606FF671
   MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
-  EDK_RELEASE_VERSION            = 0x00020000
   EFI_SPECIFICATION_VERSION      = 0x0002000A
-
   ENTRY_POINT                    = InitializeSetup
 
 #
@@ -62,7 +59,6 @@
   BaseMemoryLib
   DebugLib
   PrintLib
-  GraphicsLib
   IfrSupportLib
   HiiLib
   ExtendedHiiLib
@@ -76,6 +72,7 @@
   gEfiHiiConfigRoutingProtocolGuid
   gEfiHiiDatabaseProtocolGuid
   gEfiUnicodeCollation2ProtocolGuid
+  gEfiConsoleControlProtocolGuid
 
 [FeaturePcd.common]
   gEfiMdeModulePkgTokenSpaceGuid.PcdFrameworkHiiCompatibilitySupport

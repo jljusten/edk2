@@ -36,7 +36,7 @@ typedef enum {
   EFI_IP_PROTO_ICMP     = 0x01,
 
   //
-  // The address classfication
+  // The address classification
   //
   IP4_ADDR_CLASSA       = 1,
   IP4_ADDR_CLASSB,
@@ -277,7 +277,7 @@ NetRandomInitSeed (
 
 
 #define NET_LIST_USER_STRUCT(Entry, Type, Field)        \
-          _CR(Entry, Type, Field)
+          BASE_CR(Entry, Type, Field)
 
 #define NET_LIST_USER_STRUCT_S(Entry, Type, Field, Sig)  \
           CR(Entry, Type, Field, Sig)
@@ -660,7 +660,6 @@ NetLibGetMacString (
   @param  Protocol              The protocol type in the IP header.
   @param  UseDefaultAddress     Whether this instance is using default address or not.
 
-  @retval None
 **/
 VOID
 EFIAPI
@@ -877,7 +876,7 @@ typedef struct {
 
 #define NET_GET_REF(PData)      ((PData)->RefCnt++)
 #define NET_PUT_REF(PData)      ((PData)->RefCnt--)
-#define NETBUF_FROM_PROTODATA(Info) _CR((Info), NET_BUF, ProtoData)
+#define NETBUF_FROM_PROTODATA(Info) BASE_CR((Info), NET_BUF, ProtoData)
 
 #define NET_BUF_SHARED(Buf) \
   (((Buf)->RefCnt > 1) || ((Buf)->Vector->RefCnt > 1))

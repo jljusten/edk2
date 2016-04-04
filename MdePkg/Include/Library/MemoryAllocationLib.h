@@ -1,14 +1,19 @@
 /** @file
-  Memory Allocation Library Services
+  Provides services to allocate and free memory buffers of various memory types and alignments.
+  
+  The Memory Allocation Library abstracts various common memory allocation operations. This library 
+  allows code to be written in a phase-independent manner because the allocation of memory in PEI, DXE, 
+  and SMM (for example) is done via a different mechanism. Using a common library interface makes it 
+  much easier to port algorithms from phase to phase. 
+  
+Copyright (c) 2006 - 2008, Intel Corporation
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-  Copyright (c) 2006, Intel Corporation                                                         
-  All rights reserved. This program and the accompanying materials                          
-  are licensed and made available under the terms and conditions of the BSD License         
-  which accompanies this distribution.  The full text of the license may be found at        
-  http://opensource.org/licenses/bsd-license.php                                            
-
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
@@ -79,6 +84,7 @@ AllocateReservedPages (
   Frees the number of 4KB pages specified by Pages from the buffer specified by Buffer.  Buffer
   must have been allocated on a previous call to the page allocation services of the Memory
   Allocation Library.
+  
   If Buffer was not allocated with a page allocation function in the Memory Allocation Library,
   then ASSERT().
   If Pages is zero, then ASSERT().
@@ -101,6 +107,7 @@ FreePages (
   alignment specified by Alignment.  The allocated buffer is returned.  If Pages is 0, then NULL is
   returned.  If there is not enough memory at the specified alignment remaining to satisfy the
   request, then NULL is returned.
+  
   If Alignment is not a power of two and Alignment is not zero, then ASSERT().
 
   @param  Pages                 The number of 4 KB pages to allocate.
@@ -124,6 +131,7 @@ AllocateAlignedPages (
   alignment specified by Alignment.  The allocated buffer is returned.  If Pages is 0, then NULL is
   returned.  If there is not enough memory at the specified alignment remaining to satisfy the
   request, then NULL is returned.
+  
   If Alignment is not a power of two and Alignment is not zero, then ASSERT().
 
   @param  Pages                 The number of 4 KB pages to allocate.
@@ -147,6 +155,7 @@ AllocateAlignedRuntimePages (
   alignment specified by Alignment.  The allocated buffer is returned.  If Pages is 0, then NULL is
   returned.  If there is not enough memory at the specified alignment remaining to satisfy the
   request, then NULL is returned.
+  
   If Alignment is not a power of two and Alignment is not zero, then ASSERT().
 
   @param  Pages                 The number of 4 KB pages to allocate.
@@ -170,6 +179,7 @@ AllocateAlignedReservedPages (
   Frees the number of 4KB pages specified by Pages from the buffer specified by Buffer.  Buffer
   must have been allocated on a previous call to the aligned page allocation services of the Memory
   Allocation Library.
+  
   If Buffer was not allocated with an aligned page allocation function in the Memory Allocation
   Library, then ASSERT().
   If Pages is zero, then ASSERT().
@@ -222,9 +232,9 @@ AllocateRuntimePool (
   );
 
 /**
-  Allocates a buffer of type EfieservedMemoryType.
+  Allocates a buffer of type EfiReservedMemoryType.
 
-  Allocates the number bytes specified by AllocationSize of type EfieservedMemoryType and returns
+  Allocates the number bytes specified by AllocationSize of type EfiReservedMemoryType and returns
   a pointer to the allocated buffer.  If AllocationSize is 0, then a valid buffer of 0 size is
   returned.  If there is not enough memory remaining to satisfy the request, then NULL is returned.
 
@@ -303,6 +313,7 @@ AllocateReservedZeroPool (
   AllocationSize bytes from Buffer to the newly allocated buffer, and returns a pointer to the
   allocated buffer.  If AllocationSize is 0, then a valid buffer of 0 size is returned.  If there
   is not enough memory remaining to satisfy the request, then NULL is returned.
+  
   If Buffer is NULL, then ASSERT().
   If AllocationSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
 
@@ -326,6 +337,7 @@ AllocateCopyPool (
   AllocationSize bytes from Buffer to the newly allocated buffer, and returns a pointer to the
   allocated buffer.  If AllocationSize is 0, then a valid buffer of 0 size is returned.  If there
   is not enough memory remaining to satisfy the request, then NULL is returned.
+  
   If Buffer is NULL, then ASSERT().
   If AllocationSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
 
@@ -349,6 +361,7 @@ AllocateRuntimeCopyPool (
   AllocationSize bytes from Buffer to the newly allocated buffer, and returns a pointer to the
   allocated buffer.  If AllocationSize is 0, then a valid buffer of 0 size is returned.  If there
   is not enough memory remaining to satisfy the request, then NULL is returned.
+  
   If Buffer is NULL, then ASSERT().
   If AllocationSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
 
@@ -366,11 +379,99 @@ AllocateReservedCopyPool (
   );
 
 /**
+  Reallocates a buffer of type EfiBootServicesData.
+
+  Allocates and zeros the number bytes specified by NewSize from memory of type
+  EfiBootServicesData.  If OldBuffer is not NULL, then the smaller of OldSize and 
+  NewSize bytes are copied from OldBuffer to the newly allocated buffer, and 
+  OldBuffer is freed.  A pointer to the newly allocated buffer is returned.  
+  If NewSize is 0, then a valid buffer of 0 size is  returned.  If there is not 
+  enough memory remaining to satisfy the request, then NULL is returned.
+  
+  If NewSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
+  If OldSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
+
+  @param  OldSize        The size, in bytes, of OldBuffer.
+  @param  NewSize        The size, in bytes, of the buffer to reallocate.
+  @param  OldBuffer      The buffer to copy to the allocated buffer.  This is an optional 
+                         parameter that may be NULL.
+
+  @return A pointer to the allocated buffer or NULL if allocation fails.
+
+**/
+VOID *
+EFIAPI
+ReallocatePool (
+  IN UINTN  OldSize,
+  IN UINTN  NewSize,
+  IN VOID   *OldBuffer  OPTIONAL
+  );
+
+/**
+  Reallocates a buffer of type EfiRuntimeServicesData.
+
+  Allocates and zeros the number bytes specified by NewSize from memory of type
+  EfiRuntimeServicesData.  If OldBuffer is not NULL, then the smaller of OldSize and 
+  NewSize bytes are copied from OldBuffer to the newly allocated buffer, and 
+  OldBuffer is freed.  A pointer to the newly allocated buffer is returned.  
+  If NewSize is 0, then a valid buffer of 0 size is  returned.  If there is not 
+  enough memory remaining to satisfy the request, then NULL is returned.
+
+  If NewSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
+  If OldSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
+
+  @param  OldSize        The size, in bytes, of OldBuffer.
+  @param  NewSize        The size, in bytes, of the buffer to reallocate.
+  @param  OldBuffer      The buffer to copy to the allocated buffer.  This is an optional 
+                         parameter that may be NULL.
+
+  @return A pointer to the allocated buffer or NULL if allocation fails.
+
+**/
+VOID *
+EFIAPI
+ReallocateRuntimePool (
+  IN UINTN  OldSize,
+  IN UINTN  NewSize,
+  IN VOID   *OldBuffer  OPTIONAL
+  );
+
+/**
+  Reallocates a buffer of type EfiReservedMemoryType.
+
+  Allocates and zeros the number bytes specified by NewSize from memory of type
+  EfiReservedMemoryType.  If OldBuffer is not NULL, then the smaller of OldSize and 
+  NewSize bytes are copied from OldBuffer to the newly allocated buffer, and 
+  OldBuffer is freed.  A pointer to the newly allocated buffer is returned.  
+  If NewSize is 0, then a valid buffer of 0 size is  returned.  If there is not 
+  enough memory remaining to satisfy the request, then NULL is returned.
+
+  If NewSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
+  If OldSize is greater than (MAX_ADDRESS - Buffer + 1), then ASSERT(). 
+
+  @param  OldSize        The size, in bytes, of OldBuffer.
+  @param  NewSize        The size, in bytes, of the buffer to reallocate.
+  @param  OldBuffer      The buffer to copy to the allocated buffer.  This is an optional 
+                         parameter that may be NULL.
+
+  @return A pointer to the allocated buffer or NULL if allocation fails.
+
+**/
+VOID *
+EFIAPI
+ReallocateReservedPool (
+  IN UINTN  OldSize,
+  IN UINTN  NewSize,
+  IN VOID   *OldBuffer  OPTIONAL
+  );
+
+/**
   Frees a buffer that was previously allocated with one of the pool allocation functions in the
   Memory Allocation Library.
 
   Frees the buffer specified by Buffer.  Buffer must have been allocated on a previous call to the
   pool allocation services of the Memory Allocation Library.
+  
   If Buffer was not allocated with a pool allocation function in the Memory Allocation Library,
   then ASSERT().
 

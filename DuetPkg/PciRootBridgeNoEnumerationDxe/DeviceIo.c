@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2006, Intel Corporation                                                         
+Copyright (c) 2006 - 2008, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -137,11 +137,11 @@ Returns:
     return EFI_INVALID_PARAMETER;
   }
   if (Width >= MMIO_COPY_UINT8) {
-    Width = Width - MMIO_COPY_UINT8;
+    Width = (EFI_IO_WIDTH) (Width - MMIO_COPY_UINT8);
     Status = Private->PciRootBridgeIo->CopyMem (
                                          Private->PciRootBridgeIo,
                                          (EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH) Width,
-                                         (UINT64) Buffer,
+                                         (UINT64)(UINTN) Buffer,
                                          Address,
                                          Count
                                          );
@@ -201,12 +201,12 @@ Returns:
     return EFI_INVALID_PARAMETER;
   }
   if (Width >= MMIO_COPY_UINT8) {
-    Width = Width - MMIO_COPY_UINT8;
+    Width = (EFI_IO_WIDTH) (Width - MMIO_COPY_UINT8);
     Status = Private->PciRootBridgeIo->CopyMem (
                                          Private->PciRootBridgeIo,
                                          (EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH) Width,
                                          Address,
-                                         (UINT64) Buffer,
+                                         (UINT64)(UINTN) Buffer,
                                          Count
                                          );
   } else {

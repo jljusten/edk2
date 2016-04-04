@@ -30,10 +30,10 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/HiiConfigRouting.h>
 #include <Protocol/HiiDatabase.h>
 #include <Protocol/HiiString.h>
+#include <Protocol/ConsoleControl.h>
 
 #include <MdeModuleHii.h>
 
-#include <Library/GraphicsLib.h>
 #include <Library/PrintLib.h>
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -712,7 +712,6 @@ CreateSharedPopUp (
   @param  StringBuffer           The passed in pointer to the buffer which will
                                  hold the typed in string if HotKey is FALSE
   @param  KeyValue               The EFI_KEY value returned if HotKey is TRUE..
-  @param  String                 Pointer to the first string in the list
   @param  ...                    A series of (quantity == NumberOfLines) text
                                  strings which will be used to construct the dialog
                                  box

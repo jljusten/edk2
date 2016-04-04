@@ -23,7 +23,7 @@
   No parameter checking is performed on Index, and some Index values may cause
   CPU exceptions. The caller must either guarantee that Index is valid, or the
   caller must set up exception handlers to catch the exceptions. This function
-  is only available on IA-32 and X64.
+  is only available on IA-32 and x64.
 
   @param  Index The 32-bit MSR index to read.
 
@@ -40,14 +40,15 @@ AsmReadMsr32 (
 }
 
 /**
-  Zero-extend a 32-bit value and writes it to a Machine Specific Register(MSR).
+  Writes a 32-bit value to a Machine Specific Register(MSR), and returns the value.
+  The upper 32-bits of the MSR are set to zero.
 
   Writes the 32-bit value specified by Value to the MSR specified by Index. The
   upper 32-bits of the MSR write are set to zero. The 32-bit value written to
   the MSR is returned. No parameter checking is performed on Index or Value,
   and some of these may cause CPU exceptions. The caller must either guarantee
   that Index and Value are valid, or the caller must establish proper exception
-  handlers. This function is only available on IA-32 and X64.
+  handlers. This function is only available on IA-32 and x64.
 
   @param  Index The 32-bit MSR index to write.
   @param  Value The 32-bit value to write to the MSR.
@@ -66,17 +67,17 @@ AsmWriteMsr32 (
 }
 
 /**
-  Reads a 64-bit MSR, performs a bitwise inclusive OR on the lower 32-bits, and
+  Reads a 64-bit MSR, performs a bitwise OR on the lower 32-bits, and
   writes the result back to the 64-bit MSR.
 
-  Reads the 64-bit MSR specified by Index, performs a bitwise inclusive OR
+  Reads the 64-bit MSR specified by Index, performs a bitwise OR
   between the lower 32-bits of the read result and the value specified by
   OrData, and writes the result to the 64-bit MSR specified by Index. The lower
   32-bits of the value written to the MSR is returned. No parameter checking is
   performed on Index or OrData, and some of these may cause CPU exceptions. The
   caller must either guarantee that Index and OrData are valid, or the caller
   must establish proper exception handlers. This function is only available on
-  IA-32 and X64.
+  IA-32 and x64.
 
   @param  Index   The 32-bit MSR index to write.
   @param  OrData  The value to OR with the read value from the MSR.
@@ -105,7 +106,7 @@ AsmMsrOr32 (
   on Index or AndData, and some of these may cause CPU exceptions. The caller
   must either guarantee that Index and AndData are valid, or the caller must
   establish proper exception handlers. This function is only available on IA-32
-  and X64.
+  and x64.
 
   @param  Index   The 32-bit MSR index to write.
   @param  AndData The value to AND with the read value from the MSR.
@@ -124,19 +125,19 @@ AsmMsrAnd32 (
 }
 
 /**
-  Reads a 64-bit MSR, performs a bitwise AND followed by a bitwise inclusive OR
+  Reads a 64-bit MSR, performs a bitwise AND followed by a bitwise OR
   on the lower 32-bits, and writes the result back to the 64-bit MSR.
 
   Reads the 64-bit MSR specified by Index, performs a bitwise AND between the
   lower 32-bits of the read result and the value specified by AndData
-  preserving the upper 32-bits, performs a bitwise inclusive OR between the
+  preserving the upper 32-bits, performs a bitwise OR between the
   result of the AND operation and the value specified by OrData, and writes the
   result to the 64-bit MSR specified by Address. The lower 32-bits of the value
   written to the MSR is returned. No parameter checking is performed on Index,
   AndData, or OrData, and some of these may cause CPU exceptions. The caller
   must either guarantee that Index, AndData, and OrData are valid, or the
   caller must establish proper exception handlers. This function is only
-  available on IA-32 and X64.
+  available on IA-32 and x64.
 
   @param  Index   The 32-bit MSR index to write.
   @param  AndData The value to AND with the read value from the MSR.
@@ -163,7 +164,7 @@ AsmMsrAndThenOr32 (
   specified by the StartBit and the EndBit. The value of the bit field is
   returned. The caller must either guarantee that Index is valid, or the caller
   must set up exception handlers to catch the exceptions. This function is only
-  available on IA-32 and X64.
+  available on IA-32 and x64.
 
   If StartBit is greater than 31, then ASSERT().
   If EndBit is greater than 31, then ASSERT().
@@ -192,13 +193,12 @@ AsmMsrBitFieldRead32 (
 /**
   Writes a bit field to an MSR.
 
-  Writes Value to a bit field in the lower 32-bits of a  64-bit MSR. The bit
+  Writes Value to a bit field in the lower 32-bits of a 64-bit MSR. The bit
   field is specified by the StartBit and the EndBit. All other bits in the
   destination MSR are preserved. The lower 32-bits of the MSR written is
-  returned. Extra left bits in Value are stripped. The caller must either
-  guarantee that Index and the data written is valid, or the caller must set up
-  exception handlers to catch the exceptions. This function is only available
-  on IA-32 and X64.
+  returned. The caller must either guarantee that Index and the data written 
+  is valid, or the caller must set up exception handlers to catch the exceptions. 
+  This function is only available on IA-32 and x64.
 
   If StartBit is greater than 31, then ASSERT().
   If EndBit is greater than 31, then ASSERT().
@@ -232,13 +232,13 @@ AsmMsrBitFieldWrite32 (
   Reads a bit field in a 64-bit MSR, performs a bitwise OR, and writes the
   result back to the bit field in the 64-bit MSR.
 
-  Reads the 64-bit MSR specified by Index, performs a bitwise inclusive OR
+  Reads the 64-bit MSR specified by Index, performs a bitwise OR
   between the read result and the value specified by OrData, and writes the
   result to the 64-bit MSR specified by Index. The lower 32-bits of the value
   written to the MSR are returned. Extra left bits in OrData are stripped. The
   caller must either guarantee that Index and the data written is valid, or
   the caller must set up exception handlers to catch the exceptions. This
-  function is only available on IA-32 and X64.
+  function is only available on IA-32 and x64.
 
   If StartBit is greater than 31, then ASSERT().
   If EndBit is greater than 31, then ASSERT().
@@ -278,7 +278,7 @@ AsmMsrBitFieldOr32 (
   MSR are returned. Extra left bits in AndData are stripped. The caller must
   either guarantee that Index and the data written is valid, or the caller must
   set up exception handlers to catch the exceptions. This function is only
-  available on IA-32 and X64.
+  available on IA-32 and x64.
 
   If StartBit is greater than 31, then ASSERT().
   If EndBit is greater than 31, then ASSERT().
@@ -310,17 +310,17 @@ AsmMsrBitFieldAnd32 (
 
 /**
   Reads a bit field in a 64-bit MSR, performs a bitwise AND followed by a
-  bitwise inclusive OR, and writes the result back to the bit field in the
+  bitwise OR, and writes the result back to the bit field in the
   64-bit MSR.
 
   Reads the 64-bit MSR specified by Index, performs a bitwise AND followed by a
-  bitwise inclusive OR between the read result and the value specified by
+  bitwise OR between the read result and the value specified by
   AndData, and writes the result to the 64-bit MSR specified by Index. The
   lower 32-bits of the value written to the MSR are returned. Extra left bits
   in both AndData and OrData are stripped. The caller must either guarantee
   that Index and the data written is valid, or the caller must set up exception
   handlers to catch the exceptions. This function is only available on IA-32
-  and X64.
+  and x64.
 
   If StartBit is greater than 31, then ASSERT().
   If EndBit is greater than 31, then ASSERT().
@@ -359,16 +359,16 @@ AsmMsrBitFieldAndThenOr32 (
 }
 
 /**
-  Reads a 64-bit MSR, performs a bitwise inclusive OR, and writes the result
+  Reads a 64-bit MSR, performs a bitwise OR, and writes the result
   back to the 64-bit MSR.
 
-  Reads the 64-bit MSR specified by Index, performs a bitwise inclusive OR
+  Reads the 64-bit MSR specified by Index, performs a bitwise OR
   between the read result and the value specified by OrData, and writes the
   result to the 64-bit MSR specified by Index. The value written to the MSR is
   returned. No parameter checking is performed on Index or OrData, and some of
   these may cause CPU exceptions. The caller must either guarantee that Index
   and OrData are valid, or the caller must establish proper exception handlers.
-  This function is only available on IA-32 and X64.
+  This function is only available on IA-32 and x64.
 
   @param  Index   The 32-bit MSR index to write.
   @param  OrData  The value to OR with the read value from the MSR.
@@ -396,7 +396,7 @@ AsmMsrOr64 (
   parameter checking is performed on Index or OrData, and some of these may
   cause CPU exceptions. The caller must either guarantee that Index and OrData
   are valid, or the caller must establish proper exception handlers. This
-  function is only available on IA-32 and X64.
+  function is only available on IA-32 and x64.
 
   @param  Index   The 32-bit MSR index to write.
   @param  AndData The value to AND with the read value from the MSR.
@@ -415,18 +415,18 @@ AsmMsrAnd64 (
 }
 
 /**
-  Reads a 64-bit MSR, performs a bitwise AND followed by a bitwise inclusive
+  Reads a 64-bit MSR, performs a bitwise AND followed by a bitwise 
   OR, and writes the result back to the 64-bit MSR.
 
   Reads the 64-bit MSR specified by Index, performs a bitwise AND between read
-  result and the value specified by AndData, performs a bitwise inclusive OR
+  result and the value specified by AndData, performs a bitwise OR
   between the result of the AND operation and the value specified by OrData,
   and writes the result to the 64-bit MSR specified by Index. The value written
   to the MSR is returned. No parameter checking is performed on Index, AndData,
   or OrData, and some of these may cause CPU exceptions. The caller must either
   guarantee that Index, AndData, and OrData are valid, or the caller must
   establish proper exception handlers. This function is only available on IA-32
-  and X64.
+  and x64.
 
   @param  Index   The 32-bit MSR index to write.
   @param  AndData The value to AND with the read value from the MSR.
@@ -453,7 +453,7 @@ AsmMsrAndThenOr64 (
   StartBit and the EndBit. The value of the bit field is returned. The caller
   must either guarantee that Index is valid, or the caller must set up
   exception handlers to catch the exceptions. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   If StartBit is greater than 63, then ASSERT().
   If EndBit is greater than 63, then ASSERT().
@@ -465,7 +465,7 @@ AsmMsrAndThenOr64 (
   @param  EndBit    The ordinal of the most significant bit in the bit field.
                     Range 0..63.
 
-  @return The value written back to the MSR.
+  @return The value read from the MSR.
 
 **/
 UINT64
@@ -484,10 +484,9 @@ AsmMsrBitFieldRead64 (
 
   Writes Value to a bit field in a 64-bit MSR. The bit field is specified by
   the StartBit and the EndBit. All other bits in the destination MSR are
-  preserved. The MSR written is returned. Extra left bits in Value are
-  stripped. The caller must either guarantee that Index and the data written is
-  valid, or the caller must set up exception handlers to catch the exceptions.
-  This function is only available on IA-32 and X64.
+  preserved. The MSR written is returned. The caller must either guarantee 
+  that Index and the data written is valid, or the caller must set up exception 
+  handlers to catch the exceptions. This function is only available on IA-32 and x64.
 
   If StartBit is greater than 63, then ASSERT().
   If EndBit is greater than 63, then ASSERT().
@@ -519,16 +518,16 @@ AsmMsrBitFieldWrite64 (
 }
 
 /**
-  Reads a bit field in a 64-bit MSR, performs a bitwise inclusive OR, and
+  Reads a bit field in a 64-bit MSR, performs a bitwise OR, and
   writes the result back to the bit field in the 64-bit MSR.
 
-  Reads the 64-bit MSR specified by Index, performs a bitwise inclusive OR
+  Reads the 64-bit MSR specified by Index, performs a bitwise OR
   between the read result and the value specified by OrData, and writes the
   result to the 64-bit MSR specified by Index. The value written to the MSR is
   returned. Extra left bits in OrData are stripped. The caller must either
   guarantee that Index and the data written is valid, or the caller must set up
   exception handlers to catch the exceptions. This function is only available
-  on IA-32 and X64.
+  on IA-32 and x64.
 
   If StartBit is greater than 63, then ASSERT().
   If EndBit is greater than 63, then ASSERT().
@@ -569,7 +568,7 @@ AsmMsrBitFieldOr64 (
   Extra left bits in AndData are stripped. The caller must either guarantee
   that Index and the data written is valid, or the caller must set up exception
   handlers to catch the exceptions. This function is only available on IA-32
-  and X64.
+  and x64.
 
   If StartBit is greater than 63, then ASSERT().
   If EndBit is greater than 63, then ASSERT().
@@ -602,16 +601,16 @@ AsmMsrBitFieldAnd64 (
 
 /**
   Reads a bit field in a 64-bit MSR, performs a bitwise AND followed by a
-  bitwise inclusive OR, and writes the result back to the bit field in the
+  bitwise OR, and writes the result back to the bit field in the
   64-bit MSR.
 
   Reads the 64-bit MSR specified by Index, performs a bitwise AND followed by
-  a bitwise inclusive OR between the read result and the value specified by
+  a bitwise OR between the read result and the value specified by
   AndData, and writes the result to the 64-bit MSR specified by Index. The
   value written to the MSR is returned. Extra left bits in both AndData and
   OrData are stripped. The caller must either guarantee that Index and the data
   written is valid, or the caller must set up exception handlers to catch the
-  exceptions. This function is only available on IA-32 and X64.
+  exceptions. This function is only available on IA-32 and x64.
 
   If StartBit is greater than 63, then ASSERT().
   If EndBit is greater than 63, then ASSERT().

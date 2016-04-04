@@ -1,6 +1,9 @@
 #/** @file
-#  
-#    Component name for module UefiEfiIfrSupportLib
+#  Library instance for ExtendedIfrSupportLib.
+#
+#  This library instance implements the API which is
+#  related to IFR operations but reference data structures 
+#  that are not defined in UEFI specification, for example EFI_IFR_GUID_LABEL.
 #  
 #  Copyright (c) 2007 - 2008, Intel Corporation. <BR>
 #  All rights reserved. This program and the accompanying materials
@@ -15,14 +18,12 @@
 
 [Defines]
   INF_VERSION                    = 0x00010005
-  BASE_NAME                      = MdeModuleIfrSupportLib
+  BASE_NAME                      = ExtendedIfrSupportLib
   FILE_GUID                      = A47B68BA-5177-4b2d-891E-4722FA5323F8
   MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = ExtendedIfrSupportLib|DXE_DRIVER DXE_RUNTIME_DRIVER DXE_SAL_DRIVER DXE_SMM_DRIVER UEFI_APPLICATION UEFI_DRIVER
-  EDK_RELEASE_VERSION            = 0x00020000
   EFI_SPECIFICATION_VERSION      = 0x00020000
-
   CONSTRUCTOR                    = ExtendedIfrSupportLibConstructor
 
 

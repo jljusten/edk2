@@ -1,6 +1,6 @@
 /** @file
 
-  Helper routine and corrsponding data struct used by USB Mouse Driver.
+  Helper routine and corresponding data struct used by USB Mouse Driver.
 
 Copyright (c) 2004 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
@@ -30,7 +30,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/UefiLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PcdLib.h>
-#include <Library/UsbLib.h>
+#include <Library/UefiUsbLib.h>
 
 #include <IndustryStandard/Usb.h>
 
@@ -113,6 +113,87 @@ MouseReportStatusCode (
   IN EFI_DEVICE_PATH_PROTOCOL  *DevicePath,
   IN EFI_STATUS_CODE_TYPE      CodeType,
   IN EFI_STATUS_CODE_VALUE     Value
+  );
+
+/**
+  The USB Mouse driver entry pointer.
+
+  @param  ImageHandle      The driver image handle.
+  @param  SystemTable      The system table.
+
+  @return EFI_SUCCESS      The component name protocol is installed.
+  @return Others           Failed to init the usb driver.
+
+**/
+EFI_STATUS
+EFIAPI
+USBMouseDriverBindingEntryPoint (
+  IN EFI_HANDLE           ImageHandle,
+  IN EFI_SYSTEM_TABLE     *SystemTable
+  );
+
+/**
+  Test to see if this driver supports ControllerHandle. Any ControllerHandle
+  that has UsbIoProtocol installed will be supported.
+
+  @param  This                  Protocol instance pointer.
+  @param  Controller            Handle of device to test.
+  @param  RemainingDevicePath   Not used.
+
+  @retval EFI_SUCCESS           This driver supports this device.
+  @retval EFI_UNSUPPORTED       This driver does not support this device.
+
+**/
+EFI_STATUS
+EFIAPI
+USBMouseDriverBindingSupported (
+  IN EFI_DRIVER_BINDING_PROTOCOL    *This,
+  IN EFI_HANDLE                     Controller,
+  IN EFI_DEVICE_PATH_PROTOCOL       *RemainingDevicePath
+  );
+
+/**
+  Starting the Usb Mouse Driver.
+
+  @param  This                  Protocol instance pointer.
+  @param  Controller            Handle of device to test
+  @param  RemainingDevicePath   Not used
+
+  @retval EFI_SUCCESS           This driver supports this device.
+  @retval EFI_UNSUPPORTED       This driver does not support this device.
+  @retval EFI_DEVICE_ERROR      This driver cannot be started due to device Error.
+  @retval EFI_OUT_OF_RESOURCES  Can't allocate memory resources.
+  @retval EFI_ALREADY_STARTED   Thios driver has been started.
+
+**/
+EFI_STATUS
+EFIAPI
+USBMouseDriverBindingStart (
+  IN EFI_DRIVER_BINDING_PROTOCOL    *This,
+  IN EFI_HANDLE                     Controller,
+  IN EFI_DEVICE_PATH_PROTOCOL       *RemainingDevicePath
+  );
+
+/**
+  Stop this driver on ControllerHandle. Support stoping any child handles
+  created by this driver.
+
+  @param  This                  Protocol instance pointer.
+  @param  Controller            Handle of device to stop driver on.
+  @param  NumberOfChildren      Number of Children in the ChildHandleBuffer.
+  @param  ChildHandleBuffer     List of handles for the children we need to stop.
+
+  @retval EFI_SUCCESS           The controller or children are stopped.
+  @retval Other                 Failed to stop the driver.
+
+**/
+EFI_STATUS
+EFIAPI
+USBMouseDriverBindingStop (
+  IN  EFI_DRIVER_BINDING_PROTOCOL   *This,
+  IN  EFI_HANDLE                    Controller,
+  IN  UINTN                         NumberOfChildren,
+  IN  EFI_HANDLE                    *ChildHandleBuffer
   );
 
 #endif

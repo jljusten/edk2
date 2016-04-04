@@ -205,8 +205,8 @@ PciCfg2Modify (
   IN CONST  EFI_PEI_PCI_CFG2_PPI      *This,
   IN        EFI_PEI_PCI_CFG_PPI_WIDTH Width,
   IN        UINT64                    Address,
-  IN CONST  VOID                      *SetBits,
-  IN CONST  VOID                      *ClearBits
+  IN        VOID                      *SetBits,
+  IN        VOID                      *ClearBits
   );
 
 //
@@ -247,7 +247,7 @@ EFI_PEI_PPI_DESCRIPTOR mPpiListPciCfg2 = {
 EFI_STATUS
 EFIAPI
 PeimInitializePciCfg2 (
-  IN EFI_FFS_FILE_HEADER     *FfsHeader,
+  IN EFI_PEI_FILE_HANDLE     FfsHeader,
   IN CONST EFI_PEI_SERVICES  **PeiServices
   )
 {

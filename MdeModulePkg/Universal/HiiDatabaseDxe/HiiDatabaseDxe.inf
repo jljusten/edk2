@@ -1,7 +1,6 @@
 #/** @file
-# Component name for module HiiDatabase
+# The DXE driver produces HII protocols defined in UEFI HII 2.1 specificatin.
 #
-# FIX ME!
 # Copyright (c) 2007, Intel Corporation. All rights reserved.
 #
 #  All rights reserved. This program and the accompanying materials       
@@ -21,9 +20,6 @@
   FILE_GUID                      = 348C4D62-BFBD-4882-9ECE-C80BB1C4783B
   MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
-  EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x0002000A
-
   ENTRY_POINT                    = InitializeHiiDatabase
 
 #
@@ -59,6 +55,8 @@
   DebugLib
   IfrSupportLib
   UefiLib
+  PcdLib
+  UefiRuntimeServicesTableLib
 
 [Protocols]
   gEfiConsoleControlProtocolGuid                
@@ -73,6 +71,12 @@
 [FeaturePcd.common]
   gEfiMdeModulePkgTokenSpaceGuid.PcdSupportHiiImageProtocol
   gEfiMdeModulePkgTokenSpaceGuid.PcdSupportFullConfigRoutingProtocol
+
+[Pcd.common]
+  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultPlatformLang
+
+[Guids]  
+  gEfiGlobalVariableGuid 
   
 [Depex]
   TRUE

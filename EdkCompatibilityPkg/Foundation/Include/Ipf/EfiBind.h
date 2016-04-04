@@ -31,7 +31,7 @@ Abstract:
 
 #define EFI_APPLICATION_ENTRY_POINT EFI_DRIVER_ENTRY_POINT
 
-
+#define ECP_CPU_IPF
 
 
 //
@@ -41,6 +41,45 @@ Abstract:
 
 
 #if _MSC_EXTENSIONS 
+
+#if __INTEL_COMPILER
+
+//
+// Disable the extra ";" warning;
+// All places referencing EFI_GUID_STRING MACRO will generate this error.
+//
+#pragma warning ( disable : 424 )
+
+//
+// error #593: variable "Status" was set but never used
+// This error may be flagged if a function only do ASSERT on return status when 
+// EFI_DEBUG is not defined (EDK's ASSERT will be defined as empty statement).
+// To make EdkCompatibilityPkg buildable by ICC with EFI_DEBUG undefined, disable
+// this warning.
+//
+#pragma warning ( disable : 593 )
+
+//
+// Disable ICC's remark #869: "Parameter" was never referenced warning.
+// This is legal ANSI C code so we disable the remark that is turned on with -Wall
+//
+#pragma warning ( disable : 869 )
+
+//
+// Disable ICC's remark #1418: external function definition with no prior declaration.
+// This is legal ANSI C code so we disable the remark that is turned on with /W4
+//
+#pragma warning ( disable : 1418 )
+
+//
+// Disable ICC's remark #1419: external declaration in primary source file
+// This is legal ANSI C code so we disable the remark that is turned on with /W4
+//
+#pragma warning ( disable : 1419 )
+
+#endif
+
+
     
 //
 // Disable warning that make it impossible to compile at /W4
@@ -177,6 +216,12 @@ typedef int64_t   intn_t;
 #define EFI_BAD_POINTER          0xAFAFAFAFAFAFAFAF
 #define EFI_BAD_POINTER_AS_BYTE  0xAF
 
+#define EFI_DEADLOOP()    while(TRUE)
+
+#ifdef __GNUC__
+#define EFI_BREAKPOINT  EcpEfiBreakPoint
+#define MEMORY_FENCE    EcpMemoryFence
+#else
 //
 // Inject a break point in the code to assist debugging.
 //
@@ -194,6 +239,7 @@ typedef int64_t   intn_t;
 void __mfa (void);                       
 #pragma intrinsic (__mfa)  
 #define MEMORY_FENCE()  __mfa()
+#endif
 
 
 //

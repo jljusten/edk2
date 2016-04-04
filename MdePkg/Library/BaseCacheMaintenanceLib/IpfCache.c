@@ -16,7 +16,7 @@
 #include <Library/CacheMaintenanceLib.h>
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
-#include <Library/PalCallLib.h>
+#include <Library/PalLib.h>
 
 /**
   Invalidates the entire instruction cache in cache coherency domain of the
@@ -54,7 +54,7 @@ InvalidateInstructionCache (
 
   @param  Length  The number of bytes to invalidate from the instruction cache.
 
-  @return Address of cache invalidation.
+  @return Address.
 
 **/
 VOID *
@@ -65,7 +65,7 @@ InvalidateInstructionCacheRange (
   )
 {
   ASSERT (Length <= MAX_ADDRESS - (UINTN)Address + 1);
-  return IpfFlushCacheRange (Address, Length);
+  return AsmFlushCacheRange (Address, Length);
 }
 
 /**
@@ -122,7 +122,7 @@ WriteBackInvalidateDataCacheRange (
 {
   ASSERT (Length <= MAX_ADDRESS - (UINTN)Address + 1);
 
-  return IpfFlushCacheRange (Address, Length);
+  return AsmFlushCacheRange (Address, Length);
 }
 
 /**
@@ -178,7 +178,7 @@ WriteBackDataCacheRange (
 {
   ASSERT (Length <= MAX_ADDRESS - (UINTN)Address + 1);
 
-  return IpfFlushCacheRange (Address, Length);
+  return AsmFlushCacheRange (Address, Length);
 }
 
 /**
@@ -229,7 +229,7 @@ InvalidateDataCache (
                   then Address is a virtual address.
   @param  Length  The number of bytes to invalidate from the data cache.
 
-  @return Address of cache invalidation.
+  @return Address.
 
 **/
 VOID *
@@ -244,5 +244,5 @@ InvalidateDataCacheRange (
   // Invalidation of a data cache range without writing back is not supported on
   // IPF architecture, so write back and invalidate operation is performed.
   //
-  return IpfFlushCacheRange (Address, Length);
+  return AsmFlushCacheRange (Address, Length);
 }

@@ -20,6 +20,11 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 //
 UINT8 mHandle[1024 * 8] = {0};
 
+/**
+
+  Initialize the Framework Hii Handle database.
+
+**/
 VOID
 InitHiiHandleDatabase (
   VOID
@@ -32,17 +37,25 @@ InitHiiHandleDatabase (
   mHandle[0] |= 1 << 0;
 }
 
+/**
+  Allocate a new Framework HII handle. 
 
+  @param  Handle Returns the new Framework HII Handle assigned.
+
+  @retval EFI_SUCCESS         A new Framework HII Handle is assigned.
+  @retval EFI_OUT_OF_RESOURCE The Framework HII Handle database is depleted.
+
+**/
 EFI_STATUS
 AllocateHiiHandle (
-  FRAMEWORK_EFI_HII_HANDLE *Handle
+  OUT FRAMEWORK_EFI_HII_HANDLE *Handle
   )
 {
   UINTN       Index;
 
   for (Index = 0; Index < sizeof (mHandle) * 8; Index++) {
     if ((mHandle[Index / 8] & (1 << (Index % 8))) == 0) {
-      mHandle[Index / 8] |= (1 << (Index % 8));
+      mHandle[Index / 8] = (UINT8) (mHandle[Index / 8] | (1 << (Index % 8)));
       *Handle = (FRAMEWORK_EFI_HII_HANDLE) Index;
       ASSERT (*Handle != 0);
       return EFI_SUCCESS;
@@ -52,9 +65,15 @@ AllocateHiiHandle (
   return EFI_OUT_OF_RESOURCES;
 }
 
+/**
+  Free Framework HII handle. 
+
+  @param  Handle The Framework HII Handle to be freed.
+
+**/
 VOID
 FreeHiiHandle (
-  FRAMEWORK_EFI_HII_HANDLE Handle
+  IN FRAMEWORK_EFI_HII_HANDLE Handle
   )
 {
   UINT16 Num;
@@ -62,5 +81,5 @@ FreeHiiHandle (
   Num = (UINT16) Handle;
 
   ASSERT ((mHandle [Num / 8] & (1 << (Num % 8))) != 0);
-  mHandle [Num / 8] &= (~(1 << (Num % 8)));
+  mHandle [Num / 8] = (UINT8) (mHandle [Num / 8] & (~(1 << (Num % 8))));
 }

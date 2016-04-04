@@ -1,4 +1,7 @@
 /** @file
+This is an example of how a driver might export data to the HII protocol to be
+later utilized by the Setup Protocol
+
 Copyright (c) 2004 - 2008, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
@@ -7,15 +10,6 @@ http://opensource.org/licenses/bsd-license.php
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-  DriverSample.c
-
-Abstract:
-
-  This is an example of how a driver might export data to the HII protocol to be
-  later utilized by the Setup Protocol
-
 
 **/
 
@@ -29,8 +23,13 @@ EFI_GUID   mInventoryGuid = INVENTORY_GUID;
 
 CHAR16     VariableName[] = L"MyIfrNVData";
 
-UINT8 VfrMyIfrNVDataBlockName[] = "BugBug";
-
+/**
+  Encode the password using a simple algorithm.
+  
+  @param Password The string to be encoded.
+  @param MaxSize  The size of the string.
+  
+**/
 VOID
 EncodePassword (
   IN  CHAR16                      *Password,
@@ -54,14 +53,23 @@ EncodePassword (
 
   CopyMem (Password, Buffer, MaxSize);
 
-  gBS->FreePool (Buffer);
+  FreePool (Buffer);
   return ;
 }
 
+/**
+  Validate the user's password.
+  
+  @param PrivateData This driver's private context data.
+  @param StringId    The user's input.
+  
+  @retval EFI_SUCCESS   The user's input matches the password.
+  @retval EFI_NOT_READY The user's input does not match the password.
+**/
 EFI_STATUS
 ValidatePassword (
-  DRIVER_SAMPLE_PRIVATE_DATA      *PrivateData,
-  EFI_STRING_ID                   StringId
+  IN       DRIVER_SAMPLE_PRIVATE_DATA      *PrivateData,
+  IN       EFI_STRING_ID                   StringId
   )
 {
   EFI_STATUS                      Status;
@@ -115,7 +123,7 @@ ValidatePassword (
 
   Status = HiiLibGetString (PrivateData->HiiHandle[0], StringId, Password, &BufferSize);
   if (EFI_ERROR (Status)) {
-    gBS->FreePool (Password);
+    FreePool (Password);
     return Status;
   }
 
@@ -134,16 +142,26 @@ ValidatePassword (
     Status = EFI_SUCCESS;
   }
 
-  gBS->FreePool (Password);
-  gBS->FreePool (EncodedPassword);
+  FreePool (Password);
+  FreePool (EncodedPassword);
 
   return Status;
 }
 
+/**
+  Encode the password using a simple algorithm.
+  
+  @param PrivateData This driver's private context data.
+  @param StringId    The password from User.
+  
+  @retval  EFI_SUCESS The operation is successful.
+  @return  Other value if gRT->SetVariable () fails.
+  
+**/
 EFI_STATUS
 SetPassword (
-  DRIVER_SAMPLE_PRIVATE_DATA      *PrivateData,
-  EFI_STRING_ID                   StringId
+  IN DRIVER_SAMPLE_PRIVATE_DATA      *PrivateData,
+  IN EFI_STRING_ID                   StringId
   )
 {
   EFI_STATUS                      Status;
@@ -201,7 +219,7 @@ SetPassword (
                NULL
                );
   }
-  gBS->FreePool (Configuration);
+  FreePool (Configuration);
 
   //
   // Set password
@@ -500,31 +518,31 @@ DriverCallback (
                       &PrivateData->Configuration
                       );
       CreateOneOfOpCode (
-        0x8001,                           // Question ID (or call it "key")
-        CONFIGURATION_VARSTORE_ID,        // VarStore ID
-        DYNAMIC_ONE_OF_VAR_OFFSET,        // Offset in Buffer Storage
-        STRING_TOKEN (STR_ONE_OF_PROMPT), // Question prompt text
-        STRING_TOKEN (STR_ONE_OF_HELP),   // Question help text
-        EFI_IFR_FLAG_CALLBACK,            // Question flag
-        EFI_IFR_NUMERIC_SIZE_1,           // Data type of Question Value
-        IfrOptionList,                    // Option list
-        2,                                // Number of options in Option list
-        &UpdateData                       // Container for dynamic created opcodes
+        0x8001,                                    // Question ID (or call it "key")
+        CONFIGURATION_VARSTORE_ID,                 // VarStore ID
+        (UINT16) DYNAMIC_ONE_OF_VAR_OFFSET,        // Offset in Buffer Storage
+        STRING_TOKEN (STR_ONE_OF_PROMPT),          // Question prompt text
+        STRING_TOKEN (STR_ONE_OF_HELP),            // Question help text
+        EFI_IFR_FLAG_CALLBACK,                     // Question flag
+        EFI_IFR_NUMERIC_SIZE_1,                    // Data type of Question Value
+        IfrOptionList,                             // Option list
+        2,                                         // Number of options in Option list
+        &UpdateData                                // Container for dynamic created opcodes
         );
     
       CreateOrderedListOpCode (
-        0x8002,                           // Question ID
-        CONFIGURATION_VARSTORE_ID,        // VarStore ID
-        DYNAMIC_ORDERED_LIST_VAR_OFFSET,  // Offset in Buffer Storage
-        STRING_TOKEN (STR_BOOT_OPTIONS),  // Question prompt text
-        STRING_TOKEN (STR_BOOT_OPTIONS),  // Question help text
-        EFI_IFR_FLAG_RESET_REQUIRED,      // Question flag
-        0,                                // Ordered list flag, e.g. EFI_IFR_UNIQUE_SET
-        EFI_IFR_NUMERIC_SIZE_1,           // Data type of Question value
-        5,                                // Maximum container
-        IfrOptionList,                    // Option list
-        2,                                // Number of options in Option list
-        &UpdateData                       // Container for dynamic created opcodes
+        0x8002,                                    // Question ID
+        CONFIGURATION_VARSTORE_ID,                 // VarStore ID
+        (UINT16) DYNAMIC_ORDERED_LIST_VAR_OFFSET,  // Offset in Buffer Storage
+        STRING_TOKEN (STR_BOOT_OPTIONS),           // Question prompt text
+        STRING_TOKEN (STR_BOOT_OPTIONS),           // Question help text
+        EFI_IFR_FLAG_RESET_REQUIRED,               // Question flag
+        0,                                         // Ordered list flag, e.g. EFI_IFR_UNIQUE_SET
+        EFI_IFR_NUMERIC_SIZE_1,                    // Data type of Question value
+        5,                                         // Maximum container
+        IfrOptionList,                             // Option list
+        2,                                         // Number of options in Option list
+        &UpdateData                                // Container for dynamic created opcodes
         );
     
       CreateGotoOpCode (
@@ -544,7 +562,7 @@ DriverCallback (
                  TRUE,                       // Append or replace
                  &UpdateData                 // Dynamic created opcodes
                  );
-      gBS->FreePool (IfrOptionList);
+      FreePool (IfrOptionList);
       IfrLibFreeUpdateData (&UpdateData);
       break;
     
@@ -648,6 +666,15 @@ DriverCallback (
   return Status;
 }
 
+/**
+  Main entry for this driver.
+  
+  @param ImageHandle     Image handle this driver.
+  @param SystemTable     Pointer to SystemTable.
+
+  @retval EFI_SUCESS     This function always complete successfully.
+
+**/
 EFI_STATUS
 EFIAPI
 DriverSampleInit (
@@ -772,7 +799,7 @@ DriverSampleInit (
                           DriverHandle[0],
                           &HiiHandle[0]
                           );
-  gBS->FreePool (PackageList);
+  FreePool (PackageList);
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -803,7 +830,7 @@ DriverSampleInit (
                           DriverHandle[1],
                           &HiiHandle[1]
                           );
-  gBS->FreePool (PackageList);
+  FreePool (PackageList);
   if (EFI_ERROR (Status)) {
     return Status;
   }

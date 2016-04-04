@@ -36,9 +36,18 @@ USB_PORT_STATE_MAP  mUsbPortChangeMap[] = {
   {PORTSC_OVERCUR_CHANGE, USB_PORT_STAT_C_OVERCURRENT}
 };
 
+EFI_DRIVER_BINDING_PROTOCOL
+gEhciDriverBinding = {
+  EhcDriverBindingSupported,
+  EhcDriverBindingStart,
+  EhcDriverBindingStop,
+  0x10,
+  NULL,
+  NULL
+};
 
 /**
-  Retrieves the capablility of root hub ports.
+  Retrieves the capability of root hub ports.
 
   @param  This                  This EFI_USB_HC_PROTOCOL instance.
   @param  MaxSpeed              Max speed supported by the controller.
@@ -1731,12 +1740,3 @@ EhcDriverBindingStop (
   return EFI_SUCCESS;
 }
 
-EFI_DRIVER_BINDING_PROTOCOL
-gEhciDriverBinding = {
-  EhcDriverBindingSupported,
-  EhcDriverBindingStart,
-  EhcDriverBindingStop,
-  0x10,
-  NULL,
-  NULL
-};

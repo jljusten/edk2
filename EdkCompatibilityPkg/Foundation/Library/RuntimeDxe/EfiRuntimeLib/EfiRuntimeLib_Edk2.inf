@@ -57,6 +57,11 @@ COMPONENT_TYPE  = LIBRARY
   Ipf/Fvb.c
   Ipf/EsalLib.s
   Ipf/IpfCpuCache.s
+  #
+  # Only for CYGWINGCC IPF tool chain, EFI_BREAKPOINT and MEMORY_FENCE
+  # is defined as two functions EcpEfiBreakPoint and EcpMemoryFence.
+  #
+  Ipf/AsmCpuMisc.s | GCC
 
 [sources.ebc]
   Ebc/RuntimeLib.c

@@ -68,8 +68,6 @@ Module Name: Service.h
   @param[in]  SkuId The SKU value that will be used when the PCD service will retrieve and 
               set values associated with a PCD token.
 
-  @retval VOID
-
 **/
 VOID
 EFIAPI
@@ -748,7 +746,7 @@ typedef struct {
   PCD_PROTOCOL_CALLBACK   CallbackFn;
 } CALLBACK_FN_ENTRY;
 
-#define CR_FNENTRY_FROM_LISTNODE(Record, Type, Field) _CR(Record, Type, Field)
+#define CR_FNENTRY_FROM_LISTNODE(Record, Type, Field) BASE_CR(Record, Type, Field)
 
 //
 // Internal Functions

@@ -20,14 +20,17 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/DebugLib.h>
 
 /**
-  Image entry point of Peim.
+  The entry point of PE/COFF Image for a PEIM.
+
+  This function is the entry point for a PEIM.  This function must call ProcessLibraryConstructorList() 
+  and ProcessModuleEntryPointList().  The return value from ProcessModuleEntryPointList() is returned.
+  If _gPeimRevision is not zero and PeiServices->Hdr.Revision is less than _gPeimRevison, then ASSERT().
 
   @param  FileHandle  Handle of the file being invoked. 
-                      Type EFI_PEI_FILE_HANDLE is defined in FfsFindNextFile().
   @param  PeiServices Describes the list of possible PEI Services.
 
-  @return  Status returned by entry points of Peims.
-
+  @retval  EFI_SUCCESS   The PEIM executed normally.
+  @retval  !EFI_SUCCESS  The PEIM failed to execute normally.
 **/
 EFI_STATUS
 EFIAPI
@@ -56,20 +59,22 @@ _ModuleEntryPoint (
 
 
 /**
-  Wrapper of Peim image entry point.
+  Required by the EBC compiler and identical in functionality to _ModuleEntryPoint().
+  
+  This function is required to call _ModuleEntryPoint() passing in FileHandle and PeiServices.
 
   @param  FileHandle  Handle of the file being invoked. 
-                      Type EFI_PEI_FILE_HANDLE is defined in FfsFindNextFile().
   @param  PeiServices Describes the list of possible PEI Services.
 
-  @return  Status returned by entry points of Peims.
+  @retval EFI_SUCCESS  The PEIM executed normally.
+  @retval !EFI_SUCCESS The PEIM failed to execute normally.
 
 **/
 EFI_STATUS
 EFIAPI
 EfiMain (
-  IN EFI_PEI_FILE_HANDLE      FileHandle,
-  IN CONST EFI_PEI_SERVICES   **PeiServices
+  IN EFI_PEI_FILE_HANDLE       FileHandle,
+  IN CONST EFI_PEI_SERVICES    **PeiServices
   )
 {
   return _ModuleEntryPoint (FileHandle, PeiServices);

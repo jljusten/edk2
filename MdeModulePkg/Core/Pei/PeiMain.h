@@ -43,7 +43,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <IndustryStandard/PeImage.h>
 #include <Library/PeiServicesTablePointerLib.h>
 #include <Library/MemoryAllocationLib.h>
-#include <Library/PeiPiLib.h>
 #include <Guid/FirmwareFileSystem2.h>
 #include <Guid/AprioriFileName.h>
 
@@ -166,16 +165,15 @@ typedef struct{
 
 /**
   Function Pointer type for PeiCore function.
-  @param SecCoreData     Points to a data structure containing information about the PEI core's operating
-                         environment, such as the size and location of temporary RAM, the stack location and
-                         the BFV location.
+  @param SecCoreData     Points to a data structure containing SEC to PEI handoff data, such as the size 
+  											 and location of temporary RAM, the stack location and the BFV location.
   @param PpiList         Points to a list of one or more PPI descriptors to be installed initially by the PEI core.
                          An empty PPI list consists of a single descriptor with the end-tag
                          EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST. As part of its initialization
                          phase, the PEI Foundation will add these SEC-hosted PPIs to its PPI database such
                          that both the PEI Foundation and any modules can leverage the associated service
                          calls and/or code in these early PPIs
-  @param Data            Pointer to old core data that is used to initialize the
+  @param OldCoreData     Pointer to old core data that is used to initialize the
                          core's data areas.
 **/
 typedef
@@ -215,9 +213,8 @@ typedef struct {
   with the old core data.
 
 
-  @param SecCoreData     Points to a data structure containing information about the PEI core's operating
-                         environment, such as the size and location of temporary RAM, the stack location and
-                         the BFV location.
+  @param SecCoreData     Points to a data structure containing SEC to PEI handoff data, such as the size 
+  											 and location of temporary RAM, the stack location and the BFV location.
   @param PpiList         Points to a list of one or more PPI descriptors to be installed initially by the PEI core.
                          An empty PPI list consists of a single descriptor with the end-tag
                          EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST. As part of its initialization
@@ -287,9 +284,8 @@ PeiDispatcher (
   @param PrivateData     PeiCore's private data structure
   @param OldCoreData     Old data from SecCore
                          NULL if being run in non-permament memory mode.
-  @param SecCoreData     Points to a data structure containing information about the PEI core's operating
-                         environment, such as the size and location of temporary RAM, the stack location and
-                         the BFV location.
+  @param SecCoreData     Points to a data structure containing SEC to PEI handoff data, such as the size
+                         and location of temporary RAM, the stack location and the BFV location.
 
 **/
 VOID
@@ -709,9 +705,8 @@ PeiFvFindNextVolume (
   Initialize the memory services.
 
   @param PrivateData     PeiCore's private data structure
-  @param SecCoreData     Points to a data structure containing information about the PEI core's operating
-                         environment, such as the size and location of temporary RAM, the stack location and
-                         the BFV location.
+  @param SecCoreData     Points to a data structure containing SEC to PEI handoff data, such as the size 
+  											 and location of temporary RAM, the stack location and the BFV location.
   @param OldCoreData     Pointer to the PEI Core data.
                          NULL if being run in non-permament memory mode.
 
@@ -1026,6 +1021,49 @@ ProcessFvFile (
   IN  CONST EFI_PEI_SERVICES **PeiServices,
   IN  EFI_PEI_FILE_HANDLE    FvFileHandle,
   OUT UINT32                 *AuthenticationState
+  );
+
+/**
+  The wrapper function of PeiLoadImageLoadImage().
+
+  @param This            - Pointer to EFI_PEI_LOAD_FILE_PPI.
+  @param FileHandle      - Pointer to the FFS file header of the image.
+  @param ImageAddressArg - Pointer to PE/TE image.
+  @param ImageSizeArg    - Size of PE/TE image.
+  @param EntryPoint      - Pointer to entry point of specified image file for output.
+  @param AuthenticationState - Pointer to attestation authentication state of image.
+
+  @return Status of PeiLoadImageLoadImage().
+
+**/
+EFI_STATUS
+EFIAPI
+PeiLoadImageLoadImageWrapper (
+  IN     CONST EFI_PEI_LOAD_FILE_PPI  *This,
+  IN     EFI_PEI_FILE_HANDLE          FileHandle,
+  OUT    EFI_PHYSICAL_ADDRESS         *ImageAddressArg,  OPTIONAL
+  OUT    UINT64                       *ImageSizeArg,     OPTIONAL
+  OUT    EFI_PHYSICAL_ADDRESS         *EntryPoint,
+  OUT    UINT32                       *AuthenticationState
+  );
+
+/**
+
+  Provide a callback for when the security PPI is installed.
+
+  @param PeiServices        An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation.
+  @param NotifyDescriptor   The descriptor for the notification event.
+  @param Ppi                Pointer to the PPI in question.
+
+  @return Always success
+
+**/
+EFI_STATUS
+EFIAPI
+SecurityPpiNotifyCallback (
+  IN EFI_PEI_SERVICES           **PeiServices,
+  IN EFI_PEI_NOTIFY_DESCRIPTOR  *NotifyDescriptor,
+  IN VOID                       *Ppi
   );
 
 #endif

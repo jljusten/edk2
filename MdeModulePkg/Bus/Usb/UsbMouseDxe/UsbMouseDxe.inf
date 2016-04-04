@@ -21,8 +21,6 @@
   FILE_GUID                      = 2D2E62AA-9ECF-43b7-8219-94E7FC713DFE
   MODULE_TYPE                    = UEFI_DRIVER
   VERSION_STRING                 = 1.0
-  EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
 
   ENTRY_POINT                    = USBMouseDriverBindingEntryPoint
 
@@ -30,6 +28,10 @@
 # The following information is for reference only and not required by the build tools.
 #
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
+#
+#  DRIVER_BINDING                =  gUsbMouseDriverBinding                        
+#  COMPONENT_NAME                =  gUsbMouseComponentName
+#  COMPONENT_NAME2               =  gUsbMouseComponentName2
 #
 
 [Sources.common]
@@ -50,7 +52,7 @@
   BaseMemoryLib
   ReportStatusCodeLib
   PcdLib
-  UsbLib
+  UefiUsbLib
 
 
 [Protocols]

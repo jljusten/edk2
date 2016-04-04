@@ -1,8 +1,7 @@
 #/** @file
-# Console Platfrom Driver
+# Console Platfrom DXE Driver, install Console protocols and updates environment variables.
 #
-# Console Platfrom DXE Driver, install Console protocols
-# Copyright (c) 2006 - 2007, Intel Corporation
+# Copyright (c) 2006 - 2008, Intel Corporation
 #
 #  All rights reserved. This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -20,9 +19,6 @@
   FILE_GUID                      = 51ccf399-4fdf-4e55-a45b-e123f84d456a
   MODULE_TYPE                    = UEFI_DRIVER
   VERSION_STRING                 = 1.0
-  EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
-
   ENTRY_POINT                    = InitializeConPlatform
 
 #
@@ -30,10 +26,12 @@
 #
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
 #
-#  DRIVER_BINDING                =  gConPlatformTextInDriverBinding              
-#  COMPONENT_NAME                =  gConPlatformComponentName                    
-#  DRIVER_BINDING                =  gConPlatformTextOutDriverBinding             
-#  COMPONENT_NAME                =  gConPlatformComponentName                    
+#  DRIVER_BINDING                =  gConPlatformTextInDriverBinding
+#  COMPONENT_NAME                =  gConPlatformComponentName
+#  COMPONENT_NAME2               =  gConPlatformComponentName2
+#  DRIVER_BINDING                =  gConPlatformTextOutDriverBinding
+#  COMPONENT_NAME                =  gConPlatformComponentName
+#  COMPONENT_NAME2               =  gConPlatformComponentName2
 #
 
 [Sources.common]

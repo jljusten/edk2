@@ -1,8 +1,7 @@
 /** @file 
-  PCD PEIM manage PCD database to manage all dynamic PCD in PEI phase. PCD PEIM
-  also produce PCD_PPI.
+PCD PEIM produces PCD database to manage all dynamic PCD in PEI phase and install Pcd Ppi.
   
-Copyright (c) 2006, Intel Corporation                                                         
+Copyright (c) 2006 - 2008, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -65,8 +64,8 @@ EFI_PEI_PPI_DESCRIPTOR  mPpiPCD = {
   
   This routine initialize the PCD database for PEI phase and install PCD_PPI.
 
-  @param FfsHeader       Pointer to PEIM FFS header image
-  @param PeiServices     Pointer to EFI_PEI_SERVICES
+  @param  FileHandle  Handle of the file being invoked.
+  @param  PeiServices Describes the list of possible PEI Services.
 
   @return Status of install PCD_PPI
 
@@ -74,8 +73,8 @@ EFI_PEI_PPI_DESCRIPTOR  mPpiPCD = {
 EFI_STATUS
 EFIAPI
 PcdPeimInit (
-  IN EFI_FFS_FILE_HEADER      *FfsHeader,
-  IN EFI_PEI_SERVICES         **PeiServices
+  IN       EFI_PEI_FILE_HANDLE  FileHandle,
+  IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
   BuildPcdDatabase ();
@@ -102,8 +101,6 @@ PcdPeimInit (
 
   @param[in]  SkuId The SKU value that will be used when the PCD service will retrieve and 
               set values associated with a PCD token.
-
-  @retval VOID
 
 **/
 VOID

@@ -75,10 +75,11 @@
   MdePkg/Library/DxeExtractGuidedSectionLib/DxeExtractGuidedSectionLib.inf
   MdePkg/Library/DxeHobLib/DxeHobLib.inf
   MdePkg/Library/DxePcdLib/DxePcdLib.inf
-  MdePkg/Library/DxePiLib/DxePiLib.inf
+  MdePkg/Library/DxeServicesLib/DxeServicesLib.inf
   MdePkg/Library/DxeServicesTableLib/DxeServicesTableLib.inf
   MdePkg/Library/DxeSmbusLib/DxeSmbusLib.inf
 
+  MdePkg/Library/DxeRuntimePciExpressLib/DxeRuntimePciExpressLib.inf
 
   MdePkg/Library/PeiCoreEntryPoint/PeiCoreEntryPoint.inf
   MdePkg/Library/PeiDxePostCodeLibReportStatusCode/PeiDxePostCodeLibReportStatusCode.inf
@@ -89,11 +90,12 @@
   MdePkg/Library/PeiMemoryLib/PeiMemoryLib.inf
   MdePkg/Library/PeimEntryPoint/PeimEntryPoint.inf
   MdePkg/Library/PeiPcdLib/PeiPcdLib.inf
-  MdePkg/Library/PeiPiLib/PeiPiLib.inf
   MdePkg/Library/PeiResourcePublicationLib/PeiResourcePublicationLib.inf
   MdePkg/Library/PeiServicesLib/PeiServicesLib.inf
   MdePkg/Library/PeiServicesTablePointerLib/PeiServicesTablePointerLib.inf
   MdePkg/Library/PeiSmbusLibSmbus2Ppi/PeiSmbusLibSmbus2Ppi.inf
+  MdePkg/Library/PeiPciLibPciCfg2/PeiPciLibPciCfg2.inf
+  MdePkg/Library/PeiPciSegmentLibPciCfg2/PeiPciSegmentLibPciCfg2.inf
 
   MdePkg/Library/UefiApplicationEntryPoint/UefiApplicationEntryPoint.inf
   MdePkg/Library/UefiBootServicesTableLib/UefiBootServicesTableLib.inf
@@ -102,14 +104,14 @@
   MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
   MdePkg/Library/UefiDevicePathLibDevicePathProtocol/UefiDevicePathLibDevicePathProtocol.inf
   MdePkg/Library/UefiDriverEntryPoint/UefiDriverEntryPoint.inf
-  MdePkg/Library/UefiHiiLib/UefiHiiLib.inf
-  MdePkg/Library/UefiIfrSupportLib/UefiIfrSupportLib.inf
   MdePkg/Library/UefiLib/UefiLib.inf
   MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
   MdePkg/Library/UefiMemoryLib/UefiMemoryLib.inf
   MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
   MdePkg/Library/UefiScsiLib/UefiScsiLib.inf
   MdePkg/Library/UefiUsbLib/UefiUsbLib.inf
+  MdePkg/Library/UefiPciLibPciRootBridgeIo/UefiPciLibPciRootBridgeIo.inf
+  MdePkg/Library/UefiPciSegmentLibPciRootBridgeIo/UefiPciSegmentLibPciRootBridgeIo.inf
 
 [Components.IA32, Components.X64]
   MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
@@ -125,10 +127,12 @@
 
 [Components.IPF]
   MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
-  MdePkg/Library/BasePalCallLibNull/BasePalCallLibNull.inf
+  MdePkg/Library/BasePalLibNull/BasePalLibNull.inf
   MdePkg/Library/PeiPalLib/PeiPalLib.inf
   MdePkg/Library/PeiServicesTablePointerLibKr7/PeiServicesTablePointerLibKr7.inf
   MdePkg/Library/SecPeiDxeTimerLibCpu/SecPeiDxeTimerLibCpu.inf
+  MdePkg/Library/UefiPalLib/UefiPalLib.inf
+  MdePkg/Library/UefiSalLib/UefiSalLib.inf
 
 
 [Components.EBC]

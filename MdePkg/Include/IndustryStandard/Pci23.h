@@ -27,14 +27,15 @@
 ///
 #define PCI_EXP_MAX_CONFIG_OFFSET     0x1000
 
-//
-// PCI Capability List IDs and records
-//
+///
+/// PCI Capability List IDs and records
+///
 #define EFI_PCI_CAPABILITY_ID_PCIX    0x07
 
 #pragma pack(1)
 ///
-/// Capability EFI_PCI_CAPABILITY_ID_PCIX, defined in PCI-X Addendum to the PCI Local Bus Specification
+/// PCI-X Capabilities List, 
+/// Section 7.2, PCI-X Addendum to the PCI Local Bus Specification, Revision 1.0b
 ///
 typedef struct {
   EFI_PCI_CAPABILITY_HDR  Hdr;
@@ -42,8 +43,9 @@ typedef struct {
   UINT32                  StatusReg;
 } EFI_PCI_CAPABILITY_PCIX;
 
-/// 
-/// Capability EFI_PCI_CAPABILITY_PCIX_BRDG, defined in PCI-X Addendum to the PCI Local Bus Specification
+///
+/// PCI-X Bridge Capabilities List, 
+/// Section 8.6.2, PCI-X Addendum to the PCI Local Bus Specification, Revision 1.0b
 ///
 typedef struct {
   EFI_PCI_CAPABILITY_HDR  Hdr;

@@ -1,14 +1,20 @@
 /** @file
-  Library that provides processor specific library services
+  Provides CPU architecture specific functions that can not be defined
+  in the Base Library due to dependencies on the PAL Library
+  
+  The CPU Library provides services to flush CPU TLBs and place the CPU in a sleep state.
+  The implementation of these services on Itanium CPUs requires the use of PAL Calls.
+  PAL Calls require PEI and DXE specific mechanisms to look up PAL Entry Point.
+  As a result, these services could not be defined in the Base Library.
 
-  Copyright (c) 2006 - 2008, Intel Corporation                                                         
-  All rights reserved. This program and the accompanying materials                          
-  are licensed and made available under the terms and conditions of the BSD License         
-  which accompanies this distribution.  The full text of the license may be found at        
-  http://opensource.org/licenses/bsd-license.php                                            
+Copyright (c) 2006 - 2008, Intel Corporation<BR>
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 

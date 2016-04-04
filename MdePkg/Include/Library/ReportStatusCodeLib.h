@@ -1,21 +1,20 @@
 /** @file
-  Report Status Code Library public .h file
+  Provides services to log status code records.
 
-  Copyright (c) 2006, Intel Corporation                                                         
-  All rights reserved. This program and the accompanying materials                          
-  are licensed and made available under the terms and conditions of the BSD License         
-  which accompanies this distribution.  The full text of the license may be found at        
-  http://opensource.org/licenses/bsd-license.php                                            
+Copyright (c) 2006 - 2008, Intel Corporation
+All rights reserved. This program and the accompanying materials
+are licensed and made available under the terms and conditions of the BSD License
+which accompanies this distribution.  The full text of the license may be found at
+http://opensource.org/licenses/bsd-license.php
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
 #ifndef __REPORT_STATUS_CODE_LIB_H__
 #define __REPORT_STATUS_CODE_LIB_H__
 
-#include <ProcessorBind.h>
 #include <Pi/PiMultiPhase.h>
 #include <Protocol/DevicePath.h>
 
@@ -199,6 +198,8 @@ ReportStatusCode (
   @retval  EFI_OUT_OF_RESOURCES  There were not enough resources to allocate the 
                                  extended data section.
   @retval  EFI_UNSUPPORTED       Report status code is not supported
+  @retval  EFI_DEVICE_ERROR      A call to a Report Status Code Library function
+                                 is already in progress.
 
 **/
 EFI_STATUS
@@ -241,6 +242,8 @@ ReportStatusCodeWithDevicePath (
   @retval  EFI_OUT_OF_RESOURCES  There were not enough resources to allocate the 
                                  extended data section.
   @retval  EFI_UNSUPPORTED       Report status code is not supported
+  @retval  EFI_DEVICE_ERROR      A call to a Report Status Code Library function
+                                 is already in progress.
 
 **/
 EFI_STATUS
@@ -291,7 +294,9 @@ ReportStatusCodeWithExtendedData (
   @retval  EFI_SUCCESS           The status code was reported.
   @retval  EFI_OUT_OF_RESOURCES  There were not enough resources to allocate 
                                  the extended data section if it was specified.
-  @retval  EFI_UNSUPPORTED       Report status code is not supported
+  @retval  EFI_UNSUPPORTED       Report status code is not supported.
+  @retval  EFI_DEVICE_ERROR      A call to a Report Status Code Library function
+                                 is already in progress.
 
 **/
 EFI_STATUS
@@ -406,6 +411,8 @@ ReportDebugCodeEnabled (
   @retval  EFI_OUT_OF_RESOURCES  There were not enough resources to allocate the 
                                  extended data section.
   @retval  EFI_UNSUPPORTED       Report status code is not supported
+  @retval  EFI_DEVICE_ERROR      A call to a Report Status Code Library function
+                                 is already in progress.
 
 **/
 #define REPORT_STATUS_CODE_WITH_DEVICE_PATH(Type,Value,DevicePathParameter)                     \
@@ -437,6 +444,8 @@ ReportDebugCodeEnabled (
   @retval  EFI_OUT_OF_RESOURCES  There were not enough resources to allocate the 
                                  extended data section.
   @retval  EFI_UNSUPPORTED       Report status code is not supported
+  @retval  EFI_DEVICE_ERROR      A call to a Report Status Code Library function
+                                 is already in progress.
 
 **/
 #define REPORT_STATUS_CODE_WITH_EXTENDED_DATA(Type,Value,ExtendedData,ExtendedDataSize)         \
@@ -473,6 +482,8 @@ ReportDebugCodeEnabled (
   @retval  EFI_OUT_OF_RESOURCES  There were not enough resources to allocate the 
                                  extended data section if it was specified.
   @retval  EFI_UNSUPPORTED       Report status code is not supported
+  @retval  EFI_DEVICE_ERROR      A call to a Report Status Code Library function
+                                 is already in progress.
 
 **/
 #define REPORT_STATUS_CODE_EX(Type,Value,Instance,CallerId,ExtendedDataGuid,ExtendedData,ExtendedDataSize)  \

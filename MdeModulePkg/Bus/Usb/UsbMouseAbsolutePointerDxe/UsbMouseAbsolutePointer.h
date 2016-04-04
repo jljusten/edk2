@@ -36,7 +36,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/BaseLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PcdLib.h>
-#include <Library/UsbLib.h>
+#include <Library/UefiUsbLib.h>
 
 #include <IndustryStandard/Usb.h>
 
@@ -102,5 +102,42 @@ MouseAbsolutePointerReportStatusCode (
   IN EFI_STATUS_CODE_TYPE      CodeType,
   IN EFI_STATUS_CODE_VALUE     Value
   );
+
+//
+// Prototypes
+// Driver model protocol interface
+//
+EFI_STATUS
+EFIAPI
+USBMouseAbsolutePointerDriverBindingEntryPoint (
+  IN EFI_HANDLE           ImageHandle,
+  IN EFI_SYSTEM_TABLE     *SystemTable
+  );
+
+EFI_STATUS
+EFIAPI
+USBMouseAbsolutePointerDriverBindingSupported (
+  IN EFI_DRIVER_BINDING_PROTOCOL    *This,
+  IN EFI_HANDLE                     Controller,
+  IN EFI_DEVICE_PATH_PROTOCOL       *RemainingDevicePath
+  );
+
+EFI_STATUS
+EFIAPI
+USBMouseAbsolutePointerDriverBindingStart (
+  IN EFI_DRIVER_BINDING_PROTOCOL    *This,
+  IN EFI_HANDLE                     Controller,
+  IN EFI_DEVICE_PATH_PROTOCOL       *RemainingDevicePath
+  );
+
+EFI_STATUS
+EFIAPI
+USBMouseAbsolutePointerDriverBindingStop (
+  IN  EFI_DRIVER_BINDING_PROTOCOL   *This,
+  IN  EFI_HANDLE                    Controller,
+  IN  UINTN                         NumberOfChildren,
+  IN  EFI_HANDLE                    *ChildHandleBuffer
+  );
+
 
 #endif

@@ -1,18 +1,18 @@
 #/** @file
-# PcRtc driver to install EFI_REAL_TIME_CLOCK_ARCH_PROTOCOL.
 #
-# This driver provides GetTime, SetTime, GetWakeupTime, SetWakeupTime services to Runtime Service Table.
-# Copyright (c) 2006 - 2007, Intel Corporation.
+#  PcRtc driver to install EFI_REAL_TIME_CLOCK_ARCH_PROTOCOL.
 #
-# Copyright (c) 2006 - 2007 Intel Corporation. <BR>
-# All rights reserved. This program and the accompanying materials
-# are licensed and made available under the terms and conditions of the BSD License
-# which accompanies this distribution.  The full text of the license may be found at
-# http://opensource.org/licenses/bsd-license.php
+#  This driver provides GetTime, SetTime, GetWakeupTime, SetWakeupTime services to Runtime Service Table.
+#  It will install a tagging protocol with gEfiRealTimeClockArchProtocolGuid.
 #
-# THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-# WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#  Copyright (c) 2006 - 2008 Intel Corporation. <BR>
+#  All rights reserved. This program and the accompanying materials
+#  are licensed and made available under the terms and conditions of the BSD License
+#  which accompanies this distribution.  The full text of the license may be found at
+#  http://opensource.org/licenses/bsd-license.php
 #
+#  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #
 #**/
 
@@ -22,9 +22,6 @@
   FILE_GUID                      = 378D7B65-8DA9-4773-B6E4-A47826A833E1
   MODULE_TYPE                    = DXE_RUNTIME_DRIVER
   VERSION_STRING                 = 1.0
-  EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00020000
-
   ENTRY_POINT                    = InitializePcRtc
 
 #
@@ -34,7 +31,7 @@
 #
 
 [Sources.common]
-  Ia32/Ia32PcRtc.c
+  PcRtcEntry.c
   PcRtc.c
   PcRtc.h
 

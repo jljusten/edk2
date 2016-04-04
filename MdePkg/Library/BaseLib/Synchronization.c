@@ -55,13 +55,13 @@ GetSpinLockProperties (
   @param  SpinLock  A pointer to the spin lock to initialize to the released
                     state.
 
-  @return SpinLock initialized in release state.
+  @return SpinLock in release state.
 
 **/
 SPIN_LOCK *
 EFIAPI
 InitializeSpinLock (
-  OUT     SPIN_LOCK                 *SpinLock
+  OUT      SPIN_LOCK                 *SpinLock
   )
 {
   ASSERT (SpinLock != NULL);
@@ -86,7 +86,7 @@ InitializeSpinLock (
 
   @param  SpinLock  A pointer to the spin lock to place in the acquired state.
 
-  @return SpinLock aquired lock.
+  @return SpinLock acquired lock.
 
 **/
 SPIN_LOCK *
@@ -206,7 +206,7 @@ AcquireSpinLockOrFail (
 
   @param  SpinLock  A pointer to the spin lock to release.
 
-  @return SpinLock
+  @return SpinLock released lock.
 
 **/
 SPIN_LOCK *
@@ -280,9 +280,9 @@ InterlockedDecrement (
   Performs an atomic compare exchange operation on a 32-bit unsigned integer.
 
   Performs an atomic compare exchange operation on the 32-bit unsigned integer
-  specified by Value.  If Value is equal to CompareValue, then Value is set to 
+  specified by Value.  If Value is equal to CompareValue, then Value is set to
   ExchangeValue and CompareValue is returned.  If Value is not equal to CompareValue,
-  then Value is returned.  The compare exchange operation must be performed using 
+  then Value is returned.  The compare exchange operation must be performed using
   MP safe mechanisms.
 
   If Value is NULL, then ASSERT().
@@ -310,9 +310,9 @@ InterlockedCompareExchange32 (
 /**
   Performs an atomic compare exchange operation on a 64-bit unsigned integer.
 
-  Performs an atomic compare exchange operation on the 64-bit unsigned integer specified 
-  by Value.  If Value is equal to CompareValue, then Value is set to ExchangeValue and 
-  CompareValue is returned.  If Value is not equal to CompareValue, then Value is returned. 
+  Performs an atomic compare exchange operation on the 64-bit unsigned integer specified
+  by Value.  If Value is equal to CompareValue, then Value is set to ExchangeValue and
+  CompareValue is returned.  If Value is not equal to CompareValue, then Value is returned.
   The compare exchange operation must be performed using MP safe mechanisms.
 
   If Value is NULL, then ASSERT().
@@ -352,9 +352,8 @@ InterlockedCompareExchange64 (
                         operation.
   @param  CompareValue  Pointer value used in compare operation.
   @param  ExchangeValue Pointer value used in exchange operation.
-  
-  @return The original *Value before exchange.
 
+  @return The original *Value before exchange.
 **/
 VOID *
 EFIAPI

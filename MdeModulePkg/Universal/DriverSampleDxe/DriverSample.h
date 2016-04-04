@@ -21,8 +21,8 @@ Revision History
 
 **/
 
-#ifndef _DRIVER_SAMPLE_H
-#define _DRIVER_SAMPLE_H
+#ifndef _DRIVER_SAMPLE_H_
+#define _DRIVER_SAMPLE_H_
 
 #include <Uefi.h>
 
@@ -70,11 +70,8 @@ extern UINT8  InventoryBin[];
 //
 extern UINT8  DriverSampleStrings[];
 
-#define VAR_OFFSET(Field)    \
-  ((UINT16) ((UINTN) &(((DRIVER_SAMPLE_CONFIGURATION *) 0)->Field)))
-
-#define DYNAMIC_ONE_OF_VAR_OFFSET        VAR_OFFSET (DynamicOneof)
-#define DYNAMIC_ORDERED_LIST_VAR_OFFSET  VAR_OFFSET (DynamicOrderedList)
+#define DYNAMIC_ONE_OF_VAR_OFFSET        OFFSET_OF (DRIVER_SAMPLE_CONFIGURATION, DynamicOneof)
+#define DYNAMIC_ORDERED_LIST_VAR_OFFSET  OFFSET_OF (DRIVER_SAMPLE_CONFIGURATION, DynamicOrderedList)
 
 #define DRIVER_SAMPLE_PRIVATE_SIGNATURE EFI_SIGNATURE_32 ('D', 'S', 'p', 's')
 

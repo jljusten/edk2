@@ -1,20 +1,13 @@
 /** @file
 
-Copyright (c) 2005 - 2006, Intel Corporation
+Copyright (c) 2005 - 2006, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
-http://opensource.org/licenses/bsd-license.php
+http://opensource.org/licenses/bsd-license.php<BR>
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  SockInterface.c
-
-Abstract:
-
 
 **/
 
@@ -28,8 +21,8 @@ Abstract:
   @param  List                 Pointer to the token list to be searched.
   @param  Event                The event to be checked.
 
-  @retval BOOLEAN              If TRUE, the specific Event exists in the List. If
-                               FALSE, the specific Event is not in the List.
+  @retval  TRUE                The specific Event exists in the List. 
+  @retval  False               The specific Event is not in the List.
 
 **/
 BOOLEAN
@@ -77,8 +70,7 @@ SockTokenExisted (
   if (SockTokenExistedInList (&Sock->SndTokenList, Event) ||
       SockTokenExistedInList (&Sock->ProcessingSndTokenList, Event) ||
       SockTokenExistedInList (&Sock->RcvTokenList, Event) ||
-      SockTokenExistedInList (&Sock->ListenTokenList, Event)
-        ) {
+      SockTokenExistedInList (&Sock->ListenTokenList, Event)) {
 
     return TRUE;
   }
@@ -152,7 +144,7 @@ SockDestroyChild (
 {
   EFI_STATUS  Status;
 
-  ASSERT (Sock && Sock->ProtoHandler);
+  ASSERT ((Sock != NULL) && (Sock->ProtoHandler != NULL));
 
   if (Sock->IsDestroyed) {
     return EFI_SUCCESS;
@@ -205,9 +197,7 @@ SockDestroyChild (
   data ProtoData.
 
   @param  SockInitData         Inital data to setting the socket.
-  @param  ProtoData            Pointer to the protocol specific data.
-  @param  Len                  Length of the protocol specific data.
-
+  
   @return Pointer to the newly created socket. If NULL, error condition occured.
 
 **/
@@ -260,8 +250,7 @@ SockCreateChild (
 
 
 /**
-  Configure the specific socket Sock using configuration data
-  ConfigData.
+  Configure the specific socket Sock using configuration data ConfigData.
 
   @param  Sock                 Pointer to the socket to be configured.
   @param  ConfigData           Pointer to the configuration data.
@@ -457,12 +446,12 @@ SockAccept (
 
       RemoveEntryList (ListEntry);
 
-      ASSERT (Socket->Parent);
+      ASSERT (Socket->Parent != NULL);
 
       Socket->Parent->ConnCnt--;
 
       DEBUG (
-        (EFI_D_WARN,
+        (EFI_D_INFO,
         "SockAccept: Accept a socket, now conncount is %d",
         Socket->Parent->ConnCnt)
         );

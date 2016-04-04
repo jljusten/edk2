@@ -1,7 +1,7 @@
 /** @file
-  The header file of IScsiConfig.c
+  The header file of IScsiConfig.c.
 
-Copyright (c) 2004 - 2008, Intel Corporation
+Copyright (c) 2004 - 2008, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -9,14 +9,6 @@ http://opensource.org/licenses/bsd-license.php
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  IScsiConfig.h
-
-Abstract:
-
-  The header file of IScsiConfig.c
 
 **/
 
@@ -30,7 +22,6 @@ Abstract:
 #include <Library/DebugLib.h>
 #include <Library/BaseLib.h>
 #include <Library/NetLib.h>
-#include "IScsiConfigNVDataStruc.h"
 
 extern UINT8  IScsiConfigDxeBin[];
 extern UINT8  IScsiDxeStrings[];
@@ -40,6 +31,31 @@ extern UINT8  IScsiDxeStrings[];
 #define ISCSI_CONFIG_VAR_ATTR               (EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_NON_VOLATILE)
 
 #define ISCSI_FORM_CALLBACK_INFO_SIGNATURE  EFI_SIGNATURE_32 ('I', 'f', 'c', 'i')
+
+
+
+/**
+  If the DEBUG_PROPERTY_DEBUG_ASSERT_ENABLED bit of PcdDebugProperyMask is clear, 
+  then this macro return a pointer to a data structure ISCSI_FORM_CALLBACK_INFO.
+
+  If the DEBUG_PROPERTY_DEBUG_ASSERT_ENABLED bit of PcdDebugProperyMask is set,  
+  The Signature field of the data structure ISCSI_FORM_CALLBACK_INFO 
+  is compared to TestSignature.  If the signatures match, then a pointer 
+  to the pointer to a data structure ISCSI_FORM_CALLBACK_INFO is returned.  
+  If the signatures do not match, then DebugAssert() is called with a description 
+  of "CR has a bad signature" and Callback is returned.  
+
+  If the data type ISCSI_FORM_CALLBACK_INFO_SIGNATURE does not contain the field
+  specified by Callback, then the module will not compile.
+
+  If ISCSI_FORM_CALLBACK_INFO_SIGNATURE does not contain a field called Signature, 
+  then the module will not compile.
+
+  @param  Callback       Pointer to the specified field within the data 
+                         structure ISCSI_FORM_CALLBACK_INFO.
+  @return                a pointer to the pointer to a data structure ISCSI_FORM_CALLBACK_INFO.
+  @return  Others        Some unexpected error happened.
+**/
 
 #define ISCSI_FORM_CALLBACK_INFO_FROM_FORM_CALLBACK(Callback) \
   CR ( \
@@ -90,16 +106,13 @@ typedef struct _ISCSI_FORM_CALLBACK_INFO {
   Updates the iSCSI configuration form to add/delete an entry for the iSCSI
   device specified by the Controller.
 
-  @param  DriverBindingHandle[in] The driverbinding handle.
-
-  @param  Controller[in]          The controller handle of the iSCSI device.
-
-  @param  AddForm[in]             Whether to add or delete a form entry.
+  @param[in]  DriverBindingHandle The driverbinding handle.
+  @param[in]  Controller          The controller handle of the iSCSI device.
+  @param[in]  AddForm             Whether to add or delete a form entry.
 
   @retval EFI_SUCCESS             The iSCSI configuration form is updated.
-
   @retval EFI_OUT_OF_RESOURCES    Failed to allocate memory.
-
+  @retval Others                  Other errors as indicated.
 **/
 EFI_STATUS
 IScsiConfigUpdateForm (
@@ -111,16 +124,15 @@ IScsiConfigUpdateForm (
 /**
   Initialize the iSCSI configuration form.
 
-  @param  DriverBindingHandle[in] The iSCSI driverbinding handle.
+  @param[in]  DriverBindingHandle  The iSCSI driverbinding handle.
 
-  @retval EFI_SUCCESS             The iSCSI configuration form is initialized.
-
-  @retval EFI_OUT_OF_RESOURCES    Failed to allocate memory.
-
+  @retval EFI_SUCCESS              The iSCSI configuration form is initialized.
+  @retval EFI_OUT_OF_RESOURCES     Failed to allocate memory.
+  @retval Others                   Other errors as indicated.
 **/
 EFI_STATUS
 IScsiConfigFormInit (
-  IN EFI_HANDLE  DriverBindingHandle
+  VOID
   );
 
 /**
@@ -128,12 +140,10 @@ IScsiConfigFormInit (
   device configuration entries, uninstall the form callback protocol and
   free the resources used.
 
-  @param  DriverBindingHandle[in] The iSCSI driverbinding handle.
-
+  @param[in]  DriverBindingHandle The iSCSI driverbinding handle.
+  
   @retval EFI_SUCCESS             The iSCSI configuration form is unloaded.
-
   @retval EFI_OUT_OF_RESOURCES    Failed to allocate memory.
-
 **/
 EFI_STATUS
 IScsiConfigFormUnload (

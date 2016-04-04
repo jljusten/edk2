@@ -91,7 +91,9 @@ UnicodeVSPrint (
                           Unicode string.
   @param  BufferSize      The size, in bytes, of the output buffer specified by StartOfBuffer.
   @param  FormatString    Null-terminated Unicode format string.
-  @param  ...             The variable argument list.
+  @param  ...             Variable argument list whose contents are accessed based on the 
+                          format string specified by FormatString.
+  
   @return The number of Unicode characters in the produced output buffer not including the
           Null-terminator.
 
@@ -184,7 +186,8 @@ UnicodeVSPrintAsciiFormat (
                           Unicode string.
   @param  BufferSize      The size, in bytes, of the output buffer specified by StartOfBuffer.
   @param  FormatString    Null-terminated ASCII format string.
-  @param  ...             The variable argument list.
+  @param  ...             Variable argument list whose contents are accessed based on the 
+                          format string specified by FormatString.
   
   @return The number of Unicode characters in the produced output buffer not including the
           Null-terminator.
@@ -329,8 +332,9 @@ AsciiVSPrint (
                           ASCII string.
   @param  BufferSize      The size, in bytes, of the output buffer specified by StartOfBuffer.
   @param  FormatString    Null-terminated ASCII format string.
-  @param  ...             The variable argument list.
-  
+  @param  ...             Variable argument list whose contents are accessed based on the 
+                          format string specified by FormatString.
+   
   @return The number of ASCII characters in the produced output buffer not including the
           Null-terminator.
 
@@ -423,7 +427,8 @@ AsciiVSPrintUnicodeFormat (
                           ASCII string.
   @param  BufferSize      The size, in bytes, of the output buffer specified by StartOfBuffer.
   @param  FormatString    Null-terminated Unicode format string.
-  @param  ...             The variable argument list.
+  @param  ...             Variable argument list whose contents are accessed based on the 
+                          format string specified by FormatString.
   
   @return The number of ASCII characters in the produced output buffer not including the
           Null-terminator.
@@ -488,10 +493,10 @@ AsciiSPrintUnicodeFormat (
 UINTN
 EFIAPI
 AsciiValueToString (
-  IN OUT CHAR8  *Buffer,
-  IN UINTN      Flags,
-  IN INT64      Value,
-  IN UINTN      Width
+  OUT CHAR8      *Buffer,
+  IN  UINTN      Flags,
+  IN  INT64      Value,
+  IN  UINTN      Width
   )
 {
   return BasePrintLibConvertValueToString (Buffer, Flags, Value, Width, 1);

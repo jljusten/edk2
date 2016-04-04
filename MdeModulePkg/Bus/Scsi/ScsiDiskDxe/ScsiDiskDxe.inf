@@ -1,8 +1,7 @@
 #/** @file
-#  
-#    Component description file for Scsi Disk module.
-#  
-#   Scsi Disk driver. This driver detected the Scsi disk media and export block io protocol
+#    
+#  Scsi Disk driver. This driver detects the Scsi disk media and installs Block I/O Protocol
+#  on the device handle that holds the SCSI I/O Portocol.
 #  
 #  Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 #  All rights reserved. This program and the accompanying materials
@@ -21,8 +20,6 @@
   FILE_GUID                      = 0A66E322-3740-4cce-AD62-BD172CECCA35
   MODULE_TYPE                    = UEFI_DRIVER
   VERSION_STRING                 = 1.0
-  EDK_RELEASE_VERSION            = 0x00020000
-  EFI_SPECIFICATION_VERSION      = 0x00010010
 
   ENTRY_POINT                    = InitializeScsiDisk
 
@@ -32,7 +29,8 @@
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
 #
 #  DRIVER_BINDING                =  gScsiDiskDriverBinding                       
-#  COMPONENT_NAME                =  gScsiDiskComponentName                       
+#  COMPONENT_NAME                =  gScsiDiskComponentName
+#  COMPONENT_NAME2               =  gScsiDiskComponentName2
 #
 
 [Sources.common]
@@ -46,7 +44,7 @@
 
 [LibraryClasses]
   UefiBootServicesTableLib
-  ScsiLib
+  UefiScsiLib
   BaseMemoryLib
   UefiLib
   UefiDriverEntryPoint

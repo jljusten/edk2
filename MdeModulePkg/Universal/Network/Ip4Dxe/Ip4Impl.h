@@ -50,7 +50,9 @@ Abstract:
 #include "Ip4Input.h"
 #include "Ip4Output.h"
 
-enum {
+
+
+typedef enum {
   IP4_PROTOCOL_SIGNATURE = EFI_SIGNATURE_32 ('I', 'P', '4', 'P'),
   IP4_SERVICE_SIGNATURE  = EFI_SIGNATURE_32 ('I', 'P', '4', 'S'),
 
@@ -74,17 +76,17 @@ enum {
   IP4_SERVICE_STARTED,
   IP4_SERVICE_CONFIGED,
   IP4_SERVICE_DESTORY
-};
+} IP4_IMPL_ENUM_TYPES;
 
-//
-// IP4_TXTOKEN_WRAP wraps the upper layer's transmit token.
-// The user's data is kept in the Packet. When fragment is
-// needed, each fragment of the Packet has a reference to the
-// Packet, no data is actually copied. The Packet will be
-// released when all the fragments of it have been recycled by
-// MNP. Upon then, the IP4_TXTOKEN_WRAP will be released, and
-// user's event signalled.
-//
+///
+/// IP4_TXTOKEN_WRAP wraps the upper layer's transmit token.
+/// The user's data is kept in the Packet. When fragment is
+/// needed, each fragment of the Packet has a reference to the
+/// Packet, no data is actually copied. The Packet will be
+/// released when all the fragments of it have been recycled by
+/// MNP. Upon then, the IP4_TXTOKEN_WRAP will be released, and
+/// user's event signalled.
+///
 typedef struct {
   IP4_PROTOCOL              *IpInstance;
   EFI_IP4_COMPLETION_TOKEN  *Token;
@@ -93,21 +95,22 @@ typedef struct {
   INTN                      Life;
 } IP4_TXTOKEN_WRAP;
 
-//
-// IP4_RXDATA_WRAP wraps the data IP4 child delivers to the
-// upper layers. The received packet is kept in the Packet.
-// The Packet itself may be constructured from some fragments.
-// All the fragments of the Packet is organized by a
-// IP4_ASSEMBLE_ENTRY structure. If the Packet is recycled by
-// the upper layer, the assemble entry and its associated
-// fragments will be freed at last.
-//
+///
+/// IP4_RXDATA_WRAP wraps the data IP4 child delivers to the
+/// upper layers. The received packet is kept in the Packet.
+/// The Packet itself may be constructured from some fragments.
+/// All the fragments of the Packet is organized by a
+/// IP4_ASSEMBLE_ENTRY structure. If the Packet is recycled by
+/// the upper layer, the assemble entry and its associated
+/// fragments will be freed at last.
+///
 typedef struct {
   LIST_ENTRY                Link;
   IP4_PROTOCOL              *IpInstance;
   NET_BUF                   *Packet;
   EFI_IP4_RECEIVE_DATA      RxData;
 } IP4_RXDATA_WRAP;
+
 
 struct _IP4_PROTOCOL {
   UINT32                    Signature;
@@ -213,36 +216,112 @@ struct _IP4_SERVICE {
 
 extern EFI_IP4_PROTOCOL mEfiIp4ProtocolTemplete;
 
+/**
+  Config the MNP parameter used by IP. The IP driver use one MNP
+  child to transmit/receive frames. By default, it configures MNP
+  to receive unicast/multicast/broadcast. And it will enable/disable
+  the promiscous receive according to whether there is IP child
+  enable that or not. If Force is FALSE, it will iterate through
+  all the IP children to check whether the promiscuous receive
+  setting has been changed. If it hasn't been changed, it won't
+  reconfigure the MNP. If Force is TRUE, the MNP is configured no
+  matter whether that is changed or not.
+
+  @param  IpSb                   The IP4 service instance that is to be changed.
+  @param  Force                  Force the configuration or not.
+
+  @retval EFI_SUCCESS            The MNP is successfully configured/reconfigured.
+  @retval Others                 Configuration failed.
+
+**/
 EFI_STATUS
 Ip4ServiceConfigMnp (
   IN IP4_SERVICE            *IpSb,
   IN BOOLEAN                Force
   );
 
+/**
+  Intiialize the IP4_PROTOCOL structure to the unconfigured states.
+
+  @param  IpSb                   The IP4 service instance.
+  @param  IpInstance             The IP4 child instance.
+
+  @return None
+
+**/
 VOID
 Ip4InitProtocol (
-  IN IP4_SERVICE            *IpSb,
-  IN IP4_PROTOCOL           *IpInstance
+  IN     IP4_SERVICE            *IpSb,
+  IN OUT IP4_PROTOCOL           *IpInstance
   );
 
+/**
+  Clean up the IP4 child, release all the resources used by it.
+
+  @param  IpInstance             The IP4 child to clean up.
+
+  @retval EFI_SUCCESS            The IP4 child is cleaned up
+  @retval EFI_DEVICE_ERROR       Some resources failed to be released
+
+**/
 EFI_STATUS
 Ip4CleanProtocol (
   IN  IP4_PROTOCOL          *IpInstance
   );
 
+/**
+  Cancel the user's receive/transmit request.
+
+  @param  IpInstance             The IP4 child
+  @param  Token                  The token to cancel. If NULL, all token will be
+                                 cancelled.
+
+  @retval EFI_SUCCESS            The token is cancelled
+  @retval EFI_NOT_FOUND          The token isn't found on either the
+                                 transmit/receive queue
+  @retval EFI_DEVICE_ERROR       Not all token is cancelled when Token is NULL.
+
+**/
 EFI_STATUS
 Ip4Cancel (
   IN IP4_PROTOCOL             *IpInstance,
-  IN EFI_IP4_COMPLETION_TOKEN *Token
+  IN EFI_IP4_COMPLETION_TOKEN *Token          OPTIONAL
   );
 
+/**
+  Change the IP4 child's multicast setting. The caller
+  should make sure that the parameters is valid.
+
+  @param  IpInstance             The IP4 child to change the setting.
+  @param  JoinFlag               TRUE to join the group, otherwise leave it
+  @param  GroupAddress           The target group address
+
+  @retval EFI_ALREADY_STARTED    Want to join the group, but already a member of it
+  @retval EFI_OUT_OF_RESOURCES   Failed to allocate some resources.
+  @retval EFI_DEVICE_ERROR       Failed to set the group configuraton
+  @retval EFI_SUCCESS            Successfully updated the group setting.
+  @retval EFI_NOT_FOUND          Try to leave the group which it isn't a member.
+
+**/
 EFI_STATUS
 Ip4Groups (
   IN IP4_PROTOCOL           *IpInstance,
   IN BOOLEAN                JoinFlag,
-  IN EFI_IPv4_ADDRESS       *GroupAddress
+  IN EFI_IPv4_ADDRESS       *GroupAddress       OPTIONAL
   );
 
+/**
+  The heart beat timer of IP4 service instance. It times out
+  all of its IP4 children's received-but-not-delivered and
+  transmitted-but-not-recycle packets, and provides time input
+  for its IGMP protocol.
+
+  @param  Event                  The IP4 service instance's heart beat timer.
+  @param  Context                The IP4 service instance.
+
+  @return None
+
+**/
 VOID
 EFIAPI
 Ip4TimerTicking (
@@ -250,6 +329,20 @@ Ip4TimerTicking (
   IN VOID                   *Context
   );
 
+/**
+  Decrease the life of the transmitted packets. If it is
+  decreased to zero, cancel the packet. This function is
+  called by Ip4PacketTimerTicking which time out both the
+  received-but-not-delivered and transmitted-but-not-recycle
+  packets.
+
+  @param  Map                    The IP4 child's transmit map.
+  @param  Item                   Current transmitted packet
+  @param  Context                Not used.
+
+  @retval EFI_SUCCESS            Always returns EFI_SUCCESS
+
+**/
 EFI_STATUS
 Ip4SentPacketTicking (
   IN NET_MAP                *Map,

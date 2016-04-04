@@ -29,25 +29,64 @@ Abstract:
 //
 EFI_MAC_ADDRESS  mZeroMacAddress;
 
+/**
+  Callback funtion when frame transmission is finished. It will
+  call the frame owner's callback function to tell it the result.
+
+  @param  Context               Context which is point to the token.
+
+  @return None.
+
+**/
 VOID
 EFIAPI
 Ip4OnFrameSentDpc (
-  IN VOID                   *Context
+  IN VOID                    *Context
   );
 
+/**
+  Request Ip4OnFrameSentDpc as a DPC at TPL_CALLBACK.
+
+  @param  Event                 The transmit token's event.
+  @param  Context               Context which is point to the token.
+
+  @return None
+
+**/
 VOID
 EFIAPI
 Ip4OnFrameSent (
-  IN EFI_EVENT              Event,
-  IN VOID                   *Context
+  IN EFI_EVENT               Event,
+  IN VOID                    *Context
   );
 
+/**
+  Callback function when ARP request are finished. It will cancelled
+  all the queued frame if the ARP requests failed. Or transmit them
+  if the request succeed.
+
+  @param  Context               The context of the callback, a point to the ARP
+                                queue
+
+  @return None
+
+**/
 VOID
 EFIAPI
 Ip4OnArpResolvedDpc (
   IN VOID                   *Context
   );
 
+/**
+  Request Ip4OnArpResolvedDpc as a DPC at TPL_CALLBACK.
+
+  @param  Event                 The Arp request event.
+  @param  Context               The context of the callback, a point to the ARP
+                                queue.
+
+  @return None
+
+**/
 VOID
 EFIAPI
 Ip4OnArpResolved (
@@ -55,19 +94,55 @@ Ip4OnArpResolved (
   IN VOID                   *Context
   );
 
+/**
+  Received a frame from MNP, wrap it in net buffer then deliver
+  it to IP's input function. The ownship of the packet also
+  transferred to IP. When Ip is finished with this packet, it
+  will call NetbufFree to release the packet, NetbufFree will
+  again call the Ip4RecycleFrame to signal MNP's event and free
+  the token used.
+
+  @param  Context               Context for the callback.
+
+  @return None.
+
+**/
 VOID
 EFIAPI
 Ip4OnFrameReceivedDpc (
-  IN VOID                   *Context
+  IN VOID                     *Context
   );
 
+/**
+
+  Request Ip4OnFrameReceivedDpc as a DPC at TPL_CALLBACK.
+
+  @param Event      The receive event delivered to MNP for receive.
+  @param Context    Context for the callback.
+  
+  @return None.
+
+**/
 VOID
 EFIAPI
 Ip4OnFrameReceived (
-  IN EFI_EVENT              Event,
-  IN VOID                   *Context
+  IN EFI_EVENT                Event,
+  IN VOID                     *Context
   );
 
+/**
+  Remove all the frames on the ARP queue that pass the FrameToCancel,
+  that is, either FrameToCancel is NULL or it returns true for the frame.
+
+  @param  ArpQue                ARP frame to remove the frames from.
+  @param  IoStatus              The status returned to the cancelled frames'
+                                callback function.
+  @param  FrameToCancel         Function to select which frame to cancel.
+  @param  Context               Opaque parameter to the FrameToCancel.
+
+  @return NONE
+
+**/
 VOID
 Ip4CancelFrameArp (
   IN IP4_ARP_QUE            *ArpQue,
@@ -80,7 +155,7 @@ Ip4CancelFrameArp (
 /**
   Wrap a transmit request into a newly allocated IP4_LINK_TX_TOKEN.
 
-  @param  Interface             The interface to send out from
+  @param  Interface             The interface to send out to.
   @param  IpInstance            The IpInstance that transmit the packet.  NULL if
                                 the packet is sent by the IP4 driver itself.
   @param  Packet                The packet to transmit
@@ -511,9 +586,9 @@ Ip4CreateInterface (
 **/
 EFI_STATUS
 Ip4SetAddress (
-  IN  IP4_INTERFACE         *Interface,
-  IN  IP4_ADDR              IpAddr,
-  IN  IP4_ADDR              SubnetMask
+  IN OUT IP4_INTERFACE      *Interface,
+  IN     IP4_ADDR           IpAddr,
+  IN     IP4_ADDR           SubnetMask
   )
 {
   EFI_ARP_CONFIG_DATA       ArpConfig;
@@ -613,7 +688,7 @@ ON_ERROR:
 
 
 /**
-  Fileter function to cancel all the frame related to an IP instance.
+  Filter function to cancel all the frame related to an IP instance.
 
   @param  Frame                 The transmit request to test whether to cancel
   @param  Context               The context which is the Ip instance that issued
@@ -681,7 +756,7 @@ Ip4CancelReceive (
 
   @param  Interface             The interface used by the IpInstance
   @param  IpInstance            The Ip instance that free the interface. NULL if
-                                the  Ip driver is releasing the default interface.
+                                the Ip driver is releasing the default interface.
 
   @retval EFI_SUCCESS           The interface use IpInstance is freed.
 
@@ -815,28 +890,22 @@ Ip4OnArpResolvedDpc (
   Ip4FreeArpQue (ArpQue, EFI_SUCCESS);
 }
 
+/**
+  Request Ip4OnArpResolvedDpc as a DPC at TPL_CALLBACK.
+
+  @param  Event                 The Arp request event.
+  @param  Context               The context of the callback, a point to the ARP
+                                queue.
+
+  @return None
+
+**/
 VOID
 EFIAPI
 Ip4OnArpResolved (
   IN EFI_EVENT              Event,
   IN VOID                   *Context
   )
-/*++
-
-Routine Description:
-
-  Request Ip4OnArpResolvedDpc as a DPC at TPL_CALLBACK
-
-Arguments:
-
-  Event   - The Arp request event
-  Context - The context of the callback, a point to the ARP queue
-
-Returns:
-
-  None
-
---*/
 {
   //
   // Request Ip4OnArpResolvedDpc as a DPC at TPL_CALLBACK
@@ -879,28 +948,21 @@ Ip4OnFrameSentDpc (
   Ip4FreeLinkTxToken (Token);
 }
 
+/**
+  Request Ip4OnFrameSentDpc as a DPC at TPL_CALLBACK.
+
+  @param  Event                 The transmit token's event.
+  @param  Context               Context which is point to the token.
+
+  @return None
+
+**/
 VOID
 EFIAPI
 Ip4OnFrameSent (
   IN EFI_EVENT               Event,
   IN VOID                    *Context
   )
-/*++
-
-Routine Description:
-
-  Request Ip4OnFrameSentDpc as a DPC at TPL_CALLBACK
-
-Arguments:
-
-  Event   - The transmit token's event
-  Context - Context which is point to the token.
-
-Returns:
-
-  None.
-
---*/
 {
   //
   // Request Ip4OnFrameSentDpc as a DPC at TPL_CALLBACK
@@ -929,6 +991,7 @@ Returns:
   @retval EFI_OUT_OF_RESOURCES  Failed to allocate resource to send the frame
   @retval EFI_NO_MAPPING        Can't resolve the MAC for the nexthop
   @retval EFI_SUCCESS           The packet is successfully transmitted.
+  @retval other                 Other error occurs.
 
 **/
 EFI_STATUS
@@ -1154,28 +1217,22 @@ Ip4OnFrameReceivedDpc (
   Token->CallBack (Token->IpInstance, Packet, EFI_SUCCESS, Flag, Token->Context);
 }
 
+/**
+
+  Request Ip4OnFrameReceivedDpc as a DPC at TPL_CALLBACK.
+
+  @param Event      The receive event delivered to MNP for receive.
+  @param Context    Context for the callback.
+  
+  @return None.
+
+**/
 VOID
 EFIAPI
 Ip4OnFrameReceived (
   IN EFI_EVENT                Event,
   IN VOID                     *Context
   )
-/*++
-
-Routine Description:
-
-  Request Ip4OnFrameReceivedDpc as a DPC at TPL_CALLBACK
-
-Arguments:
-
-  Event   - The receive event delivered to MNP for receive.
-  Context - Context for the callback.
-
-Returns:
-
-  None.
-
---*/
 {
   //
   // Request Ip4OnFrameReceivedDpc as a DPC at TPL_CALLBACK
@@ -1196,6 +1253,7 @@ Returns:
   @retval EFI_ALREADY_STARTED   There is already a pending receive request.
   @retval EFI_OUT_OF_RESOURCES  Failed to allocate resource to receive
   @retval EFI_SUCCESS           The recieve request has been started.
+  @retval other                 Other error occurs.
 
 **/
 EFI_STATUS
