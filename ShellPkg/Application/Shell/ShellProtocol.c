@@ -2769,15 +2769,33 @@ EfiShellGetHelpText(
   )
 {
   CONST CHAR16  *ManFileName;
+  CHAR16        *FixCommand;
+  EFI_STATUS    Status;
 
   ASSERT(HelpText != NULL);
+  FixCommand = NULL;
 
   ManFileName = ShellCommandGetManFileNameHandler(Command);
 
   if (ManFileName != NULL) {
     return (ProcessManFile(ManFileName, Command, Sections, NULL, HelpText));
   } else {
-    return (ProcessManFile(Command, Command, Sections, NULL, HelpText));
+    if ((StrLen(Command)> 4)
+    && (Command[StrLen(Command)-1] == L'i' || Command[StrLen(Command)-1] == L'I')
+    && (Command[StrLen(Command)-2] == L'f' || Command[StrLen(Command)-2] == L'F')
+    && (Command[StrLen(Command)-3] == L'e' || Command[StrLen(Command)-3] == L'E')
+    && (Command[StrLen(Command)-4] == L'.')
+    ) {
+      FixCommand = AllocateZeroPool(StrSize(Command) - 4 * sizeof (CHAR16));
+      ASSERT(FixCommand != NULL);
+
+      StrnCpy(FixCommand, Command, StrLen(Command)-4);
+      Status = ProcessManFile(FixCommand, FixCommand, Sections, NULL, HelpText);
+      FreePool(FixCommand);
+      return Status;
+    } else {
+      return (ProcessManFile(Command, Command, Sections, NULL, HelpText));
+    }
   }
 }
 
@@ -3279,7 +3297,6 @@ NotificationFunction(
   IN EFI_KEY_DATA *KeyData
   )
 {
-  EFI_INPUT_KEY Key;
   if ( ((KeyData->Key.UnicodeChar == L'c') &&
         (KeyData->KeyState.KeyShiftState == (EFI_SHIFT_STATE_VALID|EFI_LEFT_CONTROL_PRESSED) || KeyData->KeyState.KeyShiftState  == (EFI_SHIFT_STATE_VALID|EFI_RIGHT_CONTROL_PRESSED))) ||
       (KeyData->Key.UnicodeChar == 3)
@@ -3292,12 +3309,6 @@ NotificationFunction(
               (KeyData->KeyState.KeyShiftState  == (EFI_SHIFT_STATE_VALID|EFI_LEFT_CONTROL_PRESSED) || KeyData->KeyState.KeyShiftState  == (EFI_SHIFT_STATE_VALID|EFI_RIGHT_CONTROL_PRESSED))
               ){ 
     ShellInfoObject.HaltOutput = TRUE;
-
-    //
-    // Make sure that there are no pending keystrokes to pervent the pause.
-    //
-    gST->ConIn->Reset(gST->ConIn, FALSE);
-    while (gST->ConIn->ReadKeyStroke (gST->ConIn, &Key)==EFI_SUCCESS);
   }
   return (EFI_SUCCESS);
 }

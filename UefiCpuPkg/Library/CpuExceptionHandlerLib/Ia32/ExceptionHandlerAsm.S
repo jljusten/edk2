@@ -23,7 +23,7 @@
 
 ASM_GLOBAL ASM_PFX(CommonExceptionHandler)
 ASM_GLOBAL ASM_PFX(CommonInterruptEntry)
-ASM_GLOBAL ASM_PFX(HookAfterStubEnd)
+ASM_GLOBAL ASM_PFX(HookAfterStubHeaderEnd)
 
 #EXTRN ASM_PFX(mErrorCodeFlag):DWORD           # Error code flags for exceptions
 #EXTRN ASM_PFX(mDoFarReturnFlag):DWORD         # Do far return flag
@@ -267,7 +267,7 @@ VectorNum:
     .long   ASM_PFX(HookAfterStubHeaderEnd)
     jmp     *%eax
 ASM_GLOBAL ASM_PFX(HookAfterStubHeaderEnd)
-HookAfterStubHeaderEnd:
+ASM_PFX(HookAfterStubHeaderEnd):
     popl    %eax
     subl    $8, %esp        # reserve room for filling exception data later
     pushl   8(%esp)

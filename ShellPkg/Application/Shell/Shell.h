@@ -124,6 +124,40 @@ typedef struct {
 
 extern SHELL_INFO ShellInfoObject;
 
+typedef enum {
+  Internal_Command,
+  Script_File_Name,
+  Efi_Application,
+  File_Sys_Change,
+  Unknown_Invalid
+} SHELL_OPERATION_TYPES;
+
+/**
+  Converts the command line to it's post-processed form.  this replaces variables and alias' per UEFI Shell spec.
+
+  @param[in,out] CmdLine        pointer to the command line to update
+
+  @retval EFI_SUCCESS           The operation was successful
+  @retval EFI_OUT_OF_RESOURCES  A memory allocation failed.
+  @return                       some other error occured
+**/
+EFI_STATUS
+EFIAPI
+ProcessCommandLineToFinal(
+  IN OUT CHAR16 **CmdLine
+  );
+
+/**
+  Function to update the shell variable "lasterror".
+
+  @param[in] ErrorCode      the error code to put into lasterror
+**/
+EFI_STATUS
+EFIAPI
+SetLastError(
+  IN CONST SHELL_STATUS   ErrorCode
+  );
+
 /**
   Sets all the alias' that were registered with the ShellCommandLib library.
 

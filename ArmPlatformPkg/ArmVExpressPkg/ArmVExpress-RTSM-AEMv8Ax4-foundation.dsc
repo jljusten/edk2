@@ -34,6 +34,10 @@
   ArmCpuLib|ArmPkg/Drivers/ArmCpuLib/ArmCortexAEMv8Lib/ArmCortexAEMv8Lib.inf
   ArmPlatformLib|ArmPlatformPkg/ArmVExpressPkg/Library/ArmVExpressLibRTSM/ArmVExpressFoundationLib.inf
 
+  # Virtio Support
+  VirtioLib|OvmfPkg/Library/VirtioLib/VirtioLib.inf
+  VirtioMmioDeviceLib|OvmfPkg/Library/VirtioMmioDeviceLib/VirtioMmioDeviceLib.inf
+
   ArmPlatformSysConfigLib|ArmPlatformPkg/ArmVExpressPkg/Library/ArmVExpressSysConfigLib/ArmVExpressSysConfigLib.inf
 
   TimerLib|ArmPkg/Library/ArmArchTimerLib/ArmArchTimerLib.inf
@@ -76,12 +80,8 @@
   gArmTokenSpaceGuid.PcdVFPEnabled|1
 
   # Stacks for MPCores in Secure World (No SRAM on foundation model, put in RAM at 64MB)
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresSecStackBase|0xA4009000
+  gArmPlatformTokenSpaceGuid.PcdCPUCoresSecStackBase|0xA4008000
   gArmPlatformTokenSpaceGuid.PcdCPUCoreSecPrimaryStackSize|0x1000
-
-  # Stacks for MPCores in Monitor Mod (No SRAM on foundation model, put in RAM at 64MB)
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresSecMonStackBase|0xA4008000
-  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecMonStackSize|0x100
 
   # Stacks for MPCores in Normal World (No SRAM on foundation model, put in RAM at 64MB)
   gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|0xA4000000
@@ -223,6 +223,12 @@
   # Semi-hosting filesystem
   #
   ArmPkg/Filesystem/SemihostFs/SemihostFs.inf
+
+  #
+  # Platform Driver
+  #
+  ArmPlatformPkg/ArmVExpressPkg/ArmFvpDxe/ArmFvpDxe.inf
+  OvmfPkg/VirtioBlkDxe/VirtioBlk.inf
 
   #
   # FAT filesystem + GPT/MBR partitioning

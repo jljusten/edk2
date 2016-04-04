@@ -26,31 +26,40 @@
 //
 #pragma pack(1)
 typedef struct {
-  VIRTIO_HDR Generic;
-  UINT64     VhdrCapacity;
-  UINT32     VhdrSizeMax;
-  UINT32     VhdrSegMax;
-  UINT16     VhdrCylinders;
-  UINT8      VhdrHeads;
-  UINT8      VhdrSectors;
-  UINT32     VhdrBlkSize;
-} VBLK_HDR;
+  UINT8  PhysicalBlockExp; // # of logical blocks per physical block (log2)
+  UINT8  AlignmentOffset;  // offset of first aligned logical block
+  UINT16 MinIoSize;        // suggested minimum I/O size in blocks
+  UINT32 OptIoSize;        // optimal (suggested maximum) I/O size in blocks
+} VIRTIO_BLK_TOPOLOGY;
+
+typedef struct {
+  UINT64              Capacity;
+  UINT32              SizeMax;
+  UINT32              SegMax;
+  UINT16              Cylinders;
+  UINT8               Heads;
+  UINT8               Sectors;
+  UINT32              BlkSize;
+  VIRTIO_BLK_TOPOLOGY Topology;
+} VIRTIO_BLK_CONFIG;
 #pragma pack()
 
-#define OFFSET_OF_VBLK(Field) OFFSET_OF (VBLK_HDR, Field)
-#define SIZE_OF_VBLK(Field)   (sizeof ((VBLK_HDR *) 0)->Field)
+#define OFFSET_OF_VBLK(Field) OFFSET_OF (VIRTIO_BLK_CONFIG, Field)
+#define SIZE_OF_VBLK(Field)   (sizeof ((VIRTIO_BLK_CONFIG *) 0)->Field)
 
 #define VIRTIO_BLK_F_BARRIER  BIT0
 #define VIRTIO_BLK_F_SIZE_MAX BIT1
 #define VIRTIO_BLK_F_SEG_MAX  BIT2
 #define VIRTIO_BLK_F_GEOMETRY BIT4
 #define VIRTIO_BLK_F_RO       BIT5
-#define VIRTIO_BLK_F_BLK_SIZE BIT6 // treated as "logical block size" in
-                                   // practice; actual host side implementation
-                                   // negotiates "optimal" block size
-                                   // separately
+#define VIRTIO_BLK_F_BLK_SIZE BIT6  // treated as "logical block size" in
+                                    // practice; actual host side
+                                    // implementation negotiates "optimal"
+                                    // block size separately, via
+                                    // VIRTIO_BLK_F_TOPOLOGY
 #define VIRTIO_BLK_F_SCSI     BIT7
-#define VIRTIO_BLK_F_FLUSH    BIT9 // identical to "write cache enabled"
+#define VIRTIO_BLK_F_FLUSH    BIT9  // identical to "write cache enabled"
+#define VIRTIO_BLK_F_TOPOLOGY BIT10 // information on optimal I/O alignment
 
 //
 // We keep the status byte separate from the rest of the virtio-blk request
