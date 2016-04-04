@@ -39,13 +39,13 @@
   gVariableRuntimeDxeFileGuid = { 0xcbd2e4d5, 0x7068, 0x4ff5, { 0xb4, 0x62, 0x98, 0x22, 0xb4, 0xad, 0x8d, 0x60 } }
 
 [PcdsFeatureFlag.common]
-  gArmPlatformTokenSpaceGuid.PcdStandalone|FALSE|BOOLEAN|0x00000001
   # Set this PCD to TRUE to map NORFlash at 0x0. FALSE means the DRAM is mapped at 0x0.
   gArmPlatformTokenSpaceGuid.PcdNorFlashRemapping|FALSE|BOOLEAN|0x00000012
 
 [PcdsFixedAtBuild.common]
   # These PCDs should be FeaturePcds. But we used these PCDs as an '#if' in an ASM file.
   # Using a FeaturePcd make a '(BOOLEAN) casting for its value which is not understood by the preprocessor.
+  gArmPlatformTokenSpaceGuid.PcdStandalone|0|UINT32|0x00000001
   gArmPlatformTokenSpaceGuid.PcdMPCoreSupport|0|UINT32|0x00000003
   
   # Stack for CPU Cores in Secure Mode
@@ -77,14 +77,42 @@
   #
   # ARM Primecells
   #
-  gArmPlatformTokenSpaceGuid.PcdSP804FrequencyInMHz|1|UINT32|0x0000001D
-  gArmPlatformTokenSpaceGuid.PcdSP804Timer0InterruptNum|0|UINT32|0x0000001E
+
+  ## SP804 DualTimer
+  gArmPlatformTokenSpaceGuid.PcdSP804TimerFrequencyInMHz|1|UINT32|0x0000001D
+  gArmPlatformTokenSpaceGuid.PcdSP804TimerPeriodicInterruptNum|0|UINT32|0x0000001E
+  gArmPlatformTokenSpaceGuid.PcdSP804TimerPeriodicBase|0|UINT32|0x0000002A
+  gArmPlatformTokenSpaceGuid.PcdSP804TimerPerformanceBase|0|UINT32|0x0000002B
+  gArmPlatformTokenSpaceGuid.PcdSP804TimerMetronomeBase|0|UINT32|0x0000002C
+
+  ## SP805 Watchdog
+  gArmPlatformTokenSpaceGuid.PcdSP805WatchdogBase|0x0|UINT32|0x00000023
+  gArmPlatformTokenSpaceGuid.PcdSP805WatchdogClockFrequencyInHz|32000|UINT32|0x00000021
+
+  ## PL011 UART
+  gArmPlatformTokenSpaceGuid.PcdUartDefaultReceiveFifoDepth|0x00000000|UINT32|0x0000001F
+  gArmPlatformTokenSpaceGuid.PcdUartDefaultTimeout|0x00000000|UINT32|0x00000020
+
+  ## PL031 RealTimeClock
+  gArmPlatformTokenSpaceGuid.PcdPL031RtcBase|0x0|UINT32|0x00000024
+  gArmPlatformTokenSpaceGuid.PcdPL031RtcPpmAccuracy|300000000|UINT32|0x00000022
+
+  ## PL061 GPIO
+  gArmPlatformTokenSpaceGuid.PcdPL061GpioBase|0x0|UINT32|0x00000025
+  
+  ## PL111 Lcd
+  gArmPlatformTokenSpaceGuid.PcdPL111LcdBase|0x0|UINT32|0x00000026
+  gArmPlatformTokenSpaceGuid.PcdArmHdLcdBase|0x0|UINT32|0x00000027
+  
+  ## PL180 MCI
+  gArmPlatformTokenSpaceGuid.PcdPL180SysMciRegAddress|0x00000000|UINT32|0x00000028
+  gArmPlatformTokenSpaceGuid.PcdPL180MciBaseAddress|0x00000000|UINT32|0x00000029
 
   #
   # BDS - Boot Manager
   #
   gArmPlatformTokenSpaceGuid.PcdFirmwareVendor|"ARM Platform"|VOID*|0x00000019
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootDescription|L""|VOID*|0x0000000C
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootDescription|L"Default Boot Device"|VOID*|0x0000000C
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDevicePath|L""|VOID*|0x0000000D
   gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|""|VOID*|0x000000F
   # PcdDefaultBootType define the type of the binary pointed by PcdDefaultBootDevicePath: 

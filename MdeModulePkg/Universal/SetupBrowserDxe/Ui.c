@@ -1946,6 +1946,7 @@ UiDisplayMenu (
     // Highlight not specified, fetch it from cached menu
     //
     Selection->QuestionId = CurrentMenu->QuestionId;
+    Selection->Sequence   = CurrentMenu->Sequence;
   }
 
   //
@@ -2317,7 +2318,9 @@ UiDisplayMenu (
         NewPos = gMenuOption.ForwardLink;
         SavedMenuOption = MENU_OPTION_FROM_LINK (NewPos);
 
-        while (SavedMenuOption->ThisTag->QuestionId != Selection->QuestionId && NewPos->ForwardLink != &gMenuOption) {
+        while ((SavedMenuOption->ThisTag->QuestionId != Selection->QuestionId ||
+                SavedMenuOption->Sequence != Selection->Sequence) &&
+                NewPos->ForwardLink != &gMenuOption) {
           NewPos     = NewPos->ForwardLink;
           SavedMenuOption = MENU_OPTION_FROM_LINK (NewPos);
         }
@@ -2453,6 +2456,7 @@ UiDisplayMenu (
         // Record highlight for current menu
         //
         CurrentMenu->QuestionId = Statement->QuestionId;
+        CurrentMenu->Sequence   = MenuOption->Sequence;
 
         //
         // Set reverse attribute
@@ -2873,6 +2877,7 @@ UiDisplayMenu (
       AdjustDateAndTimePosition (TRUE, &NewPos);
       if (NewPos->BackLink != &gMenuOption) {
         MenuOption = MENU_OPTION_FROM_LINK (NewPos);
+        ASSERT (MenuOption != NULL);
         NewLine    = TRUE;
         NewPos     = NewPos->BackLink;
 
@@ -2884,7 +2889,6 @@ UiDisplayMenu (
         }
         NextMenuOption = MENU_OPTION_FROM_LINK (NewPos);
        
-        ASSERT (MenuOption != NULL);
         if (Difference < 0) {
           //
           // We hit the begining MenuOption that can be focused

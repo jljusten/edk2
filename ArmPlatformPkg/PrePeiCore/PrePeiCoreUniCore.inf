@@ -37,19 +37,20 @@
   ArmPlatformPkg/ArmPlatformPkg.dec
 
 [LibraryClasses]
+  ArmLib
+  ArmPlatformLib
   BaseLib
   DebugLib
   IoLib
-  ArmLib
-  ArmPlatformLib
+  PrintLib
+  SerialPortLib
 
 [Ppis]
   gEfiTemporaryRamSupportPpiGuid
 
-[FeaturePcd]
-  gArmPlatformTokenSpaceGuid.PcdStandalone
-  
 [FixedPcd]
+  gArmPlatformTokenSpaceGuid.PcdStandalone
+
   gArmTokenSpaceGuid.PcdNormalFvBaseAddress
   gArmTokenSpaceGuid.PcdNormalFvSize
 
@@ -60,3 +61,6 @@
   
   gArmTokenSpaceGuid.PcdGicDistributorBase
   gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase
+
+  gArmTokenSpaceGuid.PcdNormalFvBaseAddress
+  gArmTokenSpaceGuid.PcdNormalFvSize

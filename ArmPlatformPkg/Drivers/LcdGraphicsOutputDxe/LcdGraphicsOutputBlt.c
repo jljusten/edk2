@@ -12,8 +12,6 @@
  **/
 
 #include <PiDxe.h>
-#include <Library/PcdLib.h>
-#include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/UefiBootServicesTableLib.h>
@@ -22,7 +20,6 @@
 
 #include <Guid/GlobalVariable.h>
 
-#include <ArmPlatform.h>
 #include "LcdGraphicsOutputDxe.h"
 
 extern BOOLEAN mDisplayInitialized;

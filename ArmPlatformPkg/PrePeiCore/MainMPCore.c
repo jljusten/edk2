@@ -12,8 +12,6 @@
 *
 **/
 
-#include <Library/DebugLib.h>
-#include <Library/PcdLib.h>
 #include <Library/ArmMPCoreMailBoxLib.h>
 #include <Chipset/ArmV7.h>
 #include <Drivers/PL390Gic.h>
@@ -71,7 +69,7 @@ PrimaryMain (
   PL390GicEnableDistributor(PcdGet32(PcdGicDistributorBase));
 
   // If ArmVe has not been built as Standalone then we need to wake up the secondary cores
-  if (FeaturePcdGet(PcdStandalone) == FALSE) {
+  if (!PcdGet32(PcdStandalone)) {
     // Sending SGI to all the Secondary CPU interfaces
     PL390GicSendSgiTo (PcdGet32(PcdGicDistributorBase), GIC_ICDSGIR_FILTER_EVERYONEELSE, 0x0E);
   }

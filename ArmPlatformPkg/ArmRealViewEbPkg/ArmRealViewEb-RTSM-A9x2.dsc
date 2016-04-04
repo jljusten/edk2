@@ -28,7 +28,7 @@
   FLASH_DEFINITION               = ArmPlatformPkg/ArmRealViewEbPkg/ArmRealViewEb-RTSM-MPCore.fdf
 
 [LibraryClasses.common]
-!if $(BUILD_TARGETS) == RELEASE
+!if $(TARGET) == RELEASE
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
   UncachedMemoryAllocationLib|ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
 !else
@@ -133,10 +133,21 @@
   #DebugAgentLib|EmbeddedPkg/Library/GdbDebugAgent/GdbDebugAgent.inf
   
   # L2 Cache Driver
-  L2X0CacheLib|ArmPkg/Library/L2X0CacheLibNull/L2X0CacheLibNull.inf
+  L2X0CacheLib|ArmPlatformPkg/Library/L2X0CacheLibNull/L2X0CacheLibNull.inf
   # ARM PL390 General Interrupt Driver in Secure and Non-secure
   PL390GicSecLib|ArmPkg/Drivers/PL390Gic/PL390GicSec.inf
   PL390GicNonSecLib|ArmPkg/Drivers/PL390Gic/PL390GicNonSec.inf
+
+!if $(EDK2_SKIP_PEICORE) == 1
+  PrePiLib|EmbeddedPkg/Library/PrePiLib/PrePiLib.inf
+  ExtractGuidedSectionLib|EmbeddedPkg/Library/PrePiExtractGuidedSectionLib/PrePiExtractGuidedSectionLib.inf
+  LzmaDecompressLib|IntelFrameworkModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
+  MemoryAllocationLib|EmbeddedPkg/Library/PrePiMemoryAllocationLib/PrePiMemoryAllocationLib.inf
+  HobLib|EmbeddedPkg/Library/PrePiHobLib/PrePiHobLib.inf
+  PrePiHobListPointerLib|ArmPlatformPkg/Library/PrePiHobListPointerLib/PrePiHobListPointerLib.inf
+  PlatformPeiLib|ArmPlatformPkg/PlatformPei/PlatformPeiLib.inf
+  MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
+!endif
 
 [LibraryClasses.common.PEI_CORE]
   BaseMemoryLib|MdePkg/Library/BaseMemoryLib/BaseMemoryLib.inf
@@ -250,8 +261,6 @@
   gArmTokenSpaceGuid.PcdCpuDxeProduceDebugSupport|FALSE
 
   gEfiMdeModulePkgTokenSpaceGuid.PcdTurnOffUsbLegacySupport|TRUE
-  
-  gArmPlatformTokenSpaceGuid.PcdStandalone|TRUE
 
 !if $(EDK2_SKIP_PEICORE) == 1
   gArmTokenSpaceGuid.PcdSkipPeiCore|TRUE
@@ -282,7 +291,11 @@
 # CLEAR_MEMORY_ENABLED       0x08
 # ASSERT_BREAKPOINT_ENABLED  0x10
 # ASSERT_DEADLOOP_ENABLED    0x20
+!if $(TARGET) == RELEASE
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x21
+!else
   gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x2f
+!endif
 
 #  DEBUG_INIT      0x00000001  // Initialization
 #  DEBUG_WARN      0x00000002  // Warnings
@@ -330,6 +343,7 @@
 #
   gArmTokenSpaceGuid.PcdCpuVectorBaseAddress|0x00000000
   
+  gArmPlatformTokenSpaceGuid.PcdStandalone|1
   gArmPlatformTokenSpaceGuid.PcdMPCoreSupport|1
   
   # Stacks for MPCores in Secure World
@@ -350,11 +364,7 @@
   
   # Size of the region used by UEFI in permanent memory (Reserved 64MB)
   gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize|0x04000000
-  
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedPerformanceCounterFrequencyInHz|1000000
-  gEmbeddedTokenSpaceGuid.PcdTimerPeriod|100000        # expressed in 100ns units, 100,000 x 100 ns = 10,000,000 ns = 10 ms
-  gArmPlatformTokenSpaceGuid.PcdSP804Timer0InterruptNum|33
-  
+    
   #
   # ARM Pcds
   #
@@ -364,6 +374,21 @@
   # ARM EB PCDS
   #
   gArmRealViewEbPkgTokenSpaceGuid.PcdGdbUartBase|0x1000a000
+  
+  #
+  # ARM PrimeCells
+  #
+  
+  ## SP804 Timer
+  gEmbeddedTokenSpaceGuid.PcdEmbeddedPerformanceCounterFrequencyInHz|1000000
+  gEmbeddedTokenSpaceGuid.PcdTimerPeriod|100000        # expressed in 100ns units, 100,000 x 100 ns = 10,000,000 ns = 10 ms
+  gArmPlatformTokenSpaceGuid.PcdSP804TimerPeriodicInterruptNum|33
+  gArmPlatformTokenSpaceGuid.PcdSP804TimerPeriodicBase|0x10011000
+  gArmPlatformTokenSpaceGuid.PcdSP804TimerPerformanceBase|0x10012020
+  gArmPlatformTokenSpaceGuid.PcdSP804TimerMetronomeBase|0x10012000
+  
+  ## PL031 RealTimeClock
+  gArmPlatformTokenSpaceGuid.PcdPL031RtcBase|0x10017000
   
   #
   # ARM PL011 - Serial Terminal
@@ -383,7 +408,7 @@
   gArmTokenSpaceGuid.PcdArmMachineType|827
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDescription|L"SemiHosting"
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDevicePath|L"VenHw(C5B9C74A-6D72-4719-99AB-C59F199091EB)/zImage"
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|"rdinit=/bin/ash debug earlyprintk console=ttyAMA0,38400 mem=128M"
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|""
   gArmPlatformTokenSpaceGuid.PcdDefaultBootType|1
   
   # Use the Serial console (ConIn & ConOut) and the Graphic driver (ConOut)
@@ -416,18 +441,25 @@
 # SEC
 #
   ArmPlatformPkg/Sec/Sec.inf
-  ArmPlatformPkg/PrePeiCore/PrePeiCoreMPCore.inf
   
 #
 # PEI Phase modules
 #
+!if $(EDK2_SKIP_PEICORE) == 1
+  ArmPlatformPkg/PrePi/PeiMPCore.inf{
+    <LibraryClasses>
+      ArmLib|ArmPkg/Library/ArmLib/ArmV7/ArmV7MPCoreLib.inf
+      ArmPlatformLib|ArmPlatformPkg/ArmRealViewEbPkg/Library/ArmRealViewEbLibRTSM/ArmRealViewEbLib.inf
+  }
+!else
+  ArmPlatformPkg/PrePeiCore/PrePeiCoreMPCore.inf
   MdeModulePkg/Core/Pei/PeiMain.inf
   MdeModulePkg/Universal/PCD/Pei/Pcd.inf  {
     <LibraryClasses>
       PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   }
-  ArmPlatformPkg/PlatformPei/PlatformPei.inf
-  ArmPlatformPkg/MemoryInitPei/MemoryInitPei.inf
+  ArmPlatformPkg/PlatformPei/PlatformPeim.inf
+  ArmPlatformPkg/MemoryInitPei/MemoryInitPeim.inf
   IntelFrameworkModulePkg/Universal/StatusCode/Pei/StatusCodePei.inf
   Nt32Pkg/BootModePei/BootModePei.inf
   MdeModulePkg/Universal/Variable/Pei/VariablePei.inf
@@ -435,6 +467,7 @@
     <LibraryClasses>
       NULL|IntelFrameworkModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
   }
+!endif
 
 #
 # DXE

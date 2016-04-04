@@ -36,19 +36,20 @@
   ArmPlatformPkg/ArmPlatformPkg.dec
 
 [LibraryClasses]
+  ArmLib
+  ArmPlatformLib
   BaseLib
   DebugLib
   IoLib
-  ArmLib
-  ArmPlatformLib
   PL390GicSecLib
+  PrintLib
   SerialPortLib
   
 [FeaturePcd]
-  gArmPlatformTokenSpaceGuid.PcdStandalone
   gArmTokenSpaceGuid.PcdSkipPeiCore
   
 [FixedPcd]
+  gArmPlatformTokenSpaceGuid.PcdStandalone
   gArmTokenSpaceGuid.PcdVFPEnabled
   gArmPlatformTokenSpaceGuid.PcdMPCoreSupport
   

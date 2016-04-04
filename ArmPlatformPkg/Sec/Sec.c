@@ -119,7 +119,7 @@ CEntryPoint (
 
     // If we skip the PEI Core we could want to initialize the DRAM in the SEC phase.
     // If we are in standalone, we need the initialization to copy the UEFI firmware into DRAM
-    if (FeaturePcdGet(PcdSkipPeiCore) || !FeaturePcdGet(PcdStandalone)) {
+    if (FeaturePcdGet(PcdSkipPeiCore) || !PcdGet32(PcdStandalone)) {
       // Initialize system memory (DRAM)
       ArmPlatformInitializeSystemMemory ();
     }
@@ -204,7 +204,7 @@ CEntryPoint (
   }
 
   // If ArmVe has not been built as Standalone then we need to patch the DRAM to add an infinite loop at the start address
-  if (FeaturePcdGet(PcdStandalone) == FALSE) {
+  if (!PcdGet32(PcdStandalone)) {
     if (CoreId == ARM_PRIMARY_CORE) {
       UINTN*   StartAddress = (UINTN*)PcdGet32(PcdNormalFvBaseAddress);
 
@@ -225,6 +225,18 @@ CEntryPoint (
       // firmware is ready.
 
       // Enter Secondary Cores into non Secure State. To enter into Non Secure state, we need to make a return from exception
+      return_from_exception((UINTN)NonSecureWaitForFirmware);
+    }
+  } else if (FeaturePcdGet(PcdSkipPeiCore)) {
+    if (CoreId == ARM_PRIMARY_CORE) {
+      // Signal the secondary cores they can jump to PEI phase
+      PL390GicSendSgiTo (PcdGet32(PcdGicDistributorBase), GIC_ICDSGIR_FILTER_EVERYONEELSE, 0x0E);
+
+      // To enter into Non Secure state, we need to make a return from exception
+      return_from_exception(PcdGet32(PcdNormalFvBaseAddress));
+    } else {
+      // We wait for the primary core to finish to initialize the System Memory. When we skip PEI Core, we could set the stack in DRAM
+      // Without this synchronization the secondary cores will complete the SEC before the primary core has finished to intitialize the DRAM.
       return_from_exception((UINTN)NonSecureWaitForFirmware);
     }
   } else {
