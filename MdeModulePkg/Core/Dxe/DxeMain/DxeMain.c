@@ -1,7 +1,7 @@
 /** @file
   DXE Core Main Entry Point
 
-Copyright (c) 2006 - 2008, Intel Corporation. <BR>
+Copyright (c) 2006 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -258,8 +258,8 @@ DxeMain (
   // Call constructor for all libraries
   //
   ProcessLibraryConstructorList (gDxeCoreImageHandle, gDxeCoreST);
-  PERF_END   (0,"PEI", NULL, 0) ;
-  PERF_START (0,"DXE", NULL, 0) ;
+  PERF_END   (NULL,"PEI", NULL, 0) ;
+  PERF_START (NULL,"DXE", NULL, 0) ;
 
   //
   // Initialize the Global Coherency Domain Services
@@ -306,6 +306,26 @@ DxeMain (
     );
 
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "HOBLIST address in DXE = 0x%p\n", HobStart));
+
+  DEBUG_CODE_BEGIN ();
+    EFI_PEI_HOB_POINTERS               Hob;
+
+    for (Hob.Raw = HobStart; !END_OF_HOB_LIST(Hob); Hob.Raw = GET_NEXT_HOB(Hob)) {
+      if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_MEMORY_ALLOCATION) {
+        DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Memory Allocation %08x %0lx - %0lx\n", \
+          Hob.MemoryAllocation->AllocDescriptor.MemoryType,                      \
+          Hob.MemoryAllocation->AllocDescriptor.MemoryBaseAddress,               \
+          Hob.MemoryAllocation->AllocDescriptor.MemoryBaseAddress + Hob.MemoryAllocation->AllocDescriptor.MemoryLength - 1));
+      }
+    }
+    for (Hob.Raw = HobStart; !END_OF_HOB_LIST(Hob); Hob.Raw = GET_NEXT_HOB(Hob)) {
+      if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV2) {
+        DEBUG ((DEBUG_INFO | DEBUG_LOAD, "FV2 Hob           %08x %0lx - %0lx\n", Hob.FirmwareVolume2->BaseAddress, Hob.FirmwareVolume2->BaseAddress + Hob.FirmwareVolume2->Length - 1, Hob.ResourceDescriptor->ResourceType));
+      } else if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV) {
+        DEBUG ((DEBUG_INFO | DEBUG_LOAD, "FV Hob            %08x %0lx - %0lx\n", Hob.FirmwareVolume->BaseAddress, Hob.FirmwareVolume->BaseAddress + Hob.FirmwareVolume2->Length - 1, Hob.ResourceDescriptor->ResourceType));
+      }
+    }
+  DEBUG_CODE_END ();
 
   //
   // Initialize the Event Services
@@ -360,16 +380,16 @@ DxeMain (
   //
   // Initialize the DXE Dispatcher
   //
-  PERF_START (0,"CoreInitializeDispatcher", "DxeMain", 0) ;
+  PERF_START (NULL,"CoreInitializeDispatcher", "DxeMain", 0) ;
   CoreInitializeDispatcher ();
-  PERF_END (0,"CoreInitializeDispatcher", "DxeMain", 0) ;
+  PERF_END (NULL,"CoreInitializeDispatcher", "DxeMain", 0) ;
 
   //
   // Invoke the DXE Dispatcher
   //
-  PERF_START (0, "CoreDispatcher", "DxeMain", 0);
+  PERF_START (NULL, "CoreDispatcher", "DxeMain", 0);
   CoreDispatcher ();
-  PERF_END (0, "CoreDispatcher", "DxeMain", 0);
+  PERF_END (NULL, "CoreDispatcher", "DxeMain", 0);
 
   //
   // Display Architectural protocols that were not loaded if this is DEBUG build

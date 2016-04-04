@@ -18,7 +18,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 /**
   Check if we need to save the EFI variable with "ConVarName" as name
   as NV type
-
+  If ConVarName is NULL, then ASSERT().
+  
   @param ConVarName The name of the EFI variable.
 
   @retval TRUE    Set the EFI variable as NV type.
@@ -31,6 +32,8 @@ IsNvNeed (
 {
   CHAR16 *Ptr;
 
+  ASSERT (ConVarName != NULL);
+  
   Ptr = ConVarName;
 
   //
@@ -41,6 +44,10 @@ IsNvNeed (
     Ptr++;
   }
 
+  if (((INTN)((UINTN)Ptr - (UINTN)ConVarName) / sizeof (CHAR16)) <= 3) {
+    return TRUE;
+  }
+  
   if ((*(Ptr - 3) == 'D') && (*(Ptr - 2) == 'e') && (*(Ptr - 1) == 'v')) {
     return FALSE;
   } else {
@@ -363,12 +370,12 @@ BdsLibConnectConsoleVariable (
       //
       // Check the Usb console in Usb2.0 bus firstly, then Usb1.1 bus
       //
-      Status = BdsLibConnectUsbDevByShortFormDP (PCI_CLASSC_PI_EHCI, Instance);
+      Status = BdsLibConnectUsbDevByShortFormDP (PCI_IF_EHCI, Instance);
       if (!EFI_ERROR (Status)) {
         DeviceExist = TRUE;
       }
 
-      Status = BdsLibConnectUsbDevByShortFormDP (PCI_CLASSC_PI_UHCI, Instance);
+      Status = BdsLibConnectUsbDevByShortFormDP (PCI_IF_UHCI, Instance);
       if (!EFI_ERROR (Status)) {
         DeviceExist = TRUE;
       }
@@ -622,14 +629,15 @@ ConvertBmpToGopBlt (
   //
   // Calculate the BltBuffer needed size.
   //
-  BltBufferSize = BmpHeader->PixelWidth * BmpHeader->PixelHeight * sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
-  if (BltBufferSize >= SIZE_4GB) {
-    //
-    // If the BMP resolution is too large
-    //
-    return EFI_UNSUPPORTED;
-  }
-  
+  BltBufferSize = MultU64x32 ((UINT64) BmpHeader->PixelWidth, BmpHeader->PixelHeight);
+  //
+  // Ensure the BltBufferSize * sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL) doesn't overflow
+  //
+  if (BltBufferSize > DivU64x32 ((UINTN) ~0, sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL))) {
+      return EFI_UNSUPPORTED;
+   }
+  BltBufferSize = MultU64x32 (BltBufferSize, sizeof (EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+
   IsAllocated   = FALSE;
   if (*GopBlt == NULL) {
     //
@@ -740,32 +748,9 @@ ConvertBmpToGopBlt (
   return EFI_SUCCESS;
 }
 
-
 /**
-  Use Console Control Protocol to lock the Console In Spliter virtual handle.
-  This is the ConInHandle and ConIn handle in the EFI system table. All key
-  presses will be ignored until the Password is typed in. The only way to
-  disable the password is to type it in to a ConIn device.
-
-  @param  Password        Password used to lock ConIn device.
-
-  @retval EFI_SUCCESS     lock the Console In Spliter virtual handle successfully.
-  @retval EFI_UNSUPPORTED Password not found
-
-**/
-EFI_STATUS
-EFIAPI
-LockKeyboards (
-  IN  CHAR16    *Password
-  )
-{
-    return EFI_UNSUPPORTED;
-}
-
-
-/**
-  Use Console Control to turn off UGA based Simple Text Out consoles from going
-  to the UGA device. Put up LogoFile on every UGA device that is a console
+  Use SystemTable Conout to stop video based Simple Text Out consoles from going
+  to the video device. Put up LogoFile on every video device that is a console.
 
   @param[in]  LogoFile   File name of logo to display on the center of the screen.
 
@@ -1005,8 +990,8 @@ EnableQuietBoot (
 }
 
 /**
-  Use Console Control to turn on UGA based Simple Text Out consoles. The UGA
-  Simple Text Out screens will now be synced up with all non UGA output devices
+  Use SystemTable Conout to turn on video based Simple Text Out consoles. The 
+  Simple Text Out screens will now be synced up with all non video output devices
 
   @retval EFI_SUCCESS     UGA devices are back in text mode and synced up.
 

@@ -1,6 +1,6 @@
 /** @file
   This protocol abstracts the 8259 interrupt controller. This includes
-  PCI IRQ routing need to program the PCI Interrupt Line register.
+  PCI IRQ routing needed to program the PCI Interrupt Line register.
 
   Copyright (c) 2007, Intel Corporation
   All rights reserved. This program and the accompanying materials
@@ -11,8 +11,6 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-  Module Name:  Legacy8259.h
-
   @par Revision Reference:
   This protocol is defined in Framework for EFI Compatibility Support Module spec
   Version 0.97.
@@ -22,7 +20,6 @@
 #ifndef _EFI_LEGACY_8259_H_
 #define _EFI_LEGACY_8259_H_
 
-#include <PiDxe.h>
 
 #define EFI_LEGACY_8259_PROTOCOL_GUID \
   { \

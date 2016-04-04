@@ -1,7 +1,7 @@
 /** @file
   Locate handle functions
 
-Copyright (c) 2006 - 2008, Intel Corporation. <BR>
+Copyright (c) 2006 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -451,15 +451,19 @@ CoreLocateDevicePath (
 
   *Device = NULL;
   SourcePath = *DevicePath;
-  SourceSize = GetDevicePathSize (SourcePath) - sizeof(EFI_DEVICE_PATH_PROTOCOL);
-
-  //
-  // The source path can only have 1 instance
-  //
-  if (IsDevicePathMultiInstance (SourcePath)) {
-    DEBUG((DEBUG_ERROR, "LocateDevicePath: Device path has too many instances\n"));
-    return EFI_INVALID_PARAMETER;
+  TmpDevicePath = SourcePath;
+  while (!IsDevicePathEnd (TmpDevicePath)) {
+    if (IsDevicePathEndInstance (TmpDevicePath)) {
+      //
+      // If DevicePath is a multi-instance device path,
+      // the function will operate on the first instance 
+      //
+      break;
+    }
+    TmpDevicePath = NextDevicePathNode (TmpDevicePath);
   }
+
+  SourceSize = (UINTN) TmpDevicePath - (UINTN) SourcePath;
 
   //
   // Get a list of all handles that support the requested protocol
@@ -487,7 +491,7 @@ CoreLocateDevicePath (
     if ((Size <= SourceSize) && CompareMem (SourcePath, TmpDevicePath, Size) == 0) {
       //
       // If the size is equal to the best match, then we
-      // have a duplice device path for 2 different device
+      // have a duplicate device path for 2 different device
       // handles
       //
       ASSERT (Size != BestMatch);

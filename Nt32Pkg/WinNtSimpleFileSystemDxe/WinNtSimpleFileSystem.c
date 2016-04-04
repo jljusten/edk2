@@ -1,6 +1,6 @@
 /**@file
 
-Copyright (c) 2006 - 2008, Intel Corporation
+Copyright (c) 2006 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -543,6 +543,7 @@ Returns:
   WIN_NT_SIMPLE_FILE_SYSTEM_PRIVATE *Private;
   WIN_NT_EFI_FILE_PRIVATE           *PrivateFile;
   EFI_TPL                           OldTpl;
+  CHAR16                            *TempFileName;
 
   if (This == NULL || Root == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -589,10 +590,47 @@ Returns:
   PrivateFile->EfiFile.GetInfo      = WinNtSimpleFileSystemGetInfo;
   PrivateFile->EfiFile.SetInfo      = WinNtSimpleFileSystemSetInfo;
   PrivateFile->EfiFile.Flush        = WinNtSimpleFileSystemFlush;
-  PrivateFile->LHandle              = INVALID_HANDLE_VALUE;
-  PrivateFile->DirHandle            = INVALID_HANDLE_VALUE;
   PrivateFile->IsValidFindBuf       = FALSE;
 
+  //
+  // Set DirHandle
+  //
+  PrivateFile->DirHandle = PrivateFile->WinNtThunk->CreateFile (
+                                                      PrivateFile->FilePath,
+                                                      GENERIC_READ,
+                                                      FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                                      NULL,
+                                                      OPEN_EXISTING,
+                                                      FILE_FLAG_BACKUP_SEMANTICS,
+                                                      NULL
+                                                      );
+
+  if (PrivateFile->DirHandle == INVALID_HANDLE_VALUE) {
+    Status = EFI_NOT_FOUND;
+    goto Done;
+  }
+
+  //
+  // Find the first file under it
+  //
+  Status = gBS->AllocatePool (
+                  EfiBootServicesData,
+                  StrSize (PrivateFile->FilePath) + StrSize (L"\\*"),
+                  &TempFileName
+                  );
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+  StrCpy (TempFileName, PrivateFile->FilePath);
+  StrCat (TempFileName, L"\\*");
+
+  PrivateFile->LHandle = PrivateFile->WinNtThunk->FindFirstFile (TempFileName, &PrivateFile->FindBuf);
+
+  if (PrivateFile->LHandle == INVALID_HANDLE_VALUE) {
+    PrivateFile->IsValidFindBuf = FALSE;
+  } else {
+    PrivateFile->IsValidFindBuf = TRUE;
+  }
   *Root = &PrivateFile->EfiFile;
 
   Status = EFI_SUCCESS;
@@ -822,7 +860,6 @@ Returns:
 // TODO:    EFI_INVALID_PARAMETER - add return value to function comment
 // TODO:    EFI_INVALID_PARAMETER - add return value to function comment
 {
-  EFI_FILE                          *Root;
   WIN_NT_EFI_FILE_PRIVATE           *PrivateFile;
   WIN_NT_EFI_FILE_PRIVATE           *NewPrivateFile;
   WIN_NT_SIMPLE_FILE_SYSTEM_PRIVATE *PrivateRoot;
@@ -837,6 +874,7 @@ Returns:
   BOOLEAN                           LoopFinish;
   UINTN                             InfoSize;
   EFI_FILE_INFO                     *Info;
+  UINTN                             Size;
 
   //
   // Check for obvious invalid parameters.
@@ -882,20 +920,6 @@ Returns:
   }
   StrCpy (TempFileName, FileName);
   FileName = TempFileName;
-
-  //
-  // BUGBUG: assume an open of root
-  // if current location, return current data
-  //
-  if (StrCmp (FileName, L"\\") == 0 || (StrCmp (FileName, L".") == 0 && PrivateFile->IsRootDirectory)) {
-    //
-    // BUGBUG: assume an open root
-    //
-OpenRoot:
-    Status          = WinNtSimpleFileSystemOpenVolume (PrivateFile->SimpleFileSystem, &Root);
-    NewPrivateFile  = WIN_NT_EFI_FILE_PRIVATE_DATA_FROM_THIS (Root);
-    goto Done;
-  }
 
   if (FileName[StrLen (FileName) - 1] == L'\\') {
     FileName[StrLen (FileName) - 1]  = 0;
@@ -951,7 +975,10 @@ OpenRoot:
     StrCpy (NewPrivateFile->FilePath, PrivateFile->FilePath);
   }
 
-  NewPrivateFile->FileName = AllocatePool (StrSize (NewPrivateFile->FilePath) + StrSize (L"\\") + StrSize (FileName));
+  Size = StrSize (NewPrivateFile->FilePath);
+  Size += StrSize (L"\\");
+  Size += StrSize (FileName);
+  NewPrivateFile->FileName = AllocatePool (Size);
   if (NewPrivateFile->FileName == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
@@ -1033,22 +1060,17 @@ OpenRoot:
     }
   }
 
-  if (StrCmp (NewPrivateFile->FileName, PrivateRoot->FilePath) == 0) {
-    NewPrivateFile->IsRootDirectory = TRUE;
-    FreePool (NewPrivateFile->FilePath);
-    FreePool (NewPrivateFile->FileName);
-    FreePool (NewPrivateFile);
-    goto OpenRoot;
-  }
-
   RealFileName = NewPrivateFile->FileName;
   while (EfiStrChr (RealFileName, L'\\') != NULL) {
     RealFileName = EfiStrChr (RealFileName, L'\\') + 1;
   }
 
-  TempChar            = *(RealFileName - 1);
-  *(RealFileName - 1) = 0;
-
+  TempChar = 0;
+  if (RealFileName != NewPrivateFile->FileName) {
+    TempChar            = *(RealFileName - 1);
+    *(RealFileName - 1) = 0;
+    }
+  
   FreePool (NewPrivateFile->FilePath);
   NewPrivateFile->FilePath = NULL;
   NewPrivateFile->FilePath = AllocatePool (StrSize (NewPrivateFile->FileName));
@@ -1058,8 +1080,9 @@ OpenRoot:
   }
 
   StrCpy (NewPrivateFile->FilePath, NewPrivateFile->FileName);
-
-  *(RealFileName - 1)             = TempChar;
+  if (TempChar != 0) {
+    *(RealFileName - 1)             = TempChar;
+  }
 
   NewPrivateFile->IsRootDirectory = FALSE;
 
@@ -1107,7 +1130,9 @@ OpenRoot:
   //
   if (NewPrivateFile->IsDirectoryPath) {
 
-    TempFileName = AllocatePool (StrSize (NewPrivateFile->FileName) + StrSize (L"\\*"));
+    Size  = StrSize (NewPrivateFile->FileName);
+    Size += StrSize (L"\\*");
+    TempFileName = AllocatePool (Size);
     if (TempFileName == NULL) {
       Status = EFI_OUT_OF_RESOURCES;
       goto Done;
@@ -1273,6 +1298,9 @@ Done:
     }
   } else {
     *NewHandle = &NewPrivateFile->EfiFile;
+    if (StrCmp (NewPrivateFile->FileName, PrivateRoot->FilePath) == 0) {
+     NewPrivateFile->IsRootDirectory = TRUE;
+    }   
   }
 
   return Status;
@@ -1560,12 +1588,12 @@ Returns:
     }
 
     Status = PrivateFile->WinNtThunk->ReadFile (
-                                      PrivateFile->LHandle,
-                                      Buffer,
-                                      *BufferSize,
-                                      BufferSize,
-                                      NULL
-                                      ) ? EFI_SUCCESS : EFI_DEVICE_ERROR;
+                                        PrivateFile->LHandle,
+                                        Buffer,
+                                        *BufferSize,
+                                        (LPDWORD)BufferSize,
+                                        NULL
+                                        ) ? EFI_SUCCESS : EFI_DEVICE_ERROR;
     goto Done;
   }
 
@@ -1731,12 +1759,12 @@ Returns:
   }
 
   Status = PrivateFile->WinNtThunk->WriteFile (
-                                    PrivateFile->LHandle,
-                                    Buffer,
-                                    *BufferSize,
-                                    BufferSize,
-                                    NULL
-                                    ) ? EFI_SUCCESS : EFI_DEVICE_ERROR;
+                                      PrivateFile->LHandle,
+                                      Buffer,
+                                      *BufferSize,
+                                      (LPDWORD)BufferSize,
+                                      NULL
+                                      ) ? EFI_SUCCESS : EFI_DEVICE_ERROR;
 
 Done:
   gBS->RestoreTPL (OldTpl);
@@ -1780,6 +1808,7 @@ Returns:
   UINT32                  PosHigh;
   CHAR16                  *FileName;
   EFI_TPL                 OldTpl;
+  UINTN                   Size;
 
   if (This == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -1795,7 +1824,9 @@ Returns:
       goto Done;
     }
 
-    FileName = AllocatePool (StrSize (PrivateFile->FileName) + StrSize (L"\\*"));
+    Size  = StrSize (PrivateFile->FileName);
+    Size += StrSize (L"\\*");
+    FileName = AllocatePool (Size);
     if (FileName == NULL) {
       Status = EFI_OUT_OF_RESOURCES;
       goto Done;
@@ -1825,7 +1856,7 @@ Returns:
     } else {
       PosHigh = (UINT32) RShiftU64 (Position, 32);
 
-      PosLow  = PrivateFile->WinNtThunk->SetFilePointer (PrivateFile->LHandle, (ULONG) Position, &PosHigh, FILE_BEGIN);
+      PosLow  = PrivateFile->WinNtThunk->SetFilePointer (PrivateFile->LHandle, (ULONG) Position, (PLONG)&PosHigh, FILE_BEGIN);
     }
 
     Status = (PosLow == 0xFFFFFFFF) ? EFI_DEVICE_ERROR : EFI_SUCCESS;
@@ -1888,11 +1919,11 @@ Returns:
 
     PositionHigh = 0;
     *Position = PrivateFile->WinNtThunk->SetFilePointer (
-                                          PrivateFile->LHandle,
-                                          0,
-                                          &PositionHigh,
-                                          FILE_CURRENT
-                                          );
+                                           PrivateFile->LHandle,
+                                           0,
+                                           (PLONG)&PositionHigh,
+                                           FILE_CURRENT
+                                           );
 
     Status = *Position == 0xffffffff ? EFI_DEVICE_ERROR : EFI_SUCCESS;
     if (EFI_ERROR (Status)) {
@@ -2199,10 +2230,10 @@ Returns:
     //
     NtStatus = PrivateFile->WinNtThunk->GetDiskFreeSpace (
                                           DriveNameFound ? DriveName : NULL,
-                                          &SectorsPerCluster,
-                                          &BytesPerSector,
-                                          &FreeClusters,
-                                          &TotalClusters
+                                          (LPDWORD)&SectorsPerCluster,
+                                          (LPDWORD)&BytesPerSector,
+                                          (LPDWORD)&FreeClusters,
+                                          (LPDWORD)&TotalClusters
                                           );
     if (DriveName) {
       FreePool (DriveName);
@@ -2331,6 +2362,7 @@ Returns:
   WIN32_FIND_DATA                   FindBuf;
   EFI_FILE_SYSTEM_INFO              *NewFileSystemInfo;
   EFI_TPL                           OldTpl;
+  UINTN                             Size;
 
   //
   // Check for invalid parameters.
@@ -2460,7 +2492,10 @@ Returns:
   // Make full pathname from new filename and rootpath.
   //
   if (NewFileInfo->FileName[0] == '\\') {
-    NewFileName = AllocatePool (StrSize (PrivateRoot->FilePath) + StrSize (L"\\") + StrSize (NewFileInfo->FileName));
+    Size  = StrSize (PrivateRoot->FilePath);
+    Size += StrSize (L"\\");
+    Size += StrSize (NewFileInfo->FileName);
+    NewFileName = AllocatePool (Size);
     if (NewFileName == NULL) {
       Status = EFI_OUT_OF_RESOURCES;
       goto Done;
@@ -2470,7 +2505,10 @@ Returns:
     StrCat (NewFileName, L"\\");
     StrCat (NewFileName, NewFileInfo->FileName + 1);
   } else {
-    NewFileName = AllocatePool (StrSize (PrivateFile->FilePath) + StrSize (L"\\") + StrSize (NewFileInfo->FileName));
+    Size  = StrSize (PrivateFile->FilePath);
+    Size += StrSize (L"\\");
+    Size += StrSize (NewFileInfo->FileName);
+    NewFileName = AllocatePool (Size);
     if (NewFileName == NULL) {
       Status = EFI_OUT_OF_RESOURCES;
       goto Done;
@@ -2588,7 +2626,9 @@ Returns:
 
       StrCpy (PrivateFile->FileName, NewFileName);
 
-      TempFileName = AllocatePool (StrSize (NewFileName) + StrSize (L"\\*"));
+      Size  =  StrSize (NewFileName);
+      Size += StrSize (L"\\*");
+      TempFileName = AllocatePool (Size);
 
       StrCpy (TempFileName, NewFileName);
 
@@ -2638,7 +2678,9 @@ Reopen: ;
         goto Done;
       }
 
-      TempFileName = AllocatePool (StrSize (OldFileName) + StrSize (L"\\*"));
+      Size =  StrSize (OldFileName);
+      Size += StrSize (L"\\*");
+      TempFileName = AllocatePool (Size);
 
       StrCpy (TempFileName, OldFileName);
 

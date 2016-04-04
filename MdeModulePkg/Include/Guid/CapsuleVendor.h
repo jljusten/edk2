@@ -1,7 +1,9 @@
 /** @file
-  This file defines capsule vendor guid for capsule variable and hob.
-  It also defines capsule variable name and capsule guid hob data structure,
-  which can be used to store the capsule image start address and length.
+  This file defines:
+  * the capsule vendor GUID for capsule variables and the HOB
+  * the capsule variable name
+  * the capsule GUID HOB data structure.
+  The capsule HOB and variable can be used to store the capsule image start address and length.
   They are used by EDKII implementation of capsule update across a system reset.
 
 Copyright (c) 2006 - 2008, Intel Corporation
@@ -37,8 +39,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 /// Data structure of capsule guid hob entry
 ///
 typedef struct {
-  EFI_PHYSICAL_ADDRESS BaseAddress;  ///> Capsule data start address
-  UINT32 Length;                     ///> Length of capsule data.
+  EFI_PHYSICAL_ADDRESS BaseAddress;  ///< Capsule data start address
+  UINT32 Length;                     ///< Length of capsule data.
 } CAPSULE_HOB_INFO;
 
 extern EFI_GUID gEfiCapsuleVendorGuid;

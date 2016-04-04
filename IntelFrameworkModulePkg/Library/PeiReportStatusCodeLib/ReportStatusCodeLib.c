@@ -12,7 +12,6 @@
 
 **/
 
-
 #include <FrameworkPei.h>
 
 #include <Guid/StatusCodeDataTypeId.h>
@@ -260,8 +259,13 @@ ReportStatusCodeExtractDebugInfo (
   *ErrorLevel = DebugInfo->ErrorLevel;
 
   //
-  // The first 12 * UINTN bytes of the string are really an
-  // argument stack to support varargs on the Format string.
+  // The first 12 * sizeof (UINT64) bytes following EFI_DEBUG_INFO are for variable arguments
+  // of format in DEBUG string. Its address is returned in Marker and has to be 64-bit aligned.
+  // It must be noticed that EFI_DEBUG_INFO follows EFI_STATUS_CODE_DATA, whose size is
+  // 20 bytes. The size of EFI_DEBUG_INFO is 4 bytes, so we can ensure that Marker
+  // returned is 64-bit aligned.
+  // 64-bit aligned is a must, otherwise retrieving 64-bit parameter from BASE_LIST will
+  // cause unalignment exception.
   //
   *Marker = (BASE_LIST) (DebugInfo + 1);
   *Format = (CHAR8 *)(((UINT64 *)*Marker) + 12);

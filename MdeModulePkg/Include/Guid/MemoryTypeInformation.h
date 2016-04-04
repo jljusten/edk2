@@ -1,9 +1,13 @@
 /** @file
-  This file defines the memory type information guid for its variable and guid. 
-  It also defines memory type info variable name and data structure for variable and hob both,
-  which can be used to store the information for each memory type in EFI variable or HOB.
+  This file defines:
+  * Memory Type Information GUID for HOB and Variable
+  * Memory Type Information Variable Name
+  * Memory Type Information GUID HOB data structure
 
-Copyright (c) 2006 - 2008, Intel Corporation. <BR>
+  The memory type information HOB and variable can 
+  be used to store the information for each memory type in Variable or HOB.
+
+Copyright (c) 2006 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -25,8 +29,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 extern EFI_GUID gEfiMemoryTypeInformationGuid;
 
 typedef struct {
-  UINT32  Type;             ///> EFI memory type defined in UEFI specification.
-  UINT32  NumberOfPages;    ///> The pages of this type memory.
+  UINT32  Type;             ///< EFI memory type defined in UEFI specification.
+  UINT32  NumberOfPages;    ///< The pages of this type memory.
 } EFI_MEMORY_TYPE_INFORMATION;
 
 #endif

@@ -598,6 +598,9 @@ SetKeyboardLayoutEvent (
   UINT8                     KeyCode;
 
   UsbKeyboardDevice = (USB_KB_DEV *) Context;
+  if (UsbKeyboardDevice->Signature != USB_KB_DEV_SIGNATURE) {
+    return;
+  }
 
   //
   // Try to get current keyboard layout from HII database
@@ -911,7 +914,7 @@ InitUSBKeyboard (
 
   gBS->CreateEvent (
          EVT_TIMER | EVT_NOTIFY_SIGNAL,
-         TPL_NOTIFY,
+         TPL_CALLBACK,
          USBKeyboardRepeatHandler,
          UsbKeyboardDevice,
          &UsbKeyboardDevice->RepeatTimer

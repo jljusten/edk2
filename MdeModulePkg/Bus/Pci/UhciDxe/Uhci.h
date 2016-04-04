@@ -34,7 +34,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PcdLib.h>
 
-#include <IndustryStandard/Pci22.h>
+#include <IndustryStandard/Pci.h>
 
 typedef struct _USB_HC_DEV  USB_HC_DEV;
 
@@ -73,7 +73,7 @@ typedef enum {
   // Sync and Async transfer polling interval, set by experience,
   // and the unit of Async is 100us.
   //
-  UHC_SYNC_POLL_INTERVAL        = 50 * UHC_1_MICROSECOND,
+  UHC_SYNC_POLL_INTERVAL        = 1 * UHC_1_MILLISECOND,
   UHC_ASYNC_POLL_INTERVAL       = 50 * 10000UL
 }UHC_TIMEOUT_EXPERIENCE_VALUE;
 
@@ -117,6 +117,7 @@ struct _USB_HC_DEV {
   // Schedule data structures
   //
   UINT32                    *FrameBase;
+  UINT32                    *FrameBasePciMemAddr;
   UHCI_QH_SW                *SyncIntQh;
   UHCI_QH_SW                *CtrlQh;
   UHCI_QH_SW                *BulkQh;

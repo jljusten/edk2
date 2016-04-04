@@ -18,6 +18,8 @@
 #ifndef __EFI_FORM_BROWSER2_H__
 #define __EFI_FORM_BROWSER2_H__
 
+#include <Guid/HiiPlatformSetupFormset.h>
+
 #define EFI_FORM_BROWSER2_PROTOCOL_GUID \
   {0xb9d4c360, 0xbcfb, 0x4f9b, {0x92, 0x98, 0x53, 0xc1, 0x36, 0x98, 0x22, 0x58 }}
 
@@ -29,10 +31,12 @@ typedef struct _EFI_FORM_BROWSER2_PROTOCOL   EFI_FORM_BROWSER2_PROTOCOL;
 /**
    
   @param LeftColumn   Value that designates the text column
-                      at which the browser window will begin (left-most column). 
+                      where the browser window will begin from
+                      the left-hand side of the screen
                       
   @param RightColumn  Value that designates the text
-                      column at which the browser window will end (right-most column).
+                      column where the browser window will end
+                      on the right-hand side of the screen.
 
   @param TopRow       Value that designates the text row from the
                       top of the screen where the browser window

@@ -1,7 +1,7 @@
-/**@file
+/** @file
   PS/2 keyboard driver header file
 
-Copyright (c) 2006 - 2007, Intel Corporation
+Copyright (c) 2006 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#ifndef _PS2KEYBOARD_H
-#define _PS2KEYBOARD_H
+#ifndef _PS2KEYBOARD_H_
+#define _PS2KEYBOARD_H_
 
-#include <PiDxe.h>
-#include <Framework/StatusCode.h>
+#include <FrameworkDxe.h>
 
 #include <Protocol/SimpleTextIn.h>
 #include <Protocol/SimpleTextInEx.h>
@@ -33,6 +32,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/MemoryAllocationLib.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/TimerLib.h>
 
 //
 // Global Variables
@@ -180,6 +180,32 @@ InstallPs2KeyboardDriver (
 #define SCANCODE_SYS_REQ_MAKE           0x37
 #define SCANCODE_MAX_MAKE               0x60
 
+#define KEYBOARD_STATUS_REGISTER_HAS_OUTPUT_DATA     BIT0        ///< 0 - Output register has no data; 1 - Output register has data
+#define KEYBOARD_STATUS_REGISTER_HAS_INPUT_DATA      BIT1        ///< 0 - Input register has no data;  1 - Input register has data
+#define KEYBOARD_STATUS_REGISTER_SYSTEM_FLAG         BIT2        ///< Set to 0 after power on reset
+#define KEYBOARD_STATUS_REGISTER_INPUT_DATA_TYPE     BIT3        ///< 0 - Data in input register is data; 1 - Data in input register is command
+#define KEYBOARD_STATUS_REGISTER_ENABLE_FLAG         BIT4        ///< 0 - Keyboard is disable; 1 - Keyboard is enable
+#define KEYBOARD_STATUS_REGISTER_TRANSMIT_TIMEOUT    BIT5        ///< 0 - Transmit is complete without timeout; 1 - Transmit is timeout without complete
+#define KEYBOARD_STATUS_REGISTER_RECEIVE_TIMEOUT     BIT6        ///< 0 - Receive is complete without timeout; 1 - Receive is timeout without complete
+#define KEYBOARD_STATUS_REGISTER_PARITY              BIT7        ///< 0 - Odd parity; 1 - Even parity
+
+#define KEYBOARD_8042_COMMAND_READ                          0x20
+#define KEYBOARD_8042_COMMAND_WRITE                         0x60
+#define KEYBOARD_8042_COMMAND_DISABLE_MOUSE_INTERFACE       0xA7
+#define KEYBOARD_8042_COMMAND_ENABLE_MOUSE_INTERFACE        0xA8
+#define KEYBOARD_8042_COMMAND_CONTROLLER_SELF_TEST          0xAA
+#define KEYBOARD_8042_COMMAND_KEYBOARD_INTERFACE_SELF_TEST  0xAB
+#define KEYBOARD_8042_COMMAND_DISABLE_KEYBOARD_INTERFACE    0xAD
+
+#define KEYBOARD_8048_COMMAND_CLEAR_OUTPUT_DATA             0xF4
+#define KEYBOARD_8048_COMMAND_RESET                         0xFF
+#define KEYBOARD_8048_COMMAND_SELECT_SCAN_CODE_SET          0xF0
+
+#define KEYBOARD_8048_RETURN_8042_BAT_SUCCESS               0xAA
+#define KEYBOARD_8048_RETURN_8042_BAT_ERROR                 0xFC
+#define KEYBOARD_8048_RETURN_8042_ACK                       0xFA
+
+
 //
 // Keyboard Controller Status
 //
@@ -204,7 +230,7 @@ UpdateStatusLights (
   );
 
 /**
-  write key to keyboard
+  write key to keyboard.
 
   @param ConsoleIn Pointer to instance of KEYBOARD_CONSOLE_IN_DEV
   @param Data      value wanted to be written
@@ -236,7 +262,7 @@ KeyGetchar (
   );
 
 /**
-  Perform 8042 controller and keyboard Initialization
+  Perform 8042 controller and keyboard Initialization.
   If ExtendedVerification is TRUE, do additional test for
   the keyboard interface
 
@@ -253,7 +279,7 @@ InitKeyboard (
   );
 
 /**
-  Disable the keyboard interface of the 8042 controller
+  Disable the keyboard interface of the 8042 controller.
 
   @param ConsoleIn   - the device instance
 
@@ -333,7 +359,7 @@ KeyboardWaitForKey (
   );
 
 /**
-  Read status register
+  Read status register.
 
   @param ConsoleIn  Pointer to instance of KEYBOARD_CONSOLE_IN_DEV
 
@@ -350,7 +376,7 @@ KeyReadStatusRegister (
   If Keyboard receives 0xF4, it will respond with 'ACK'. If it doesn't respond, the device
   should not be in system.
 
-  @param[in]  BiosKeyboardPrivate   Keyboard Private Data Structure
+  @param[in]  ConsoleIn   Pointer to instance of KEYBOARD_CONSOLE_IN_DEV
 
   @retval     TRUE                  Keyboard in System.
   @retval     FALSE                 Keyboard not in System.

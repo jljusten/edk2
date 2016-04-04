@@ -1,7 +1,6 @@
 #/** @file
-# Component description file for IsaSerial module.
-#
 # Serial driver for standard UARTS on an ISA bus.
+#
 # Copyright (c) 2007 - 2009, Intel Corporation
 #
 # All rights reserved. This program and the accompanying materials
@@ -35,13 +34,11 @@
 
 [Sources.common]
   ComponentName.c
-  ComponentName.h
   Serial.h
   Serial.c
 
 [Packages]
   MdePkg/MdePkg.dec
-  MdeModulePkg/MdeModulePkg.dec
   IntelFrameworkPkg/IntelFrameworkPkg.dec
   IntelFrameworkModulePkg/IntelFrameworkModulePkg.dec
 
@@ -53,14 +50,13 @@
   BaseMemoryLib
   DevicePathLib
   UefiLib
-  BaseLib
   UefiDriverEntryPoint
   DebugLib
 
 [Protocols]
-  gEfiIsaIoProtocolGuid                         # PROTOCOL TO_START
-  gEfiSerialIoProtocolGuid                      # PROTOCOL BY_START
-  gEfiDevicePathProtocolGuid                    # PROTOCOL TO_START
+  gEfiIsaIoProtocolGuid                         ## TO_START
+  gEfiDevicePathProtocolGuid                    ## TO_START
+  gEfiSerialIoProtocolGuid                      ## BY_START
 
 [FixedPcd.common]
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultBaudRate|115200
@@ -68,4 +64,5 @@
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultParity|1
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultStopBits|1
 
-
+[FeaturePcd.common]
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdIsaBusSerialUseHalfHandshake|FALSE

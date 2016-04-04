@@ -29,7 +29,7 @@ Abstract:
 #include <IndustryStandard/Pci.h>
 #include <IndustryStandard/Acpi.h>
 #include <IndustryStandard/SmBios.h>
-//#include <IndustryStandard/LegacyBiosMpTable.h>
+#include <IndustryStandard/PeImage.h>
 
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -46,18 +46,18 @@ Abstract:
 #include <Library/DxeServicesTableLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/IoLib.h>
+#include <Library/NvVarsFileLib.h>
 
+#include <Protocol/Decompress.h>
 #include <Protocol/PciIo.h>
 #include <Protocol/FirmwareVolume2.h>
+#include <Protocol/SimpleFileSystem.h>
 
-#include <Guid/Logo.h>
 #include <Guid/Acpi.h>
 #include <Guid/SmBios.h>
 #include <Guid/Mps.h>
 #include <Guid/HobList.h>
-//#include <Guid/PciExpressBaseAddress.h>
 #include <Guid/GlobalVariable.h>
-#include <Guid/ShellFile.h>
 
 extern BDS_CONSOLE_CONNECT_ENTRY  gPlatformConsole[];
 extern EFI_DEVICE_PATH_PROTOCOL   *gPlatformConnectSequence[];

@@ -1,5 +1,5 @@
 /** @file
-  Defines for EFI shell environment 2 ported to EDK II build environment.
+  Defines for EFI shell environment 2 ported to EDK II build environment. (no spec)
 
 Copyright (c) 2005, 2009 Intel Corporation
 All rights reserved. This program and the accompanying materials
@@ -16,9 +16,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #ifndef _SHELLENV2_H_
 #define _SHELLENV2_H_
 
-#include <Protocol\SimpleTextIn.h>
-#include <Protocol\SimpleTextOut.h>
-#include <Protocol\EfiShellInterface.h>
+#include <Protocol/SimpleTextIn.h>
+#include <Protocol/SimpleTextOut.h>
+#include <Protocol/EfiShellInterface.h>
 
 #define DEFAULT_INIT_ROW    1
 #define DEFAULT_AUTO_LF     FALSE

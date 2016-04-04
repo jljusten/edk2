@@ -1,7 +1,7 @@
 /** @file
   Function to validate, parse, process the DHCP options.
   
-Copyright (c) 2006 - 2008, Intel Corporation.<BR>
+Copyright (c) 2006 - 2009, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -542,6 +542,7 @@ DhcpFillOption (
   @param[out] OptionPoint            The array that contains the DHCP options. Caller
                                      should free it.
 
+  @retval EFI_NOT_FOUND          Cannot find any option.
   @retval EFI_OUT_OF_RESOURCES   Failed to allocate memory to parse the packet.
   @retval EFI_INVALID_PARAMETER  The options are mal-formated
   @retval EFI_SUCCESS            The options are parsed into OptionPoint
@@ -624,14 +625,14 @@ DhcpParseOption (
   Status          = DhcpIterateOptions (Packet, DhcpFillOption, &Context);
 
   if (EFI_ERROR (Status)) {
-    gBS->FreePool (Options);
+    FreePool (Options);
     goto ON_EXIT;
   }
 
   *OptionPoint = Options;
 
 ON_EXIT:
-  gBS->FreePool (OptCount);
+  FreePool (OptCount);
   return Status;
 }
 
@@ -668,11 +669,12 @@ DhcpValidateOptions (
   }
 
   AllOption = NULL;
-  Status    = DhcpParseOption (Packet, &Count, &AllOption);
 
+  Status = DhcpParseOption (Packet, &Count, &AllOption);
   if (EFI_ERROR (Status) || (Count == 0)) {
     return Status;
   }
+  ASSERT (AllOption != NULL);
 
   Updated = FALSE;
   ZeroMem (&Parameter, sizeof (Parameter));
@@ -708,16 +710,15 @@ DhcpValidateOptions (
   }
 
   if (Updated && (Para != NULL)) {
-    if ((*Para = AllocatePool (sizeof (DHCP_PARAMETER))) == NULL) {
+    *Para = AllocateCopyPool (sizeof (DHCP_PARAMETER), &Parameter);
+    if (*Para == NULL) {
       Status = EFI_OUT_OF_RESOURCES;
       goto ON_EXIT;
     }
-
-    CopyMem (*Para, &Parameter, sizeof (**Para));
   }
 
 ON_EXIT:
-  gBS->FreePool (AllOption);
+  FreePool (AllOption);
   return Status;
 }
 
@@ -824,8 +825,10 @@ DhcpBuild (
     goto ON_ERROR;
   }
 
-  for (Index = 0; Index < (UINT32) Count; Index++) {
-    Mark[SeedOptions[Index].Tag] = SeedOptions[Index];
+  if (SeedOptions != NULL) {
+    for (Index = 0; Index < (UINT32) Count; Index++) {
+      Mark[SeedOptions[Index].Tag] = SeedOptions[Index];
+    }
   }
 
   //
@@ -885,9 +888,9 @@ DhcpBuild (
 
 ON_ERROR:
   if (SeedOptions != NULL) {
-    gBS->FreePool (SeedOptions);
+    FreePool (SeedOptions);
   }
 
-  gBS->FreePool (Mark);
+  FreePool (Mark);
   return Status;
 }

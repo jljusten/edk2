@@ -1,6 +1,6 @@
 /** @file
   The OEM Badging Protocol defines the interface to get the OEM badging 
-  image with the dispaly attribute. This protocol can be produced based on OEM badging images.
+  image with the display attribute. This protocol can be produced based on OEM badging images.
 
 Copyright (c) 2006 - 2008, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
@@ -48,12 +48,12 @@ typedef enum {
 
 /**
 
-  Load an OEM badge image and return its data as well as attributes.
+  Load an OEM badge image and return its data and attributes.
 
   @param This              Pointer to this protocol instance.
-  @param Instance          The visiable image instance is found.
-  @param Format            Format of the image such as BMP,JPEG,etc.
-  @param ImageData         Image data returned.
+  @param Instance          The visible image instance is found.
+  @param Format            Format of the image. Examples: BMP, JPEG.
+  @param ImageData         Image data for the badge file. Currently only supports the .bmp file format. 
   @param ImageSize         Size of the image returned.
   @param Attribute         Display attributes of the image returned.
   @param CoordinateX       X coordinate of the image.

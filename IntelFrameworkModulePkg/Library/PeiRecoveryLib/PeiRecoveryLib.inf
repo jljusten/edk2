@@ -1,5 +1,9 @@
 #/** @file
-#  Recovery Library for PEIM
+#  PEIM Recovery Library supports system recovery boot.
+#
+#  This library instance is no longer used and module using this library
+#  class should update to directly locate EFI_PEI_RECOVERY_MODULE_PPI defined
+#  in PI 1.2 specification. 
 #
 #  Copyright (c) 2006 - 2009, Intel Corporation.
 #
@@ -33,8 +37,6 @@
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
-  IntelFrameworkPkg/IntelFrameworkPkg.dec
-  IntelFrameworkModulePkg/IntelFrameworkModulePkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -42,6 +44,6 @@
   DebugLib
 
 [Ppis]
-  gEfiPeiRecoveryModulePpiGuid            # PPI ALWAYS_CONSUMED
+  gEfiPeiRecoveryModulePpiGuid            ## CONSUMES
   
   

@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2006, Intel Corporation
+Copyright (c) 2006 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -21,13 +21,12 @@ Abstract:
   in this driver.
 
 --*/
-#include "PiDxe.h"
+#include <FrameworkDxe.h>
 #include <Protocol/Cpu.h>
 #include <Protocol/DataHub.h>
 #include <Guid/DataHubRecords.h>
 #include <Protocol/CpuIo.h>
 #include <Protocol/FrameworkHii.h>
-#include <Guid/DataHubProducer.h>
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
@@ -37,7 +36,6 @@ Abstract:
 #include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/UefiBootServicesTableLib.h>
-#include <Framework/DataHubRecords.h>
 #include "CpuDriver.h"
 #include "UnixDxe.h"
 #include <Protocol/UnixIo.h>
@@ -60,12 +58,15 @@ CPU_ARCH_PROTOCOL_PRIVATE mCpuTemplate = {
     4
   },
   {
-    CpuMemoryServiceRead,
-    CpuMemoryServiceWrite,
-    CpuIoServiceRead,
-    CpuIoServiceWrite
+    {
+      CpuMemoryServiceRead,
+      CpuMemoryServiceWrite
+    },
+    {
+      CpuIoServiceRead,
+      CpuIoServiceWrite
+    }
   },
-  0,
   TRUE
 };
 
@@ -432,7 +433,7 @@ Returns:
   //
   // Locate DataHub protocol.
   //
-  Status = gBS->LocateProtocol (&gEfiDataHubProtocolGuid, NULL, &DataHub);
+  Status = gBS->LocateProtocol (&gEfiDataHubProtocolGuid, NULL, (VOID **)&DataHub);
   if (EFI_ERROR (Status)) {
     return;
   }
@@ -452,7 +453,7 @@ Returns:
   // Initialize strings to HII database
   //
   HiiHandle = HiiAddPackages (
-                &gEfiProcessorProducerGuid,
+                &gEfiCallerIdGuid,
                 NULL,
                 CpuStrings,
                 NULL
@@ -469,7 +470,7 @@ Returns:
   Status = DataHub->LogData (
                       DataHub,
                       &gEfiProcessorSubClassGuid,
-                      &gEfiProcessorProducerGuid,
+                      &gEfiCallerIdGuid,
                       EFI_DATA_RECORD_CLASS_DATA,
                       RecordBuffer.Raw,
                       TotalSize
@@ -486,7 +487,7 @@ Returns:
   Status = DataHub->LogData (
                       DataHub,
                       &gEfiProcessorSubClassGuid,
-                      &gEfiProcessorProducerGuid,
+                      &gEfiCallerIdGuid,
                       EFI_DATA_RECORD_CLASS_DATA,
                       RecordBuffer.Raw,
                       TotalSize

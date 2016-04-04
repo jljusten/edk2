@@ -4,7 +4,7 @@
   of the raw block devices media. Currently "El Torito CD-ROM", Legacy
   MBR, and GPT partition schemes are supported.
 
-Copyright (c) 2006 - 2008, Intel Corporation. <BR>
+Copyright (c) 2006 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -69,42 +69,27 @@ PartitionDriverBindingSupported (
   EFI_DISK_IO_PROTOCOL      *DiskIo;
   EFI_DEV_PATH              *Node;
 
+  //
+  // Check RemainingDevicePath validation
+  //
   if (RemainingDevicePath != NULL) {
-    Node = (EFI_DEV_PATH *) RemainingDevicePath;
-    if (Node->DevPath.Type != MEDIA_DEVICE_PATH ||
+    //
+    // Check if RemainingDevicePath is the End of Device Path Node, 
+    // if yes, go on checking other conditions
+    //
+    if (!IsDevicePathEnd (RemainingDevicePath)) {
+      //
+      // If RemainingDevicePath isn't the End of Device Path Node,
+      // check its validation
+      //
+      Node = (EFI_DEV_PATH *) RemainingDevicePath;
+      if (Node->DevPath.Type != MEDIA_DEVICE_PATH ||
         Node->DevPath.SubType != MEDIA_HARDDRIVE_DP ||
-        DevicePathNodeLength (&Node->DevPath) != sizeof (HARDDRIVE_DEVICE_PATH)
-        ) {
+        DevicePathNodeLength (&Node->DevPath) != sizeof (HARDDRIVE_DEVICE_PATH)) {
       return EFI_UNSUPPORTED;
+      }
     }
   }
-  //
-  // Open the IO Abstraction(s) needed to perform the supported test
-  //
-  Status = gBS->OpenProtocol (
-                  ControllerHandle,
-                  &gEfiDevicePathProtocolGuid,
-                  (VOID **) &ParentDevicePath,
-                  This->DriverBindingHandle,
-                  ControllerHandle,
-                  EFI_OPEN_PROTOCOL_BY_DRIVER
-                  );
-  if (Status == EFI_ALREADY_STARTED) {
-    return EFI_SUCCESS;
-  }
-
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-  //
-  // Close the I/O Abstraction(s) used to perform the supported test
-  //
-  gBS->CloseProtocol (
-         ControllerHandle,
-         &gEfiDevicePathProtocolGuid,
-         This->DriverBindingHandle,
-         ControllerHandle
-         );
 
   //
   // Open the IO Abstraction(s) needed to perform the supported test
@@ -128,8 +113,37 @@ PartitionDriverBindingSupported (
   // Close the I/O Abstraction(s) used to perform the supported test
   //
   gBS->CloseProtocol (
+         ControllerHandle,
+         &gEfiDiskIoProtocolGuid,
+         This->DriverBindingHandle,
+         ControllerHandle
+         );
+
+  //
+  // Open the EFI Device Path protocol needed to perform the supported test
+  //
+  Status = gBS->OpenProtocol (
+                  ControllerHandle,
+                  &gEfiDevicePathProtocolGuid,
+                  (VOID **) &ParentDevicePath,
+                  This->DriverBindingHandle,
+                  ControllerHandle,
+                  EFI_OPEN_PROTOCOL_BY_DRIVER
+                  );
+  if (Status == EFI_ALREADY_STARTED) {
+    return EFI_SUCCESS;
+  }
+
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  //
+  // Close protocol, don't use device path protocol in the Support() function
+  //
+  gBS->CloseProtocol (
         ControllerHandle,
-        &gEfiDiskIoProtocolGuid,
+        &gEfiDevicePathProtocolGuid,
         This->DriverBindingHandle,
         ControllerHandle
         );
@@ -179,6 +193,20 @@ PartitionDriverBindingStart (
   EFI_DISK_IO_PROTOCOL      *DiskIo;
   EFI_DEVICE_PATH_PROTOCOL  *ParentDevicePath;
   PARTITION_DETECT_ROUTINE  *Routine;
+  BOOLEAN                   MediaPresent;
+
+  //
+  // Check RemainingDevicePath validation
+  //
+  if (RemainingDevicePath != NULL) {
+    //
+    // Check if RemainingDevicePath is the End of Device Path Node, 
+    // if yes, return EFI_SUCCESS
+    //
+    if (IsDevicePathEnd (RemainingDevicePath)) {
+      return EFI_SUCCESS;
+    }
+  }
 
   Status = gBS->OpenProtocol (
                   ControllerHandle,
@@ -227,10 +255,12 @@ PartitionDriverBindingStart (
   OpenStatus = Status;
 
   //
-  // If no media is present, do nothing here.
+  // Try to read blocks when there's media or it is removable physical partition.
   //
-  Status = EFI_UNSUPPORTED;
-  if (BlockIo->Media->MediaPresent) {
+  Status       = EFI_UNSUPPORTED;
+  MediaPresent = BlockIo->Media->MediaPresent;
+  if (BlockIo->Media->MediaPresent ||
+      (BlockIo->Media->RemovableMedia && !BlockIo->Media->LogicalPartition)) {
     //
     // Try for GPT, then El Torito, and then legacy MBR partition types. If the
     // media supports a given partition type install child handles to represent
@@ -245,7 +275,7 @@ PartitionDriverBindingStart (
                    BlockIo,
                    ParentDevicePath
                    );
-      if (!EFI_ERROR (Status) || Status == EFI_MEDIA_CHANGED) {
+      if (!EFI_ERROR (Status) || Status == EFI_MEDIA_CHANGED || Status == EFI_NO_MEDIA) {
         break;
       }
       Routine++;
@@ -257,7 +287,16 @@ PartitionDriverBindingStart (
   // driver. So don't try to close them. Otherwise, we will break the dependency
   // between the controller and the driver set up before.
   //
-  if (EFI_ERROR (Status) && !EFI_ERROR (OpenStatus) && Status != EFI_MEDIA_CHANGED) {
+  // In the case that when the media changes on a device it will Reinstall the 
+  // BlockIo interaface. This will cause a call to our Stop(), and a subsequent
+  // reentrant call to our Start() successfully. We should leave the device open
+  // when this happen. The "media change" case includes either the status is
+  // EFI_MEDIA_CHANGED or it is a "media" to "no media" change. 
+  //  
+  if (EFI_ERROR (Status)          &&
+      !EFI_ERROR (OpenStatus)     &&
+      Status != EFI_MEDIA_CHANGED &&
+      !(MediaPresent && Status == EFI_NO_MEDIA)) {
     gBS->CloseProtocol (
           ControllerHandle,
           &gEfiDiskIoProtocolGuid,

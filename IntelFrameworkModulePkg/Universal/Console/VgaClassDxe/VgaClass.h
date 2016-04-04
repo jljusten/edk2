@@ -16,7 +16,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #ifndef _VGA_CLASS_H__
 #define _VGA_CLASS_H__
 
-#include <PiDxe.h>
 #include <FrameworkDxe.h>
 
 #include <Protocol/SimpleTextOut.h>
@@ -31,7 +30,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/ReportStatusCodeLib.h>
 
-#include <IndustryStandard/Pci22.h>
+#include <IndustryStandard/Pci.h>
 
 //
 // Global Variables

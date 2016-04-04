@@ -1,7 +1,10 @@
 /** @file
-  Generic BDS library definition, include the data structure and function.
+  Generic BDS library defines general interfaces for BDS driver including:
+    1) BDS boot policy interface
+    2) BDS boot device connect interface
+    3) BDS Misc interfaces for mainting boot variable, ouput string.
 
-Copyright (c) 2004 - 2008, Intel Corporation. <BR>
+Copyright (c) 2004 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -17,28 +20,28 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 extern EFI_HANDLE mBdsImageHandle;
 
-//
-// Constants which are variable names used to access variables
-//
+///
+/// Constants which are variable names used to access variables
+///
 #define VAR_LEGACY_DEV_ORDER L"LegacyDevOrder"
 
-//
-// Data structures and defines
-//
+///
+/// Data structures and defines
+///
 #define FRONT_PAGE_QUESTION_ID  0x0000
 #define FRONT_PAGE_DATA_WIDTH   0x01
 
-//
-// ConnectType
-//
+///
+/// ConnectType
+///
 #define CONSOLE_OUT 0x00000001
 #define STD_ERROR   0x00000002
 #define CONSOLE_IN  0x00000004
 #define CONSOLE_ALL (CONSOLE_OUT | CONSOLE_IN | STD_ERROR)
 
-//
-// Load Option Attributes defined in EFI Specification
-//
+///
+/// Load Option Attributes
+///
 #define LOAD_OPTION_ACTIVE              0x00000001
 #define LOAD_OPTION_FORCE_RECONNECT     0x00000002
 
@@ -53,22 +56,19 @@ extern EFI_HANDLE mBdsImageHandle;
 
 #define IS_LOAD_OPTION_TYPE(_c, _Mask)  (BOOLEAN) (((_c) & (_Mask)) != 0)
 
-//
-// Define Maxmim characters that will be accepted
-//
+///
+/// Define Maximum characters that will be accepted
+///
 #define MAX_CHAR            480
 #define MAX_CHAR_SIZE       (MAX_CHAR * 2)
 
-#define MIN_ALIGNMENT_SIZE  4
-#define ALIGN_SIZE(a)       ((a % MIN_ALIGNMENT_SIZE) ? MIN_ALIGNMENT_SIZE - (a % MIN_ALIGNMENT_SIZE) : 0)
-
-//
-// Define maximum characters for boot option variable "BootXXXX"
-//
+///
+/// Define maximum characters for boot option variable "BootXXXX"
+///
 #define BOOT_OPTION_MAX_CHAR 10
 
 //
-// This data structure is the part of BDS_CONNECT_ENTRY that we can hard code.
+// This data structure is the part of BDS_CONNECT_ENTRY
 //
 #define BDS_LOAD_OPTION_SIGNATURE SIGNATURE_32 ('B', 'd', 'C', 'O')
 
@@ -96,10 +96,6 @@ typedef struct {
 } BDS_CONSOLE_CONNECT_ENTRY;
 
 //
-// Lib Functions
-//
-
-//
 // Bds boot related lib functions
 //
 /**
@@ -113,18 +109,17 @@ BdsLibBootNext (
   );
 
 /**
-  Process the boot option follow the UEFI specification and
-  special treat the legacy boot option with BBS_DEVICE_PATH.
+  Process the boot option according to the UEFI specification. The legacy boot option device path includes BBS_DEVICE_PATH.
 
-  @param  Option                 The boot option need to be processed
-  @param  DevicePath             The device path which describe where to load the
+  @param  Option                 The boot option to be processed
+  @param  DevicePath             The device path describing where to load the
                                  boot image or the legcy BBS device path to boot
                                  the legacy OS
   @param  ExitDataSize           The size of exit data.
   @param  ExitData               Data returned when Boot image failed.
 
-  @retval EFI_SUCCESS            Boot from the input boot option successfully.
-  @retval EFI_NOT_FOUND          If the Device Path is not found in the system
+  @retval EFI_SUCCESS            Boot from the input boot option succeeded.
+  @retval EFI_NOT_FOUND          The Device Path is not found in the system
 
 **/
 EFI_STATUS
@@ -138,15 +133,52 @@ BdsLibBootViaBootOption (
 
 
 /**
-  This function will enumerate all possible boot device in the system,
-  it will only excute once of every boot.
-
-  @param  BdsBootOptionList      The header of the link list which indexed all
+  This function will enumerate all possible boot devices in the system, and
+  automatically create boot options for Network, Shell, Removable BlockIo, 
+  and Non-BlockIo Simplefile devices. 
+  
+  BDS separates EFI boot options into six types:
+  1. Network - The boot option points to the SimpleNetworkProtocol device. 
+               Bds will try to automatically create this type of boot option during enumeration.
+  2. Shell   - The boot option points to internal flash shell. 
+               Bds will try to automatically create this type of boot option during enumeration.
+  3. Removable BlockIo      - The boot option points to a removable media
+                              device, such as a USB flash drive or DVD drive.
+                              These devices should contain a *removable* blockIo
+                              protocol in their device handle.
+                              Bds will try to automatically create this type boot option 
+                              when enumerate.
+  4. Fixed BlockIo          - The boot option points to a Fixed blockIo device, 
+                              such as a hard disk.
+                              These devices should contain a *fixed* blockIo
+                              protocol in their device handle.
+                              BDS will skip fixed blockIo devices, and not
+                              automatically create boot option for them. But BDS 
+                              will help to delete those fixed blockIo boot options, 
+                              whose description rules conflict with other auto-created
+                              boot options.
+  5. Non-BlockIo Simplefile - The boot option points to a device whose handle 
+                              has SimpleFileSystem Protocol, but has no blockio
+                              protocol. These devices do not offer blockIo
+                              protocol, but BDS still can get the 
+                              \EFI\BOOT\boot{machinename}.EFI by SimpleFileSystem
+                              Protocol.
+  6. File    - The boot option points to a file. These boot options are usually 
+               created by the user, either manually or with an OS loader. BDS will not delete or modify
+               these boot options.        
+    
+  This function will enumerate all possible boot devices in the system, and
+  automatically create boot options for Network, Shell, Removable BlockIo, 
+  and Non-BlockIo Simplefile devices.
+  It will excute once every boot.
+  
+  @param  BdsBootOptionList      The header of the linked list that indexed all
                                  current boot options
 
-  @retval EFI_SUCCESS            Finished all the boot device enumerate and create
-                                 the boot option base on that boot device
+  @retval EFI_SUCCESS            Finished all the boot device enumerations and created
+                                 the boot option based on the boot device
 
+  @retval EFI_OUT_OF_RESOURCES   Failed to enumerate the boot device and create the boot option list
 **/
 EFI_STATUS
 EFIAPI
@@ -157,7 +189,7 @@ BdsLibEnumerateAllBootOption (
 /**
   Build the boot option with the handle parsed in
 
-  @param  Handle                 The handle which present the device path to create
+  @param  Handle                 The handle representing the device path for which to create
                                  boot option
   @param  BdsBootOptionList      The header of the link list which indexed all
                                  current boot options
@@ -208,8 +240,8 @@ BdsLibGetBootMode (
 
 
 /**
-  The function will go through the driver optoin link list, load and start
-  every driver the driver optoin device path point to.
+  The function will go through the driver option link list, and then load and start
+  every driver to which the driver option device path points.
 
   @param  BdsDriverLists        The header of the current driver option link list
 
@@ -222,7 +254,8 @@ BdsLibLoadDrivers (
 
 
 /**
-  Process BootOrder, or DriverOrder variables, by calling
+  This function processes BootOrder or DriverOrder variables, by calling
+
   BdsLibVariableToOption () for each UINT16 in the variables.
 
   @param  BdsCommonOptionList   The header of the option list base on variable
@@ -233,7 +266,6 @@ BdsLibLoadDrivers (
   @retval EFI_SUCCESS           Success create the boot option or driver option
                                 list
   @retval EFI_OUT_OF_RESOURCES  Failed to get the boot option or driver option list
-
 **/
 EFI_STATUS
 EFIAPI
@@ -243,8 +275,8 @@ BdsLibBuildOptionFromVar (
   );
 
 /**
-  Read the EFI variable (VendorGuid/Name) and return a dynamically allocated
-  buffer, and the size of the buffer. If failure return NULL.
+  This function reads the EFI variable (VendorGuid/Name) and returns a dynamically allocated
+  buffer and the size of the buffer. If failure, return NULL.
 
   @param  Name                  String part of EFI variable name
   @param  VendorGuid            GUID part of EFI variable name
@@ -283,15 +315,15 @@ BdsLibOutputStrings (
   );
 
 /**
-  Build the boot#### or driver#### option from the VariableName, the
+  Build the boot#### or driver#### option from the VariableName. The
   build boot#### or driver#### will also be linked to BdsCommonOptionList.
 
   @param  BdsCommonOptionList   The header of the boot#### or driver#### option
                                 link list
-  @param  VariableName          EFI Variable name indicate if it is boot#### or
+  @param  VariableName          EFI Variable name, indicates if it is boot#### or
                                 driver####
 
-  @retval BDS_COMMON_OPTION     Get the option just been created
+  @retval BDS_COMMON_OPTION     The option that was created
   @retval NULL                  Failed to get the new option
 
 **/
@@ -303,7 +335,7 @@ BdsLibVariableToOption (
   );
 
 /**
-  This function will register the new boot#### or driver#### option base on
+  This function registers the new boot#### or driver#### option based on
   the VariableName. The new registered boot#### or driver#### will be linked
   to BdsOptionList and also update to the VariableName. After the boot#### or
   driver#### updated, the BootOrder or DriverOrder will also be updated.
@@ -329,13 +361,10 @@ BdsLibRegisterNewOption (
   );
 
 //
-// Bds connect or disconnect driver lib funcion
+// Bds connect and disconnect driver lib funcions
 //
 /**
-  Connects all drivers to all controllers.
-  This function make sure all the current system driver will manage
-  the correspoinding controllers if have. And at the same time, make
-  sure all the system controllers have driver to manage it if have.
+  This function connects all system drivers with the corresponding controllers. 
 
 **/
 VOID
@@ -345,10 +374,7 @@ BdsLibConnectAllDriversToAllControllers (
   );
 
 /**
-  This function will connect all the system driver to controller
-  first, and then special connect the default console, this make
-  sure all the system controller available and the platform default
-  console connected.
+  This function connects all system drivers to controllers.
 
 **/
 VOID
@@ -358,19 +384,17 @@ BdsLibConnectAll (
   );
 
 /**
-  This function will create all handles associate with every device
-  path node. If the handle associate with one device path node can not
-  be created success, then still give one chance to do the dispatch,
-  which load the missing drivers if possible.
+  This function creates all handles associated with the given device
+  path node. If the handle associated with one device path node can not
+  be created, then it tries to execute the dispatch to load the missing drivers.  
 
-  @param  DevicePathToConnect   The device path which will be connected, it can be
+  @param  DevicePathToConnect   The device path to be connected. Can be
                                 a multi-instance device path
 
-  @retval EFI_SUCCESS           All handles associate with every device path  node
-                                have been created
-  @retval EFI_OUT_OF_RESOURCES  There is no resource to create new handles
-  @retval EFI_NOT_FOUND         Create the handle associate with one device  path
-                                node failed
+  @retval EFI_SUCCESS           All handles associates with every device path node
+                                were created
+  @retval EFI_OUT_OF_RESOURCES  Not enough resources to create new handles
+  @retval EFI_NOT_FOUND         At least one handle could not be created
 
 **/
 EFI_STATUS
@@ -380,13 +404,8 @@ BdsLibConnectDevicePath (
   );
 
 /**
-  This function will connect all current system handles recursively. The
-  connection will finish until every handle's child handle created if it have.
-
-  @retval EFI_SUCCESS           All handles and it's child handle have been
-                                connected
-  @retval EFI_STATUS            Return the status of gBS->LocateHandleBuffer().
-
+  This function will connect all current system handles recursively.     gBS->ConnectController() service is invoked for each handle exist in system handler buffer.  If the handle is bus type handler, all childrens also will be connected recursively  by gBS->ConnectController().
+  @retval EFI_SUCCESS           All handles and child handles have been                                connected  @retval EFI_STATUS            Return the status of gBS->LocateHandleBuffer().
 **/
 EFI_STATUS
 EFIAPI
@@ -394,13 +413,10 @@ BdsLibConnectAllEfi (
   VOID
   );
 
-
 /**
-  This function will disconnect all current system handles. The disconnection
-  will finish until every handle have been disconnected.
-
+  This function will disconnect all current system handles.     gBS->DisconnectController() is invoked for each handle exists in system handle buffer.  If handle is a bus type handle, all childrens also are disconnected recursively by  gBS->DisconnectController().
   @retval EFI_SUCCESS           All handles have been disconnected
-  @retval EFI_STATUS            Return the status of gBS->LocateHandleBuffer().
+  @retval EFI_STATUS            Error status returned by of gBS->LocateHandleBuffer().
 
 **/
 EFI_STATUS
@@ -413,8 +429,8 @@ BdsLibDisconnectAllEfi (
 // Bds console related lib functions
 //
 /**
-  This function will search every simpletxt devive in current system,
-  and make every simpletxt device as pertantial console device.
+  This function will search every simpletxt device in the current system,
+  and make every simpletxt device a potential console device.
 
 **/
 VOID
@@ -425,11 +441,11 @@ BdsLibConnectAllConsoles (
 
 
 /**
-  This function will connect console device base on the console
+  This function will connect console device based on the console
   device variable ConIn, ConOut and ErrOut.
 
-  @retval EFI_SUCCESS              At least one of the ConIn and ConOut device have
-                                   been connected success.
+  @retval EFI_SUCCESS              At least one of the ConIn and ConOut devices have
+                                   been connected.
   @retval EFI_STATUS               Return the status of BdsLibConnectConsoleVariable ().
 
 **/
@@ -440,20 +456,18 @@ BdsLibConnectAllDefaultConsoles (
   );
 
 /**
-  This function update console variable based on ConVarName, it can
+  This function updates the console variable based on ConVarName. It can
   add or remove one specific console device path from the variable
 
-  @param  ConVarName               Console related variable name, ConIn, ConOut,
+  @param  ConVarName               Console-related variable name: ConIn, ConOut,
                                    ErrOut.
-  @param  CustomizedConDevicePath  The console device path which will be added to
-                                   the console variable ConVarName, this parameter
-                                   can not be multi-instance.
-  @param  ExclusiveDevicePath      The console device path which will be removed
-                                   from the console variable ConVarName, this
-                                   parameter can not be multi-instance.
+  @param  CustomizedConDevicePath  The console device path to be added to
+                                   the console variable ConVarName. Can not be multi-instance.
+  @param  ExclusiveDevicePath      The console device path to be removed
+                                   from the console variable ConVarName. Can not be multi-instance.
 
-  @retval EFI_UNSUPPORTED          The added device path is same to the removed one.
-  @retval EFI_SUCCESS              Success add or remove the device path from  the
+  @retval EFI_UNSUPPORTED          The added device path is the same as a removed one.
+  @retval EFI_SUCCESS              Successfully added or removed the device path from the
                                    console variable.
 
 **/
@@ -466,18 +480,17 @@ BdsLibUpdateConsoleVariable (
   );
 
 /**
-  Connect the console device base on the variable ConVarName, if
-  device path of the ConVarName is multi-instance device path, if
-  anyone of the instances is connected success, then this function
+  Connect the console device base on the variable ConVarName. If
+  ConVarName is a multi-instance device path, and at least one
+  instance connects successfully, then this function
   will return success.
 
   @param  ConVarName               Console related variable name, ConIn, ConOut,
                                    ErrOut.
 
-  @retval EFI_NOT_FOUND            There is not any console devices connected
-                                   success
-  @retval EFI_SUCCESS              Success connect any one instance of the console
-                                   device path base on the variable ConVarName.
+  @retval EFI_NOT_FOUND            No console devices were connected successfully
+  @retval EFI_SUCCESS              Connected at least one instance of the console
+                                   device path based on the variable ConVarName.
 
 **/
 EFI_STATUS
@@ -490,15 +503,15 @@ BdsLibConnectConsoleVariable (
 // Bds device path related lib functions
 //
 /**
-  Delete the instance in Multi which matches partly with Single instance
+  Delete the instance in Multi that overlaps with Single 
 
   @param  Multi                 A pointer to a multi-instance device path data
                                 structure.
   @param  Single                A pointer to a single-instance device path data
                                 structure.
 
-  @return This function will remove the device path instances in Multi which partly
-          match with the Single, and return the result device path. If there is no
+  @return This function removes the device path instances in Multi that overlap
+   Single, and returns the resulting device path. If there is no
           remaining device path as a result, this function will return NULL.
 
 **/
@@ -519,7 +532,7 @@ BdsLibDelPartMatchInstance (
                                 structure.
 
   @retval TRUE                  If the Single device path is contained within Multi device path.
-  @retval FALSE                 The Single device path is not match within Multi device path.
+  @retval FALSE                 The Single device path is not contained within Multi device path.
 
 **/
 BOOLEAN
@@ -548,9 +561,9 @@ DevicePathToStr (
 // Internal definitions
 //
 typedef struct {
-  CHAR16  *str;
-  UINTN   len;
-  UINTN   maxlen;
+  CHAR16  *Str;
+  UINTN   Len;
+  UINTN   Maxlen;
 } POOL_PRINT;
 
 typedef struct {
@@ -576,7 +589,7 @@ typedef struct {
   UINT16                    LoginOption;
   UINT64                    Lun;
   UINT16                    TargetPortalGroupTag;
-  CHAR16                    iSCSITargetName[1];
+  CHAR16                    TargetName[1];
 } ISCSI_DEVICE_PATH_WITH_NAME;
 
 
@@ -617,7 +630,7 @@ ShadowAllOptionRom (
 
   @retval EFI_SUCCESS             All invalide legacy boot options are deleted.
   @retval EFI_OUT_OF_RESOURCES    Fail to allocate necessary memory.
-  @retval EFI_NOT_FOUND           Fail to retrive variable of boot order.
+  @retval EFI_NOT_FOUND           Fail to retrieve variable of boot order.
 
 **/
 EFI_STATUS
@@ -627,12 +640,13 @@ BdsDeleteAllInvalidLegacyBootOptions (
   );
 
 /**
-
   Add the legacy boot options from BBS table if they do not exist.
 
-  @retval EFI_SUCCESS       The boot options are added successfully 
-                            or they are already in boot options.
-
+  @retval EFI_SUCCESS          The boot options are added successfully 
+                               or they are already in boot options.
+  @retval EFI_NOT_FOUND        No legacy boot options is found.
+  @retval EFI_OUT_OF_RESOURCE  No enough memory.
+  @return Other value          LegacyBoot options are not added.
 **/
 EFI_STATUS
 EFIAPI
@@ -641,12 +655,14 @@ BdsAddNonExistingLegacyBootOptions (
   );
 
 /**
-
   Add the legacy boot devices from BBS table into 
   the legacy device boot order.
 
-  @retval EFI_SUCCESS       The boot devices are added successfully.
-
+  @retval EFI_SUCCESS           The boot devices are added successfully.
+  @retval EFI_NOT_FOUND         The legacy boot devices are not found.
+  @retval EFI_OUT_OF_RESOURCES  Memmory or storage is not enough.
+  @retval EFI_DEVICE_ERROR      Fail to add the legacy device boot order into EFI variable
+                                because of hardware error.
 **/
 EFI_STATUS
 EFIAPI
@@ -655,13 +671,13 @@ BdsUpdateLegacyDevOrder (
   );
 
 /**
-
-  Set the boot priority for BBS entries based on boot option entry and boot order.
+  Refresh the boot priority for BBS entries based on boot option entry and boot order.
 
   @param  Entry             The boot option is to be checked for refresh BBS table.
   
-  @retval EFI_SUCCESS       The boot priority for BBS entries is refreshed successfully.
-
+  @retval EFI_SUCCESS           The boot priority for BBS entries is refreshed successfully.
+  @retval EFI_NOT_FOUND         BBS entries can't be found.
+  @retval EFI_OUT_OF_RESOURCES  Failed to get the legacy device boot order.
 **/
 EFI_STATUS
 EFIAPI
@@ -670,15 +686,16 @@ BdsRefreshBbsTableForBoot (
   );
 
 /**
+  Delete the Boot Option from EFI Variable. The Boot Order Arrray
+  is also updated.
 
-  Delete boot option specified by OptionNumber and adjust the boot order.
+  @param OptionNumber    The number of Boot option want to be deleted.
+  @param BootOrder       The Boot Order array.
+  @param BootOrderSize   The size of the Boot Order Array.
 
-  @param  OptionNumber      The boot option to be deleted.
-  @param  BootOrder         Boot order list to be adjusted by remove this boot option.
-  @param  BootOrderSize     The size of Boot order list will be modified.
-  
-  @retval EFI_SUCCESS       The boot option is deleted successfully.
-
+  @retval  EFI_SUCCESS           The Boot Option Variable was found and removed
+  @retval  EFI_UNSUPPORTED       The Boot Option Variable store was inaccessible
+  @retval  EFI_NOT_FOUND         The Boot Option Variable was not found
 **/
 EFI_STATUS
 EFIAPI
@@ -689,11 +706,11 @@ BdsDeleteBootOption (
   );
 
 //
-//The interface functions relate with Setup Browser Reset Reminder feature
+//The interface functions related to the Setup Browser Reset Reminder feature
 //
 /**
   Enable the setup browser reset reminder feature.
-  This routine is used in platform tip. If the platform policy need the feature, use the routine to enable it.
+  This routine is used in platform tip. If the platform policy needs the feature, use the routine to enable it.
 
 **/
 VOID
@@ -704,7 +721,7 @@ EnableResetReminderFeature (
 
 /**
   Disable the setup browser reset reminder feature.
-  This routine is used in platform tip. If the platform policy do not want the feature, use the routine to disable it.
+  This routine is used in platform tip. If the platform policy does not want the feature, use the routine to disable it.
 
 **/
 VOID
@@ -714,8 +731,8 @@ DisableResetReminderFeature (
   );
 
 /**
-  Record the info that  a reset is required.
-  A  module boolean variable is used to record whether a reset is required.
+  Record the info that a reset is required.
+  A module boolean variable is used to record whether a reset is required.
 
 **/
 VOID
@@ -726,8 +743,8 @@ EnableResetRequired (
 
 
 /**
-  Record the info that  no reset is required.
-  A  module boolean variable is used to record whether a reset is required.
+  Record the info that no reset is required.
+  A module boolean variable is used to record whether a reset is required.
 
 **/
 VOID
@@ -737,7 +754,7 @@ DisableResetRequired (
   );
 
 /**
-  Check whether platform policy enable the reset reminder feature. The default is enabled.
+  Check whether platform policy enables the reset reminder feature. The default is enabled.
 
 **/
 BOOLEAN
@@ -747,7 +764,7 @@ IsResetReminderFeatureEnable (
   );
 
 /**
-  Check if  user changed any option setting which needs a system reset to be effective.
+  Check if the user changed any option setting that needs a system reset to be effective.
 
 **/
 BOOLEAN
@@ -758,7 +775,7 @@ IsResetRequired (
 
 /**
   Check whether a reset is needed, and finish the reset reminder feature.
-  If a reset is needed, Popup a menu to notice user, and finish the feature
+  If a reset is needed, pop up a menu to notice user, and finish the feature
   according to the user selection.
 
 **/
@@ -768,50 +785,48 @@ SetupResetReminder (
   VOID
   );
 
-//
-// Define the boot type which to classify the boot option type
-// Different boot option type could have different boot behavior
-// Use their device path node (Type + SubType) as type value
-// The boot type here can be added according to requirement
-//
-//
-// ACPI boot type. For ACPI device, cannot use sub-type to distinguish device, so hardcode their value
-//
+
+///
+/// Define the boot type which to classify the boot option type
+/// Different boot option type could have different boot behavior
+/// Use their device path node (Type + SubType) as type value
+/// The boot type here can be added according to requirement
+///
+
+///
+/// ACPI boot type. For ACPI device, cannot use sub-type to distinguish device, so hardcode their value
+///
 #define  BDS_EFI_ACPI_FLOPPY_BOOT         0x0201
-//
-// Message boot type
-// If a device path of boot option only point to a message node, the boot option is message boot type
-//
+///
+/// Message boot type
+/// If a device path of boot option only point to a message node, the boot option is message boot type
+///
 #define  BDS_EFI_MESSAGE_ATAPI_BOOT       0x0301 // Type 03; Sub-Type 01
 #define  BDS_EFI_MESSAGE_SCSI_BOOT        0x0302 // Type 03; Sub-Type 02
 #define  BDS_EFI_MESSAGE_USB_DEVICE_BOOT  0x0305 // Type 03; Sub-Type 05
+#define  BDS_EFI_MESSAGE_SATA_BOOT        0x0312 // Type 03; Sub-Type 18
+#define  BDS_EFI_MESSAGE_MAC_BOOT         0x030b // Type 03; Sub-Type 11
 #define  BDS_EFI_MESSAGE_MISC_BOOT        0x03FF
-//
-// Media boot type
-// If a device path of boot option contain a media node, the boot option is media boot type
-//
+
+///
+/// Media boot type
+/// If a device path of boot option contain a media node, the boot option is media boot type
+///
 #define  BDS_EFI_MEDIA_HD_BOOT            0x0401 // Type 04; Sub-Type 01
 #define  BDS_EFI_MEDIA_CDROM_BOOT         0x0402 // Type 04; Sub-Type 02
-//
-// BBS boot type
-// If a device path of boot option contain a BBS node, the boot option is BBS boot type
-//
+///
+/// BBS boot type
+/// If a device path of boot option contain a BBS node, the boot option is BBS boot type
+///
 #define  BDS_LEGACY_BBS_BOOT              0x0501 //  Type 05; Sub-Type 01
 
 #define  BDS_EFI_UNSUPPORT                0xFFFF
 
-//
-// USB host controller Programming Interface.
-//
-#define  PCI_CLASSC_PI_UHCI               0x00
-#define  PCI_CLASSC_PI_EHCI               0x20
-
 /**
-  Check whether there is a instance in BlockIoDevicePath, which contain multi device path
-  instances, has the same partition node with HardDriveDevicePath device path
+  Check whether an instance in BlockIoDevicePath has the same partition node as the HardDriveDevicePath device path
 
-  @param  BlockIoDevicePath      Multi device path instances which need to check
-  @param  HardDriveDevicePath    A device path which starts with a hard drive media
+  @param  BlockIoDevicePath      Multi device path instances to check
+  @param  HardDriveDevicePath    A device path starting with a hard drive media
                                  device path.
 
   @retval TRUE                   There is a matched device path instance.
@@ -828,11 +843,11 @@ MatchPartitionDevicePathNode (
 
 /**
   Expand a device path that starts with a hard drive media device path node to be a
-  full device path that includes the full hardware path to the device. We need
-  to do this so it can be booted. As an optimizaiton the front match (the part point
-  to the partition node. E.g. ACPI() /PCI()/ATA()/Partition() ) is saved in a variable
-  so a connect all is not required on every boot. All successful history device path
-  which point to partition node (the front part) will be saved.
+  full device path that includes the full hardware path to the device. This function enables the device to boot. 
+  To avoid requiring a connect on every boot, the front match is saved in a variable (the part point
+  to the partition node. E.g. ACPI() /PCI()/ATA()/Partition() ).
+  All successful history device paths
+  that point to the front part of the partition node will be saved.
 
   @param  HardDriveDevicePath    EFI Device Path to boot, if it starts with a hard
                                  drive media device path.
@@ -848,13 +863,13 @@ BdsExpandPartitionPartialDevicePathToFull (
   
 /**
   Return the bootable media handle.
-  First, check the device is connected
-  Second, check whether the device path point to a device which support SimpleFileSystemProtocol,
+  First, check whether the device is connected.
+  Second, check whether the device path points to a device that supports SimpleFileSystemProtocol.
   Third, detect the the default boot file in the Media, and return the removable Media handle.
 
   @param  DevicePath             Device Path to a  bootable device
 
-  @retval NULL                   The media on the DevicePath is not bootable
+  @return  The bootable media handle. If the media on the DevicePath is not bootable, NULL will return.
 
 **/
 EFI_HANDLE
@@ -865,14 +880,14 @@ BdsLibGetBootableHandle (
   
 
 /**
-  Check whether the Device path in a boot option point to a valide bootable device,
-  And if CheckMedia is true, check the device is ready to boot now.
+  Checks whether the Device path in a boot option points to a valid bootable device, and if the device
+  is ready to boot now.
 
   @param  DevPath     the Device path in a boot option
-  @param  CheckMedia  if true, check the device is ready to boot now.
+  @param  CheckMedia  if true, check whether the device is ready to boot now.
 
-  @retval TRUE        the Device path  is valide
-  @retval FALSE       the Device path  is invalide .
+  @retval TRUE        the Device path is valid
+  @retval FALSE       the Device path is invalid
 
 **/
 BOOLEAN
@@ -881,30 +896,36 @@ BdsLibIsValidEFIBootOptDevicePath (
   IN EFI_DEVICE_PATH_PROTOCOL     *DevPath,
   IN BOOLEAN                      CheckMedia
   );
-  
+
+/**
+  Checks whether the Device path in a boot option points to a valid bootable device, and if the device
+  is ready to boot now.
+  If Description is not NULL and the device path points to a fixed BlockIo
+  device, this function checks whether the description conflicts with other auto-created
+  boot options.
+
+  @param  DevPath     the Device path in a boot option
+  @param  CheckMedia  if true, checks if the device is ready to boot now.
+  @param  Description the description of a boot option
+
+  @retval TRUE        the Device path is valid
+  @retval FALSE       the Device path is invalid
+
+**/
+BOOLEAN
+EFIAPI
+BdsLibIsValidEFIBootOptDevicePathExt (
+  IN EFI_DEVICE_PATH_PROTOCOL     *DevPath,
+  IN BOOLEAN                      CheckMedia,
+  IN CHAR16                       *Description
+  );
+
 /**
   For a bootable Device path, return its boot type.
 
   @param  DevicePath                      The bootable device Path to check
 
-  @retval BDS_EFI_MEDIA_HD_BOOT           If the device path contains any media deviec path node, it is media boot type
-                                          For the floppy node, handle it as media node
-  @retval BDS_EFI_MEDIA_CDROM_BOOT        If the device path contains any media deviec path node, it is media boot type
-                                          For the floppy node, handle it as media node
-  @retval BDS_EFI_ACPI_FLOPPY_BOOT        If the device path contains any media deviec path node, it is media boot type
-                                          For the floppy node, handle it as media node
-  @retval BDS_EFI_MESSAGE_ATAPI_BOOT      If the device path not contains any media deviec path node,  and
-                                          its last device path node point to a message device path node, it is
-  
-  @retval BDS_EFI_MESSAGE_SCSI_BOOT       If the device path not contains any media deviec path node,  and
-                                          its last device path node point to a message device path node, it is
-  @retval BDS_EFI_MESSAGE_USB_DEVICE_BOOT If the device path not contains any media deviec path node,  and
-                                          its last device path node point to a message device path node, it is
-  @retval BDS_EFI_MESSAGE_MISC_BOOT       If the device path not contains any media deviec path node,  and
-                                          its last device path node point to a message device path node, it is
-  @retval BDS_LEGACY_BBS_BOOT             Legacy boot type
-  @retval BDS_EFI_UNSUPPORT               An EFI Removable BlockIO device path not point to a media and message devie,   
-
+  @retval BDS_EFI_MEDIA_HD_BOOT           If given device path contains MEDIA_DEVICE_PATH type device path node                                           which subtype is MEDIA_HARDDRIVE_DP  @retval BDS_EFI_MEDIA_CDROM_BOOT        If given device path contains MEDIA_DEVICE_PATH type device path node                                          which subtype is MEDIA_CDROM_DP  @retval BDS_EFI_ACPI_FLOPPY_BOOT        If given device path contains ACPI_DEVICE_PATH type device path node                                          which HID is floppy device.  @retval BDS_EFI_MESSAGE_ATAPI_BOOT      If given device path contains MESSAGING_DEVICE_PATH type device path node                                          and its last device path node's subtype is MSG_ATAPI_DP.  @retval BDS_EFI_MESSAGE_SCSI_BOOT       If given device path contains MESSAGING_DEVICE_PATH type device path node                                          and its last device path node's subtype is MSG_SCSI_DP.  @retval BDS_EFI_MESSAGE_USB_DEVICE_BOOT If given device path contains MESSAGING_DEVICE_PATH type device path node                                          and its last device path node's subtype is MSG_USB_DP.  @retval BDS_EFI_MESSAGE_MISC_BOOT       If the device path not contains any media device path node,  and                                          its last device path node point to a message device path node.  @retval BDS_LEGACY_BBS_BOOT             If given device path contains BBS_DEVICE_PATH type device path node.  @retval BDS_EFI_UNSUPPORT               An EFI Removable BlockIO device path not point to a media and message device,   
 **/
 UINT32
 EFIAPI
@@ -914,8 +935,8 @@ BdsGetBootTypeFromDevicePath (
 
 
 /**
-  This routine register a function to adjust the different type memory page number
-  just before booting and save the updated info into the variable for next boot to use.
+  This routine registers a function to adjust the different types of memory page numbers
+  just before booting, and saves the updated info into the variable for the next boot to use.
 
 **/
 VOID
@@ -926,23 +947,22 @@ BdsLibSaveMemoryTypeInformation (
   
 
 /**
-  According to a file guild, check a Fv file device path is valid. If it is invalid,
-  try to return the valid device path.
+  This function checks if a Fv file device path is valid, according to a file GUID. If it is invalid,
+  it tries to return the valid device path.
   FV address maybe changes for memory layout adjust from time to time, use this funciton
   could promise the Fv file device path is right.
 
-  @param  DevicePath             on input, the Fv file device path need to check on
+  @param  DevicePath             on input, the Fv file device path to check. On
                                  output, the updated valid Fv file device path
-  @param  FileGuid               the Fv file guild
+  @param  FileGuid               the Fv file GUID
 
   @retval EFI_INVALID_PARAMETER  the input DevicePath or FileGuid is invalid
-                                 parameter
-  @retval EFI_UNSUPPORTED        the input DevicePath does not contain Fv file
-                                 guild at all
-  @retval EFI_ALREADY_STARTED    the input DevicePath has pointed to Fv file, it is
+  @retval EFI_UNSUPPORTED        the input DevicePath does not contain an Fv file
+                                 GUID at all
+  @retval EFI_ALREADY_STARTED    the input DevicePath has pointed to the Fv file and is
                                  valid
-  @retval EFI_SUCCESS            has successfully updated the invalid DevicePath,
-                                 and return the updated device path in DevicePath
+  @retval EFI_SUCCESS            successfully updated the invalid DevicePath
+                                 and returned the updated device path in DevicePath
 
 **/
 EFI_STATUS
@@ -954,7 +974,7 @@ BdsLibUpdateFvFileDevicePath (
 
 
 /**
-  Connect the specific Usb device which match the short form device path,
+  Connect the specific USB device that matches the RemainingDevicePath,
   and whose bus is determined by Host Controller (Uhci or Ehci)
 
   @param  HostControllerPI      Uhci (0x00) or Ehci (0x20) or Both uhci and ehci
@@ -981,9 +1001,9 @@ BdsLibConnectUsbDevByShortFormDP(
 // The implementation of this function is provided by Platform code.
 //
 /**
-  Convert Vendor device path to device name.
+  Convert Vendor device path to a device name.
 
-  @param  Str      The buffer store device name
+  @param  Str      The buffer storing device name
   @param  DevPath  Pointer to vendor device path
 
 **/
@@ -998,7 +1018,7 @@ DevPathVendor (
   The caller must free the resulting buffer.
 
   @param  Str      Tracks the allocated pool, size in use, and amount of pool allocated.
-  @param  fmt      The format string
+  @param  Fmt      The format string
   @param  ...      The data will be printed.
 
   @return Allocated buffer with the formatted string printed in it.
@@ -1010,13 +1030,13 @@ CHAR16 *
 EFIAPI
 CatPrint (
   IN OUT POOL_PRINT   *Str,
-  IN CHAR16           *fmt,
+  IN CHAR16           *Fmt,
   ...
   );
 
 /**
-  Use Console Control to turn off UGA based Simple Text Out consoles from going
-  to the UGA device. Put up LogoFile on every UGA device that is a console
+  Use SystemTable ConOut to stop video based Simple Text Out consoles from going
+  to the video device. Put up LogoFile on every video device that is a console.
 
   @param[in]  LogoFile   File name of logo to display on the center of the screen.
 
@@ -1032,8 +1052,8 @@ EnableQuietBoot (
 
 
 /**
-  Use Console Control to turn on UGA based Simple Text Out consoles. The UGA 
-  Simple Text Out screens will now be synced up with all non UGA output devices
+  Use SystemTable ConOut to turn on video based Simple Text Out consoles. The 
+  Simple Text Out screens will now be synced up with all non video output devices
 
   @retval EFI_SUCCESS     UGA devices are back in text mode and synced up.
 
@@ -1042,24 +1062,6 @@ EFI_STATUS
 EFIAPI
 DisableQuietBoot (
   VOID
-  );
-
-/**
-  Use Console Control Protocol to lock the Console In Spliter virtual handle. 
-  This is the ConInHandle and ConIn handle in the EFI system table. All key
-  presses will be ignored until the Password is typed in. The only way to
-  disable the password is to type it in to a ConIn device.
-
-  @param  Password        Password used to lock ConIn device.
-
-  @retval EFI_SUCCESS     lock the Console In Spliter virtual handle successfully.
-  @retval EFI_UNSUPPORTED Password not found
-
-**/
-EFI_STATUS
-EFIAPI
-LockKeyboards (
-  IN  CHAR16    *Password
   );
 
 #endif

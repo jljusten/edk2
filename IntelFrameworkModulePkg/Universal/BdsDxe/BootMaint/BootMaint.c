@@ -1,7 +1,7 @@
 /** @file
   The functions for Boot Maintainence Main menu.
 
-Copyright (c) 2004 - 2008, Intel Corporation. <BR>
+Copyright (c) 2004 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -450,7 +450,7 @@ BootMaintCallback (
     if (QuestionId < CONFIG_OPTION_OFFSET) {
       switch (QuestionId) {
       case KEY_VALUE_BOOT_FROM_FILE:
-        Private->FeCurrentState = BOOT_FROM_FILE_STATE;
+        Private->FeCurrentState = FileExplorerStateBootFromFile;
 
         //
         // Exit Bmm main formset to send File Explorer formset.
@@ -459,7 +459,7 @@ BootMaintCallback (
         break;
 
       case FORM_BOOT_ADD_ID:
-        Private->FeCurrentState = ADD_BOOT_OPTION_STATE;
+        Private->FeCurrentState = FileExplorerStateAddBootOption;
 
         //
         // Exit Bmm main formset to send File Explorer formset.
@@ -468,7 +468,7 @@ BootMaintCallback (
         break;
 
       case FORM_DRV_ADD_FILE_ID:
-        Private->FeCurrentState = ADD_DRIVER_OPTION_STATE;
+        Private->FeCurrentState = FileExplorerStateAddDriverOptionState;
 
         //
         // Exit Bmm main formset to send File Explorer formset.
@@ -625,8 +625,9 @@ ApplyChangeHandler (
     break;
 
   case FORM_BOOT_DEL_ID:
-    ASSERT (BootOptionMenu.MenuNumber <= (sizeof (CurrentFakeNVMap->BootOptionDel) / sizeof (UINT8)));
-    for (Index = 0; Index < BootOptionMenu.MenuNumber; Index++) {
+    for (Index = 0; 
+         ((Index < BootOptionMenu.MenuNumber) && (Index < (sizeof (CurrentFakeNVMap->BootOptionDel) / sizeof (UINT8)))); 
+         Index ++) {
       NewMenuEntry            = BOpt_GetMenuEntry (&BootOptionMenu, Index);
       NewLoadContext          = (BM_LOAD_CONTEXT *) NewMenuEntry->VariableContext;
       NewLoadContext->Deleted = CurrentFakeNVMap->BootOptionDel[Index];
@@ -636,8 +637,9 @@ ApplyChangeHandler (
     break;
 
   case FORM_DRV_DEL_ID:
-    ASSERT (DriverOptionMenu.MenuNumber <= (sizeof (CurrentFakeNVMap->DriverOptionDel) / sizeof (UINT8)));
-    for (Index = 0; Index < DriverOptionMenu.MenuNumber; Index++) {
+    for (Index = 0; 
+         ((Index < DriverOptionMenu.MenuNumber) && (Index < (sizeof (CurrentFakeNVMap->DriverOptionDel) / sizeof (UINT8)))); 
+         Index++) {
       NewMenuEntry            = BOpt_GetMenuEntry (&DriverOptionMenu, Index);
       NewLoadContext          = (BM_LOAD_CONTEXT *) NewMenuEntry->VariableContext;
       NewLoadContext->Deleted = CurrentFakeNVMap->DriverOptionDel[Index];
@@ -700,16 +702,17 @@ ApplyChangeHandler (
     break;
 
   case FORM_CON_IN_ID:
-    ASSERT ((ConsoleInpMenu.MenuNumber + TerminalMenu.MenuNumber) <= (sizeof (CurrentFakeNVMap->ConsoleCheck) / sizeof (UINT8)));
     for (Index = 0; Index < ConsoleInpMenu.MenuNumber; Index++) {
       NewMenuEntry                = BOpt_GetMenuEntry (&ConsoleInpMenu, Index);
       NewConsoleContext           = (BM_CONSOLE_CONTEXT *) NewMenuEntry->VariableContext;
+	  ASSERT (Index < MAX_MENU_NUMBER);
       NewConsoleContext->IsActive = CurrentFakeNVMap->ConsoleCheck[Index];
     }
 
     for (Index = 0; Index < TerminalMenu.MenuNumber; Index++) {
       NewMenuEntry                = BOpt_GetMenuEntry (&TerminalMenu, Index);
       NewTerminalContext          = (BM_TERMINAL_CONTEXT *) NewMenuEntry->VariableContext;
+	  ASSERT (Index + ConsoleInpMenu.MenuNumber < MAX_MENU_NUMBER);
       NewTerminalContext->IsConIn = CurrentFakeNVMap->ConsoleCheck[Index + ConsoleInpMenu.MenuNumber];
     }
 
@@ -717,16 +720,17 @@ ApplyChangeHandler (
     break;
 
   case FORM_CON_OUT_ID:
-    ASSERT ((ConsoleOutMenu.MenuNumber + TerminalMenu.MenuNumber) <= (sizeof (CurrentFakeNVMap->ConsoleCheck) / sizeof (UINT8)));
     for (Index = 0; Index < ConsoleOutMenu.MenuNumber; Index++) {
       NewMenuEntry                = BOpt_GetMenuEntry (&ConsoleOutMenu, Index);
       NewConsoleContext           = (BM_CONSOLE_CONTEXT *) NewMenuEntry->VariableContext;
+	  ASSERT (Index < MAX_MENU_NUMBER);
       NewConsoleContext->IsActive = CurrentFakeNVMap->ConsoleCheck[Index];
     }
 
     for (Index = 0; Index < TerminalMenu.MenuNumber; Index++) {
       NewMenuEntry                  = BOpt_GetMenuEntry (&TerminalMenu, Index);
       NewTerminalContext            = (BM_TERMINAL_CONTEXT *) NewMenuEntry->VariableContext;
+	  ASSERT (Index + ConsoleOutMenu.MenuNumber < MAX_MENU_NUMBER);
       NewTerminalContext->IsConOut  = CurrentFakeNVMap->ConsoleCheck[Index + ConsoleOutMenu.MenuNumber];
     }
 
@@ -734,16 +738,17 @@ ApplyChangeHandler (
     break;
 
   case FORM_CON_ERR_ID:
-    ASSERT ((ConsoleErrMenu.MenuNumber + TerminalMenu.MenuNumber) <= (sizeof (CurrentFakeNVMap->ConsoleCheck) / sizeof (UINT8)));
     for (Index = 0; Index < ConsoleErrMenu.MenuNumber; Index++) {
       NewMenuEntry                = BOpt_GetMenuEntry (&ConsoleErrMenu, Index);
       NewConsoleContext           = (BM_CONSOLE_CONTEXT *) NewMenuEntry->VariableContext;
+	  ASSERT (Index < MAX_MENU_NUMBER);
       NewConsoleContext->IsActive = CurrentFakeNVMap->ConsoleCheck[Index];
     }
 
     for (Index = 0; Index < TerminalMenu.MenuNumber; Index++) {
       NewMenuEntry                  = BOpt_GetMenuEntry (&TerminalMenu, Index);
       NewTerminalContext            = (BM_TERMINAL_CONTEXT *) NewMenuEntry->VariableContext;
+	  ASSERT (Index + ConsoleErrMenu.MenuNumber < MAX_MENU_NUMBER);
       NewTerminalContext->IsStdErr  = CurrentFakeNVMap->ConsoleCheck[Index + ConsoleErrMenu.MenuNumber];
     }
 
@@ -890,8 +895,8 @@ InitializeBM (
   BmmCallbackInfo->FeConfigAccess.ExtractConfig  = FakeExtractConfig;
   BmmCallbackInfo->FeConfigAccess.RouteConfig    = FakeRouteConfig;
   BmmCallbackInfo->FeConfigAccess.Callback       = FileExplorerCallback;
-  BmmCallbackInfo->FeCurrentState                = INACTIVE_STATE;
-  BmmCallbackInfo->FeDisplayContext              = UNKNOWN_CONTEXT;
+  BmmCallbackInfo->FeCurrentState                = FileExplorerStateInActive;
+  BmmCallbackInfo->FeDisplayContext              = FileExplorerDisplayUnknown;
 
   //
   // Install Device Path Protocol and Config Access protocol to driver handle
@@ -1355,7 +1360,7 @@ FormSetDispatcher (
     //
     // When this Formset returns, check if we are going to explore files.
     //
-    if (INACTIVE_STATE != CallbackData->FeCurrentState) {
+    if (FileExplorerStateInActive != CallbackData->FeCurrentState) {
       UpdateFileExplorer (CallbackData, 0);
 
       ActionRequest = EFI_BROWSER_ACTION_REQUEST_NONE;
@@ -1372,8 +1377,8 @@ FormSetDispatcher (
         EnableResetRequired ();
       }
 
-      CallbackData->FeCurrentState    = INACTIVE_STATE;
-      CallbackData->FeDisplayContext  = UNKNOWN_CONTEXT;
+      CallbackData->FeCurrentState    = FileExplorerStateInActive;
+      CallbackData->FeDisplayContext  = FileExplorerDisplayUnknown;
       ReclaimStringDepository ();
     } else {
       break;
@@ -1392,9 +1397,9 @@ FormSetDispatcher (
   @param BootOrder       The Boot Order array.
   @param BootOrderSize   The size of the Boot Order Array.
 
-  @return Other value if the Boot Option specified by OptionNumber is not deleteed succesfully.
-  @retval EFI_SUCCESS    If function return successfully.
-
+  @retval  EFI_SUCCESS           The Boot Option Variable was found and removed
+  @retval  EFI_UNSUPPORTED       The Boot Option Variable store was inaccessible
+  @retval  EFI_NOT_FOUND         The Boot Option Variable was not found
 **/
 EFI_STATUS
 EFIAPI

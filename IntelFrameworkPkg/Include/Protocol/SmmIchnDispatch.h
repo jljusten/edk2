@@ -3,7 +3,7 @@
   The EFI_SMM_ICHN_DISPATCH_PROTOCOL provides the ability to install child handlers for
   the given event types.
 
-  Copyright (c) 2008, Intel Corporation
+  Copyright (c) 2008 - 2009, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -11,8 +11,6 @@
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-  Module Name:  SmmIchnDispatch.h
 
   @par Revision Reference:
   This Protocol is defined in Framework of EFI SMM Core Interface Spec
@@ -23,7 +21,6 @@
 #ifndef _EFI_SMM_ICHN_DISPATCH_H_
 #define _EFI_SMM_ICHN_DISPATCH_H_
 
-#include <PiDxe.h>
 
 //
 // Global ID for the ICH SMI Protocol
@@ -131,7 +128,7 @@ VOID
   @param  This                  Pointer to the EFI_SMM_ICHN_DISPATCH_PROTOCOL instance.
   @param  DispatchFunction      Function to install.
   @param  DispatchContext       Pointer to the dispatch function's context.
-                                The caller fills this context in before calling
+                                The caller fills in this context before calling
                                 the register function to indicate to the register
                                 function the ICHN SMI source for which the dispatch
                                 function should be invoked.
@@ -140,7 +137,7 @@ VOID
 
   @retval EFI_SUCCESS           The dispatch function has been successfully
                                 registered and the SMI source has been enabled.
-  @retval EFI_DEVICE_ERROR      The driver was unable to enable the SMI source.
+  @retval EFI_DEVICE_ERROR      The driver could not enable the SMI source.
   @retval EFI_OUT_OF_RESOURCES  Not enough memory (system or SMM) to manage this
                                 child.
   @retval EFI_INVALID_PARAMETER DispatchContext is invalid. The ICHN input value
@@ -180,19 +177,11 @@ EFI_STATUS
 // Interface structure for the SMM ICHN specific SMI Dispatch Protocol
 //
 /**
-  @par Protocol Description:
   Provides the parent dispatch service for a given SMI source generator.
-
-  @param Register
-  Installs a child service to be dispatched by this protocol.
-
-  @param UnRegister
-  Removes a child service dispatched by this protocol.
-
 **/
 struct _EFI_SMM_ICHN_DISPATCH_PROTOCOL {
-  EFI_SMM_ICHN_REGISTER   Register;
-  EFI_SMM_ICHN_UNREGISTER UnRegister;
+  EFI_SMM_ICHN_REGISTER   Register;     ///< Installs a child service to be dispatched by this protocol.
+  EFI_SMM_ICHN_UNREGISTER UnRegister;   ///< Removes a child service dispatched by this protocol.
 };
 
 extern EFI_GUID gEfiSmmIchnDispatchProtocolGuid;

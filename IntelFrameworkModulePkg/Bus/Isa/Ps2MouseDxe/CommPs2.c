@@ -1,7 +1,7 @@
-/**@file
-  PS2 Mouse Communication Interface 
+/** @file
+  PS2 Mouse Communication Interface.
   
-Copyright (c) 2006 - 2007, Intel Corporation
+Copyright (c) 2006 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -15,9 +15,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "Ps2Mouse.h"
 #include "CommPs2.h"
 
-UINT8 SampleRateTbl[MAX_SR]   = { 0xa, 0x14, 0x28, 0x3c, 0x50, 0x64, 0xc8 };
+UINT8 SampleRateTbl[MaxSampleRate]   = { 0xa, 0x14, 0x28, 0x3c, 0x50, 0x64, 0xc8 };
 
-UINT8 ResolutionTbl[MAX_CMR]  = { 0, 1, 2, 3 };
+UINT8 ResolutionTbl[MaxResolution]  = { 0, 1, 2, 3 };
 
 /**
   Issue self test command via IsaIo interface.
@@ -312,7 +312,7 @@ PS2MouseSetScaling (
 {
   UINT8 Command;
 
-  Command = (UINT8) (Scaling == SF1 ? SETSF1_CMD : SETSF2_CMD);
+  Command = (UINT8) (Scaling == Scaling1 ? SETSF1_CMD : SETSF2_CMD);
 
   //
   // Send auxiliary command to set mouse scaling data
@@ -588,7 +588,7 @@ Out8042Data (
   )
 {
   EFI_STATUS  Status;
-  UINT8       temp;
+  UINT8       Temp;
   //
   // Wait keyboard controller input buffer empty
   //
@@ -597,8 +597,8 @@ Out8042Data (
     return Status;
   }
 
-  temp = Data;
-  IsaIo->Io.Write (IsaIo, EfiIsaIoWidthUint8, KBC_DATA_PORT, 1, &temp);
+  Temp = Data;
+  IsaIo->Io.Write (IsaIo, EfiIsaIoWidthUint8, KBC_DATA_PORT, 1, &Temp);
 
   Status = WaitInputEmpty (IsaIo, TIMEOUT);
   if (EFI_ERROR (Status)) {
@@ -624,23 +624,23 @@ In8042Data (
   )
 {
   UINTN Delay;
-  UINT8 temp;
+  UINT8 Temp;
 
   Delay = TIMEOUT / 50;
 
   do {
-    IsaIo->Io.Read (IsaIo, EfiIsaIoWidthUint8, KBC_CMD_STS_PORT, 1, &temp);
+    IsaIo->Io.Read (IsaIo, EfiIsaIoWidthUint8, KBC_CMD_STS_PORT, 1, &Temp);
 
     //
     // Check keyboard controller status bit 0(output buffer status)
     //
-    if ((temp & KBC_OUTB) == KBC_OUTB) {
+    if ((Temp & KBC_OUTB) == KBC_OUTB) {
       break;
     }
 
     gBS->Stall (50);
     Delay--;
-  } while (Delay);
+  } while (Delay != 0);
 
   if (Delay == 0) {
     return EFI_TIMEOUT;
@@ -737,7 +737,7 @@ Out8042AuxCommand (
   I/O work flow of outing 8042 Aux data.
   
   @param IsaIo   Pointer to instance of EFI_ISA_IO_PROTOCOL
-  @param Command Aux I/O command
+  @param Data    Buffer holding return value
   
   @retval EFI_SUCCESS Success to excute I/O work flow
   @retval EFI_TIMEOUT Keyboard controller time out.
@@ -811,7 +811,7 @@ In8042AuxData (
 
 
 /**
-  Check keyboard controller status, if it is output buffer full and for auxiliary device
+  Check keyboard controller status, if it is output buffer full and for auxiliary device.
   
   @param IsaIo   Pointer to instance of EFI_ISA_IO_PROTOCOL
   
@@ -869,7 +869,7 @@ WaitInputEmpty (
 
     gBS->Stall (50);
     Delay--;
-  } while (Delay);
+  } while (Delay != 0);
 
   if (Delay == 0) {
     return EFI_TIMEOUT;
@@ -892,23 +892,6 @@ WaitOutputFull (
   IN EFI_ISA_IO_PROTOCOL                  *IsaIo,
   IN UINTN                                Timeout
   )
-/**
-
-Routine Description:
-
-  GC_TODO: Add function description
-
-Arguments:
-
-  IsaIo   - GC_TODO: add argument description
-  Timeout - GC_TODO: add argument description
-
-Returns:
-
-  EFI_TIMEOUT - GC_TODO: Add description for return value
-  EFI_SUCCESS - GC_TODO: Add description for return value
-
-**/
 {
   UINTN Delay;
   UINT8 Data;
@@ -928,7 +911,7 @@ Returns:
 
     gBS->Stall (50);
     Delay--;
-  } while (Delay);
+  } while (Delay != 0);
 
   if (Delay == 0) {
     return EFI_TIMEOUT;

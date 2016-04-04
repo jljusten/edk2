@@ -1,7 +1,7 @@
 /** @file
   Implementation of Managed Network Protocol I/O functions.
     
-Copyright (c) 2005 - 2007, Intel Corporation. <BR>
+Copyright (c) 2005 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -282,7 +282,7 @@ SIGNAL_TOKEN:
   //
   // Dispatch the DPC queued by the NotifyFunction of Token->Event.
   //
-  NetLibDispatchDpc ();
+  DispatchDpc ();
 
   return EFI_SUCCESS;
 }
@@ -962,11 +962,6 @@ MnpReceivePacket (
   //
   MnpDeliverPacket (MnpServiceData);
 
-  //
-  // Dispatch the DPC queued by the NotifyFunction of rx token's events.
-  //
-  NetLibDispatchDpc ();
-
 EXIT:
 
   ASSERT (Nbuf->TotalSize == MnpServiceData->BufferLength);
@@ -1021,7 +1016,7 @@ MnpCheckPacketTimeout (
       RxDataWrap = NET_LIST_USER_STRUCT (RxEntry, MNP_RXDATA_WRAP, WrapEntry);
 
       //
-      // TimeoutTick unit is ms, MNP_TIMEOUT_CHECK_INTERVAL unit is 100ns.
+      // TimeoutTick unit is microsecond, MNP_TIMEOUT_CHECK_INTERVAL unit is 100ns.
       //
       if (RxDataWrap->TimeoutTick >= (MNP_TIMEOUT_CHECK_INTERVAL / 10)) {
 
@@ -1066,5 +1061,8 @@ MnpSystemPoll (
   //
   MnpReceivePacket (MnpServiceData);
 
-  NetLibDispatchDpc ();
+  //
+  // Dispatch the DPC queued by the NotifyFunction of rx token's events.
+  //
+  DispatchDpc ();
 }

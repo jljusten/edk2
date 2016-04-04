@@ -83,14 +83,15 @@ GetFirstStorageOfFormSet (
 }
 
 /**
-  Get the EFI_IFR_VARSTORE where the Question's value is stored.
+  Get the FORM_BROWSER_STATEMENT that matches the Question's value.
     
   @param FormSet                  The Form Set.
+  @param QuestionId               QuestionId
    
-  @retval FORMSET_STORAGE *       The EFI_IFR_VARSTORE where the Question's value is stored.
-  @retval NULL                    If the Form Set does not have EFI_IFR_VARSTORE.
+  @retval FORM_BROWSER_STATEMENT*   FORM_BROWSER_STATEMENT that match Question's value.
+  @retval NULL                      If the Form Set does not have EFI_IFR_VARSTORE.
 **/
-FORMSET_STORAGE *
+FORM_BROWSER_STATEMENT *
 GetStorageFromQuestionId (
   IN CONST FORM_BROWSER_FORMSET * FormSet,
   IN       EFI_QUESTION_ID        QuestionId
@@ -115,7 +116,7 @@ GetStorageFromQuestionId (
         // UEFI Question ID is unique in a FormSet.
         //
         ASSERT (Statement->Storage->Type == EFI_HII_VARSTORE_BUFFER);
-        return Statement->Storage;
+        return Statement;
       }
       StatementList = GetNextNode (&Form->StatementListHead, StatementList);
     }
@@ -343,11 +344,11 @@ CallFormCallBack (
     }
 
     *Data = AllocateZeroPool (*DataSize);
-    if (Data == NULL) {
+    if (*Data == NULL) {
       return EFI_OUT_OF_RESOURCES;
     }
 
-    FwFormCallBack->NvRead (
+    Status = FwFormCallBack->NvRead (
                   FwFormCallBack,  
                   BufferStorage->Name,
                   &BufferStorage->Guid,
@@ -403,7 +404,7 @@ GetUefiVariable (
     }
 
     *Data = AllocateZeroPool (*DataSize);
-    if (Data == NULL) {
+    if (*Data == NULL) {
       return EFI_OUT_OF_RESOURCES;
     }
 
@@ -611,7 +612,7 @@ ThunkRouteConfig (
   if (EFI_ERROR (Status)) {
     goto Done;
   }
-
+  
   if (ConfigAccess->ThunkContext->NvMapOverride == NULL) {
     if (ConfigAccess->FormCallbackProtocol == NULL ||
         ConfigAccess->FormCallbackProtocol->NvWrite == NULL) {
@@ -645,8 +646,8 @@ Done:
 }
 
 /**
-  Build the FRAMEWORK_EFI_IFR_DATA_ARRAY which will be used to pass to 
-  EFI_FORM_CALLBACK_PROTOCOL.Callback. Check definition of FRAMEWORK_EFI_IFR_DATA_ARRAY
+  Build the EFI_IFR_DATA_ARRAY which will be used to pass to 
+  EFI_FORM_CALLBACK_PROTOCOL.Callback. Check definition of EFI_IFR_DATA_ARRAY
   for details.
 
   ASSERT if the Question Type is not EFI_IFR_TYPE_NUM_SIZE_* or EFI_IFR_TYPE_STRING.
@@ -657,9 +658,9 @@ Done:
    @param Value            The Question Value.
    @param NvMapAllocated   On output indicates if a buffer is allocated for NvMap.
    
-   @return A pointer to FRAMEWORK_EFI_IFR_DATA_ARRAY. The caller must free this buffer allocated.
+   @return A pointer to EFI_IFR_DATA_ARRAY. The caller must free this buffer allocated.
 **/   
-FRAMEWORK_EFI_IFR_DATA_ARRAY *
+EFI_IFR_DATA_ARRAY *
 CreateIfrDataArray (
   IN    CONFIG_ACCESS_PRIVATE         *ConfigAccess,
   IN    EFI_QUESTION_ID               QuestionId,
@@ -668,12 +669,13 @@ CreateIfrDataArray (
   OUT   BOOLEAN                       *NvMapAllocated
   )
 {
-  FRAMEWORK_EFI_IFR_DATA_ARRAY      *IfrDataArray;
-  FRAMEWORK_EFI_IFR_DATA_ENTRY      *IfrDataEntry;
+  EFI_IFR_DATA_ARRAY                *IfrDataArray;
+  EFI_IFR_DATA_ENTRY                *IfrDataEntry;
   UINTN                             BrowserDataSize;
   FORMSET_STORAGE                   *BufferStorage;
   UINTN                             Size;
   EFI_STRING                        String;
+  FORM_BROWSER_STATEMENT            *Statement;
 
   *NvMapAllocated = FALSE;
 
@@ -705,21 +707,27 @@ CreateIfrDataArray (
       break;
   }
 
-  IfrDataArray = AllocateZeroPool (sizeof (FRAMEWORK_EFI_IFR_DATA_ARRAY) + sizeof (FRAMEWORK_EFI_IFR_DATA_ENTRY) + Size);
+  IfrDataArray = AllocateZeroPool (sizeof (EFI_IFR_DATA_ARRAY) + sizeof (EFI_IFR_DATA_ENTRY) + Size);
   ASSERT (IfrDataArray != NULL);
+  IfrDataArray->EntryCount = 1;
+  IfrDataEntry             = (EFI_IFR_DATA_ENTRY *) (IfrDataArray + 1);
 
-  BufferStorage  = GetStorageFromQuestionId (ConfigAccess->ThunkContext->FormSet, QuestionId);
+  Statement = GetStorageFromQuestionId (ConfigAccess->ThunkContext->FormSet, QuestionId);
 
-  if (BufferStorage == NULL) {
+  if (Statement == NULL || Statement->Storage == NULL) {
     //
     // The QuestionId is not associated with a Buffer Storage.
     // Try to get the first Buffer Storage then.
     //
     BufferStorage = GetFirstStorageOfFormSet (ConfigAccess->ThunkContext->FormSet);
+  } else {
+    BufferStorage        = Statement->Storage;
+    IfrDataEntry->OpCode = Statement->Operand;
   }
   
   if (BufferStorage != NULL) {
-    BrowserDataSize = BufferStorage->Size;
+    BrowserDataSize      = BufferStorage->Size;
+    IfrDataEntry->Length = (UINT8) (sizeof (EFI_IFR_DATA_ENTRY) + Size);
 
     if (ConfigAccess->ThunkContext->NvMapOverride == NULL) {
       *NvMapAllocated = TRUE;
@@ -730,7 +738,6 @@ CreateIfrDataArray (
     }
     
     ASSERT (HiiGetBrowserData (&BufferStorage->Guid, BufferStorage->Name, BrowserDataSize, (UINT8 *) IfrDataArray->NvRamMap));
-    IfrDataEntry = (FRAMEWORK_EFI_IFR_DATA_ENTRY *) (IfrDataArray + 1);
 
     switch (Type) {
       case EFI_IFR_TYPE_NUM_SIZE_8:
@@ -754,11 +761,11 @@ CreateIfrDataArray (
     }
 
     //
-    // Need to fiil in the information for the rest of field for FRAMEWORK_EFI_IFR_DATA_ENTRY.
+    // Need to fiil in the information for the rest of field for EFI_IFR_DATA_ENTRY.
     // It seems that no implementation is found to use other fields. Leave them uninitialized for now.
     //
     //UINT8   OpCode;           // Likely a string, numeric, or one-of
-    //UINT8   Length;           // Length of the FRAMEWORK_EFI_IFR_DATA_ENTRY packet
+    //UINT8   Length;           // Length of the EFI_IFR_DATA_ENTRY packet
     //UINT16  Flags;            // Flags settings to determine what behavior is desired from the browser after the callback
     //VOID    *Data;            // The data in the form based on the op-code type - this is not a pointer to the data, the data follows immediately
     // If the OpCode is a OneOf or Numeric type - Data is a UINT16 value
@@ -789,18 +796,21 @@ SyncBrowserDataForNvMapOverride (
   FORMSET_STORAGE   *BufferStorage;
   BOOLEAN           CheckFlag;
   UINTN             BrowserDataSize;
+  FORM_BROWSER_STATEMENT *Statement;
 
   if (ConfigAccess->ThunkContext->NvMapOverride != NULL) {
 
-    BufferStorage = GetStorageFromQuestionId (ConfigAccess->ThunkContext->FormSet, QuestionId);
+    Statement = GetStorageFromQuestionId (ConfigAccess->ThunkContext->FormSet, QuestionId);
 
-    if (BufferStorage == NULL) {
+    if (Statement == NULL || Statement->Storage == NULL) {
       //
       // QuestionId is a statement without Storage.
       // 1) It is a Goto. 
       // 
       //
       BufferStorage = GetFirstStorageOfFormSet (ConfigAccess->ThunkContext->FormSet);
+    } else {
+      BufferStorage = Statement->Storage;
     }
 
     //
@@ -817,15 +827,15 @@ SyncBrowserDataForNvMapOverride (
 }
 
 /**
-  Free up resource allocated for a FRAMEWORK_EFI_IFR_DATA_ARRAY by CreateIfrDataArray ().
+  Free up resource allocated for a EFI_IFR_DATA_ARRAY by CreateIfrDataArray ().
 
-  @param Array              The FRAMEWORK_EFI_IFR_DATA_ARRAY allocated.
-  @param NvMapAllocated     If the NvRamMap is allocated for FRAMEWORK_EFI_IFR_DATA_ARRAY.
+  @param Array              The EFI_IFR_DATA_ARRAY allocated.
+  @param NvMapAllocated     If the NvRamMap is allocated for EFI_IFR_DATA_ARRAY.
 
 **/
 VOID
 DestroyIfrDataArray (
-  IN  FRAMEWORK_EFI_IFR_DATA_ARRAY *Array,
+  IN  EFI_IFR_DATA_ARRAY           *Array,
   IN  BOOLEAN                      NvMapAllocated
   )
 {
@@ -988,8 +998,8 @@ ThunkCallback (
   CONFIG_ACCESS_PRIVATE                       *ConfigAccess;
   EFI_FORM_CALLBACK_PROTOCOL                  *FormCallbackProtocol;
   EFI_HII_CALLBACK_PACKET                     *Packet;
-  FRAMEWORK_EFI_IFR_DATA_ARRAY                *Data;
-  FRAMEWORK_EFI_IFR_DATA_ENTRY                *DataEntry;
+  EFI_IFR_DATA_ARRAY                          *Data;
+  EFI_IFR_DATA_ENTRY                          *DataEntry;
   UINT16                                      KeyValue;
   ONE_OF_OPTION_MAP_ENTRY                     *OneOfOptionMapEntry;
   EFI_HANDLE                                  NotifyHandle;
@@ -1028,7 +1038,7 @@ ThunkCallback (
   }
 
   //
-  // Build the FRAMEWORK_EFI_IFR_DATA_ARRAY
+  // Build the EFI_IFR_DATA_ARRAY
   //
   Data = CreateIfrDataArray (ConfigAccess, QuestionId, Type, Value, &NvMapAllocated);
 
@@ -1067,7 +1077,7 @@ ThunkCallback (
   } else {
     if (Packet != NULL) {
         if (Packet->DataArray.EntryCount  == 1 && Packet->DataArray.NvRamMap == NULL) {
-          DataEntry = (FRAMEWORK_EFI_IFR_DATA_ENTRY *) ((UINT8 *) Packet + sizeof (FRAMEWORK_EFI_IFR_DATA_ARRAY));
+          DataEntry = (EFI_IFR_DATA_ENTRY *) ((UINT8 *) Packet + sizeof (EFI_IFR_DATA_ARRAY));
           if ((DataEntry->Flags & EXIT_REQUIRED) == EXIT_REQUIRED) {
               *ActionRequest = EFI_BROWSER_ACTION_REQUEST_EXIT;
           }

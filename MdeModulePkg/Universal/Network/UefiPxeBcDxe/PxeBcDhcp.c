@@ -37,8 +37,6 @@ UINT8 mInterestedDhcp4Tags[PXEBC_DHCP4_TAG_INDEX_MAX] = {
   @param  Seed    Pointer to the message instance of the DHCP4 packet.
   @param  Udp4    Pointer to the EFI_UDP4_PROTOCOL instance.
 
-  @return none.
-
 **/
 VOID
 PxeBcInitSeedPacket (
@@ -73,8 +71,6 @@ PxeBcInitSeedPacket (
   @param  Dst   Pointer to the EFI_DHCP4_PROTOCOL instance.
   @param  Src   Pointer to the EFI_DHCP4_PROTOCOL instance.
 
-  @return None.
-
 **/
 VOID
 PxeBcCopyEfiDhcp4Packet (
@@ -96,8 +92,6 @@ PxeBcCopyEfiDhcp4Packet (
   @param  OfferIndex    Index of cached packets as complements of pxe mode data,
                         the index is maximum offer number.
 
-  @return None.
-
 **/
 VOID
 PxeBcCopyProxyOffer (
@@ -109,6 +103,7 @@ PxeBcCopyProxyOffer (
   EFI_DHCP4_PACKET        *Offer;
 
   ASSERT (OfferIndex < Private->NumOffers);
+  ASSERT (OfferIndex < PXEBC_MAX_OFFER_NUM);
 
   Mode  = Private->PxeBc.Mode;
   Offer = &Private->Dhcp4Offers[OfferIndex].Packet.Offer;
@@ -274,15 +269,17 @@ PxeBcTryBinl (
   PXEBC_CACHED_DHCP4_PACKET *CachedPacket;
   EFI_DHCP4_PACKET          *Reply;
 
+  ASSERT (Index < PXEBC_MAX_OFFER_NUM);
   ASSERT (Private->Dhcp4Offers[Index].OfferType == DHCP4_PACKET_TYPE_BINL);
 
   Offer = &Private->Dhcp4Offers[Index].Packet.Offer;
 
   //
-  // use option 54, if zero, use siaddr in header
+  // Use siaddr(next server) in DHCPOFFER packet header, if zero, use option 54(server identifier)
+  // in DHCPOFFER packet.
+  // (It does not comply with PXE Spec, Ver2.1)
   //
-  ZeroMem (&ServerIp, sizeof(EFI_IP_ADDRESS));
-  if (Private->Dhcp4Offers[Index].Dhcp4Option[PXEBC_DHCP4_TAG_INDEX_SERVER_ID] != NULL) {
+  if (EFI_IP4_EQUAL (&Offer->Dhcp4.Header.ServerAddr.Addr, &mZeroIp4Addr)) {
     CopyMem (
       &ServerIp.Addr[0],
       Private->Dhcp4Offers[Index].Dhcp4Option[PXEBC_DHCP4_TAG_INDEX_SERVER_ID]->Data,
@@ -531,8 +528,6 @@ PxeBcCheckSelectedOffer (
   @param  Private    Pointer to PxeBc private data.
   @param  RcvdOffer  Pointer to the received Dhcp proxy offer packet.
 
-  @return None.
-
 **/
 VOID
 PxeBcCacheDhcpOffer (
@@ -560,6 +555,7 @@ PxeBcCacheDhcpOffer (
   }
 
   OfferType = CachedOffer->OfferType;
+  ASSERT (OfferType < DHCP4_PACKET_TYPE_MAX);
 
   if (OfferType == DHCP4_PACKET_TYPE_BOOTP) {
 
@@ -603,6 +599,7 @@ PxeBcCacheDhcpOffer (
       //
       // It's a dhcp offer with your address.
       //
+      ASSERT (Private->ServerCount[OfferType] < PXEBC_MAX_OFFER_NUM);
       Private->OfferIndex[OfferType][Private->ServerCount[OfferType]] = Private->NumOffers;
       Private->ServerCount[OfferType]++;
     }
@@ -620,8 +617,6 @@ PxeBcCacheDhcpOffer (
   If the proxy does not exist, try offers with bootfile.
   
   @param  Private   Pointer to PxeBc private data.
-
-  @return None
 
 **/
 VOID
@@ -1119,7 +1114,6 @@ PxeBcDiscvBootService (
   EFI_DHCP4_HEADER                    *DhcpHeader;
   UINT32                              Xid;
 
-
   Mode      = Private->PxeBc.Mode;
   Dhcp4     = Private->Dhcp4;
   Status    = EFI_SUCCESS;
@@ -1141,6 +1135,7 @@ PxeBcDiscvBootService (
   OptCount = PxeBcBuildDhcpOptions (Private, OptList, FALSE);
 
   if (IsDiscv) {
+    ASSERT (Layer != NULL);
     //
     // Add vendor option of PXE_BOOT_ITEM
     //
@@ -1461,8 +1456,6 @@ PxeBcParseVendorOptions (
   @param  Str     Pointer to a string (boot item string).
   @param  Len     The length of string.
 
-  @return None.
-
 **/
 VOID
 PxeBcDisplayBootItem (
@@ -1717,15 +1710,21 @@ PxeBcSelectBootMenu (
   MenuSize  = VendorOpt->BootMenuLen;
   MenuItem  = VendorOpt->BootMenu;
 
+  if (MenuSize == 0) {
+    return EFI_NOT_READY;
+  }
+
   while (MenuSize > 0) {
-    MenuArray[Index]  = MenuItem;
+    MenuArray[Index++]  = MenuItem;
     MenuSize          = (UINT8) (MenuSize - (MenuItem->DescLen + 3));
     MenuItem          = (PXEBC_BOOT_MENU_ENTRY *) ((UINT8 *) MenuItem + MenuItem->DescLen + 3);
-    Index++;
+    if (Index >= PXEBC_MAX_MENU_NUM) {
+      break;
+    }
   }
 
   if (UseDefaultItem) {
-    CopyMem (Type, &MenuArray[0]->Type, sizeof (UINT16));
+    *Type = MenuArray[0]->Type;
     *Type = NTOHS (*Type);
     return EFI_SUCCESS;
   }
@@ -1739,6 +1738,7 @@ PxeBcSelectBootMenu (
   TopRow  = gST->ConOut->Mode->CursorRow - MenuNum;
 
   do {
+    ASSERT (Select < PXEBC_MAX_MENU_NUM);
     //
     // highlight selected row
     //

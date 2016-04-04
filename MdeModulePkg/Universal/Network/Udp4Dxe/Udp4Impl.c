@@ -1,7 +1,7 @@
 /** @file
   The implementation of the Udp4 protocol.
   
-Copyright (c) 2006 - 2008, Intel Corporation.<BR>                                                         
+Copyright (c) 2006 - 2009, Intel Corporation.<BR>                                                         
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -424,7 +424,7 @@ Udp4CheckTimeout (
       Wrap = NET_LIST_USER_STRUCT (WrapEntry, UDP4_RXDATA_WRAP, Link);
 
       //
-      // TimeoutTick unit is ms, MNP_TIMEOUT_CHECK_INTERVAL unit is 100ns.
+      // TimeoutTick unit is microsecond, MNP_TIMEOUT_CHECK_INTERVAL unit is 100ns.
       //
       if (Wrap->TimeoutTick <= (UDP4_TIMEOUT_INTERVAL / 10)) {
         //
@@ -1007,7 +1007,7 @@ Udp4DgramSent (
     //
     Token->Status = Status;
     gBS->SignalEvent (Token->Event);
-    NetLibDispatchDpc ();
+    DispatchDpc ();
   }
 }
 
@@ -1054,7 +1054,7 @@ Udp4DgramRcvd (
   // Dispatch the DPC queued by the NotifyFunction of the rx token's events
   // which are signaled with received data.
   //
-  NetLibDispatchDpc ();
+  DispatchDpc ();
 }
 
 
@@ -1718,6 +1718,7 @@ Udp4SendPortUnreach (
   // Allocate space for the IP4_ICMP_ERROR_HEAD.
   //
   IcmpErrHdr = (IP4_ICMP_ERROR_HEAD *) NetbufAllocSpace (Packet, Len, FALSE);
+  ASSERT (IcmpErrHdr != NULL);
 
   //
   // Set the required fields for the icmp port unreachable message.

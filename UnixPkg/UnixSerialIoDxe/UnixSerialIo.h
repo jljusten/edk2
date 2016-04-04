@@ -1,6 +1,7 @@
 /*++
 
-Copyright (c) 2006 - 2008, Intel Corporation                                                         
+Copyright (c) 2006 - 2009, Intel Corporation                                                         
+Portions copyright (c) 2008-2009 Apple Inc.
 All rights reserved. This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -23,12 +24,17 @@ Abstract:
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
+
+#ifdef __APPLE__
+#else
 #include <stdlib.h>
 #include <termio.h>
+#endif
+
 #include <fcntl.h>
 #include <errno.h>
 
-#include "PiDxe.h"
+#include "Uefi.h"
 #include <Protocol/SerialIo.h>
 #include <Protocol/DevicePath.h>
 

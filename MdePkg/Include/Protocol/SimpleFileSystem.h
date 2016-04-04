@@ -7,7 +7,7 @@
 
   UEFI 2.0 can boot from any valid EFI image contained in a SimpleFileSystem.
 
-  Copyright (c) 2006 - 2008, Intel Corporation                                                         
+  Copyright (c) 2006 - 2009, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -40,7 +40,7 @@ typedef struct _EFI_FILE_PROTOCOL         *EFI_FILE_HANDLE;
 /// Protocol name defined in EFI1.1.
 /// 
 typedef EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   EFI_FILE_IO_INTERFACE;
-typedef struct _EFI_FILE_PROTOCOL         EFI_FILE;
+typedef EFI_FILE_PROTOCOL                 EFI_FILE;
 
 /**
   Open the root directory on a volume.
@@ -49,7 +49,7 @@ typedef struct _EFI_FILE_PROTOCOL         EFI_FILE;
   @param  Root Returns an Open file handle for the root directory
 
   @retval EFI_SUCCESS          The device was opened.
-  @retval EFI_UNSUPPORTED      This volume does not suppor the file system.
+  @retval EFI_UNSUPPORTED      This volume does not support the file system.
   @retval EFI_NO_MEDIA         The device has no media.
   @retval EFI_DEVICE_ERROR     The device reported an error.
   @retval EFI_VOLUME_CORRUPTED The file system structures are corrupted
@@ -82,7 +82,7 @@ struct _EFI_SIMPLE_FILE_SYSTEM_PROTOCOL {
 };
 
 /**
-  Open the root directory on a volume.
+  Opens a new file relative to the source file's location.
 
   @param  This       Protocol instance pointer.
   @param  NewHandle  Returns File Handle for FileName
@@ -140,7 +140,7 @@ EFI_STATUS
 typedef
 EFI_STATUS
 (EFIAPI *EFI_FILE_CLOSE)(
-  IN EFI_FILE  *This
+  IN EFI_FILE_PROTOCOL  *This
   );
 
 /**
@@ -155,7 +155,7 @@ EFI_STATUS
 typedef
 EFI_STATUS
 (EFIAPI *EFI_FILE_DELETE)(
-  IN EFI_FILE  *This
+  IN EFI_FILE_PROTOCOL  *This
   );
 
 /**
@@ -181,16 +181,17 @@ EFI_STATUS
   );
 
 /**
-  Write data from or to the file.
+  Write data to a file.
 
   @param  This       Protocol instance pointer.
-  @param  BufferSize On input: size of buffer. On output: amount of data in buffer.
-  @param  Buffer     The buffer in which to write data.
+  @param  BufferSize On input size of buffer, on output amount of data in buffer.
+  @param  Buffer     The buffer in which data to write.
 
   @retval EFI_SUCCESS          Data was written.
   @retval EFI_UNSUPPORT        Writes to Open directory are not supported
   @retval EFI_NO_MEDIA         The device has no media
   @retval EFI_DEVICE_ERROR     The device reported an error
+  @retval EFI_DEVICE_ERROR     An attempt was made to write to a deleted file
   @retval EFI_VOLUME_CORRUPTED The file system structures are corrupted
   @retval EFI_WRITE_PROTECTED  The device is write protected
   @retval EFI_ACCESS_DENIED    The file was open for read only
@@ -209,7 +210,7 @@ EFI_STATUS
   Set a files current position
 
   @param  This            Protocol instance pointer.
-  @param  Position        Byte position, from the start of the file
+  @param  Position        Byte position from the start of the file
                           
   @retval EFI_SUCCESS     Data was written.
   @retval EFI_UNSUPPORTED Seek request for non-zero is not valid on open.
@@ -226,7 +227,7 @@ EFI_STATUS
   Get a file's current position
 
   @param  This            Protocol instance pointer.
-  @param  Position        Byte position, from the start of the file
+  @param  Position        Byte position from the start of the file
                           
   @retval EFI_SUCCESS     Data was written.
   @retval EFI_UNSUPPORTED Seek request for non-zero is not valid on open.
@@ -244,7 +245,7 @@ EFI_STATUS
 
   @param  This            Protocol instance pointer.
   @param  InformationType Type of info to return in Buffer
-  @param  BufferSize      On input: size of buffer. On output: amount of data in buffer.
+  @param  BufferSize      On input size of buffer, on output amount of data in buffer.
   @param  Buffer          The buffer to return data.
 
   @retval EFI_SUCCESS          Data was returned.
@@ -310,7 +311,7 @@ EFI_STATUS
 typedef
 EFI_STATUS
 (EFIAPI *EFI_FILE_FLUSH)(
-  IN EFI_FILE  *This
+  IN EFI_FILE_PROTOCOL  *This
   );
 
 #define EFI_FILE_PROTOCOL_REVISION   0x00010000

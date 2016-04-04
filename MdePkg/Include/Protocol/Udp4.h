@@ -4,14 +4,17 @@
   The EFI UDPv4 Protocol provides simple packet-oriented services 
   to transmit and receive UDP packets.  
 
-  Copyright (c) 2006 - 2008, Intel Corporation                                                         
+  Copyright (c) 2006 - 2009, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
   http://opensource.org/licenses/bsd-license.php                                            
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.      
+
+  @par Revision Reference:          
+  This Protocol is introduced in UEFI Specification 2.0       
 
 **/
 
@@ -47,15 +50,6 @@ typedef struct {
   UINT32                  ServiceCount;
   EFI_UDP4_SERVICE_POINT  Services[1];
 } EFI_UDP4_VARIABLE_DATA;
-
-//
-//ICMP error definitions
-//
-#define EFI_NETWORK_UNREACHABLE      EFIERR(100)
-#define EFI_HOST_UNREACHABLE         EFIERR(101) 
-#define EFI_PROTOCOL_UNREACHABLE     EFIERR(102)
-#define EFI_PORT_UNREACHABLE         EFIERR(103)
-
 
 typedef struct {
   UINT32             FragmentLength;

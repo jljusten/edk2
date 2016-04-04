@@ -15,9 +15,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #ifndef _INTERNAL_BDS_LIB_H_
 #define _INTERNAL_BDS_LIB_H_
 
-#include <PiDxe.h>
+#include <FrameworkDxe.h>
 
-#include <IndustryStandard/Pci22.h>
+#include <IndustryStandard/Pci.h>
 #include <IndustryStandard/PeImage.h>
 
 #include <Protocol/BlockIo.h>
@@ -45,7 +45,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Guid/FileInfo.h>
 #include <Guid/GlobalVariable.h>
 #include <Guid/PcAnsi.h>
-#include <Guid/ShellFile.h>
 #include <Guid/Performance.h>
 
 #include <Library/PrintLib.h>

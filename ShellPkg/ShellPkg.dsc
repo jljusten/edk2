@@ -35,12 +35,22 @@
   BaseMemoryLib|MdePkg/Library/BaseMemoryLib/BaseMemoryLib.inf
   PrintLib|MdeModulePkg/Library/DxePrintLibPrint2Protocol/DxePrintLibPrint2Protocol.inf
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
+  UefiHiiServicesLib|MdeModulePkg/Library/UefiHiiServicesLib/UefiHiiServicesLib.inf
+  HiiLib|MdeModulePkg/Library/UefiHiiLib/UefiHiiLib.inf
   
-  ShellLib|ShellPkg/Library/BaseShellLib/BaseShellLib.inf
+  ShellLib|ShellPkg/Library/UefiShellLib/UefiShellLib.inf
   FileHandleLib|ShellPkg/Library/BaseFileHandleLib/BaseFileHandleLib.inf
+  ShellCEntryLib|ShellPkg/Library/UefiShellCEntryLib/UefiShellCEntryLib.inf
+  SortLib|ShellPkg/Library/BaseSortLib/BaseSortLib.inf
 
 [PcdsFixedAtBuild.common]
 
 [Components.common]
   ShellPkg/Application/ShellExecTestApp/SA.inf
   ShellPkg/Application/ShellLibTestApp/SA3.inf
+  ShellPkg/Library/BaseFileHandleLib/BaseFileHandleLib.inf
+  ShellPkg/Library/UefiShellLib/UefiShellLib.inf
+  ShellPkg/Library/UefiShellCEntryLib/UefiShellCEntryLib.inf
+  ShellPkg/Library/BaseSortLib/BaseSortLib.inf
+  ShellPkg/Application/ShellCTestApp/ShellCTestApp.inf
+  ShellPkg/Application/ShellSortTestApp/ShellSortTestApp.inf

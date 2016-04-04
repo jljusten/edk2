@@ -24,8 +24,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/DebugLib.h>
 #include <Library/IoLib.h>
 #include <Library/BaseLib.h>
+#include <Library/PcdLib.h>
 
-#include <IndustryStandard/Pci22.h>
+#include <IndustryStandard/Pci.h>
 //
 // 8259 Hardware definitions
 //

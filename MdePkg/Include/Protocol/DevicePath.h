@@ -777,8 +777,7 @@ typedef struct {
   /// Describes the entry in a partition table, starting with entry 1.
   /// Partition number zero represents the entire device. Valid
   /// partition numbers for a MBR partition are [1, 4]. Valid
-  /// partition numbers for a GPT partition are [1,
-  /// NumberOfPartitionEntries].
+  /// partition numbers for a GPT partition are [1, NumberOfPartitionEntries].
   ///
   UINT32                          PartitionNumber;
   ///
@@ -790,7 +789,11 @@ typedef struct {
   ///
   UINT64                          PartitionSize;
   ///
-  /// Signature unique to this partition
+  /// Signature unique to this partition:
+  /// If SignatureType is 0, this field has to be initialized with 16 zeros.
+  /// If SignatureType is 1, the MBR signature is stored in the first 4 bytes of this field.
+  /// The other 12 bytes are initialized with zeros.
+  /// If SignatureType is 2, this field contains a 16 byte signature.
   ///
   UINT8                           Signature[16];
   ///
@@ -879,23 +882,7 @@ typedef struct {
 ///
 /// PIWG Firmware Volume Device Path SubType
 ///
-#define MEDIA_PIWG_FW_VOL_DP      0x7
-
-///
-/// This device path is used by systems implementing the UEFI PI Specification 1.0 to describe a firmware volume.
-///
-typedef struct {
-  EFI_DEVICE_PATH_PROTOCOL        Header;
-  ///
-  /// Firmware volume name.
-  ///
-  EFI_GUID                        FvName;
-} MEDIA_FW_VOL_DEVICE_PATH;
-
-///
-/// PIWG Firmware Volume Device Path SubType
-///
-#define MEDIA_PIWG_FW_FILE_DP     0x6
+#define MEDIA_PIWG_FW_FILE_DP     0x06
 
 ///
 /// This device path is used by systems implementing the UEFI PI Specification 1.0 to describe a firmware file.
@@ -909,6 +896,22 @@ typedef struct {
 } MEDIA_FW_VOL_FILEPATH_DEVICE_PATH;
 
 ///
+/// PIWG Firmware Volume Device Path SubType
+///
+#define MEDIA_PIWG_FW_VOL_DP      0x07
+
+///
+/// This device path is used by systems implementing the UEFI PI Specification 1.0 to describe a firmware volume.
+///
+typedef struct {
+  EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Firmware volume name.
+  ///
+  EFI_GUID                        FvName;
+} MEDIA_FW_VOL_DEVICE_PATH;
+
+///
 /// Media relative offset range device path
 ///
 #define MEDIA_RELATIVE_OFFSET_RANGE_DP 0x08
@@ -918,6 +921,7 @@ typedef struct {
 ///
 typedef struct {
   EFI_DEVICE_PATH_PROTOCOL  Header;
+  UINT32                    Reserved;
   UINT64                    StartingOffset;
   UINT64                    EndingOffset;
 } MEDIA_RELATIVE_OFFSET_RANGE_DEVICE_PATH;

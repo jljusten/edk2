@@ -1,11 +1,7 @@
 /** @file
-  LZMA Decompress routines for edk2
+  LZMA Decompress interfaces
 
-  Portions based on LZMA SDK 4.65:
-    LzmaUtil.c -- Test application for LZMA compression
-    2008-11-23 : Igor Pavlov : Public domain
-
-  Copyright (c) 2006 - 2009, Intel Corporation<BR>
+  Copyright (c) 2009, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -16,14 +12,7 @@
 
 **/
 
-#include <Uefi.h>
-#include <Library/BaseLib.h>
-#include <Library/BaseMemoryLib.h>
-#include <Library/DebugLib.h>
-#include <Library/UefiDecompressLib.h>
-#include <Library/ExtractGuidedSectionLib.h>
-#include <Guid/LzmaDecompress.h>
-
+#include "LzmaDecompressLibInternal.h"
 #include "Sdk/C/Types.h"
 #include "Sdk/C/7zVersion.h"
 #include "Sdk/C/LzmaDec.h"
@@ -32,35 +21,35 @@
 // Global data
 //
 
-STATIC CONST VOID  *mSourceLastUsedWithGetInfo;
-STATIC UINT32      mSizeOfLastSource;
-STATIC UINT32      mDecompressedSizeForLastSource;
-STATIC VOID        *mScratchBuffer;
-STATIC UINTN       mScratchBufferSize;
+CONST VOID  *mSourceLastUsedWithGetInfo;
+UINT32      mSizeOfLastSource;
+UINT32      mDecompressedSizeForLastSource;
+VOID        *mScratchBuffer;
+UINTN       mScratchBufferSize;
+
 #define SCRATCH_BUFFER_REQUEST_SIZE SIZE_64KB
 
 /**
   Allocation routine used by LZMA decompression.
 
-  @param p                Pointer to the ISzAlloc instance
-  @param size             The size in bytes to be allocated
+  @param P                Pointer to the ISzAlloc instance
+  @param Size             The size in bytes to be allocated
 
   @return The allocated pointer address, or NULL on failure
 **/
-STATIC
 VOID *
 SzAlloc (
-  void *p,
-  size_t size
+  VOID *P,
+  size_t Size
   )
 {
-  VOID *addr;
+  VOID *Addr;
 
-  if (mScratchBufferSize >= size) {
-    addr = mScratchBuffer;
-    mScratchBuffer = (VOID*) ((UINT8*)addr + size);
-    mScratchBufferSize -= size;
-    return addr;
+  if (mScratchBufferSize >= Size) {
+    Addr = mScratchBuffer;
+    mScratchBuffer = (VOID*) ((UINT8*)Addr + Size);
+    mScratchBufferSize -= Size;
+    return Addr;
   } else {
     ASSERT (FALSE);
     return NULL;
@@ -70,14 +59,13 @@ SzAlloc (
 /**
   Free routine used by LZMA decompression.
 
-  @param p                Pointer to the ISzAlloc instance
-  @param address          The address to be freed
+  @param P                Pointer to the ISzAlloc instance
+  @param Address          The address to be freed
 **/
-STATIC
 VOID
 SzFree (
-  void *p,
-  void *address
+  VOID *P,
+  VOID *Address
   )
 {
   //
@@ -91,10 +79,16 @@ STATIC ISzAlloc g_Alloc = { SzAlloc, SzFree };
 
 #define LZMA_HEADER_SIZE (LZMA_PROPS_SIZE + 8)
 
-STATIC
+/**
+  Get the size of the uncompressed buffer by parsing EncodeData header.
+
+  @param EncodedData  Pointer to the compressed data.
+
+  @return The size of the uncompressed buffer.
+**/
 UINT64
 GetDecodedSizeOfBuf(
-  UINT8 *encodedData
+  UINT8 *EncodedData
   )
 {
   UINT64 DecodedSize;
@@ -103,25 +97,44 @@ GetDecodedSizeOfBuf(
   /* Parse header */
   DecodedSize = 0;
   for (Index = LZMA_PROPS_SIZE + 7; Index >= LZMA_PROPS_SIZE; Index--)
-    DecodedSize = LShiftU64(DecodedSize, 8) + encodedData[Index];
+    DecodedSize = LShiftU64(DecodedSize, 8) + EncodedData[Index];
 
   return DecodedSize;
 }
 
 //
-// LZMA functions and data as defined in local LzmaDecompress.h
+// LZMA functions and data as defined in local LzmaDecompressLibInternal.h
 //
 
 /**
-  The internal implementation of *_DECOMPRESS_PROTOCOL.GetInfo().
-  
-  @param Source           The source buffer containing the compressed data.
-  @param SourceSize       The size of source buffer
-  @param DestinationSize  The size of destination buffer.
-  @param ScratchSize      The size of scratch buffer.
+  Given a Lzma compressed source buffer, this function retrieves the size of 
+  the uncompressed buffer and the size of the scratch buffer required 
+  to decompress the compressed source buffer.
 
-  @retval RETURN_SUCCESS           - The size of destination buffer and the size of scratch buffer are successull retrieved.
-  @retval RETURN_INVALID_PARAMETER - The source data is corrupted
+  Retrieves the size of the uncompressed buffer and the temporary scratch buffer 
+  required to decompress the buffer specified by Source and SourceSize.
+  The size of the uncompressed buffer is returned in DestinationSize, 
+  the size of the scratch buffer is returned in ScratchSize, and RETURN_SUCCESS is returned.
+  This function does not have scratch buffer available to perform a thorough 
+  checking of the validity of the source data. It just retrieves the "Original Size"
+  field from the LZMA_HEADER_SIZE beginning bytes of the source data and output it as DestinationSize.
+  And ScratchSize is specific to the decompression implementation.
+
+  If SourceSize is less than LZMA_HEADER_SIZE, then ASSERT().
+
+  @param  Source          The source buffer containing the compressed data.
+  @param  SourceSize      The size, in bytes, of the source buffer.
+  @param  DestinationSize A pointer to the size, in bytes, of the uncompressed buffer
+                          that will be generated when the compressed buffer specified
+                          by Source and SourceSize is decompressed.
+  @param  ScratchSize     A pointer to the size, in bytes, of the scratch buffer that
+                          is required to decompress the compressed buffer specified 
+                          by Source and SourceSize.
+
+  @retval  RETURN_SUCCESS The size of the uncompressed data was returned 
+                          in DestinationSize and the size of the scratch 
+                          buffer was returned in ScratchSize.
+
 **/
 RETURN_STATUS
 EFIAPI
@@ -148,14 +161,25 @@ LzmaUefiDecompressGetInfo (
 
 
 /**
-  The internal implementation of *_DECOMPRESS_PROTOCOL.Decompress().
-  
-  @param Source          - The source buffer containing the compressed data.
-  @param Destination     - The destination buffer to store the decompressed data
-  @param Scratch         - The buffer used internally by the decompress routine. This  buffer is needed to store intermediate data.
+  Decompresses a Lzma compressed source buffer.
 
-  @retval RETURN_SUCCESS           - Decompression is successfull
-  @retval RETURN_INVALID_PARAMETER - The source data is corrupted  
+  Extracts decompressed data to its original form.
+  If the compressed source data specified by Source is successfully decompressed 
+  into Destination, then RETURN_SUCCESS is returned.  If the compressed source data 
+  specified by Source is not in a valid compressed data format,
+  then RETURN_INVALID_PARAMETER is returned.
+
+  @param  Source      The source buffer containing the compressed data.
+  @param  Destination The destination buffer to store the decompressed data
+  @param  Scratch     A temporary scratch buffer that is used to perform the decompression.
+                      This is an optional parameter that may be NULL if the 
+                      required scratch buffer size is 0.
+                     
+  @retval  RETURN_SUCCESS Decompression completed successfully, and 
+                          the uncompressed buffer is returned in Destination.
+  @retval  RETURN_INVALID_PARAMETER 
+                          The source buffer specified by Source is corrupted 
+                          (not in a valid compressed format).
 **/
 RETURN_STATUS
 EFIAPI
@@ -165,34 +189,34 @@ LzmaUefiDecompress (
   IN OUT VOID    *Scratch
   )
 {
-  SRes        lzmaResult;
-  ELzmaStatus status;
-  SizeT       decodedBufSize;
-  SizeT       encodedDataSize;
+  SRes        LzmaResult;
+  ELzmaStatus Status;
+  SizeT       DecodedBufSize;
+  SizeT       EncodedDataSize;
 
   if (Source != mSourceLastUsedWithGetInfo) {
     return RETURN_INVALID_PARAMETER;
   }
 
-  decodedBufSize = (SizeT)mDecompressedSizeForLastSource;
-  encodedDataSize = (SizeT)(mSizeOfLastSource - LZMA_HEADER_SIZE);
+  DecodedBufSize = (SizeT)mDecompressedSizeForLastSource;
+  EncodedDataSize = (SizeT)(mSizeOfLastSource - LZMA_HEADER_SIZE);
 
   mScratchBuffer = Scratch;
   mScratchBufferSize = SCRATCH_BUFFER_REQUEST_SIZE;
 
-  lzmaResult = LzmaDecode(
+  LzmaResult = LzmaDecode(
     Destination,
-    &decodedBufSize,
+    &DecodedBufSize,
     (Byte*)((UINT8*)Source + LZMA_HEADER_SIZE),
-    &encodedDataSize,
+    &EncodedDataSize,
     Source,
     LZMA_PROPS_SIZE,
     LZMA_FINISH_END,
-    &status,
+    &Status,
     &g_Alloc
     );
 
-  if (lzmaResult == SZ_OK) {
+  if (LzmaResult == SZ_OK) {
     return RETURN_SUCCESS;
   } else {
     return RETURN_INVALID_PARAMETER;

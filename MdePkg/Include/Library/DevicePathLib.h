@@ -2,11 +2,9 @@
   Provides library functions to construct and parse UEFI Device Paths.
 
   This library provides defines, macros, and functions to help create and parse 
-  EFI_DEVICE_PATH_PROTOCOL structures.  The macros that help create and parse device 
-  path nodes make use of the ReadUnaligned16() and WriteUnaligned16() functions from 
-  the Base Library, so this library class has an implied dependency on the Base Library.
+  EFI_DEVICE_PATH_PROTOCOL structures.
 
-Copyright (c) 2006 - 2008, Intel Corporation<BR>
+Copyright (c) 2006 - 2009, Intel Corporation<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -35,6 +33,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 UINT8
+EFIAPI
 DevicePathType (
   IN CONST VOID  *Node
   );
@@ -52,6 +51,7 @@ DevicePathType (
 
 **/
 UINT8
+EFIAPI
 DevicePathSubType (
   IN CONST VOID  *Node
   );
@@ -72,6 +72,7 @@ DevicePathSubType (
 
 **/
 UINTN
+EFIAPI
 DevicePathNodeLength (
   IN CONST VOID  *Node
   );
@@ -89,6 +90,7 @@ DevicePathNodeLength (
 
 **/
 EFI_DEVICE_PATH_PROTOCOL *
+EFIAPI
 NextDevicePathNode (
   IN CONST VOID  *Node
   );
@@ -111,6 +113,7 @@ NextDevicePathNode (
   
 **/
 BOOLEAN
+EFIAPI
 IsDevicePathEndType (
   IN CONST VOID  *Node
   );
@@ -130,6 +133,7 @@ IsDevicePathEndType (
 
 **/
 BOOLEAN
+EFIAPI
 IsDevicePathEnd (
   IN CONST VOID  *Node
   );
@@ -149,6 +153,7 @@ IsDevicePathEnd (
 
 **/
 BOOLEAN
+EFIAPI
 IsDevicePathEndInstance (
   IN CONST VOID  *Node
   );
@@ -171,6 +176,7 @@ IsDevicePathEndInstance (
 
 **/
 UINT16
+EFIAPI
 SetDevicePathNodeLength (
   IN OUT VOID  *Node,
   IN UINTN     Length
@@ -193,6 +199,7 @@ SetDevicePathNodeLength (
 
 **/
 VOID
+EFIAPI
 SetDevicePathEndNode (
   OUT VOID  *Node
   );

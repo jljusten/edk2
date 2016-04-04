@@ -1,7 +1,7 @@
 /** @file
   Provides the parent dispatch service for a given Sx-state source generator.
 
-  Copyright (c) 2007, Intel Corporation
+  Copyright (c) 2007 - 2009, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -9,8 +9,6 @@
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-  Module Name:  SmmSxDispatch.h
 
   @par Revision Reference:
   This Protocol is defined in Framework of EFI SMM Core Interface Spec
@@ -21,7 +19,6 @@
 #ifndef _EFI_SMM_SX_DISPATCH_H_
 #define _EFI_SMM_SX_DISPATCH_H_
 
-#include <PiDxe.h>
 
 //
 // Global ID for the Sx SMI Protocol
@@ -86,15 +83,15 @@ VOID
   @param  This                  Pointer to the EFI_SMM_SX_DISPATCH_PROTOCOL instance.
   @param  DispatchFunction      Function to install.
   @param  DispatchContext       Pointer to the dispatch function's context.
-                                The caller fills this context in before calling
-                                the register function to indicate to the register
+                                The caller fills in this context before calling
+                                the register function to indicates to the register
                                 function which Sx state type and phase the caller
-                                wishes to be called back on. For this intertace,
+                                wishes to be called back on. For this interface,
                                 the Sx driver will call the registered handlers for
                                 all Sx type and phases, so the Sx state handler(s)
                                 must check the Type and Phase field of the Dispatch
                                 context and act accordingly.
-  @param  DispatchHandle        Handle of dispatch function, for when interfacing
+  @param  DispatchHandle        Handle of dispatch function, for interfacing
                                 with the parent Sx state SMM driver.
 
   @retval EFI_SUCCESS           The dispatch function has been successfully
@@ -140,19 +137,11 @@ EFI_STATUS
 // Interface structure for the SMM Child Dispatch Protocol
 //
 /**
-  @par Protocol Description:
   Provides the parent dispatch service for a given Sx-state source generator.
-
-  @param Register
-  Installs a child service to be dispatched by this protocol.
-
-  @param UnRegister
-  Removes a child service dispatched by this protocol.
-
 **/
 struct _EFI_SMM_SX_DISPATCH_PROTOCOL {
-  EFI_SMM_SX_REGISTER   Register;
-  EFI_SMM_SX_UNREGISTER UnRegister;
+  EFI_SMM_SX_REGISTER   Register;     ///< Installs a child service to be dispatched by this protocol.
+  EFI_SMM_SX_UNREGISTER UnRegister;   ///< Removes a child service dispatched by this protocol.
 };
 
 extern EFI_GUID gEfiSmmSxDispatchProtocolGuid;

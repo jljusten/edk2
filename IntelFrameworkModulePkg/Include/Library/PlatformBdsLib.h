@@ -1,8 +1,8 @@
 /** @file
-  Platform BDS library definition. Platform package can provide hook library
-  instances to implement platform specific behavior.
+  Platform BDS library definition. A platform can implement 
+  instances to support platform-specific behavior.
 
-Copyright (c) 2008, Intel Corporation. <BR>
+Copyright (c) 2008 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -16,12 +16,52 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #ifndef __PLATFORM_BDS_LIB_H_
 #define __PLATFORM_BDS_LIB_H_
 
-#include <Protocol/Bds.h>
 #include <Protocol/GenericMemoryTest.h>
 #include <Library/GenericBdsLib.h>
 
 /**
-  Platform Bds init. Include the platform firmware vendor, revision
+  Perform the memory test base on the memory test intensive level,
+  and update the memory resource.
+
+  @param  Level         The memory test intensive level.
+
+  @retval EFI_STATUS    Success test all the system memory and update
+                        the memory resource
+
+**/
+typedef
+EFI_STATUS
+(EFIAPI *BASEM_MEMORY_TEST)(
+  IN EXTENDMEM_COVERAGE_LEVEL Level
+  );
+
+/**
+  This routine is called to see if there are any capsules we need to process.
+  If the boot mode is not UPDATE, then we do nothing. Otherwise find the
+  capsule HOBS and produce firmware volumes for them via the DXE service.
+  Then call the dispatcher to dispatch drivers from them. Finally, check
+  the status of the updates.
+
+  This function should be called by BDS in case we need to do some
+  sort of processing even if there is no capsule to process. We
+  need to do this if an earlier update went away and we need to
+  clear the capsule variable so on the next reset PEI does not see it and
+  think there is a capsule available.
+
+  @param BootMode                 the current boot mode
+
+  @retval EFI_INVALID_PARAMETER   boot mode is not correct for an update
+  @retval EFI_SUCCESS             There is no error when processing capsule
+
+**/
+typedef 
+EFI_STATUS
+(EFIAPI *PROCESS_CAPSULES)(
+  IN EFI_BOOT_MODE BootMode
+  );
+
+/**
+  Platform Bds initialization. Includes the platform firmware vendor, revision
   and so crc check.
 
 **/
@@ -38,17 +78,21 @@ PlatformBdsInit (
 
   @param  DriverOptionList        The header of the driver option link list
   @param  BootOptionList          The header of the boot option link list
+  @param  ProcessCapsules         A pointer to ProcessCapsules()
+  @param  BaseMemoryTest          A pointer to BaseMemoryTest()
 
 **/
 VOID
 EFIAPI
 PlatformBdsPolicyBehavior (
   IN LIST_ENTRY                      *DriverOptionList,
-  IN LIST_ENTRY                      *BootOptionList
+  IN LIST_ENTRY                      *BootOptionList,
+  IN PROCESS_CAPSULES                ProcessCapsules,
+  IN BASEM_MEMORY_TEST               BaseMemoryTest
   );
 
 /**
-  Hook point after a boot attempt fails.
+  Hook point for a user-provided function, for after a boot attempt fails. 
 
   @param  Option                  Pointer to Boot Option that failed to boot.
   @param  Status                  Status returned from failed boot.
@@ -69,15 +113,15 @@ PlatformBdsBootFail (
   Hook point after a boot attempt succeeds. We don't expect a boot option to
   return, so the UEFI 2.0 specification defines that you will default to an
   interactive mode and stop processing the BootOrder list in this case. This
-  is alos a platform implementation and can be customized by IBV/OEM.
+  is also a platform implementation, and can be customized by an IBV/OEM.
 
-  @param  Option                  Pointer to Boot Option that succeeded to boot.
+  @param  Option                  Pointer to Boot Option that successfully booted.
 
 **/
 VOID
 EFIAPI
 PlatformBdsBootSuccess (
-  IN  BDS_COMMON_OPTION *Option
+  IN  BDS_COMMON_OPTION  *Option
   );
 
 
@@ -85,11 +129,28 @@ PlatformBdsBootSuccess (
   This function locks platform flash that is not allowed to be updated during normal boot path.
   The flash layout is platform specific.
 
-  @retval EFI_SUCCESS             The non-updatable flash areas.
-**/
-EFI_STATUS
+  **/
+VOID
 EFIAPI
 PlatformBdsLockNonUpdatableFlash (
   VOID
   );
+
+/**
+  Lock the ConsoleIn device in system table. All key
+  presses will be ignored until the Password is typed in. The only way to
+  disable the password is to type it in to a ConIn device.
+
+  @param  Password        Password used to lock ConIn device.
+
+  @retval EFI_SUCCESS     lock the Console In Spliter virtual handle successfully.
+  @retval EFI_UNSUPPORTED Password not found
+
+**/
+EFI_STATUS
+EFIAPI
+LockKeyboards (
+  IN  CHAR16    *Password
+  );
+
 #endif

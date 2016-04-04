@@ -1,8 +1,8 @@
-/**@file
+/** @file
   PS/2 Mouse driver. Routines that interacts with callers,
-  conforming to EFI driver model
+  conforming to EFI driver model.
   
-Copyright (c) 2006 - 2007, Intel Corporation
+Copyright (c) 2006 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -16,9 +16,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "Ps2Mouse.h"
 #include "CommPs2.h"
 
-//
-// DriverBinding Protocol Instance
-//
+///
+/// DriverBinding Protocol Instance
+///
 EFI_DRIVER_BINDING_PROTOCOL gPS2MouseDriver = {
   PS2MouseDriverSupported,
   PS2MouseDriverStart,
@@ -109,9 +109,9 @@ PS2MouseDriverSupported (
 }
 
 /**
-  Start this driver on ControllerHandle by opening a IsaIo
-  protocol, creating PS2_MOUSE_ABSOLUTE_POINTER_DEV device and install gEfiAbsolutePointerProtocolGuid
-  finnally.
+  Start this driver on ControllerHandle by opening a IsaIo protocol, creating 
+  PS2_MOUSE_ABSOLUTE_POINTER_DEV device and install gEfiAbsolutePointerProtocolGuid
+  finally.
 
   @param  This                 Protocol instance pointer.
   @param  ControllerHandle     Handle of device to bind driver to
@@ -205,9 +205,9 @@ PS2MouseDriverStart (
   //
   MouseDev->Signature       = PS2_MOUSE_DEV_SIGNATURE;
   MouseDev->Handle          = Controller;
-  MouseDev->SampleRate      = SSR_20;
-  MouseDev->Resolution      = CMR4;
-  MouseDev->Scaling         = SF1;
+  MouseDev->SampleRate      = SampleRate20;
+  MouseDev->Resolution      = MouseResolution4;
+  MouseDev->Scaling         = Scaling1;
   MouseDev->DataPackageSize = 3;
   MouseDev->IsaIo           = IsaIo;
   MouseDev->DevicePath      = ParentDevicePath;
@@ -377,7 +377,7 @@ ErrorExit:
   }
 
   if (MouseDev != NULL) {
-    gBS->FreePool (MouseDev);
+    FreePool (MouseDev);
   }
 
   gBS->CloseProtocol (
@@ -480,7 +480,7 @@ PS2MouseDriverStop (
 
   gBS->CloseEvent (MouseDev->SimplePointerProtocol.WaitForInput);
   FreeUnicodeStringTable (MouseDev->ControllerNameTable);
-  gBS->FreePool (MouseDev);
+  FreePool (MouseDev);
 
   gBS->CloseProtocol (
          Controller,
@@ -618,10 +618,10 @@ Exit:
 /**
   Check whether there is Ps/2 mouse device in system
 
-  @param PS2_MOUSE_DEV - Mouse Private Data Structure
+  @param MouseDev   - Mouse Private Data Structure
 
-  @retval TRUE                - Keyboard in System.
-  @retval FALSE               - Keyboard not in System.
+  @retval TRUE      - Keyboard in System.
+  @retval FALSE     - Keyboard not in System.
 
 **/
 BOOLEAN
@@ -687,22 +687,19 @@ MouseGetState (
 
 /**
 
-  Event notification function for SIMPLE_POINTER.WaitForInput event
-  Signal the event if there is input from mouse
+  Event notification function for SIMPLE_POINTER.WaitForInput event.
+  Signal the event if there is input from mouse.
 
   @param Event    event object
   @param Context  event context
 
 **/
-
 VOID
 EFIAPI
 MouseWaitForInput (
   IN  EFI_EVENT               Event,
   IN  VOID                    *Context
   )
-// GC_TODO:    Event - add argument and description to function comment
-// GC_TODO:    Context - add argument and description to function comment
 {
   PS2_MOUSE_DEV *MouseDev;
 
@@ -719,8 +716,8 @@ MouseWaitForInput (
 }
 
 /**
-  Event notification function for TimerEvent event
-  If mouse device is connected to system, try to get the mouse packet data
+  Event notification function for TimerEvent event.
+  If mouse device is connected to system, try to get the mouse packet data.
 
   @param Event      -  TimerEvent in PS2_MOUSE_DEV
   @param Context    -  Pointer to PS2_MOUSE_DEV structure

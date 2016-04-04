@@ -3,7 +3,7 @@
   IFR is primarily consumed by the EFI presentation engine, and produced by EFI
   internal application and drivers as well as all add-in card option-ROM drivers
 
-  Copyright (c) 2006 - 2008, Intel Corporation                                                         
+  Copyright (c) 2006 - 2009, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -19,6 +19,8 @@
 
 #ifndef __UEFI_INTERNAL_FORMREPRESENTATION_H__
 #define __UEFI_INTERNAL_FORMREPRESENTATION_H__
+
+#include <Guid/HiiFormMapMethodGuid.h>
 
 ///
 /// The following types are currently defined:
@@ -73,6 +75,7 @@ typedef struct {
 #define EFI_HII_PACKAGE_SIMPLE_FONTS         0x07
 #define EFI_HII_PACKAGE_DEVICE_PATH          0x08
 #define EFI_HII_PACKAGE_KEYBOARD_LAYOUT      0x09
+#define EFI_HII_PACKAGE_ANIMATIONS           0x0A
 #define EFI_HII_PACKAGE_END                  0xDF
 #define EFI_HII_PACKAGE_TYPE_SYSTEM_BEGIN    0xE0
 #define EFI_HII_PACKAGE_TYPE_SYSTEM_END      0xFF
@@ -255,10 +258,10 @@ typedef struct _EFI_HII_GIBT_SKIP2_BLOCK {
 /// The device path package is used to carry a device path
 /// associated with the package list.
 ///
-typedef struct _EFI_HII_DEVICE_PATH_PACKAGE {
+typedef struct _EFI_HII_DEVICE_PATH_PACKAGE_HDR {
   EFI_HII_PACKAGE_HEADER   Header;
   // EFI_DEVICE_PATH_PROTOCOL DevicePath[];
-} EFI_HII_DEVICE_PATH_PACKAGE;
+} EFI_HII_DEVICE_PATH_PACKAGE_HDR;
 
 //
 // Definitions for GUID Package
@@ -279,8 +282,8 @@ typedef struct _EFI_HII_GUID_PACKAGE_HDR {
 // Section 27.3.6
 //
 
-#define UEFI_CONFIG_LANG  L"x-UEFI"
-#define UEFI_CONFIG_LANG2 L"x-i-UEFI"
+#define UEFI_CONFIG_LANG  "x-UEFI"
+#define UEFI_CONFIG_LANG2 "x-i-UEFI"
 
 ///
 /// The fixed header consists of a standard record header and then the string identifiers
@@ -593,13 +596,13 @@ typedef struct _EFI_HII_IMAGE_PALETTE_INFO {
 //
 
 ///
-/// The Forms package is used to carry forms-based encoding data.
+/// The Form package is used to carry form-based encoding data.
 ///
-typedef struct _EFI_HII_FORM_PACKAGE {
+typedef struct _EFI_HII_FORM_PACKAGE_HDR {
   EFI_HII_PACKAGE_HEADER       Header;
   // EFI_IFR_OP_HEADER         OpCodeHeader;
   // More op-codes follow
-} EFI_HII_FORM_PACKAGE;
+} EFI_HII_FORM_PACKAGE_HDR;
 
 typedef struct {
   UINT8 Hour;
@@ -621,7 +624,8 @@ typedef union {
   BOOLEAN         b;
   EFI_HII_TIME    time;
   EFI_HII_DATE    date;
-  EFI_STRING_ID   string;
+  EFI_STRING_ID   string; ///< EFI_IFR_TYPE_STRING, EFI_IFR_TYPE_ACTION
+  // UINT8 buffer[];      ///< EFI_IFR_TYPE_ORDERED_LIST
 } EFI_IFR_TYPE_VALUE;
 
 //
@@ -659,6 +663,7 @@ typedef union {
 #define EFI_IFR_DISABLE_IF_OP          0x1E
 #define EFI_IFR_TO_LOWER_OP            0x20
 #define EFI_IFR_TO_UPPER_OP            0x21
+#define EFI_IFR_MAP_OP                 0x22
 #define EFI_IFR_ORDERED_LIST_OP        0x23
 #define EFI_IFR_VARSTORE_OP            0x24
 #define EFI_IFR_VARSTORE_NAME_VALUE_OP 0x25
@@ -667,6 +672,10 @@ typedef union {
 #define EFI_IFR_VERSION_OP             0x28
 #define EFI_IFR_END_OP                 0x29
 #define EFI_IFR_MATCH_OP               0x2A
+#define EFI_IFR_SET_OP                 0x2C
+#define EFI_IFR_GET_OP                 0x2B
+#define EFI_IFR_READ_OP                0x2D
+#define EFI_IFR_WRITE_OP               0x2E
 #define EFI_IFR_EQUAL_OP               0x2F
 #define EFI_IFR_NOT_EQUAL_OP           0x30
 #define EFI_IFR_GREATER_THAN_OP        0x31
@@ -713,8 +722,10 @@ typedef union {
 #define EFI_IFR_VALUE_OP               0x5A
 #define EFI_IFR_DEFAULT_OP             0x5B
 #define EFI_IFR_DEFAULTSTORE_OP        0x5C
+#define EFI_IFR_FORM_MAP_OP            0x5D
 #define EFI_IFR_CATENATE_OP            0x5E
 #define EFI_IFR_GUID_OP                0x5F
+#define EFI_IFR_SECURITY_OP            0x60
 
 //
 // Definitions of IFR Standard Headers
@@ -894,7 +905,7 @@ typedef struct _EFI_IFR_REF4 {
 
 typedef struct _EFI_IFR_RESET_BUTTON {
   EFI_IFR_OP_HEADER        Header;
-  EFI_IFR_QUESTION_HEADER  Question;
+  EFI_IFR_STATEMENT_HEADER Statement;
   EFI_DEFAULT_ID           DefaultId;
 } EFI_IFR_RESET_BUTTON;
 
@@ -1075,6 +1086,9 @@ typedef struct _EFI_IFR_ONE_OF_OPTION {
 #define EFI_IFR_TYPE_DATE              0x06
 #define EFI_IFR_TYPE_STRING            0x07
 #define EFI_IFR_TYPE_OTHER             0x08
+#define EFI_IFR_TYPE_UNDEFINED         0x09
+#define EFI_IFR_TYPE_ACTION            0x0A
+#define EFI_IFR_TYPE_BUFFER            0x0B
 
 #define EFI_IFR_OPTION_DEFAULT         0x10
 #define EFI_IFR_OPTION_DEFAULT_MFG     0x20
@@ -1101,12 +1115,12 @@ typedef struct _EFI_IFR_EQ_ID_VAL {
   UINT16                   Value;
 } EFI_IFR_EQ_ID_VAL;
 
-typedef struct _EFI_IFR_EQ_ID_LIST {
+typedef struct _EFI_IFR_EQ_ID_VAL_LIST {
   EFI_IFR_OP_HEADER        Header;
   EFI_QUESTION_ID          QuestionId;
   UINT16                   ListLength;
   UINT16                   ValueList[1];
-} EFI_IFR_EQ_ID_LIST;
+} EFI_IFR_EQ_ID_VAL_LIST;
 
 typedef struct _EFI_IFR_UINT8 {
   EFI_IFR_OP_HEADER        Header;
@@ -1362,6 +1376,107 @@ typedef struct _EFI_IFR_SPAN {
   UINT8                    Flags;
 } EFI_IFR_SPAN;
 
+typedef struct _EFI_IFR_SECURITY {
+  ///
+  /// Standard opcode header, where Header.Op = EFI_IFR_SECURITY_OP.
+  ///
+  EFI_IFR_OP_HEADER        Header;
+  ///
+  /// Security permission level.
+  ///
+  EFI_GUID                 Permissions;
+} EFI_IFR_SECURITY;
+
+typedef struct _EFI_IFR_FORM_MAP_METHOD {
+  ///
+  /// The string identifier which provides the human-readable name of 
+  /// the configuration method for this standards map form.
+  ///
+  EFI_STRING_ID            MethodTitle;
+  ///
+  /// Identifier which uniquely specifies the configuration methods 
+  /// associated with this standards map form.
+  ///
+  EFI_GUID                 MethodIdentifier;
+} EFI_IFR_FORM_MAP_METHOD;
+
+typedef struct _EFI_IFR_FORM_MAP {
+  ///
+  /// The sequence that defines the type of opcode as well as the length 
+  /// of the opcode being defined. Header.OpCode = EFI_IFR_FORM_MAP_OP. 
+  ///
+  EFI_IFR_OP_HEADER        Header;
+  ///
+  /// The unique identifier for this particular form.
+  ///
+  EFI_FORM_ID              FormId;
+  ///
+  /// One or more configuration method's name and unique identifier.
+  ///
+  EFI_IFR_FORM_MAP_METHOD  Methods[1];
+} EFI_IFR_FORM_MAP;
+
+typedef struct _EFI_IFR_SET {
+  ///
+  /// The sequence that defines the type of opcode as well as the length 
+  /// of the opcode being defined. Header.OpCode = EFI_IFR_SET_OP. 
+  ///
+  EFI_IFR_OP_HEADER  Header;
+  ///
+  /// Specifies the identifier of a previously declared variable store to 
+  /// use when storing the question's value. 
+  ///
+  EFI_VARSTORE_ID    VarStoreId;
+  union {
+    ///
+    /// A 16-bit Buffer Storage offset.
+    ///
+    EFI_STRING_ID    VarName;
+    ///
+    /// A Name Value or EFI Variable name (VarName).
+    ///
+    UINT16           VarOffset;
+  }                  VarStoreInfo;
+} EFI_IFR_SET;
+
+typedef struct _EFI_IFR_GET {
+  ///
+  /// The sequence that defines the type of opcode as well as the length 
+  /// of the opcode being defined. Header.OpCode = EFI_IFR_GET_OP. 
+  ///
+  EFI_IFR_OP_HEADER  Header;
+  ///
+  /// Specifies the identifier of a previously declared variable store to 
+  /// use when retrieving the value. 
+  ///
+  EFI_VARSTORE_ID    VarStoreId;
+  union {
+    ///
+    /// A 16-bit Buffer Storage offset.
+    ///
+    EFI_STRING_ID    VarName;
+    ///
+    /// A Name Value or EFI Variable name (VarName).
+    ///
+    UINT16           VarOffset;
+  }                  VarStoreInfo;
+  ///
+  /// Specifies the type used for storage. 
+  ///
+  UINT8              VarStoreType;
+} EFI_IFR_GET;
+
+typedef struct _EFI_IFR_READ {
+  EFI_IFR_OP_HEADER       Header;
+} EFI_IFR_READ;
+
+typedef struct _EFI_IFR_WRITE {
+  EFI_IFR_OP_HEADER      Header;
+} EFI_IFR_WRITE;
+
+typedef struct _EFI_IFR_MAP {
+  EFI_IFR_OP_HEADER      Header;
+} EFI_IFR_MAP;
 //
 // Definitions for Keyboard Package
 // Releated definitions are in Section of EFI_HII_DATABASE_PROTOCOL

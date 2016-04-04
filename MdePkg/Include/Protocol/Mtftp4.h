@@ -1,14 +1,17 @@
 /** @file
   EFI Multicast Trivial File Tranfer Protocol Definition
 
-  Copyright (c) 2006 - 2008, Intel Corporation                                                         
+  Copyright (c) 2006 - 2009, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
   http://opensource.org/licenses/bsd-license.php                                            
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.   
+
+  @par Revision Reference:          
+  This Protocol is introduced in UEFI Specification 2.0
 
 **/
 
@@ -184,7 +187,7 @@ typedef struct {
 /**
   A callback function that is provided by the caller to intercept               
   the EFI_MTFTP4_OPCODE_DATA or EFI_MTFTP4_OPCODE_DATA8 packets processed in the
-  EFI_MTFTP4_PROTOCOL.ReadFile() function, or alternatively to intercept       
+  EFI_MTFTP4_PROTOCOL.ReadFile() function, and alternatively to intercept       
   EFI_MTFTP4_OPCODE_OACK or EFI_MTFTP4_OPCODE_ERROR packets during a call to    
   EFI_MTFTP4_PROTOCOL.ReadFile(), WriteFile() or ReadDirectory().                   
 
@@ -319,20 +322,38 @@ EFI_STATUS
   @param  Packet       The pointer to the received packet. This buffer must be freed by
                        the caller.
 
-  @retval EFI_SUCCESS           An MTFTPv4 OACK packet was received and is in the Buffer.
-  @retval EFI_INVALID_PARAMETER One or more parameters are invalid.
-  @retval EFI_UNSUPPORTED       One or more options in the OptionList are in the
-                                unsupported list of structure EFI_MTFTP4_MODE_DATA.
-  @retval EFI_NOT_STARTED       The EFI MTFTPv4 Protocol driver has not been started.
-  @retval EFI_NO_MAPPING        When using a default address, configuration (DHCP, BOOTP,
-                                RARP, etc.) has not finished yet.
-  @retval EFI_ACCESS_DENIED     The previous operation has not completed yet.
-  @retval EFI_OUT_OF_RESOURCES  Required system resources could not be allocated.
-  @retval EFI_TFTP_ERROR        An MTFTPv4 ERROR packet was received and is in the buffer.
-  @retval EFI_ICMP_ERROR        An ICMP ERROR packet was received and is in the Buffer.
-  @retval EFI_PROTOCOL_ERROR    An unexpected MTFTPv4 packet was received and is in the buffer.
-  @retval EFI_TIMEOUT           No responses were received from the MTFTPv4 server.
-  @retval EFI_DEVICE_ERROR      An unexpected network error or system error occurred.
+  @retval EFI_SUCCESS              An MTFTPv4 OACK packet was received and is in the Packet.
+                                   Note: It does not match UEFI 2.3 Specification.
+  @retval EFI_INVALID_PARAMETER    One or more of the following conditions is TRUE:
+                                   - This is NULL.
+                                   - Filename is NULL.
+                                   - OptionCount is not zero and OptionList is NULL.
+                                   - One or more options in OptionList have wrong format.
+                                   - PacketLength is NULL.
+                                   - One or more IPv4 addresses in OverrideData are not valid
+                                     unicast IPv4 addresses if OverrideData is not NULL.
+  @retval EFI_UNSUPPORTED          One or more options in the OptionList are in the
+                                   unsupported list of structure EFI_MTFTP4_MODE_DATA.
+  @retval EFI_NOT_STARTED          The EFI MTFTPv4 Protocol driver has not been started.
+  @retval EFI_NO_MAPPING           When using a default address, configuration (DHCP, BOOTP,
+                                   RARP, etc.) has not finished yet.
+  @retval EFI_ACCESS_DENIED        The previous operation has not completed yet.
+  @retval EFI_OUT_OF_RESOURCES     Required system resources could not be allocated.
+  @retval EFI_TFTP_ERROR           An MTFTPv4 ERROR packet was received and is in the Packet.
+  @retval EFI_NETWORK_UNREACHABLE  An ICMP network unreachable error packet was received and the Packet is set to NULL.
+                                   Note: It is not defined in UEFI 2.3 Specification.
+  @retval EFI_HOST_UNREACHABLE     An ICMP host unreachable error packet was received and the Packet is set to NULL.
+                                   Note: It is not defined in UEFI 2.3 Specification.
+  @retval EFI_PROTOCOL_UNREACHABLE An ICMP protocol unreachable error packet was received and the Packet is set to NULL.
+                                   Note: It is not defined in UEFI 2.3 Specification.
+  @retval EFI_PORT_UNREACHABLE     An ICMP port unreachable error packet was received and the Packet is set to NULL.
+                                   Note: It is not defined in UEFI 2.3 Specification.
+  @retval EFI_ICMP_ERROR           Some other ICMP ERROR packet was received and is in the Buffer.
+                                   Note: It does not match UEFI 2.3 Specification.
+  @retval EFI_PROTOCOL_ERROR       An unexpected MTFTPv4 packet was received and is in the Packet.
+                                   Note: It does not match UEFI 2.3 Specification.
+  @retval EFI_TIMEOUT              No responses were received from the MTFTPv4 server.
+  @retval EFI_DEVICE_ERROR         An unexpected network error or system error occurred.
 
 **/
 typedef 
@@ -356,8 +377,8 @@ EFI_STATUS
   @param  Packet       Pointer to the OACK packet to be parsed.
   @param  OptionCount  Pointer to the number of options in following OptionList.
   @param  OptionList   Pointer to EFI_MTFTP4_OPTION storage. Call the EFI Boot
-                       Service FreePool() to release each option if they are not
-                       needed any more.
+                       Service FreePool() to release the OptionList if the options
+                       in this OptionList are not needed any more.
 
   @retval EFI_SUCCESS           The OACK packet was valid and the OptionCount and
                                 OptionList parameters have been updated.
@@ -388,15 +409,25 @@ EFI_STATUS
   @param  Token Pointer to the token structure to provide the parameters that are
                 used in this operation.
 
-  @retval EFI_SUCCESS          The data file has been transferred successfully.
-  @retval EFI_OUT_OF_RESOURCES Required system resources could not be allocated.
-  @retval EFI_BUFFER_TOO_SMALL BufferSize is not large enough to hold the downloaded data
-                               in downloading process.
-  @retval EFI_ABORTED          Current operation is aborted by user.
-  @retval EFI_ICMP_ERROR       An ICMP ERROR packet was received.
-  @retval EFI_TIMEOUT          No responses were received from the MTFTPv4 server.
-  @retval EFI_TFTP_ERROR       An MTFTPv4 ERROR packet was received.
-  @retval EFI_DEVICE_ERROR     An unexpected network error or system error occurred.
+  @retval EFI_SUCCESS              The data file has been transferred successfully.
+  @retval EFI_OUT_OF_RESOURCES     Required system resources could not be allocated.
+  @retval EFI_BUFFER_TOO_SMALL     BufferSize is not zero but not large enough to hold the
+                                   downloaded data in downloading process.
+                                   Note: It does not match UEFI 2.3 Specification.
+  @retval EFI_ABORTED              Current operation is aborted by user.
+  @retval EFI_NETWORK_UNREACHABLE  An ICMP network unreachable error packet was received.
+                                   Note: It is not defined in UEFI 2.3 Specification.
+  @retval EFI_HOST_UNREACHABLE     An ICMP host unreachable error packet was received.
+                                   Note: It is not defined in UEFI 2.3 Specification.
+  @retval EFI_PROTOCOL_UNREACHABLE An ICMP protocol unreachable error packet was received.
+                                   Note: It is not defined in UEFI 2.3 Specification.
+  @retval EFI_PORT_UNREACHABLE     An ICMP port unreachable error packet was received.
+                                   Note: It is not defined in UEFI 2.3 Specification.
+  @retval EFI_ICMP_ERROR           Some other  ICMP ERROR packet was received.
+                                   Note: It does not match UEFI 2.3 Specification.
+  @retval EFI_TIMEOUT              No responses were received from the MTFTPv4 server.
+  @retval EFI_TFTP_ERROR           An MTFTPv4 ERROR packet was received.
+  @retval EFI_DEVICE_ERROR         An unexpected network error or system error occurred.
 
 **/
 typedef 
@@ -540,13 +571,18 @@ struct _EFI_MTFTP4_TOKEN {
   ///
   /// Size of the data buffer.
   ///
-  OUT UINT64                  BufferSize;
+  UINT64                      BufferSize;
   ///
   /// Pointer to the data buffer. Data that is downloaded from the
   /// MTFTPv4 server is stored here. Data that is uploaded to the
   /// MTFTPv4 server is read from here. Ignored if BufferSize is zero.
   ///
-  OUT VOID                    *Buffer;
+  VOID                        *Buffer;
+  ///
+  /// Pointer to the context that will be used by CheckPacket, 
+  /// TimeoutCallback and PacketNeeded.
+  ///
+  VOID                        *Context;
   ///
   /// Pointer to the callback function to check the contents of the received packet.
   ///

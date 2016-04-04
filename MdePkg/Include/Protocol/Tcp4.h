@@ -1,10 +1,10 @@
 /** @file
-  EFI TCPv4 Protocol Definition
+  EFI TCPv4(Transmission Control Protocol version 4) Protocol Definition
   The EFI TCPv4 Service Binding Protocol is used to locate EFI TCPv4 Protocol drivers to create
   and destroy child of the driver to communicate with other host using TCP protocol.
   The EFI TCPv4 Protocol provides services to send and receive data stream.
 
-  Copyright (c) 2006 - 2008, Intel Corporation
+  Copyright (c) 2006 - 2009, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -12,6 +12,9 @@
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+
+  @par Revision Reference:          
+  This Protocol is introduced in UEFI Specification 2.0
 
 **/
 
@@ -115,6 +118,32 @@ typedef struct {
 } EFI_TCP4_COMPLETION_TOKEN;
 
 typedef struct {
+  ///
+  /// The Status in the CompletionToken will be set to one of 
+  /// the following values if the active open succeeds or an unexpected 
+  /// error happens:
+  /// EFI_SUCCESS:              The active open succeeds and the instance's 
+  ///                           state is Tcp4StateEstablished.
+  /// EFI_CONNECTION_RESET:     The connect fails because the connection is reset
+  ///                           either by instance itself or the communication peer.
+  /// EFI_CONNECTION_REFUSED:   The connect fails because this connection is initiated with
+  ///                           an active open and the connection is refused.
+  ///                           Note: It is not defined in UEFI 2.3 Specification.
+  /// EFI_ABORTED:              The active open is aborted.
+  /// EFI_TIMEOUT:              The connection establishment timer expires and 
+  ///                           no more specific information is available.
+  /// EFI_NETWORK_UNREACHABLE:  The active open fails because 
+  ///                           an ICMP network unreachable error is received. 
+  /// EFI_HOST_UNREACHABLE:     The active open fails because an 
+  ///                           ICMP host unreachable error is received. 
+  /// EFI_PROTOCOL_UNREACHABLE: The active open fails 
+  ///                           because an ICMP protocol unreachable error is received.
+  /// EFI_PORT_UNREACHABLE:     The connection establishment 
+  ///                           timer times out and an ICMP port unreachable error is received.
+  /// EFI_ICMP_ERROR:           The connection establishment timer timeout and some other ICMP
+  ///                           error is received.
+  /// EFI_DEVICE_ERROR:         An unexpected system or network error occurred.
+  /// 
   EFI_TCP4_COMPLETION_TOKEN CompletionToken;
 } EFI_TCP4_CONNECTION_TOKEN;
 
@@ -144,9 +173,43 @@ typedef struct {
 } EFI_TCP4_TRANSMIT_DATA;
 
 typedef struct {
+  /// 
+  /// When transmission finishes or meets any unexpected error it will 
+  /// be set to one of the following values:
+  /// EFI_SUCCESS:              The receiving or transmission operation 
+  ///                           completes successfully.
+  /// EFI_CONNECTION_FIN:       The receiving operation fails because the communication peer 
+  ///                           has closed the connection and there is no more data in the 
+  ///                           receive buffer of the instance.
+  ///                           Note: It is not defined in UEFI 2.3 Specification.
+  /// EFI_CONNECTION_RESET:     The receiving or transmission operation fails
+  ///                           because this connection is reset either by instance 
+  ///                           itself or the communication peer.
+  /// EFI_ABORTED:              The receiving or transmission is aborted.
+  /// EFI_TIMEOUT:              The transmission timer expires and no more 
+  ///                           specific information is available.
+  /// EFI_NETWORK_UNREACHABLE:  The transmission fails 
+  ///                           because an ICMP network unreachable error is received. 
+  /// EFI_HOST_UNREACHABLE:     The transmission fails because an 
+  ///                           ICMP host unreachable error is received. 
+  /// EFI_PROTOCOL_UNREACHABLE: The transmission fails 
+  ///                           because an ICMP protocol unreachable error is received. 
+  /// EFI_PORT_UNREACHABLE:     The transmission fails and an 
+  ///                           ICMP port unreachable error is received. 
+  /// EFI_ICMP_ERROR:           The transmission fails and some other 
+  ///                           ICMP error is received. 
+  /// EFI_DEVICE_ERROR:         An unexpected system or network error occurs.
+  /// EFI_NO_MEDIA:             There was a media error.
+  ///
   EFI_TCP4_COMPLETION_TOKEN CompletionToken;
   union {
+    ///
+    /// When this token is used for receiving, RxData is a pointer to EFI_TCP4_RECEIVE_DATA.
+    ///
     EFI_TCP4_RECEIVE_DATA   *RxData;
+    ///
+    /// When this token is used for transmitting, TxData is a pointer to EFI_TCP4_TRANSMIT_DATA.
+    ///
     EFI_TCP4_TRANSMIT_DATA  *TxData;
   } Packet;
 } EFI_TCP4_IO_TOKEN;
@@ -269,8 +332,7 @@ EFI_STATUS
                                 way handshake finishes.
 
   @retval EFI_SUCCESS           The connection request is successfully initiated and the state
-                                - of this TCPv4 instance has been changed to
-                                - Tcp4StateSynSent.
+                                of this TCPv4 instance has been changed to Tcp4StateSynSent.
   @retval EFI_NOT_STARTED       This EFI TCPv4 Protocol instance has not been configured.
   @retval EFI_ACCESS_DENIED     One or more of the following conditions are TRUE:
                                 - This instance is not configured as an active one.
@@ -279,7 +341,7 @@ EFI_STATUS
                                 - This is NULL.
                                 - ConnectionToken is NULL.
                                 - ConnectionToken->CompletionToken.Event is NULL.
-  @retval EFI_OUT_OF_RESOURCES  The driver can't allocate enough resources to initiate the activeopen.
+  @retval EFI_OUT_OF_RESOURCES  The driver can't allocate enough resource to initiate the activ eopen.
   @retval EFI_DEVICE_ERROR      An unexpected system or network error occurred.
 
 **/
@@ -308,8 +370,8 @@ EFI_STATUS
                                 - This is NULL.
                                 - ListenToken is NULL.
                                 - ListentToken->CompletionToken.Event is NULL.
-  @retval EFI_OUT_OF_RESOURCES  Could not allocate enough resources to finish the operation.
-  @retval EFI_DEVICE_ERROR      Any unexpected error not covered by another error.
+  @retval EFI_OUT_OF_RESOURCES  Could not allocate enough resource to finish the operation.
+  @retval EFI_DEVICE_ERROR      Any unexpected and not belonged to above category error.
 
 **/
 typedef
@@ -389,7 +451,7 @@ EFI_STATUS
                                Tcp4StateListen state.
                                - User has called Close() to disconnect this connection.
   @retval EFI_CONNECTION_FIN   The communication peer has closed the connection and there is
-                               no buffered data in the receive buffer of this instance.
+                               no any buffered data in the receive buffer of this instance.
   @retval EFI_NOT_READY        The receive request could not be queued because the receive queue is full.
 
 **/
@@ -419,8 +481,8 @@ EFI_STATUS
                                 - This is NULL.
                                 - CloseToken is NULL.
                                 - CloseToken->CompletionToken.Event is NULL.
-  @retval EFI_OUT_OF_RESOURCES  Could not allocate enough resources to finish the operation.
-  @retval EFI_DEVICE_ERROR      Any unexpected error not covered by another error.
+  @retval EFI_OUT_OF_RESOURCES  Could not allocate enough resource to finish the operation.
+  @retval EFI_DEVICE_ERROR      Any unexpected and not belonged to above category error.
 
 **/
 typedef
@@ -443,12 +505,17 @@ EFI_STATUS
                 EFI_TCP4_COMPLETION_TOKEN is defined in
                 EFI_TCP4_PROTOCOL.Connect().
 
-  @retval  EFI_SUCCESS           Incoming or outgoing data was processed.
-  @retval  EFI_INVALID_PARAMETER This is NULL.
-  @retval  EFI_DEVICE_ERROR      An unexpected system or network error occurred.
-  @retval  EFI_NOT_READY         No incoming or outgoing data is processed.
-  @retval  EFI_TIMEOUT           Data was dropped out of the transmission or receive queue.
-                                 Consider increasing the polling rate.
+  @retval  EFI_SUCCESS             The asynchronous I/O request is aborted and Token->Event
+                                   is signaled.
+  @retval  EFI_INVALID_PARAMETER   This is NULL.
+  @retval  EFI_NOT_STARTED         This instance hasn't been configured.
+  @retval  EFI_NO_MAPPING          When using the default address, configuration
+                                   (DHCP, BOOTP,RARP, etc.) hasn't finished yet.
+  @retval  EFI_NOT_FOUND           The asynchronous I/O request isn't found in the 
+                                   transmission or receive queue. It has either 
+                                   completed or wasn't issued by Transmit() and Receive().
+  @retval  EFI_UNSUPPORTED         The implementation does not support this function.
+                                   Note: It is not defined in UEFI 2.3 Specification.
 
 **/
 typedef
@@ -497,10 +564,6 @@ struct _EFI_TCP4_PROTOCOL {
   EFI_TCP4_CANCEL                        Cancel;
   EFI_TCP4_POLL                          Poll;
 };
-
-#define EFI_CONNECTION_FIN               EFIERR (104)
-#define EFI_CONNECTION_RESET             EFIERR (105)
-#define EFI_CONNECTION_REFUSED           EFIERR (106)
 
 extern EFI_GUID gEfiTcp4ServiceBindingProtocolGuid;
 extern EFI_GUID gEfiTcp4ProtocolGuid;

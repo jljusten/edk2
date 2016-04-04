@@ -622,12 +622,10 @@ GetFormsetDefaultVarstoreId (
 {
   LIST_ENTRY             *StorageList;
   FORMSET_STORAGE        *Storage;
-  FORMSET_STORAGE        *DefaultStorage;
 
   //
   // VarStoreId 0 is invalid in UEFI IFR.
   //
-  DefaultStorage= NULL;
   FormSet->DefaultVarStoreId = 0;
   StorageList = GetFirstNode (&FormSet->StorageListHead);
 
@@ -641,7 +639,6 @@ GetFormsetDefaultVarstoreId (
       // 1) If VarStore ID of FRAMEWORK_RESERVED_VARSTORE_ID (0x01) is found, Var Store ID is used.
       //
       FormSet->DefaultVarStoreId = FRAMEWORK_RESERVED_VARSTORE_ID;
-      DefaultStorage = Storage;
       break;
     }
 
@@ -658,28 +655,13 @@ GetFormsetDefaultVarstoreId (
     if (!IsNull (&FormSet->StorageListHead, StorageList)) {
       Storage = FORMSET_STORAGE_FROM_LINK (StorageList);
       FormSet->DefaultVarStoreId = Storage->VarStoreId;
-      DefaultStorage = Storage;
     }
     
   }
 
-  DEBUG_CODE_BEGIN ();
   if (FormSet->DefaultVarStoreId == 0) {
     DEBUG ((EFI_D_INFO, "FormSet %g: No Varstore Found\n", &FormSet->Guid));
-  } else {
-    //    The name of default VARSTORE with a Explicit declaration statement will be updated to L"Setup" to make sure
-    //    the Framework HII Setup module will run correctly. Framework HII Setup module always assumed that default
-    //    VARSTORE to have L"Setup" as name, Formset GUID as GUID. 
-
-    DEBUG ((EFI_D_INFO, "FormSet %g: Default Varstore ID (0x%x) N(%s) G(%g)\n", &FormSet->Guid, FormSet->DefaultVarStoreId, DefaultStorage->Name, &DefaultStorage->Guid));
-
-    if (StrCmp (DefaultStorage->Name, FrameworkReservedVarstoreName) != 0) {
-      DEBUG ((EFI_D_INFO, "          : Name is updated from %s to %s.\n", DefaultStorage->Name, FrameworkReservedVarstoreName));
-      FormSet->OriginalDefaultVarStoreName = DefaultStorage->Name;
-      DefaultStorage->Name = AllocateCopyPool (StrSize (FrameworkReservedVarstoreName), FrameworkReservedVarstoreName);
-    }
-  }
-  DEBUG_CODE_END ();
+  } 
   
   return;
 }
@@ -894,7 +876,10 @@ ParseFormSet (
 
   CopyGuid (&FormSetGuid, &gZeroGuid);
   Status = InitializeFormSet (UefiHiiHandle, &FormSetGuid, FormSet);
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    FreePool (FormSet);
+    return NULL;
+  }
 
   return FormSet;
 }

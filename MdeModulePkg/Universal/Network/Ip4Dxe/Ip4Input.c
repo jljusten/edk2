@@ -1,7 +1,7 @@
 /** @file
   IP4 input process.
   
-Copyright (c) 2005 - 2007, Intel Corporation.<BR>
+Copyright (c) 2005 - 2009, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -265,6 +265,10 @@ Ip4Reassemble (
 
     InsertHeadList (&Table->Bucket[Index], &Assemble->Link);
   }
+  //
+  // Assemble shouldn't be NULL here
+  //
+  ASSERT (Assemble != NULL);
 
   //
   // Find the point to insert the packet: before the first
@@ -588,7 +592,7 @@ Ip4AccpetFrame (
   // Dispatch the DPCs queued by the NotifyFunction of the rx token's events
   // which are signaled with received data.
   //
-  NetLibDispatchDpc ();
+  DispatchDpc ();
 
 RESTART:
   Ip4ReceiveFrame (IpSb->DefaultInterface, NULL, Ip4AccpetFrame, IpSb);

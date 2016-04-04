@@ -12,15 +12,13 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
-  Module Name:  FrameworkFimrwareVolumeImageFormat.h
-
   @par Revision Reference:
   These definitions are from Firmware Volume Spec 0.9.
 
 **/
 
-#ifndef __FRAMEWORK_FIRMWARE_VOLUME_IMAGE_FORMAT_H__
-#define __FRAMEWORK_FIRMWARE_VOLUME_IMAGE_FORMAT_H__
+#ifndef __FIRMWARE_VOLUME_IMAGE_FORMAT_H__
+#define __FIRMWARE_VOLUME_IMAGE_FORMAT_H__
 
 //
 // Bit values for AuthenticationStatus

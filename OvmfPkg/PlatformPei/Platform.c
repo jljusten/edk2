@@ -23,6 +23,8 @@
 #include <Library/DebugLib.h>
 #include <Library/HobLib.h>
 #include <Library/IoLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/PcdLib.h>
 #include <Library/PciLib.h>
 #include <Library/PeimEntryPoint.h>
 #include <Library/ResourcePublicationLib.h>
@@ -136,8 +138,7 @@ MemMapInitialization (
   //
   // Video memory + Legacy BIOS region
   //
-  AddMemoryRangeHob (0x0A0000, 0x0B0000);
-  AddIoMemoryRangeHob (0x0B0000, 0x100000);
+  AddIoMemoryRangeHob (0x0A0000, 0x100000);
 }
 
 
@@ -154,6 +155,30 @@ MiscInitialization (
   // Build the CPU hob with 36-bit addressing and 16-bits of IO space.
   //
   BuildCpuHob (36, 16);
+}
+
+
+VOID
+ReserveEmuVariableNvStore (
+  )
+{
+  EFI_PHYSICAL_ADDRESS VariableStore;
+
+  //
+  // Allocate storage for NV variables early on so it will be
+  // at a consistent address.  Since VM memory is preserved
+  // across reboots, this allows the NV variable storage to survive
+  // a VM reboot.
+  //
+  VariableStore =
+    (EFI_PHYSICAL_ADDRESS)(UINTN)
+      AllocateRuntimePool (FixedPcdGet32(PcdVariableStoreSize));
+  DEBUG ((EFI_D_INFO,
+          "Reserved variable store memory: 0x%lX; size: %dkb\n",
+          VariableStore,
+          FixedPcdGet32(PcdVariableStoreSize) / 1024
+        ));
+  PcdSet64 (PcdEmuVariableNvStoreReserved, VariableStore);
 }
 
 
@@ -176,6 +201,8 @@ InitializePlatform (
   DEBUG ((EFI_D_ERROR, "Platform PEIM Loaded\n"));
 
   MemDetect ();
+
+  ReserveEmuVariableNvStore ();
 
   PeiFvInitialization ();
 

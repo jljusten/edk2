@@ -1,6 +1,7 @@
 /** @file
+  Header files and data structures needed by PCI Bus module.
 
-Copyright (c) 2006, Intel Corporation
+Copyright (c) 2006 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -15,9 +16,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #ifndef _EFI_PCI_BUS_H_
 #define _EFI_PCI_BUS_H_
 
-
 #include <FrameworkDxe.h>
-
 
 #include <Protocol/LoadedImage.h>
 #include <Protocol/PciHostBridgeResourceAllocation.h>
@@ -30,7 +29,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/PciHotPlugInit.h>
 #include <Protocol/Decompress.h>
 #include <Protocol/BusSpecificDriverOverride.h>
-#include <Protocol/UgaIo.h>
 #include <Protocol/IncompatiblePciDeviceSupport.h>
 
 #include <Library/DebugLib.h>
@@ -43,35 +41,21 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/PcdLib.h>
-#include <Library/PciIncompatibleDeviceSupportLib.h>
 #include <Library/PeCoffLib.h>
 
 #include <IndustryStandard/Pci.h>
 #include <IndustryStandard/PeImage.h>
 #include <IndustryStandard/Acpi.h>
-#include "ComponentName.h"
 
+typedef struct _PCI_IO_DEVICE              PCI_IO_DEVICE;
+typedef struct _PCI_BAR                    PCI_BAR;
 
-//
-// Global Variables
-//
-extern EFI_INCOMPATIBLE_PCI_DEVICE_SUPPORT_PROTOCOL *gEfiIncompatiblePciDeviceSupport;
-extern EFI_DRIVER_BINDING_PROTOCOL                  gPciBusDriverBinding;
-extern EFI_COMPONENT_NAME_PROTOCOL                  gPciBusComponentName;
-extern EFI_COMPONENT_NAME2_PROTOCOL                 gPciBusComponentName2;
+#define EFI_PCI_RID(Bus, Device, Function)  (((UINT32)Bus << 8) + ((UINT32)Device << 3) + (UINT32)Function)
+#define EFI_PCI_BUS_OF_RID(RID)             ((UINT32)RID >> 8)
 
-//
-// Driver Produced Protocol Prototypes
-//
-
-#define VGABASE1  0x3B0
-#define VGALIMIT1 0x3BB
-
-#define VGABASE2  0x3C0
-#define VGALIMIT2 0x3DF
-
-#define ISABASE   0x100
-#define ISALIMIT  0x3FF
+#define     EFI_PCI_IOV_POLICY_ARI           0x0001
+#define     EFI_PCI_IOV_POLICY_SRIOV         0x0002
+#define     EFI_PCI_IOV_POLICY_MRIOV         0x0004
 
 typedef enum {
   PciBarTypeUnknown = 0,
@@ -86,7 +70,32 @@ typedef enum {
   PciBarTypeMaxType
 } PCI_BAR_TYPE;
 
-typedef struct {
+#include "ComponentName.h"
+#include "PciIo.h"
+#include "PciCommand.h"
+#include "PciDeviceSupport.h"
+#include "PciEnumerator.h"
+#include "PciEnumeratorSupport.h"
+#include "PciDriverOverride.h"
+#include "PciRomTable.h"
+#include "PciOptionRomSupport.h"
+#include "PciPowerManagement.h"
+#include "PciHotPlugSupport.h"
+#include "PciLib.h"
+
+#define VGABASE1  0x3B0
+#define VGALIMIT1 0x3BB
+
+#define VGABASE2  0x3C0
+#define VGALIMIT2 0x3DF
+
+#define ISABASE   0x100
+#define ISALIMIT  0x3FF
+
+//
+// PCI BAR parameters
+//
+struct _PCI_BAR {
   UINT64        BaseAddress;
   UINT64        Length;
   UINT64        Alignment;
@@ -94,7 +103,27 @@ typedef struct {
   BOOLEAN       Prefetchable;
   UINT8         MemType;
   UINT8         Offset;
-} PCI_BAR;
+};
+
+//
+// defined in PCI Card Specification, 8.0
+//
+#define PCI_CARD_MEMORY_BASE_0                0x1C
+#define PCI_CARD_MEMORY_LIMIT_0               0x20
+#define PCI_CARD_MEMORY_BASE_1                0x24
+#define PCI_CARD_MEMORY_LIMIT_1               0x28
+#define PCI_CARD_IO_BASE_0_LOWER              0x2C
+#define PCI_CARD_IO_BASE_0_UPPER              0x2E
+#define PCI_CARD_IO_LIMIT_0_LOWER             0x30
+#define PCI_CARD_IO_LIMIT_0_UPPER             0x32
+#define PCI_CARD_IO_BASE_1_LOWER              0x34
+#define PCI_CARD_IO_BASE_1_UPPER              0x36
+#define PCI_CARD_IO_LIMIT_1_LOWER             0x38
+#define PCI_CARD_IO_LIMIT_1_UPPER             0x3A
+#define PCI_CARD_BRIDGE_CONTROL               0x3E
+
+#define PCI_CARD_PREFETCHABLE_MEMORY_0_ENABLE BIT8
+#define PCI_CARD_PREFETCHABLE_MEMORY_1_ENABLE BIT9
 
 #define PPB_BAR_0                             0
 #define PPB_BAR_1                             1
@@ -109,8 +138,6 @@ typedef struct {
 #define P2C_MEM_2                             2
 #define P2C_IO_1                              3
 #define P2C_IO_2                              4
-
-#define PCI_IO_DEVICE_SIGNATURE               SIGNATURE_32 ('p', 'c', 'i', 'o')
 
 #define EFI_BRIDGE_IO32_DECODE_SUPPORTED      0x0001
 #define EFI_BRIDGE_PMEM32_DECODE_SUPPORTED    0x0002
@@ -128,7 +155,9 @@ typedef struct {
 #define EFI_SET_SUPPORTS    0
 #define EFI_SET_ATTRIBUTES  1
 
-typedef struct _PCI_IO_DEVICE {
+#define PCI_IO_DEVICE_SIGNATURE               SIGNATURE_32 ('p', 'c', 'i', 'o')
+
+struct _PCI_IO_DEVICE {
   UINT32                                    Signature;
   EFI_HANDLE                                Handle;
   EFI_PCI_IO_PROTOCOL                       PciIo;
@@ -159,7 +188,7 @@ typedef struct _PCI_IO_DEVICE {
   //
   // The bridge device this pci device is subject to
   //
-  struct _PCI_IO_DEVICE                     *Parent;
+  PCI_IO_DEVICE                             *Parent;
 
   //
   // A linked list for children Pci Device if it is bridge device
@@ -213,7 +242,7 @@ typedef struct _PCI_IO_DEVICE {
   BOOLEAN                                   BusOverride;
 
   //
-  //  A list tracking reserved resource on a bridge device
+  // A list tracking reserved resource on a bridge device
   //
   LIST_ENTRY                                ReservedResourceList;
 
@@ -226,9 +255,18 @@ typedef struct _PCI_IO_DEVICE {
   EFI_HPC_PADDING_ATTRIBUTES                PaddingAttributes;
 
   BOOLEAN                                   IsPciExp;
-
-} PCI_IO_DEVICE;
-
+  //
+  // For SR-IOV
+  //
+  UINT8                                     PciExpressCapabilityOffset;
+  UINT32                                    AriCapabilityOffset;
+  UINT32                                    SrIovCapabilityOffset;
+  UINT32                                    MrIovCapabilityOffset;
+  PCI_BAR                                   VfPciBar[PCI_MAX_BAR];
+  UINT32                                    SystemPageSize;
+  UINT16                                    InitialVFs;
+  UINT16                                    ReservedBusNum;
+};
 
 #define PCI_IO_DEVICE_FROM_PCI_IO_THIS(a) \
   CR (a, PCI_IO_DEVICE, PciIo, PCI_IO_DEVICE_SIGNATURE)
@@ -242,39 +280,40 @@ typedef struct _PCI_IO_DEVICE {
 #define PCI_IO_DEVICE_FROM_LOAD_FILE2_THIS(a) \
   CR (a, PCI_IO_DEVICE, LoadFile2, PCI_IO_DEVICE_SIGNATURE)
 
+
+
 //
 // Global Variables
 //
-extern LIST_ENTRY                                   gPciDevicePool;
+extern EFI_INCOMPATIBLE_PCI_DEVICE_SUPPORT_PROTOCOL *gEfiIncompatiblePciDeviceSupport;
+extern EFI_DRIVER_BINDING_PROTOCOL                  gPciBusDriverBinding;
+extern EFI_COMPONENT_NAME_PROTOCOL                  gPciBusComponentName;
+extern EFI_COMPONENT_NAME2_PROTOCOL                 gPciBusComponentName2;
 extern BOOLEAN                                      gFullEnumeration;
 extern UINTN                                        gPciHostBridgeNumber;
 extern EFI_HANDLE                                   gPciHostBrigeHandles[PCI_MAX_HOST_BRIDGE_NUM];
 extern UINT64                                       gAllOne;
 extern UINT64                                       gAllZero;
-
 extern EFI_PCI_PLATFORM_PROTOCOL                    *gPciPlatformProtocol;
 
-#include "PciIo.h"
-#include "PciCommand.h"
-#include "PciDeviceSupport.h"
-#include "PciEnumerator.h"
-#include "PciEnumeratorSupport.h"
-#include "PciDriverOverride.h"
-#include "PciRomTable.h"
-#include "PciOptionRomSupport.h"
-#include "PciPowerManagement.h"
-#include "PciHotPlugSupport.h"
-#include "PciLib.h"
 
-//
-// PCI Bus Support Function Prototypes
-//
+/**
+  Macro that checks whether device is a GFX device.
+
+  @param  _p      Specified device.
+
+  @retval TRUE    Device is a a GFX device.
+  @retval FALSE   Device is not a a GFX device.
+
+**/
+#define IS_PCI_GFX(_p)     IS_CLASS2 (_p, PCI_CLASS_DISPLAY, PCI_CLASS_DISPLAY_OTHER)
+
 /**
   Test to see if this driver supports ControllerHandle. Any ControllerHandle
   than contains a gEfiPciRootBridgeIoProtocolGuid protocol can be supported.
 
   @param  This                Protocol instance pointer.
-  @param  ControllerHandle    Handle of device to test.
+  @param  Controller          Handle of device to test.
   @param  RemainingDevicePath Optional parameter use to pick a specific child.
                               device to start.
 
@@ -296,7 +335,7 @@ PciBusDriverBindingSupported (
   all device under PCI bus.
 
   @param  This                 Protocol instance pointer.
-  @param  ControllerHandle     Handle of device to bind driver to.
+  @param  Controller           Handle of device to bind driver to.
   @param  RemainingDevicePath  Optional parameter use to pick a specific child.
                                device to start.
 
@@ -318,7 +357,7 @@ PciBusDriverBindingStart (
   created by this driver.
 
   @param  This              Protocol instance pointer.
-  @param  ControllerHandle  Handle of device to stop driver on.
+  @param  Controller        Handle of device to stop driver on.
   @param  NumberOfChildren  Number of Handles in ChildHandleBuffer. If number of
                             children is zero stop the entire bus driver.
   @param  ChildHandleBuffer List of Child Handles to Stop.
@@ -335,7 +374,5 @@ PciBusDriverBindingStop (
   IN  UINTN                         NumberOfChildren,
   IN  EFI_HANDLE                    *ChildHandleBuffer
   );
-
-#define IS_PCI_GFX(_p)     IS_CLASS2 (_p, PCI_CLASS_DISPLAY, PCI_CLASS_DISPLAY_OTHER)
 
 #endif

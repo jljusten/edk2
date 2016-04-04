@@ -24,7 +24,6 @@ Abstract:
 
 #define IS_PCI_ISA_PDECODE(_p)        IS_CLASS3 (_p, PCI_CLASS_BRIDGE, PCI_CLASS_BRIDGE_ISA_PDECODE, 0)
 
-CHAR16  mFirmwareVendor[] = L"TianoCore.org";
 extern BOOLEAN  gConnectAllHappened;
 extern USB_CLASS_FORMAT_DEVICE_PATH gUsbClassKeyboardDevicePath;
 
@@ -147,13 +146,13 @@ UpdateMemoryMap (
   VOID
   )
 {
-  EFI_STATUS                  Status;
-  EFI_PEI_HOB_POINTERS        GuidHob;
-  VOID                        *Table;
-  MEMORY_DESC_HOB             MemoryDescHob;
-  UINTN                       Index;
-  EFI_PHYSICAL_ADDRESS        Memory;
-
+  EFI_STATUS                      Status;
+  EFI_PEI_HOB_POINTERS            GuidHob;
+  VOID                            *Table;
+  MEMORY_DESC_HOB                 MemoryDescHob;
+  UINTN                           Index;
+  EFI_PHYSICAL_ADDRESS            Memory;
+  EFI_GCD_MEMORY_SPACE_DESCRIPTOR Descriptor;
   //
   // Get Hob List
   //
@@ -187,16 +186,62 @@ UpdateMemoryMap (
         (MemoryDescHob.MemDesc[Index].Type == EfiRuntimeServicesCode) ||
         (MemoryDescHob.MemDesc[Index].Type == EfiACPIReclaimMemory) ||
         (MemoryDescHob.MemDesc[Index].Type == EfiACPIMemoryNVS)) {
-      DEBUG ((EFI_D_ERROR, "PhysicalStart - 0x%x, ", MemoryDescHob.MemDesc[Index].PhysicalStart));
-      DEBUG ((EFI_D_ERROR, "PageNumber    - 0x%x, ", MemoryDescHob.MemDesc[Index].NumberOfPages));
-      DEBUG ((EFI_D_ERROR, "Type          - 0x%x\n", MemoryDescHob.MemDesc[Index].Type));
+      DEBUG ((EFI_D_ERROR, "PhysicalStart - 0x%016lx, ", MemoryDescHob.MemDesc[Index].PhysicalStart));
+      DEBUG ((EFI_D_ERROR, "PageNumber    - 0x%016lx, ", MemoryDescHob.MemDesc[Index].NumberOfPages));
+      DEBUG ((EFI_D_ERROR, "Attribute     - 0x%016lx, ", MemoryDescHob.MemDesc[Index].Attribute));
+      DEBUG ((EFI_D_ERROR, "Type          - 0x%08x\n", MemoryDescHob.MemDesc[Index].Type));
       if ((MemoryDescHob.MemDesc[Index].Type == EfiRuntimeServicesData) ||
           (MemoryDescHob.MemDesc[Index].Type == EfiRuntimeServicesCode)) {
         //
-        // Skip RuntimeSevicesData and RuntimeServicesCode, they are BFV
+        // For RuntimeSevicesData and RuntimeServicesCode, they are BFV or DxeCore.
+        // The memory type is assigned in EfiLdr
         //
-        continue;
+        Status = gDS->GetMemorySpaceDescriptor (MemoryDescHob.MemDesc[Index].PhysicalStart, &Descriptor);
+        if (EFI_ERROR (Status)) {
+          continue;
+        }
+        if (Descriptor.GcdMemoryType != EfiGcdMemoryTypeReserved) {
+          //
+          // BFV or tested DXE core
+          //
+          continue;
+        }
+        //
+        // Untested DXE Core region, free and remove
+        //
+        Status = gDS->FreeMemorySpace (
+                        MemoryDescHob.MemDesc[Index].PhysicalStart,
+                        LShiftU64 (MemoryDescHob.MemDesc[Index].NumberOfPages, EFI_PAGE_SHIFT)
+                        );
+        if (EFI_ERROR (Status)) {
+          DEBUG ((EFI_D_ERROR, "FreeMemorySpace fail - %r!\n", Status));
+          continue;
+        }
+        Status = gDS->RemoveMemorySpace (
+                        MemoryDescHob.MemDesc[Index].PhysicalStart,
+                        LShiftU64 (MemoryDescHob.MemDesc[Index].NumberOfPages, EFI_PAGE_SHIFT)
+                        );
+        if (EFI_ERROR (Status)) {
+          DEBUG ((EFI_D_ERROR, "RemoveMemorySpace fail - %r!\n", Status));
+          continue;
+        }
+
+        //
+        // Convert Runtime type to BootTime type
+        //
+        if (MemoryDescHob.MemDesc[Index].Type == EfiRuntimeServicesData) {
+          MemoryDescHob.MemDesc[Index].Type = EfiBootServicesData;
+        } else {
+          MemoryDescHob.MemDesc[Index].Type = EfiBootServicesCode;
+        }
+
+        //
+        // PassThrough, let below code add and alloate.
+        //
       }
+      //
+      // ACPI or reserved memory
+      //
       Status = gDS->AddMemorySpace (
                       EfiGcdMemoryTypeSystemMemory,
                       MemoryDescHob.MemDesc[Index].PhysicalStart,
@@ -204,7 +249,7 @@ UpdateMemoryMap (
                       MemoryDescHob.MemDesc[Index].Attribute
                       );
       if (EFI_ERROR (Status)) {
-        DEBUG ((EFI_D_ERROR, "AddMemorySpace fail!\n"));
+        DEBUG ((EFI_D_ERROR, "AddMemorySpace fail - %r!\n", Status));
         if ((MemoryDescHob.MemDesc[Index].Type == EfiACPIReclaimMemory) ||
             (MemoryDescHob.MemDesc[Index].Type == EfiACPIMemoryNVS)) {
           //
@@ -224,7 +269,7 @@ UpdateMemoryMap (
                       &Memory
                       );
       if (EFI_ERROR (Status)) {
-        DEBUG ((EFI_D_ERROR, "AllocatePages fail!\n"));
+        DEBUG ((EFI_D_ERROR, "AllocatePages fail - %r!\n", Status));
         //
         // For the page added, it must be allocated.
         //
@@ -291,13 +336,13 @@ Returns:
         if (!EFI_ERROR (Status)) {
           if ((PCI_CLASS_SERIAL == Class[2]) &&
               (PCI_CLASS_SERIAL_USB == Class[1])) {
-            if (PCI_CLASSC_PI_UHCI == Class[0]) {
+            if (PCI_IF_UHCI == Class[0]) {
               //
               // Found the UHCI, then disable the legacy support
               //
               Command = 0;
               Status = PciIo->Pci.Write (PciIo, EfiPciIoWidthUint16, 0xC0, 1, &Command);
-            } else if (PCI_CLASSC_PI_EHCI == Class[0]) {
+            } else if (PCI_IF_EHCI == Class[0]) {
               //
               // Found the EHCI, then disable the legacy support
               //
@@ -368,22 +413,6 @@ Returns:
 
 --*/
 {
-  //
-  // set firmwarevendor, here can be IBV/OEM customize
-  //
-  gST->FirmwareVendor = AllocateRuntimeCopyPool (
-                          sizeof (mFirmwareVendor),
-                          &mFirmwareVendor
-                          );
-  ASSERT (gST->FirmwareVendor != NULL);
-
-  gST->FirmwareRevision = 0;
-
-  //
-  // Fixup Tasble CRC after we updated Firmware Vendor and Revision
-  //
-  gBS->CalculateCrc32 ((VOID *) gST, sizeof (EFI_SYSTEM_TABLE), &gST->Hdr.CRC32);
-
   GetSystemTablesFromHob ();
 
   UpdateMemoryMap ();
@@ -1063,7 +1092,8 @@ Returns:
 VOID
 PlatformBdsDiagnostics (
   IN EXTENDMEM_COVERAGE_LEVEL    MemoryTestLevel,
-  IN BOOLEAN                     QuietBoot
+  IN BOOLEAN                     QuietBoot,
+  IN BASEM_MEMORY_TEST           BaseMemoryTest
   )
 /*++
 
@@ -1077,6 +1107,8 @@ Arguments:
   MemoryTestLevel  - The memory test intensive level
   
   QuietBoot        - Indicate if need to enable the quiet boot
+
+  BaseMemoryTest   - A pointer to BdsMemoryTest()
  
 Returns:
 
@@ -1093,7 +1125,7 @@ Returns:
   // from the graphic lib
   //
   if (QuietBoot) {
-    Status = EnableQuietBoot (&gEfiDefaultBmpLogoGuid);
+    Status = EnableQuietBoot (PcdGetPtr(PcdLogoFile));
     if (EFI_ERROR (Status)) {
       DisableQuietBoot ();
       return;
@@ -1102,7 +1134,7 @@ Returns:
     //
     // Perform system diagnostic
     //
-    Status = BdsMemoryTest (MemoryTestLevel);
+    Status = BaseMemoryTest (MemoryTestLevel);
     if (EFI_ERROR (Status)) {
       DisableQuietBoot ();
     }
@@ -1112,14 +1144,16 @@ Returns:
   //
   // Perform system diagnostic
   //
-  Status = BdsMemoryTest (MemoryTestLevel);
+  Status = BaseMemoryTest (MemoryTestLevel);
 }
 
 VOID
 EFIAPI
 PlatformBdsPolicyBehavior (
   IN OUT LIST_ENTRY              *DriverOptionList,
-  IN OUT LIST_ENTRY              *BootOptionList
+  IN OUT LIST_ENTRY              *BootOptionList,
+  IN PROCESS_CAPSULES            ProcessCapsules,
+  IN BASEM_MEMORY_TEST           BaseMemoryTest
   )
 /*++
 
@@ -1144,7 +1178,7 @@ Returns:
   EFI_STATUS                         Status;
   UINT16                             Timeout;
   EFI_EVENT                          UserInputDurationTime;
-  LIST_ENTRY                     *Link;
+  LIST_ENTRY                         *Link;
   BDS_COMMON_OPTION                  *BootOption;
   UINTN                              Index;
   EFI_INPUT_KEY                      Key;
@@ -1198,7 +1232,7 @@ Returns:
   //
   // Memory test and Logo show
   //
-  PlatformBdsDiagnostics (IGNORE, TRUE);
+  PlatformBdsDiagnostics (IGNORE, TRUE, BaseMemoryTest);
 
   //
   // Perform some platform specific connect sequence
@@ -1462,38 +1496,6 @@ Returns:
   return EFI_UNSUPPORTED;
 }  
 
-UINT8
-GetBufferCheckSum (
-  IN VOID *      Buffer,
-  IN UINTN       Length
-  )
-/*++
-
-Routine Description:
-  Caculate buffer checksum (8-bit)
-
-Arguments:
-  Buffer - Pointer to Buffer that to be caculated
-  Length - How many bytes are to be caculated  
-
-Returns:
-  Checksum of the buffer
-
---*/
-{
-  UINT8   CheckSum;
-  UINT8   *Ptr8;
-  
-  CheckSum = 0;
-  Ptr8 = (UINT8 *) Buffer;
-  
-  while (Length > 0) {
-    CheckSum = (UINT8) (CheckSum + *Ptr8++);
-    Length--;
-  }
-  
-  return (UINT8)((0xFF - CheckSum) + 1);
-}  
 
 EFI_STATUS
 ConvertAcpiTable (
@@ -1628,7 +1630,7 @@ Returns:
   SmbiosTableNew->TableAddress = (UINT32)BufferPtr;
   SmbiosTableNew->IntermediateChecksum = 0;
   SmbiosTableNew->IntermediateChecksum = 
-          GetBufferCheckSum ((UINT8*)SmbiosTableNew + 0x10, SmbiosEntryLen -0x10);
+          CalculateCheckSum8 ((UINT8*)SmbiosTableNew + 0x10, SmbiosEntryLen -0x10);
   //
   // Change the SMBIOS pointer
   //
@@ -1727,10 +1729,10 @@ Returns:
         MpsTableNew->OemTablePointer = (UINT32)(UINTN)OemTableNew;
     }
     MpsTableNew->Checksum = 0;
-    MpsTableNew->Checksum = GetBufferCheckSum (MpsTableNew, MpsTableOri->BaseTableLength);
+    MpsTableNew->Checksum = CalculateCheckSum8 ((UINT8*)MpsTableNew, MpsTableOri->BaseTableLength);
     MpsFloatingPointerNew->PhysicalAddress = (UINT32)(UINTN)MpsTableNew;
     MpsFloatingPointerNew->Checksum = 0;
-    MpsFloatingPointerNew->Checksum = GetBufferCheckSum (MpsFloatingPointerNew, FPLength);
+    MpsFloatingPointerNew->Checksum = CalculateCheckSum8 ((UINT8*)MpsFloatingPointerNew, FPLength);
   }
   //
   // Change the pointer
@@ -1739,3 +1741,37 @@ Returns:
   
   return EFI_SUCCESS;  
 } 
+  
+/**
+  Lock the ConsoleIn device in system table. All key
+  presses will be ignored until the Password is typed in. The only way to
+  disable the password is to type it in to a ConIn device.
+
+  @param  Password        Password used to lock ConIn device.
+
+  @retval EFI_SUCCESS     lock the Console In Spliter virtual handle successfully.
+  @retval EFI_UNSUPPORTED Password not found
+
+**/
+EFI_STATUS
+EFIAPI
+LockKeyboards (
+  IN  CHAR16    *Password
+  )
+{
+    return EFI_UNSUPPORTED;
+}
+
+/**
+  This function locks platform flash that is not allowed to be updated during normal boot path.
+  The flash layout is platform specific.
+
+  **/
+VOID
+EFIAPI
+PlatformBdsLockNonUpdatableFlash (
+  VOID
+  )
+{
+  return;
+}

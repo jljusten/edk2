@@ -1,7 +1,8 @@
 /** @file
-  Include file matches things in the Smm CIS spec.
+  Include file for definitions in the Intel Platform Innovation Framework for EFI
+  System Management Mode Core Interface Specification (SMM CIS) version 0.90.
 
-  Copyright (c) 2007, Intel Corporation
+  Copyright (c) 2007 - 2009, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -10,17 +11,10 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-  Module Name:  FrameworkSmmCis.h
-
-  @par Revision Reference:
-  VOLUME 4: Platform Initialization Specification,System Management Mode Core Interface, Version 1.1.
-
 **/
 
-#ifndef _FRAMEWORK_SMM_CIS_H_
-#define _FRAMEWORK_SMM_CIS_H_
-
-#include <Framework/DxeCis.h>
+#ifndef _SMM_CIS_H_
+#define _SMM_CIS_H_
 
 #define EFI_SMM_CPU_IO_GUID \
   { \
@@ -57,8 +51,8 @@ typedef enum {
   @param  Width            Signifies the width of the I/O operations.
   @param  Address          The base address of the I/O operations.
   @param  Count            The number of I/O operations to perform.
-  @param  Buffer           For read operations, the destination buffer to store the results.
-                           For write operations, the source buffer from which to write data.
+  @param  Buffer           For read operations, the destination buffer to store the results (out parameter).
+                           For write operations, the source buffer from which to write data (in parameter).
 
   @retval EFI_SUCCESS           The data was read from or written to the device.
   @retval EFI_UNSUPPORTED       The Address is not valid for this system.
@@ -77,8 +71,8 @@ EFI_STATUS
   );
 
 typedef struct {
-  EFI_SMM_CPU_IO  Read;  ///> This service provides the various modalities of memory and I/O read.
-  EFI_SMM_CPU_IO  Write; ///> This service provides the various modalities of memory and I/O write.
+  EFI_SMM_CPU_IO  Read;  ///< This service provides the various modalities of memory and I/O read.
+  EFI_SMM_CPU_IO  Write; ///< This service provides the various modalities of memory and I/O write.
 } EFI_SMM_IO_ACCESS;
 
 ///
@@ -100,7 +94,7 @@ struct _EFI_SMM_CPU_IO_INTERFACE {
   Allocates pool memory from SMRAM for IA-32 or runtime memory for
   the Itanium processor family.
 
-  @param  PoolType         The type of pool to allocate.The only supported type is EfiRuntimeServicesData
+  @param  PoolType         The type of pool to allocate. The only supported type is EfiRuntimeServicesData
   @param  Size             The number of bytes to allocate from the pool.
   @param  Buffer           A pointer to a pointer to the allocated buffer if the call
                            succeeds; undefined otherwise.
@@ -108,7 +102,9 @@ struct _EFI_SMM_CPU_IO_INTERFACE {
   @retval EFI_SUCCESS           The requested number of bytes was allocated.
   @retval EFI_OUT_OF_RESOURCES  The pool requested could not be allocated.
   @retval EFI_UNSUPPORTED       In runtime.
-
+  @note: Inconsistent with specification here:
+         In Framework Spec, this definition is named EFI_SMM_ALLOCATE_POOL.  
+         To avoid a naming conflict, the definition is renamed.
 **/
 typedef
 EFI_STATUS
@@ -126,7 +122,9 @@ EFI_STATUS
   @retval EFI_SUCCESS           The memory was returned to the system.
   @retval EFI_INVALID_PARAMETER Buffer was invalid.
   @retval EFI_UNSUPPORTED       In runtime.
-
+  @note: Inconsistent with specification here:
+         In Framework Spec, this definition is named EFI_SMM_FREE_POOL.  
+         To avoid a naming conflict, the definition is renamed. 
 **/
 typedef
 EFI_STATUS
@@ -149,7 +147,9 @@ EFI_STATUS
   @retval EFI_NOT_FOUND         The requested pages could not be found.
   @retval EFI_INVALID_PARAMETER Type is not AllocateAnyPages or AllocateMaxAddress
                                 or AllocateAddress. Or MemoryType is in the range EfiMaxMemoryType..0x7FFFFFFF.
-
+  @note: Inconsistent with specification here:
+         In the Framework Spec, this definition is named EFI_SMM_ALLOCATE_PAGES.  
+         To avoid a naming conflict, the definition here is renamed.
 **/
 typedef
 EFI_STATUS
@@ -169,7 +169,10 @@ EFI_STATUS
   @retval EFI_SUCCESS           The requested memory pages were freed.
   @retval EFI_INVALID_PARAMETER Memory is not a page-aligned address or NumberOfPages is invalid.
   @retval EFI_NOT_FOUND         The requested memory pages were not allocated with SmmAllocatePages().
-
+  
+  @note: Inconsistent with specification here:
+         In the Framework Spec, this definition is named EFI_SMM_FREE_PAGES.  
+         To avoid a naming conflict, the definition here is renamed.
 **/
 typedef
 EFI_STATUS
@@ -178,10 +181,31 @@ EFI_STATUS
   IN UINTN                  NumberOfPages
   );
 
+/**
+  Lets the caller get one distinct application processor (AP) in the enabled processor pool to execite a 
+  caller-provided code stream while in SMM. 
+
+  @param  Procedure         A pointer to the code stream to be run on the designated AP of the system.
+  @param  CpuNumber         The zero-based index of the processor number of the AP on which the code stream is
+                            supposed to run. If the processor number points to the current processor or a disabled
+                            processor, then it will not run the supplied code.
+  @param  ProcArguments     Allows the caller to pass a list of parameters to the code that is run by
+                            the AP. It is an optional common mailbox between APs and the BSP to share information.
+
+  @retval EFI_SUCCESS           The call was successful and the return parameters are valid.
+  @retval EFI_INVALID_PARAMETER The input arguments are out of range.
+  @retval EFI_INVALID_PARAMETER The CPU requested is not available on this SMI invocation.
+  @retval EFI_INVALID_PARAMETER The CPU cannot support an additional service invocation.
+  
+  @note: Inconsistent with specification here:
+         In Framework Spec, this definition does not exist. This method is introduced in PI1.0 spec for 
+         implementation needs.
+         
+**/
 typedef
 EFI_STATUS
 (EFIAPI *EFI_SMM_STARTUP_THIS_AP)(
-  IN  EFI_AP_PROCEDURE                    Procedure,
+  IN  FRAMEWORK_EFI_AP_PROCEDURE          Procedure,
   IN  UINTN                               CpuNumber,
   IN  OUT VOID                            *ProcArguments OPTIONAL
   );
@@ -546,6 +570,7 @@ struct _EFI_SMM_SYSTEM_TABLE {
   // Runtime memory service
   //
   ///
+  ///
   /// Allocates pool memory from SMRAM for IA-32 or runtime memory for the
   /// Itanium processor family.
   ///
@@ -566,6 +591,10 @@ struct _EFI_SMM_SYSTEM_TABLE {
   //
   // MP service
   //
+  
+  ///Inconsistent with specification here:
+  ///  In Framework Spec, this definition does not exist. This method is introduced in PI1.1 spec for 
+  ///  implementation needed.
   EFI_SMM_STARTUP_THIS_AP             SmmStartupThisAp;
 
   //

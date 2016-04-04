@@ -2319,7 +2319,7 @@ DevPathFromTextiSCSI (
                                                         (UINT16) (sizeof (ISCSI_DEVICE_PATH_WITH_NAME) + StrLen (NameStr))
                                                         );
 
-  AsciiStr = ISCSIDevPath->iSCSITargetName;
+  AsciiStr = ISCSIDevPath->TargetName;
   StrToAscii (NameStr, &AsciiStr);
 
   ISCSIDevPath->TargetPortalGroupTag = (UINT16) Strtoi (PortalGroupStr);
@@ -2589,8 +2589,6 @@ DevPathFromTextRelativeOffsetRange (
   CHAR16                                  *StartingOffsetStr;
   CHAR16                                  *EndingOffsetStr;
   MEDIA_RELATIVE_OFFSET_RANGE_DEVICE_PATH *Offset;
-  UINT64                                  StartingOffset;
-  UINT64                                  EndingOffset;
 
   StartingOffsetStr = GetNextParamStr (&TextDeviceNode);
   EndingOffsetStr   = GetNextParamStr (&TextDeviceNode);
@@ -2600,12 +2598,8 @@ DevPathFromTextRelativeOffsetRange (
                                                                     sizeof (MEDIA_RELATIVE_OFFSET_RANGE_DEVICE_PATH)
                                                                     );
 
-  Strtoi64 (StartingOffsetStr, &StartingOffset);
-  Strtoi64 (EndingOffsetStr, &EndingOffset);
-
-  WriteUnaligned64 ((VOID *) &Offset->StartingOffset, StartingOffset);
-  WriteUnaligned64 ((VOID *) &Offset->EndingOffset, EndingOffset);
-
+  Strtoi64 (StartingOffsetStr, &Offset->StartingOffset);
+  Strtoi64 (EndingOffsetStr, &Offset->EndingOffset);
 
   return (EFI_DEVICE_PATH_PROTOCOL *) Offset;
 }

@@ -1,11 +1,11 @@
 /** @file
   The EFI_FORM_BROWSER_PROTOCOL is the interface to the EFI
-  Configuration Driver.  This will allow the caller to direct the
-  configuration driver to use either the HII database or use the passed
-  in packet of data.  This will also allow the caller to post messages
+  Configuration Driver.  This interface enables the caller to direct the
+  configuration driver to use either the HII database or the passed-in
+  packet of data.  This will also allow the caller to post messages
   into the configuration drivers internal mailbox.
 
-  Copyright (c) 2006, Intel Corporation
+  Copyright (c) 2006 - 2009, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -34,7 +34,7 @@
 
 #define EFI_FORM_BROWSER_COMPATIBILITY_PROTOCOL_GUID \
   { \
-    0xe5a1333e, 0xe1b4, 0x4d55, {0xce, 0xeb, 0x35, 0xc3, 0xef, 0x13, 0x34, 0x43 } \
+    0xfb7c852, 0xadca, 0x4853, { 0x8d, 0xf, 0xfb, 0xa7, 0x1b, 0x1c, 0xe1, 0x1a } \
   }
 
 typedef struct _EFI_FORM_BROWSER_PROTOCOL EFI_FORM_BROWSER_PROTOCOL;
@@ -48,7 +48,7 @@ typedef struct {
 typedef struct {
   EFI_HII_IFR_PACK    *IfrData;
   EFI_HII_STRING_PACK *StringData;
-} FRAMEWORK_EFI_IFR_PACKET;
+} EFI_IFR_PACKET;
 
 typedef struct {
   UINTN LeftColumn;
@@ -81,7 +81,7 @@ typedef struct {
   @param  ScreenDimensions      Allows the browser to be called so that it occupies
                                 a portion of the physical screen instead of dynamically determining the
                                 screen dimensions.
-  @param  ResetRequired         This BOOLEAN value will tell the caller if a reset
+  @param  ResetRequired         This BOOLEAN value denotes whether a reset
                                 is required based on the data that might have been changed. The ResetRequired
                                 parameter is primarily applicable for configuration applications, and is an
                                 optional parameter.
@@ -101,7 +101,7 @@ EFI_STATUS
   IN  BOOLEAN                         UseDatabase,
   IN  FRAMEWORK_EFI_HII_HANDLE        *Handle,
   IN  UINTN                           HandleCount,
-  IN  FRAMEWORK_EFI_IFR_PACKET        *Packet, OPTIONAL
+  IN  EFI_IFR_PACKET                  *Packet, OPTIONAL
   IN  EFI_HANDLE                      CallbackHandle, OPTIONAL
   IN  UINT8                           *NvMapOverride, OPTIONAL
   IN  FRAMEWORK_EFI_SCREEN_DESCRIPTOR *ScreenDimensions, OPTIONAL
@@ -143,22 +143,21 @@ EFI_STATUS
   );
 
 /**
-  @par Protocol Description:
   The EFI_FORM_BROWSER_PROTOCOL is the interface to call for drivers to
   leverage the EFI configuration driver interface.
-
-  @param SendForm
-  Provides direction to the configuration driver whether to use the HII
-  database or to use a passed-in set of data. This functions also establishes
-  a pointer to the calling driver's callback interface.
-
-  @param CreatePopUp
-  Routine used to abstract a generic dialog interface and return the
-  selected key or string.
-
 **/
 struct _EFI_FORM_BROWSER_PROTOCOL {
+  ///
+  /// Provides direction to the configuration driver whether to use the HII
+  /// database or to use a passed-in set of data. This function also establishes
+  /// a pointer to the calling driver's callback interface.
+  ///
   EFI_SEND_FORM     SendForm;
+  
+  ///
+  /// Routine used to abstract a generic dialog interface and return the
+  /// selected key or string.  
+  ///
   EFI_CREATE_POP_UP CreatePopUp;
 };
 

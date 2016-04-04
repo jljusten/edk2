@@ -1,5 +1,5 @@
 /** @file
-  This module produce main entry for BDS phase - BdsEntry. 
+  This module produce main entry for BDS phase - BdsEntry.
   When this module was dispatched by DxeCore, gEfiBdsArchProtocolGuid will be installed
   which contains interface of BdsEntry.
   After DxeCore finish DXE phase, gEfiBdsArchProtocolGuid->BdsEntry will be invoked
@@ -27,7 +27,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 ///
 /// Note: Current BDS not directly get the BootMode, DefaultBoot,
 /// TimeoutDefault, MemoryTestLevel value from the BDS arch protocol.
-/// Please refer to the library useage of BdsLibGetBootMode, BdsLibGetTimeout 
+/// Please refer to the library useage of BdsLibGetBootMode, BdsLibGetTimeout
 /// and PlatformBdsDiagnostics in BdsPlatform.c
 ///
 EFI_HANDLE  gBdsHandle = NULL;
@@ -133,14 +133,14 @@ BdsBootDeviceSelect (
     //
     UnicodeSPrint (Buffer, sizeof (Buffer), L"Boot%04x", *mBootNext);
     BootOption = BdsLibVariableToOption (&BootLists, Buffer);
-    
+
     //
     // If fail to get boot option from variable, just return and do nothing.
     //
     if (BootOption == NULL) {
       return;
     }
-    
+
     BootOption->BootCurrent = *mBootNext;
   }
   //
@@ -228,7 +228,7 @@ BdsBootDeviceSelect (
       //
       // Call platform action to indicate the boot success
       //
-      BootOption->StatusString = GetStringById (STRING_TOKEN (STR_BOOT_SUCCEEDED)); 
+      BootOption->StatusString = GetStringById (STRING_TOKEN (STR_BOOT_SUCCEEDED));
       PlatformBdsBootSuccess (BootOption);
 
       //
@@ -278,12 +278,13 @@ BdsEntry (
   LIST_ENTRY                      DriverOptionList;
   LIST_ENTRY                      BootOptionList;
   UINTN                           BootNextSize;
+  CHAR16                          *FirmwareVendor;
 
   //
   // Insert the performance probe
   //
-  PERF_END (0, "DXE", NULL, 0);
-  PERF_START (0, "BDS", NULL, 0);
+  PERF_END (NULL, "DXE", NULL, 0);
+  PERF_START (NULL, "BDS", NULL, 0);
 
   //
   // Initialize the global system boot option and driver option
@@ -297,13 +298,26 @@ BdsEntry (
   InitializeHotkeyService ();
 
   //
+  // Fill in FirmwareVendor and FirmwareRevision from PCDs
+  //
+  FirmwareVendor = (CHAR16 *)PcdGetPtr (PcdFirmwareVendor);
+  gST->FirmwareVendor = AllocateRuntimeCopyPool (StrSize (FirmwareVendor), FirmwareVendor);
+  ASSERT (gST->FirmwareVendor != NULL);
+  gST->FirmwareRevision = PcdGet32 (PcdFirmwareRevision);
+
+  //
+  // Fixup Tasble CRC after we updated Firmware Vendor and Revision
+  //
+  gBS->CalculateCrc32 ((VOID *)gST, sizeof(EFI_SYSTEM_TABLE), &gST->Hdr.CRC32);
+
+  //
   // Do the platform init, can be customized by OEM/IBV
   //
-  PERF_START (0, "PlatformBds", "BDS", 0);
+  PERF_START (NULL, "PlatformBds", "BDS", 0);
   PlatformBdsInit ();
 
   InitializeHwErrRecSupport();
-  
+
   //
   // bugbug: platform specific code
   // Initialize the platform specific string and language
@@ -333,8 +347,8 @@ BdsEntry (
   //
   // Setup some platform policy here
   //
-  PlatformBdsPolicyBehavior (&DriverOptionList, &BootOptionList);
-  PERF_END (0, "PlatformBds", "BDS", 0);
+  PlatformBdsPolicyBehavior (&DriverOptionList, &BootOptionList, BdsProcessCapsules, BdsMemoryTest);
+  PERF_END (NULL, "PlatformBds", "BDS", 0);
 
   //
   // BDS select the boot device to load OS

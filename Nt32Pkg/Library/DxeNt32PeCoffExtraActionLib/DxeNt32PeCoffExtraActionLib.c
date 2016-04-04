@@ -33,7 +33,6 @@ Abstract:
 #include <Protocol/WinNtThunk.h>
 
 #include <Library/PeCoffLib.h>
-#include <Library/PeiServicesLib.h>
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
@@ -159,6 +158,7 @@ AddModHandle (
   PDB_NAME_TO_MOD_HANDLE  *Array;
   UINTN                   PreviousSize;
   PDB_NAME_TO_MOD_HANDLE  *TempArray;
+  HANDLE                  Handle;
 
   Array = mPdbNameModHandleArray;
   for (Index = 0; Index < mPdbNameModHandleArraySize; Index++, Array++) {
@@ -166,7 +166,8 @@ AddModHandle (
       //
       // Make a copy of the stirng and store the ModHandle
       //
-      Array->PdbPointer = mWinNt->HeapAlloc ( mWinNt->GetProcessHeap (),
+      Handle = mWinNt->GetProcessHeap ();
+      Array->PdbPointer = mWinNt->HeapAlloc ( Handle,
                                 HEAP_ZERO_MEMORY,
                                 AsciiStrLen (ImageContext->PdbPointer) + 1
                                ); 

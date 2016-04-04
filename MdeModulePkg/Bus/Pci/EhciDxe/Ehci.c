@@ -1,6 +1,14 @@
-/** @file
-  
+/** @file  
   The Ehci controller driver.
+
+  EhciDxe driver is responsible for managing the behavior of EHCI controller. 
+  It implements the interfaces of monitoring the status of all ports and transferring 
+  Control, Bulk, Interrupt and Isochronous requests to Usb2.0 device.
+
+  Note that EhciDxe driver is enhanced to guarantee that the EHCI controller get attached
+  to the EHCI controller before the UHCI driver attaches to the companion UHCI controller. 
+  This way avoids the control transfer on a shared port between EHCI and companion host
+  controller when UHCI gets attached earlier than EHCI and a USB 2.0 device inserts.
 
 Copyright (c) 2006 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
@@ -41,7 +49,7 @@ gEhciDriverBinding = {
   EhcDriverBindingSupported,
   EhcDriverBindingStart,
   EhcDriverBindingStop,
-  0x10,
+  0x30,
   NULL,
   NULL
 };
@@ -1341,7 +1349,7 @@ EhcDriverBindingSupported (
   Status = PciIo->Pci.Read (
                         PciIo,
                         EfiPciIoWidthUint8,
-                        EHC_PCI_CLASSC,
+                        PCI_CLASSCODE_OFFSET,
                         sizeof (USB_CLASSC) / sizeof (UINT8),
                         &UsbClassCReg
                         );
@@ -1354,9 +1362,8 @@ EhcDriverBindingSupported (
   //
   // Test whether the controller belongs to Ehci type
   //
-  if ((UsbClassCReg.BaseCode     != PCI_CLASS_SERIAL) ||
-      (UsbClassCReg.SubClassCode != PCI_CLASS_SERIAL_USB) ||
-      (UsbClassCReg.PI           != EHC_PCI_CLASSC_PI)) {
+  if ((UsbClassCReg.BaseCode != PCI_CLASS_SERIAL) || (UsbClassCReg.SubClassCode != PCI_CLASS_SERIAL_USB)
+      || ((UsbClassCReg.PI != PCI_IF_EHCI) && (UsbClassCReg.PI !=PCI_IF_UHCI))) {
 
     Status = EFI_UNSUPPORTED;
   }
@@ -1501,9 +1508,22 @@ EhcDriverBindingStart (
   EFI_STATUS              Status;
   USB2_HC_DEV             *Ehc;
   EFI_PCI_IO_PROTOCOL     *PciIo;
+  EFI_PCI_IO_PROTOCOL     *Instance;
   UINT64                  Supports;
   UINT64                  OriginalPciAttributes;
   BOOLEAN                 PciAttributesSaved;
+  USB_CLASSC              UsbClassCReg;
+  EFI_HANDLE              *HandleBuffer;
+  UINTN                   NumberOfHandles;
+  UINTN                   Index;
+  UINTN                   UhciSegmentNumber;
+  UINTN                   UhciBusNumber;
+  UINTN                   UhciDeviceNumber;
+  UINTN                   UhciFunctionNumber;
+  UINTN                   EhciSegmentNumber;
+  UINTN                   EhciBusNumber;
+  UINTN                   EhciDeviceNumber;
+  UINTN                   EhciFunctionNumber;
 
   //
   // Open the PciIo Protocol, then enable the USB host controller
@@ -1518,8 +1538,7 @@ EhcDriverBindingStart (
                   );
 
   if (EFI_ERROR (Status)) {
-    DEBUG ((EFI_D_ERROR, "EhcDriverBindingStart: failed to open PCI_IO\n"));
-    return EFI_DEVICE_ERROR;
+    return Status;
   }
 
   PciAttributesSaved = FALSE;
@@ -1556,6 +1575,107 @@ EhcDriverBindingStart (
 
   if (EFI_ERROR (Status)) {
     DEBUG ((EFI_D_ERROR, "EhcDriverBindingStart: failed to enable controller\n"));
+    goto CLOSE_PCIIO;
+  }
+
+  //
+  // Get the Pci device class code.
+  //
+  Status = PciIo->Pci.Read (
+                        PciIo,
+                        EfiPciIoWidthUint8,
+                        PCI_CLASSCODE_OFFSET,
+                        sizeof (USB_CLASSC) / sizeof (UINT8),
+                        &UsbClassCReg
+                        );
+
+  if (EFI_ERROR (Status)) {
+    Status = EFI_UNSUPPORTED;
+    goto CLOSE_PCIIO;
+  }
+  //
+  // determine if the device is UHCI host controller or not. If yes, then find out the 
+  // companion usb ehci host controller and force EHCI driver get attached to it before
+  // UHCI driver attaches to UHCI host controller.
+  //
+  if ((UsbClassCReg.PI == PCI_IF_UHCI) &&
+       (UsbClassCReg.BaseCode == PCI_CLASS_SERIAL) && 
+       (UsbClassCReg.SubClassCode == PCI_CLASS_SERIAL_USB)) {
+    Status = PciIo->GetLocation (
+                    PciIo,
+                    &UhciSegmentNumber,
+                    &UhciBusNumber,
+                    &UhciDeviceNumber,
+                    &UhciFunctionNumber
+                    );
+    if (EFI_ERROR (Status)) {
+      goto CLOSE_PCIIO;
+    }
+
+    Status = gBS->LocateHandleBuffer (
+                    ByProtocol,
+                    &gEfiPciIoProtocolGuid,
+                    NULL,
+                    &NumberOfHandles,
+                    &HandleBuffer
+                    );
+    if (EFI_ERROR (Status)) {
+      goto CLOSE_PCIIO;
+    }
+
+    for (Index = 0; Index < NumberOfHandles; Index++) {
+      //
+      // Get the device path on this handle
+      //
+      Status = gBS->HandleProtocol (
+                    HandleBuffer[Index],
+                    &gEfiPciIoProtocolGuid,
+                    (VOID **)&Instance
+                    );
+      ASSERT_EFI_ERROR (Status);
+
+      Status = Instance->Pci.Read (
+                    Instance,
+                    EfiPciIoWidthUint8,
+                    PCI_CLASSCODE_OFFSET,
+                    sizeof (USB_CLASSC) / sizeof (UINT8),
+                    &UsbClassCReg
+                    );
+
+      if (EFI_ERROR (Status)) {
+        Status = EFI_UNSUPPORTED;
+        goto CLOSE_PCIIO;
+      }
+
+      if ((UsbClassCReg.PI == PCI_IF_EHCI) &&
+           (UsbClassCReg.BaseCode == PCI_CLASS_SERIAL) && 
+           (UsbClassCReg.SubClassCode == PCI_CLASS_SERIAL_USB)) {
+        Status = Instance->GetLocation (
+                    Instance,
+                    &EhciSegmentNumber,
+                    &EhciBusNumber,
+                    &EhciDeviceNumber,
+                    &EhciFunctionNumber
+                    );
+        if (EFI_ERROR (Status)) {
+          goto CLOSE_PCIIO;
+        }
+        //
+        // Currently, the judgment on the companion usb host controller is through the
+        // same bus number, which may vary on different platform.
+        //
+        if (EhciBusNumber == UhciBusNumber) {
+          gBS->CloseProtocol (
+                    Controller,
+                    &gEfiPciIoProtocolGuid,
+                    This->DriverBindingHandle,
+                    Controller
+                    );
+          EhcDriverBindingStart(This, HandleBuffer[Index], NULL);
+        }
+      }
+    }
+    Status = EFI_NOT_FOUND;
     goto CLOSE_PCIIO;
   }
 

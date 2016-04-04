@@ -349,7 +349,7 @@ HotkeyCallback (
     HotkeyData = &Hotkey->KeyData[Hotkey->WaitingKey];
     if ((KeyData->Key.ScanCode == HotkeyData->Key.ScanCode) &&
        (KeyData->Key.UnicodeChar == HotkeyData->Key.UnicodeChar) &&
-       ((HotkeyData->KeyState.KeyShiftState & EFI_SHIFT_STATE_VALID) ? (KeyData->KeyState.KeyShiftState == HotkeyData->KeyState.KeyShiftState) : TRUE)) {
+       (((HotkeyData->KeyState.KeyShiftState & EFI_SHIFT_STATE_VALID) != 0) ? (KeyData->KeyState.KeyShiftState == HotkeyData->KeyState.KeyShiftState) : TRUE)) {
       //
       // Receive an expecting key stroke
       //
@@ -469,7 +469,7 @@ HotkeyRegisterNotify (
         return Status;
       }
       Index ++;
-    } while (Index < Hotkey->CodeCount);
+    } while ((Index < Hotkey->CodeCount) && (Index < (sizeof (Hotkey->KeyData) / sizeof (EFI_KEY_DATA))));
 
     Link = GetNextNode (&mHotkeyList, Link);
   }

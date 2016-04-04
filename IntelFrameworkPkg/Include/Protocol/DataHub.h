@@ -3,10 +3,7 @@
   data and those wishing to be made aware of all information that
   has been logged.
 
-  For more information please look at Intel Platform Innovation
-  Framework for EFI Data Hub Specification.
-
-  Copyright (c) 2007, Intel Corporation
+  Copyright (c) 2007 - 2009, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -15,18 +12,14 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-  Module Name:  DataHub.h
-
   @par Revision Reference:
-  This protocol is defined in Framework for EFI Data Hub Specification.
+  The Data Hub Protocol is defined in Framework for EFI Data Hub Specification
   Version 0.9.
 
 **/
 
 #ifndef __DATA_HUB_H__
 #define __DATA_HUB_H__
-
-#include <PiDxe.h>
 
 #define EFI_DATA_HUB_PROTOCOL_GUID \
   { \
@@ -39,9 +32,8 @@
 // A Data Record is an EFI_DATA_RECORD_HEADER followed by RecordSize bytes of
 //  data. The format of the data is defined by the DataRecordGuid.
 //
-// If EFI_DATA_RECORD_HEADER is extended in the future the Version number must
-//  change and the HeaderSize will change if the definition of
-//  EFI_DATA_RECORD_HEADER is extended.
+// If EFI_DATA_RECORD_HEADER is extended in the future, the Version number and HeaderSize must
+//  change. 
 //
 // The logger is responcible for initializing:
 //  Version, HeaderSize, RecordSize, DataRecordGuid, DataRecordClass
@@ -64,7 +56,7 @@ typedef struct {
 //
 // Definition of DataRecordClass. These are used to filter out class types
 // at a very high level. The DataRecordGuid still defines the format of
-// the data. See DateHub.doc for rules on what can and can not be a
+// the data. See the Data Hub Specification for rules on what can and can not be a
 // new DataRecordClass
 //
 #define EFI_DATA_RECORD_CLASS_DEBUG         0x0000000000000001
@@ -81,7 +73,6 @@ typedef struct _EFI_DATA_HUB_PROTOCOL EFI_DATA_HUB_PROTOCOL;
   Logs a data record to the system event log.
 
   @param  This                  The EFI_DATA_HUB_PROTOCOL instance.
-  @param  description
   @param  DataRecordGuid        A GUID that indicates the format of the data passed into RawData.
   @param  ProducerName          A GUID that indicates the identity of the caller to this API.
   @param  DataRecordClass       This class indicates the generic type of the data record.
@@ -108,7 +99,7 @@ EFI_STATUS
 
   @param  This                  The EFI_DATA_HUB_PROTOCOL instance.
   @param  MonotonicCount        On input, it specifies the Record to return.
-                                An input of zero means to return the first record.
+                                An input of zero means to return the first record, as does an input of one.
   @param  FilterDriver          If FilterDriver is not passed in a MonotonicCount of zero,
                                 it means to return the first data record. If FilterDriver is passed in,
                                 then a MonotonicCount of zero means to return the first data not yet read
@@ -123,7 +114,9 @@ EFI_STATUS
                                 data records exist in the system.
   @retval EFI_OUT_OF_RESOURCES  Record was not returned due to lack
                                 of system resources.
-
+  @note: Inconsistent with specification here: 
+         In Framework for EFI Data Hub Specification, Version 0.9, This definition is named as
+         EFI_DATA_HUB_GET_NEXT_DATA_RECORD. The inconsistency is maintained for backward compatibility. 
 **/
 typedef
 EFI_STATUS
@@ -153,7 +146,9 @@ EFI_STATUS
   @retval EFI_ALREADY_STARTED   FilterEvent was previously registered and cannot be registered again.
   @retval EFI_OUT_OF_RESOURCES  The filter driver event was not registered
                                 due to lack of system resources.
-
+  @note: Inconsistent with specification here: 
+         In Framework for EFI Data Hub Specification, Version 0.9, This definition is named as
+         EFI_DATA_HUB_REGISTER_DATA_FILTER_DRIVER. The inconsistency is maintained for backward compatibility. 
 **/
 typedef
 EFI_STATUS
@@ -174,7 +169,9 @@ EFI_STATUS
 
   @retval EFI_SUCCESS           The filter driver represented by FilterEvent was shut off.
   @retval EFI_NOT_FOUND         FilterEvent did not exist.
-
+  @note: Inconsistent with specification here: 
+         In Framework for EFI Data Hub Specification, Version 0.9, This definition is named as
+         EFI_DATA_HUB_UNREGISTER_DATA_FILTER_DRIVER. The inconsistency is maintained for backward compatibility.  
 **/
 typedef
 EFI_STATUS
@@ -184,28 +181,29 @@ EFI_STATUS
   );
 
 /**
-  @par Protocol Description:
   This protocol is used to log information and register filter drivers
   to receive data records.
-
-  @param LogData
-  Logs a data record.
-
-  @param GetNextDataRecord
-  Gets a data record. Used both to view the memory-based log and to
-  get information about which data records have been consumed by a filter driver.
-
-  @param RegisterFilterDriver
-  Allows the registration of an EFI event to act as a filter driver for all data records that are logged.
-
-  @param UnregisterFilterDriver
-  Used to remove a filter driver that was added with RegisterFilterDriver().
-
 **/
 struct _EFI_DATA_HUB_PROTOCOL {
-  EFI_DATA_HUB_LOG_DATA                 LogData;
+  ///
+  /// Logs a data record.
+  ///
+  EFI_DATA_HUB_LOG_DATA                 LogData; 
+  
+  ///
+  /// Gets a data record. Used both to view the memory-based log and to
+  /// get information about which data records have been consumed by a filter driver.
+  ///
   EFI_DATA_HUB_GET_NEXT_RECORD          GetNextRecord;
+  
+  ///
+  /// Allows the registration of an EFI event to act as a filter driver for all data records that are logged.
+  ///
   EFI_DATA_HUB_REGISTER_FILTER_DRIVER   RegisterFilterDriver;
+  
+  ///
+  /// Used to remove a filter driver that was added with RegisterFilterDriver().
+  ///
   EFI_DATA_HUB_UNREGISTER_FILTER_DRIVER UnregisterFilterDriver;
 };
 

@@ -18,7 +18,7 @@
         .stack: 
         .486p: 
         .code16
-		
+    
 .equ                        FAT_DIRECTORY_ENTRY_SIZE, 0x020
 .equ                        FAT_DIRECTORY_ENTRY_SHIFT, 5
 .equ                        BLOCK_SIZE, 0x0200
@@ -450,7 +450,7 @@ Empty8042Loop:
 # data
 ##############################################################################
 
-        .align 0x2
+        .p2align 1
 
         gdtr:    .long  GDT_END - GDT_BASE - 1  # GDT limit 
         .long 0                                 # (GDT base gets set above)
@@ -458,7 +458,7 @@ Empty8042Loop:
 #   global descriptor table (GDT)
 ##############################################################################
 
-        .align 0x2
+        .p2align 1
 
 GDT_BASE: 
 # null descriptor
@@ -535,7 +535,7 @@ GDT_BASE:
 
 GDT_END: 
 
-        .align 0x2
+        .p2align 1
 
 
 
@@ -551,7 +551,7 @@ idtr:  .long  IDT_END - IDT_BASE - 1 # IDT limit
 ##############################################################################
 
 #idt_tag db "IDT",0     
-        .align 0x2
+        .p2align 1
 
 IDT_BASE: 
 # divide by zero (INT 0)
@@ -715,7 +715,7 @@ IDT_BASE:
         .word 0            # offset 31:16
 
 # 85 unspecified descriptors, First 12 of them are reserved, the rest are avail
-		.fill 85 * 8, 1, 0   # db (85 * 8) dup(0)
+    .fill 85 * 8, 1, 0   # db (85 * 8) dup(0)
 
 # IRQ 0 (System timer) - (INT 0x68)
 .equ                IRQ0_SEL, .-IDT_BASE
@@ -847,7 +847,7 @@ IDT_BASE:
 
 IDT_END: 
 
-        .align 0x2
+        .p2align 1
 
 MemoryMapSize:  .long 0
 MemoryMap:  .long 0,0,0,0,0,0,0,0

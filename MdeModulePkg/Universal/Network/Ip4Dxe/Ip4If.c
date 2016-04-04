@@ -1,7 +1,7 @@
 /** @file
   Implement IP4 pesudo interface.
   
-Copyright (c) 2005 - 2007, Intel Corporation.<BR>
+Copyright (c) 2005 - 2009, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -582,7 +582,7 @@ Ip4SetAddress (
 
   Type                      = NetGetIpClass (IpAddr);
   Len                       = NetGetMaskLength (SubnetMask);
-  Netmask                   = gIp4AllMasks[MIN (Len, Type << 3)];
+  Netmask                   = gIp4AllMasks[MIN ((Len - 1), Type << 3)];
   Interface->NetBrdcast     = (IpAddr | ~Netmask);
 
   //
@@ -871,7 +871,7 @@ Ip4OnArpResolved (
   //
   // Request Ip4OnArpResolvedDpc as a DPC at TPL_CALLBACK
   //
-  NetLibQueueDpc (TPL_CALLBACK, Ip4OnArpResolvedDpc, Context);
+  QueueDpc (TPL_CALLBACK, Ip4OnArpResolvedDpc, Context);
 }
 
 
@@ -924,7 +924,7 @@ Ip4OnFrameSent (
   //
   // Request Ip4OnFrameSentDpc as a DPC at TPL_CALLBACK
   //
-  NetLibQueueDpc (TPL_CALLBACK, Ip4OnFrameSentDpc, Context);
+  QueueDpc (TPL_CALLBACK, Ip4OnFrameSentDpc, Context);
 }
 
 
@@ -1187,7 +1187,7 @@ Ip4OnFrameReceived (
   //
   // Request Ip4OnFrameReceivedDpc as a DPC at TPL_CALLBACK
   //
-  NetLibQueueDpc (TPL_CALLBACK, Ip4OnFrameReceivedDpc, Context);
+  QueueDpc (TPL_CALLBACK, Ip4OnFrameReceivedDpc, Context);
 }
 
 

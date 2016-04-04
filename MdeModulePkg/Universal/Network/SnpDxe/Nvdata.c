@@ -1,8 +1,8 @@
 /** @file
- 		Implementation of reading and writing operations on the NVRAM device
- 		attached to a network interface.
+ 	Implementation of reading and writing operations on the NVRAM device
+ 	attached to a network interface.
  
-Copyright (c) 2004 - 2007, Intel Corporation. <BR> 
+Copyright (c) 2004 - 2009, Intel Corporation. <BR> 
 All rights reserved. This program and the accompanying materials are licensed 
 and made available under the terms and conditions of the BSD License which 
 accompanies this distribution. The full text of the license may be found at 
@@ -88,7 +88,9 @@ PxeNvDataRead (
     return EFI_DEVICE_ERROR;
   }
 
-  CopyMem (Buffer, Db->Data.Byte + Offset, BufferSize);
+  ASSERT (Offset < sizeof (Db->Data));
+
+  CopyMem (Buffer, &Db->Data.Byte[Offset], BufferSize);
 
   return EFI_SUCCESS;
 }

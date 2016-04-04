@@ -1,11 +1,11 @@
 /** @file
   The EFI_FORM_CALLBACK_PROTOCOL is the defined interface for access to custom
-  NV storage devices as well as communication of user selections in a more
+  NV storage devices and for communication of user selections in a more
   interactive environment.  This protocol should be published by hardware
-  specific drivers which want to export access to custom hardware storage or
-  publish IFR which has a requirement to call back the original driver.
+  specific drivers that want to export access to custom hardware storage or
+  publish IFR that need to call back the original driver.
 
-  Copyright (c) 2006, Intel Corporation
+  Copyright (c) 2006 - 2009, Intel Corporation
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -14,17 +14,13 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-  Module Name:  FrameworkFormCallback.h
-
   @par Revision Reference:
   This protocol is defined in HII spec 0.92.
 
 **/
 
-#ifndef __FORM_CALLBACK_H__
-#define __FORM_CALLBACK_H__
-
-#include <FrameworkDxe.h>
+#ifndef __FRAMEWORK_FORM_CALLBACK_H__
+#define __FRAMEWORK_FORM_CALLBACK_H__
 
 #include <Protocol/FrameworkHii.h>
 #include <Protocol/FrameworkFormBrowser.h>
@@ -39,52 +35,72 @@
 //
 typedef struct _EFI_FORM_CALLBACK_PROTOCOL  EFI_FORM_CALLBACK_PROTOCOL;
 
+///
+///  Inconsistent with specification here: 
+///  RESET_REQUIRED, EXIT_REQUIRED, SAVE_REQUIRED, NV_CHANGED and NV_NOT_CHANGED are not 
+///  defined in HII specification. These Flags of EFI_IFR_DATA_ENTRY should be defined
+///  to describe the standard behavior of the browser after the callback.
+///
+/// If this flag is set, the browser will exit and reset after processing callback results
+///
+#define RESET_REQUIRED  1 
+///
+/// If this flag is set, the browser will exit after processing callback results
+///
+#define EXIT_REQUIRED   2
+///
+/// If this flag is set, the browser will save the NV data after processing callback results
+///
+#define SAVE_REQUIRED   4
+///
+/// If this flag is set, the browser will turn the NV flag on after processing callback results
+///
+#define NV_CHANGED      8
+///
+/// If this flag is set, the browser will turn the NV flag off after processing callback results
+///
+#define NV_NOT_CHANGED  16
 
-#define RESET_REQUIRED  1 // Flags setting to signify that the callback operation resulted in an eventual
-// reset to be done upon exit of the browser
-//
-#define EXIT_REQUIRED   2   // Flags setting to signify that after the processing of the callback results - exit the browser
-#define SAVE_REQUIRED   4   // Flags setting to signify that after the processing of the callback results - save the NV data
-#define NV_CHANGED      8   // Flags setting to signify that after the processing of the callback results - turn the NV flag on
-#define NV_NOT_CHANGED  16  // Flags setting to signify that after the processing of the callback results - turn the NV flag off
 #pragma pack(1)
 typedef struct {
-  UINT8   OpCode;           // Likely a string, numeric, or one-of
-  UINT8   Length;           // Length of the FRAMEWORK_EFI_IFR_DATA_ENTRY packet
-  UINT16  Flags;            // Flags settings to determine what behavior is desired from the browser after the callback
-  VOID    *Data;            // The data in the form based on the op-code type - this is not a pointer to the data, the data follows immediately
-  // If the OpCode is a OneOf or Numeric type - Data is a UINT16 value
-  // If the OpCode is a String type - Data is a CHAR16[x] type
-  // If the OpCode is a Checkbox type - Data is a UINT8 value
-  // If the OpCode is a NV Access type - Data is a FRAMEWORK_EFI_IFR_NV_DATA structure
-  //
-} FRAMEWORK_EFI_IFR_DATA_ENTRY;
+  UINT8   OpCode;           ///< Likely a string, numeric, or one-of
+  UINT8   Length;           ///< Length of the EFI_IFR_DATA_ENTRY packet
+  UINT16  Flags;            ///< Flags settings to determine what behavior is desired from the browser after the callback
+  VOID    *Data;            ///< The data in the form based on the op-code type - this is not a pointer to the data, the data follows immediately
+  ///
+  /// If the OpCode is a OneOf or Numeric type - Data is a UINT16 value
+  /// If the OpCode is a String type - Data is a CHAR16[x] type
+  /// If the OpCode is a Checkbox type - Data is a UINT8 value
+  /// If the OpCode is a NV Access type - Data is a EFI_IFR_NV_DATA structure
+  ///
+} EFI_IFR_DATA_ENTRY;
 
 typedef struct {
-  VOID                *NvRamMap;  // If the flag of the op-code specified retrieval of a copy of the NVRAM map,
+  VOID                *NvRamMap;  ///< If the flag of the op-code specified retrieval of a copy of the NVRAM map,
+  //
   // this is a pointer to a buffer copy
   //
-  UINT32              EntryCount; // How many FRAMEWORK_EFI_IFR_DATA_ENTRY entries
+  UINT32              EntryCount; ///< How many EFI_IFR_DATA_ENTRY entries
   //
-  // FRAMEWORK_EFI_IFR_DATA_ENTRY  Data[1];    // The in-line Data entries.
+  // EFI_IFR_DATA_ENTRY  Data[1];    // The in-line Data entries.
   //
-} FRAMEWORK_EFI_IFR_DATA_ARRAY;
+} EFI_IFR_DATA_ARRAY;
 
 
 typedef union {
-  FRAMEWORK_EFI_IFR_DATA_ARRAY  DataArray;  // Primarily used by those who call back to their drivers and use HII as a repository
-  FRAMEWORK_EFI_IFR_PACKET      DataPacket; // Primarily used by those which do not use HII as a repository
-  CHAR16                        String[1];  // If returning an error - fill the string with null-terminated contents
+  EFI_IFR_DATA_ARRAY  DataArray;  ///< Primarily used by those who call back to their drivers and use HII as a repository
+  EFI_IFR_PACKET      DataPacket; ///< Primarily used by those which do not use HII as a repository
+  CHAR16              String[1];  ///< If returning an error - fill the string with null-terminated contents
 } EFI_HII_CALLBACK_PACKET;
 
 typedef struct {
   FRAMEWORK_EFI_IFR_OP_HEADER Header;
-  UINT16            QuestionId;   // Offset into the map
-  UINT8             StorageWidth; // Width of the value
+  UINT16            QuestionId;   ///< Offset into the map
+  UINT8             StorageWidth; ///< Width of the value
   //
   // CHAR8             Data[1];      // The Data itself
   //
-} FRAMEWORK_EFI_IFR_NV_DATA;
+} EFI_IFR_NV_DATA;
 
 #pragma pack()
 //
@@ -130,6 +146,9 @@ EFI_STATUS
                                 name of the vendor's variable. Each VariableName is unique for each VendorGuid.
   @param  VendorGuid            A unique identifier for the vendor.
   @param  Attributes            Attributes bit-mask to set for the variable.
+                                Inconsistent with specification here: 
+                                Attributes data type has been changed from UINT32 * to UINT32,
+                                because the input paramter is not necessary to use pointer date type.
   @param  DataSize              The size in bytes of the Buffer. A size of zero causes
                                 the variable to be deleted.
   @param  Buffer                The buffer containing the contents of the variable.
@@ -178,32 +197,21 @@ EFI_STATUS
 (EFIAPI *EFI_FORM_CALLBACK)(
   IN     EFI_FORM_CALLBACK_PROTOCOL    *This,
   IN     UINT16                        KeyValue,
-  IN     FRAMEWORK_EFI_IFR_DATA_ARRAY  *Data,
+  IN     EFI_IFR_DATA_ARRAY  *Data,
   OUT    EFI_HII_CALLBACK_PACKET       **Packet
   );
 
 /**
-  @par Protocol Description:
   The EFI_FORM_CALLBACK_PROTOCOL is the defined interface for access to
   custom NVS devices as well as communication of user selections in a more
-  interactive environment. This protocol should be published by hardware-specific
+  interactive environment. This protocol should be published by platform-specific
   drivers that want to export access to custom hardware storage or publish IFR
   that has a requirement to call back the original driver.
-
-  @param NvRead
-  The read operation to access the NV data serviced by a hardware-specific driver.
-
-  @param NvWrite
-  The write operation to access the NV data serviced by a hardware-specific driver.
-
-  @param Callback
-  The function that is called from the configuration browser to communicate key value pairs.
-
 **/
 struct _EFI_FORM_CALLBACK_PROTOCOL {
-  EFI_NV_READ       NvRead;
-  EFI_NV_WRITE      NvWrite;
-  EFI_FORM_CALLBACK Callback;
+  EFI_NV_READ       NvRead;     ///< The read operation to access the NV data serviced by a hardware-specific driver.
+  EFI_NV_WRITE      NvWrite;    ///< The write operation to access the NV data serviced by a hardware-specific driver.
+  EFI_FORM_CALLBACK Callback;   ///< The function that is called from the configuration browser to communicate key value pairs.
 };
 
 extern EFI_GUID gEfiFormCallbackProtocolGuid;

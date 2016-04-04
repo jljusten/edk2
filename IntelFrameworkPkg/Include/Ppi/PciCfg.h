@@ -1,7 +1,7 @@
 /** @file
-  This file declares PciCfg PPI used to access PCI configuration space in PEI
+  This file declares the PciCfg PPI used to access the PCI configuration space in PEI
 
-  Copyright (c) 2006, Intel Corporation                                                         
+  Copyright (c) 2006 - 2009, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -9,8 +9,6 @@
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
-
-  Module Name:  PciCfg.h
 
   @par Revision Reference:
   This PPI is defined in PEI CIS
@@ -21,11 +19,10 @@
 #ifndef __PEI_PCI_CFG_H__
 #define __PEI_PCI_CFG_H__
 
-#include <Pi/PiPeiCis.h>
+#include <Ppi/PciCfg2.h>
 //
 // Get the common definitions for EFI_PEI_PCI_CFG_PPI_WIDTH.
 //
-#include <Ppi/PciCfg2.h>
 
 #define EFI_PEI_PCI_CFG_PPI_INSTALLED_GUID \
   { \
@@ -90,20 +87,21 @@ EFI_STATUS
 /**
   The EFI_PEI_PCI_CFG_PPI interfaces are used to abstract accesses to PCI 
   controllers behind a PCI root bridge controller.
-
-  @param Read
-  PCI read services.  See the Read() function description.
-
-  @param Write
-  PCI write services.  See the Write() function description.
-
-  @param Modify
-  PCI read-modify-write services.  See the Modify() function description.
-
 **/
 struct _EFI_PEI_PCI_CFG_PPI {
+  ///
+  /// PCI read services.  See the Read() function description.
+  ///
   EFI_PEI_PCI_CFG_PPI_IO  Read;
+  
+  ///
+  /// PCI write services.  See the Write() function description.
+  ///
   EFI_PEI_PCI_CFG_PPI_IO  Write;
+  
+  ///
+  /// PCI read-modify-write services.  See the Modify() function description.
+  ///
   EFI_PEI_PCI_CFG_PPI_RW  Modify;
 };
 

@@ -39,7 +39,7 @@
 
 #include <Guid/EventGroup.h>
 
-#include <IndustryStandard/Pci22.h>
+#include <IndustryStandard/Pci.h>
 #include "IdeData.h"
 
 //
@@ -59,11 +59,6 @@ extern EFI_DRIVER_DIAGNOSTICS2_PROTOCOL gIDEBusDriverDiagnostics2;
 #define INVALID_DEVICE_TYPE 0xff
 #define ATA_DEVICE_TYPE     0x00
 #define ATAPI_DEVICE_TYPE   0x01
-
-#define EFI_IOB_ATA_BUS_SMART_ENABLE          (EFI_SUBCLASS_SPECIFIC | 0x00000000)
-#define EFI_IOB_ATA_BUS_SMART_DISABLE         (EFI_SUBCLASS_SPECIFIC | 0x00000001)
-#define EFI_IOB_ATA_BUS_SMART_OVERTHRESHOLD   (EFI_SUBCLASS_SPECIFIC | 0x00000002)
-#define EFI_IOB_ATA_BUS_SMART_UNDERTHRESHOLD  (EFI_SUBCLASS_SPECIFIC | 0x00000003)
 
 typedef struct {
   BOOLEAN HaveScannedDevice[MAX_IDE_DEVICE];
@@ -95,8 +90,8 @@ typedef struct {
   IDE_BASE_REGISTERS          *IoPort;
   UINT16                      AtapiError;
 
-  ATAPI_INQUIRY_DATA                *pInquiryData;
-  EFI_IDENTIFY_DATA           *pIdData;
+  ATAPI_INQUIRY_DATA                *InquiryData;
+  EFI_IDENTIFY_DATA           *IdData;
   ATA_PIO_MODE                PioMode;
   EFI_ATA_MODE                UdmaMode;
   CHAR8                       ModelName[41];
@@ -119,34 +114,16 @@ typedef struct {
 
 #include "Ide.h"
 
-//
-// Prototypes
-// Driver model protocol interface
-//
-/**
-  TODO: Add function description
-
-  @param  ImageHandle TODO: add argument description
-  @param  SystemTable TODO: add argument description
-
-  TODO: add return values.
-
-**/
-EFI_STATUS
-EFIAPI
-IDEBusControllerDriverEntryPoint (
-  IN EFI_HANDLE                   ImageHandle,
-  IN EFI_SYSTEM_TABLE             *SystemTable
-  );
 
 /**
-  TODO: Add function description
+  Supported function of Driver Binding protocol for this driver.
 
-  @param  This TODO: add argument description
-  @param  Controller TODO: add argument description
-  @param  RemainingDevicePath TODO: add argument description
+  @param This                A pointer to the EFI_DRIVER_BINDING_PROTOCOL instance.
+  @param ControllerHandle    The handle of the controller to test.
+  @param RemainingDevicePath A pointer to the remaining portion of a device path.
 
-  TODO: add return values.
+  @retval  EFI_SUCCESS Driver loaded.
+  @retval  other       Driver not loaded.
 
 **/
 EFI_STATUS
@@ -158,13 +135,16 @@ IDEBusDriverBindingSupported (
   );
 
 /**
-  TODO: Add function description
+  Start function of Driver binding protocol which start this driver on Controller
+  by detecting all disks and installing BlockIo protocol on them.
 
-  @param  This TODO: add argument description
-  @param  Controller TODO: add argument description
-  @param  RemainingDevicePath TODO: add argument description
+  @param  This                Protocol instance pointer.
+  @param  Controller          Handle of device to bind driver to.
+  @param  RemainingDevicePath produce all possible children.
 
-  TODO: add return values.
+  @retval  EFI_SUCCESS         This driver is added to ControllerHandle.
+  @retval  EFI_ALREADY_STARTED This driver is already running on ControllerHandle.
+  @retval  other               This driver does not support this device.
 
 **/
 EFI_STATUS
@@ -176,14 +156,16 @@ IDEBusDriverBindingStart (
   );
 
 /**
-  TODO: Add function description
+  Stop function of Driver Binding Protocol which is to stop the driver on Controller Handle and all
+  child handle attached to the controller handle if there are.
 
-  @param  This TODO: add argument description
-  @param  Controller TODO: add argument description
-  @param  NumberOfChildren TODO: add argument description
-  @param  ChildHandleBuffer TODO: add argument description
+  @param  This Protocol instance pointer.
+  @param  Controller Handle of device to stop driver on
+  @param  NumberOfChildren Not used
+  @param  ChildHandleBuffer Not used
 
-  TODO: add return values.
+  @retval  EFI_SUCCESS This driver is removed DeviceHandle
+  @retval  other This driver was not removed from this device
 
 **/
 EFI_STATUS
@@ -199,16 +181,38 @@ IDEBusDriverBindingStop (
 // EFI Driver Configuration Functions
 //
 /**
-  TODO: Add function description
+  Allows the user to set controller specific options for a controller that a 
+  driver is currently managing.
 
-  @param  This                 TODO: add argument description
-  @param  ControllerHandle     TODO: add argument description
-  @param  ChildHandle          TODO: add argument description
-  @param  Language             TODO: add argument description
-  @param  ActionRequired       TODO: add argument description
+  @param  This              A pointer to the EFI_DRIVER_CONFIGURATION_ PROTOCOL instance.
+  @param  ControllerHandle  The handle of the controller to set options on.
+  @param  ChildHandle       The handle of the child controller to set options on.
+                            This is an optional parameter that may be NULL.
+                            It will be NULL for device drivers, and for a bus drivers
+                            that wish to set options for the bus controller.
+                            It will not be NULL for a bus driver that wishes to set
+                            options for one of its child controllers.
+  @param  Language          A pointer to a three character ISO 639-2 language identifier. 
+                            This is the language of the user interface that should be presented 
+                            to the user, and it must match one of the languages specified in 
+                            SupportedLanguages. The number of languages supported by a driver is up to
+                            the driver writer.
+  @param  ActionRequired    A pointer to the action that the calling agent is required 
+                            to perform when this function returns.
+  
 
-  TODO: add return values.
-
+  @retval  EFI_SUCCESS           The driver specified by This successfully set the configuration 
+                                 options for the controller specified by ControllerHandle..
+  @retval  EFI_INVALID_PARAMETER ControllerHandle is not a valid EFI_HANDLE.
+  @retval  EFI_INVALID_PARAMETER ChildHandle is not NULL and it is not a valid EFI_HANDLE.
+  @retval  EFI_INVALID_PARAMETER ActionRequired is NULL.
+  @retval  EFI_UNSUPPORTED       The driver specified by This does not support setting configuration options for 
+                                 the controller specified by ControllerHandle and ChildHandle.
+  @retval  EFI_UNSUPPORTED       The driver specified by This does not support the language specified by Language.
+  @retval  EFI_DEVICE_ERROR      A device error occurred while attempt to set the configuration options for the 
+                                 controller specified by ControllerHandle and ChildHandle.
+  @retval  EFI_OUT_RESOURCES     There are not enough resources available to set the configuration options for the 
+                                 controller specified by ControllerHandle and ChildHandle
 **/
 EFI_STATUS
 EFIAPI
@@ -221,14 +225,27 @@ IDEBusDriverConfigurationSetOptions (
   );
 
 /**
-  TODO: Add function description
+  Tests to see if a controller's current configuration options are valid.
 
-  @param  This                 TODO: add argument description
-  @param  ControllerHandle     TODO: add argument description
-  @param  ChildHandle          TODO: add argument description
-
-  TODO: add return values.
-
+  @param  This             A pointer to the EFI_DRIVER_CONFIGURATION_PROTOCOL instance.
+  @param  ControllerHandle The handle of the controller to test if it's current configuration options 
+                           are valid.
+  @param  ChildHandle      The handle of the child controller to test if it's current configuration 
+                           options are valid.  This is an optional parameter that may be NULL. It will 
+                           be NULL for device drivers.  It will also be NULL for a bus drivers that
+                           wish to test the configuration options for the bus controller. It will 
+                           not be NULL for a bus driver that wishes to test configuration options for 
+                           one of its child controllers.
+  @retval  EFI_SUCCESS           The controller specified by ControllerHandle and ChildHandle that is being
+                                 managed by the driver specified by This has a valid set of  configuration
+                                 options.
+  @retval  EFI_INVALID_PARAMETER ControllerHandle is not a valid EFI_HANDLE.
+  @retval  EFI_INVALID_PARAMETER ChildHandle is not NULL and it is not a valid EFI_HANDLE.
+  @retval  EFI_UNSUPPORTED       The driver specified by This is not currently  managing the controller 
+                                 specified by ControllerHandle and ChildHandle.
+  @retval  EFI_DEVICE_ERROR      The controller specified by ControllerHandle and ChildHandle that is being
+                                 managed by the driver specified by This has an invalid set of configuration
+                                 options.
 **/
 EFI_STATUS
 EFIAPI
@@ -239,16 +256,36 @@ IDEBusDriverConfigurationOptionsValid (
   );
 
 /**
-  TODO: Add function description
+  Forces a driver to set the default configuration options for a controller.
 
-  @param  This                 TODO: add argument description
-  @param  ControllerHandle     TODO: add argument description
-  @param  ChildHandle          TODO: add argument description
-  @param  DefaultType          TODO: add argument description
-  @param  ActionRequired       TODO: add argument description
+  @param  This             A pointer to the EFI_DRIVER_CONFIGURATION_ PROTOCOL instance.
+  @param  ControllerHandle The handle of the controller to force default configuration options on.
+  @param  ChildHandle      The handle of the child controller to force default configuration 
+                           options on  This is an optional parameter that may be NULL.  It 
+                           will be NULL for device drivers. It will also be NULL for a bus 
+                           drivers that wish to force default configuration options for the bus
+                           controller.  It will not be NULL for a bus driver that wishes to force
+                           default configuration options for one of its child controllers.
+  @param  DefaultType      The type of default configuration options to force on the controller 
+                           specified by ControllerHandle and ChildHandle. 
+  @param  ActionRequired   A pointer to the action that the calling agent is required to perform 
+                           when this function returns.
 
-  TODO: add return values.
-
+  @retval  EFI_SUCCESS           The driver specified by This successfully forced the 
+                                 default configuration options on the controller specified by 
+                                 ControllerHandle and ChildHandle.
+  @retval  EFI_INVALID_PARAMETER ControllerHandle is not a valid EFI_HANDLE.
+  @retval  EFI_INVALID_PARAMETER ChildHandle is not NULL and it is not a valid EFI_HANDLE.
+  @retval  EFI_INVALID_PARAMETER ActionRequired is NULL.
+  @retval  EFI_UNSUPPORTED       The driver specified by This does not support forcing the default 
+                                 configuration options on the controller specified by ControllerHandle
+                                 and ChildHandle.
+  @retval  EFI_UNSUPPORTED       The driver specified by This does not support the configuration type 
+                                 specified by DefaultType.
+  @retval  EFI_DEVICE_ERROR      A device error occurred while attempt to force the default configuration 
+                                 options on the controller specified by  ControllerHandle and ChildHandle.
+  @retval  EFI_OUT_RESOURCES     There are not enough resources available to force the default configuration 
+                                 options on the controller specified by ControllerHandle and ChildHandle.
 **/
 EFI_STATUS
 EFIAPI
@@ -264,19 +301,51 @@ IDEBusDriverConfigurationForceDefaults (
 // EFI Driver Diagnostics Functions
 //
 /**
-  TODO: Add function description
+  Runs diagnostics on a controller.
 
-  @param  This                 TODO: add argument description
-  @param  ControllerHandle     TODO: add argument description
-  @param  ChildHandle          TODO: add argument description
-  @param  DiagnosticType       TODO: add argument description
-  @param  Language             TODO: add argument description
-  @param  ErrorType            TODO: add argument description
-  @param  BufferSize           TODO: add argument description
-  @param  Buffer               TODO: add argument description
+  @param  This             A pointer to the EFI_DRIVER_DIAGNOSTICS_PROTOCOLinstance.
+  @param  ControllerHandle The handle of the controller to run diagnostics on.
+  @param  ChildHandle      The handle of the child controller to run diagnostics on
+                           This is an optional parameter that may be NULL.  It will
+                           be NULL for device drivers.  It will also be NULL for a
+                           bus drivers that wish to run diagnostics on the bus controller. 
+                           It will not be NULL for a bus driver that wishes to run 
+                           diagnostics on one of its child controllers.
+  @param  DiagnosticType   Indicates type of diagnostics to perform on the controller
+                           specified by ControllerHandle and ChildHandle.
+  @param  Language         A pointer to a three character ISO 639-2 language identifier. 
+                           This is the language in which the optional error message should 
+                           be returned in Buffer, and it must match one of the languages 
+                           specified in SupportedLanguages. The number of languages supported by
+                           a driver is up to the driver writer.
+  @param  ErrorType        A GUID that defines the format of the data returned in Buffer.
+  @param  BufferSize       The size, in bytes, of the data returned in Buffer.
+  @param  Buffer           A buffer that contains a Null-terminated Unicode string
+                           plus some additional data whose format is defined by ErrorType.  
+                           Buffer is allocated by this function with AllocatePool(), and 
+                           it is the caller's responsibility to free it with a call to FreePool().
 
-  TODO: add return values.
-
+  @retval  EFI_SUCCESS           The controller specified by ControllerHandle and ChildHandle passed 
+                                 the diagnostic.
+  @retval  EFI_INVALID_PARAMETER ControllerHandle is not a valid EFI_HANDLE.
+  @retval  EFI_INVALID_PARAMETER ChildHandle is not NULL and it is not a valid EFI_HANDLE.
+  @retval  EFI_INVALID_PARAMETER Language is NULL.
+  @retval  EFI_INVALID_PARAMETER ErrorType is NULL.
+  @retval  EFI_INVALID_PARAMETER BufferType is NULL.
+  @retval  EFI_INVALID_PARAMETER Buffer is NULL.
+  @retval  EFI_UNSUPPORTED       The driver specified by This does not support running 
+                                 diagnostics for the controller specified by ControllerHandle 
+                                 and ChildHandle.
+  @retval  EFI_UNSUPPORTED       The driver specified by This does not support the
+                                 type of diagnostic specified by DiagnosticType.
+  @retval  EFI_UNSUPPORTED       The driver specified by This does not support the language 
+                                 specified by Language.
+  @retval  EFI_OUT_OF_RESOURCES  There are not enough resources available to complete the 
+                                 diagnostics.
+  @retval  EFI_OUT_OF_RESOURCES  There are not enough resources available to return the 
+                                 status information in ErrorType, BufferSize,and Buffer.
+  @retval  EFI_DEVICE_ERROR      The controller specified by ControllerHandle and ChildHandle 
+                                 did not pass the diagnostic.
 **/
 EFI_STATUS
 EFIAPI
@@ -291,16 +360,15 @@ IDEBusDriverDiagnosticsRunDiagnostics (
   OUT CHAR16                                        **Buffer
   );
 
-//
-// Block I/O Protocol Interface
-//
 /**
-  TODO: Add function description
+  issue ATA or ATAPI command to reset a block IO device.
+  @param  This                  Block IO protocol instance pointer.
+  @param  ExtendedVerification  If FALSE,for ATAPI device, driver will only invoke ATAPI reset method
+                                If TRUE, for ATAPI device, driver need invoke ATA reset method after
+                                invoke ATAPI reset method
 
-  @param  This TODO: add argument description
-  @param  ExtendedVerification TODO: add argument description
-
-  TODO: add return values.
+  @retval EFI_DEVICE_ERROR      When the device is neighther ATA device or ATAPI device.
+  @retval EFI_SUCCESS           The device reset successfully
 
 **/
 EFI_STATUS
@@ -311,15 +379,16 @@ IDEBlkIoReset (
   );
 
 /**
-  TODO: Add function description
+  Read data from a block IO device.
 
-  @param  This TODO: add argument description
-  @param  MediaId TODO: add argument description
-  @param  LBA TODO: add argument description
-  @param  BufferSize TODO: add argument description
-  @param  Buffer TODO: add argument description
+  @param  This       Block IO protocol instance pointer.
+  @param  MediaId    The media ID of the device
+  @param  Lba        Starting LBA address to read data
+  @param  BufferSize The size of data to be read
+  @param  Buffer     Caller supplied buffer to save data
 
-  TODO: add return values.
+  @retval EFI_DEVICE_ERROR  unknown device type
+  @retval EFI_SUCCESS       read the data successfully.
 
 **/
 EFI_STATUS
@@ -327,21 +396,22 @@ EFIAPI
 IDEBlkIoReadBlocks (
   IN  EFI_BLOCK_IO_PROTOCOL       *This,
   IN  UINT32                      MediaId,
-  IN  EFI_LBA                     LBA,
+  IN  EFI_LBA                     Lba,
   IN  UINTN                       BufferSize,
   OUT VOID                        *Buffer
   );
 
 /**
-  TODO: Add function description
+  Write data to block io device
 
-  @param  This TODO: add argument description
-  @param  MediaId TODO: add argument description
-  @param  LBA TODO: add argument description
-  @param  BufferSize TODO: add argument description
-  @param  Buffer TODO: add argument description
+  @param  This       Protocol instance pointer.
+  @param  MediaId    The media ID of the device
+  @param  Lba        Starting LBA address to write data
+  @param  BufferSize The size of data to be written
+  @param  Buffer     Caller supplied buffer to save data
 
-  TODO: add return values.
+  @retval EFI_DEVICE_ERROR  unknown device type
+  @retval other             write data status
 
 **/
 EFI_STATUS
@@ -349,48 +419,36 @@ EFIAPI
 IDEBlkIoWriteBlocks (
   IN  EFI_BLOCK_IO_PROTOCOL       *This,
   IN  UINT32                      MediaId,
-  IN  EFI_LBA                     LBA,
+  IN  EFI_LBA                     Lba,
   IN  UINTN                       BufferSize,
   IN  VOID                        *Buffer
   );
 
 /**
-  TODO: Add function description
+  Flushes all modified data to a physical block devices
 
-  @param  This TODO: add argument description
+  @param  This  Indicates a pointer to the calling context which to sepcify a 
+                sepcific block device
 
-  TODO: add return values.
-
+  @retval EFI_SUCCESS   Always return success.
 **/
 EFI_STATUS
 EFIAPI
 IDEBlkIoFlushBlocks (
   IN  EFI_BLOCK_IO_PROTOCOL       *This
   );
-
 /**
-  TODO: Add function description
+  This function is used by the IDE bus driver to get inquiry data. 
+  Data format of Identify data is defined by the Interface GUID.
 
-  @param  PciIo TODO: add argument description
-  @param  Enable TODO: add argument description
+  @param  This                  Pointer to the EFI_DISK_INFO_PROTOCOL instance.
+  @param  InquiryData           Pointer to a buffer for the inquiry data.
+  @param  InquiryDataSize       Pointer to the value for the inquiry data size.
 
-  TODO: add return values.
-
-**/
-EFI_STATUS
-IDERegisterDecodeEnableorDisable (
-  IN  EFI_PCI_IO_PROTOCOL         *PciIo,
-  IN  BOOLEAN                     Enable
-  );
-
-/**
-  TODO: Add function description
-
-  @param  This TODO: add argument description
-  @param  InquiryData TODO: add argument description
-  @param  IntquiryDataSize TODO: add argument description
-
-  TODO: add return values.
+  @retval EFI_SUCCESS           The command was accepted without any errors.
+  @retval EFI_NOT_FOUND         Device does not support this data class 
+  @retval EFI_DEVICE_ERROR      Error reading InquiryData from device 
+  @retval EFI_BUFFER_TOO_SMALL  IntquiryDataSize not big enough 
 
 **/
 EFI_STATUS
@@ -398,17 +456,21 @@ EFIAPI
 IDEDiskInfoInquiry (
   IN EFI_DISK_INFO_PROTOCOL       *This,
   IN OUT VOID                     *InquiryData,
-  IN OUT UINT32                   *IntquiryDataSize
+  IN OUT UINT32                   *InquiryDataSize
   );
 
 /**
-  TODO: Add function description
+  This function is used by the IDE bus driver to get identify data. 
+  Data format of Identify data is defined by the Interface GUID.
 
-  @param  This TODO: add argument description
-  @param  IdentifyData TODO: add argument description
-  @param  IdentifyDataSize TODO: add argument description
+  @param  This                  Pointer to the EFI_DISK_INFO_PROTOCOL instance.
+  @param  IdentifyData          Pointer to a buffer for the identify data.
+  @param  IdentifyDataSize      Pointer to the value for the identify data size.
 
-  TODO: add return values.
+  @retval EFI_SUCCESS           The command was accepted without any errors.
+  @retval EFI_NOT_FOUND         Device does not support this data class 
+  @retval EFI_DEVICE_ERROR      Error reading IdentifyData from device 
+  @retval EFI_BUFFER_TOO_SMALL  IdentifyDataSize not big enough 
 
 **/
 EFI_STATUS
@@ -420,14 +482,18 @@ IDEDiskInfoIdentify (
   );
 
 /**
-  TODO: Add function description
+  This function is used by the IDE bus driver to get sense data. 
+  Data format of Sense data is defined by the Interface GUID.
 
-  @param  This TODO: add argument description
-  @param  SenseData TODO: add argument description
-  @param  SenseDataSize TODO: add argument description
-  @param  SenseDataNumber TODO: add argument description
+  @param  This                  Pointer to the EFI_DISK_INFO_PROTOCOL instance. 
+  @param  SenseData             Pointer to the SenseData. 
+  @param  SenseDataSize         Size of SenseData in bytes. 
+  @param  SenseDataNumber       Pointer to the value for the identify data size.
 
-  TODO: add return values.
+  @retval EFI_SUCCESS           The command was accepted without any errors.
+  @retval EFI_NOT_FOUND         Device does not support this data class 
+  @retval EFI_DEVICE_ERROR      Error reading InquiryData from device 
+  @retval EFI_BUFFER_TOO_SMALL  SenseDataSize not big enough 
 
 **/
 EFI_STATUS
@@ -440,13 +506,14 @@ IDEDiskInfoSenseData (
   );
 
 /**
-  TODO: Add function description
+  This function is used by the IDE bus driver to get controller information.
 
-  @param  This TODO: add argument description
-  @param  IdeChannel TODO: add argument description
-  @param  IdeDevice TODO: add argument description
+  @param  This                  Pointer to the EFI_DISK_INFO_PROTOCOL instance. 
+  @param  IdeChannel            Pointer to the Ide Channel number. Primary or secondary.
+  @param  IdeDevice             Pointer to the Ide Device number. Master or slave.
 
-  TODO: add return values.
+  @retval EFI_SUCCESS           IdeChannel and IdeDevice are valid 
+  @retval EFI_UNSUPPORTED       This is not an IDE device 
 
 **/
 EFI_STATUS
@@ -456,5 +523,18 @@ IDEDiskInfoWhichIde (
   OUT UINT32                      *IdeChannel,
   OUT UINT32                      *IdeDevice
   );
+/**
+  The is an event(generally the event is exitBootService event) call back function. 
+  Clear pending IDE interrupt before OS loader/kernel take control of the IDE device.
 
+  @param  Event   Pointer to this event
+  @param  Context Event hanlder private data
+
+**/
+VOID
+EFIAPI
+ClearInterrupt (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  );
 #endif

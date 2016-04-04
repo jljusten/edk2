@@ -3,7 +3,7 @@
 #
 # This DSC file is used for Package Level build.
 #
-# Copyright (c) 2007, Intel Corporation
+# Copyright (c) 2007 - 2009, Intel Corporation
 #
 #  All rights reserved. This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -23,10 +23,10 @@
 [Defines]
   PLATFORM_NAME                  = IntelFramework
   PLATFORM_GUID                  = E76EB141-6EDB-43f3-A455-EF24A79673DD
-  PLATFORM_VERSION               = 0.1
+  PLATFORM_VERSION               = 0.90
   DSC_SPECIFICATION              = 0x00010005
   OUTPUT_DIRECTORY               = Build/IntelFramework
-  SUPPORTED_ARCHITECTURES        = IA32|IPF|X64|EBC
+  SUPPORTED_ARCHITECTURES        = IA32|IPF|X64|EBC|ARM
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
 
@@ -75,4 +75,5 @@
   IntelFrameworkPkg/Library/DxeSmmDriverEntryPoint/DxeSmmDriverEntryPoint.inf
   IntelFrameworkPkg/Library/PeiSmbusLibSmbusPpi/PeiSmbusLibSmbusPpi.inf
   IntelFrameworkPkg/Library/PeiHobLibFramework/PeiHobLibFramework.inf
+  IntelFrameworkPkg/Library/SmmLibNull/SmmLibNull.inf
 

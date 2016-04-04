@@ -1,7 +1,7 @@
 /** @file
   Head file for BDS Architectural Protocol implementation
 
-Copyright (c) 2004 - 2008, Intel Corporation. <BR>
+Copyright (c) 2004 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -15,7 +15,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #ifndef _BDS_MODULE_H_
 #define _BDS_MODULE_H_
 
-#include <PiDxe.h>
+#include <FrameworkDxe.h>
 #include <IndustryStandard/PeImage.h>
 #include <Guid/MdeModuleHii.h>
 #include <Guid/FileSystemVolumeLabelInfo.h>
@@ -31,6 +31,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/BlockIo.h>
 #include <Guid/GlobalVariable.h>
 #include <Guid/CapsuleVendor.h>
+#include <Guid/StatusCodeDataTypeId.h>
 #include <Protocol/GenericMemoryTest.h>
 #include <Protocol/FormBrowser2.h>
 #include <Protocol/HiiConfigAccess.h>
@@ -60,6 +61,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/HiiLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/PcdLib.h>
+#include <Library/UefiHiiServicesLib.h>
 
 #include <Library/GenericBdsLib.h>
 #include <Library/PlatformBdsLib.h>
@@ -135,6 +137,47 @@ VOID
 EFIAPI
 BdsEntry (
   IN  EFI_BDS_ARCH_PROTOCOL *This
+  );
+
+
+/**
+  Perform the memory test base on the memory test intensive level,
+  and update the memory resource.
+
+  @param  Level         The memory test intensive level.
+
+  @retval EFI_STATUS    Success test all the system memory and update
+                        the memory resource
+
+**/
+EFI_STATUS
+BdsMemoryTest (
+  IN EXTENDMEM_COVERAGE_LEVEL Level
+  );
+
+/**
+
+  This routine is called to see if there are any capsules we need to process.
+  If the boot mode is not UPDATE, then we do nothing. Otherwise find the
+  capsule HOBS and produce firmware volumes for them via the DXE service.
+  Then call the dispatcher to dispatch drivers from them. Finally, check
+  the status of the updates.
+
+  This function should be called by BDS in case we need to do some
+  sort of processing even if there is no capsule to process. We
+  need to do this if an earlier update went away and we need to
+  clear the capsule variable so on the next reset PEI does not see it and
+  think there is a capsule available.
+
+  @param BootMode                 the current boot mode
+
+  @retval EFI_INVALID_PARAMETER   boot mode is not correct for an update
+  @retval EFI_SUCCESS             There is no error when processing capsule
+
+**/
+EFI_STATUS
+BdsProcessCapsules (
+  EFI_BOOT_MODE BootMode
   );
 
 #endif

@@ -14,8 +14,6 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-  Module Name:  Security.h
-
   @par Revision Reference:
   This PPI is defined in PEI CIS.
   Version 0.91.
@@ -24,8 +22,6 @@
 
 #ifndef __SECURITY_PPI_H__
 #define __SECURITY_PPI_H__
-
-#include <PiPei.h>
 
 #define EFI_PEI_SECURITY_PPI_GUID \
   { \
@@ -38,40 +34,30 @@ typedef struct _EFI_PEI_SECURITY_PPI  EFI_PEI_SECURITY_PPI;
   Allows the platform builder to implement a security policy in response
   to varying file authentication states.
 
-  @param  PeiServices    Pointer to the PEI Services Table.
-  @param  This           Interface pointer that implements the particular EFI_PEI_SECURITY_PPI instance.
-  @param  AuthenticationStatus
-                         Status returned by the verification service as part of section extraction.
-  @param  FfsFileHeader  Pointer to the file under review.
-  @param  DeferExecution Pointer to a variable that alerts the PEI Foundation to defer execution of a PEIM.
+  @param  PeiServices             Pointer to the PEI Services Table.
+  @param  This                    Interface pointer that implements the particular EFI_PEI_SECURITY_PPI instance.
+  @param  AuthenticationStatus    Status returned by the verification service as part of section extraction.
+  @param  FfsFileHeader           Pointer to the file under review.
+  @param  DeferExecution          Pointer to a variable that alerts the PEI Foundation to defer execution of a PEIM.
 
-  @retval EFI_SUCCESS           The service performed its action successfully.
-  @retval EFI_SECURITY_VIOLATION The object cannot be trusted
-
+  @retval EFI_SUCCESS             The service performed its action successfully.
+  @retval EFI_SECURITY_VIOLATION  The object cannot be trusted
 **/
 typedef
 EFI_STATUS
-(EFIAPI *EFI_PEI_SECURITY_AUTHENTICATION_STATE)(
+(EFIAPI *FRAMEWORK_EFI_PEI_SECURITY_AUTHENTICATION_STATE)(
   IN EFI_PEI_SERVICES             **PeiServices,
   IN EFI_PEI_SECURITY_PPI         *This,
   IN UINT32                       AuthenticationStatus,
   IN EFI_FFS_FILE_HEADER          *FfsFileHeader,
-  IN OUT BOOLEAN                  *StartCrisisRecovery
+  IN OUT BOOLEAN                  *DeferExecution
   );
 
-/**
-  @par Ppi Description:
-  This PPI is installed by some platform PEIM that abstracts the security
-  policy to the PEI Foundation, namely the case of a PEIM's authentication
-  state being returned during the PEI section extraction process.
-
-  @param AuthenticationState
-  Allows the platform builder to implement a security policy in response
-  to varying file authentication states.
-
-**/
+//
+// PPI interface structure of Security PPI
+//
 struct _EFI_PEI_SECURITY_PPI {
-  EFI_PEI_SECURITY_AUTHENTICATION_STATE  AuthenticationState;
+  FRAMEWORK_EFI_PEI_SECURITY_AUTHENTICATION_STATE  AuthenticationState;
 };
 
 extern EFI_GUID gEfiPeiSecurityPpiGuid;

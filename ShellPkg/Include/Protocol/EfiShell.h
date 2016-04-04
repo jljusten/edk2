@@ -501,7 +501,7 @@ typedef
 EFI_STATUS
 (EFIAPI *EFI_SHELL_GET_HELP_TEXT) (
   IN CONST CHAR16 *Command,
-  IN CONST CHAR16 *Sections,
+  IN CONST CHAR16 *Sections OPTIONAL,
   OUT CHAR16 **HelpText
   );
 
@@ -902,9 +902,9 @@ EFI_STATUS
 typedef
 EFI_STATUS
 (EFIAPI *EFI_SHELL_WRITE_FILE)(
-  IN EFI_FILE_HANDLE FileHandle,
-  IN OUT UINTN *BufferSize,
-  OUT VOID *Buffer
+  IN EFI_FILE_HANDLE            FileHandle,
+  IN OUT UINTN                  *BufferSize,
+  IN VOID                       *Buffer
   );
 
 typedef struct _EFI_SHELL_PROTOCOL {

@@ -1,5 +1,9 @@
-/**@file
-  S3 Library. This library class defines a set of methods related do S3 mode
+/** @file
+  This library provides API to invoke the S3 resume vector in the APCI Table in S3 resume mode. 
+
+  This library instance is no longer used and module using this library
+  class should update to directly locate EFI_PEI_S3_RESUME_PPI defined
+  in PI 1.2 specification. 
 
 Copyright (c) 2006 - 2008 Intel Corporation
 All rights reserved. This program and the accompanying materials
@@ -11,7 +15,8 @@ THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
-#include <FrameworkPei.h>
+
+#include <PiPei.h>
 #include <Library/PeiServicesLib.h>
 #include <Library/PeiServicesTablePointerLib.h>
 #include <Library/DebugLib.h>
@@ -21,7 +26,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 /**
   This function is responsible for calling the S3 resume vector in the ACPI Tables.
   
-  @retval EFI_SUCESS   Sucess to restore config from S3.
+  @retval EFI_SUCESS   Success to restore config from S3.
   @retval Others       Fail to restore config from S3.
 **/
 EFI_STATUS

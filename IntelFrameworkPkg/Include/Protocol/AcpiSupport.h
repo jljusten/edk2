@@ -1,8 +1,8 @@
 /** @file
   This protocol provides some basic services to support publishing ACPI system tables. The
   services handle many of the more mundane tasks that are required to publish a set of tables. The
-  services will do the following:
-  	- Generate common tables.
+  services will:
+  - Generate common tables.
 	- Update the table links.
 	- Ensure that tables are properly aligned and use correct types of memory.
 	- Update checksum values and IDs.
@@ -18,15 +18,13 @@
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
   @par Revision Reference:
-  This Protocol is defined in Framework of ACPI Specification.
+  This Protocol is defined in Framework ACPI Specification.
   Version 0.9.
 
 **/
 
 #ifndef _ACPI_SUPPORT_PROTOCOL_H_
 #define _ACPI_SUPPORT_PROTOCOL_H_
-
-#include <PiDxe.h>
 
 typedef struct _EFI_ACPI_SUPPORT_PROTOCOL EFI_ACPI_SUPPORT_PROTOCOL;
 
@@ -52,10 +50,10 @@ typedef struct _EFI_ACPI_SUPPORT_PROTOCOL EFI_ACPI_SUPPORT_PROTOCOL;
 //  that is not part of the ACPI "tree" but must still be found
 //  in ACPI memory space and/or managed by the core ACPI driver.
 //
-// Note that EFI provides discrete GUIDs for each version of ACPI
-// that is supported.  It is expected that each EFI GUIDed
+// Note that EFI provides discrete GUIDs for each supported version of ACPI.
+// It is expected that each EFI GUIDed
 // version of ACPI will also have a corresponding bitmap
-// definition.  This allows maintenance of separate ACPI trees
+// definition.  This bitmap definition enables maintenance of separate ACPI trees
 // for each distinctly different version of ACPI.
 //
 #define EFI_ACPI_TABLE_VERSION      UINT32
@@ -100,7 +98,7 @@ EFI_STATUS
   @param  Checksum              If TRUE, indicates that the checksum should be
                                 calculated for this table.
   @param  Version               Indicates to which version(s) of ACPI the table should be added.
-  @param  Pointer               to the handle of the table to remove or update.
+  @param  Handle                Pointer to the handle of the table to remove or update.
 
   @retval EFI_SUCCESS           The function completed successfully.
   @retval EFI_INVALID_PARAMETER *Handle was zero and Table was NULL.
@@ -127,7 +125,7 @@ EFI_STATUS
   EFI_ACPI_SUPPORT_PROTOCOL.SetAcpiTable(). 
 
   @param  This                  A pointer to the EFI_ACPI_SUPPORT_PROTOCOL instance.
-  @param  Version               Indicates to which version(s) of ACPI that the table should be published.
+  @param  Version               Indicates to which version(s) of ACPI the table should be published.
 
   @retval EFI_SUCCESS           The function completed successfully.
   @retval EFI_ABORTED           An error occurred and the function could not complete successfully.
@@ -147,20 +145,21 @@ EFI_STATUS
   This protocol provides some basic services to support publishing ACPI system
   tables. The services handle many of the more mundane tasks that are required
   to publish a set of tables.
-
-  @param GetAcpiTable
-  Returns a table specified by an index if it exists.
-
-  @param SetAcpiTable
-  Adds, removes, or updates ACPI tables
-
-  @param PublishTables
-  Publishes the ACPI tables.
-
 **/
 struct _EFI_ACPI_SUPPORT_PROTOCOL {
+  ///
+  /// Returns a table specified by an index if it exists.
+  ///
   EFI_ACPI_GET_ACPI_TABLE GetAcpiTable;
+
+  ///
+  /// Adds, removes, or updates ACPI tables
+  ///
   EFI_ACPI_SET_ACPI_TABLE SetAcpiTable;
+
+  ///
+  /// Publishes the ACPI tables.
+  ///
   EFI_ACPI_PUBLISH_TABLES PublishTables;
 };
 

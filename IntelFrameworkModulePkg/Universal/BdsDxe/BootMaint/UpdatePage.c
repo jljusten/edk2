@@ -459,8 +459,8 @@ UpdateConsolePage (
 
   UpdatePageStart (CallbackData);
 
-  ASSERT (ConsoleMenu->MenuNumber <= (sizeof (CallbackData->BmmFakeNvData.ConsoleCheck) / sizeof (CallbackData->BmmFakeNvData.ConsoleCheck[0])));
-  for (Index = 0; Index < ConsoleMenu->MenuNumber; Index++) {
+  for (Index = 0; ((Index < ConsoleMenu->MenuNumber) && \
+       (Index < (sizeof (CallbackData->BmmFakeNvData.ConsoleCheck) / sizeof (UINT8)))) ; Index++) {
     NewMenuEntry      = BOpt_GetMenuEntry (ConsoleMenu, Index);
     NewConsoleContext = (BM_CONSOLE_CONTEXT *) NewMenuEntry->VariableContext;
     CheckFlags        = 0;
@@ -484,11 +484,13 @@ UpdateConsolePage (
       );
   }
 
-  for (Index2 = 0; Index2 < TerminalMenu.MenuNumber; Index2++) {
+  for (Index2 = 0; ((Index2 < TerminalMenu.MenuNumber) && \
+       (Index2 < (sizeof (CallbackData->BmmFakeNvData.ConsoleCheck) / sizeof (UINT8)))); Index2++) {
     CheckFlags          = 0;
     NewMenuEntry        = BOpt_GetMenuEntry (&TerminalMenu, Index2);
     NewTerminalContext  = (BM_TERMINAL_CONTEXT *) NewMenuEntry->VariableContext;
 
+    ASSERT (Index < MAX_MENU_NUMBER);
     if (((NewTerminalContext->IsConIn != 0) && (UpdatePageId == FORM_CON_IN_ID)) ||
         ((NewTerminalContext->IsConOut != 0) && (UpdatePageId == FORM_CON_OUT_ID)) ||
         ((NewTerminalContext->IsStdErr != 0) && (UpdatePageId == FORM_CON_ERR_ID))
@@ -548,7 +550,19 @@ UpdateOrderPage (
   OptionsOpCodeHandle = HiiAllocateOpCodeHandle ();
   ASSERT (OptionsOpCodeHandle != NULL);
   
-  for (Index = 0; Index < OptionMenu->MenuNumber; Index++) {
+  for (
+        Index = 0;
+        (
+          (Index < OptionMenu->MenuNumber) &&
+          (Index <
+            (
+              sizeof (CallbackData->BmmFakeNvData.OptionOrder) /
+              sizeof (UINT8)
+            )
+          )
+        );
+        Index++
+      ) {
     NewMenuEntry = BOpt_GetMenuEntry (OptionMenu, Index);
     HiiCreateOneOfOptionOpCode (
       OptionsOpCodeHandle,
@@ -740,9 +754,8 @@ UpdateConModePage (
   UINTN                         Index;
   UINTN                         Col;
   UINTN                         Row;
-  CHAR16                        RowString[50];
   CHAR16                        ModeString[50];
-  UINTN                         TempStringLen;
+  CHAR16                        *PStr;
   UINTN                         MaxMode;
   UINTN                         ValidMode;
   EFI_STRING_ID                 *ModeToken;
@@ -797,12 +810,11 @@ UpdateConModePage (
     //
     // Build mode string Column x Row
     //
-    TempStringLen = UnicodeValueToString (ModeString, 0, Col, 0);
-    ASSERT ((TempStringLen + StrLen (L" x ")) < (sizeof (ModeString) / sizeof (ModeString[0])));
-    StrCat (ModeString, L" x ");
-    TempStringLen = UnicodeValueToString (RowString, 0, Row, 0);
-    ASSERT ((StrLen (ModeString)  + TempStringLen) < (sizeof (ModeString) / sizeof (ModeString[0])));
-    StrCat (ModeString, RowString);
+    UnicodeValueToString (ModeString, 0, Col, 0);
+    PStr = &ModeString[0];
+    StrnCat (PStr, L" x ", StrLen(L" x ") + 1);
+    PStr = PStr + StrLen (PStr);
+    UnicodeValueToString (PStr , 0, Row, 0);
 
     ModeToken[Index] = HiiSetString (CallbackData->BmmHiiHandle, 0, ModeString, NULL);
 

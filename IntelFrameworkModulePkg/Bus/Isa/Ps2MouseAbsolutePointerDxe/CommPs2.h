@@ -1,7 +1,7 @@
-/**@file
-  PS2 Mouse Communication Interface 
+/** @file
+  Using PS2 Mouse to simulation Absolution Pointer Device.
   
-Copyright (c) 2006 - 2007, Intel Corporation
+Copyright (c) 2006 - 2009, Intel Corporation
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#ifndef _COMMPS2_H_
-#define _COMMPS2_H_
+#ifndef __COMMPS2_H__
+#define __COMMPS2_H__
 
 #define PS2_PACKET_LENGTH       3
 #define PS2_SYNC_MASK           0xc
@@ -75,32 +75,50 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 //
 // Keyboard Controller Status
 //
-#define KBC_PARE  0x80  // Parity Error
-#define KBC_TIM   0x40  // General Time Out
-#define KBC_AUXB  0x20  // Output buffer for auxiliary device (PS/2):
-//    0 - Holds keyboard data
-//    1 - Holds data for auxiliary device
-//
-#define KBC_KEYL  0x10  // Keyboard lock status:
-//    0 - keyboard locked
-//    1 - keyboard free
-//
-#define KBC_CD  0x08  // Command/Data:
-//    0 - data byte written via port 60h
-//    1 - command byte written via port 64h
-//
-#define KBC_SYSF  0x04  // System Flag:
-//    0 - power-on reset
-//    1 - self-test successful
-//
-#define KBC_INPB  0x02  // Input Buffer Status :
-//    0 - input buffer empty
-//    1 - CPU data in input buffer
-//
-#define KBC_OUTB  0x01  // Output Buffer Status :
-//    0 - output buffer empty
-//    1 - keyboard controller data in output buffer
-//
+///
+/// Parity Error
+///
+#define KBC_PARE  0x80  
+///
+/// General Time Out
+///
+#define KBC_TIM   0x40  
+///
+/// Output buffer for auxiliary device (PS/2):
+///    0 - Holds keyboard data
+///    1 - Holds data for auxiliary device
+///
+#define KBC_AUXB  0x20  
+///
+/// Keyboard lock status:
+///    0 - keyboard locked
+///    1 - keyboard free
+///
+#define KBC_KEYL  0x10 
+///
+/// Command/Data:
+///    0 - data byte written via port 60h
+///    1 - command byte written via port 64h
+///
+#define KBC_CD  0x08
+///
+/// System Flag:
+///    0 - power-on reset
+///    1 - self-test successful
+///
+#define KBC_SYSF  0x04  
+///
+/// Input Buffer Status :
+///    0 - input buffer empty
+///    1 - CPU data in input buffer
+///
+#define KBC_INPB  0x02  
+///
+/// Output Buffer Status :
+///    0 - output buffer empty
+///    1 - keyboard controller data in output buffer
+///
+#define KBC_OUTB  0x01  
 
 /**
   Issue self test command via IsaIo interface.
@@ -246,7 +264,7 @@ PS2MouseEnable (
 /**
   Get mouse packet . Only care first 3 bytes
 
-  @param MouseDev  Pointer of PS2 Mouse Private Data Structure 
+  @param MouseAbsolutePointerDev  Pointer to PS2 Absolute Pointer Simulation Device Private Data Structure
 
   @retval EFI_NOT_READY  Mouse Device not ready to input data packet, or some error happened during getting the packet
   @retval EFI_SUCCESS    The data packet is gotten successfully.
@@ -359,7 +377,7 @@ In8042AuxData (
   I/O work flow of outing 8042 Aux data.
   
   @param IsaIo   Pointer to instance of EFI_ISA_IO_PROTOCOL
-  @param Command Aux I/O command
+  @param Data    Buffer holding return value.
   
   @retval EFI_SUCCESS Success to excute I/O work flow
   @retval EFI_TIMEOUT Keyboard controller time out.
@@ -371,7 +389,7 @@ Out8042AuxData (
   );
 
 /**
-  Check keyboard controller status, if it is output buffer full and for auxiliary device
+  Check keyboard controller status, if it is output buffer full and for auxiliary device.
   
   @param IsaIo   Pointer to instance of EFI_ISA_IO_PROTOCOL
   
@@ -413,4 +431,5 @@ WaitOutputFull (
   IN UINTN                                Timeout
   );
 
-#endif // _COMMPS2_H_
+#endif
+

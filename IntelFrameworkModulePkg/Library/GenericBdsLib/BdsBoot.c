@@ -1,7 +1,7 @@
 /** @file
   BDS Lib functions which relate with create or process the boot option.
 
-Copyright (c) 2004 - 2008, Intel Corporation. <BR>
+Copyright (c) 2004 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -55,7 +55,7 @@ BdsLibDoLegacyBoot (
   BdsRefreshBbsTableForBoot (Option);
 
   //
-  // Write boot to OS performance data to a file
+  // Write boot to OS performance data for legacy boot.
   //
   PERF_CODE (
     WriteBootToOsPerformanceData ();
@@ -77,9 +77,8 @@ BdsLibDoLegacyBoot (
 
   @retval TRUE      This boot option matches a valid EFI NV Boot####.
   @retval FALSE     If not.
-  
-**/
 
+**/
 BOOLEAN
 IsBootOptionValidNVVarialbe (
   IN  BDS_COMMON_OPTION             *OptionToCheck
@@ -101,7 +100,7 @@ IsBootOptionValidNVVarialbe (
   }
 
   //
-  // If the Boot Option Number and Device Path matches, OptionToCheck matches a 
+  // If the Boot Option Number and Device Path matches, OptionToCheck matches a
   // valid EFI NV Boot####.
   //
   if ((OptionToCheck->BootCurrent == BootOption->BootCurrent) &&
@@ -111,7 +110,7 @@ IsBootOptionValidNVVarialbe (
   }
 
   FreePool (BootOption);
-    
+
   return Valid;
 }
 /**
@@ -151,7 +150,7 @@ BdsLibBootViaBootOption (
   //
   // Record the performance data for End of BDS
   //
-  PERF_END (0, "BDS", NULL, 0);
+  PERF_END(NULL, "BDS", NULL, 0);
 
   *ExitDataSize = 0;
   *ExitData     = NULL;
@@ -188,8 +187,8 @@ BdsLibBootViaBootOption (
   // Signal the EVT_SIGNAL_READY_TO_BOOT event
   //
   EfiSignalEventReadyToBoot();
-  
-  
+
+
   //
   // Set Boot Current
   //
@@ -221,7 +220,7 @@ BdsLibBootViaBootOption (
   //
   // If the boot option point to Internal FV shell, make sure it is valid
   //
-  Status = BdsLibUpdateFvFileDevicePath (&DevicePath, &gEfiShellFileGuid);
+  Status = BdsLibUpdateFvFileDevicePath (&DevicePath, PcdGetPtr(PcdShellFile));
   if (!EFI_ERROR(Status)) {
     if (Option->DevicePath != NULL) {
       FreePool(Option->DevicePath);
@@ -234,11 +233,11 @@ BdsLibBootViaBootOption (
     //
     InitializeListHead (&TempBootLists);
     BdsLibRegisterNewOption (&TempBootLists, DevicePath, L"EFI Internal Shell", L"BootOrder");
-    
+
     //
     // free the temporary device path created by BdsLibUpdateFvFileDevicePath()
     //
-    FreePool (DevicePath); 
+    FreePool (DevicePath);
     DevicePath = Option->DevicePath;
   }
 
@@ -254,8 +253,69 @@ BdsLibBootViaBootOption (
     Status = SecurityProtocol->FileAuthenticationState (SecurityProtocol, 0, DevicePath);
   }
 
-  DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Booting %S\n", Option->Description));
+  DEBUG_CODE_BEGIN();
+    UINTN                     DevicePathTypeValue;
+    CHAR16                    *HiiString;
+    CHAR16                    *BootStringNumber;
+    UINTN                     BufferSize;
+  
+    DevicePathTypeValue = BdsGetBootTypeFromDevicePath (Option->DevicePath);
+  
+    //
+    // store number string of boot option temporary.
+    //
+    HiiString = NULL;
+    switch (DevicePathTypeValue) {
+    case BDS_EFI_ACPI_FLOPPY_BOOT:
+      HiiString = L"EFI Floppy";
+      break;
+    case BDS_EFI_MEDIA_CDROM_BOOT:
+    case BDS_EFI_MESSAGE_SATA_BOOT:
+    case BDS_EFI_MESSAGE_ATAPI_BOOT:
+      HiiString = L"EFI DVD/CDROM";
+      break;
+    case BDS_EFI_MESSAGE_USB_DEVICE_BOOT:
+      HiiString = L"EFI USB Device";
+      break;
+    case BDS_EFI_MESSAGE_SCSI_BOOT:
+      HiiString = L"EFI SCSI Device";
+      break;
+    case BDS_EFI_MESSAGE_MISC_BOOT:
+      HiiString = L"EFI Misc Device";
+      break;
+    case BDS_EFI_MESSAGE_MAC_BOOT:
+      HiiString = L"EFI Network";
+      break;
+    case BBS_DEVICE_PATH:
+      //
+      // Do nothing for legacy boot option.
+      //
+      break;
+    default:
+      DEBUG((EFI_D_INFO, "Can not find HiiString for given device path type 0x%x\n", DevicePathTypeValue));
+    }
 
+    //
+    // If found Hii description string then cat Hii string with original description.
+    //
+    if (HiiString != NULL) {
+      BootStringNumber = Option->Description;
+      BufferSize = StrSize(BootStringNumber);
+      BufferSize += StrSize(HiiString);
+      Option->Description = AllocateZeroPool(BufferSize);
+      StrCpy (Option->Description, HiiString);
+      if (StrnCmp (BootStringNumber, L"0", 1) != 0) {
+        StrCat (Option->Description, L" ");
+        StrCat (Option->Description, BootStringNumber);
+      } 
+      
+      FreePool (BootStringNumber);
+    }
+  
+    DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Booting %S\n", Option->Description));
+    
+  DEBUG_CODE_END();
+  
   Status = gBS->LoadImage (
                   TRUE,
                   mBdsImageHandle,
@@ -323,6 +383,13 @@ BdsLibBootViaBootOption (
   // the 5 Minute period
   //
   gBS->SetWatchdogTimer (5 * 60, 0x0000, 0x00, NULL);
+
+  //
+  // Write boot to OS performance data for UEFI boot
+  //
+  PERF_CODE (
+    WriteBootToOsPerformanceData ();
+  );
 
   Status = gBS->StartImage (ImageHandle, ExitDataSize, ExitData);
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Image Return Status = %r\n", Status));
@@ -395,7 +462,7 @@ BdsExpandPartitionPartialDevicePathToFull (
                       &mHdBootVariablePrivateGuid,
                       &CachedDevicePathSize
                       );
-                      
+
   if (CachedDevicePath != NULL) {
     TempNewDevicePath = CachedDevicePath;
     DeviceExist = FALSE;
@@ -443,7 +510,7 @@ BdsExpandPartitionPartialDevicePathToFull (
         TempNewDevicePath = CachedDevicePath;
         CachedDevicePath  = BdsLibDelPartMatchInstance (CachedDevicePath, Instance );
         FreePool (TempNewDevicePath);
-        
+
         //
         // Second, append the remaining path after the matched instance
         //
@@ -461,7 +528,7 @@ BdsExpandPartitionPartialDevicePathToFull (
                         CachedDevicePath
                         );
       }
-      
+
       FreePool (Instance);
       FreePool (CachedDevicePath);
       return FullDevicePath;
@@ -560,7 +627,7 @@ BdsExpandPartitionPartialDevicePathToFull (
       break;
     }
   }
-  
+
   FreePool (CachedDevicePath);
   if (BlockIoBuffer != NULL) {
     FreePool (BlockIoBuffer);
@@ -595,7 +662,7 @@ MatchPartitionDevicePathNode (
   if ((BlockIoDevicePath == NULL) || (HardDriveDevicePath == NULL)) {
     return FALSE;
   }
-  
+
   //
   // Make PreviousDevicePath == the device path node before the end node
   //
@@ -624,7 +691,7 @@ MatchPartitionDevicePathNode (
   //
   TmpHdPath = (HARDDRIVE_DEVICE_PATH *) BlockIoHdDevicePathNode;
   Match = FALSE;
-  
+
   //
   // Check for the match
   //
@@ -712,7 +779,7 @@ BdsLibDeleteOptionFromHandle (
                       &gEfiGlobalVariableGuid,
                       &BootOptionSize
                       );
-                      
+
     if (BootOptionVar == NULL) {
       FreePool (BootOrder);
       return EFI_OUT_OF_RESOURCES;
@@ -756,8 +823,7 @@ BdsLibDeleteOptionFromHandle (
 
 
 /**
-  Delete all invalid EFI boot options. The probable invalid boot option could
-  be Removable media or Network boot device.
+  Delete all invalid EFI boot options.
 
   @retval EFI_SUCCESS            Delete all invalid boot option success
   @retval EFI_NOT_FOUND          Variable "BootOrder" is not found
@@ -780,6 +846,7 @@ BdsDeleteAllInvalidEfiBootOption (
   UINT16                    BootOption[BOOT_OPTION_MAX_CHAR];
   EFI_DEVICE_PATH_PROTOCOL  *OptionDevicePath;
   UINT8                     *TempPtr;
+  CHAR16                    *Description;
 
   Status        = EFI_SUCCESS;
   BootOrder     = NULL;
@@ -812,6 +879,7 @@ BdsDeleteAllInvalidEfiBootOption (
 
     TempPtr = BootOptionVar;
     TempPtr += sizeof (UINT32) + sizeof (UINT16);
+    Description = (CHAR16 *) TempPtr;
     TempPtr += StrSize ((CHAR16 *) TempPtr);
     OptionDevicePath = (EFI_DEVICE_PATH_PROTOCOL *) TempPtr;
 
@@ -825,7 +893,7 @@ BdsDeleteAllInvalidEfiBootOption (
       continue;
     }
 
-    if (!BdsLibIsValidEFIBootOptDevicePath (OptionDevicePath, FALSE)) {
+    if (!BdsLibIsValidEFIBootOptDevicePathExt (OptionDevicePath, FALSE, Description)) {
       //
       // Delete this invalid boot option "Boot####"
       //
@@ -871,8 +939,40 @@ BdsDeleteAllInvalidEfiBootOption (
 
 
 /**
-  This function will enumerate all possible boot device in the system,
-  it will only execute once of every boot.
+  For EFI boot option, BDS separate them as six types:
+  1. Network - The boot option points to the SimpleNetworkProtocol device.
+               Bds will try to automatically create this type boot option when enumerate.
+  2. Shell   - The boot option points to internal flash shell.
+               Bds will try to automatically create this type boot option when enumerate.
+  3. Removable BlockIo      - The boot option only points to the removable media
+                              device, like USB flash disk, DVD, Floppy etc.
+                              These device should contain a *removable* blockIo
+                              protocol in their device handle.
+                              Bds will try to automatically create this type boot option
+                              when enumerate.
+  4. Fixed BlockIo          - The boot option only points to a Fixed blockIo device,
+                              like HardDisk.
+                              These device should contain a *fixed* blockIo
+                              protocol in their device handle.
+                              BDS will skip fixed blockIo devices, and NOT
+                              automatically create boot option for them. But BDS
+                              will help to delete those fixed blockIo boot option,
+                              whose description rule conflict with other auto-created
+                              boot options.
+  5. Non-BlockIo Simplefile - The boot option points to a device whose handle
+                              has SimpleFileSystem Protocol, but has no blockio
+                              protocol. These devices do not offer blockIo
+                              protocol, but BDS still can get the
+                              \EFI\BOOT\boot{machinename}.EFI by SimpleFileSystem
+                              Protocol.
+  6. File    - The boot option points to a file. These boot options are usually
+               created by user manually or OS loader. BDS will not delete or modify
+               these boot options.
+
+  This function will enumerate all possible boot device in the system, and
+  automatically create boot options for Network, Shell, Removable BlockIo,
+  and Non-BlockIo Simplefile devices.
+  It will only execute once of every boot.
 
   @param  BdsBootOptionList      The header of the link list which indexed all
                                  current boot options
@@ -880,6 +980,7 @@ BdsDeleteAllInvalidEfiBootOption (
   @retval EFI_SUCCESS            Finished all the boot device enumerate and create
                                  the boot option base on that boot device
 
+  @retval EFI_OUT_OF_RESOURCES   Failed to enumerate the boot device and create the boot option list
 **/
 EFI_STATUS
 EFIAPI
@@ -892,6 +993,7 @@ BdsLibEnumerateAllBootOption (
   UINT16                        CdromNumber;
   UINT16                        UsbNumber;
   UINT16                        MiscNumber;
+  UINT16                        ScsiNumber;
   UINT16                        NonBlockNumber;
   UINTN                         NumberBlockIoHandles;
   EFI_HANDLE                    *BlockIoHandles;
@@ -905,8 +1007,8 @@ BdsLibEnumerateAllBootOption (
   UINTN                         Size;
   EFI_FV_FILE_ATTRIBUTES        Attributes;
   UINT32                        AuthenticationStatus;
-  EFI_FIRMWARE_VOLUME2_PROTOCOL  *Fv;
-  EFI_DEVICE_PATH_PROTOCOL     *DevicePath;
+  EFI_FIRMWARE_VOLUME2_PROTOCOL *Fv;
+  EFI_DEVICE_PATH_PROTOCOL      *DevicePath;
   UINTN                         DevicePathType;
   CHAR16                        Buffer[40];
   EFI_HANDLE                    *FileSystemHandles;
@@ -920,17 +1022,18 @@ BdsLibEnumerateAllBootOption (
   CdromNumber   = 0;
   UsbNumber     = 0;
   MiscNumber    = 0;
+  ScsiNumber    = 0;
   ZeroMem (Buffer, sizeof (Buffer));
-  
+
   //
   // If the boot device enumerate happened, just get the boot
   // device from the boot order variable
   //
   if (mEnumBootDevice) {
-    BdsLibBuildOptionFromVar (BdsBootOptionList, L"BootOrder");
-    return EFI_SUCCESS;
+    Status = BdsLibBuildOptionFromVar (BdsBootOptionList, L"BootOrder");
+    return Status;
   }
-  
+
   //
   // Notes: this dirty code is to get the legacy boot option from the
   // BBS table and create to variable as the EFI boot option, it should
@@ -942,7 +1045,7 @@ BdsLibEnumerateAllBootOption (
   // Delete invalid boot option
   //
   BdsDeleteAllInvalidEfiBootOption ();
-  
+
   //
   // Parse removable media
   //
@@ -953,7 +1056,7 @@ BdsLibEnumerateAllBootOption (
         &NumberBlockIoHandles,
         &BlockIoHandles
         );
-        
+
   for (Index = 0; Index < NumberBlockIoHandles; Index++) {
     Status = gBS->HandleProtocol (
                     BlockIoHandles[Index],
@@ -973,51 +1076,35 @@ BdsLibEnumerateAllBootOption (
 
     switch (DevicePathType) {
     case BDS_EFI_ACPI_FLOPPY_BOOT:
-      if (FloppyNumber == 0) {
-        UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI Floppy");
-      } else {
-        UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI Floppy %d", FloppyNumber);
-      }
+      UnicodeSPrint (Buffer, sizeof (Buffer), L"%d", FloppyNumber);
       BdsLibBuildOptionFromHandle (BlockIoHandles[Index], BdsBootOptionList, Buffer);
       FloppyNumber++;
       break;
 
+    //
+    // Assume a removable SATA device should be the DVD/CD device
+    //
     case BDS_EFI_MESSAGE_ATAPI_BOOT:
-      if (CdromNumber == 0) {
-        UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI DVD/CDROM");
-      } else {
-        UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI DVD/CDROM %d", CdromNumber);
-      }
+    case BDS_EFI_MESSAGE_SATA_BOOT:
+      UnicodeSPrint (Buffer, sizeof (Buffer), L"%d", CdromNumber);
       BdsLibBuildOptionFromHandle (BlockIoHandles[Index], BdsBootOptionList, Buffer);
       CdromNumber++;
       break;
 
     case BDS_EFI_MESSAGE_USB_DEVICE_BOOT:
-      if (UsbNumber == 0) {
-        UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI USB Device");
-      } else {
-        UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI USB Device %d", UsbNumber);
-      }
+      UnicodeSPrint (Buffer, sizeof (Buffer), L"%d", UsbNumber);
       BdsLibBuildOptionFromHandle (BlockIoHandles[Index], BdsBootOptionList, Buffer);
       UsbNumber++;
       break;
 
     case BDS_EFI_MESSAGE_SCSI_BOOT:
-      if (UsbNumber == 0) {
-        UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI SCSI Device");
-      } else {
-        UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI SCSI Device %d", UsbNumber);
-      }
+      UnicodeSPrint (Buffer, sizeof (Buffer), L"%d", ScsiNumber);
       BdsLibBuildOptionFromHandle (BlockIoHandles[Index], BdsBootOptionList, Buffer);
-      UsbNumber++;
+      ScsiNumber++;
       break;
 
     case BDS_EFI_MESSAGE_MISC_BOOT:
-      if (MiscNumber == 0) {
-        UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI Misc Device");
-      } else {
-        UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI Misc Device %d", MiscNumber);
-      }
+      UnicodeSPrint (Buffer, sizeof (Buffer), L"%d", MiscNumber);
       BdsLibBuildOptionFromHandle (BlockIoHandles[Index], BdsBootOptionList, Buffer);
       MiscNumber++;
       break;
@@ -1079,11 +1166,7 @@ BdsLibEnumerateAllBootOption (
       //
       BdsLibDeleteOptionFromHandle (FileSystemHandles[Index]);
     } else {
-      if (NonBlockNumber == 0) {
-        UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI Non-Block Boot Device");
-      } else {
-        UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI Non-Block Boot Device %d", NonBlockNumber);
-      }
+      UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI Non-Block Boot Device %d", NonBlockNumber);
       BdsLibBuildOptionFromHandle (FileSystemHandles[Index], BdsBootOptionList, Buffer);
       NonBlockNumber++;
     }
@@ -1103,12 +1186,9 @@ BdsLibEnumerateAllBootOption (
         &NumberSimpleNetworkHandles,
         &SimpleNetworkHandles
         );
+
   for (Index = 0; Index < NumberSimpleNetworkHandles; Index++) {
-    if (Index == 0) {
-      UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI Network");
-    } else {
-      UnicodeSPrint (Buffer, sizeof (Buffer), L"EFI Network %d", Index);
-    }
+    UnicodeSPrint (Buffer, sizeof (Buffer), L"%d", Index);
     BdsLibBuildOptionFromHandle (SimpleNetworkHandles[Index], BdsBootOptionList, Buffer);
   }
 
@@ -1135,7 +1215,7 @@ BdsLibEnumerateAllBootOption (
 
     Status = Fv->ReadFile (
                   Fv,
-                  &gEfiShellFileGuid,
+                  PcdGetPtr(PcdShellFile),
                   NULL,
                   &Size,
                   &Type,
@@ -1161,10 +1241,10 @@ BdsLibEnumerateAllBootOption (
   // Make sure every boot only have one time
   // boot device enumerate
   //
-  BdsLibBuildOptionFromVar (BdsBootOptionList, L"BootOrder");
+  Status = BdsLibBuildOptionFromVar (BdsBootOptionList, L"BootOrder");
   mEnumBootDevice = TRUE;
 
-  return EFI_SUCCESS;
+  return Status;
 }
 
 /**
@@ -1187,7 +1267,7 @@ BdsLibBuildOptionFromHandle (
 {
   EFI_DEVICE_PATH_PROTOCOL  *DevicePath;
 
-  DevicePath  = DevicePathFromHandle (Handle);
+  DevicePath = DevicePathFromHandle (Handle);
 
   //
   // Create and register new boot option
@@ -1220,7 +1300,7 @@ BdsLibBuildOptionFromShell (
   //
   // Build the shell device path
   //
-  EfiInitializeFwVolDevicepathNode (&ShellNode, &gEfiShellFileGuid);
+  EfiInitializeFwVolDevicepathNode (&ShellNode, PcdGetPtr(PcdShellFile));
 
   DevicePath = AppendDevicePathNode (DevicePath, (EFI_DEVICE_PATH_PROTOCOL *) &ShellNode);
 
@@ -1291,9 +1371,9 @@ BdsLibBootNext (
   Second, check whether the device path point to a device which support SimpleFileSystemProtocol,
   Third, detect the the default boot file in the Media, and return the removable Media handle.
 
-  @param  DevicePath             Device Path to a  bootable device
+  @param  DevicePath  Device Path to a  bootable device
 
-  @retval NULL                   The media on the DevicePath is not bootable
+  @return  The bootable media handle. If the media on the DevicePath is not bootable, NULL will return.
 
 **/
 EFI_HANDLE
@@ -1321,7 +1401,7 @@ BdsLibGetBootableHandle (
   EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION   Hdr;
 
   UpdatedDevicePath = DevicePath;
-  
+
   //
   // Check whether the device is connected
   //
@@ -1374,7 +1454,7 @@ BdsLibGetBootableHandle (
   //
   DupDevicePath = DuplicateDevicePath (DevicePath);
   ASSERT (DupDevicePath != NULL);
-  
+
   UpdatedDevicePath = DupDevicePath;
   Status = gBS->LocateDevicePath (&gEfiDevicePathProtocolGuid, &UpdatedDevicePath, &Handle);
   //
@@ -1519,23 +1599,22 @@ BdsLibNetworkBootWithMediaPresent (
 
   @param  DevicePath                      The bootable device Path to check
 
-  @retval BDS_EFI_MEDIA_HD_BOOT           If the device path contains any media device path node, it is media boot type
-                                          For the floppy node, handle it as media node
-  @retval BDS_EFI_MEDIA_CDROM_BOOT        If the device path contains any media device path node, it is media boot type
-                                          For the floppy node, handle it as media node
-  @retval BDS_EFI_ACPI_FLOPPY_BOOT        If the device path contains any media device path node, it is media boot type
-                                          For the floppy node, handle it as media node
-  @retval BDS_EFI_MESSAGE_ATAPI_BOOT      If the device path not contains any media device path node,  and
-                                          its last device path node point to a message device path node, it is
-  
-  @retval BDS_EFI_MESSAGE_SCSI_BOOT       If the device path not contains any media device path node,  and
-                                          its last device path node point to a message device path node, it is
-  @retval BDS_EFI_MESSAGE_USB_DEVICE_BOOT If the device path not contains any media device path node,  and
-                                          its last device path node point to a message device path node, it is
+  @retval BDS_EFI_MEDIA_HD_BOOT           If given device path contains MEDIA_DEVICE_PATH type device path node
+                                          which subtype is MEDIA_HARDDRIVE_DP
+  @retval BDS_EFI_MEDIA_CDROM_BOOT        If given device path contains MEDIA_DEVICE_PATH type device path node
+                                          which subtype is MEDIA_CDROM_DP
+  @retval BDS_EFI_ACPI_FLOPPY_BOOT        If given device path contains ACPI_DEVICE_PATH type device path node
+                                          which HID is floppy device.
+  @retval BDS_EFI_MESSAGE_ATAPI_BOOT      If given device path contains MESSAGING_DEVICE_PATH type device path node
+                                          and its last device path node's subtype is MSG_ATAPI_DP.
+  @retval BDS_EFI_MESSAGE_SCSI_BOOT       If given device path contains MESSAGING_DEVICE_PATH type device path node
+                                          and its last device path node's subtype is MSG_SCSI_DP.
+  @retval BDS_EFI_MESSAGE_USB_DEVICE_BOOT If given device path contains MESSAGING_DEVICE_PATH type device path node
+                                          and its last device path node's subtype is MSG_USB_DP.
   @retval BDS_EFI_MESSAGE_MISC_BOOT       If the device path not contains any media device path node,  and
-                                          its last device path node point to a message device path node, it is
-  @retval BDS_LEGACY_BBS_BOOT             Legacy boot type
-  @retval BDS_EFI_UNSUPPORT               An EFI Removable BlockIO device path not point to a media and message device,   
+                                          its last device path node point to a message device path node.
+  @retval BDS_LEGACY_BBS_BOOT             If given device path contains BBS_DEVICE_PATH type device path node.
+  @retval BDS_EFI_UNSUPPORT               An EFI Removable BlockIO device path not point to a media and message device,
 
 **/
 UINT32
@@ -1588,7 +1667,7 @@ BdsGetBootTypeFromDevicePath (
         // if the device path not only point to driver device, it is not a messaging device path,
         //
         if (!IsDevicePathEndType (LastDeviceNode)) {
-          break;        
+          break;
         }
 
         if (DevicePathSubType(TempDevicePath) == MSG_ATAPI_DP) {
@@ -1597,6 +1676,10 @@ BdsGetBootTypeFromDevicePath (
           return BDS_EFI_MESSAGE_USB_DEVICE_BOOT;
         } else if (DevicePathSubType(TempDevicePath) == MSG_SCSI_DP) {
           return BDS_EFI_MESSAGE_SCSI_BOOT;
+        } else if (DevicePathSubType(TempDevicePath) == MSG_SATA_DP) {
+          return BDS_EFI_MESSAGE_SATA_BOOT;
+        } else if (DevicePathSubType(TempDevicePath) == MSG_MAC_ADDR_DP) {
+          return BDS_EFI_MESSAGE_MAC_BOOT;
         }
         return BDS_EFI_MESSAGE_MISC_BOOT;
       default:
@@ -1626,6 +1709,32 @@ BdsLibIsValidEFIBootOptDevicePath (
   IN BOOLEAN                      CheckMedia
   )
 {
+  return BdsLibIsValidEFIBootOptDevicePathExt (DevPath, CheckMedia, NULL);
+}
+
+/**
+  Check whether the Device path in a boot option point to a valid bootable device,
+  And if CheckMedia is true, check the device is ready to boot now.
+  If Description is not NULL and the device path point to a fixed BlockIo
+  device, check the description whether conflict with other auto-created
+  boot options.
+
+  @param  DevPath     the Device path in a boot option
+  @param  CheckMedia  if true, check the device is ready to boot now.
+  @param  Description the description in a boot option
+
+  @retval TRUE        the Device path  is valid
+  @retval FALSE       the Device path  is invalid .
+
+**/
+BOOLEAN
+EFIAPI
+BdsLibIsValidEFIBootOptDevicePathExt (
+  IN EFI_DEVICE_PATH_PROTOCOL     *DevPath,
+  IN BOOLEAN                      CheckMedia,
+  IN CHAR16                       *Description
+  )
+{
   EFI_STATUS                Status;
   EFI_HANDLE                Handle;
   EFI_DEVICE_PATH_PROTOCOL  *TempDevicePath;
@@ -1634,7 +1743,7 @@ BdsLibIsValidEFIBootOptDevicePath (
 
   TempDevicePath = DevPath;
   LastDeviceNode = DevPath;
-  
+
   //
   // Check if it's a valid boot option for network boot device
   // Only check if there is SimpleNetworkProtocol installed. If yes, that means
@@ -1657,7 +1766,7 @@ BdsLibIsValidEFIBootOptDevicePath (
                     &Handle
                     );
   }
-  
+
   if (!EFI_ERROR (Status)) {
     if (CheckMedia) {
       //
@@ -1691,20 +1800,22 @@ BdsLibIsValidEFIBootOptDevicePath (
     //
     // If the boot option point to Internal FV shell, make sure it is valid
     //
-    TempDevicePath = DevPath; 
-    Status = BdsLibUpdateFvFileDevicePath (&TempDevicePath, &gEfiShellFileGuid);
+    TempDevicePath = DevPath;
+    Status = BdsLibUpdateFvFileDevicePath (&TempDevicePath, PcdGetPtr(PcdShellFile));
     if (Status == EFI_ALREADY_STARTED) {
       return TRUE;
     } else {
       if (Status == EFI_SUCCESS) {
-        FreePool (TempDevicePath); 
+        FreePool (TempDevicePath);
       }
       return FALSE;
     }
   }
-  
+
   //
-  // If the boot option point to a blockIO device, no matter whether or not it is a removeable device, it is a valid EFI boot option
+  // If the boot option point to a blockIO device:
+  //    if it is a removable blockIo device, it is valid.
+  //    if it is a fixed blockIo device, check its description confliction.
   //
   TempDevicePath = DevPath;
   Status = gBS->LocateDevicePath (&gEfiBlockIoProtocolGuid, &TempDevicePath, &Handle);
@@ -1721,7 +1832,7 @@ BdsLibIsValidEFIBootOptDevicePath (
       Status = gBS->LocateDevicePath (&gEfiBlockIoProtocolGuid, &TempDevicePath, &Handle);
     }
   }
-  
+
   if (!EFI_ERROR (Status)) {
     Status = gBS->HandleProtocol (Handle, &gEfiBlockIoProtocolGuid, (VOID **)&BlockIo);
     if (!EFI_ERROR (Status)) {
@@ -1810,7 +1921,7 @@ BdsLibUpdateFvFileDevicePath (
   if (FileGuid == NULL) {
     return EFI_INVALID_PARAMETER;
   }
-  
+
   //
   // Check whether the device path point to the default the input Fv file
   //
@@ -1944,7 +2055,7 @@ BdsLibUpdateFvFileDevicePath (
     }
 
     if (FvHandleBuffer != NULL) {
-      FreePool (FvHandleBuffer);  
+      FreePool (FvHandleBuffer);
     }
   }
 

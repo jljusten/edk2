@@ -47,7 +47,7 @@ ShellGetFileInfo (
 
   @param  FileInfo              The infotmation to set.
 
-  @retval EFI_SUCCESS		        The information was set.
+  @retval EFI_SUCCESS	          The information was set.
   @retval EFI_UNSUPPORTED       The InformationType is not known.
   @retval EFI_NO_MEDIA		      The device has no medium.
   @retval EFI_DEVICE_ERROR	    The device reported an error.
@@ -115,27 +115,27 @@ ShellOpenFileByDevicePath(
   @param  OpenMode		  the mode to open the file with.
   @param  Attributes		the file's file attributes.
 
-  @retval EFI_SUCCESS		The information was set.
+  @retval EFI_SUCCESS		        The information was set.
   @retval EFI_INVALID_PARAMETER	One of the parameters has an invalid value.
-  @retval EFI_UNSUPPORTED	Could not open the file path.	
+  @retval EFI_UNSUPPORTED	      Could not open the file path.	
   @retval EFI_NOT_FOUND	        The specified file could not be found on the 
                                 device or the file system could not be found 
                                 on the device.
-  @retval EFI_NO_MEDIA		The device has no medium.
-  @retval EFI_MEDIA_CHANGED	The device has a different medium in it or the 
+  @retval EFI_NO_MEDIA		      The device has no medium.
+  @retval EFI_MEDIA_CHANGED	    The device has a different medium in it or the 
                                 medium is no longer supported.
-  @retval EFI_DEVICE_ERROR	The device reported an error.
+  @retval EFI_DEVICE_ERROR	    The device reported an error.
   @retval EFI_VOLUME_CORRUPTED	The file system structures are corrupted.
-  @retval EFI_WRITE_PROTECTED	The file or medium is write protected.
-  @retval EFI_ACCESS_DENIED	The file was opened read only.
+  @retval EFI_WRITE_PROTECTED	  The file or medium is write protected.
+  @retval EFI_ACCESS_DENIED	    The file was opened read only.
   @retval EFI_OUT_OF_RESOURCES	Not enough resources were available to open the 
                                 file.
-  @retval EFI_VOLUME_FULL	The volume is full.
+  @retval EFI_VOLUME_FULL	      The volume is full.
 **/
 EFI_STATUS
 EFIAPI
 ShellOpenFileByName(
-  IN CHAR16		                  *FilePath,
+  IN CONST CHAR16		            *FilePath,
   OUT EFI_FILE_HANDLE           *FileHandle,
   IN UINT64                     OpenMode,
   IN UINT64                    	Attributes
@@ -157,21 +157,21 @@ ShellOpenFileByName(
   @retval EFI_NOT_FOUND	        The specified file could not be found on the 
                                 device or the file system could not be found 
                                 on the device.
-  @retval EFI_NO_MEDIA		The device has no medium.
-  @retval EFI_MEDIA_CHANGED	The device has a different medium in it or the 
+  @retval EFI_NO_MEDIA		      The device has no medium.
+  @retval EFI_MEDIA_CHANGED	    The device has a different medium in it or the 
                                 medium is no longer supported.
-  @retval EFI_DEVICE_ERROR	The device reported an error.
+  @retval EFI_DEVICE_ERROR	    The device reported an error.
   @retval EFI_VOLUME_CORRUPTED	The file system structures are corrupted.
-  @retval EFI_WRITE_PROTECTED	The file or medium is write protected.
-  @retval EFI_ACCESS_DENIED	The file was opened read only.
+  @retval EFI_WRITE_PROTECTED	  The file or medium is write protected.
+  @retval EFI_ACCESS_DENIED	    The file was opened read only.
   @retval EFI_OUT_OF_RESOURCES	Not enough resources were available to open the 
                                 file.
-  @retval EFI_VOLUME_FULL	The volume is full.
+  @retval EFI_VOLUME_FULL	      The volume is full.
 **/
 EFI_STATUS
 EFIAPI
 ShellCreateDirectory(
-  IN CHAR16                   *DirectoryName,
+  IN CONST CHAR16             *DirectoryName,
   OUT EFI_FILE_HANDLE         *FileHandle
   );
 
@@ -198,11 +198,11 @@ ShellCreateDirectory(
 
   @param Buffer                 the buffer to put read data into.
 
- @retval EFI_SUCCESS	        Data was read.
- @retval EFI_NO_MEDIA	        The device has no media.
- @retval EFI_DEVICE_ERROR	The device reported an error.
- @retval EFI_VOLUME_CORRUPTED	The file system structures are corrupted.
- @retval EFI_BUFFER_TO_SMALL	Buffer is too small. ReadSize contains required 
+ @retval EFI_SUCCESS	          Data was read.
+ @retval EFI_NO_MEDIA	          The device has no media.
+ @retval EFI_DEVICE_ERROR	      The device reported an error.
+ @retval EFI_VOLUME_CORRUPTED	  The file system structures are corrupted.
+ @retval EFI_BUFFER_TO_SMALL	  Buffer is too small. ReadSize contains required 
                                 size.
 
 **/
@@ -232,20 +232,20 @@ ShellReadFile(
   @param Buffer                 the buffer containing data to write is stored.
 
  @retval EFI_SUCCESS	        Data was written.
- @retval EFI_UNSUPPORTED	Writes to an open directory are not supported.
+ @retval EFI_UNSUPPORTED	    Writes to an open directory are not supported.
  @retval EFI_NO_MEDIA	        The device has no media.
- @retval EFI_DEVICE_ERROR	The device reported an error.
+ @retval EFI_DEVICE_ERROR	    The device reported an error.
  @retval EFI_VOLUME_CORRUPTED	The file system structures are corrupted.
  @retval EFI_WRITE_PROTECTED	The device is write-protected.
- @retval EFI_ACCESS_DENIED	The file was open for read only.
- @retval EFI_VOLUME_FULL	The volume is full.
+ @retval EFI_ACCESS_DENIED	  The file was open for read only.
+ @retval EFI_VOLUME_FULL	    The volume is full.
 **/
 EFI_STATUS
 EFIAPI
 ShellWriteFile(
   IN EFI_FILE_HANDLE            FileHandle,
   IN OUT UINTN                  *BufferSize,
-  IN CONST VOID                 *Buffer
+  IN VOID                       *Buffer
   );
 
 /** 
@@ -455,7 +455,7 @@ ShellGetExecutionBreakFlag(
 CONST CHAR16*
 EFIAPI
 ShellGetEnvironmentVariable (
-  IN CHAR16                     *EnvKey
+  IN CONST CHAR16                *EnvKey
   );
 
 /**
@@ -566,7 +566,8 @@ ShellSetPageBreakMode (
   and will process '?' and '*' as such.  the list must be freed with a call to 
   ShellCloseFileMetaArg().
 
-  This function will fail if called sequentially without freeing the list in the middle.
+  If you are NOT appending to an existing list *ListHead must be NULL.  If 
+  *ListHead is NULL then it must be callee freed.
 
   @param Arg                    pointer to path string
   @param OpenMode               mode to open files with
@@ -606,6 +607,7 @@ typedef enum {
   TypeFlag  = 0,
   TypeValue,
   TypePosition,
+  TypeStart,
   TypeMax,
 } ParamType;
 
@@ -747,6 +749,44 @@ ShellCommandLineGetRawValue (
 EFI_STATUS
 EFIAPI
 ShellInitialize (
+  );
+
+/**
+  Print at a specific location on the screen.
+
+  This function will move the cursor to a given screen location, print the specified string, 
+  and return the cursor to the original locaiton.  
+  
+  If -1 is specified for either the Row or Col the current screen location for BOTH 
+  will be used and the cursor's position will not be moved back to an original location.
+
+  if either Row or Col is out of range for the current console, then ASSERT
+  if Format is NULL, then ASSERT
+
+  In addition to the standard %-based flags as supported by UefiLib Print() this supports 
+  the following additional flags:
+    %N       -   Set output attribute to normal
+    %H       -   Set output attribute to highlight
+    %E       -   Set output attribute to error
+    %B       -   Set output attribute to blue color
+    %V       -   Set output attribute to green color
+
+  Note: The background color is controlled by the shell command cls.
+
+  @param[in] Row        the row to print at
+  @param[in] Col        the column to print at
+  @param[in] Format     the format string
+
+  @return the number of characters printed to the screen
+**/
+
+UINTN
+EFIAPI
+ShellPrintEx(
+  IN INT32                Col OPTIONAL,
+  IN INT32                Row OPTIONAL,
+  IN CONST CHAR16         *Format,
+  ...
   );
 
 #endif // __SHELL_LIB__

@@ -147,7 +147,8 @@ EFI_STATUS
   EFI_HII_PACKAGE_TYPE_GUID, the Guid field, as defined in
   EFI_HII_PACKAGE_GUID_HEADER. Iterate through the packages within
   the existing package list in the HII database specified by
-  Handle. If a package's type matches one of the collected types, then perform the following steps:
+  Handle. If a package's type matches one of the collected types collected
+  in step 1, then perform the following steps:
   - Call any functions registered with the notification type
   REMOVE_PACK.
   - Remove the package from the package list and the HII
@@ -432,7 +433,7 @@ EFI_STATUS
 (EFIAPI *EFI_HII_GET_KEYBOARD_LAYOUT)(
   IN CONST  EFI_HII_DATABASE_PROTOCOL *This,
   IN CONST  EFI_GUID                  *KeyGuid,
-  IN OUT UINT16                        *KeyboardLayoutLength,
+  IN OUT UINT16                       *KeyboardLayoutLength,
   OUT       EFI_HII_KEYBOARD_LAYOUT   *KeyboardLayout
 );
 

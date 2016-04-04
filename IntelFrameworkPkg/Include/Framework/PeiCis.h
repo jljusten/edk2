@@ -1,7 +1,8 @@
 /** @file
-  PI PEI master include file. This file should match the PI spec.
+  Include file for definitions in the Intel Platform Innovation Framework for EFI
+  Pre-EFI Initialization Core Interface Specification (PEI CIS) Version 0.91.
 
-  Copyright (c) 2006 - 2007, Intel Corporation                                                         
+  Copyright (c) 2006 - 2009, Intel Corporation                                                         
   All rights reserved. This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
@@ -10,16 +11,26 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
 
-  @par Revision Reference: 
-  PeiCis Version 0.91.
-
 **/
 
 #ifndef __PEICIS_H__
 #define __PEICIS_H__
 
-#include <PiPei.h>
 #include <Ppi/PciCfg.h>
+//
+// Framework PEI Specification Revision information
+//
+#define FRAMEWORK_PEI_SPECIFICATION_MAJOR_REVISION    0
+#define FRAMEWORK_PEI_SPECIFICATION_MINOR_REVISION    91
+
+
+//
+// PEI services signature and Revision defined in Framework PEI spec
+//
+#define FRAMEWORK_PEI_SERVICES_SIGNATURE               0x5652455320494550ULL
+#define FRAMEWORK_PEI_SERVICES_REVISION               ((FRAMEWORK_PEI_SPECIFICATION_MAJOR_REVISION<<16) | (FRAMEWORK_PEI_SPECIFICATION_MINOR_REVISION))
+
+
 
 typedef struct _FRAMEWORK_EFI_PEI_SERVICES FRAMEWORK_EFI_PEI_SERVICES;
 
@@ -41,7 +52,7 @@ EFI_STATUS
   );
   
 /**
-  The purpose of the service is to abstract the capability of the PEI 
+  This service abstracts the capability of the PEI 
   Foundation to discover instances of firmware volumes in the system. 
   Given the input file pointer, this service searches for the next 
   matching file in the Firmware File System (FFS) volume.
@@ -64,16 +75,16 @@ EFI_STATUS
   );
     
 /**
-  The purpose of the service is to abstract the capability of the PEI 
+  This service abstracts the capability of the PEI 
   Foundation to discover instances of firmware files in the system. 
   Given the input file pointer, this service searches for the next matching 
   file in the Firmware File System (FFS) volume.
 
   @param  PeiServices      An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation.
   @param  SearchType       A filter to find files only of this type.
-  @param  FwVolHeader      Pointer to the firmware volume header of the volume to search.This parameter 
+  @param  FwVolHeader      Pointer to the firmware volume header of the volume to search. This parameter 
                            must point to a valid FFS volume.
-  @param  FileHeader       Pointer to the current file from which to begin searching.This pointer will be 
+  @param  FileHeader       Pointer to the current file from which to begin searching. This pointer will be 
                            updated upon return to reflect the file found.
 
   @retval EFI_SUCCESS      The file was found.
@@ -111,7 +122,19 @@ EFI_STATUS
   IN EFI_FFS_FILE_HEADER            *FfsFileHeader,
   IN OUT VOID                       **SectionData
   );
-        
+
+///
+///  FRAMEWORK_EFI_PEI_SERVICES is a collection of functions whose implementation is provided by the PEI
+///  Foundation. The table is located in the temporary or permanent memory, depending upon the capabilities 
+///  and phase of execution of PEI.
+///  
+///  These services fall into various classes, including the following:
+///  - Managing the boot mode
+///  - Allocating both early and permanent memory
+///  - Supporting the Firmware File System (FFS)
+///  - Abstracting the PPI database abstraction
+///  - Creating Hand-Off Blocks (HOBs)
+///        
 struct _FRAMEWORK_EFI_PEI_SERVICES {
   EFI_TABLE_HEADER                  Hdr;
   //
@@ -146,6 +169,7 @@ struct _FRAMEWORK_EFI_PEI_SERVICES {
   EFI_PEI_COPY_MEM                  CopyMem;
   EFI_PEI_SET_MEM                   SetMem;
   //
+  // (the following interfaces are installed by publishing PEIM)
   // Status Code
   //
   EFI_PEI_REPORT_STATUS_CODE        ReportStatusCode;
@@ -153,20 +177,35 @@ struct _FRAMEWORK_EFI_PEI_SERVICES {
   // Reset
   //
   EFI_PEI_RESET_SYSTEM              ResetSystem;
-  //
-  // (the following interfaces are installed by publishing PEIM)
+  ///
+  /// Inconsistent with specification here: 
+  /// In Framework Spec, PeiCis0.91, CpuIo and PciCfg is NOT pointers. 
+  ///
+  
   //
   // I/O Abstractions
   //
   EFI_PEI_CPU_IO_PPI                *CpuIo;
   EFI_PEI_PCI_CFG_PPI               *PciCfg;
 };
-
-typedef struct {
-  UINTN                             BootFirmwareVolume;
-  UINTN                             SizeOfCacheAsRam;
-  EFI_PEI_PPI_DESCRIPTOR            *DispatchTable;
-} EFI_PEI_STARTUP_DESCRIPTOR;
+///
+/// Enumeration of reset types defined in Framework Spec PeiCis
+///
+typedef enum {
+  ///
+  /// Used to induce a system-wide reset. This sets all circuitry within the 
+  /// system to its initial state.  This type of reset is asynchronous to system
+  /// operation and operates withgout regard to cycle boundaries.  EfiColdReset 
+  /// is tantamount to a system power cycle.
+  ///
+  EfiPeiResetCold,
+  ///
+  /// Used to induce a system-wide initialization. The processors are set to their
+  /// initial state, and pending cycles are not corrupted.  If the system does 
+  /// not support this reset type, then an EfiResetCold must be performed.
+  ///
+  EfiPeiResetWarm,
+} EFI_PEI_RESET_TYPE;
 
 #endif  
 

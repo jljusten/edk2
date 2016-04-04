@@ -14,7 +14,6 @@
 #define __UEFI_LIB_INTERNAL_H_
 
 
-#include <Uefi.h>
 #include <FrameworkDxe.h>
 #include <Protocol/DriverBinding.h>
 #include <Protocol/ComponentName.h>
@@ -30,7 +29,6 @@
 
 #include <Guid/EventGroup.h>
 #include <Guid/EventLegacyBios.h>
-#include <Guid/FrameworkDevicePath.h>
 #include <Library/UefiLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/BaseLib.h>

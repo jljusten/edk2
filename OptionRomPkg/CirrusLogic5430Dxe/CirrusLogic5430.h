@@ -40,7 +40,7 @@
 #include <Library/DevicePathLib.h>
 #include <Library/TimerLib.h>
 
-#include <IndustryStandard/Pci22.h>
+#include <IndustryStandard/Pci.h>
 //
 // Cirrus Logic 5430 PCI Configuration Header values
 //
@@ -61,6 +61,24 @@ typedef struct {
   UINT32  ColorDepth;
   UINT32  RefreshRate;
 } CIRRUS_LOGIC_5430_MODE_DATA;
+
+#define PIXEL_RED_SHIFT   0
+#define PIXEL_GREEN_SHIFT 3
+#define PIXEL_BLUE_SHIFT  6
+
+#define PIXEL_RED_MASK    (BIT7 | BIT6 | BIT5)
+#define PIXEL_GREEN_MASK  (BIT4 | BIT3 | BIT2)
+#define PIXEL_BLUE_MASK   (BIT1 | BIT0)
+
+#define PIXEL_TO_COLOR_BYTE(pixel, mask, shift) ((UINT8) ((pixel & mask) << shift))
+#define PIXEL_TO_RED_BYTE(pixel) PIXEL_TO_COLOR_BYTE(pixel, PIXEL_RED_MASK, PIXEL_RED_SHIFT)
+#define PIXEL_TO_GREEN_BYTE(pixel) PIXEL_TO_COLOR_BYTE(pixel, PIXEL_GREEN_MASK, PIXEL_GREEN_SHIFT)
+#define PIXEL_TO_BLUE_BYTE(pixel) PIXEL_TO_COLOR_BYTE(pixel, PIXEL_BLUE_MASK, PIXEL_BLUE_SHIFT)
+
+#define RGB_BYTES_TO_PIXEL(Red, Green, Blue) \
+  (UINT8) ( (((Red) >> PIXEL_RED_SHIFT) & PIXEL_RED_MASK) | \
+            (((Green) >> PIXEL_GREEN_SHIFT) & PIXEL_GREEN_MASK) | \
+            (((Blue) >> PIXEL_BLUE_SHIFT) & PIXEL_BLUE_MASK) )
 
 #define GRAPHICS_OUTPUT_INVALIDE_MODE_NUMBER  0xffff
 

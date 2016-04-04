@@ -5,7 +5,8 @@
   If a code construct is defined in the UEFI 2.1 specification it must be included
   by this include file.
 
-  Copyright (c) 2006 - 2008, Intel Corporation
+  Copyright (c) 2006 - 2009, Intel Corporation<BR>
+  Portions copyright (c) 2008-2009 Apple Inc. All rights reserved.<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -652,23 +653,28 @@ EFI_STATUS
 /**
   Sets the value of a variable.
 
-  @param  VariableName          A Null-terminated Unicode string that is the name of the
-                                vendor's variable.
-  @param  VendorGuid            A unique identifier for the vendor.
-  @param  Attributes            Attributes bitmask to set for the variable.
-  @param  DataSize              The size in bytes of the Data buffer.
-  @param  Data                  The contents for the variable.
+  @param  VariableName           A Null-terminated string that is the name of the vendor's variable.
+                                 Each VariableName is unique for each VendorGuid. VariableName must
+                                 contain 1 or more characters. If VariableName is an empty string,
+                                 then EFI_INVALID_PARAMETER is returned.
+  @param  VendorGuid             A unique identifier for the vendor.
+  @param  Attributes             Attributes bitmask to set for the variable.
+  @param  DataSize               The size in bytes of the Data buffer. A size of zero causes the
+                                 variable to be deleted.
+  @param  Data                   The contents for the variable.
 
   @retval EFI_SUCCESS            The firmware has successfully stored the variable and its data as
                                  defined by the Attributes.
   @retval EFI_INVALID_PARAMETER  An invalid combination of attribute bits was supplied, or the
                                  DataSize exceeds the maximum allowed.
-  @retval EFI_INVALID_PARAMETER  VariableName is an empty Unicode string.
+  @retval EFI_INVALID_PARAMETER  VariableName is an empty string.
   @retval EFI_OUT_OF_RESOURCES   Not enough storage is available to hold the variable and its data.
   @retval EFI_DEVICE_ERROR       The variable could not be retrieved due to a hardware error.
   @retval EFI_WRITE_PROTECTED    The variable in question is read-only.
   @retval EFI_WRITE_PROTECTED    The variable in question cannot be deleted.
-  @retval EFI_SECURITY_VIOLATION The variable could not be retrieved due to an authentication failure.
+  @retval EFI_SECURITY_VIOLATION The variable could not be written due to EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS
+                                 set but the AuthInfo does NOT pass the validation check carried out
+                                 by the firmware.
   @retval EFI_NOT_FOUND          The variable trying to be updated or deleted was not found.
 
 **/
@@ -964,7 +970,7 @@ typedef enum {
   ///
   EfiResetWarm,
   ///
-  /// Used to induce an entry into the power state equivalent to the ACPI G2/S5 or G3
+  /// Used to induce an entry into a power state equivalent to the ACPI G2/S5 or G3
   /// state.  If the system does not support this reset type, then when the system
   /// is rebooted, it should exhibit the EfiResetCold attributes.
   ///
@@ -1609,6 +1615,7 @@ typedef struct {
 
 #define CAPSULE_FLAGS_PERSIST_ACROSS_RESET          0x00010000
 #define CAPSULE_FLAGS_POPULATE_SYSTEM_TABLE         0x00020000
+#define CAPSULE_FLAGS_INITIATE_RESET                0x00040000
 
 /**
   Passes capsules to the firmware with both virtual and physical mapping. Depending on the intended
@@ -1628,7 +1635,8 @@ typedef struct {
   @retval EFI_SUCCESS           Valid capsule was passed. If
                                 CAPSULE_FLAGS_PERSIT_ACROSS_RESET is not set, the
                                 capsule has been successfully processed by the firmware.
-  @retval EFI_INVALID_PARAMETER CapsuleSize or HeaderSize is NULL.
+  @retval EFI_INVALID_PARAMETER CapsuleSize is NULL, or an incompatible set of flags were
+                                set in the capsule header.
   @retval EFI_INVALID_PARAMETER CapsuleCount is 0.
   @retval EFI_DEVICE_ERROR      The capsule update was started, but failed due to a device error.
   @retval EFI_UNSUPPORTED       The capsule type is not supported on this platform.
@@ -1708,6 +1716,8 @@ EFI_STATUS
 //
 #define EFI_SYSTEM_TABLE_SIGNATURE      SIGNATURE_64 ('I','B','I',' ','S','Y','S','T')
 #define EFI_SYSTEM_TABLE_REVISION       ((2 << 16) | (10))
+#define EFI_2_30_SYSTEM_TABLE_REVISION  ((2 << 16) | (30))
+#define EFI_2_20_SYSTEM_TABLE_REVISION  ((2 << 16) | (20))
 #define EFI_2_10_SYSTEM_TABLE_REVISION  ((2 << 16) | (10))
 #define EFI_2_00_SYSTEM_TABLE_REVISION  ((2 << 16) | (00))
 #define EFI_1_10_SYSTEM_TABLE_REVISION  ((1 << 16) | (10))
@@ -2055,6 +2065,7 @@ typedef struct {
 #define EFI_REMOVABLE_MEDIA_FILE_NAME_IA32    L"\\EFI\\BOOT\\BOOTIA32.EFI"
 #define EFI_REMOVABLE_MEDIA_FILE_NAME_IA64    L"\\EFI\\BOOT\\BOOTIA64.EFI"
 #define EFI_REMOVABLE_MEDIA_FILE_NAME_X64     L"\\EFI\\BOOT\\BOOTX64.EFI"
+#define EFI_REMOVABLE_MEDIA_FILE_NAME_ARM     L"\\EFI\\BOOT\\BOOTARM.EFI"
 
 #if   defined (MDE_CPU_IA32)
   #define EFI_REMOVABLE_MEDIA_FILE_NAME   EFI_REMOVABLE_MEDIA_FILE_NAME_IA32
@@ -2063,6 +2074,8 @@ typedef struct {
 #elif defined (MDE_CPU_X64)
   #define EFI_REMOVABLE_MEDIA_FILE_NAME   EFI_REMOVABLE_MEDIA_FILE_NAME_X64
 #elif defined (MDE_CPU_EBC)
+#elif defined (MDE_CPU_ARM)
+  #define EFI_REMOVABLE_MEDIA_FILE_NAME   EFI_REMOVABLE_MEDIA_FILE_NAME_ARM
 #else
   #error Unknown Processor Type
 #endif

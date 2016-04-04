@@ -2,7 +2,7 @@
   Decode a hard disk partitioned with the GPT scheme in the UEFI 2.0
   specification.
 
-Copyright (c) 2006 - 2008, Intel Corporation. <BR>
+Copyright (c) 2006 - 2009, Intel Corporation. <BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -231,10 +231,15 @@ PartitionInstallGptChildHandles (
   //
   // Verify that the Protective MBR is valid
   //
-  if (ProtectiveMbr->Partition[0].BootIndicator != 0x00 ||
-      ProtectiveMbr->Partition[0].OSIndicator != PMBR_GPT_PARTITION ||
-      UNPACK_UINT32 (ProtectiveMbr->Partition[0].StartingLBA) != 1
-      ) {
+  for (Index = 0; Index < MAX_MBR_PARTITIONS; Index++) {
+    if (ProtectiveMbr->Partition[Index].BootIndicator == 0x00 &&
+        ProtectiveMbr->Partition[Index].OSIndicator == PMBR_GPT_PARTITION &&
+        UNPACK_UINT32 (ProtectiveMbr->Partition[Index].StartingLBA) == 1
+        ) {
+      break;
+    }
+  }
+  if (Index == MAX_MBR_PARTITIONS) {
     goto Done;
   }
 
@@ -334,10 +339,12 @@ PartitionInstallGptChildHandles (
   for (Index = 0; Index < PrimaryHeader->NumberOfPartitionEntries; Index++) {
     if (CompareGuid (&PartEntry[Index].PartitionTypeGUID, &gEfiPartTypeUnusedGuid) ||
         PEntryStatus[Index].OutOfRange ||
-        PEntryStatus[Index].Overlap
+        PEntryStatus[Index].Overlap ||
+        PEntryStatus[Index].OsSpecific
         ) {
       //
-      // Don't use null EFI Partition Entries or Invalid Partition Entries
+      // Don't use null EFI Partition Entries, Invalid Partition Entries or OS specific
+      // partition Entries
       //
       continue;
     }
@@ -647,6 +654,7 @@ PartitionCheckGptEntry (
   EFI_LBA EndingLBA;
   UINTN   Index1;
   UINTN   Index2;
+  UINT64  Attributes;
 
   DEBUG ((EFI_D_INFO, " start check partition entries\n"));
   for (Index1 = 0; Index1 < PartHeader->NumberOfPartitionEntries; Index1++) {
@@ -681,6 +689,14 @@ PartitionCheckGptEntry (
         continue;
 
       }
+    }
+
+    Attributes = PartEntry[Index1].Attributes;
+    if ((Attributes & BIT1) != 0) {
+      //
+      // If Bit 1 is set, this indicate that this is an OS specific GUID partition. 
+      //
+      PEntryStatus[Index1].OsSpecific = TRUE;
     }
   }
 

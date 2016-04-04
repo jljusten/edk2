@@ -1,6 +1,6 @@
 /** @file
 
-Copyright (c) 2005 - 2007, Intel Corporation.<BR>
+Copyright (c) 2005 - 2009, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -703,7 +703,7 @@ Ip4AutoConfigCallBack (
   //
   // Request Ip4AutoConfigCallBackDpc as a DPC at TPL_CALLBACK
   //
-  NetLibQueueDpc (TPL_CALLBACK, Ip4AutoConfigCallBackDpc, Context);
+  QueueDpc (TPL_CALLBACK, Ip4AutoConfigCallBackDpc, Context);
 }
 
 
@@ -1314,6 +1314,10 @@ Ip4Groups (
   // host byte order
   //
   if (JoinFlag) {
+    //  
+    // When JoinFlag is TRUE, GroupAddress shouldn't be NULL.
+    //
+    ASSERT (GroupAddress != NULL);
     CopyMem (&Group, GroupAddress, sizeof (IP4_ADDR));
 
     for (Index = 0; Index < IpInstance->GroupCount; Index++) {
@@ -1776,7 +1780,7 @@ Ip4FreeTxToken (
     //
     // Dispatch the DPC queued by the NotifyFunction of Token->Event.
     //
-    NetLibDispatchDpc ();
+    DispatchDpc ();
   }
 
   gBS->FreePool (Wrap);
@@ -2106,7 +2110,7 @@ EfiIp4Receive (
   // Dispatch the DPC queued by the NotifyFunction of this instane's receive
   // event.
   //
-  NetLibDispatchDpc ();
+  DispatchDpc ();
 
 ON_EXIT:
   gBS->RestoreTPL (OldTpl);
@@ -2262,7 +2266,7 @@ Ip4Cancel (
   // Dispatch the DPCs queued by the NotifyFunction of the canceled rx token's
   // events.
   //
-  NetLibDispatchDpc ();
+  DispatchDpc ();
   if (EFI_ERROR (Status)) {
     if ((Token != NULL) && (Status == EFI_ABORTED)) {
       return EFI_SUCCESS;

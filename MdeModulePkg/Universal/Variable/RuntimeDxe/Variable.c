@@ -2179,7 +2179,7 @@ ReclaimForOS(
   VOID       *Context
   )
 {
-  EFI_STATUS                      Status;
+  EFI_STATUS                     Status;
   UINTN                          CommonVariableSpace;
   UINTN                          RemainingCommonVariableSpace;
   UINTN                          RemainingHwErrVariableSpace;
@@ -2192,10 +2192,11 @@ ReclaimForOS(
 
   RemainingHwErrVariableSpace = PcdGet32 (PcdHwErrStorageSize) - mVariableModuleGlobal->HwErrVariableTotalSize;
   //
-  // Check if the free area is blow a threshold
+  // Check if the free area is blow a threshold.
   //
   if ((RemainingCommonVariableSpace < PcdGet32 (PcdMaxVariableSize))
-    || (RemainingHwErrVariableSpace < PcdGet32 (PcdMaxHardwareErrorVariableSize))){
+    || ((PcdGet32 (PcdHwErrStorageSize) != 0) && 
+       (RemainingHwErrVariableSpace < PcdGet32 (PcdMaxHardwareErrorVariableSize)))){
     Status = Reclaim (
             mVariableModuleGlobal->VariableGlobal.NonVolatileVariableBase,
             &mVariableModuleGlobal->NonVolatileLastVariableOffset,
@@ -2245,6 +2246,14 @@ VariableCommonInitialize (
   }
 
   EfiInitializeLock(&mVariableModuleGlobal->VariableGlobal.VariableServicesLock, TPL_NOTIFY);
+
+  //
+  // Note that in EdkII variable driver implementation, Hardware Error Record type variable
+  // is stored with common variable in the same NV region. So the platform integrator should
+  // ensure that the value of PcdHwErrStorageSize is less than or equal to the value of 
+  // PcdFlashNvStorageVariableSize.
+  //
+  ASSERT (FixedPcdGet32(PcdHwErrStorageSize) <= FixedPcdGet32(PcdFlashNvStorageVariableSize));
 
   //
   // Allocate memory for volatile variable store, note that there is a scratch space to store scratch data.

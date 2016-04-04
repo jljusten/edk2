@@ -55,6 +55,9 @@
 [Sources.IPF]
   Ipf/PxeArch.h
 
+[Sources.ARM]
+  Arm/PxeArch.h
+
 [Sources.EBC]
   Ebc/PxeArch.h
   Ebc/PxeArch.c
@@ -74,12 +77,10 @@
   MemoryAllocationLib
   DebugLib
   NetLib
-
+  DpcLib
 
 [Guids]
   gEfiSmbiosTableGuid                              # ALWAYS_CONSUMED
-
-
 
 [Protocols]
   gEfiArpServiceBindingProtocolGuid                # PROTOCOL ALWAYS_CONSUMED
@@ -96,4 +97,3 @@
   gEfiNetworkInterfaceIdentifierProtocolGuid_31    ## SOMETIMES_CONSUMES
   gEfiIp4ServiceBindingProtocolGuid                # PROTOCOL ALWAYS_CONSUMED
   gEfiIp4ProtocolGuid                              # PROTOCOL ALWAYS_CONSUMED
-

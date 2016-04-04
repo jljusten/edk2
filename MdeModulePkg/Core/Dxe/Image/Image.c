@@ -1121,6 +1121,14 @@ CoreStartImage (
   }
 
   //
+  // The image to be started must have the machine type supported by DxeCore.
+  //
+  ASSERT (EFI_IMAGE_MACHINE_TYPE_SUPPORTED (Image->Machine));
+  if (!EFI_IMAGE_MACHINE_TYPE_SUPPORTED (Image->Machine)) {
+    return EFI_UNSUPPORTED;
+  }
+
+  //
   // Don't profile Objects or invalid start requests
   //
   PERF_START (ImageHandle, "StartImage:", NULL, 0);

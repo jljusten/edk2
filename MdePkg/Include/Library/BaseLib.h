@@ -3,6 +3,7 @@
   functions, and CPU architecture-specific functions.
 
 Copyright (c) 2006 - 2008, Intel Corporation<BR>
+Portions copyright (c) 2008-2009 Apple Inc. All rights reserved.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -101,6 +102,8 @@ typedef struct {
   UINT64                            R14;
   UINT64                            R15;
   UINT64                            Rip;
+  UINT64                            MxCsr;
+  UINT8                             XmmBuffer[160]; ///< XMM6-XMM15
 } BASE_LIBRARY_JUMP_BUFFER;
 
 #define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 8
@@ -122,6 +125,26 @@ typedef struct {
 #define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 8
 
 #endif // defined (MDE_CPU_EBC)
+
+#if defined (MDE_CPU_ARM)
+
+typedef struct {
+  UINT32    R3;  ///< Copy of R13
+  UINT32    R4;
+  UINT32    R5;
+  UINT32    R6;
+  UINT32    R7;
+  UINT32    R8;
+  UINT32    R9;
+  UINT32    R10;
+  UINT32    R11;
+  UINT32    R12;
+  UINT32    R14;
+} BASE_LIBRARY_JUMP_BUFFER;
+
+#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 4
+
+#endif  // defined (MDE_CPU_ARM)
 
 //
 // String Services
@@ -1355,7 +1378,7 @@ GetFirstNode (
   InitializeListHead(), then ASSERT().
   If PcdMaximumLinkedListLenth is not zero, and List contains more than
   PcdMaximumLinkedListLenth nodes, then ASSERT().
-  If Node is not a node in List, then ASSERT().
+  If PcdVerifyNodeInList is TRUE and Node is not a node in List, then ASSERT().
 
   @param  List  A pointer to the head node of a doubly linked list.
   @param  Node  A pointer to a node in the doubly linked list.
@@ -1414,7 +1437,8 @@ IsListEmpty (
   If PcdMaximumLinkedListLenth is not zero, and the number of nodes
   in List, including the List node, is greater than or equal to
   PcdMaximumLinkedListLength, then ASSERT().
-  If Node is not a node in List and Node is not equal to List, then ASSERT().
+  If PcdVerifyNodeInList is TRUE and Node is not a node in List the and Node is not equal 
+  to List, then ASSERT().
 
   @param  List  A pointer to the head node of a doubly linked list.
   @param  Node  A pointer to a node in the doubly linked list.
@@ -1445,7 +1469,7 @@ IsNull (
   If PcdMaximumLinkedListLenth is not zero, and the number of nodes
   in List, including the List node, is greater than or equal to
   PcdMaximumLinkedListLength, then ASSERT().
-  If Node is not a node in List, then ASSERT().
+  If PcdVerifyNodeInList is TRUE and Node is not a node in List, then ASSERT().
 
   @param  List  A pointer to the head node of a doubly linked list.
   @param  Node  A pointer to a node in the doubly linked list.
@@ -1475,7 +1499,8 @@ IsNodeAtEnd (
 
   If FirstEntry is NULL, then ASSERT().
   If SecondEntry is NULL, then ASSERT().
-  If SecondEntry and FirstEntry are not in the same linked list, then ASSERT().
+  If PcdVerifyNodeInList is TRUE and SecondEntry and FirstEntry are not in the 
+  same linked list, then ASSERT().
   If PcdMaximumLinkedListLength is not zero, and the number of nodes in the
   linked list containing the FirstEntry and SecondEntry nodes, including
   the FirstEntry and SecondEntry nodes, is greater than or equal to

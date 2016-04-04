@@ -22,7 +22,6 @@ Abstract:
 
 #include "BdsPlatform.h"
 
-CHAR16  mFirmwareVendor[] = L"TianoCore.org";
 WIN_NT_SYSTEM_CONFIGURATION mSystemConfigData;
 
 VOID
@@ -85,22 +84,6 @@ Returns:
 
 --*/
 {
-  //
-  // set firmwarevendor, here can be IBV/OEM customize
-  //
-  gST->FirmwareVendor = AllocateRuntimeCopyPool (
-                          sizeof (mFirmwareVendor),
-                          &mFirmwareVendor
-                          );
-  ASSERT (gST->FirmwareVendor != NULL);
-
-  gST->FirmwareRevision = 0;
-
-  //
-  // Fixup Tasble CRC after we updated Firmware Vendor and Revision
-  //
-  gBS->CalculateCrc32 ((VOID *) gST, sizeof (EFI_SYSTEM_TABLE), &gST->Hdr.CRC32);
-
   SetupVariableInit ();
 }
 
@@ -252,7 +235,8 @@ Returns:
 VOID
 PlatformBdsDiagnostics (
   IN EXTENDMEM_COVERAGE_LEVEL    MemoryTestLevel,
-  IN BOOLEAN                     QuietBoot
+  IN BOOLEAN                     QuietBoot,
+  IN BASEM_MEMORY_TEST           BaseMemoryTest  
   )
 /*++
 
@@ -266,7 +250,9 @@ Arguments:
   MemoryTestLevel  - The memory test intensive level
   
   QuietBoot        - Indicate if need to enable the quiet boot
- 
+
+  BaseMemoryTest   - A pointer to BdsMemoryTest() 
+
 Returns:
 
   None.
@@ -282,11 +268,11 @@ Returns:
   // from the graphic lib
   //
   if (QuietBoot) {
-    EnableQuietBoot (&gEfiDefaultBmpLogoGuid);
+    EnableQuietBoot (PcdGetPtr(PcdLogoFile));
     //
     // Perform system diagnostic
     //
-    Status = BdsMemoryTest (MemoryTestLevel);
+    Status = BaseMemoryTest (MemoryTestLevel);
     if (EFI_ERROR (Status)) {
       DisableQuietBoot ();
     }
@@ -296,34 +282,28 @@ Returns:
   //
   // Perform system diagnostic
   //
-  Status = BdsMemoryTest (MemoryTestLevel);
+  Status = BaseMemoryTest (MemoryTestLevel);
 }
 
+/**
+  The function will excute with as the platform policy, current policy
+  is driven by boot mode. IBV/OEM can customize this code for their specific
+  policy action.
+
+  @param  DriverOptionList        The header of the driver option link list
+  @param  BootOptionList          The header of the boot option link list
+  @param  ProcessCapsules         A pointer to ProcessCapsules()
+  @param  BaseMemoryTest          A pointer to BaseMemoryTest()
+
+**/
 VOID
 EFIAPI
 PlatformBdsPolicyBehavior (
   IN OUT LIST_ENTRY                  *DriverOptionList,
-  IN OUT LIST_ENTRY                  *BootOptionList
+  IN OUT LIST_ENTRY                  *BootOptionList,
+  IN PROCESS_CAPSULES                ProcessCapsules,
+  IN BASEM_MEMORY_TEST               BaseMemoryTest
   )
-/*++
-
-Routine Description:
-
-  The function will excute with as the platform policy, current policy
-  is driven by boot mode. IBV/OEM can customize this code for their specific
-  policy action.
-  
-Arguments:
-
-  DriverOptionList - The header of the driver option link list
-  
-  BootOptionList   - The header of the boot option link list
- 
-Returns:
-
-  None.
-  
---*/
 {
   EFI_STATUS     Status;
   UINT16         Timeout;
@@ -357,7 +337,7 @@ Returns:
     // console directly.
     //
     BdsLibConnectAllDefaultConsoles ();
-    PlatformBdsDiagnostics ((EXTENDMEM_COVERAGE_LEVEL)IGNORE, TRUE);
+    PlatformBdsDiagnostics ((EXTENDMEM_COVERAGE_LEVEL)IGNORE, TRUE, BaseMemoryTest);
 
     //
     // Perform some platform specific connect sequence
@@ -381,7 +361,7 @@ Returns:
     // Boot with the specific configuration
     //
     PlatformBdsConnectConsole (gPlatformConsole);
-    PlatformBdsDiagnostics (EXTENSIVE, FALSE);
+    PlatformBdsDiagnostics (EXTENSIVE, FALSE, BaseMemoryTest);
     BdsLibConnectAll ();
     ProcessCapsules (BOOT_ON_FLASH_UPDATE);
     break;
@@ -392,7 +372,7 @@ Returns:
     // and show up the front page
     //
     PlatformBdsConnectConsole (gPlatformConsole);
-    PlatformBdsDiagnostics (EXTENSIVE, FALSE);
+    PlatformBdsDiagnostics (EXTENSIVE, FALSE, BaseMemoryTest);
 
     //
     // In recovery boot mode, we still enter to the
@@ -416,7 +396,7 @@ Returns:
       PlatformBdsNoConsoleAction ();
     }
 
-    PlatformBdsDiagnostics ((EXTENDMEM_COVERAGE_LEVEL)IGNORE, TRUE);
+    PlatformBdsDiagnostics ((EXTENDMEM_COVERAGE_LEVEL)IGNORE, TRUE, BaseMemoryTest);
 
     //
     // Perform some platform specific connect sequence
@@ -545,11 +525,36 @@ Returns:
   return EFI_SUCCESS;
 }
 
-EFI_STATUS
+/**
+  This function locks platform flash that is not allowed to be updated during normal boot path.
+  The flash layout is platform specific.
+
+  **/
+VOID
 EFIAPI
 PlatformBdsLockNonUpdatableFlash (
   VOID
   )
 {
-  return EFI_SUCCESS;
+  return;
+}
+
+/**
+  Lock the ConsoleIn device in system table. All key
+  presses will be ignored until the Password is typed in. The only way to
+  disable the password is to type it in to a ConIn device.
+
+  @param  Password        Password used to lock ConIn device.
+
+  @retval EFI_SUCCESS     lock the Console In Spliter virtual handle successfully.
+  @retval EFI_UNSUPPORTED Password not found
+
+**/
+EFI_STATUS
+EFIAPI
+LockKeyboards (
+  IN  CHAR16    *Password
+  )
+{
+    return EFI_UNSUPPORTED;
 }

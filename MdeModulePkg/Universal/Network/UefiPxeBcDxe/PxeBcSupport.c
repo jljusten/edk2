@@ -142,8 +142,6 @@ GetSmbiosSystemGuidAndSerialNumber (
   @param  Event     The event signaled.
   @param  Context   The context.
 
-  @return None
-
 **/
 VOID
 EFIAPI
@@ -250,9 +248,10 @@ CvtNum (
 {
   UINTN Remainder;
 
-  while (Length-- > 0) {
+  while (Length > 0) {
     Remainder = Number % 10;
     Number /= 10;
+    Length--;
     Buffer[Length] = (UINT8) ('0' + Remainder);
   }
 }

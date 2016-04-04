@@ -84,8 +84,6 @@ UpdateArpCache (
 
   @param  Event              Pointer to EFI_PXE_BC_PROTOCOL
   @param  Context            Context of the timer event
-  
-  @return None.
 
 **/
 VOID
@@ -138,8 +136,6 @@ FindInArpCache (
   the received ICMP packets.
 
   @param  Context               The PXEBC private data.
-
-  @return None.
 
 **/
 VOID
@@ -233,8 +229,6 @@ Resume:
   @param  Event                 The event signaled.
   @param  Context               The context passed in by the event notifier.
 
-  @return None.
-
 **/
 VOID
 EFIAPI
@@ -246,7 +240,7 @@ IcmpErrorListenHandler (
   //
   // Request IpIoListenHandlerDpc as a DPC at TPL_CALLBACK
   //
-  NetLibQueueDpc (TPL_CALLBACK, IcmpErrorListenHandlerDpc, Context);
+  QueueDpc (TPL_CALLBACK, IcmpErrorListenHandlerDpc, Context);
 }
 
 /**                                                                 
@@ -479,7 +473,7 @@ EfiPxeBcStop (
   // Dispatch the DPCs queued by the NotifyFunction of the canceled rx token's
   // events.
   //
-  NetLibDispatchDpc ();
+  DispatchDpc ();
 
   Private->Ip4->Configure (Private->Ip4, NULL);
 
@@ -1432,6 +1426,8 @@ CheckIpByFilter (
     return TRUE;
   }
 
+  ASSERT (PxeBcMode->IpFilter.IpCnt < EFI_PXE_BASE_CODE_MAX_IPCNT);
+
   for (Index = 0; Index < PxeBcMode->IpFilter.IpCnt; Index++) {
     CopyMem (
       &Ip4Address, 
@@ -1755,20 +1751,20 @@ EfiPxeBcSetIpFilter (
   BOOLEAN                   PromiscuousNeed;
 
   if (This == NULL) {
-    DEBUG ((EFI_D_ERROR, "BC *This pointer == NULL.\n"));
+    DEBUG ((EFI_D_ERROR, "This == NULL.\n"));
     return EFI_INVALID_PARAMETER;
   }
 
   Private = PXEBC_PRIVATE_DATA_FROM_PXEBC (This);
   Mode = Private->PxeBc.Mode;
 
-  if (Private == NULL) {
-    DEBUG ((EFI_D_ERROR, "PXEBC_PRIVATE_DATA poiner == NULL.\n"));
+  if (NewFilter == NULL) {
+    DEBUG ((EFI_D_ERROR, "NewFilter == NULL.\n"));
     return EFI_INVALID_PARAMETER;
   }
 
-  if (NewFilter == NULL) {
-    DEBUG ((EFI_D_ERROR, "IP Filter *NewFilter == NULL.\n"));
+  if (NewFilter->IpCnt > EFI_PXE_BASE_CODE_MAX_IPCNT) {
+    DEBUG ((EFI_D_ERROR, "NewFilter->IpCnt > %d.\n", EFI_PXE_BASE_CODE_MAX_IPCNT));
     return EFI_INVALID_PARAMETER;
   }
 
@@ -1778,6 +1774,7 @@ EfiPxeBcSetIpFilter (
   }
 
   PromiscuousNeed = FALSE;
+
   for (Index = 0; Index < NewFilter->IpCnt; ++Index) {
     if (IP4_IS_LOCAL_BROADCAST (EFI_IP4 (NewFilter->IpList[Index].v4))) {
       //
@@ -2483,9 +2480,11 @@ DiscoverBootFile (
   }
 
   //
-  // use option 54, if zero, use siaddr in header
+  // Use siaddr(next server) in DHCPOFFER packet header, if zero, use option 54(server identifier)
+  // in DHCPOFFER packet.
+  // (It does not comply with PXE Spec, Ver2.1)
   //
-  if (Packet->Dhcp4Option[PXEBC_DHCP4_TAG_INDEX_SERVER_ID] != NULL) {
+  if (EFI_IP4_EQUAL (&Packet->Packet.Offer.Dhcp4.Header.ServerAddr, &mZeroIp4Addr)) {
     CopyMem (
       &Private->ServerIp,
       Packet->Dhcp4Option[PXEBC_DHCP4_TAG_INDEX_SERVER_ID]->Data,
@@ -2639,7 +2638,7 @@ EfiPxeLoadFile (
 
     if (sizeof (UINTN) < sizeof (UINT64) && (TmpBufSize > 0xFFFFFFFF)) {
       Status = EFI_DEVICE_ERROR;
-    } else if (*BufferSize >= (UINTN) TmpBufSize && Buffer != NULL) {
+    } else if (TmpBufSize > 0 && *BufferSize >= (UINTN) TmpBufSize && Buffer != NULL) {
       *BufferSize = (UINTN) TmpBufSize;
       Status = PxeBc->Mtftp (
                         PxeBc,
@@ -2653,7 +2652,7 @@ EfiPxeLoadFile (
                         NULL,
                         FALSE
                         );
-	} else {
+    } else if (TmpBufSize > 0) {
       *BufferSize = (UINTN) TmpBufSize;
       Status      = EFI_BUFFER_TOO_SMALL;
     }

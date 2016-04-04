@@ -1,16 +1,55 @@
 This directory contains the next generation of EDK II build tools and template files.
 Templates are located in the Conf directory, while the tools executables for
-Microsoft Windows 32-bit Operating Systems are located in the Bin\Win32 directory.
+Microsoft Windows 32-bit Operating Systems are located in the Bin\Win32 directory, other 
+directory contatins tools source.
 
-The binary tools will be updated only after passing developer testing.
+1. Build step to generate the binary tools.
 
-The BaseTools package will be updated with new tools only after all testing on a set
-of binary tools has successfully completed.
+=== Windows/Visual Studio Notes ===
+
+To build the BaseTools, you should run the standard vsvars32.bat script.
+
+In addition to this, you should set the following environment variables:
+
+ * EDK_TOOLS_PATH - Path to the BaseTools sub directory under the edk2 tree
+ * BASE_TOOLS_PATH - The directory where the BaseTools source is located.
+   (It is the same directory where this README.txt is located.)
+ * PYTHON_FREEZER_PATH - Path to where the python freezer tool is installed
+
+After this, you can run the toolsetup.bat file, which is in the same
+directory as this file.  It should setup the remainder of the environment,
+and build the tools if necessary.
+
+Please also refer to the 'BuildNotes.txt' file for more information on
+building under Windows.
+
+=== Unix-like operating systems ===
+
+To build on Unix-like operating systems, you only need to type 'make' in
+the base directory of the project.
+
+=== Ubuntu Notes ===
+
+On Ubuntu, the following command should install all the necessary build
+packages to build all the C BaseTools:
+
+  sudo apt-get install build-essentials uuid-dev
+
+=== Python sqlite3 module ===
+On Windows, the cx_freeze will not copy the sqlite3.dll to the frozen 
+binary directory (the same directory as build.exe and GenFds.exe). 
+Please copy it manually from <PythonHome>\DLLs.
+
+The Python distributed with most recent Linux will have sqlite3 module
+built in. If not, please install sqlit3 package separately.
+
+2. The binary tools will be updated only after passing developer testing.
 
 Current state of the tools is Proto-Type - not all tool functions have been implemented
 and there may be bugs in these tools.  These tools are under constant development at
 this time.
 
+3. Tool usage introduction.
 BaseTools Simple Usage:
 1) Change the directory to the EDK2 root directory, where the edksetup.bat is
 2) Run "edksetup.bat NewBuild"
@@ -26,19 +65,9 @@ Notes:
    after you call "nmake cleanall", you have to call "build" command to rebuild platform
 	 or modules because the AutoGen.* files have been be removed. The "makefile" itself
 	 cannot generate AutoGen.* files. Only "build" command can.
-3) build.exe in %WORKSPACE%\BaseTools\Bin\Win32 is generated from following revision of
-   Python source code:
-        r844 <buildtools_project>\BaseTools\Source\Python\Autogen
-        r844 <buildtools_project>\BaseTools\Source\Python\build
-        r844 <buildtools_project>\BaseTools\Source\Python\Common
-        r844 <buildtools_project>\BaseTools\Source\Python\CommonDataClass
-        r844 <buildtools_project>\BaseTools\Source\Python\GenFds
-        
-4) GenFds.exe has is a combo of the follow python source.(This is a temporary branch)
-        r843 <buildtools_project>\BaseTools\Source\Python\Common
-        r843 <buildtools_project>\BaseTools\Source\Python\CommonDataClass
-        r843 <buildtools_project>\BaseTools\Source\Python\GenFds
-	
+3) All .exe binary file including C and python tools are generated from:
+    r1707 <buildtools_project>\BaseTools\Source\ + r1707 VfrCompiler tool update
+
 Brief usage for Migration Tool MigrationMsa2Inf.exe:
 1. Command line format:
   MigrationMsa2Inf [options]
@@ -161,4 +190,4 @@ Brief usage for Migration Tool Fpd2Dsc.exe:
 7. Pyton Source
    r767 <buildtools_project>\BaseTools\Source\Python\Fpd2Dsc
 
-27-September-2007
+10-Sep-2009

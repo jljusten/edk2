@@ -24,7 +24,6 @@
 #
 
 .macro SingleIdtVectorMacro vectorNum
-    .intel_syntax
     call    ASM_PFX(CommonInterruptEntry)
     .short  \vectorNum
     nop
@@ -53,7 +52,7 @@
 .endm
 
 ASM_GLOBAL ASM_PFX(AsmIdtVector00)
-.align  8
+.p2align 3
 ASM_PFX(AsmIdtVector00):
     SixtyFourIdtVectors 0x00
     SixtyFourIdtVectors 0x40

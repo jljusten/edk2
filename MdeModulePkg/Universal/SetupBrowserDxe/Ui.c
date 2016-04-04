@@ -630,7 +630,6 @@ CreateDialog (
   )
 {
   VA_LIST       Marker;
-  VA_LIST       MarkerBackup;
   UINTN         Count;
   EFI_INPUT_KEY Key;
   UINTN         LargestString;
@@ -661,7 +660,6 @@ CreateDialog (
   ASSERT (BufferedString);
 
   VA_START (Marker, KeyValue);
-  MarkerBackup = Marker;
 
   //
   // Zero the outgoing buffer
@@ -702,6 +700,7 @@ CreateDialog (
       LargestString = (GetStringWidth (StackString) / 2);
     }
   }
+  VA_END (Marker);
 
   Start = (DimensionsWidth - LargestString - 2) / 2 + gScreenDimensions.LeftColumn + 1;
   Top   = ((DimensionsHeight - NumberOfLines - 2) / 2) + gScreenDimensions.TopRow - 1;
@@ -711,7 +710,9 @@ CreateDialog (
   //
   // Display the Popup
   //
-  CreateSharedPopUp (LargestString, NumberOfLines, MarkerBackup);
+  VA_START (Marker, KeyValue);
+  CreateSharedPopUp (LargestString, NumberOfLines, Marker);
+  VA_END (Marker);
 
   //
   // Take the first key typed and report it back?
@@ -919,7 +920,7 @@ CreateSharedPopUp (
 
 **/
 VOID
-CreatePopUp (
+CreateMultiStringPopUp (
   IN  UINTN                       RequestedWidth,
   IN  UINTN                       NumberOfLines,
   ...
@@ -2695,14 +2696,19 @@ UiDisplayMenu (
           TopOfScreen = NewPos;
         }
 
-        Difference = MoveToNextStatement (TRUE, &NewPos);
-        if ((INTN) MenuOption->Row - (INTN) DistanceValue < (INTN) TopRow) {
+	      Difference = MoveToNextStatement (TRUE, &NewPos);
+        PreviousMenuOption = MENU_OPTION_FROM_LINK (NewPos);
+        DistanceValue += PreviousMenuOption->Skip;
+        
+	      if ((INTN) MenuOption->Row - (INTN) DistanceValue  < (INTN) TopRow) {
           if (Difference > 0) {
             //
             // Previous focus MenuOption is above the TopOfScreen, so we need to scroll
             //
             TopOfScreen = NewPos;
             Repaint     = TRUE;
+	          SkipValue = 0;
+	          OldSkipValue = 0;
           }
         }
         if (Difference < 0) {

@@ -20,7 +20,6 @@
 ///
 #define MDE_CPU_X64
 
-
 //
 // Make sure we are using the correct packing rules per EFI specification
 //
@@ -375,36 +374,7 @@ typedef INT64   INTN;
   #define EFIAPI       
 #endif
 
-//
-// The Microsoft* C compiler can removed references to unreferenced data items
-//  if the /OPT:REF linker option is used. We defined a macro as this is a 
-//  a non standard extension
-//
-#if defined(_MSC_EXTENSIONS)
-  ///
-  /// Remove global variable from the linked image if there are no references to 
-  /// it after all compiler and linker optimizations have been performed.
-  ///
-  ///
-  #define GLOBAL_REMOVE_IF_UNREFERENCED __declspec(selectany)
-#else
-  ///
-  /// Remove global variable from the linked image if there are no references to 
-  /// it after all compiler and linker optimizations have been performed.
-  ///
-  ///
-  #define GLOBAL_REMOVE_IF_UNREFERENCED
-#endif
-
-//
-// For symbol name in GNU assembly code, an extra "_" is necessary
-//
 #if defined(__GNUC__)
-  #if defined(linux)
-    #define ASM_PFX(name) name
-  #else
-    #define ASM_PFX(name) _##name
-  #endif
   ///
   /// For GNU assembly code, .global or .globl can declare global symbols.
   /// Define this macro to unify the usage.

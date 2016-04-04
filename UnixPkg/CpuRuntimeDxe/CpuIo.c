@@ -22,13 +22,12 @@ Abstract:
   Bridge I/O Protocol.
 
 --*/
-#include "PiDxe.h"
+#include <FrameworkDxe.h>
 #include <Protocol/Cpu.h>
 #include <Protocol/DataHub.h>
 #include <Guid/DataHubRecords.h>
 #include <Protocol/CpuIo.h>
 #include <Protocol/FrameworkHii.h>
-#include <Guid/DataHubProducer.h>
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>

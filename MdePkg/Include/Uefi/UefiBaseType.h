@@ -1,7 +1,8 @@
 /** @file
   Defines data types and constants introduced in UEFI.
 
-  Copyright (c) 2006 - 2008, Intel Corporation
+  Copyright (c) 2006 - 2009, Intel Corporation<BR>
+  Portions copyright (c) 2008-2009 Apple Inc. All rights reserved.<BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -58,7 +59,7 @@ typedef UINT64                    EFI_VIRTUAL_ADDRESS;
 
 ///
 /// EFI Time Abstraction:
-///  Year:       1998 - 20XX
+///  Year:       1900 - 9999
 ///  Month:      1 - 12
 ///  Day:        1 - 31
 ///  Hour:       0 - 23
@@ -114,9 +115,9 @@ typedef union {
 } EFI_IP_ADDRESS;
 
 
-//
-// Enumeration of EFI_STATUS.
-// 
+///
+/// Enumeration of EFI_STATUS.
+///@{ 
 #define EFI_SUCCESS               RETURN_SUCCESS              
 #define EFI_LOAD_ERROR            RETURN_LOAD_ERROR           
 #define EFI_INVALID_PARAMETER     RETURN_INVALID_PARAMETER    
@@ -153,16 +154,31 @@ typedef union {
 #define EFI_WARN_DELETE_FAILURE   RETURN_WARN_DELETE_FAILURE  
 #define EFI_WARN_WRITE_FAILURE    RETURN_WARN_WRITE_FAILURE   
 #define EFI_WARN_BUFFER_TOO_SMALL RETURN_WARN_BUFFER_TOO_SMALL
+///@}
 
-
-//
-// Define macro to encode the status code.
-// 
+///
+/// Define macro to encode the status code.
+/// 
 #define EFIERR(_a)                ENCODE_ERROR(_a)
 
 #define EFI_ERROR(A)              RETURN_ERROR(A)
 
+///
+/// ICMP error definitions
+///@{
+#define EFI_NETWORK_UNREACHABLE   EFIERR(100)
+#define EFI_HOST_UNREACHABLE      EFIERR(101) 
+#define EFI_PROTOCOL_UNREACHABLE  EFIERR(102)
+#define EFI_PORT_UNREACHABLE      EFIERR(103)
+///@}
 
+///
+/// Tcp connection status definitions
+///@{
+#define EFI_CONNECTION_FIN        EFIERR(104)
+#define EFI_CONNECTION_RESET      EFIERR(105)
+#define EFI_CONNECTION_REFUSED    EFIERR(106)
+///@}
 
 //
 // The EFI memory allocation functions work in units of EFI_PAGEs that are
@@ -180,22 +196,27 @@ typedef union {
 ///
 /// PE32+ Machine type for IA32 UEFI images
 ///
-#define EFI_IMAGE_MACHINE_IA32      0x014C
+#define EFI_IMAGE_MACHINE_IA32            0x014C
 
 ///
 /// PE32+ Machine type for IA64 UEFI images
 ///
-#define EFI_IMAGE_MACHINE_IA64      0x0200
+#define EFI_IMAGE_MACHINE_IA64            0x0200
 
 ///
 /// PE32+ Machine type for EBC UEFI images
 ///
-#define EFI_IMAGE_MACHINE_EBC       0x0EBC
+#define EFI_IMAGE_MACHINE_EBC             0x0EBC
 
 ///
 /// PE32+ Machine type for X64 UEFI images
 ///
-#define EFI_IMAGE_MACHINE_X64       0x8664
+#define EFI_IMAGE_MACHINE_X64             0x8664
+
+///
+/// PE32+ Machine type for ARM mixed ARM and Thumb/Thumb2 images
+///
+#define EFI_IMAGE_MACHINE_ARMTHUMB_MIXED  0x01C2
 
 
 #if   defined (MDE_CPU_IA32)
@@ -219,12 +240,18 @@ typedef union {
 
 #define EFI_IMAGE_MACHINE_CROSS_TYPE_SUPPORTED(Machine) ((Machine) == EFI_IMAGE_MACHINE_IA32) 
 
+#elif defined (MDE_CPU_ARM)
+
+#define EFI_IMAGE_MACHINE_TYPE_SUPPORTED(Machine) \
+  (((Machine) == EFI_IMAGE_MACHINE_ARMTHUMB_MIXED) || ((Machine) == EFI_IMAGE_MACHINE_EBC))
+
+#define EFI_IMAGE_MACHINE_CROSS_TYPE_SUPPORTED(Machine) ((Machine) == EFI_IMAGE_MACHINE_ARMTHUMB_MIXED) 
+
 #elif defined (MDE_CPU_EBC)
 
 ///
 /// This is just to make sure you can cross compile with the EBC compiler.
-/// It does not make sense to have a PE loader coded in EBC. You need to 
-/// understand the basic 
+/// It does not make sense to have a PE loader coded in EBC. 
 ///
 #define EFI_IMAGE_MACHINE_TYPE_SUPPORTED(Machine) ((Machine) == EFI_IMAGE_MACHINE_EBC)
 

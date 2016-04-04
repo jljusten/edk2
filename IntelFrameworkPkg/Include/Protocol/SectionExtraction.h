@@ -1,10 +1,10 @@
 /** @file
-  This file declares Section Extraction protocols.
+  This file declares Section Extraction Protocol.
 
   This interface provides a means of decoding a set of sections into a linked list of
   leaf sections.  This provides for an extensible and flexible file format.
 
-  Copyright (c) 2006 - 2007, Intel Corporation
+  Copyright (c) 2006 - 2009, Intel Corporation
   All rights reserved. This program and the accompanying
   materials are licensed and made available under the terms and
   conditions of the BSD License which accompanies this
@@ -14,8 +14,6 @@
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
-  Module Name:  SectionExtraction.h
-
   @par Revision Reference:
   This protocol is defined in Firmware Volume Specification.
   Version 0.9
@@ -24,8 +22,6 @@
 
 #ifndef _SECTION_EXTRACTION_PROTOCOL_H_
 #define _SECTION_EXTRACTION_PROTOCOL_H_
-
-#include <PiDxe.h>
 
 //
 // Protocol GUID definition
@@ -71,10 +67,13 @@ EFI_STATUS
 
   @param  This                  Indicates the EFI_SECTION_EXTRACTION_PROTOCOL instance.
   @param  SectionStreamHandle   Indicates from which section stream to read.
-  @param  SectionType           Pointer to an EFI_SECTION_TYPE.
-  @param  SectionDefinitionGuid Pointer to an EFI_GUID.If SectionType ==
+  @param  SectionType           Pointer to an EFI_SECTION_TYPE. If SectionType == NULL, the contents of the 
+                                entire section stream are returned in Buffer. If SectionType is not NULL, 
+                                only the requested section is returned. EFI_SECTION_ALL matches all section 
+                                types and can be used as a wild card to extract all sections in order.
+  @param  SectionDefinitionGuid Pointer to an EFI_GUID. If SectionType ==
                                 EFI_SECTION_GUID_DEFINED, SectionDefinitionGuid indicates what section GUID
-                                to search for.If SectionType !=EFI_SECTION_GUID_DEFINED, then
+                                to search for. If SectionType !=EFI_SECTION_GUID_DEFINED, then
                                 SectionDefinitionGuid is unused and is ignored.
   @param  SectionInstance       Indicates which instance of the requested section
                                 type to return when SectionType is not NULL.
@@ -98,8 +97,8 @@ EFI_STATUS
   @retval EFI_OUT_OF_RESOURCES  The system has insufficient resources to process
                                 the request.
   @retval EFI_INVALID_PARAMETER The SectionStreamHandle does not exist.
-  @retval EFI_BUFFER_TOO_SMALL  The size of the input buffer is insufficient to
-                                contain the requested section.
+  @retval EFI_WARN_BUFFER_TOO_SMALL The size of the input buffer is insufficient to contain the requested
+                                    section. The input buffer is filled and section contents are truncated.
 
 **/
 typedef
@@ -135,25 +134,21 @@ EFI_STATUS
 //
 // Protocol definition
 //
-/**
-  @par Protocol Description:
-  The Section Extraction Protocol provides a simple method of extracting
-  sections from arbitrarily complex files.
-
-  @param OpenSectionStream
-  Takes a bounded stream of sections and returns a section stream handle.
-
-  @param GetSection
-  Given a section stream handle, retrieves the requested section and
-  meta-data from the section stream.
-
-  @param CloseSectionStream
-  Given a section stream handle, closes the section stream.
-
-**/
 struct _EFI_SECTION_EXTRACTION_PROTOCOL {
+  ///
+  ///  Takes a bounded stream of sections and returns a section stream handle.
+  ///
   EFI_OPEN_SECTION_STREAM   OpenSectionStream;
+
+  ///
+  ///  Given a section stream handle, retrieves the requested section and
+  ///  meta-data from the section stream.
+  ///
   EFI_GET_SECTION           GetSection;
+
+  ///
+  ///  Given a section stream handle, closes the section stream.
+  ///
   EFI_CLOSE_SECTION_STREAM  CloseSectionStream;
 };
 

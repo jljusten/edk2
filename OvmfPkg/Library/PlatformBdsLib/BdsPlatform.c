@@ -1,7 +1,7 @@
 /** @file
   Platform BDS customizations.
 
-  Copyright (c) 2004 - 2008, Intel Corporation. <BR>
+  Copyright (c) 2004 - 2009, Intel Corporation. <BR>
   All rights reserved. This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -14,6 +14,75 @@
 
 #include "BdsPlatform.h"
 
+
+//
+// Global data
+//
+
+VOID          *mEfiDevPathNotifyReg;
+EFI_EVENT     mEfiDevPathEvent;
+BOOLEAN       mDetectVgaOnly;
+
+
+//
+// Type definitions
+//
+
+typedef
+EFI_STATUS
+(EFIAPI *PROTOCOL_INSTANCE_CALLBACK)(
+  IN EFI_HANDLE           Handle,
+  IN VOID                 *Instance,
+  IN VOID                 *Context
+  );
+
+/**
+  @param[in]  Handle - Handle of PCI device instance
+  @param[in]  PciIo - PCI IO protocol instance
+  @param[in]  Pci - PCI Header register block
+**/
+typedef
+EFI_STATUS
+(EFIAPI *VISIT_PCI_INSTANCE_CALLBACK)(
+  IN EFI_HANDLE           Handle,
+  IN EFI_PCI_IO_PROTOCOL  *PciIo,
+  IN PCI_TYPE00           *Pci
+  );
+
+
+//
+// Function prototypes
+//
+
+EFI_STATUS
+VisitAllInstancesOfProtocol (
+  IN EFI_GUID                    *Id,
+  IN PROTOCOL_INSTANCE_CALLBACK  CallBackFunction,
+  IN VOID                        *Context
+  );
+
+EFI_STATUS
+VisitAllPciInstancesOfProtocol (
+  IN VISIT_PCI_INSTANCE_CALLBACK CallBackFunction
+  );
+
+VOID
+InstallDevicePathCallback (
+  VOID
+  );
+
+STATIC
+VOID
+LoadVideoRom (
+  VOID
+  );
+
+STATIC
+EFI_STATUS
+PciRomLoadEfiDriversFromRomImage (
+  IN EFI_PHYSICAL_ADDRESS    Rom,
+  IN UINTN                   RomSize
+  );
 
 //
 // BDS Platform Functions
@@ -39,6 +108,8 @@ Returns:
 --*/
 {
   DEBUG ((EFI_D_INFO, "PlatformBdsInit\n"));
+  InstallDevicePathCallback ();
+  LoadVideoRom ();
 }
 
 
@@ -367,32 +438,17 @@ Returns:
 }
 
 EFI_STATUS
-DetectAndPreparePlatformPciDevicePath (
-  BOOLEAN DetectVgaOnly
+VisitAllInstancesOfProtocol (
+  IN EFI_GUID                    *Id,
+  IN PROTOCOL_INSTANCE_CALLBACK  CallBackFunction,
+  IN VOID                        *Context
   )
-/*++
-
-Routine Description:
-
-  Do platform specific PCI Device check and add them to ConOut, ConIn, ErrOut
-
-Arguments:
-
-  DetectVgaOnly           - Only detect VGA device if it's TRUE.
-
-Returns:
-
-  EFI_SUCCESS             - PCI Device check and Console variable update successfully.
-  EFI_STATUS              - PCI Device check or Console variable update fail.
-
---*/
 {
   EFI_STATUS                Status;
   UINTN                     HandleCount;
   EFI_HANDLE                *HandleBuffer;
   UINTN                     Index;
-  EFI_PCI_IO_PROTOCOL       *PciIo;
-  PCI_TYPE00                Pci;
+  VOID                      *Instance;
 
   //
   // Start to check all the PciIo to find all possible device
@@ -401,7 +457,7 @@ Returns:
   HandleBuffer = NULL;
   Status = gBS->LocateHandleBuffer (
                   ByProtocol,
-                  &gEfiPciIoProtocolGuid,
+                  Id,
                   NULL,
                   &HandleCount,
                   &HandleBuffer
@@ -411,89 +467,167 @@ Returns:
   }
 
   for (Index = 0; Index < HandleCount; Index++) {
-    Status = gBS->HandleProtocol (HandleBuffer[Index], &gEfiPciIoProtocolGuid, (VOID*)&PciIo);
+    Status = gBS->HandleProtocol (HandleBuffer[Index], Id, &Instance);
     if (EFI_ERROR (Status)) {
       continue;
     }
 
-    //
-    // Check for all PCI device
-    //
-    Status = PciIo->Pci.Read (
-                      PciIo,
-                      EfiPciIoWidthUint32,
-                      0,
-                      sizeof (Pci) / sizeof (UINT32),
-                      &Pci
-                      );
-    if (EFI_ERROR (Status)) {
-      continue;
-    }
-
-    if (!DetectVgaOnly) {
-      //
-      // Here we decide whether it is LPC Bridge
-      //
-      if ((IS_PCI_LPC (&Pci)) ||
-          ((IS_PCI_ISA_PDECODE (&Pci)) &&
-           (Pci.Hdr.VendorId == 0x8086) &&
-           (Pci.Hdr.DeviceId == 0x7000)
-          )
-         ) {
-        Status = PciIo->Attributes (
-          PciIo,
-          EfiPciIoAttributeOperationEnable,
-          EFI_PCI_DEVICE_ENABLE,
-          NULL
-          );
-        //
-        // Add IsaKeyboard to ConIn,
-        // add IsaSerial to ConOut, ConIn, ErrOut
-        //
-        DEBUG ((EFI_D_INFO, "Find the LPC Bridge device\n"));
-        PrepareLpcBridgeDevicePath (HandleBuffer[Index]);
-        continue;
-      }
-      //
-      // Here we decide which Serial device to enable in PCI bus
-      //
-      if (IS_PCI_16550SERIAL (&Pci)) {
-        //
-        // Add them to ConOut, ConIn, ErrOut.
-        //
-        DEBUG ((EFI_D_INFO, "Find the 16550 SERIAL device\n"));
-        PreparePciSerialDevicePath (HandleBuffer[Index]);
-        continue;
-      }
-    }
-
-    if ((Pci.Hdr.VendorId == 0x8086) &&
-        (Pci.Hdr.DeviceId == 0x7010)
-       ) {
-      Status = PciIo->Attributes (
-        PciIo,
-        EfiPciIoAttributeOperationEnable,
-        EFI_PCI_DEVICE_ENABLE,
-        NULL
-        );
-     }
-
-    //
-    // Here we decide which VGA device to enable in PCI bus
-    //
-    if (IS_PCI_VGA (&Pci)) {
-      //
-      // Add them to ConOut.
-      //
-      DEBUG ((EFI_D_INFO, "Find the VGA device\n"));
-      PreparePciVgaDevicePath (HandleBuffer[Index]);
-      continue;
-    }
+    Status = (*CallBackFunction) (
+               HandleBuffer[Index],
+               Instance,
+               Context
+               );
   }
 
   gBS->FreePool (HandleBuffer);
 
   return EFI_SUCCESS;
+}
+
+
+EFI_STATUS
+EFIAPI
+VisitingAPciInstance (
+  IN EFI_HANDLE  Handle,
+  IN VOID        *Instance,
+  IN VOID        *Context
+  )
+{
+  EFI_STATUS                Status;
+  EFI_PCI_IO_PROTOCOL       *PciIo;
+  PCI_TYPE00                Pci;
+
+  PciIo = (EFI_PCI_IO_PROTOCOL*) Instance;
+
+  //
+  // Check for all PCI device
+  //
+  Status = PciIo->Pci.Read (
+                    PciIo,
+                    EfiPciIoWidthUint32,
+                    0,
+                    sizeof (Pci) / sizeof (UINT32),
+                    &Pci
+                    );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  return (*(VISIT_PCI_INSTANCE_CALLBACK)(UINTN) Context) (
+           Handle,
+           PciIo,
+           &Pci
+           );
+
+}
+
+
+
+EFI_STATUS
+VisitAllPciInstances (
+  IN VISIT_PCI_INSTANCE_CALLBACK CallBackFunction
+  )
+{
+  return VisitAllInstancesOfProtocol (
+           &gEfiPciIoProtocolGuid,
+           VisitingAPciInstance,
+           (VOID*)(UINTN) CallBackFunction
+           );
+}
+
+
+/**
+  Do platform specific PCI Device check and add them to
+  ConOut, ConIn, ErrOut.
+
+  @param[in]  Handle - Handle of PCI device instance
+  @param[in]  PciIo - PCI IO protocol instance
+  @param[in]  Pci - PCI Header register block
+
+  @retval EFI_SUCCESS - PCI Device check and Console variable update successfully.
+  @retval EFI_STATUS - PCI Device check or Console variable update fail.
+
+**/
+EFI_STATUS
+DetectAndPreparePlatformPciDevicePath (
+  IN EFI_HANDLE           Handle,
+  IN EFI_PCI_IO_PROTOCOL  *PciIo,
+  IN PCI_TYPE00           *Pci
+  )
+{
+  EFI_STATUS                Status;
+
+  Status = PciIo->Attributes (
+    PciIo,
+    EfiPciIoAttributeOperationEnable,
+    EFI_PCI_DEVICE_ENABLE,
+    NULL
+    );
+  ASSERT_EFI_ERROR (Status);
+
+  if (!mDetectVgaOnly) {
+    //
+    // Here we decide whether it is LPC Bridge
+    //
+    if ((IS_PCI_LPC (Pci)) ||
+        ((IS_PCI_ISA_PDECODE (Pci)) &&
+         (Pci->Hdr.VendorId == 0x8086) &&
+         (Pci->Hdr.DeviceId == 0x7000)
+        )
+       ) {
+      //
+      // Add IsaKeyboard to ConIn,
+      // add IsaSerial to ConOut, ConIn, ErrOut
+      //
+      DEBUG ((EFI_D_INFO, "Found LPC Bridge device\n"));
+      PrepareLpcBridgeDevicePath (Handle);
+      return EFI_SUCCESS;
+    }
+    //
+    // Here we decide which Serial device to enable in PCI bus
+    //
+    if (IS_PCI_16550SERIAL (Pci)) {
+      //
+      // Add them to ConOut, ConIn, ErrOut.
+      //
+      DEBUG ((EFI_D_INFO, "Found PCI 16550 SERIAL device\n"));
+      PreparePciSerialDevicePath (Handle);
+      return EFI_SUCCESS;
+    }
+  }
+
+  //
+  // Here we decide which VGA device to enable in PCI bus
+  //
+  if (IS_PCI_VGA (Pci)) {
+    //
+    // Add them to ConOut.
+    //
+    DEBUG ((EFI_D_INFO, "Found PCI VGA device\n"));
+    PreparePciVgaDevicePath (Handle);
+    return EFI_SUCCESS;
+  }
+
+  return Status;
+}
+
+
+/**
+  Do platform specific PCI Device check and add them to ConOut, ConIn, ErrOut
+
+  @param[in]  DetectVgaOnly - Only detect VGA device if it's TRUE.
+
+  @retval EFI_SUCCESS - PCI Device check and Console variable update successfully.
+  @retval EFI_STATUS - PCI Device check or Console variable update fail.
+
+**/
+EFI_STATUS
+DetectAndPreparePlatformPciDevicePaths (
+  BOOLEAN DetectVgaOnly
+  )
+{
+  mDetectVgaOnly = DetectVgaOnly;
+  return VisitAllPciInstances (DetectAndPreparePlatformPciDevicePath);
 }
 
 
@@ -532,8 +666,6 @@ Returns:
   //
   // Connect RootBridge
   //
-  ConnectRootBridge ();
-
   VarConout = BdsLibGetVariableAndSize (
                 VarConsoleOut,
                 &gEfiGlobalVariableGuid,
@@ -549,7 +681,7 @@ Returns:
     //
     // Do platform specific PCI Device check and add them to ConOut, ConIn, ErrOut
     //
-    DetectAndPreparePlatformPciDevicePath (FALSE);
+    DetectAndPreparePlatformPciDevicePaths (FALSE);
 
     //
     // Have chance to connect the platform default console,
@@ -574,7 +706,7 @@ Returns:
     //
     // Only detect VGA device and add them to ConOut
     //
-    DetectAndPreparePlatformPciDevicePath (TRUE);
+    DetectAndPreparePlatformPciDevicePaths (TRUE);
   }
 
   //
@@ -594,42 +726,131 @@ PciInitialization (
   )
 {
   //
-  // Device 0 Function 0
+  // Bus 0, Device 0, Function 0 - Host to PCI Bridge
   //
-  PciWrite8 (PCI_LIB_ADDRESS (0,0,0,0x3c), 0x00);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 0, 0, 0x3c), 0x00);
 
   //
-  // Device 1 Function 0
+  // Bus 0, Device 1, Function 0 - PCI to ISA Bridge
   //
-  PciWrite8 (PCI_LIB_ADDRESS (0,1,0,0x3c), 0x00);
-  PciWrite8 (PCI_LIB_ADDRESS (0,1,0,0x60), 0x8b);
-  PciWrite8 (PCI_LIB_ADDRESS (0,1,0,0x61), 0x89);
-  PciWrite8 (PCI_LIB_ADDRESS (0,1,0,0x62), 0x0a);
-  PciWrite8 (PCI_LIB_ADDRESS (0,1,0,0x63), 0x89);
-  //PciWrite8 (PCI_LIB_ADDRESS (0,1,0,0x82), 0x02);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x3c), 0x00);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x60), 0x0b);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x61), 0x09);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x62), 0x0b);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 0, 0x63), 0x09);
 
   //
-  // Device 1 Function 1
+  // Bus 0, Device 1, Function 1 - IDE Controller
   //
-  PciWrite8 (PCI_LIB_ADDRESS (0,1,1,0x3c), 0x00);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 1, 0x3c), 0x00);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 1, 0x0d), 0x40);
 
   //
-  // Device 1 Function 3
+  // Bus 0, Device 1, Function 3 - Power Managment Controller
   //
-  PciWrite8 (PCI_LIB_ADDRESS (0,1,3,0x3c), 0x0b);
-  PciWrite8 (PCI_LIB_ADDRESS (0,1,3,0x3d), 0x01);
-  PciWrite8 (PCI_LIB_ADDRESS (0,1,3,0x5f), 0x90);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 3, 0x3c), 0x0b);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 1, 3, 0x3d), 0x01);
 
   //
-  // Device 2 Function 0
+  // Bus 0, Device 2, Function 0 - Video Controller
   //
-  PciWrite8 (PCI_LIB_ADDRESS (0,2,0,0x3c), 0x00);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 2, 0, 0x3c), 0x00);
 
   //
-  // Device 3 Function 0
+  // Bus 0, Device 3, Function 0 - Network Controller
   //
-  PciWrite8 (PCI_LIB_ADDRESS (0,3,0,0x3c), 0x0b);
-  PciWrite8 (PCI_LIB_ADDRESS (0,3,0,0x3d), 0x01);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 3, 0, 0x3c), 0x0b);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 3, 0, 0x3d), 0x01);
+
+  //
+  // Bus 0, Device 4, Function 0 - RAM Memory
+  //
+  PciWrite8 (PCI_LIB_ADDRESS (0, 4, 0, 0x3c), 0x09);
+  PciWrite8 (PCI_LIB_ADDRESS (0, 4, 0, 0x3d), 0x01);
+}
+
+
+EFI_STATUS
+EFIAPI
+ConnectRecursivelyIfPciMassStorage (
+  IN EFI_HANDLE           Handle,
+  IN EFI_PCI_IO_PROTOCOL  *Instance,
+  IN PCI_TYPE00           *PciHeader
+  )
+{
+  EFI_STATUS                Status;
+  EFI_DEVICE_PATH_PROTOCOL  *DevicePath;
+  CHAR16                    *DevPathStr;
+
+  if (IS_CLASS1 (PciHeader, PCI_CLASS_MASS_STORAGE)) {
+    DevicePath = NULL;
+    Status = gBS->HandleProtocol (
+                    Handle,
+                    &gEfiDevicePathProtocolGuid,
+                    (VOID*)&DevicePath
+                    );
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+
+    //
+    // Print Device Path
+    //
+    DevPathStr = DevicePathToStr (DevicePath);
+    DEBUG((
+      EFI_D_INFO,
+      "Found Mass Storage device: %s\n",
+      DevPathStr
+      ));
+    FreePool(DevPathStr);
+
+    Status = gBS->ConnectController (Handle, NULL, NULL, TRUE);
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+
+  }
+
+  return EFI_SUCCESS;
+}
+
+
+EFI_STATUS
+EFIAPI
+VisitingFileSystemInstance (
+  IN EFI_HANDLE  Handle,
+  IN VOID        *Instance,
+  IN VOID        *Context
+  )
+{
+  EFI_STATUS      Status;
+  STATIC BOOLEAN  ConnectedToFileSystem = FALSE;
+
+  if (ConnectedToFileSystem) {
+    return EFI_ALREADY_STARTED;
+  }
+
+  Status = ConnectNvVarsToFileSystem (Handle);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  ConnectedToFileSystem = TRUE;
+  return EFI_SUCCESS;
+}
+
+
+VOID
+PlatformBdsRestoreNvVarsFromHardDisk (
+  )
+{
+  VisitAllPciInstances (ConnectRecursivelyIfPciMassStorage);
+  VisitAllInstancesOfProtocol (
+    &gEfiSimpleFileSystemProtocolGuid,
+    VisitingFileSystemInstance,
+    NULL
+    );
+  
 }
 
 
@@ -679,6 +900,11 @@ Returns:
   BdsLibConnectAll ();
 
   PciInitialization ();
+
+  //
+  // Clear the logo after all devices are connected.
+  //
+  gST->ConOut->ClearScreen (gST->ConOut);
 }
 
 VOID
@@ -709,7 +935,8 @@ Returns:
 VOID
 PlatformBdsDiagnostics (
   IN EXTENDMEM_COVERAGE_LEVEL    MemoryTestLevel,
-  IN BOOLEAN                     QuietBoot
+  IN BOOLEAN                     QuietBoot,
+  IN BASEM_MEMORY_TEST           BaseMemoryTest
   )
 /*++
 
@@ -723,6 +950,8 @@ Arguments:
   MemoryTestLevel  - The memory test intensive level
 
   QuietBoot        - Indicate if need to enable the quiet boot
+
+  BaseMemoryTest   - A pointer to BaseMemoryTest()
 
 Returns:
 
@@ -741,11 +970,11 @@ Returns:
   // from the graphic lib
   //
   if (QuietBoot) {
-    EnableQuietBoot (&gEfiDefaultBmpLogoGuid);
+    EnableQuietBoot (PcdGetPtr(PcdLogoFile));
     //
     // Perform system diagnostic
     //
-    Status = BdsMemoryTest (MemoryTestLevel);
+    Status = BaseMemoryTest (MemoryTestLevel);
     if (EFI_ERROR (Status)) {
       DisableQuietBoot ();
     }
@@ -755,7 +984,7 @@ Returns:
   //
   // Perform system diagnostic
   //
-  Status = BdsMemoryTest (MemoryTestLevel);
+  Status = BaseMemoryTest (MemoryTestLevel);
 }
 
 
@@ -763,7 +992,9 @@ VOID
 EFIAPI
 PlatformBdsPolicyBehavior (
   IN OUT LIST_ENTRY                  *DriverOptionList,
-  IN OUT LIST_ENTRY                  *BootOptionList
+  IN OUT LIST_ENTRY                  *BootOptionList,
+  IN PROCESS_CAPSULES                ProcessCapsules,
+  IN BASEM_MEMORY_TEST               BaseMemoryTest
   )
 /*++
 
@@ -778,6 +1009,10 @@ Arguments:
   DriverOptionList - The header of the driver option link list
 
   BootOptionList   - The header of the boot option link list
+
+  ProcessCapsules  - A pointer to ProcessCapsules()
+
+  BaseMemoryTest   - A pointer to BaseMemoryTest()
 
 Returns:
 
@@ -796,6 +1031,14 @@ Returns:
   EFI_BOOT_MODE                      BootMode;
 
   DEBUG ((EFI_D_INFO, "PlatformBdsPolicyBehavior\n"));
+
+  ConnectRootBridge ();
+
+  //
+  // Try to restore variables from the hard disk early so
+  // they can be used for the other BDS connect operations.
+  //
+  PlatformBdsRestoreNvVarsFromHardDisk ();
 
   //
   // Init the time out value
@@ -844,7 +1087,7 @@ Returns:
   //
   // Memory test and Logo show
   //
-  PlatformBdsDiagnostics (IGNORE, TRUE);
+  PlatformBdsDiagnostics (IGNORE, TRUE, BaseMemoryTest);
 
   //
   // Perform some platform specific connect sequence
@@ -1035,12 +1278,306 @@ Returns:
   return EFI_SUCCESS;
 }
 
-EFI_STATUS
+VOID
 EFIAPI
 PlatformBdsLockNonUpdatableFlash (
   VOID
   )
 {
   DEBUG ((EFI_D_INFO, "PlatformBdsLockNonUpdatableFlash\n"));
-  return EFI_SUCCESS;
+  return;
 }
+
+
+/**
+  This notification function is invoked when an instance of the
+  EFI_DEVICE_PATH_PROTOCOL is produced.
+
+  @param  Event                 The event that occured
+  @param  Context               For EFI compatiblity.  Not used.
+
+**/
+VOID
+EFIAPI
+NotifyDevPath (
+  IN  EFI_EVENT Event,
+  IN  VOID      *Context
+  )
+{
+  EFI_HANDLE                            Handle;
+  EFI_STATUS                            Status;
+  UINTN                                 BufferSize;
+  EFI_DEVICE_PATH_PROTOCOL             *DevPathNode;
+  ATAPI_DEVICE_PATH                    *Atapi;
+
+  //
+  // Examine all new handles
+  //
+  for (;;) {
+    //
+    // Get the next handle
+    //
+    BufferSize = sizeof (Handle);
+    Status = gBS->LocateHandle (
+              ByRegisterNotify,
+              NULL,
+              mEfiDevPathNotifyReg,
+              &BufferSize,
+              &Handle
+              );
+
+    //
+    // If not found, we're done
+    //
+    if (EFI_NOT_FOUND == Status) {
+      break;
+    }
+
+    if (EFI_ERROR (Status)) {
+      continue;
+    }
+
+    //
+    // Get the DevicePath protocol on that handle
+    //
+    Status = gBS->HandleProtocol (Handle, &gEfiDevicePathProtocolGuid, (VOID **)&DevPathNode);
+    ASSERT_EFI_ERROR (Status);
+
+    while (!IsDevicePathEnd (DevPathNode)) {
+      //
+      // Find the handler to dump this device path node
+      //
+      if (
+           (DevicePathType(DevPathNode) == MESSAGING_DEVICE_PATH) &&
+           (DevicePathSubType(DevPathNode) == MSG_ATAPI_DP)
+         ) {
+        Atapi = (ATAPI_DEVICE_PATH*) DevPathNode;
+        PciOr16 (
+          PCI_LIB_ADDRESS (
+            0,
+            1,
+            1,
+            (Atapi->PrimarySecondary == 1) ? 0x42: 0x40
+            ),
+          BIT15
+          );
+      }
+
+      //
+      // Next device path node
+      //
+      DevPathNode = NextDevicePathNode (DevPathNode);
+    }
+  }
+
+  return;
+}
+
+
+VOID
+InstallDevicePathCallback (
+  VOID
+  )
+{
+  DEBUG ((EFI_D_INFO, "Registered NotifyDevPath Event\n"));
+  mEfiDevPathEvent = EfiCreateProtocolNotifyEvent (
+                          &gEfiDevicePathProtocolGuid,
+                          TPL_CALLBACK,
+                          NotifyDevPath,
+                          NULL,
+                          &mEfiDevPathNotifyReg
+                          );
+}
+
+/**
+  Lock the ConsoleIn device in system table. All key
+  presses will be ignored until the Password is typed in. The only way to
+  disable the password is to type it in to a ConIn device.
+
+  @param  Password        Password used to lock ConIn device.
+
+  @retval EFI_SUCCESS     lock the Console In Spliter virtual handle successfully.
+  @retval EFI_UNSUPPORTED Password not found
+
+**/
+EFI_STATUS
+EFIAPI
+LockKeyboards (
+  IN  CHAR16    *Password
+  )
+{
+    return EFI_UNSUPPORTED;
+}
+
+
+STATIC
+VOID
+LoadVideoRom (
+  VOID
+  )
+{
+  PCI_DATA_STRUCTURE            *Pcir;
+  UINTN                         RomSize;
+
+  //
+  // The virtual machines sometimes load the video rom image
+  // directly at the legacy video BIOS location of C000:0000,
+  // and do not implement the PCI expansion ROM feature.
+  //
+  Pcir = (PCI_DATA_STRUCTURE *) (UINTN) 0xc0000;
+  RomSize = Pcir->ImageLength * 512;
+  PciRomLoadEfiDriversFromRomImage (0xc0000, RomSize);
+}
+
+
+STATIC
+EFI_STATUS
+PciRomLoadEfiDriversFromRomImage (
+  IN EFI_PHYSICAL_ADDRESS    Rom,
+  IN UINTN                   RomSize
+  )
+{
+  CHAR16                        *FileName;
+  EFI_PCI_EXPANSION_ROM_HEADER  *EfiRomHeader;
+  PCI_DATA_STRUCTURE            *Pcir;
+  UINTN                         ImageIndex;
+  UINTN                         RomOffset;
+  UINT32                        ImageSize;
+  UINT16                        ImageOffset;
+  EFI_HANDLE                    ImageHandle;
+  EFI_STATUS                    Status;
+  EFI_STATUS                    retStatus;
+  EFI_DEVICE_PATH_PROTOCOL      *FilePath;
+  BOOLEAN                       SkipImage;
+  UINT32                        DestinationSize;
+  UINT32                        ScratchSize;
+  UINT8                         *Scratch;
+  VOID                          *ImageBuffer;
+  VOID                          *DecompressedImageBuffer;
+  UINT32                        ImageLength;
+  EFI_DECOMPRESS_PROTOCOL       *Decompress;
+
+  FileName = L"PciRomInMemory";
+
+  //FileName = L"PciRom Addr=0000000000000000";
+  //HexToString (&FileName[12], Rom, 16);
+
+  ImageIndex    = 0;
+  retStatus     = EFI_NOT_FOUND;
+  RomOffset  = (UINTN) Rom;
+
+  do {
+
+    EfiRomHeader = (EFI_PCI_EXPANSION_ROM_HEADER *) (UINTN) RomOffset;
+
+    if (EfiRomHeader->Signature != 0xaa55) {
+      return retStatus;
+    }
+
+    Pcir      = (PCI_DATA_STRUCTURE *) (UINTN) (RomOffset + EfiRomHeader->PcirOffset);
+    ImageSize = Pcir->ImageLength * 512;
+
+    if ((Pcir->CodeType == PCI_CODE_TYPE_EFI_IMAGE) &&
+        (EfiRomHeader->EfiSignature == EFI_PCI_EXPANSION_ROM_HEADER_EFISIGNATURE) ) {
+
+      if ((EfiRomHeader->EfiSubsystem == EFI_IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER) ||
+          (EfiRomHeader->EfiSubsystem == EFI_IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER) ) {
+
+        ImageOffset             = EfiRomHeader->EfiImageHeaderOffset;
+        ImageSize               = EfiRomHeader->InitializationSize * 512;
+
+        ImageBuffer             = (VOID *) (UINTN) (RomOffset + ImageOffset);
+        ImageLength             = ImageSize - ImageOffset;
+        DecompressedImageBuffer = NULL;
+
+        //
+        // decompress here if needed
+        //
+        SkipImage = FALSE;
+        if (EfiRomHeader->CompressionType > EFI_PCI_EXPANSION_ROM_HEADER_COMPRESSED) {
+          SkipImage = TRUE;
+        }
+
+        if (EfiRomHeader->CompressionType == EFI_PCI_EXPANSION_ROM_HEADER_COMPRESSED) {
+          Status = gBS->LocateProtocol (&gEfiDecompressProtocolGuid, NULL, (VOID **) &Decompress);
+          if (EFI_ERROR (Status)) {
+            SkipImage = TRUE;
+          } else {
+            SkipImage = TRUE;
+            Status = Decompress->GetInfo (
+                                  Decompress,
+                                  ImageBuffer,
+                                  ImageLength,
+                                  &DestinationSize,
+                                  &ScratchSize
+                                  );
+            if (!EFI_ERROR (Status)) {
+              DecompressedImageBuffer = NULL;
+              DecompressedImageBuffer = AllocatePool (DestinationSize);
+              if (DecompressedImageBuffer != NULL) {
+                Scratch = AllocatePool (ScratchSize);
+                if (Scratch != NULL) {
+                  Status = Decompress->Decompress (
+                                        Decompress,
+                                        ImageBuffer,
+                                        ImageLength,
+                                        DecompressedImageBuffer,
+                                        DestinationSize,
+                                        Scratch,
+                                        ScratchSize
+                                        );
+                  if (!EFI_ERROR (Status)) {
+                    ImageBuffer = DecompressedImageBuffer;
+                    ImageLength = DestinationSize;
+                    SkipImage   = FALSE;
+                  }
+
+                  gBS->FreePool (Scratch);
+                }
+              }
+            }
+          }
+        }
+
+        if (!SkipImage) {
+
+          //
+          // load image and start image
+          //
+
+          FilePath = FileDevicePath (NULL, FileName);
+
+          Status = gBS->LoadImage (
+                          FALSE,
+                          gImageHandle,
+                          FilePath,
+                          ImageBuffer,
+                          ImageLength,
+                          &ImageHandle
+                          );
+          if (!EFI_ERROR (Status)) {
+            Status = gBS->StartImage (ImageHandle, NULL, NULL);
+            if (!EFI_ERROR (Status)) {
+              retStatus = Status;
+            }
+          }
+          if (FilePath != NULL) {
+            gBS->FreePool (FilePath);
+          }
+        }
+
+        if (DecompressedImageBuffer != NULL) {
+          gBS->FreePool (DecompressedImageBuffer);
+        }
+
+      }
+    }
+
+    RomOffset = RomOffset + ImageSize;
+    ImageIndex++;
+  } while (((Pcir->Indicator & 0x80) == 0x00) && ((RomOffset - (UINTN) Rom) < RomSize));
+
+  return retStatus;
+}
+
+
