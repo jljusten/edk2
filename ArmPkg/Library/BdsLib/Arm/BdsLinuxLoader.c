@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2014, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -17,6 +17,9 @@
 
 #define ALIGN32_BELOW(addr)   ALIGN_POINTER(addr - 32,32)
 
+#define IS_ADDRESS_IN_REGION(RegionStart, RegionSize, Address) \
+    (((UINTN)(RegionStart) <= (UINTN)(Address)) && ((UINTN)(Address) <= ((UINTN)(RegionStart) + (UINTN)(RegionSize))))
+
 STATIC
 EFI_STATUS
 PreparePlatformHardware (
@@ -25,9 +28,11 @@ PreparePlatformHardware (
 {
   //Note: Interrupts will be disabled by the GIC driver when ExitBootServices() will be called.
 
-  // Clean, invalidate, disable data cache
-  ArmDisableDataCache();
-  ArmCleanInvalidateDataCache();
+  // Clean before Disable else the Stack gets corrupted with old data.
+  ArmCleanDataCache ();
+  ArmDisableDataCache ();
+  // Invalidate all the entries that might have snuck in.
+  ArmInvalidateDataCache ();
 
   // Invalidate and disable the Instruction cache
   ArmDisableInstructionCache ();
@@ -89,7 +94,10 @@ StartLinux (
     LinuxImageSize -= 64;
   }
 
-  //TODO: Check there is no overlapping between kernel and Atag
+  // Check there is no overlapping between kernel and its parameters
+  // We can only assert because it is too late to fallback to UEFI (ExitBootServices has been called).
+  ASSERT (!IS_ADDRESS_IN_REGION(LinuxKernel, LinuxImageSize, KernelParamsAddress) &&
+          !IS_ADDRESS_IN_REGION(LinuxKernel, LinuxImageSize, KernelParamsAddress + KernelParamsSize));
 
   //
   // Switch off interrupts, caches, mmu, etc
