@@ -60,11 +60,6 @@
   ##  @libraryclass  Provides a set of interfaces to do IFR opcode creation and interact with a UEFI Form Browser.
   IfrSupportLib|Include/Library/IfrSupportLib.h
   
-  ##  @libraryclass  Includes two extended HII functions to create and destory Hii Package 
-  #                  by create the virtual Driver Handle.
-  ##
-  ExtendedHiiLib|Include/Library/ExtendedHiiLib.h
-  
   ##  @libraryclass  Defines APIs that is related to IFR operations but specific to EDK II
   #                  implementation.
   ##
@@ -150,10 +145,6 @@
   ## Include/Protocol/GenericMemoryTest.h
   gEfiGenericMemTestProtocolGuid = { 0x309DE7F1, 0x7F5E, 0x4ACE, { 0xB4, 0x9C, 0x53, 0x1B, 0xE5, 0xAA, 0x95, 0xEF }}
   
-  ## This protocol provides the interfaces to Get/Set the current video mode for GOP/UGA screen
-  ## Include/Protocol/ConsoleControl.h
-  gEfiConsoleControlProtocolGuid = { 0xF42F7782, 0x012E, 0x4C12, { 0x99, 0x56, 0x49, 0xF9, 0x43, 0x04, 0xF7, 0x21 }}
-      
   ## Include/Protocol/NicIp4Config.h
   gEfiNicIp4ConfigProtocolGuid   = {0xdca3d4d, 0x12da, 0x4728,  { 0xbf, 0x7e, 0x86, 0xce, 0xb9, 0x28, 0xd0, 0x67 }}
   
@@ -277,21 +268,32 @@
   ## Maximum PPI count is supported by PeiCore's PPI database.
   gEfiMdeModulePkgTokenSpaceGuid.PcdPeiCoreMaxPpiSupported|64|UINT32|0x00010033
   
-  ## Size of the NV variable range.
+  ## Size of the NV variable range. Note that this value should less than or equal to PcdFlashNvStorageFtwSpareSize
+  # The root cause is that variable driver will use FTW protocol to reclaim variable region.
+  # If the length of variable region is larger than FTW spare size, it means the whole variable region can not
+  # be reflushed through the manner of fault tolerant write. 
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize|0x0|UINT32|0x30000002
   
-  ## Maximum allowable size of a common type variable, that is, non-hardware error type variable.
+  ## The maximum size of single common variable, that is non-HwErr type varible.
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize|0x400|UINT32|0x30000003
   
-  ## Maximum allowable size of a single hardware error record variable.
+  ## The maximum size of single hardware error record variable.
+  # In IA32/X64 platforms, this value should be larger than 1KB.
+  # In IA64 platforms, this value should be larger than 128KB.
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxHardwareErrorVariableSize|0x8000|UINT32|0x30000004
   
-  ## Size of allocated memory for volatile variable store. Variables are stored in such region and 
-  #  total length of all variables should not larger than this value.
-  ##
+  ## The size of reserved HwErr variable space. This space is located at NV variable range.
+  # HwErr type variable is stored with common non-volatile variables in NV region.
+  # this value is used to guarantee the space of HwErr type variable and not populated by common variable.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdHwErrStorageSize|0x8000|UINT32|0x30000006
+
+  ## The size of volatile buffer. This buffer is used to store VOLATILE attribute variable.
   gEfiMdeModulePkgTokenSpaceGuid.PcdVariableStoreSize|0x10000|UINT32|0x30000005
-   
-  ## Size of the FTW spare block range.
+
+  ## Size of the FTW spare block range. Note that this value should larger than PcdFlashNvStorageVariableSize
+  # The root cause is that variable driver will use FTW protocol to reclaim variable region.
+  # If the length of variable region is larger than FTW spare size, it means the whole variable region can not
+  # be reflushed through the manner of fault tolerant write.
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareSize|0x0|UINT32|0x30000014
     
   ## Size of the FTW working block range.

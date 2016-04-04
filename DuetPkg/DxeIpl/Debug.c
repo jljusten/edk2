@@ -19,6 +19,7 @@ Revision History:
 **/
 
 #include "DxeIpl.h"
+#include "SerialStatusCode.h"
 
 UINT8 *mCursor;
 UINT8 mHeaderIndex = 10;
@@ -92,5 +93,10 @@ PrintString (
       mCursor += 2;
     }
   }
+  
+  //
+  // All information also output to serial port.
+  //
+  DebugSerialPrint ((CHAR8*)String);
 }
 

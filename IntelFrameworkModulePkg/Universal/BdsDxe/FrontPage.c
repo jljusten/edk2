@@ -37,6 +37,31 @@ FRONT_PAGE_CALLBACK_DATA  gFrontPagePrivate = {
   }
 };
 
+HII_VENDOR_DEVICE_PATH  mFrontPageHiiVendorDevicePath = {
+  {
+    {
+      HARDWARE_DEVICE_PATH,
+      HW_VENDOR_DP,
+      {
+        (UINT8) (sizeof (VENDOR_DEVICE_PATH)),
+        (UINT8) ((sizeof (VENDOR_DEVICE_PATH)) >> 8)
+      }
+    },
+    //
+    // {8E6D99EE-7531-48f8-8745-7F6144468FF2}
+    //
+    { 0x8e6d99ee, 0x7531, 0x48f8, { 0x87, 0x45, 0x7f, 0x61, 0x44, 0x46, 0x8f, 0xf2 } }
+  },
+  {
+    END_DEVICE_PATH_TYPE,
+    END_ENTIRE_DEVICE_PATH_SUBTYPE,
+    { 
+      (UINT8) (END_DEVICE_PATH_LENGTH),
+      (UINT8) ((END_DEVICE_PATH_LENGTH) >> 8)
+    }
+  }
+};
+
 /**
   This function allows a caller to extract the current configuration for one
   or more named elements from the target driver.
@@ -129,10 +154,12 @@ FrontPageCallback (
 {
   CHAR8                         *LanguageString;
   CHAR8                         *LangCode;
-  CHAR8                         Lang[RFC_3066_ENTRY_SIZE];
+  CHAR8                         *Lang;
   CHAR8                         OldLang[ISO_639_2_ENTRY_SIZE];
   UINTN                         Index;
   EFI_STATUS                    Status;
+  CHAR8                         *PlatformSupportedLanguages;
+  CHAR8                         *BestLanguage;
 
   if ((Value == NULL) || (ActionRequest == NULL)) {
     return EFI_INVALID_PARAMETER;
@@ -158,7 +185,12 @@ FrontPageCallback (
     //
     LanguageString = HiiLibGetSupportedLanguages (gFrontPagePrivate.HiiHandle);
     ASSERT (LanguageString != NULL);
-
+    //
+    // Allocate working buffer for RFC 4646 language in supported LanguageString.
+    //
+    Lang = AllocatePool (AsciiStrSize (LanguageString));
+    ASSERT (Lang != NULL);
+    
     Index = 0;
     LangCode = LanguageString;
     while (*LangCode != 0) {
@@ -171,30 +203,53 @@ FrontPageCallback (
       Index++;
     }
 
-    Status = gRT->SetVariable (
-                    L"PlatformLang",
-                    &gEfiGlobalVariableGuid,
-                    EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
-                    AsciiStrSize (Lang),
-                    Lang
-                    );
-
-    if (!FeaturePcdGet (PcdUefiVariableDefaultLangDeprecate)) {
-      //
-      // Set UEFI deprecated variable "Lang" for backwards compatibility
-      //
-      Status = ConvertRfc3066LanguageToIso639Language (Lang, OldLang);
-      if (!EFI_ERROR (Status)) {
-        Status = gRT->SetVariable (
-                        L"Lang",
-                        &gEfiGlobalVariableGuid,
-                        EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
-                        ISO_639_2_ENTRY_SIZE,
-                        OldLang
-                        );
-      }
+    PlatformSupportedLanguages = GetEfiGlobalVariable (L"PlatformLangCodes");
+    if (PlatformSupportedLanguages == NULL) {
+      PlatformSupportedLanguages = AllocateCopyPool (
+                                     AsciiStrSize ((CHAR8 *) PcdGetPtr (PcdUefiVariableDefaultPlatformLangCodes)),
+                                     (CHAR8 *) PcdGetPtr (PcdUefiVariableDefaultPlatformLangCodes)
+                                     );
+      ASSERT (PlatformSupportedLanguages != NULL);
     }
+    
+    //
+    // Select the best language in platform supported Language.
+    //
+    BestLanguage = GetBestLanguage (
+                     PlatformSupportedLanguages,
+                     FALSE,
+                     Lang,
+                     NULL
+                     );
+    if (BestLanguage != NULL) {
+      Status = gRT->SetVariable (
+                      L"PlatformLang",
+                      &gEfiGlobalVariableGuid,
+                      EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
+                      AsciiStrSize (BestLanguage),
+                      Lang
+                      );
 
+      if (!FeaturePcdGet (PcdUefiVariableDefaultLangDeprecate)) {
+        //
+        // Set UEFI deprecated variable "Lang" for backwards compatibility
+        //
+        Status = ConvertRfc3066LanguageToIso639Language (BestLanguage, OldLang);
+        if (!EFI_ERROR (Status)) {
+          Status = gRT->SetVariable (
+                          L"Lang",
+                          &gEfiGlobalVariableGuid,
+                          EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
+                          ISO_639_2_ENTRY_SIZE,
+                          OldLang
+                          );
+        }
+      }
+      FreePool (BestLanguage);
+    }
+  
+    FreePool (PlatformSupportedLanguages);
+    FreePool (Lang);
     FreePool (LanguageString);
     break;
 
@@ -247,8 +302,9 @@ InitializeFrontPage (
   IFR_OPTION                  *OptionList;
   CHAR8                       *LanguageString;
   CHAR8                       *LangCode;
-  CHAR8                       Lang[RFC_3066_ENTRY_SIZE];
-  CHAR8                       CurrentLang[RFC_3066_ENTRY_SIZE];
+  CHAR8                       *Lang;
+  CHAR8                       *CurrentLang;
+  CHAR8                       *BestLanguage;
   UINTN                       OptionCount;
   EFI_STRING_ID               Token;
   CHAR16                      *StringBuffer;
@@ -293,21 +349,15 @@ InitializeFrontPage (
     }
 
     //
-    // Create driver handle used by HII database
+    // Install Device Path Protocol and Config Access protocol to driver handle
     //
-    Status = HiiLibCreateHiiDriverHandle (&gFrontPagePrivate.DriverHandle);
-    if (EFI_ERROR (Status)) {
-      return Status;
-    }
-
-    //
-    // Install Config Access protocol to driver handle
-    //
-    Status = gBS->InstallProtocolInterface (
+    Status = gBS->InstallMultipleProtocolInterfaces (
                     &gFrontPagePrivate.DriverHandle,
+                    &gEfiDevicePathProtocolGuid,
+                    &mFrontPageHiiVendorDevicePath,
                     &gEfiHiiConfigAccessProtocolGuid,
-                    EFI_NATIVE_INTERFACE,
-                    &gFrontPagePrivate.ConfigAccess
+                    &gFrontPagePrivate.ConfigAccess,
+                    NULL
                     );
     ASSERT_EFI_ERROR (Status);
 
@@ -329,10 +379,6 @@ InitializeFrontPage (
     }
   }
 
-  //
-  // Get current language setting
-  //
-  GetCurrentLanguage (CurrentLang);
 
   //
   // Allocate space for creation of UpdateData Buffer
@@ -350,6 +396,28 @@ InitializeFrontPage (
   HiiHandle = gFrontPagePrivate.HiiHandle;
   LanguageString = HiiLibGetSupportedLanguages (HiiHandle);
   ASSERT (LanguageString != NULL);
+  //
+  // Allocate working buffer for RFC 4646 language in supported LanguageString.
+  //
+  Lang = AllocatePool (AsciiStrSize (LanguageString));
+  ASSERT (Lang != NULL);
+
+  CurrentLang = GetEfiGlobalVariable (L"PlatformLang");
+  //
+  // Select the best language in LanguageString as the default one.
+  //
+  BestLanguage = GetBestLanguage (
+                   LanguageString,
+                   FALSE,
+                   (CurrentLang != NULL) ? CurrentLang : "",
+                   (CHAR8 *) PcdGetPtr (PcdUefiVariableDefaultPlatformLang),
+                   LanguageString,
+                   NULL
+                   );
+  //
+  // BestLanguage must be selected as it is the first language in LanguageString by default
+  //
+  ASSERT (BestLanguage != NULL);
 
   OptionCount = 0;
   LangCode = LanguageString;
@@ -394,7 +462,7 @@ InitializeFrontPage (
       Token = gFrontPagePrivate.LanguageToken[OptionCount];
     }
 
-    if (AsciiStrCmp (Lang, CurrentLang) == 0) {
+    if (AsciiStrCmp (Lang, BestLanguage) == 0) {
       OptionList[OptionCount].Flags = EFI_IFR_OPTION_DEFAULT;
     } else {
       OptionList[OptionCount].Flags = 0;
@@ -405,6 +473,11 @@ InitializeFrontPage (
     OptionCount++;
   }
 
+  if (CurrentLang != NULL) {
+    FreePool (CurrentLang);
+  }
+  FreePool (BestLanguage);
+  FreePool (Lang);
   FreePool (LanguageString);
 
   UpdateData.Offset = 0;

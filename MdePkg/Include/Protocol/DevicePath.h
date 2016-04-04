@@ -478,6 +478,11 @@ typedef struct {
 } SATA_DEVICE_PATH;
 
 ///
+/// Flag for if the device is directly connected to the HBA.
+///
+#define SATA_HBA_DIRECT_CONNECT_FLAG 0x8000
+
+///
 /// I2O Device Path SubType
 ///
 #define MSG_I2O_DP                0x06
@@ -904,6 +909,20 @@ typedef struct {
 } MEDIA_FW_VOL_FILEPATH_DEVICE_PATH;
 
 ///
+/// Media relative offset range device path
+///
+#define MEDIA_RELATIVE_OFFSET_RANGE_DP 0x08
+
+///
+/// Used to describe the offset range of media relative.
+///
+typedef struct {
+  EFI_DEVICE_PATH_PROTOCOL  Header;
+  UINT64                    StartingOffset;
+  UINT64                    EndingOffset;
+} MEDIA_RELATIVE_OFFSET_RANGE_DEVICE_PATH;
+
+///
 /// BIOS Boot Specification Device Path
 ///
 #define BBS_DEVICE_PATH           0x05
@@ -979,6 +998,7 @@ typedef union {
 
   FILEPATH_DEVICE_PATH                 FilePath;
   MEDIA_PROTOCOL_DEVICE_PATH           MediaProtocol;
+  MEDIA_RELATIVE_OFFSET_RANGE_DEVICE_PATH Offset;
 
   BBS_BBS_DEVICE_PATH                  Bbs;
 } EFI_DEV_PATH;
@@ -1016,6 +1036,7 @@ typedef union {
 
   FILEPATH_DEVICE_PATH                 *FilePath;
   MEDIA_PROTOCOL_DEVICE_PATH           *MediaProtocol;
+  MEDIA_RELATIVE_OFFSET_RANGE_DEVICE_PATH *Offset;
 
   BBS_BBS_DEVICE_PATH                  *Bbs;
   UINT8                                *Raw;

@@ -431,7 +431,7 @@ Dtoi64 (
 
   Convert integer string to uint.
 
-  @param Str             The integer string. If leading with "0x" or "0X", it's heximal.
+  @param Str             The integer string. If leading with "0x" or "0X", it's hexadecimal.
 
   @return A UINTN value represented by Str
 
@@ -456,7 +456,7 @@ Strtoi (
 
   Convert integer string to 64 bit data.
 
-  @param Str             The integer string. If leading with "0x" or "0X", it's heximal.
+  @param Str             The integer string. If leading with "0x" or "0X", it's hexadecimal.
   @param Data            A pointer to the UINT64 value represented by Str
 
 **/
@@ -519,7 +519,7 @@ StrToBuf (
     }
 
     //
-    // For odd charaters, write the upper nibble for each buffer byte,
+    // For odd characters, write the upper nibble for each buffer byte,
     // and for even characters, the lower nibble.
     //
     if ((Index & 1) == 0) {
@@ -597,7 +597,7 @@ StrToGuid (
   }
 
   //
-  // Get the followin 8 bytes data
+  // Get the following 8 bytes data
   //  
   StrToBuf (&Guid->Data4[0], 2, Str);
   //
@@ -661,7 +661,7 @@ StrToIPv6Addr (
 /**
   Converts a Unicode string to ASCII string.
 
-  @param Str             The equiventant Unicode string
+  @param Str             The equivalent Unicode string
   @param AsciiStr        On input, it points to destination ASCII string buffer; on output, it points
                          to the next ASCII string next to it
 
@@ -1035,11 +1035,11 @@ DevPathFromTextParallelPort (
 }
 
 /**
-  Converts a text device path node to ACPI extention device path structure.
+  Converts a text device path node to ACPI extension device path structure.
 
   @param TextDeviceNode  The input Text device path node.
 
-  @return A pointer to the newly-created ACPI extention device path structure.
+  @return A pointer to the newly-created ACPI extension device path structure.
 
 **/
 EFI_DEVICE_PATH_PROTOCOL *
@@ -1086,11 +1086,11 @@ DevPathFromTextAcpiEx (
 }
 
 /**
-  Converts a text device path node to ACPI extention device path structure.
+  Converts a text device path node to ACPI extension device path structure.
 
   @param TextDeviceNode  The input Text device path node.
 
-  @return A pointer to the newly-created ACPI extention device path structure.
+  @return A pointer to the newly-created ACPI extension device path structure.
 
 **/
 EFI_DEVICE_PATH_PROTOCOL *
@@ -2574,11 +2574,48 @@ DevPathFromTextFvFile (
 }
 
 /**
+  Converts a text device path node to text relative offset device path structure.
+
+  @param TextDeviceNode  The input Text device path node.
+
+  @return A pointer to the newly-created Text device path structure.
+
+**/
+EFI_DEVICE_PATH_PROTOCOL *
+DevPathFromTextRelativeOffsetRange (
+  IN CHAR16 *TextDeviceNode
+  )
+{
+  CHAR16                                  *StartingOffsetStr;
+  CHAR16                                  *EndingOffsetStr;
+  MEDIA_RELATIVE_OFFSET_RANGE_DEVICE_PATH *Offset;
+  UINT64                                  StartingOffset;
+  UINT64                                  EndingOffset;
+
+  StartingOffsetStr = GetNextParamStr (&TextDeviceNode);
+  EndingOffsetStr   = GetNextParamStr (&TextDeviceNode);
+  Offset            = (MEDIA_RELATIVE_OFFSET_RANGE_DEVICE_PATH *) CreateDeviceNode (
+                                                                    MEDIA_DEVICE_PATH,
+                                                                    MEDIA_RELATIVE_OFFSET_RANGE_DP,
+                                                                    sizeof (MEDIA_RELATIVE_OFFSET_RANGE_DEVICE_PATH)
+                                                                    );
+
+  Strtoi64 (StartingOffsetStr, &StartingOffset);
+  Strtoi64 (EndingOffsetStr, &EndingOffset);
+
+  WriteUnaligned64 ((VOID *) &Offset->StartingOffset, StartingOffset);
+  WriteUnaligned64 ((VOID *) &Offset->EndingOffset, EndingOffset);
+
+
+  return (EFI_DEVICE_PATH_PROTOCOL *) Offset;
+}
+
+/**
   Converts a text device path node to BIOS Boot Specification device path structure.
 
   @param TextDeviceNode  The input Text device path node.
 
-  @return A pointer to the newly-created BIOS Boot Specificationa device path structure.
+  @return A pointer to the newly-created BIOS Boot Specification device path structure.
 
 **/
 EFI_DEVICE_PATH_PROTOCOL *
@@ -2663,7 +2700,7 @@ DevPathFromTextSata (
     Sata->PortMultiplierPortNumber = (UINT16) Xtoi (Param2);
     Param2                   = Param3;
   } else {
-    Sata->PortMultiplierPortNumber = 0;
+    Sata->PortMultiplierPortNumber = SATA_HBA_DIRECT_CONNECT_FLAG;
   }
   Sata->Lun = (UINT16) Xtoi (Param2);
 
@@ -2728,6 +2765,7 @@ GLOBAL_REMOVE_IF_UNREFERENCED DEVICE_PATH_FROM_TEXT_TABLE DevPathFromTextTable[]
   {L"Media", DevPathFromTextMedia},
   {L"Fv", DevPathFromTextFv},
   {L"FvFile", DevPathFromTextFvFile},
+  {L"Offset", DevPathFromTextRelativeOffsetRange},
   {L"BBS", DevPathFromTextBBS},
   {L"Sata", DevPathFromTextSata},
   {NULL, NULL}

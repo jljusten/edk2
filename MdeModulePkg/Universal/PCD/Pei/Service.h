@@ -893,7 +893,7 @@ typedef struct {
   space guid: token number} to local token number.
   
   @param Guid            Token space guid for dynamic-ex PCD entry.
-  @param ExTokenNumber   EDES_TODO: Add parameter description
+  @param ExTokenNumber   Token number for dynamic-ex PCD.
 
   @return local token number for dynamic-ex PCD.
 
@@ -1011,3 +1011,4 @@ SetPtrTypeSize (
 extern PEI_PCD_DATABASE_INIT gPEIPcdDbInit;
 
 #endif
+
