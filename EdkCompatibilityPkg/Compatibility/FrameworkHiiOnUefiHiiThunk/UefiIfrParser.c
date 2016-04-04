@@ -408,9 +408,14 @@ IsExpressionOpCode (
   )
 {
   if (((Operand >= EFI_IFR_EQ_ID_VAL_OP) && (Operand <= EFI_IFR_NOT_OP)) ||
-      ((Operand >= EFI_IFR_MATCH_OP) && (Operand <= EFI_IFR_SPAN_OP)) ||
-      (Operand == EFI_IFR_CATENATE_OP)
-     ) {
+      ((Operand >= EFI_IFR_MATCH_OP) && (Operand <= EFI_IFR_SET_OP))  ||
+      ((Operand >= EFI_IFR_EQUAL_OP) && (Operand <= EFI_IFR_SPAN_OP)) ||
+      (Operand == EFI_IFR_CATENATE_OP) ||
+      (Operand == EFI_IFR_TO_LOWER_OP) ||
+      (Operand == EFI_IFR_TO_UPPER_OP) ||
+      (Operand == EFI_IFR_MAP_OP)      ||
+      (Operand == EFI_IFR_VERSION_OP)  ||
+      (Operand == EFI_IFR_SECURITY_OP)) {
     return TRUE;
   } else {
     return FALSE;
@@ -502,12 +507,14 @@ ParseOpCodes (
   UINT8                   OneOfType;
   EFI_IFR_ONE_OF          *OneOfOpcode;
   HII_THUNK_CONTEXT       *ThunkContext;
+  EFI_IFR_FORM_MAP_METHOD *MapMethod;
 
   mInScopeSubtitle = FALSE;
   mInScopeSuppress = FALSE;
   mInScopeGrayOut  = FALSE;
   CurrentDefault   = NULL;
   CurrentOption    = NULL;
+  MapMethod        = NULL;
   ThunkContext     = UefiHiiHandleToThunkContext ((CONST HII_THUNK_PRIVATE_DATA*) mHiiThunkPrivateData, FormSet->HiiHandle);
 
   //
@@ -549,7 +556,7 @@ ParseOpCodes (
     //
     // If scope bit set, push onto scope stack
     //
-    if (Scope) {
+    if (Scope != 0) {
       PushScope (Operand);
     }
 
@@ -585,6 +592,49 @@ ParseOpCodes (
 
       CopyMem (&CurrentForm->FormId,    &((EFI_IFR_FORM *) OpCodeData)->FormId,    sizeof (UINT16));
       CopyMem (&CurrentForm->FormTitle, &((EFI_IFR_FORM *) OpCodeData)->FormTitle, sizeof (EFI_STRING_ID));
+
+      //
+      // Insert into Form list of this FormSet
+      //
+      InsertTailList (&FormSet->FormListHead, &CurrentForm->Link);
+      break;
+
+    case EFI_IFR_FORM_MAP_OP:
+      //
+      // Create a new Form Map for this FormSet
+      //
+      CurrentForm = AllocateZeroPool (sizeof (FORM_BROWSER_FORM));
+      CurrentForm->Signature = FORM_BROWSER_FORM_SIGNATURE;
+
+      InitializeListHead (&CurrentForm->StatementListHead);
+
+      CopyMem (&CurrentForm->FormId, &((EFI_IFR_FORM *) OpCodeData)->FormId, sizeof (UINT16));
+      MapMethod = (EFI_IFR_FORM_MAP_METHOD *) (OpCodeData + sizeof (EFI_IFR_FORM_MAP));
+
+      //
+      // FormMap Form must contain at least one Map Method.
+      //
+      if (((EFI_IFR_OP_HEADER *) OpCodeData)->Length < ((UINTN) (UINT8 *) (MapMethod + 1) - (UINTN) OpCodeData)) {
+        return EFI_INVALID_PARAMETER;
+      }
+
+      //
+      // Try to find the standard form map method.
+      //
+      while (((UINTN) (UINT8 *) MapMethod - (UINTN) OpCodeData) < ((EFI_IFR_OP_HEADER *) OpCodeData)->Length) {
+        if (CompareGuid ((EFI_GUID *) (VOID *) &MapMethod->MethodIdentifier, &gEfiHiiStandardFormGuid)) {
+          CopyMem (&CurrentForm->FormTitle, &MapMethod->MethodTitle, sizeof (EFI_STRING_ID));
+          break;
+        }
+        MapMethod ++;
+      }
+      //
+      // If the standard form map method is not found, the first map method title will be used.
+      //
+      if (CurrentForm->FormTitle == 0) {
+        MapMethod = (EFI_IFR_FORM_MAP_METHOD *) (OpCodeData + sizeof (EFI_IFR_FORM_MAP));
+        CopyMem (&CurrentForm->FormTitle, &MapMethod->MethodTitle, sizeof (EFI_STRING_ID));
+      }
 
       //
       // Insert into Form list of this FormSet
@@ -667,15 +717,17 @@ ParseOpCodes (
     //
     case EFI_IFR_SUBTITLE_OP:
       CurrentStatement = CreateStatement (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
       CurrentStatement->Flags = ((EFI_IFR_SUBTITLE *) OpCodeData)->Flags;
 
-      if (Scope) {
+      if (Scope != 0) {
         mInScopeSubtitle = TRUE;
       }
       break;
 
     case EFI_IFR_TEXT_OP:
       CurrentStatement = CreateStatement (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
 
       CopyMem (&CurrentStatement->TextTwo, &((EFI_IFR_TEXT *) OpCodeData)->TextTwo, sizeof (EFI_STRING_ID));
       break;
@@ -685,6 +737,7 @@ ParseOpCodes (
     //
     case EFI_IFR_ACTION_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
 
       if (OpCodeLength == sizeof (EFI_IFR_ACTION_1)) {
         //
@@ -698,11 +751,13 @@ ParseOpCodes (
 
     case EFI_IFR_RESET_BUTTON_OP:
       CurrentStatement = CreateStatement (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
       CopyMem (&CurrentStatement->DefaultId, &((EFI_IFR_RESET_BUTTON *) OpCodeData)->DefaultId, sizeof (EFI_DEFAULT_ID));
       break;
 
     case EFI_IFR_REF_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
 
       CopyMem (&CurrentStatement->RefFormId, &((EFI_IFR_REF *) OpCodeData)->FormId, sizeof (EFI_FORM_ID));
       if (OpCodeLength >= sizeof (EFI_IFR_REF2)) {
@@ -721,6 +776,7 @@ ParseOpCodes (
     case EFI_IFR_ONE_OF_OP:
     case EFI_IFR_NUMERIC_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
 
       CurrentStatement->Flags = ((EFI_IFR_ONE_OF *) OpCodeData)->Flags;
       Value = &CurrentStatement->HiiValue;
@@ -770,6 +826,7 @@ ParseOpCodes (
 
     case EFI_IFR_ORDERED_LIST_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
 
       CurrentStatement->Flags = ((EFI_IFR_ORDERED_LIST *) OpCodeData)->Flags;
       CurrentStatement->MaxContainers = ((EFI_IFR_ORDERED_LIST *) OpCodeData)->MaxContainers;
@@ -787,6 +844,7 @@ ParseOpCodes (
 
     case EFI_IFR_CHECKBOX_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
 
       CurrentStatement->Flags = ((EFI_IFR_CHECKBOX *) OpCodeData)->Flags;
       CurrentStatement->StorageWidth = sizeof (BOOLEAN);
@@ -796,6 +854,7 @@ ParseOpCodes (
 
     case EFI_IFR_STRING_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
 
       //
       // MinSize is the minimum number of characters that can be accepted for this opcode,
@@ -814,6 +873,7 @@ ParseOpCodes (
 
     case EFI_IFR_PASSWORD_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
 
       //
       // MinSize is the minimum number of characters that can be accepted for this opcode,
@@ -831,6 +891,7 @@ ParseOpCodes (
 
     case EFI_IFR_DATE_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
 
       CurrentStatement->Flags = ((EFI_IFR_DATE *) OpCodeData)->Flags;
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_DATE;
@@ -839,6 +900,7 @@ ParseOpCodes (
 
     case EFI_IFR_TIME_OP:
       CurrentStatement = CreateQuestion (OpCodeData, FormSet, CurrentForm);
+      ASSERT (CurrentStatement != NULL);
 
       CurrentStatement->Flags = ((EFI_IFR_TIME *) OpCodeData)->Flags;
       CurrentStatement->HiiValue.Type = EFI_IFR_TYPE_TIME;
@@ -917,6 +979,8 @@ ParseOpCodes (
     // Expression
     //
     case EFI_IFR_VALUE_OP:
+    case EFI_IFR_READ_OP:
+    case EFI_IFR_WRITE_OP:
       break;
 
     case EFI_IFR_RULE_OP:
@@ -938,6 +1002,7 @@ ParseOpCodes (
         break;
 
       case EFI_IFR_FORM_OP:
+      case EFI_IFR_FORM_MAP_OP:
         ImageId = &CurrentForm->ImageId;
         break;
 
@@ -946,10 +1011,17 @@ ParseOpCodes (
         break;
 
       default:
+        //
+        // Make sure CurrentStatement is not NULL.
+        // If it is NULL, 1) ParseOpCodes functions may parse the IFR wrongly. Or 2) the IFR
+        // file is wrongly generated by tools such as VFR Compiler.
+        //
+        ASSERT (CurrentStatement != NULL);
         ImageId = &CurrentStatement->ImageId;
         break;
       }
-
+      
+      ASSERT (ImageId != NULL);
       CopyMem (ImageId, &((EFI_IFR_IMAGE *) OpCodeData)->Id, sizeof (EFI_IMAGE_ID));
       break;
 
@@ -957,6 +1029,7 @@ ParseOpCodes (
     // Refresh
     //
     case EFI_IFR_REFRESH_OP:
+      ASSERT (CurrentStatement != NULL);
       CurrentStatement->RefreshInterval = ((EFI_IFR_REFRESH *) OpCodeData)->RefreshInterval;
       break;
 
@@ -1040,6 +1113,7 @@ ParseOpCodes (
         break;
 
       case EFI_IFR_FORM_OP:
+      case EFI_IFR_FORM_MAP_OP:
         //
         // End of Form
         //
