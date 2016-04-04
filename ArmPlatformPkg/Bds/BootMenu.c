@@ -427,12 +427,16 @@ BootMenuMain (
         EFI_DEVICE_PATH_TO_TEXT_PROTOCOL* DevicePathToTextProtocol;
 
         Status = gBS->LocateProtocol(&gEfiDevicePathToTextProtocolGuid, NULL, (VOID **)&DevicePathToTextProtocol);
-        ASSERT_EFI_ERROR(Status);
+        if (EFI_ERROR(Status)) {
+          // You must provide an implementation of DevicePathToTextProtocol in your firmware (eg: DevicePathDxe)
+          DEBUG((EFI_D_ERROR,"Error: Bds requires DevicePathToTextProtocol\n"));
+          return Status;
+        }
         DevicePathTxt = DevicePathToTextProtocol->ConvertDevicePathToText(BootOption->FilePathList,TRUE,TRUE);
 
         Print(L"\t- %s\n",DevicePathTxt);
         if (BootOption->OptionalData != NULL) {
-          Print(L"\t- LoaderType: %d\n",BootOption->OptionalData->LoaderType);
+          Print(L"\t- LoaderType: %d\n", ReadUnaligned32 (&BootOption->OptionalData->LoaderType));
           if (BootOption->OptionalData->Arguments != NULL) {
             Print(L"\t- Arguments: %a\n",BootOption->OptionalData->Arguments);
           }

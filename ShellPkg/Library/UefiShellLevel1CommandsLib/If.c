@@ -14,6 +14,7 @@
 
 #include "UefiShellLevel1CommandsLib.h"
 #include <Library/PrintLib.h>
+#include <Library/PathLib.h>
 
 typedef enum {
   EndTagOr,
@@ -95,6 +96,7 @@ IsValidProfile (
   CONST CHAR16  *TempLocation;
 
   ProfilesString = ShellGetEnvironmentVariable(L"profiles");
+  ASSERT(ProfilesString != NULL);
   TempLocation = StrStr(ProfilesString, String);
   if ((TempLocation != NULL) && (*(TempLocation-1) == L';') && (*(TempLocation+StrLen(String)) == L';')) {
     return (TRUE);

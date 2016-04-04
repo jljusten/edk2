@@ -255,6 +255,11 @@ ValidateAndCopyFiles(
   ASSERT(DestDir  != NULL);
 
   //
+  // We already verified that this was present.
+  //
+  ASSERT(Cwd      != NULL);
+
+  //
   // If we are trying to copy multiple files... make sure we got a directory for the target...
   //
   if (EFI_ERROR(ShellIsDirectory(DestDir)) && FileList->Link.ForwardLink != FileList->Link.BackLink) {
@@ -411,7 +416,7 @@ ValidateAndCopyFiles(
       break;
     }
 
-    CleanPath(DestPath);
+    PathCleanUpDirectories(DestPath);
 
     ShellPrintEx(-1, -1, HiiOutput, Node->FullName, DestPath);
 
@@ -614,7 +619,7 @@ ShellCommandRunCp (
           // now copy them all...
           //
           if (FileList != NULL && !IsListEmpty(&FileList->Link)) {
-            ShellStatus = ProcessValidateAndCopyFiles(FileList, ShellCommandCleanPath((CHAR16*)ShellCommandLineGetRawValue(Package, ParamCount)), SilentMode, RecursiveMode);
+            ShellStatus = ProcessValidateAndCopyFiles(FileList, PathCleanUpDirectories((CHAR16*)ShellCommandLineGetRawValue(Package, ParamCount)), SilentMode, RecursiveMode);
             Status = ShellCloseFileMetaArg(&FileList);
             if (EFI_ERROR(Status) && ShellStatus == SHELL_SUCCESS) {
               ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_ERR_FILE), gShellLevel2HiiHandle, ShellCommandLineGetRawValue(Package, ParamCount), ShellStatus|MAX_BIT);

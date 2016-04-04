@@ -85,9 +85,16 @@
   LibSignal|StdLib/LibC/Signal/Signal.inf
   LibNetUtil|StdLib/LibC/NetUtil/NetUtil.inf
 
+  # Libraries for device abstractions within the Standard C Library
+  # Applications should not directly access any functions defined in these libraries.
+  DevUtility|StdLib/LibC/Uefi/Devices/daUtility.inf
+  DevConsole|StdLib/LibC/Uefi/Devices/daConsole.inf
+  DevShell|StdLib/LibC/Uefi/Devices/daShell.inf
+
 [LibraryClasses.IA32]
   TimerLib|PerformancePkg/Library/DxeTscTimerLib/DxeTscTimerLib.inf
-  ## Comment out the above line and un-comment the line below for running under Nt32 emulation.
+  # To run in an emulation environment, such as Nt32Pkg, comment out the TimerLib
+  # description above and un-comment the line below.
 #  TimerLib|MdePkg/Library/BaseTimerLibNullTemplate/BaseTimerLibNullTemplate.inf
 
 [LibraryClasses.X64]
@@ -136,6 +143,9 @@
   AppPkg/Applications/Main/Main.inf          # Simple invocation. No other LibC functions.
   AppPkg/Applications/Enquire/Enquire.inf
 
+# After extracting the Python distribution, un-comment the following line to build Python.
+#  AppPkg/Applications/Python/PythonCore.inf
+
 ################################################################
 #
 # See the additional comments below if you plan to run applications under the
@@ -148,8 +158,8 @@
     GCC:*_*_*_CC_FLAGS      = -ffreestanding -nostdinc -nostdlib
 
 # The Build Options, below, are only used when building the C library
-# to be run under the NT32 emulation.  They disable the clock() system call
-# which is currently incompatible with the NT32 environment.
+# to be run under an emulation environment, such as Nt32Pkg.  The clock()
+# system call is modified to return -1 indicating that it is unsupported.
 # Just uncomment the lines below and select the correct TimerLib instance, above.
 
   # INTEL:*_*_IA32_CC_FLAGS     = /D NT32dvm
