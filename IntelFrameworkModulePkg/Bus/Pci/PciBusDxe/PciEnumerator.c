@@ -142,7 +142,7 @@ PciRootBridgeEnumerator (
   )
 {
   EFI_STATUS                        Status;
-  EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *pConfiguration;
+  EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *Configuration;
   UINT8                             SubBusNumber;
   UINT8                             StartBusNumber;
   UINT8                             PaddedBusRange;
@@ -169,7 +169,7 @@ PciRootBridgeEnumerator (
   Status = PciResAlloc->StartBusEnumeration (
                           PciResAlloc,
                           RootBridgeHandle,
-                          (VOID **) &pConfiguration
+                          (VOID **) &Configuration
                           );
 
   if (EFI_ERROR (Status)) {
@@ -179,8 +179,8 @@ PciRootBridgeEnumerator (
   //
   // Get the bus number to start with
   //
-  StartBusNumber = (UINT8) (pConfiguration->AddrRangeMin);
-  PaddedBusRange  = (UINT8) (pConfiguration->AddrRangeMax);
+  StartBusNumber = (UINT8) (Configuration->AddrRangeMin);
+  PaddedBusRange  = (UINT8) (Configuration->AddrRangeMax);
 
   //
   // Initialize the subordinate bus number
@@ -200,7 +200,7 @@ PciRootBridgeEnumerator (
   //
   Status = PciScanBus (
             RootBridgeDev,
-            (UINT8) (pConfiguration->AddrRangeMin),
+            (UINT8) (Configuration->AddrRangeMin),
             &SubBusNumber,
             &PaddedBusRange
             );
@@ -213,7 +213,7 @@ PciRootBridgeEnumerator (
   //
   // Assign max bus number scanned
   //
-  pConfiguration->AddrLen = SubBusNumber - StartBusNumber + 1 + PaddedBusRange;
+  Configuration->AddrLen = SubBusNumber - StartBusNumber + 1 + PaddedBusRange;
 
   //
   // Set bus number
@@ -221,10 +221,10 @@ PciRootBridgeEnumerator (
   Status = PciResAlloc->SetBusNumbers (
                           PciResAlloc,
                           RootBridgeHandle,
-                          pConfiguration
+                          Configuration
                           );
   
-  gBS->FreePool (pConfiguration);
+  gBS->FreePool (Configuration);
   
   if (EFI_ERROR (Status)) {
     return Status;
@@ -606,19 +606,19 @@ GetResourceAllocationStatus (
 
   UINT8                             *Temp;
   UINT64                            ResStatus;
-  EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *ptr;
+  EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *ACPIAddressDesc;
 
   Temp = (UINT8 *) AcpiConfig;
 
   while (*Temp == ACPI_ADDRESS_SPACE_DESCRIPTOR) {
 
-    ptr       = (EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *) Temp;
-    ResStatus = ptr->AddrTranslationOffset;
+    ACPIAddressDesc       = (EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR *) Temp;
+    ResStatus = ACPIAddressDesc->AddrTranslationOffset;
 
-    switch (ptr->ResType) {
+    switch (ACPIAddressDesc->ResType) {
     case 0:
-      if (ptr->AddrSpaceGranularity == 32) {
-        if (ptr->SpecificFlag == 0x06) {
+      if (ACPIAddressDesc->AddrSpaceGranularity == 32) {
+        if (ACPIAddressDesc->SpecificFlag == 0x06) {
           //
           // Pmem32
           //
@@ -631,8 +631,8 @@ GetResourceAllocationStatus (
         }
       }
 
-      if (ptr->AddrSpaceGranularity == 64) {
-        if (ptr->SpecificFlag == 0x06) {
+      if (ACPIAddressDesc->AddrSpaceGranularity == 64) {
+        if (ACPIAddressDesc->SpecificFlag == 0x06) {
           //
           // PMem64
           //
@@ -1286,7 +1286,7 @@ GetResourceBase (
         // Check to see the granularity
         //
         if (Ptr->AddrSpaceGranularity == 32) {
-          if (Ptr->SpecificFlag & 0x06) {
+          if ((Ptr->SpecificFlag & 0x06) != 0) {
             *PMem32Base = Ptr->AddrRangeMin;
           } else {
             *Mem32Base = Ptr->AddrRangeMin;
@@ -1294,7 +1294,7 @@ GetResourceBase (
         }
 
         if (Ptr->AddrSpaceGranularity == 64) {
-          if (Ptr->SpecificFlag & 0x06) {
+          if ((Ptr->SpecificFlag & 0x06) != 0) {
             *PMem64Base = Ptr->AddrRangeMin;
           } else {
             *Mem64Base = Ptr->AddrRangeMin;
@@ -1765,13 +1765,10 @@ NotifyPhase (
    member function. It allows the host bridge driver to preinitialize individual PCI controllers before
    enumeration.
 
-   @param This              Pointer to the EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL instance.
-   @param RootBridgeHandle  The associated PCI root bridge handle. Type EFI_HANDLE is defined in
-                            InstallProtocolInterface() in the UEFI 2.0 Specification.
-   @param PciAddress        The address of the PCI device on the PCI bus. This address can be passed to the
-                            EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL member functions to access the PCI
-                            configuration space of the device. See Table 12-1 in the UEFI 2.0 Specification for
-                            the definition of EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_PCI_ADDRESS.
+   @param Bridge            Pointer to the EFI_PCI_HOST_BRIDGE_RESOURCE_ALLOCATION_PROTOCOL instance.
+   @param Bus               The bus number of the pci device. 
+   @param Device            The device number of the pci device. 
+   @param Func              The function number of the pci device. 
    @param Phase             The phase of the PCI device enumeration. 
    
    @retval EFI_SUCCESS              The requested parameters were returned.
@@ -1878,7 +1875,7 @@ PreprocessController (
   @param This                 - A pointer to the hot plug request protocol.
   @param Operation            - The operation.
   @param Controller           - A pointer to the controller.
-  @param RemainningDevicePath - A pointer to the device path.
+  @param RemainingDevicePath  - A pointer to the device path.
   @param NumberOfChildren     - A the number of child handle in the ChildHandleBuffer.
   @param ChildHandleBuffer    - A pointer to the array contain the child handle.
   
@@ -1988,7 +1985,10 @@ PciHotPlugRequestNotify (
 /**
   Search hostbridge according to given handle
   
-  @return whether found
+  @param RootBridgeHandle     - Host bridge handle.
+
+  @return TRUE  Found.
+  @return FALSE Not found.
 **/
 BOOLEAN
 SearchHostBridgeHandle (

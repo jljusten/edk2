@@ -49,11 +49,12 @@
 [LibraryClasses.IA32, LibraryClasses.X64]
   PcdLib
   IoLib
+  DebugLib
 
 [LibraryClasses.IPF]
   PalLib
 
 
 [Pcd.IA32, Pcd.X64]
-  gEfiMdePkgTokenSpaceGuid.PcdFSBClock
+  gEfiMdePkgTokenSpaceGuid.PcdFSBClock  ## CONSUMES
 

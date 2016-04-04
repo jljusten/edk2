@@ -12,8 +12,8 @@
 
 **/
 
-#ifndef _IDE_DATA_H
-#define _IDE_DATA_H
+#ifndef _IDE_DATA_H_
+#define _IDE_DATA_H_
 
 #include <IndustryStandard/Atapi.h>
 
@@ -75,7 +75,7 @@ typedef union {
 typedef union {
   UINT16  AltStatus;      /* when read */
   UINT16  DeviceControl;  /* when write */
-} IDE_AltStatus_OR_DeviceControl;
+} IDE_ALTSTATUS_OR_DEVICECONTROL;
 
 //
 // IDE registers set
@@ -90,7 +90,7 @@ typedef struct {
   UINT16                          Head;
   IDE_CMD_OR_STATUS               Reg;
 
-  IDE_AltStatus_OR_DeviceControl  Alt;
+  IDE_ALTSTATUS_OR_DEVICECONTROL  Alt;
   UINT16                          DriveAddress;
 
   UINT16                          MasterSlave;
@@ -119,7 +119,7 @@ typedef struct {
 //
 // Bus Master Reg
 //
-#define BMIC_nREAD      BIT3
+#define BMIC_NREAD      BIT3
 #define BMIC_START      BIT0
 #define BMIS_INTERRUPT  BIT2
 #define BMIS_ERROR      BIT1

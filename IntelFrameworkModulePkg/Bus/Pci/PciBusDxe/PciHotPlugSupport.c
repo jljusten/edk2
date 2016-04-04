@@ -1,4 +1,4 @@
-/**@ file
+/** @file
   This module provide support function for hot plug device.
   
 Copyright (c) 2006, Intel Corporation                                                         
@@ -66,7 +66,7 @@ EfiCompareDevicePath (
     return FALSE;
   }
 
-  if (CompareMem (DevicePath1, DevicePath2, Size1)) {
+  if (CompareMem (DevicePath1, DevicePath2, Size1) != 0) {
     return FALSE;
   }
 
@@ -131,7 +131,7 @@ InitializeHotPlugSupport (
 /**
   Test whether device path is for root pci hot plug bus
   
-  @param HpbdevicePath  tested device path.
+  @param HpbDevicePath  tested device path.
   @param HpIndex        Return the index of root hot plug in global array.
   
   @retval TRUE  device path is for root pci hot plug.
@@ -163,7 +163,7 @@ IsRootPciHotPlugBus (
 /**
   Test whether device path is for root pci hot plug controller
   
-  @param HpbdevicePath  tested device path.
+  @param HpcDevicePath  tested device path.
   @param HpIndex        Return the index of root hot plug in global array.
   
   @retval TRUE  device path is for root pci hot plug controller.

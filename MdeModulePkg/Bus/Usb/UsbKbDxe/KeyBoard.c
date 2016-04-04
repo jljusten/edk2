@@ -286,8 +286,6 @@ UINT8 ModifierValueToEfiScanCodeConvertionTable[] = {
   SCAN_F12,        // EFI_FUNCTION_KEY_TWELVE_MODIFIER
 };
 
-EFI_GUID  mKeyboardLayoutEventGuid = EFI_HII_SET_KEYBOARD_LAYOUT_EVENT_GUID;
-
 /**
   Initialize Key Convertion Table by using default keyboard layout.
 
@@ -413,7 +411,7 @@ GetCurrentKeyboardLayout (
                             KeyboardLayout
                             );
     if (EFI_ERROR (Status)) {
-      gBS->FreePool (KeyboardLayout);
+      FreePool (KeyboardLayout);
       KeyboardLayout = NULL;
     }
   }
@@ -719,7 +717,7 @@ InitKeyboardLayout (
                   TPL_NOTIFY,
                   SetKeyboardLayoutEvent,
                   UsbKeyboardDevice,
-                  &mKeyboardLayoutEventGuid,
+                  &gEfiHiiKeyBoardLayoutGuid,
                   &UsbKeyboardDevice->KeyboardLayoutEvent
                   );
   if (EFI_ERROR (Status)) {
@@ -814,7 +812,6 @@ InitUSBKeyboard (
   //
   // Set boot protocol for the USB Keyboard.
   // This driver only supports boot protocol.
-  // The device that does not support boot protocol is not supported.
   //
   if (Protocol != BOOT_PROTOCOL) {
     UsbSetProtocolRequest (
@@ -871,33 +868,36 @@ InitUSBKeyboard (
   ZeroMem (UsbKeyboardDevice->LastKeyCodeArray, sizeof (UINT8) * 8);
 
   //
-  // Set a timer for repeat keys' generation.
+  // Create event for repeat keys' generation.
   //
   if (UsbKeyboardDevice->RepeatTimer != NULL) {
     gBS->CloseEvent (UsbKeyboardDevice->RepeatTimer);
     UsbKeyboardDevice->RepeatTimer = NULL;
   }
 
-  Status = gBS->CreateEvent (
-                  EVT_TIMER | EVT_NOTIFY_SIGNAL,
-                  TPL_NOTIFY,
-                  USBKeyboardRepeatHandler,
-                  UsbKeyboardDevice,
-                  &UsbKeyboardDevice->RepeatTimer
-                  );
+  gBS->CreateEvent (
+         EVT_TIMER | EVT_NOTIFY_SIGNAL,
+         TPL_NOTIFY,
+         USBKeyboardRepeatHandler,
+         UsbKeyboardDevice,
+         &UsbKeyboardDevice->RepeatTimer
+         );
 
+  //
+  // Create event for delayed recovery, which deals with device error.
+  //
   if (UsbKeyboardDevice->DelayedRecoveryEvent != NULL) {
     gBS->CloseEvent (UsbKeyboardDevice->DelayedRecoveryEvent);
     UsbKeyboardDevice->DelayedRecoveryEvent = NULL;
   }
 
-  Status = gBS->CreateEvent (
-                  EVT_TIMER | EVT_NOTIFY_SIGNAL,
-                  TPL_NOTIFY,
-                  USBKeyboardRecoveryHandler,
-                  UsbKeyboardDevice,
-                  &UsbKeyboardDevice->DelayedRecoveryEvent
-                  );
+  gBS->CreateEvent (
+         EVT_TIMER | EVT_NOTIFY_SIGNAL,
+         TPL_NOTIFY,
+         USBKeyboardRecoveryHandler,
+         UsbKeyboardDevice,
+         &UsbKeyboardDevice->DelayedRecoveryEvent
+         );
 
   return EFI_SUCCESS;
 }
@@ -1161,6 +1161,8 @@ KeyboardHandler (
       // Handle repeat key
       //
       KeyDescriptor = GetKeyDescriptor (UsbKeyboardDevice, CurKeyCodeBuffer[Index]);
+      ASSERT (KeyDescriptor != NULL);
+
       if (KeyDescriptor->Modifier == EFI_NUM_LOCK_MODIFIER || KeyDescriptor->Modifier == EFI_CAPS_LOCK_MODIFIER) {
         //
         // For NumLock or CapsLock pressed, there is no need to handle repeat key for them.
@@ -1192,6 +1194,7 @@ KeyboardHandler (
     RemoveKeyCode (&(UsbKeyboardDevice->KeyboardBuffer), &UsbKey);
 
     KeyDescriptor = GetKeyDescriptor (UsbKeyboardDevice, UsbKey.KeyCode);
+    ASSERT (KeyDescriptor != NULL);
 
     switch (KeyDescriptor->Modifier) {
 
@@ -1302,6 +1305,8 @@ USBParseKey (
     RemoveKeyCode (&(UsbKeyboardDevice->KeyboardBuffer), &UsbKey);
 
     KeyDescriptor = GetKeyDescriptor (UsbKeyboardDevice, UsbKey.KeyCode);
+    ASSERT (KeyDescriptor != NULL);
+
     if (!UsbKey.Down) {
       //
       // Key is released.
@@ -1546,6 +1551,7 @@ USBParseKey (
   @retval EFI_INVALID_PARAMETER KeyCode is not in the range of 0x4 to 0x65.
   @retval EFI_INVALID_PARAMETER Translated EFI_INPUT_KEY has zero for both ScanCode and UnicodeChar.
   @retval EFI_NOT_READY         KeyCode represents a dead key with EFI_NS_KEY_MODIFIER
+  @retval EFI_DEVICE_ERROR      Keyboard layout is invalid.
 
 **/
 EFI_STATUS
@@ -1569,6 +1575,7 @@ UsbKeyCodeToEfiInputKey (
   }
 
   KeyDescriptor = GetKeyDescriptor (UsbKeyboardDevice, KeyCode);
+  ASSERT (KeyDescriptor != NULL);
 
   if (KeyDescriptor->Modifier == EFI_NS_KEY_MODIFIER) {
     //
@@ -1585,6 +1592,13 @@ UsbKeyCodeToEfiInputKey (
     //
     KeyDescriptor = FindPhysicalKey (UsbKeyboardDevice->CurrentNsKey, KeyDescriptor);
     UsbKeyboardDevice->CurrentNsKey = NULL;
+  }
+
+  //
+  // Make sure modifier of Key Descriptor is in the valid range according to UEFI spec.
+  //
+  if (KeyDescriptor->Modifier > EFI_FUNCTION_KEY_TWELVE_MODIFIER) {
+    return EFI_DEVICE_ERROR;
   }
 
   Key->ScanCode = ModifierValueToEfiScanCodeConvertionTable[KeyDescriptor->Modifier];
@@ -1804,6 +1818,8 @@ InsertKeyCode (
     RemoveKeyCode (KeyboardBuffer, &UsbKey);
   }
 
+  ASSERT (KeyboardBuffer->BufferTail <= MAX_KEY_ALLOWED);
+
   KeyboardBuffer->Buffer[KeyboardBuffer->BufferTail].KeyCode = Key;
   KeyboardBuffer->Buffer[KeyboardBuffer->BufferTail].Down    = Down;
 
@@ -1834,6 +1850,8 @@ RemoveKeyCode (
   if (IsUSBKeyboardBufferEmpty (KeyboardBuffer)) {
     return EFI_DEVICE_ERROR;
   }
+
+  ASSERT (KeyboardBuffer->BufferHead <= MAX_KEY_ALLOWED);
 
   UsbKey->KeyCode = KeyboardBuffer->Buffer[KeyboardBuffer->BufferHead].KeyCode;
   UsbKey->Down    = KeyboardBuffer->Buffer[KeyboardBuffer->BufferHead].Down;

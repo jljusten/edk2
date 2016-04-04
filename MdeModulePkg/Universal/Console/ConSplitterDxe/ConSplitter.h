@@ -28,6 +28,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/SimpleTextInEx.h>
 #include <Protocol/GraphicsOutput.h>
 #include <Protocol/UgaDraw.h>
+#include <Protocol/SimpleTextInExNotify.h>
 
 #include <Guid/PrimaryStandardErrorDevice.h>
 #include <Guid/PrimaryConsoleOutDevice.h>
@@ -67,7 +68,6 @@ extern EFI_DRIVER_BINDING_PROTOCOL  gConSplitterStdErrDriverBinding;
 extern EFI_COMPONENT_NAME_PROTOCOL  gConSplitterStdErrComponentName;
 extern EFI_COMPONENT_NAME2_PROTOCOL gConSplitterStdErrComponentName2;
 
-extern EFI_GUID                     gSimpleTextInExNotifyGuid;
 
 //
 // These definitions were in the old Hii protocol, but are not in the new UEFI
@@ -207,32 +207,32 @@ typedef struct {
   EFI_HANDLE                            VirtualHandle;
   EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL       TextOut;
   EFI_SIMPLE_TEXT_OUTPUT_MODE           TextOutMode;
-                                        
+
   EFI_UGA_DRAW_PROTOCOL                 UgaDraw;
   UINT32                                UgaHorizontalResolution;
   UINT32                                UgaVerticalResolution;
   UINT32                                UgaColorDepth;
   UINT32                                UgaRefreshRate;
   EFI_UGA_PIXEL                         *UgaBlt;
-                                        
+
   EFI_GRAPHICS_OUTPUT_PROTOCOL          GraphicsOutput;
   EFI_GRAPHICS_OUTPUT_BLT_PIXEL         *GraphicsOutputBlt;
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  *GraphicsOutputModeBuffer;
   UINTN                                 CurrentNumberOfGraphicsOutput;
   UINTN                                 CurrentNumberOfUgaDraw;
   BOOLEAN                               HardwareNeedsStarting;
-                                        
+
   EFI_CONSOLE_CONTROL_PROTOCOL          ConsoleControl;
-                                        
+
   UINTN                                 CurrentNumberOfConsoles;
   TEXT_OUT_AND_GOP_DATA                 *TextOutList;
   UINTN                                 TextOutListCount;
   TEXT_OUT_SPLITTER_QUERY_DATA          *TextOutQueryData;
   UINTN                                 TextOutQueryDataCount;
   INT32                                 *TextOutModeMap;
-                                        
+
   EFI_CONSOLE_CONTROL_SCREEN_MODE       ConsoleOutputMode;
-                                        
+
   UINTN                                 DevNullColumns;
   UINTN                                 DevNullRows;
   CHAR16                                *DevNullScreen;
@@ -277,7 +277,7 @@ typedef struct {
 
   Installs driver module protocols and. Creates virtual device handles for ConIn,
   ConOut, and StdErr. Installs Simple Text In protocol, Simple Text In Ex protocol,
-  Simple Pointer protocol, Absolute Pointer protocol on those virtual handlers. 
+  Simple Pointer protocol, Absolute Pointer protocol on those virtual handlers.
   Installs Graphics Output protocol and/or UGA Draw protocol if needed.
 
   @param[in] ImageHandle    The firmware allocated handle for the EFI image.
@@ -325,12 +325,9 @@ ConSplitterTextOutConstructor (
   TEXT_OUT_SPLITTER_PRIVATE_DATA      *ConOutPrivate
   );
 
-//
-// Driver Binding Functions
-//
 
 /**
-  Test to see if Console In Device could be supported on the Controller. 
+  Test to see if Console In Device could be supported on the Controller.
 
   @param  This                Driver Binding protocol instance pointer.
   @param  ControllerHandle    Handle of device to test.
@@ -350,7 +347,7 @@ ConSplitterConInDriverBindingSupported (
   );
 
 /**
-  Test to see if Simple Pointer protocol could be supported on the Controller. 
+  Test to see if Simple Pointer protocol could be supported on the Controller.
 
   @param  This                Driver Binding protocol instance pointer.
   @param  ControllerHandle    Handle of device to test.
@@ -370,7 +367,7 @@ ConSplitterSimplePointerDriverBindingSupported (
   );
 
 /**
-  Test to see if Console Out Device could be supported on the Controller. 
+  Test to see if Console Out Device could be supported on the Controller.
 
   @param  This                Driver Binding protocol instance pointer.
   @param  ControllerHandle    Handle of device to test.
@@ -390,7 +387,7 @@ ConSplitterConOutDriverBindingSupported (
   );
 
 /**
-  Test to see if Standard Error Device could be supported on the Controller. 
+  Test to see if Standard Error Device could be supported on the Controller.
 
   @param  This                Driver Binding protocol instance pointer.
   @param  ControllerHandle    Handle of device to test.
@@ -410,8 +407,8 @@ ConSplitterStdErrDriverBindingSupported (
   );
 
 /**
-  Start Console In Consplitter on device handle. 
-  
+  Start Console In Consplitter on device handle.
+
   @param  This                 Driver Binding protocol instance pointer.
   @param  ControllerHandle     Handle of device to bind driver to.
   @param  RemainingDevicePath  Optional parameter use to pick a specific child
@@ -430,8 +427,8 @@ ConSplitterConInDriverBindingStart (
   );
 
 /**
-  Start Simple Pointer Consplitter on device handle. 
-  
+  Start Simple Pointer Consplitter on device handle.
+
   @param  This                 Driver Binding protocol instance pointer.
   @param  ControllerHandle     Handle of device to bind driver to.
   @param  RemainingDevicePath  Optional parameter use to pick a specific child
@@ -450,8 +447,8 @@ ConSplitterSimplePointerDriverBindingStart (
   );
 
 /**
-  Start Console Out Consplitter on device handle. 
-  
+  Start Console Out Consplitter on device handle.
+
   @param  This                 Driver Binding protocol instance pointer.
   @param  ControllerHandle     Handle of device to bind driver to.
   @param  RemainingDevicePath  Optional parameter use to pick a specific child
@@ -470,8 +467,8 @@ ConSplitterConOutDriverBindingStart (
   );
 
 /**
-  Start Standard Error Consplitter on device handle. 
-  
+  Start Standard Error Consplitter on device handle.
+
   @param  This                 Driver Binding protocol instance pointer.
   @param  ControllerHandle     Handle of device to bind driver to.
   @param  RemainingDevicePath  Optional parameter use to pick a specific child
@@ -580,7 +577,7 @@ ConSplitterStdErrDriverBindingStop (
 
 
 /**
-  Test to see if Absolute Pointer protocol could be supported on the Controller. 
+  Test to see if Absolute Pointer protocol could be supported on the Controller.
 
   @param  This                Driver Binding protocol instance pointer.
   @param  ControllerHandle    Handle of device to test.
@@ -600,8 +597,8 @@ ConSplitterAbsolutePointerDriverBindingSupported (
   );
 
 /**
-  Start Absolute Pointer Consplitter on device handle. 
-  
+  Start Absolute Pointer Consplitter on device handle.
+
   @param  This                 Driver Binding protocol instance pointer.
   @param  ControllerHandle     Handle of device to bind driver to.
   @param  RemainingDevicePath  Optional parameter use to pick a specific child
@@ -1346,7 +1343,6 @@ ConSplitterTextInExDeleteDevice (
 // Simple Text Input Ex protocol function prototypes
 //
 
-
 /**
   Reset the input device and optionaly run diagnostics
 
@@ -1429,7 +1425,7 @@ ConSplitterTextInSetState (
                                    successfully.
   @retval EFI_OUT_OF_RESOURCES     Unable to allocate resources for necesssary data
                                    structures.
-  @retval EFI_INVALID_PARAMETER    KeyData or NotifyHandle is NULL.
+  @retval EFI_INVALID_PARAMETER    KeyData or KeyNotificationFunction or NotifyHandle is NULL.
 
 **/
 EFI_STATUS
@@ -1463,7 +1459,8 @@ ConSplitterTextInUnregisterKeyNotify (
   );
 
 /**
-  This event agregates all the events of the ConIn devices in the spliter.
+  This event aggregates all the events of the ConIn devices in the spliter.
+
   If the ConIn is password locked then return.
   If any events of physical ConIn devices are signaled, signal the ConIn
   spliter event. This will cause the calling code to call
@@ -1479,6 +1476,7 @@ ConSplitterTextInWaitForKey (
   IN  EFI_EVENT                       Event,
   IN  VOID                            *Context
   );
+
 /**
   Return TRUE if StdIn is locked. The ConIn device on the virtual handle is
   the only device locked.
@@ -1491,11 +1489,14 @@ BOOLEAN
 ConSpliterConssoleControlStdInLocked (
   VOID
   );
+
 /**
-  This timer event will fire when StdIn is locked. It will check the key
-  sequence on StdIn to see if it matches the password. Any error in the
-  password will cause the check to reset. As long a mConIn.PasswordEnabled is
-  TRUE the StdIn splitter will not report any input.
+  Record and check key sequence on StdIn.
+
+  This timer event will fire when StdIn is locked. It will record the key sequence
+  on StdIn and also check to see if it matches the password. Any error in the
+  password will cause the check to reset. As long as a mConIn.PasswordEnabled is
+  TRUE, the StdIn splitter will not report any input.
 
   @param  Event                  The Event this notify function registered to.
   @param  Context                Pointer to the context data registerd to the
@@ -1903,7 +1904,7 @@ ConSpliterGraphicsOutputQueryMode (
   );
 
 /**
-  Set the video device into the specified mode and clears the visible portions of 
+  Set the video device into the specified mode and clears the visible portions of
   the output display to black.
 
   @param  This                  The EFI_GRAPHICS_OUTPUT_PROTOCOL instance.
@@ -1959,7 +1960,7 @@ ConSpliterGraphicsOutputSetMode (
   @param  DestinationX            X coordinate of destination for the BltBuffer.
   @param  DestinationY            Y coordinate of destination for the BltBuffer.
   @param  Width                   Width of rectangle in BltBuffer in pixels.
-  @param  Height                  Hight of rectangle in BltBuffer in pixels. 
+  @param  Height                  Hight of rectangle in BltBuffer in pixels.
   @param  Delta                   OPTIONAL.
 
   @retval EFI_SUCCESS             The Blt operation completed.
@@ -1984,7 +1985,7 @@ ConSpliterGraphicsOutputBlt (
   );
 
 /**
-  Write data from the buffer to video display based on Graphics Output setting. 
+  Write data from the buffer to video display based on Graphics Output setting.
 
   @param  Private                 Consplitter Text Out pointer.
   @param  GraphicsOutput          Graphics Output protocol pointer.
@@ -1994,7 +1995,7 @@ ConSpliterGraphicsOutputBlt (
   @retval EFI_SUCCESS             The Blt operation completed.
   @retval EFI_INVALID_PARAMETER   BltOperation is not valid.
   @retval EFI_DEVICE_ERROR        A hardware error occured writting to the video buffer.
-                 
+
 
 **/
 EFI_STATUS
@@ -2063,7 +2064,7 @@ ConSpliterUgaDrawSetMode (
     (DestinationX, DestinationY)
     (DestinationX + Width, DestinationY + Height).
     Only one pixel will be used from the BltBuffer. Delta is NOT used.
-  EfiUgaVideoToBltBuffer: 
+  EfiUgaVideoToBltBuffer:
     Read data from the video display rectangle
     (SourceX, SourceY) (SourceX + Width, SourceY + Height) and place it in
     the BltBuffer rectangle (DestinationX, DestinationY )
@@ -2117,7 +2118,7 @@ ConSpliterUgaDrawBlt (
   );
 
 /**
-  Write data from the buffer to video display based on UGA Draw setting. 
+  Write data from the buffer to video display based on UGA Draw setting.
 
   @param  Private                 Consplitter Text Out pointer.
   @param  GraphicsOutput          Graphics Output protocol pointer.
@@ -2127,7 +2128,7 @@ ConSpliterUgaDrawBlt (
   @retval EFI_SUCCESS             The Blt operation completed.
   @retval EFI_INVALID_PARAMETER   BltOperation is not valid.
   @retval EFI_DEVICE_ERROR        A hardware error occured writting to the video buffer.
-                  
+
 **/
 EFI_STATUS
 DevNullUgaSync (
@@ -2199,20 +2200,17 @@ DevNullTextOutClearScreen (
   );
 
 /**
-  Sets the current coordinates of the cursor position.
+  Sets the current coordinates of the cursor position on NULL device.
 
-  @param  Private                 Text Out Splitter pointer.
-  @param  Column                  
-  @param  Row                     the position to set the cursor to. Must be
-                                  greater than or equal to zero and less than the
-                                  number of columns and rows by QueryMode ().
+  @param  Private                  Text Out Splitter pointer.
+  @param  Column                   The column position to set the cursor to. Must be
+                                   greater than or equal to zero and less than the
+                                   number of columns by QueryMode ().
+  @param  Row                      The row position to set the cursor to. Must be
+                                   greater than or equal to zero and less than the
+                                   number of rows by QueryMode ().
 
-  @retval EFI_SUCCESS             The operation completed successfully.
-  @retval EFI_DEVICE_ERROR        The device had an error and could not complete
-                                  the request.
-  @retval EFI_UNSUPPORTED         The output device is not in a valid text mode, or
-                                  the cursor position is invalid for the current
-                                  mode.
+  @retval EFI_SUCCESS              Always returned.
 
 **/
 EFI_STATUS
@@ -2223,13 +2221,13 @@ DevNullTextOutSetCursorPosition (
   );
 
 /**
-  Set cursor visibility property.
+  Set cursor visibility property on NULL device.
 
   @param  Private                 Text Out Splitter pointer.
   @param  Visible                 If TRUE, the cursor is set to be visible, If
                                   FALSE, the cursor is set to be invisible.
 
-  @retval EFI_SUCCESS             Returns always.
+  @retval EFI_SUCCESS             Always returned.
 
 **/
 EFI_STATUS

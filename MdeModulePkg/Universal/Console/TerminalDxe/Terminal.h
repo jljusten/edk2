@@ -17,14 +17,18 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 
 #include <Uefi.h>
+
+#include <Guid/GlobalVariable.h>
+#include <Guid/PcAnsi.h>
+
+#include <Protocol/SimpleTextInExNotify.h>
+#include <Protocol/HotPlugDevice.h>
 #include <Protocol/SimpleTextOut.h>
 #include <Protocol/SerialIo.h>
-#include <Guid/GlobalVariable.h>
 #include <Protocol/DevicePath.h>
 #include <Protocol/SimpleTextIn.h>
 #include <Protocol/SimpleTextInEx.h>
-#include <Guid/HotPlugDevice.h>
-#include <Guid/PcAnsi.h>
+
 #include <Library/DebugLib.h>
 #include <Library/UefiDriverEntryPoint.h>
 #include <Library/UefiLib.h>
@@ -164,8 +168,6 @@ extern EFI_DRIVER_BINDING_PROTOCOL   gTerminalDriverBinding;
 extern EFI_COMPONENT_NAME_PROTOCOL   gTerminalComponentName;
 extern EFI_COMPONENT_NAME2_PROTOCOL  gTerminalComponentName2;
 
-extern EFI_GUID                      gSimpleTextInExNotifyGuid;
-
 /**
   The user Entry Point for module Terminal. The user code starts with this function.
 
@@ -191,8 +193,8 @@ InitializeTerminal (
   @param  This                     Indicates the calling context.
   @param  ExtendedVerification     Skip by this driver.
 
-  @return EFI_SUCCESS              The reset operation succeeds.
-  @return EFI_DEVICE_ERROR         The dependent serial port reset fails.
+  @retval EFI_SUCCESS              The reset operation succeeds.
+  @retval EFI_DEVICE_ERROR         The dependent serial port reset fails.
 
 **/
 EFI_STATUS
@@ -211,9 +213,9 @@ TerminalConInReset (
                               keystroke information for the key that was sent
                               from terminal.
 
-  @return EFI_SUCCESS         The keystroke information is returned successfully.
-  @return EFI_NOT_READY       There is no keystroke data available.
-  @return EFI_DEVICE_ERROR    The dependent serial device encounters error.
+  @retval EFI_SUCCESS         The keystroke information is returned successfully.
+  @retval EFI_NOT_READY       There is no keystroke data available.
+  @retval EFI_DEVICE_ERROR    The dependent serial device encounters error.
 
 **/
 EFI_STATUS
@@ -249,8 +251,6 @@ IsKeyRegistered (
 
   @param  Event                    Indicates the event that invoke this function.
   @param  Context                  Indicates the calling context.
-
-  @return none.
 
 **/
 VOID
@@ -382,8 +382,6 @@ TerminalConInUnregisterKeyNotify (
   @param  Event                    Indicates the event that invoke this function.
   @param  Context                  Indicates the calling context.
 
-  @return None
-
 **/
 VOID
 EFIAPI
@@ -403,8 +401,8 @@ TerminalConInWaitForKey (
                                 exhaustive verification operation of the device
                                 during reset.
 
-  @return EFI_SUCCESS           The reset operation succeeds.
-  @return EFI_DEVICE_ERROR      The terminal is not functioning correctly or the serial port reset fails.
+  @retval EFI_SUCCESS           The reset operation succeeds.
+  @retval EFI_DEVICE_ERROR      The terminal is not functioning correctly or the serial port reset fails.
 
 **/
 EFI_STATUS
@@ -447,8 +445,8 @@ TerminalConOutOutputString (
   @param  This              Indicates the calling context.
   @param  WString           The Null-terminated Unicode string to be tested.
 
-  @return EFI_SUCCESS       The terminal is capable of rendering the output string.
-  @return EFI_UNSUPPORTED   Some of the characters in the Unicode string cannot be rendered.
+  @retval EFI_SUCCESS       The terminal is capable of rendering the output string.
+  @retval EFI_UNSUPPORTED   Some of the characters in the Unicode string cannot be rendered.
 
 **/
 EFI_STATUS
@@ -470,9 +468,9 @@ TerminalConOutTestString (
   @param Columns     The returned columns of the requested mode.
   @param Rows        The returned rows of the requested mode.
 
-  @return EFI_SUCCESS       The requested mode information is returned.
-  @return EFI_UNSUPPORTED   The mode number is not valid.
-  @return EFI_DEVICE_ERROR
+  @retval EFI_SUCCESS       The requested mode information is returned.
+  @retval EFI_UNSUPPORTED   The mode number is not valid.
+  @retval EFI_DEVICE_ERROR
 
 **/
 EFI_STATUS
@@ -492,10 +490,10 @@ TerminalConOutQueryMode (
   @param This          Indicates the calling context.
   @param ModeNumber    The text mode to set.
 
-  @return EFI_SUCCESS       The requested text mode is set.
-  @return EFI_DEVICE_ERROR  The requested text mode cannot be set 
+  @retval EFI_SUCCESS       The requested text mode is set.
+  @retval EFI_DEVICE_ERROR  The requested text mode cannot be set 
                             because of serial device error.
-  @return EFI_UNSUPPORTED   The text mode number is not valid.
+  @retval EFI_UNSUPPORTED   The text mode number is not valid.
 
 **/
 EFI_STATUS
@@ -512,9 +510,9 @@ TerminalConOutSetMode (
   @param Attribute   The attribute to set. Only bit0..6 are valid, all other bits
                      are undefined and must be zero.
 
-  @return EFI_SUCCESS        The requested attribute is set.
-  @return EFI_DEVICE_ERROR   The requested attribute cannot be set due to serial port error.
-  @return EFI_UNSUPPORTED    The attribute requested is not defined by EFI spec.
+  @retval EFI_SUCCESS        The requested attribute is set.
+  @retval EFI_DEVICE_ERROR   The requested attribute cannot be set due to serial port error.
+  @retval EFI_UNSUPPORTED    The attribute requested is not defined by EFI spec.
 
 **/
 EFI_STATUS
@@ -531,9 +529,9 @@ TerminalConOutSetAttribute (
 
   @param This     Indicates the calling context.
 
-  @return EFI_SUCCESS       The operation completed successfully.
-  @return EFI_DEVICE_ERROR  The terminal screen cannot be cleared due to serial port error.
-  @return EFI_UNSUPPORTED   The terminal is not in a valid display mode.
+  @retval EFI_SUCCESS       The operation completed successfully.
+  @retval EFI_DEVICE_ERROR  The terminal screen cannot be cleared due to serial port error.
+  @retval EFI_UNSUPPORTED   The terminal is not in a valid display mode.
 
 **/
 EFI_STATUS
@@ -549,9 +547,9 @@ TerminalConOutClearScreen (
   @param Column    The row to set cursor to.
   @param Row       The column to set cursor to.
 
-  @return EFI_SUCCESS       The operation completed successfully.
-  @return EFI_DEVICE_ERROR  The request fails due to serial port error.
-  @return EFI_UNSUPPORTED   The terminal is not in a valid text mode, or the cursor position
+  @retval EFI_SUCCESS       The operation completed successfully.
+  @retval EFI_DEVICE_ERROR  The request fails due to serial port error.
+  @retval EFI_UNSUPPORTED   The terminal is not in a valid text mode, or the cursor position
                             is invalid for current mode.
 
 **/
@@ -571,8 +569,8 @@ TerminalConOutSetCursorPosition (
   @param Visible   If TRUE, the cursor is set to be visible,
                    If FALSE, the cursor is set to be invisible.
 
-  @return EFI_SUCCESS      The request is valid.
-  @return EFI_UNSUPPORTED  The terminal does not support cursor hidden.
+  @retval EFI_SUCCESS      The request is valid.
+  @retval EFI_UNSUPPORTED  The terminal does not support cursor hidden.
 
 **/
 EFI_STATUS
@@ -833,8 +831,6 @@ TerminalUpdateConsoleDevVariable (
   @param  VariableName           A pointer to the variable name.
   @param  ParentDevicePath       A pointer to the parent device path.
 
-  @return None.
-
 **/
 VOID
 TerminalRemoveConsoleDevVariable (
@@ -855,7 +851,7 @@ TerminalRemoveConsoleDevVariable (
           NULL regturned.
 
 **/
-VOID                                *
+VOID *
 TerminalGetVariableAndSize (
   IN  CHAR16              *Name,
   IN  EFI_GUID            *VendorGuid,
@@ -886,8 +882,6 @@ SetTerminalDevicePath (
 
   @param TerminalDevice          The terminal device.
 
-  @return None.
-
 **/
 VOID
 InitializeRawFiFo (
@@ -899,8 +893,6 @@ InitializeRawFiFo (
 
   @param TerminalDevice          The terminal device.
 
-  @return None.
-
 **/
 VOID
 InitializeUnicodeFiFo (
@@ -911,8 +903,6 @@ InitializeUnicodeFiFo (
   Initialize the EFI Key FIFO.
 
   @param TerminalDevice          The terminal device.
-
-  @return None.
 
 **/
 VOID
@@ -926,9 +916,9 @@ InitializeEfiKeyFiFo (
   @param  SerialIo           Serial I/O protocl attached to the serial device.
   @param  Input              The fetched key.
 
-  @return EFI_NOT_READY      If serial buffer is empty.
-  @return EFI_DEVICE_ERROR   If reading serial buffer encounter error.
-  @return EFI_SUCCESS        If reading serial buffer successfully, put
+  @retval EFI_NOT_READY      If serial buffer is empty.
+  @retval EFI_DEVICE_ERROR   If reading serial buffer encounter error.
+  @retval EFI_SUCCESS        If reading serial buffer successfully, put
                              the fetched key to the parameter output.
 
 **/
@@ -944,8 +934,8 @@ GetOneKeyFromSerial (
   @param  TerminalDevice       Terminal driver private structure.
   @param  Input                The key will be input.
 
-  @return TRUE                 If insert successfully.
-  @return FLASE                If Raw Data buffer is full before key insertion,
+  @retval TRUE                 If insert successfully.
+  @retval FLASE                If Raw Data buffer is full before key insertion,
                                and the key is lost.
 
 **/
@@ -961,8 +951,8 @@ RawFiFoInsertOneKey (
   @param  TerminalDevice       Terminal driver private structure.
   @param  Output               The key will be removed.
 
-  @return TRUE                 If insert successfully.
-  @return FLASE                If Raw Data FIFO buffer is empty before remove operation.
+  @retval TRUE                 If insert successfully.
+  @retval FLASE                If Raw Data FIFO buffer is empty before remove operation.
 
 **/
 BOOLEAN
@@ -976,8 +966,8 @@ RawFiFoRemoveOneKey (
 
   @param  TerminalDevice       Terminal driver private structure
 
-  @return TRUE                 If Raw Data FIFO buffer is empty.
-  @return FLASE                If Raw Data FIFO buffer is not empty.
+  @retval TRUE                 If Raw Data FIFO buffer is empty.
+  @retval FLASE                If Raw Data FIFO buffer is not empty.
 
 **/
 BOOLEAN
@@ -990,8 +980,8 @@ IsRawFiFoEmpty (
 
   @param  TerminalDevice       Terminal driver private structure
 
-  @return TRUE                 If Raw Data FIFO buffer is full.
-  @return FLASE                If Raw Data FIFO buffer is not full.
+  @retval TRUE                 If Raw Data FIFO buffer is full.
+  @retval FLASE                If Raw Data FIFO buffer is not full.
 
 **/
 BOOLEAN
@@ -1005,8 +995,8 @@ IsRawFiFoFull (
   @param  TerminalDevice       Terminal driver private structure.
   @param  Key                  The key will be input.
 
-  @return TRUE                 If insert successfully.
-  @return FLASE                If FIFO buffer is full before key insertion,
+  @retval TRUE                 If insert successfully.
+  @retval FLASE                If FIFO buffer is full before key insertion,
                                and the key is lost.
 
 **/
@@ -1022,8 +1012,8 @@ EfiKeyFiFoInsertOneKey (
   @param  TerminalDevice       Terminal driver private structure.
   @param  Output               The key will be removed.
 
-  @return TRUE                 If insert successfully.
-  @return FLASE                If FIFO buffer is empty before remove operation.
+  @retval TRUE                 If insert successfully.
+  @retval FLASE                If FIFO buffer is empty before remove operation.
 
 **/
 BOOLEAN
@@ -1037,8 +1027,8 @@ EfiKeyFiFoRemoveOneKey (
 
   @param  TerminalDevice       Terminal driver private structure
 
-  @return TRUE                 If FIFO buffer is empty.
-  @return FLASE                If FIFO buffer is not empty.
+  @retval TRUE                 If FIFO buffer is empty.
+  @retval FLASE                If FIFO buffer is not empty.
 
 **/
 BOOLEAN
@@ -1051,8 +1041,8 @@ IsEfiKeyFiFoEmpty (
 
   @param  TerminalDevice       Terminal driver private structure
 
-  @return TRUE                 If FIFO buffer is full.
-  @return FLASE                If FIFO buffer is not full.
+  @retval TRUE                 If FIFO buffer is full.
+  @retval FLASE                If FIFO buffer is not full.
 
 **/
 BOOLEAN
@@ -1066,8 +1056,8 @@ IsEfiKeyFiFoFull (
   @param  TerminalDevice       Terminal driver private structure.
   @param  Input                The key will be input.
 
-  @return TRUE                 If insert successfully.
-  @return FLASE                If Unicode FIFO buffer is full before key insertion,
+  @retval TRUE                 If insert successfully.
+  @retval FLASE                If Unicode FIFO buffer is full before key insertion,
                                and the key is lost.
 
 **/
@@ -1083,8 +1073,8 @@ UnicodeFiFoInsertOneKey (
   @param  TerminalDevice       Terminal driver private structure.
   @param  Output               The key will be removed.
 
-  @return TRUE                 If insert successfully.
-  @return FLASE                If Unicode FIFO buffer is empty before remove operation.
+  @retval TRUE                 If insert successfully.
+  @retval FLASE                If Unicode FIFO buffer is empty before remove operation.
 
 **/
 BOOLEAN
@@ -1098,8 +1088,8 @@ UnicodeFiFoRemoveOneKey (
 
   @param  TerminalDevice       Terminal driver private structure
 
-  @return TRUE                 If Unicode FIFO buffer is empty.
-  @return FLASE                If Unicode FIFO buffer is not empty.
+  @retval TRUE                 If Unicode FIFO buffer is empty.
+  @retval FLASE                If Unicode FIFO buffer is not empty.
 
 **/
 BOOLEAN
@@ -1112,8 +1102,8 @@ IsUnicodeFiFoEmpty (
 
   @param  TerminalDevice       Terminal driver private structure
 
-  @return TRUE                 If Unicode FIFO buffer is full.
-  @return FLASE                If Unicode FIFO buffer is not full.
+  @retval TRUE                 If Unicode FIFO buffer is full.
+  @retval FLASE                If Unicode FIFO buffer is not full.
 
 **/
 BOOLEAN
@@ -1140,8 +1130,6 @@ UnicodeFiFoGetKeyCount (
 
   @param  TerminalDevice       Terminal driver private structure.
 
-  @return none.
-
 **/
 VOID
 TranslateRawDataToEfiKey (
@@ -1157,8 +1145,6 @@ TranslateRawDataToEfiKey (
   them into Unicode FIFO.
 
   @param TerminalDevice          The terminal device.
-
-  @return None.
 
 **/
 VOID
@@ -1228,8 +1214,6 @@ AnsiRawDataToUnicode (
 
   @param TerminalDevice   The terminal device to use to translate raw input into EFI Keys
 
-  @return None.
-
 **/
 VOID
 UnicodeToEfiKey (
@@ -1262,8 +1246,6 @@ AnsiTestString (
   and insert them into Unicode FIFO.
 
   @param VtUtf8Device          The terminal device.
-
-  @return None.
 
 **/
 VOID
@@ -1300,8 +1282,6 @@ VTUTF8TestString (
   @param  Utf8Char         Return VT-UTF8 character set.
   @param  ValidBytes       The count of valid VT-UTF8 characters. If
                            ValidBytes is zero, no valid VT-UTF8 returned.
-  
-  @return None.
 
 **/
 VOID
@@ -1340,8 +1320,6 @@ GetOneValidUtf8Char (
   @param  Utf8Char         VT-UTF8 character set needs translating.
   @param  ValidBytes       The count of valid VT-UTF8 characters.
   @param  UnicodeChar      Returned unicode character. 
-  
-  @return None.
 
 **/
 VOID
@@ -1364,7 +1342,7 @@ Utf8ToUnicode (
   @param  Ascii        Optional pointer to return ASCII equivalent of
                        Graphic.
 
-  @return TRUE         If Graphic is a supported Unicode Box Drawing character.
+  @retval TRUE         If Graphic is a supported Unicode Box Drawing character.
 
 **/
 BOOLEAN

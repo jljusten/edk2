@@ -213,7 +213,7 @@ INF  UnixPkg/UnixUgaDxe/UnixUga.inf
 #INF  UnixPkg/UnixConsoleDxe/UnixConsole.inf
 INF  MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
 INF  MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf  
-INF  MdeModulePkg/Universal/BdsDxe/BdsDxe.inf 
+INF  IntelFrameworkModulePkg/Universal/BdsDxe/BdsDxe.inf 
 INF  UnixPkg/UnixSimpleFileSystemDxe/UnixSimpleFileSystem.inf
 INF  MdeModulePkg/Universal/DriverSampleDxe/DriverSampleDxe.inf
 INF  MdeModulePkg/Application/HelloWorld/HelloWorld.inf
@@ -310,7 +310,7 @@ FILE FREEFORM = 7BB28B99-61BB-11D5-9A5D-0090273FC14D {
   }
 
 [Rule.Common.PEIM.TIANOCOMPRESSED]
-  FILE PEIM = $(NAMED_GUID) DEBUG_MYTOOLS_IA32 {
+  FILE PEIM = $(NAMED_GUID) {
     PEI_DEPEX PEI_DEPEX Optional         |.depex
     GUIDED A31280AD-481E-41B6-95E8-127F4C984779 PROCESSING_REQUIRED = TRUE {
       PE32      PE32                     |.efi

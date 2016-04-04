@@ -206,7 +206,7 @@ InitOverridesMapping (
       VariableIndex += ((sizeof(UINT32) - ((UINTN) (VariableIndex))) & (sizeof(UINT32) - 1));
 
       //
-      // Get all DriverDevicePath[]
+      // Get all DriverImageDevicePath[]
       //
       for (Index = 0; Index < DriverNumber; Index++) {
         //
@@ -240,10 +240,9 @@ InitOverridesMapping (
     // NotEnd indicates whether current variable is the end variable.
     //
     if (NotEnd != 0) {
-      UnicodeSPrint (OverrideVariableName, sizeof (OverrideVariableName), L"PlatDriOver%d", VariableNum);
+      UnicodeSPrint (OverrideVariableName, sizeof (OverrideVariableName), L"PlatDriOver%d", VariableNum++);
       VariableBuffer = GetVariableAndSize (OverrideVariableName, &gEfiOverrideVariableGuid, &BufferSize);
       ASSERT ((UINTN) VariableBuffer % sizeof(UINTN) == 0);
-      VariableNum++;
       if (VariableBuffer == NULL) {
         FreeMappingDatabase (MappingDataBase);
         return EFI_VOLUME_CORRUPTED;
@@ -468,6 +467,7 @@ SaveOverridesMapping (
     // ItemIndex now points to the next PLATFORM_OVERRIDE_ITEM which is not covered by VariableNeededSize
     //
     VariableBuffer = AllocateZeroPool (VariableNeededSize);
+    ASSERT (VariableBuffer != NULL);
     ASSERT ((UINTN) VariableBuffer % sizeof(UINTN) == 0);
 
     //
@@ -1799,6 +1799,8 @@ ConnectDevicePath (
     // After this call DevicePath points to the next Instance
     //
     Instance  = GetNextDevicePathInstance (&DevicePath, &Size);
+    ASSERT (Instance != NULL);
+
     Next      = Instance;
     while (!IsDevicePathEndType (Next)) {
       Next = NextDevicePathNode (Next);

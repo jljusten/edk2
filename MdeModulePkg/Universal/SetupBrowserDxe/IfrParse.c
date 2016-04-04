@@ -279,6 +279,7 @@ CreateExpression (
   FORM_EXPRESSION  *Expression;
 
   Expression = AllocateZeroPool (sizeof (FORM_EXPRESSION));
+  ASSERT (Expression != NULL);
   Expression->Signature = FORM_EXPRESSION_SIGNATURE;
   InitializeListHead (&Expression->OpCodeListHead);
 
@@ -302,6 +303,7 @@ CreateStorage (
   FORMSET_STORAGE  *Storage;
 
   Storage = AllocateZeroPool (sizeof (FORMSET_STORAGE));
+  ASSERT (Storage != NULL);
   Storage->Signature = FORMSET_STORAGE_SIGNATURE;
   InitializeListHead (&Storage->NameValueListHead);
   InsertTailList (&FormSet->StorageListHead, &Storage->Link);
@@ -433,6 +435,7 @@ InitializeRequestElement (
     //
     StringSize = (Storage->ConfigRequest != NULL) ? StrSize (Storage->ConfigRequest) : sizeof (CHAR16);
     NewStr = AllocateZeroPool (StringSize + CONFIG_REQUEST_STRING_INCREMENTAL * sizeof (CHAR16));
+    ASSERT (NewStr != NULL);
     if (Storage->ConfigRequest != NULL) {
       CopyMem (NewStr, Storage->ConfigRequest, StringSize);
       FreePool (Storage->ConfigRequest);
@@ -963,6 +966,7 @@ ParseOpCodes (
         break;
 
       case EFI_IFR_THIS_OP:
+        ASSERT (CurrentStatement != NULL);
         ExpressionOpCode->QuestionId = CurrentStatement->QuestionId;
         break;
 
@@ -1055,6 +1059,7 @@ ParseOpCodes (
           //
           // Evaluate DisableIf expression
           //
+          ASSERT (CurrentExpression != NULL);
           Status = EvaluateExpression (FormSet, CurrentForm, CurrentExpression);
           if (EFI_ERROR (Status)) {
             return Status;
@@ -1094,6 +1099,7 @@ ParseOpCodes (
       // Create a new Form for this FormSet
       //
       CurrentForm = AllocateZeroPool (sizeof (FORM_BROWSER_FORM));
+      ASSERT (CurrentForm != NULL);
       CurrentForm->Signature = FORM_BROWSER_FORM_SIGNATURE;
       InitializeListHead (&CurrentForm->ExpressionListHead);
       InitializeListHead (&CurrentForm->StatementListHead);
@@ -1170,6 +1176,7 @@ ParseOpCodes (
     //
     case EFI_IFR_DEFAULTSTORE_OP:
       DefaultStore = AllocateZeroPool (sizeof (FORMSET_DEFAULTSTORE));
+      ASSERT (DefaultStore != NULL);
       DefaultStore->Signature = FORMSET_DEFAULTSTORE_SIGNATURE;
 
       CopyMem (&DefaultStore->DefaultId,   &((EFI_IFR_DEFAULTSTORE *) OpCodeData)->DefaultId,   sizeof (UINT16));
@@ -1406,6 +1413,7 @@ ParseOpCodes (
       // A Question may have more than one Default value which have different default types.
       //
       CurrentDefault = AllocateZeroPool (sizeof (QUESTION_DEFAULT));
+      ASSERT (CurrentDefault != NULL);
       CurrentDefault->Signature = QUESTION_DEFAULT_SIGNATURE;
 
       CurrentDefault->Value.Type = ((EFI_IFR_DEFAULT *) OpCodeData)->Type;
@@ -1432,6 +1440,7 @@ ParseOpCodes (
       // It create a selection for use in current Question.
       //
       CurrentOption = AllocateZeroPool (sizeof (QUESTION_OPTION));
+      ASSERT (CurrentOption != NULL);
       CurrentOption->Signature = QUESTION_OPTION_SIGNATURE;
 
       CurrentOption->Flags = ((EFI_IFR_ONE_OF_OPTION *) OpCodeData)->Flags;
@@ -1505,6 +1514,7 @@ ParseOpCodes (
       // evaluated at initialization and it will not be queued
       //
       CurrentExpression = AllocateZeroPool (sizeof (FORM_EXPRESSION));
+      ASSERT (CurrentExpression != NULL);
       CurrentExpression->Signature = FORM_EXPRESSION_SIGNATURE;
       CurrentExpression->Type = EFI_HII_EXPRESSION_DISABLE_IF;
       InitializeListHead (&CurrentExpression->OpCodeListHead);
@@ -1566,6 +1576,7 @@ ParseOpCodes (
         break;
 
       case EFI_IFR_FORM_OP:
+        ASSERT (CurrentForm != NULL);
         ImageId = &CurrentForm->ImageId;
         break;
 

@@ -1,5 +1,10 @@
 /** @file
-  Timer Library functions built upon local APIC on IA32/x64.
+  Timer Library functions built upon ACPI on IA32/x64.
+  
+  ACPI power management timer is a 24-bit or 32-bit fixed rate free running count-up
+  timer that runs off a 3.579545 MHz clock. 
+  When startup, Duet will check the FADT to determine whether the PM timer is a 
+  32-bit or 25-bit timer.
 
   Copyright (c) 2006 - 2007, Intel Corporation<BR>
   All rights reserved. This program and the accompanying materials
@@ -15,75 +20,55 @@
 #include <Base.h>
 #include <Library/TimerLib.h>
 #include <Library/BaseLib.h>
-#include <Library/IoLib.h>
 #include <Library/DebugLib.h>
-#include <Library/PcdLib.h>
+#include <Library/HobLib.h>
+#include <Guid/AcpiDescription.h>
+#include <Library/IoLib.h>
+#include <Library/PciLib.h>
 
-
-//
-// The following array is used in calculating the frequency of local APIC
-// timer. Refer to IA-32 developers' manual for more details.
-//
-GLOBAL_REMOVE_IF_UNREFERENCED
-CONST UINT8                           mTimerLibLocalApicDivisor[] = {
-  0x02, 0x04, 0x08, 0x10,
-  0x02, 0x04, 0x08, 0x10,
-  0x20, 0x40, 0x80, 0x01,
-  0x20, 0x40, 0x80, 0x01
-};
+EFI_ACPI_DESCRIPTION *gAcpiDesc          = NULL;
 
 /**
-  Internal function to retrieve the base address of local APIC.
-
-  Internal function to retrieve the base address of local APIC.
-
-  @return The base address of local APIC
-
+  Internal function to get Acpi information from HOB.
+  
+  @return Pointer to ACPI description structure.
 **/
-UINTN
-InternalX86GetApicBase (
+EFI_ACPI_DESCRIPTION*
+InternalGetApciDescrptionTable (
   VOID
   )
 {
-  return (UINTN)AsmMsrBitFieldRead64 (27, 12, 35) << 12;
+  EFI_PEI_HOB_POINTERS  GuidHob;
+  
+  if (gAcpiDesc != NULL) {
+    return gAcpiDesc;
+  }
+  
+  GuidHob.Raw = GetFirstGuidHob (&gEfiAcpiDescriptionGuid);
+  if (GuidHob.Raw != NULL) {
+    gAcpiDesc = GET_GUID_HOB_DATA (GuidHob.Guid);
+    DEBUG ((EFI_D_INFO, "ACPI Timer: PM_TMR_BLK.RegisterBitWidth = 0x%X\n", gAcpiDesc->PM_TMR_BLK.RegisterBitWidth));
+    DEBUG ((EFI_D_INFO, "ACPI Timer: PM_TMR_BLK.Address = 0x%X\n", gAcpiDesc->PM_TMR_BLK.Address));
+    return gAcpiDesc;
+  } else {
+    DEBUG ((EFI_D_ERROR, "Fail to get Acpi description table from hob\n"));
+    return NULL;
+  }
 }
 
 /**
-  Internal function to return the frequency of the local APIC timer.
-
-  Internal function to return the frequency of the local APIC timer.
-
-  @param  ApicBase  The base address of memory mapped registers of local APIC.
-
-  @return The frequency of the timer in Hz.
-
-**/
-UINT32
-InternalX86GetTimerFrequency (
-  IN      UINTN                     ApicBase
-  )
-{
-  return
-    PcdGet32(PcdFSBClock) /
-    mTimerLibLocalApicDivisor[MmioBitFieldRead32 (ApicBase + 0x3e0, 0, 3)];
-}
-
-/**
-  Internal function to read the current tick counter of local APIC.
-
-  Internal function to read the current tick counter of local APIC.
-
-  @param  ApicBase  The base address of memory mapped registers of local APIC.
+  Internal function to read the current tick counter of ACPI.
 
   @return The tick counter read.
 
 **/
-INT32
-InternalX86GetTimerTick (
-  IN      UINTN                     ApicBase
+STATIC
+UINT32
+InternalAcpiGetTimerTick (
+  VOID
   )
 {
-  return MmioRead32 (ApicBase + 0x390);
+  return IoRead32 ((UINTN)gAcpiDesc->PM_TMR_BLK.Address);
 }
 
 /**
@@ -92,29 +77,36 @@ InternalX86GetTimerTick (
   Stalls the CPU for at least the given number of ticks. It's invoked by
   MicroSecondDelay() and NanoSecondDelay().
 
-  @param  ApicBase  The base address of memory mapped registers of local APIC.
   @param  Delay     A period of time to delay in ticks.
 
 **/
+STATIC
 VOID
-InternalX86Delay (
-  IN      UINTN                     ApicBase,
+InternalAcpiDelay (
   IN      UINT32                    Delay
   )
 {
-  INT32                             Ticks;
+  UINT32                            Ticks;
+  UINT32                            Times;
 
-  //
-  // The target timer count is calculated here
-  //
-  Ticks = InternalX86GetTimerTick (ApicBase) - Delay;
-
-  //
-  // Wait until time out
-  // Delay > 2^31 could not be handled by this function
-  // Timer wrap-arounds are handled correctly by this function
-  //
-  while (InternalX86GetTimerTick (ApicBase) - Ticks >= 0);
+  Times    = Delay >> (gAcpiDesc->PM_TMR_BLK.RegisterBitWidth - 2);
+  Delay   &= (1 << (gAcpiDesc->PM_TMR_BLK.RegisterBitWidth - 2)) - 1;
+  do {
+    //
+    // The target timer count is calculated here
+    //
+    Ticks    = InternalAcpiGetTimerTick () + Delay;
+    Delay    = 1 << (gAcpiDesc->PM_TMR_BLK.RegisterBitWidth - 2);
+    //
+    // Wait until time out
+    // Delay >= 2^23 (if ACPI provide 24-bit timer) or Delay >= 2^31 (if ACPI
+    // provide 32-bit timer) could not be handled by this function
+    // Timer wrap-arounds are handled correctly by this function
+    //
+    while (((Ticks - InternalAcpiGetTimerTick ()) & (1 << (gAcpiDesc->PM_TMR_BLK.RegisterBitWidth - 1))) == 0) {
+      CpuPause ();
+    }
+  } while (Times-- > 0);
 }
 
 /**
@@ -133,15 +125,16 @@ MicroSecondDelay (
   IN      UINTN                     MicroSeconds
   )
 {
-  UINTN                             ApicBase;
 
-  ApicBase = InternalX86GetApicBase ();
-  InternalX86Delay (
-    ApicBase,
+  if (InternalGetApciDescrptionTable() == NULL) {
+    return MicroSeconds;
+  }
+ 
+  InternalAcpiDelay (
     (UINT32)DivU64x32 (
-              MultU64x64 (
-                InternalX86GetTimerFrequency (ApicBase),
-                MicroSeconds
+              MultU64x32 (
+                MicroSeconds,
+                3579545
                 ),
               1000000u
               )
@@ -165,15 +158,15 @@ NanoSecondDelay (
   IN      UINTN                     NanoSeconds
   )
 {
-  UINTN                             ApicBase;
-
-  ApicBase = InternalX86GetApicBase ();
-  InternalX86Delay (
-    ApicBase,
+  if (InternalGetApciDescrptionTable() == NULL) {
+    return NanoSeconds;
+  }
+  
+  InternalAcpiDelay (
     (UINT32)DivU64x32 (
-              MultU64x64 (
-                InternalX86GetTimerFrequency (ApicBase),
-                NanoSeconds
+              MultU64x32 (
+                NanoSeconds,
+                3579545
                 ),
               1000000000u
               )
@@ -199,7 +192,11 @@ GetPerformanceCounter (
   VOID
   )
 {
-  return (UINT64)(UINT32)InternalX86GetTimerTick (InternalX86GetApicBase ());
+  if (InternalGetApciDescrptionTable() == NULL) {
+    return 0;
+  }
+  
+  return (UINT64)InternalAcpiGetTimerTick ();
 }
 
 /**
@@ -232,17 +229,17 @@ GetPerformanceCounterProperties (
   OUT      UINT64                    *EndValue     OPTIONAL
   )
 {
-  UINTN                             ApicBase;
-
-  ApicBase = InternalX86GetApicBase ();
-
+  if (InternalGetApciDescrptionTable() == NULL) {
+    return 0;
+  }
+  
   if (StartValue != NULL) {
-    *StartValue = MmioRead32 (ApicBase + 0x380);
+    *StartValue = 0;
   }
 
   if (EndValue != NULL) {
-    *EndValue = 0;
+    *EndValue = (1 << gAcpiDesc->PM_TMR_BLK.RegisterBitWidth) - 1;
   }
 
-  return (UINT64) InternalX86GetTimerFrequency (ApicBase);;
+  return 3579545;
 }

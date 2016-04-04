@@ -104,7 +104,7 @@ TERMINAL_DEV  mTerminalDevTemplate = {
 };
 
 /**
-  Test to see if this driver supports Controller. 
+  Test to see if this driver supports Controller.
 
   @param  This                Protocol instance pointer.
   @param  Controller          Handle of device to test
@@ -342,7 +342,7 @@ TerminalDriverBindingStart (
   if (!EFI_ERROR (Status)) {
     Status = EFI_SUCCESS;
     for (Index = 0; Index < EntryCount; Index++) {
-      if (OpenInfoBuffer[Index].Attributes & EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER) {
+      if ((OpenInfoBuffer[Index].Attributes & EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER) != 0) {
         Status = EFI_ALREADY_STARTED;
       }
     }
@@ -728,7 +728,7 @@ Error:
 /**
   Stop this driver on Controller by closing Simple Text In, Simple Text
   In Ex, Simple Text Out protocol, and removing parent device path from
-  Console Device Environment Variables.    
+  Console Device Environment Variables.
 
   @param  This              Protocol instance pointer.
   @param  Controller        Handle of device to stop driver on
@@ -958,8 +958,6 @@ TerminalFreeNotifyList (
   @param  VariableName           The Console Device Environment Variable.
   @param  ParentDevicePath       The terminal device path to be updated.
 
-  @return None.
-
 **/
 VOID
 TerminalUpdateConsoleDevVariable (
@@ -1022,8 +1020,6 @@ TerminalUpdateConsoleDevVariable (
 
   @param  VariableName           Console Device Environment Variables.
   @param  ParentDevicePath       The terminal device path to be updated.
-
-  @return None.
 
 **/
 VOID
@@ -1145,7 +1141,7 @@ TerminalRemoveConsoleDevVariable (
   @param  VariableSize           Returns the size of the EFI variable that was read
 
   @return Dynamically allocated memory that contains a copy of the EFI variable.
-          Caller is responsible freeing the buffer. If variable was not read, 
+          Caller is responsible freeing the buffer. If variable was not read,
           NULL returned.
 
 **/
@@ -1288,8 +1284,6 @@ SetTerminalDevicePath (
 
   @param TerminalDevice          The terminal device.
 
-  @return None.
-
 **/
 VOID
 InitializeRawFiFo (
@@ -1307,8 +1301,6 @@ InitializeRawFiFo (
 
   @param TerminalDevice          The terminal device.
 
-  @return None.
-
 **/
 VOID
 InitializeUnicodeFiFo (
@@ -1325,8 +1317,6 @@ InitializeUnicodeFiFo (
   Initialize the EFI Key FIFO.
 
   @param TerminalDevice          The terminal device.
-
-  @return None.
 
 **/
 VOID

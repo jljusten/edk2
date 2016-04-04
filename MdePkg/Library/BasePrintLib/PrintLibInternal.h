@@ -117,6 +117,7 @@ BasePrintLibSPrint (
   @param  EndBuffer   The end of the input Buffer. No characters will be
                       placed after that. 
   @param  Length      Count of character to be placed into Buffer.
+                      (Negative value indicates no buffer fill.)
   @param  Character   Character to be placed into Buffer.
   @param  Increment   Character increment in Buffer.
 
@@ -138,7 +139,7 @@ BasePrintLibFillBuffer (
   Print worker function that convert a decimal number to a string in Buffer.
 
   @param  Buffer    Location to place the Unicode or ASCII string of Value.
-  @param  Value     Value to convert to a Decimal or Hexidecimal string in Buffer.
+  @param  Value     Value to convert to a Decimal or Hexadecimal string in Buffer.
   @param  Radix     Radix of the value
 
   @return Number of characters printed.

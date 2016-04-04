@@ -24,7 +24,7 @@
   PLATFORM_GUID                  = 6CBD2F63-BCF2-42b0-937E-869C67D2F734
   PLATFORM_VERSION               = 0.5
   DSC_SPECIFICATION              = 0x00010005
-  OUTPUT_DIRECTORY               = Build/ECP
+  OUTPUT_DIRECTORY               = Build/EdkCompatibilityPkg
   SUPPORTED_ARCHITECTURES        = IA32|X64|IPF|EBC
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
@@ -211,17 +211,17 @@ define GCC_MACRO                 = -DEFI_SPECIFICATION_VERSION=0x00020000 -DPI_S
   #
   # Modules in Compatibility Directory
   #
-  EdkCompatibilityPkg/Compatibility/DeviceIoToPciRootBridgeIoThunk/DeviceIoToPciRootBridgeIoThunk.inf
-  EdkCompatibilityPkg/Compatibility/FrameworkHiiToUefiHiiThunk/FrameworkHiiToUefiHiiThunk.inf
-  EdkCompatibilityPkg/Compatibility/FvFileLoaderToLoadFileThunk/FvFileLoaderToLoadFileThunk.inf
-  EdkCompatibilityPkg/Compatibility/FvToFv2Thunk/FvToFv2Thunk.inf
-  EdkCompatibilityPkg/Compatibility/Fv2ToFvThunk/Fv2ToFvThunk.inf
-  EdkCompatibilityPkg/Compatibility/PciCfg2ToPciCfgThunk/PciCfg2ToPciCfgThunk.inf
-  EdkCompatibilityPkg/Compatibility/PciCfgToPciCfg2Thunk/PciCfgToPciCfg2Thunk.inf
-  EdkCompatibilityPkg/Compatibility/ReadOnlyVariable2ToReadOnlyVariableThunk/ReadOnlyVariable2ToReadOnlyVariableThunk.inf
-  EdkCompatibilityPkg/Compatibility/ReadOnlyVariableToReadOnlyVariable2Thunk/ReadOnlyVariableToReadOnlyVariable2Thunk.inf
-  EdkCompatibilityPkg/Compatibility/Uc2ToUcThunk/Uc2ToUcThunk.inf
-  EdkCompatibilityPkg/Compatibility/UcToUc2Thunk/UcToUc2Thunk.inf
+  EdkCompatibilityPkg/Compatibility/DeviceIoOnPciRootBridgeIoThunk/DeviceIoOnPciRootBridgeIoThunk.inf
+  EdkCompatibilityPkg/Compatibility/FrameworkHiiOnUefiHiiThunk/FrameworkHiiOnUefiHiiThunk.inf
+  EdkCompatibilityPkg/Compatibility/FvFileLoaderOnLoadFileThunk/FvFileLoaderOnLoadFileThunk.inf
+  EdkCompatibilityPkg/Compatibility/FvOnFv2Thunk/FvOnFv2Thunk.inf
+  EdkCompatibilityPkg/Compatibility/Fv2OnFvThunk/Fv2OnFvThunk.inf
+  EdkCompatibilityPkg/Compatibility/PciCfg2OnPciCfgThunk/PciCfg2OnPciCfgThunk.inf
+  EdkCompatibilityPkg/Compatibility/PciCfgOnPciCfg2Thunk/PciCfgOnPciCfg2Thunk.inf
+  EdkCompatibilityPkg/Compatibility/ReadOnlyVariable2OnReadOnlyVariableThunk/ReadOnlyVariable2OnReadOnlyVariableThunk.inf
+  EdkCompatibilityPkg/Compatibility/ReadOnlyVariableOnReadOnlyVariable2Thunk/ReadOnlyVariableOnReadOnlyVariable2Thunk.inf
+  EdkCompatibilityPkg/Compatibility/Uc2OnUcThunk/Uc2OnUcThunk.inf
+  EdkCompatibilityPkg/Compatibility/UcOnUc2Thunk/UcOnUc2Thunk.inf
 
 [Components.IA32,Components.X64,Components.IPF]
   EdkCompatibilityPkg/Foundation/Library/EdkIIGlueLib/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf

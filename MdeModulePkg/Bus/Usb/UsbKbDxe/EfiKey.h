@@ -22,8 +22,10 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/HiiDatabase.h>
 #include <Protocol/UsbIo.h>
 #include <Protocol/DevicePath.h>
+#include <Protocol/SimpleTextInExNotify.h>
+#include <Protocol/HotPlugDevice.h>
+
 #include <Guid/HiiKeyBoardLayout.h>
-#include <Guid/HotPlugDevice.h>
 
 #include <Library/DebugLib.h>
 #include <Library/ReportStatusCodeLib.h>
@@ -34,8 +36,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/UefiLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PcdLib.h>
-#include <Library/UefiUsbLib.h>
-#include <Library/BaseLib.h>
 #include <Library/UefiUsbLib.h>
 
 #include <IndustryStandard/Usb.h>
@@ -157,7 +157,6 @@ typedef struct {
 extern EFI_DRIVER_BINDING_PROTOCOL   gUsbKeyboardDriverBinding;
 extern EFI_COMPONENT_NAME_PROTOCOL   gUsbKeyboardComponentName;
 extern EFI_COMPONENT_NAME2_PROTOCOL  gUsbKeyboardComponentName2;
-extern EFI_GUID                      gSimpleTextInExNotifyGuid;
 
 #define USB_KB_DEV_FROM_THIS(a) \
     CR(a, USB_KB_DEV, SimpleInput, USB_KB_DEV_SIGNATURE)
@@ -209,7 +208,7 @@ USBKeyboardDriverBindingSupported (
   );
 
 /**
-  Starts the device with this driver.
+  Starts the keyboard device with this driver.
 
   This function produces Simple Text Input Protocol and Simple Text Input Ex Protocol,
   initializes the keyboard device, and submit Asynchronous Interrupt Transfer to manage

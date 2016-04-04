@@ -14,11 +14,10 @@
 
 
 #include <Base.h>
-
-
 #include <Library/BaseLib.h>
-#include <Library/UefiDecompressLib.h>
 #include <Library/DebugLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/UefiDecompressLib.h>
 
 #include "BaseUefiDecompressLibInternals.h"
 
@@ -142,7 +141,7 @@ MakeTable (
   UINT16  Start[18];
   UINT16  *Pointer;
   UINT16  Index3;
-  volatile UINT16  Index;
+  UINT16  Index;
   UINT16  Len;
   UINT16  Char;
   UINT16  JuBits;
@@ -153,14 +152,15 @@ MakeTable (
   UINT16  WordOfCount;
 
 
-  for (Index = 1; Index <= 16; Index++) {
+  for (Index = 0; Index <= 16; Index++) {
     Count[Index] = 0;
   }
 
   for (Index = 0; Index < NumOfChar; Index++) {
     Count[BitLen[Index]]++;
   }
-
+  
+  Start[0] = 0;
   Start[1] = 0;
 
   for (Index = 1; Index <= 16; Index++) {
@@ -175,7 +175,8 @@ MakeTable (
   }
 
   JuBits = (UINT16) (16 - TableBits);
-
+  
+  Weight[0] = 0;
   for (Index = 1; Index <= TableBits; Index++) {
     Start[Index] >>= JuBits;
     Weight[Index] = (UINT16) (1U << (TableBits - Index));
@@ -190,8 +191,8 @@ MakeTable (
 
   if (Index != 0) {
     Index3 = (UINT16) (1U << TableBits);
-    while (Index != Index3) {
-      Table[Index++] = 0;
+    if (Index < Index3) {
+      SetMem16 (Table + Index, (Index3 - Index) * sizeof (*Table), 0);
     }
   }
 
@@ -201,7 +202,7 @@ MakeTable (
   for (Char = 0; Char < NumOfChar; Char++) {
 
     Len = BitLen[Char];
-    if (Len == 0) {
+    if (Len == 0 || Len >= 17) {
       continue;
     }
 
@@ -220,8 +221,8 @@ MakeTable (
       Index   = (UINT16) (Len - TableBits);
 
       while (Index != 0) {
-        if (*Pointer == 0) {
-          Sd->mRight[Avail]                     = Sd->mLeft[Avail] = 0;
+        if (*Pointer == 0 && Avail < (2 * NC - 1)) {
+          Sd->mRight[Avail] = Sd->mLeft[Avail] = 0;
           *Pointer = Avail++;
         }
 
@@ -320,7 +321,7 @@ ReadPTLen (
 {
   UINT16  Number;
   UINT16  CharC;
-  volatile UINT16  Index;
+  UINT16  Index;
   UINT32  Mask;
 
   //
@@ -338,16 +339,14 @@ ReadPTLen (
       Sd->mPTTable[Index] = CharC;
     }
 
-    for (Index = 0; Index < nn; Index++) {
-      Sd->mPTLen[Index] = 0;
-    }
+    SetMem (Sd->mPTLen, nn, 0);
 
     return 0;
   }
 
   Index = 0;
 
-  while (Index < Number) {
+  while (Index < Number && Index < NPT) {
 
     CharC = (UINT16) (Sd->mBitBuf >> (BITBUFSIZ - 3));
 
@@ -376,13 +375,13 @@ ReadPTLen (
     //
     if (Index == Special) {
       CharC = (UINT16) GetBits (Sd, 2);
-      while ((INT16) (--CharC) >= 0) {
+      while ((INT16) (--CharC) >= 0 && Index < NPT) {
         Sd->mPTLen[Index++] = 0;
       }
     }
   }
 
-  while (Index < nn) {
+  while (Index < nn && Index < NPT) {
     Sd->mPTLen[Index++] = 0;
   }
   
@@ -405,7 +404,7 @@ ReadCLen (
 {
   UINT16           Number;
   UINT16           CharC;
-  volatile UINT16  Index;
+  UINT16           Index;
   UINT32           Mask;
 
   Number = (UINT16) GetBits (Sd, CBIT);
@@ -416,9 +415,7 @@ ReadCLen (
     //
     CharC = (UINT16) GetBits (Sd, CBIT);
 
-    for (Index = 0; Index < NC; Index++) {
-      Sd->mCLen[Index] = 0;
-    }
+    SetMem (Sd->mCLen, NC, 0);
 
     for (Index = 0; Index < 4096; Index++) {
       Sd->mCTable[Index] = CharC;
@@ -428,7 +425,7 @@ ReadCLen (
   }
 
   Index = 0;
-  while (Index < Number) {
+  while (Index < Number && Index < NC) {
     CharC = Sd->mPTTable[Sd->mBitBuf >> (BITBUFSIZ - 8)];
     if (CharC >= NT) {
       Mask = 1U << (BITBUFSIZ - 1 - 8);
@@ -460,7 +457,7 @@ ReadCLen (
         CharC = (UINT16) (GetBits (Sd, CBIT) + 20);
       }
 
-      while ((INT16) (--CharC) >= 0) {
+      while ((INT16) (--CharC) >= 0 && Index < NC) {
         Sd->mCLen[Index++] = 0;
       }
 
@@ -471,9 +468,7 @@ ReadCLen (
     }
   }
 
-  while (Index < NC) {
-    Sd->mCLen[Index++] = 0;
-  }
+  SetMem (Sd->mCLen + Index, NC - Index, 0);
 
   MakeTable (Sd, NC, Sd->mCLen, 12, Sd->mCTable);
 
@@ -741,7 +736,6 @@ UefiDecompress (
   IN OUT VOID    *Scratch  OPTIONAL
   )
 {
-  volatile UINT32  Index;
   UINT32           CompSize;
   UINT32           OrigSize;
   SCRATCH_DATA     *Sd;
@@ -768,10 +762,8 @@ UefiDecompress (
   }
 
   Src = Src + 8;
+  SetMem (Sd, sizeof (SCRATCH_DATA), 0);
 
-  for (Index = 0; Index < sizeof (SCRATCH_DATA); Index++) {
-    ((UINT8 *) Sd)[Index] = 0;
-  }
   //
   // The length of the field 'Position Set Code Length Array Size' in Block Header.
   // For UEFI 2.0 de/compression algorithm(Version 1), mPBit = 4

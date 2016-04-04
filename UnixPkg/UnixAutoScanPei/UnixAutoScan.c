@@ -68,25 +68,23 @@ Returns:
   //
   // Get the PEI UNIX Autoscan PPI
   //
-  Status = (**PeiServices).LocatePpi (
-                            PeiServices,
-                            &gPeiUnixAutoScanPpiGuid, // GUID
-                            0,                      // INSTANCE
-                            &PpiDescriptor,         // EFI_PEI_PPI_DESCRIPTOR
-                            (VOID **)&PeiUnixService           // PPI
-                            );
+  Status = PeiServicesLocatePpi (
+             &gPeiUnixAutoScanPpiGuid, // GUID
+             0,                      // INSTANCE
+             &PpiDescriptor,         // EFI_PEI_PPI_DESCRIPTOR
+             (VOID **)&PeiUnixService           // PPI
+             );
   ASSERT_EFI_ERROR (Status);
 
   //
   // Get the Memory Test PPI
   //
-  Status = (**PeiServices).LocatePpi (
-                            PeiServices,
-                            &gPeiBaseMemoryTestPpiGuid,
-                            0,
-                            NULL,
-                            (VOID **)&MemoryTestPpi
-                            );
+  Status = PeiServicesLocatePpi (
+             &gPeiBaseMemoryTestPpiGuid,
+             0,
+             NULL,
+            (VOID**)&MemoryTestPpi
+            );
   ASSERT_EFI_ERROR (Status);
 
   Index = 0;
@@ -108,7 +106,7 @@ Returns:
         // For the first area register it as PEI tested memory
         //
         Status = MemoryTestPpi->BaseMemoryTest (
-                                  PeiServices,
+                                  (EFI_PEI_SERVICES **) PeiServices,
                                   MemoryTestPpi,
                                   MemoryBase,
                                   MemorySize,
@@ -120,7 +118,7 @@ Returns:
         //
         // Register the "tested" memory with the PEI Core
         //
-        Status = (**PeiServices).InstallPeiMemory (PeiServices, MemoryBase, MemorySize);
+        Status = PeiServicesInstallPeiMemory (MemoryBase, MemorySize);
         ASSERT_EFI_ERROR (Status);
 
         Attributes |= EFI_RESOURCE_ATTRIBUTE_TESTED;

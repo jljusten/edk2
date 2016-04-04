@@ -854,9 +854,8 @@ UsbMouseReset (
   return EFI_SUCCESS;
 }
 
-
 /**
-  Event notification function for SIMPLE_POINTER.WaitForInput event.
+  Event notification function for EFI_SIMPLE_POINTER_PROTOCOL.WaitForInput event.
 
   @param  Event        Event to be signaled when there's input from mouse.
   @param  Context      Points to USB_MOUSE_DEV instance.
@@ -880,7 +879,6 @@ UsbMouseWaitForInput (
     gBS->SignalEvent (Event);
   }
 }
-
 
 /**
   Handler for Delayed Recovery event.

@@ -108,8 +108,7 @@ PcRtcInit (
   //
   // Acquire RTC Lock to make access to RTC atomic
   //
-  //BugBug: the EfiAtRuntime should be encapsulated in EfiAcquireLock or
-  //        provide a new instance for EfiAcquireLock, say, RtEfiAcquireLock
+  //Code here doesn't consider the runtime environment.
   if (!EfiAtRuntime ()) {
     EfiAcquireLock (&Global->RtcLock);
   }
@@ -143,8 +142,7 @@ PcRtcInit (
   //
   Status = RtcWaitToUpdate (PcdGet32 (PcdRealTimeClockUpdateTimeout));
   if (EFI_ERROR (Status)) {
-  	//BugBug: the EfiAtRuntime should be encapsulated in EfiAcquireLock or
-    //        provide a new instance for EfiAcquireLock, say, RtEfiAcquireLock
+    //Code here doesn't consider the runtime environment.
     if (!EfiAtRuntime ()) {
       EfiReleaseLock (&Global->RtcLock);
     }
@@ -175,9 +173,7 @@ PcRtcInit (
   //
   // Release RTC Lock.
   //
-  //BugBug: the EfiAtRuntime should be encapsulated in EfiAcquireLock or
-  //        provide a new instance for EfiAcquireLock, say, RtEfiAcquireLock
-  //
+  //Code here doesn't consider the runtime environment.
   if (!EfiAtRuntime ()) {
     EfiReleaseLock (&Global->RtcLock);
   }
@@ -259,8 +255,7 @@ PcRtcGetTime (
   //
   // Acquire RTC Lock to make access to RTC atomic
   //
-  //BugBug: the EfiAtRuntime should be encapsulated in EfiAcquireLock or
-  //        provide a new instance for EfiAcquireLock, say, RtEfiAcquireLock
+  //Code here doesn't consider the runtime environment.
   if (!EfiAtRuntime ()) {
     EfiAcquireLock (&Global->RtcLock);
   }
@@ -269,8 +264,7 @@ PcRtcGetTime (
   //
   Status = RtcWaitToUpdate (PcdGet32 (PcdRealTimeClockUpdateTimeout));
   if (EFI_ERROR (Status)) {
-      //BugBug: the EfiAtRuntime should be encapsulated in EfiReleaseLock or
-      //        provide a new instance for EfiReleaseLock, say, RtEfiReleaseLock
+      //Code here doesn't consider the runtime environment.
       if (!EfiAtRuntime ()) {
         EfiReleaseLock (&Global->RtcLock);
       }
@@ -300,8 +294,7 @@ PcRtcGetTime (
   //
   // Release RTC Lock.
   //
-  //BugBug: the EfiAtRuntime should be encapsulated in EfiReleaseLock or
-  //        provide a new instance for EfiReleaseLock, say, RtEfiReleaseLock
+  //Code here doesn't consider the runtime environment.
   if (!EfiAtRuntime ()) {
     EfiReleaseLock (&Global->RtcLock);
   }
@@ -378,8 +371,7 @@ PcRtcSetTime (
   //
   // Acquire RTC Lock to make access to RTC atomic
   //
-  //BugBug: the EfiAtRuntime should be encapsulated in EfiAcquireLock or
-  //        provide a new instance for EfiAcquireLock, say, RtEfiAcquireLock
+  //Code here doesn't consider the runtime environment.
   if (!EfiAtRuntime ()) {
     EfiAcquireLock (&Global->RtcLock);
   }
@@ -388,8 +380,7 @@ PcRtcSetTime (
   //
   Status = RtcWaitToUpdate (PcdGet32 (PcdRealTimeClockUpdateTimeout));
   if (EFI_ERROR (Status)) {
-     //BugBug: the EfiAtRuntime should be encapsulated in EfiReleaseLock or
-     //        provide a new instance for EfiReleaseLock, say, RtEfiReleaseLock
+     //Code here doesn't consider the runtime environment.
      if (!EfiAtRuntime ()) {
        EfiReleaseLock (&Global->RtcLock);
      }
@@ -425,8 +416,7 @@ PcRtcSetTime (
   //
   // Release RTC Lock.
   //
-  //BugBug: the EfiAtRuntime should be encapsulated in EfiReleaseLock or
-  //        provide a new instance for EfiReleaseLock, say, RtEfiReleaseLock
+  //Code here doesn't consider the runtime environment.
   if (!EfiAtRuntime ()) {
     EfiReleaseLock (&Global->RtcLock);
   }
@@ -489,8 +479,7 @@ PcRtcGetWakeupTime (
   //
   // Acquire RTC Lock to make access to RTC atomic
   //
-  //BugBug: the EfiAtRuntime should be encapsulated in EfiAcquireLock or
-  //        provide a new instance for EfiAcquireLock, say, RtEfiAcquireLock
+  //Code here doesn't consider the runtime environment.
   if (!EfiAtRuntime ()) {
     EfiAcquireLock (&Global->RtcLock);
   }
@@ -499,8 +488,7 @@ PcRtcGetWakeupTime (
   //
   Status = RtcWaitToUpdate (PcdGet32 (PcdRealTimeClockUpdateTimeout));
   if (EFI_ERROR (Status)) {
-    //BugBug: the EfiAtRuntime should be encapsulated in EfiReleaseLock or
-    //        provide a new instance for EfiReleaseLock, say, RtEfiReleaseLock
+    //Code here doesn't consider the runtime environment.
     if (!EfiAtRuntime ()) {
     EfiReleaseLock (&Global->RtcLock);
     }
@@ -541,8 +529,7 @@ PcRtcGetWakeupTime (
   //
   // Release RTC Lock.
   //
-  //BugBug: the EfiAtRuntime should be encapsulated in EfiReleaseLock or
-  //        provide a new instance for EfiReleaseLock, say, RtEfiReleaseLock
+  //Code here doesn't consider the runtime environment.
   if (!EfiAtRuntime ()) {
     EfiReleaseLock (&Global->RtcLock);
   }
@@ -606,6 +593,10 @@ PcRtcSetWakeupTime (
     // Just support set alarm time within 24 hours
     //
     PcRtcGetTime (&RtcTime, &Capabilities, Global);
+    Status = RtcTimeFieldsValid (&RtcTime);
+    if (EFI_ERROR (Status)) {
+      return EFI_DEVICE_ERROR;
+    }
     if (!IsWithinOneDay (&RtcTime, Time)) {
       return EFI_UNSUPPORTED;
     }
@@ -618,8 +609,7 @@ PcRtcSetWakeupTime (
   //
   // Acquire RTC Lock to make access to RTC atomic
   //
-  //BugBug: the EfiAtRuntime should be encapsulated in EfiAcquireLock or
-  //        provide a new instance for EfiAcquireLock, say, RtEfiAcquireLock
+  //Code here doesn't consider the runtime environment.
   if (!EfiAtRuntime ()) {
     EfiAcquireLock (&Global->RtcLock);
   }
@@ -628,8 +618,7 @@ PcRtcSetWakeupTime (
   //
   Status = RtcWaitToUpdate (PcdGet32 (PcdRealTimeClockUpdateTimeout));
   if (EFI_ERROR (Status)) {
-    //BugBug: the EfiAtRuntime should be encapsulated in EfiReleaseLock or
-    //        provide a new instance for EfiReleaseLock, say, RtEfiReleaseLock
+    //Code here doesn't consider the runtime environment.
     if (!EfiAtRuntime ()) {
     EfiReleaseLock (&Global->RtcLock);
     }
@@ -667,8 +656,7 @@ PcRtcSetWakeupTime (
   //
   // Release RTC Lock.
   //
-  //BugBug: the EfiAtRuntime should be encapsulated in EfiReleaseLock or
-  //        provide a new instance for EfiReleaseLock, say, RtEfiReleaseLock
+  //Code here doesn't consider the runtime environment.
   if (!EfiAtRuntime ()) {
     EfiReleaseLock (&Global->RtcLock);
   }

@@ -1,5 +1,18 @@
 #/** @file
-# Component name for module UsbMassStorage
+# USB Mass Storage Driver that manages USB mass storage devices and
+# produces Block I/O Protocol.
+#
+# The USB mass storage class is specified in two layers: the bottom layer
+# is the transportation protocol. The top layer is the command set.
+# The transportation layer provides the transportation of the command, data and result.
+# The command set defines the command, data and result.
+# The Bulk-Only-Transport and Control/Bulk/Interrupt transport are two transportation protocol.
+# USB mass storage class adopts various industrial standard as its command set.
+# This module refers to following specifications:
+# 1. USB Mass Storage Specification for Bootability, Revision 1.0
+# 2. USB Mass Storage Class Control/Bulk/Interrupt (CBI) Transport, Revision 1.1
+# 3. USB Mass Storage Class Bulk-Only Transport, Revision 1.0.
+# 4. UEFI Specification, v2.1
 #
 # Copyright (c) 2006 - 2008, Intel Corporation. 
 #
@@ -20,7 +33,6 @@
   FILE_GUID                      = 9FB4B4A7-42C0-4bcd-8540-9BCC6711F83E
   MODULE_TYPE                    = UEFI_DRIVER
   VERSION_STRING                 = 1.0
-
   ENTRY_POINT                    = USBMassStorageEntryPoint
 
 #
@@ -59,7 +71,7 @@
 
 
 [Protocols]
-  gEfiUsbIoProtocolGuid                         # PROTOCOL ALWAYS_CONSUMED
-  gEfiBlockIoProtocolGuid                       # PROTOCOL ALWAYS_PRODUCED
-  gEfiDevicePathProtocolGuid                    # PROTOCOL ALWAYS_CONSUMED
+  gEfiUsbIoProtocolGuid                         ## TO_START
+  gEfiDevicePathProtocolGuid                    ## TO_START
+  gEfiBlockIoProtocolGuid                       ## BY_START
 

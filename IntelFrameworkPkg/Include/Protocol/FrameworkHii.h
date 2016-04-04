@@ -30,6 +30,12 @@
 //
 #include <Protocol/GraphicsOutput.h>
 
+//
+// In both EDK and EDK II, incompatbile change is done to Framework HII protocol. 
+// This change should cause a change of GUID in both of code and HII spec. But we 
+// update the GUID in code in EDK and EDK II. The 0.92 spec is not updated. This
+// is a known issue..
+//
 #define EFI_HII_PROTOCOL_GUID \
   { \
     0xd7ad636e, 0xb997, 0x459b, {0xbf, 0x3f, 0x88, 0x46, 0x89, 0x79, 0x80, 0xe1} \
@@ -86,12 +92,15 @@ typedef UINT16                    FRAMEWORK_EFI_HII_HANDLE;
 
 //
 // The following types are currently defined:
-// EFI_FROM_ID has been defined in UEFI spec.
+// EFI_FORM_ID has been defined in UEFI spec.
 //
 typedef UINT16  EFI_FORM_LABEL;
 
 #pragma pack(1)
 
+//
+// The header found at the start of each package.
+//
 typedef struct {
   UINT32  Length;
   UINT16  Type;
