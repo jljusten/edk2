@@ -7,7 +7,7 @@
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+  http://opensource.org/licenses/bsd-license.php.
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
@@ -185,7 +185,7 @@ PeCoffLoaderGetPeHeader (
   The ImageRead and Handle fields of ImageContext structure must be valid prior 
   to invoking this service.
 
-  @param  ImageContext              Pointer to the image context structure that describes the PE/COFF
+  @param  ImageContext              The pointer to the image context structure that describes the PE/COFF
                                     image that needs to be examined by this function.
 
   @retval RETURN_SUCCESS            The information on the PE/COFF image was collected.
@@ -270,7 +270,7 @@ PeCoffLoaderGetImageInfo (
   // Obviously having base relocations with RELOCS_STRIPPED==1 is invalid.
   //
   // Look at the file header to determine if relocations have been stripped, and
-  // save this info in the image context for later use.
+  // save this information in the image context for later use.
   //
   if ((!(ImageContext->IsTeImage)) && ((Hdr.Pe32->FileHeader.Characteristics & EFI_IMAGE_FILE_RELOCS_STRIPPED) != 0)) {
     ImageContext->RelocationsStripped = TRUE;
@@ -500,7 +500,7 @@ PeCoffLoaderImageAddress (
   cache(s) in hardware, then the caller is responsible for performing cache maintenance operations
   prior to transferring control to a PE/COFF image that is loaded using this library.
 
-  @param  ImageContext        Pointer to the image context structure that describes the PE/COFF
+  @param  ImageContext        The pointer to the image context structure that describes the PE/COFF
                               image that is being relocated.
 
   @retval RETURN_SUCCESS      The PE/COFF image was relocated.
@@ -781,7 +781,7 @@ PeCoffLoaderRelocateImage (
   cache(s) in hardware, then the caller is responsible for performing cache maintenance operations
   prior to transferring control to a PE/COFF image that is loaded using this library.
 
-  @param  ImageContext              Pointer to the image context structure that describes the PE/COFF
+  @param  ImageContext              The pointer to the image context structure that describes the PE/COFF
                                     image that is being loaded.
 
   @retval RETURN_SUCCESS            The PE/COFF image was loaded into the buffer specified by
@@ -831,7 +831,7 @@ PeCoffLoaderLoadImage (
   ImageContext->ImageError = IMAGE_ERROR_SUCCESS;
 
   //
-  // Copy the provided context info into our local version, get what we
+  // Copy the provided context information into our local version, get what we
   // can from the original image, and then use that to make sure everything
   // is legit.
   //
@@ -1079,7 +1079,7 @@ PeCoffLoaderLoadImage (
   ImageContext->FixupData = NULL;
 
   //
-  // Load the Codeview info if present
+  // Load the Codeview information if present
   //
   if (ImageContext->DebugDirectoryEntryRva != 0) {
     if (!(ImageContext->IsTeImage)) {
@@ -1259,7 +1259,7 @@ PeCoffLoaderLoadImage (
   cache(s) in hardware, then the caller is responsible for performing cache maintenance operations
   prior to transferring control to a PE/COFF image that is loaded using this library.
 
-  @param  ImageBase          Base address of a PE/COFF image that has been loaded 
+  @param  ImageBase          The base address of a PE/COFF image that has been loaded 
                              and relocated into system memory.
   @param  VirtImageBase      The request virtual address that the PE/COFF image is to
                              be fixed up for.
@@ -1471,7 +1471,7 @@ PeCoffLoaderRelocateImageForRuntime (
   If ReadSize is NULL, then ASSERT().
   If Buffer is NULL, then ASSERT().
 
-  @param  FileHandle        Pointer to base of the input stream
+  @param  FileHandle        The pointer to base of the input stream
   @param  FileOffset        Offset into the PE/COFF image to begin the read operation.
   @param  ReadSize          On input, the size in bytes of the requested read operation.  
                             On output, the number of bytes actually read.
@@ -1508,7 +1508,7 @@ PeCoffLoaderImageReadFromMemory (
   
   If ImageContext is NULL, then ASSERT().
   
-  @param  ImageContext              Pointer to the image context structure that describes the PE/COFF
+  @param  ImageContext              The pointer to the image context structure that describes the PE/COFF
                                     image to be unloaded.
 
   @retval RETURN_SUCCESS            The PE/COFF image was unloaded successfully.

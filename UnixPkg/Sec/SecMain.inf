@@ -34,11 +34,20 @@
   UnixThunk.c
   FwVol.c
   SecMain.c
-  Gasket.c
   
 [Sources.Ia32]  
+  Gasket.c
   Ia32/Gasket.S
   Ia32/Stack.S
+  Ia32/SwitchStack.c
+
+[Sources.X64]  
+  X64/Gasket.S
+  X64/SwitchStack.S
+  X64/NameManglingFix.c
+  
+# Only used to help construct Gasket.S
+#  X64/GasketEfiTemplate.c
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -76,7 +85,12 @@
    GCC:*_*_*_DLINK2_FLAGS == -lc
    GCC:*_*_IA32_CC_FLAGS == -m32 -g -fshort-wchar -fno-strict-aliasing -Wall -malign-double -idirafter/usr/include -c -include $(DEST_DIR_DEBUG)/AutoGen.h -DSTRING_ARRAY_NAME=$(BASE_NAME)Strings
    GCC:*_*_IA32_PP_FLAGS == -m32 -E -x assembler-with-cpp -include $(DEST_DIR_DEBUG)/AutoGen.h
-   GCC:*_*_IA32_ASM_FLAGS == -c -x assembler -imacros $(DEST_DIR_DEBUG)/AutoGen.h
+   GCC:*_*_IA32_ASM_FLAGS == -m32 -c -x assembler -imacros $(DEST_DIR_DEBUG)/AutoGen.h
+
+   GCC:*_*_X64_DLINK_FLAGS == -o $(BIN_DIR)/SecMain -m elf_i386 -dynamic-linker /lib/ld-linux.so.2 /usr/lib/crt1.o /usr/lib/crti.o -L/usr/X11R6/lib -lXext -lX11 /usr/lib/crtn.o
+   GCC:*_*_X64_CC_FLAGS == -m64 -g -fshort-wchar -fno-strict-aliasing -Wall -malign-double -idirafter/usr/include -c -include $(DEST_DIR_DEBUG)/AutoGen.h -DSTRING_ARRAY_NAME=$(BASE_NAME)Strings
+   GCC:*_*_X64_PP_FLAGS == -m64 -E -x assembler-with-cpp -include $(DEST_DIR_DEBUG)/AutoGen.h
+   GCC:*_*_X64_ASM_FLAGS == -m64 -c -x assembler -imacros $(DEST_DIR_DEBUG)/AutoGen.h
 
 #
 # Need to do this link via gcc and not ld as the pathing to libraries changes from OS version to OS version
@@ -84,3 +98,7 @@
    XCODE:*_*_IA32_DLINK_PATH == gcc
    XCODE:*_*_IA32_DLINK_FLAGS == -arch i386 -o $(BIN_DIR)/SecMain -L/usr/X11R6/lib -lXext -lX11 -lIOKit -framework Carbon		
    XCODE:*_*_IA32_ASM_FLAGS == -arch i386 -g
+
+   XCODE:*_*_X64_DLINK_PATH == gcc
+   XCODE:*_*_X64_DLINK_FLAGS == -o $(BIN_DIR)/SecMain -L/usr/X11R6/lib -lXext -lX11 -lIOKit -framework Carbon		
+   XCODE:*_*_X64_ASM_FLAGS == -g

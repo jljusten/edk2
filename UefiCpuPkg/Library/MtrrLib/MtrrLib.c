@@ -23,7 +23,6 @@
 //
 // This table defines the offset, base and length of the fixed MTRRs
 //
-STATIC
 FIXED_MTRR    MtrrLibFixedMtrrTable[] = {
   {
     MTRR_LIB_IA32_MTRR_FIX64K_00000,
@@ -94,11 +93,16 @@ GetVariableMtrrCount (
   VOID
   )
 {
+  UINT32  VariableMtrrCount;
+
   if (!IsMtrrSupported ()) {
     return 0;
   }
 
-  return (UINT32)(AsmReadMsr64 (MTRR_LIB_IA32_MTRR_CAP) & MTRR_LIB_IA32_MTRR_CAP_VCNT_MASK);
+  VariableMtrrCount = (UINT32)(AsmReadMsr64 (MTRR_LIB_IA32_MTRR_CAP) & MTRR_LIB_IA32_MTRR_CAP_VCNT_MASK);
+  ASSERT (VariableMtrrCount <= MTRR_NUMBER_OF_VARIABLE_MTRR);
+
+  return VariableMtrrCount;
 }
 
 /**
@@ -552,7 +556,7 @@ Power2MaxMemory (
 {
   UINT64  Result;
 
-  if (RShiftU64 (MemoryLength, 32)) {
+  if (RShiftU64 (MemoryLength, 32) != 0) {
     Result = LShiftU64 (
                (UINT64) GetPowerOfTwo32 (
                           (UINT32) RShiftU64 (MemoryLength, 32)
@@ -624,7 +628,6 @@ GetDirection (
   @param  VariableMtrr   The array to shadow variable MTRRs content
 
 **/
-STATIC
 VOID
 InvalidateMtrr (
    IN     VARIABLE_MTRR      *VariableMtrr
@@ -638,7 +641,7 @@ InvalidateMtrr (
   Index = 0;
   VariableMtrrCount = GetVariableMtrrCount ();
   while (Index < VariableMtrrCount) {
-    if (VariableMtrr[Index].Valid == FALSE && VariableMtrr[Index].Used == TRUE ) {
+    if (!VariableMtrr[Index].Valid && VariableMtrr[Index].Used) {
        AsmWriteMsr64 (VariableMtrr[Index].Msr, 0);
        AsmWriteMsr64 (VariableMtrr[Index].Msr + 1, 0);
        VariableMtrr[Index].Used = FALSE;
@@ -661,7 +664,6 @@ InvalidateMtrr (
   @param  MtrrValidAddressMask  The valid address mask for MTRR
 
 **/
-STATIC
 VOID
 ProgramVariableMtrr (
   IN UINTN                    MtrrNumber,
@@ -703,7 +705,6 @@ ProgramVariableMtrr (
   @return The enum item in MTRR_MEMORY_CACHE_TYPE
 
 **/
-STATIC
 MTRR_MEMORY_CACHE_TYPE
 GetMemoryCacheTypeFromMtrrType (
   IN UINT64                MtrrType
@@ -738,7 +739,6 @@ GetMemoryCacheTypeFromMtrrType (
   @param  MtrrValidAddressMask  The valid address mask for the MTRR
 
 **/
-STATIC
 VOID
 MtrrLibInitializeMtrrMask (
   OUT UINT64 *MtrrValidBitsMask,
@@ -1452,7 +1452,9 @@ MtrrSetAllMtrrs (
   This function prints all MTRRs for debugging.
 **/
 VOID
+EFIAPI
 MtrrDebugPrintAllMtrrs (
+  VOID
   )
 {
   DEBUG_CODE (

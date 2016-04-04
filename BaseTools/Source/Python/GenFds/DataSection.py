@@ -1,9 +1,9 @@
 ## @file
 # process data section generation
 #
-#  Copyright (c) 2007, Intel Corporation
+#  Copyright (c) 2007, Intel Corporation. All rights reserved.<BR>
 #
-#  All rights reserved. This program and the accompanying materials
+#  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution.  The full text of the license may be found at
 #  http://opensource.org/licenses/bsd-license.php
@@ -21,6 +21,7 @@ import subprocess
 from Ffs import Ffs
 import os
 from CommonDataClass.FdfClass import DataSectionClassObject
+from Common.Misc import PeImageClass
 import shutil
 
 ## generate data section
@@ -73,6 +74,14 @@ class DataSection (DataSectionClassObject):
                 if not os.path.exists(CopyMapFile) or \
                     (os.path.getmtime(MapFile) > os.path.getmtime(CopyMapFile)):
                     shutil.copyfile(MapFile, CopyMapFile)
+
+        #Get PE Section alignment when align is set to AUTO
+        if self.Alignment == 'Auto' and self.SecType in ('TE', 'PE32'):
+            ImageObj = PeImageClass (Filename)
+            if ImageObj.SectionAlignment < 0x400:
+                self.Alignment = str (ImageObj.SectionAlignment)
+            else:
+                self.Alignment = str (ImageObj.SectionAlignment / 0x400) + 'K'
 
         NoStrip = True
         if self.SecType in ('TE', 'PE32'):

@@ -136,7 +136,7 @@ CommonExceptionHandler (
     "!!!! IA32 Exception Type - %08x !!!!\n",
     InterruptType
     ));
-  if (mErrorCodeFlag & (1 << InterruptType)) {
+  if ((mErrorCodeFlag & (1 << InterruptType)) != 0) {
     DEBUG ((
       EFI_D_ERROR,
       "ExceptionData - %08x\n",
@@ -217,7 +217,7 @@ CommonExceptionHandler (
     "!!!! X64 Exception Type - %016lx !!!!\n",
     (UINT64)InterruptType
     ));
-  if (mErrorCodeFlag & (1 << InterruptType)) {
+  if ((mErrorCodeFlag & (1 << InterruptType)) != 0) {
     DEBUG ((
       EFI_D_ERROR,
       "ExceptionData - %016lx\n",
@@ -676,11 +676,11 @@ InitializeMtrrMask (
 }
 
 /**
-  Gets GCD Mem Space type from MTRR Type
+  Gets GCD Mem Space type from MTRR Type.
 
-  This function gets GCD Mem Space type from MTRR Type
+  This function gets GCD Mem Space type from MTRR Type.
 
-  @param  MtrrAttribute  MTRR memory type
+  @param  MtrrAttributes  MTRR memory type
 
   @return GCD Mem Space type
 
@@ -1009,17 +1009,17 @@ RefreshGcdMemoryAttributes (
   Initialize Interrupt Descriptor Table for interrupt handling.
 
 **/
-STATIC
 VOID
 InitInterruptDescriptorTable (
   VOID
   )
 {
-  EFI_STATUS      Status;
-  VOID            *IdtPtrAlignmentBuffer;
-  IA32_DESCRIPTOR *IdtPtr;
-  UINTN           Index;
-  UINTN           CurrentHandler;
+  EFI_STATUS       Status;
+  VOID             *IdtPtrAlignmentBuffer;
+  IA32_DESCRIPTOR  *IdtPtr;
+  UINTN            Index;
+  UINTN            CurrentHandler;
+  IA32_DESCRIPTOR  Idtr;
 
   SetMem (ExternalVectorTable, sizeof(ExternalVectorTable), 0);
 
@@ -1029,7 +1029,6 @@ InitInterruptDescriptorTable (
   CurrentHandler = (UINTN)AsmIdtVector00;
   for (Index = 0; Index < INTERRUPT_VECTOR_NUMBER; Index ++, CurrentHandler += 0x08) {
     gIdtTable[Index].Bits.OffsetLow   = (UINT16)CurrentHandler;
-    gIdtTable[Index].Bits.Selector    = AsmReadCs();
     gIdtTable[Index].Bits.Reserved_0  = 0;
     gIdtTable[Index].Bits.GateType    = IA32_IDT_GATE_TYPE_INTERRUPT_32;
     gIdtTable[Index].Bits.OffsetHigh  = (UINT16)(CurrentHandler >> 16);
@@ -1040,12 +1039,29 @@ InitInterruptDescriptorTable (
   }
 
   //
+  // Get original IDT address and size.
+  //
+  AsmReadIdtr ((IA32_DESCRIPTOR *) &Idtr);
+
+  //
+  // Copy original IDT entry.
+  //
+  CopyMem (&gIdtTable[0], (VOID *) Idtr.Base, Idtr.Limit + 1);
+  
+  //
+  // Update all IDT enties to use cuurent CS value
+  //
+  for (Index = 0; Index < INTERRUPT_VECTOR_NUMBER; Index ++, CurrentHandler += 0x08) {
+    gIdtTable[Index].Bits.Selector    = AsmReadCs();
+  }
+  
+  //
   // Load IDT Pointer
   //
   IdtPtrAlignmentBuffer = AllocatePool (sizeof (*IdtPtr) + 16);
   IdtPtr = ALIGN_POINTER (IdtPtrAlignmentBuffer, 16);
   IdtPtr->Base = (UINT32)(((UINTN)(VOID*) gIdtTable) & (BASE_4GB-1));
-  IdtPtr->Limit = sizeof (gIdtTable) - 1;
+  IdtPtr->Limit = (UINT16) (sizeof (gIdtTable) - 1);
 
   AsmWriteIdtr (IdtPtr);
 

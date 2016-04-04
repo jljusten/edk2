@@ -1,7 +1,7 @@
 /** @file
   FrontPage routines to handle the callbacks and browser calls
 
-Copyright (c) 2004 - 2009, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2010, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -172,6 +172,13 @@ FrontPageCallback (
   EFI_STATUS                    Status;
   CHAR8                         *PlatformSupportedLanguages;
   CHAR8                         *BestLanguage;
+
+  if ((Action == EFI_BROWSER_ACTION_FORM_OPEN) || (Action == EFI_BROWSER_ACTION_FORM_CLOSE)) {
+    //
+    // Do nothing for UEFI OPEN/CLOSE Action
+    //
+    return EFI_SUCCESS;
+  }
 
   if ((Value == NULL) || (ActionRequest == NULL)) {
     return EFI_INVALID_PARAMETER;
@@ -436,7 +443,7 @@ InitializeFrontPage (
 
     if (FirstFlag) {
       StringBuffer = HiiGetString (HiiHandle, PRINTABLE_LANGUAGE_NAME_STRING_ID, Lang);
-      ASSERT_EFI_ERROR (StringBuffer != NULL);
+      ASSERT (StringBuffer != NULL);
 
       //
       // Save the string Id for each language

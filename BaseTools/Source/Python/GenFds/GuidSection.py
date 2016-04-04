@@ -1,9 +1,9 @@
 ## @file
 # process GUIDed section generation
 #
-#  Copyright (c) 2007 - 2010, Intel Corporation
+#  Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
 #
-#  All rights reserved. This program and the accompanying materials
+#  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution.  The full text of the license may be found at
 #  http://opensource.org/licenses/bsd-license.php
@@ -193,16 +193,17 @@ class GuidSection(GuidSectionClassObject) :
 
             Attribute = []
             HeaderLength = None
-            if TempFileSize > InputFileSize and TempFileSize % 4 == 0:
-                FileHandleIn.seek(0)
-                BufferIn  = FileHandleIn.read()
-                FileHandleOut.seek(0)
-                BufferOut = FileHandleOut.read()
-                if BufferIn == BufferOut[TempFileSize - InputFileSize:]:
-                    HeaderLength = str(TempFileSize - InputFileSize)
-            #auto sec guided attribute with process required
-            if HeaderLength == None:
-                Attribute.append('PROCESSING_REQUIRED')
+            if self.ProcessRequired == "NONE":
+                if TempFileSize > InputFileSize and TempFileSize % 4 == 0:
+                    FileHandleIn.seek(0)
+                    BufferIn  = FileHandleIn.read()
+                    FileHandleOut.seek(0)
+                    BufferOut = FileHandleOut.read()
+                    if BufferIn == BufferOut[TempFileSize - InputFileSize:]:
+                        HeaderLength = str(TempFileSize - InputFileSize)
+                #auto sec guided attribute with process required
+                if HeaderLength == None:
+                    Attribute.append('PROCESSING_REQUIRED')
 
             FileHandleIn.close()
             FileHandleOut.close()

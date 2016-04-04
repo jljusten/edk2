@@ -6,7 +6,7 @@
   This program and the accompanying materials are
   licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+  http://opensource.org/licenses/bsd-license.php.
   
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
@@ -33,7 +33,7 @@
   @param  DriverBindingHandle  The handle that DriverBinding is to be installed onto.  If this
                                parameter is NULL, then a new handle is created.
 
-  @retval EFI_SUCCESS           The protocol installation is completed successfully.
+  @retval EFI_SUCCESS           The protocol installation successfully completed.
   @retval EFI_OUT_OF_RESOURCES  There was not enough system resources to install the protocol.
   @retval Others                Status from gBS->InstallMultipleProtocolInterfaces().
 
@@ -93,7 +93,7 @@ EfiLibInstallDriverBinding (
   @param  DriverConfiguration  A Driver Configuration Protocol instance that this driver is producing.
   @param  DriverDiagnostics    A Driver Diagnostics Protocol instance that this driver is producing.
 
-  @retval EFI_SUCCESS           The protocol installation is completed successfully.
+  @retval EFI_SUCCESS           The protocol installation successfully completed.
   @retval EFI_OUT_OF_RESOURCES  There was not enough memory in pool to install all the protocols.
 
 **/
@@ -222,7 +222,7 @@ EfiLibInstallAllDriverProtocols (
   @param  ComponentName        A Component Name Protocol instance that this driver is producing.
   @param  ComponentName2       A Component Name 2 Protocol instance that this driver is producing.
 
-  @retval EFI_SUCCESS           The protocol installation is completed successfully.
+  @retval EFI_SUCCESS           The protocol installation successfully completed.
   @retval EFI_OUT_OF_RESOURCES  There was not enough memory in pool to install all the protocols.
 
 **/
@@ -315,7 +315,7 @@ EfiLibInstallDriverBindingComponentName2 (
   @param  DriverDiagnostics     A Driver Diagnostics Protocol instance that this driver is producing.
   @param  DriverDiagnostics2    A Driver Diagnostics Protocol 2 instance that this driver is producing.
 
-  @retval EFI_SUCCESS           The protocol installation is completed successfully.
+  @retval EFI_SUCCESS           The protocol installation successfully completed.
   @retval EFI_OUT_OF_RESOURCES  There was not enough memory in pool to install all the protocols.
 
 **/

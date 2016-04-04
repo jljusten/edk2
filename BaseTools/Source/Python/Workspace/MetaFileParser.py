@@ -1,8 +1,8 @@
 ## @file
 # This file is used to parse meta files
 #
-# Copyright (c) 2008 - 2010, Intel Corporation
-# All rights reserved. This program and the accompanying materials
+# Copyright (c) 2008 - 2010, Intel Corporation. All rights reserved.<BR>
+# This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
 # http://opensource.org/licenses/bsd-license.php
@@ -774,6 +774,8 @@ class DscParser(MetaFileParser):
             except:
                 EdkLogger.error("Parser", PARSER_ERROR, File=self.MetaFile, Line=self._LineIndex+1,
                                 ExtraData="Failed to parse content in file %s" % IncludedFile)
+            # insert an imaginary token in the DSC table to indicate its external dependency on another file
+            self._Store(MODEL_EXTERNAL_DEPENDENCY, IncludedFile, str(os.stat(IncludedFile)[8]), "")
             # update current status with sub-parser's status
             self._SectionName = Parser._SectionName
             self._SectionType = Parser._SectionType

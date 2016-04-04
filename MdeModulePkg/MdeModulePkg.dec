@@ -1,4 +1,4 @@
-##  @file  MdeModulePkg.dec
+## @file  MdeModulePkg.dec
 #
 # This package provides the modules that conform to UEFI/PI Industry standards.
 # It also provides the defintions(including PPIs/PROTOCOLs/GUIDs and library classes)
@@ -253,15 +253,6 @@
   ## This PCD specifies whether PciBus supports the hot plug device.
   gEfiMdeModulePkgTokenSpaceGuid.PcdPciBusHotplugDeviceSupport|TRUE|BOOLEAN|0x0001003d
 
-  ## This PCD specifies whether the Single Root I/O virtualization support.
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSrIovSupport|TRUE|BOOLEAN|0x10000044
-
-  ## This PCD specifies whether the Alternative Routing-ID support.
-  gEfiMdeModulePkgTokenSpaceGuid.PcdAriSupport|TRUE|BOOLEAN|0x10000045
-
-  ## This PCD specifies whether the Multi Root I/O virtualization support.
-  gEfiMdeModulePkgTokenSpaceGuid.PcdMrIovSupport|FALSE|BOOLEAN|0x10000046
-
   ## This PCD specifies whether the PCI bus driver probes non-standard, 
   #  such as 2K/1K/512, granularity for PCI to PCI bridge I/O window.
   gEfiMdeModulePkgTokenSpaceGuid.PcdPciBridgeIoAlignmentProbe|FALSE|BOOLEAN|0x10000047
@@ -274,6 +265,9 @@
 
   ## This PCD specifies whether Peiphase StatusCode is replayed in DxePhase.
   gEfiMdeModulePkgTokenSpaceGuid.PcdStatusCodeReplayIn|FALSE|BOOLEAN|0x0001002d
+
+  ## This PCD specified whether ACPI SDT protocol is installed.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdInstallAcpiSdtProtocol|FALSE|BOOLEAN|0x0001004d
 
 [PcdsFeatureFlag.IA32, PcdsFeatureFlag.X64]
   ##
@@ -382,6 +376,15 @@
   ## Base address of the FTW working block range in flash device.
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingBase|0x0|UINT32|0x30000010
 
+  ## 64-bit Base address of the NV variable range in flash device
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase64|0x0|UINT64|0x80000001
+
+  ## 64-bit Base address of the FTW spare block range in flash device.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareBase64|0x0|UINT64|0x80000013
+
+  ## 64-bit Base address of the FTW working block range in flash device.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingBase64|0x0|UINT64|0x80000010
+
   ## This PCD defines the print string.
   #  This PCD is a sample to explain String typed PCD usage.
   gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintString|L"UEFI Hello World!\n"|VOID*|0x40000004
@@ -390,17 +393,26 @@
   #  The range is valid if non-zero.  The memory range size must be PcdVariableStoreSize.
   gEfiMdeModulePkgTokenSpaceGuid.PcdEmuVariableNvStoreReserved|0|UINT64|0x40000008
 
+  ## This PCD specifies whether the Single Root I/O virtualization support.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSrIovSupport|TRUE|BOOLEAN|0x10000044
+
+  ## This PCD specifies whether the Alternative Routing-ID support.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAriSupport|TRUE|BOOLEAN|0x10000045
+
+  ## This PCD specifies whether the Multi Root I/O virtualization support.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMrIovSupport|FALSE|BOOLEAN|0x10000046
+
 [PcdsFixedAtBuild,PcdsPatchableInModule,PcdsDynamic]
   ## This PCD defines the times to print hello world string.
   #  This PCD is a sample to explain FixedAtBuild UINT32 PCD usage.
   gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintTimes|1|UINT32|0x40000005
 
-  ## Indicate the max size of the populated capsule image that the platform can support.
+  ## Indicate the max size of the capsule image with reset flag that the platform can support.
   #  The default max size is 100MB (0x6400000) for more than one large capsule images.
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxSizePopulateCapsule|0x6400000|UINT32|0x0001001e
 
-  ## Indicate the max size of the non-populated capsule image that the platform can support.
-  #  The default max size is 10MB (0xa00000) for the casule image without populated flag setting.
+  ## Indicate the max size of the capsule image without reset flag that the platform can support.
+  #  The default max size is 10MB (0xa00000) for the casule image without reset flag setting.
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxSizeNonPopulateCapsule|0xa00000|UINT32|0x0001001f
 
   ## Null-terminated Unicode string of the firmware vendor name that is default name filled into the EFI System Table

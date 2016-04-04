@@ -1,7 +1,7 @@
 #/** @file
 # Beagle board package.
 #
-# Copyright (c) 2009, Apple Inc. All rights reserved.<BR>
+# Copyright (c) 2009 - 2010, Apple Inc. All rights reserved.<BR>
 #
 #    This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -36,7 +36,8 @@
   UncachedMemoryAllocationLib|ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
 !else
   DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
-  UncachedMemoryAllocationLib|ArmPkg/Library/DebugUncachedMemoryAllocationLib/DebugUncachedMemoryAllocationLib.inf
+  UncachedMemoryAllocationLib|ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
+#  UncachedMemoryAllocationLib|ArmPkg/Library/DebugUncachedMemoryAllocationLib/DebugUncachedMemoryAllocationLib.inf
 !endif
 
   ArmLib|ArmPkg/Library/ArmLib/ArmV7/ArmV7Lib.inf
@@ -108,10 +109,12 @@
   OmapLib|Omap35xxPkg/Library/OmapLib/OmapLib.inf
   OmapDmaLib|Omap35xxPkg/Library/OmapDmaLib/OmapDmaLib.inf
   EblNetworkLib|EmbeddedPkg/Library/EblNetworkLib/EblNetworkLib.inf
-  
+  DebugAgentTimerLib|Omap35xxPkg/Library/DebugAgentTimerLib/DebugAgentTimerLib.inf
+
   GdbSerialLib|Omap35xxPkg/Library/GdbSerialLib/GdbSerialLib.inf
   ArmDisassemblerLib|ArmPkg/Library/ArmDisassemblerLib/ArmDisassemblerLib.inf
   DebugAgentLib|MdeModulePkg/Library/DebugAgentLibNull/DebugAgentLibNull.inf
+  DmaLib|ArmPkg/Library/ArmDmaLib/ArmDmaLib.inf
 
 [LibraryClasses.common.SEC]
   ArmLib|ArmPkg/Library/ArmLib/ArmV7/ArmV7LibPrePi.inf
@@ -120,12 +123,19 @@
   UefiDecompressLib|MdePkg/Library/BaseUefiDecompressLib/BaseUefiDecompressLib.inf
   ExtractGuidedSectionLib|EmbeddedPkg/Library/PrePiExtractGuidedSectionLib/PrePiExtractGuidedSectionLib.inf
   LzmaDecompressLib|IntelFrameworkModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
-  PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
+
+# Temp work around for Movt relocation issue. 
+  PeCoffLib|ArmPkg/Library/BasePeCoffLib/BasePeCoffLib.inf
+#  PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
+  
   HobLib|EmbeddedPkg/Library/PrePiHobLib/PrePiHobLib.inf
   PerformanceLib|MdeModulePkg/Library/PeiPerformanceLib/PeiPerformanceLib.inf
   
   # 1/123 faster than Stm or Vstm version
   BaseMemoryLib|MdePkg/Library/BaseMemoryLib/BaseMemoryLib.inf
+
+  # Uncomment to turn on GDB stub in SEC. 
+  #DebugAgentLib|EmbeddedPkg/Library/GdbDebugAgent/GdbDebugAgent.inf
 
 [LibraryClasses.common.PEI_CORE]
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
@@ -186,6 +196,10 @@
   XCODE:*_*_ARM_ARCHASM_FLAGS    == -arch armv7
   XCODE:*_*_ARM_ARCHDLINK_FLAGS  == -arch armv7
   XCODE:RELEASE_*_*_CC_FLAGS     = -DMDEPKG_NDEBUG 
+
+  GCC:*_*_ARM_ARCHCC_FLAGS     == -march=armv7-a -mthumb
+  GCC:*_*_ARM_ARCHASM_FLAGS    == -march=armv7-a
+  GCC:RELEASE_*_*_CC_FLAGS     = -DMDEPKG_NDEBUG 
 
   RVCT:*_*_ARM_ARCHCC_FLAGS  == --cpu Cortex-A8 --thumb
   RVCT:*_*_ARM_ARCHASM_FLAGS == --cpu Cortex-A8 
@@ -384,7 +398,6 @@
   MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
   MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
 
-
   #
   # Nand Flash
   #
@@ -393,7 +406,10 @@
   #
   # MMC/SD
   #
-  Omap35xxPkg/MMCHSDxe/MMCHS.inf
+  Omap35xxPkg/MMCHSDxe/MMCHS.inf {
+    <PcdsFixedAtBuild>
+      gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x800fffff
+  }
   
   #
   # I2C

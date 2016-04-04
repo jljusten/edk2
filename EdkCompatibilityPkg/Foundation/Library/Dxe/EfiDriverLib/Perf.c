@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2004 - 2005, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2010, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials                          
 are licensed and made available under the terms and conditions of the BSD License         
 which accompanies this distribution.  The full text of the license may be found at        
@@ -590,6 +590,7 @@ Returns:
 // Driver entry point
 //
 EFI_STATUS
+EFIAPI
 InitializePerformanceInfrastructure (
   IN EFI_HANDLE           ImageHandle,
   IN EFI_SYSTEM_TABLE     *SystemTable,
@@ -649,6 +650,7 @@ Returns:
 
 
 EFI_STATUS
+EFIAPI
 StartMeasure (
   EFI_HANDLE          Handle,
   IN UINT16           *Token,
@@ -688,6 +690,7 @@ Returns:
 
 
 EFI_STATUS
+EFIAPI
 EndMeasure (
   EFI_HANDLE          Handle,
   IN UINT16           *Token,
@@ -726,6 +729,7 @@ Returns:
 
 
 EFI_STATUS
+EFIAPI
 UpdateMeasure (
   EFI_HANDLE         Handle,
   IN UINT16          *Token,
@@ -825,6 +829,11 @@ Returns:
     return EFI_OUT_OF_RESOURCES;
   }
 
+  //
+  // Initialize 'LogHob' to NULL before usage.
+  //
+  LogHob = NULL;
+
   if (Ticker != 0) {
     TimerValue = Ticker;
   } else {
@@ -837,7 +846,10 @@ Returns:
   EfiLibGetSystemConfigurationTable (&gEfiHobListGuid, &HobList);
   do {
     Status = GetNextGuidHob (&HobList, &gEfiPeiPerformanceHobGuid, (VOID **) &LogHob, NULL);
-    if (EFI_ERROR (Status)) {
+    if (EFI_ERROR (Status) || (LogHob == NULL)) {
+      //
+      // Failed to get HOB for ProtocolGuid.
+      //
       break;
     }
 

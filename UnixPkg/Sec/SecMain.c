@@ -190,7 +190,7 @@ Returns:
   MemorySizeStr      = (CHAR16 *) PcdGetPtr (PcdUnixMemorySizeForSecMain);
   FirmwareVolumesStr = (CHAR16 *) PcdGetPtr (PcdUnixFirmwareVolume);
 
-  printf ("\nEDK SEC Main UNIX Emulation Environment from www.TianoCore.org\n");
+  printf ("\nEDK SEC Main UNIX Emulation Environment from edk2.sourceforge.net\n");
 
 #ifdef __APPLE__
   //
@@ -236,7 +236,7 @@ Returns:
   InitialStackMemorySize  = STACK_SIZE;
   InitialStackMemory = (UINTN)MapMemory(0, 
           (UINT32) InitialStackMemorySize,
-          PROT_READ | PROT_WRITE,
+          PROT_READ | PROT_WRITE | PROT_EXEC,
           MAP_ANONYMOUS | MAP_PRIVATE);
   if (InitialStackMemory == 0) {
     printf ("ERROR : Can not open SecStack Exiting\n");
@@ -499,28 +499,6 @@ Returns:
   return EFI_SUCCESS;
 }
 
-/**
-  Transfers control to a function starting with a new stack.
-
-  Transfers control to the function specified by EntryPoint using the new stack
-  specified by NewStack and passing in the parameters specified by Context1 and
-  Context2. Context1 and Context2 are optional and may be NULL. The function
-  EntryPoint must never return.
-
-  If EntryPoint is NULL, then ASSERT().
-  If NewStack is NULL, then ASSERT().
-
-  @param  EntryPoint  A pointer to function to call with the new stack.
-  @param  Context1    A pointer to the context to pass into the EntryPoint
-                      function.
-  @param  Context2    A pointer to the context to pass into the EntryPoint
-                      function.
-  @param  NewStack    A pointer to the new stack to use for the EntryPoint
-                      function.
-  @param  NewBsp      A pointer to the new BSP for the EntryPoint on IPF. It's
-                      Reserved on other architectures.
-
-**/
 VOID
 EFIAPI
 PeiSwitchStacks (
@@ -529,33 +507,7 @@ PeiSwitchStacks (
   IN      VOID                      *Context2,  OPTIONAL
   IN      VOID                      *Context3,  OPTIONAL
   IN      VOID                      *NewStack
-  )
-{
-  BASE_LIBRARY_JUMP_BUFFER  JumpBuffer;
-  
-  ASSERT (EntryPoint != NULL);
-  ASSERT (NewStack != NULL);
-
-  //
-  // Stack should be aligned with CPU_STACK_ALIGNMENT
-  //
-  ASSERT (((UINTN)NewStack & (CPU_STACK_ALIGNMENT - 1)) == 0);
-
-  JumpBuffer.Eip = (UINTN)EntryPoint;
-  JumpBuffer.Esp = (UINTN)NewStack - sizeof (VOID*);
-  JumpBuffer.Esp -= sizeof (Context1) + sizeof (Context2) + sizeof(Context3);
-  ((VOID**)JumpBuffer.Esp)[1] = Context1;
-  ((VOID**)JumpBuffer.Esp)[2] = Context2;
-  ((VOID**)JumpBuffer.Esp)[3] = Context3;
-
-  LongJump (&JumpBuffer, (UINTN)-1);
-  
-
-  //
-  // InternalSwitchStack () will never return
-  //
-  ASSERT (FALSE);  
-}
+  );
 
 VOID
 SecLoadFromCore (
@@ -764,18 +716,26 @@ Returns:
   if (EFI_ERROR (Status)) {
     return Status;
   }
+  
+  
   //
   // Allocate space in UNIX (not emulator) memory. Extra space is for alignment
   //
-  ImageContext.ImageAddress = (EFI_PHYSICAL_ADDRESS) (UINTN) malloc ((UINTN) (ImageContext.ImageSize + (ImageContext.SectionAlignment * 2)));
+  ImageContext.ImageAddress = (EFI_PHYSICAL_ADDRESS) (UINTN) MapMemory (
+    0, 
+    (UINT32) (ImageContext.ImageSize + (ImageContext.SectionAlignment * 2)),
+    PROT_READ | PROT_WRITE | PROT_EXEC,
+    MAP_ANONYMOUS | MAP_PRIVATE
+    );
   if (ImageContext.ImageAddress == 0) {
     return EFI_OUT_OF_RESOURCES;
   }
+    
   //
   // Align buffer on section boundry
   //
   ImageContext.ImageAddress += ImageContext.SectionAlignment - 1;
-  ImageContext.ImageAddress &= ~(ImageContext.SectionAlignment - 1);
+  ImageContext.ImageAddress &= ~((EFI_PHYSICAL_ADDRESS)(ImageContext.SectionAlignment - 1));
 
 
   Status = PeCoffLoaderLoadImage (&ImageContext);
@@ -867,7 +827,7 @@ Returns:
     // If the memory buffer could not be allocated at the FD build address
     // the Fixup is the difference.
     //
-    *FixUp = *FdBase - PcdGet32 (PcdUnixFdBaseAddress);
+    *FixUp = *FdBase - PcdGet64 (PcdUnixFdBaseAddress);
   }
 
   return EFI_SUCCESS;
@@ -1110,7 +1070,7 @@ PrintLoadAddress (
 {
   fprintf (stderr,
      "0x%08lx Loading %s with entry point 0x%08lx\n",
-     (unsigned long)ImageContext->ImageAddress + ImageContext->SizeOfHeaders,
+     (unsigned long)(ImageContext->ImageAddress + ImageContext->SizeOfHeaders),
      ImageContext->PdbPointer,   
      (unsigned long)ImageContext->EntryPoint
      );
@@ -1171,7 +1131,7 @@ SecPeCoffRelocateImageExtraAction (
     //
     GdbTempFile = fopen (gGdbWorkingFileName, "w");
     if (GdbTempFile != NULL) {
-      fprintf (GdbTempFile, "add-symbol-file %s 0x%x\n", ImageContext->PdbPointer, (UINTN)(ImageContext->ImageAddress + ImageContext->SizeOfHeaders));
+      fprintf (GdbTempFile, "add-symbol-file %s 0x%08lx\n", ImageContext->PdbPointer, (long unsigned int)(ImageContext->ImageAddress + ImageContext->SizeOfHeaders));
       fclose (GdbTempFile);
       
       //

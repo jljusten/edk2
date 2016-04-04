@@ -2,11 +2,11 @@
   Support routines for memory allocation routines 
   based on PeiService for PEI phase drivers.
 
-  Copyright (c) 2006 - 2008, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials                          
   are licensed and made available under the terms and conditions of the BSD License         
   which accompanies this distribution.  The full text of the license may be found at        
-  http://opensource.org/licenses/bsd-license.php                                            
+  http://opensource.org/licenses/bsd-license.php.                                            
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
@@ -135,7 +135,7 @@ AllocateReservedPages (
   then ASSERT().
   If Pages is zero, then ASSERT().
  
-  @param  Buffer                Pointer to the buffer of pages to free.
+  @param  Buffer                The pointer to the buffer of pages to free.
   @param  Pages                 The number of 4 KB pages to free.
 
 **/
@@ -163,7 +163,8 @@ FreePages (
 
   @param  MemoryType            The type of memory to allocate.
   @param  Pages                 The number of 4 KB pages to allocate.
-  @param  Alignment             The requested alignment of the allocation.  Must be a power of two.
+  @param  Alignment             The requested alignment of the allocation.  
+                                Must be a power of two.
                                 If Alignment is zero, then byte alignment is used.
 
   @return A pointer to the allocated buffer or NULL if allocation fails.
@@ -214,7 +215,8 @@ InternalAllocateAlignedPages (
   If Alignment is not a power of two and Alignment is not zero, then ASSERT().
 
   @param  Pages                 The number of 4 KB pages to allocate.
-  @param  Alignment             The requested alignment of the allocation.  Must be a power of two.
+  @param  Alignment             The requested alignment of the allocation.  
+                                Must be a power of two.
                                 If Alignment is zero, then byte alignment is used.
 
   @return A pointer to the allocated buffer or NULL if allocation fails.
@@ -241,7 +243,8 @@ AllocateAlignedPages (
   If Alignment is not a power of two and Alignment is not zero, then ASSERT().
 
   @param  Pages                 The number of 4 KB pages to allocate.
-  @param  Alignment             The requested alignment of the allocation.  Must be a power of two.
+  @param  Alignment             The requested alignment of the allocation.  
+                                Must be a power of two.
                                 If Alignment is zero, then byte alignment is used.
 
   @return A pointer to the allocated buffer or NULL if allocation fails.
@@ -268,7 +271,8 @@ AllocateAlignedRuntimePages (
   If Alignment is not a power of two and Alignment is not zero, then ASSERT().
 
   @param  Pages                 The number of 4 KB pages to allocate.
-  @param  Alignment             The requested alignment of the allocation.  Must be a power of two.
+  @param  Alignment             The requested alignment of the allocation.  
+                                Must be a power of two.
                                 If Alignment is zero, then byte alignment is used.
 
   @return A pointer to the allocated buffer or NULL if allocation fails.
@@ -297,7 +301,7 @@ AllocateAlignedReservedPages (
   Library, then ASSERT().
   If Pages is zero, then ASSERT().
   
-  @param  Buffer                Pointer to the buffer of pages to free.
+  @param  Buffer                The pointer to the buffer of pages to free.
   @param  Pages                 The number of 4 KB pages to free.
 
 **/
@@ -654,8 +658,8 @@ AllocateReservedCopyPool (
   @param  PoolType       The type of pool to allocate.
   @param  OldSize        The size, in bytes, of OldBuffer.
   @param  NewSize        The size, in bytes, of the buffer to reallocate.
-  @param  OldBuffer      The buffer to copy to the allocated buffer.  This is an optional 
-                         parameter that may be NULL.
+  @param  OldBuffer      The buffer to copy to the allocated buffer.  This is an 
+                         optional parameter that may be NULL.
 
   @return A pointer to the allocated buffer or NULL if allocation fails.
 
@@ -757,8 +761,8 @@ ReallocateRuntimePool (
 
   @param  OldSize        The size, in bytes, of OldBuffer.
   @param  NewSize        The size, in bytes, of the buffer to reallocate.
-  @param  OldBuffer      The buffer to copy to the allocated buffer.  This is an optional 
-                         parameter that may be NULL.
+  @param  OldBuffer      The buffer to copy to the allocated buffer.  This is an 
+                         optional parameter that may be NULL.
 
   @return A pointer to the allocated buffer or NULL if allocation fails.
 
@@ -785,7 +789,7 @@ ReallocateReservedPool (
   If Buffer was not allocated with a pool allocation function in the Memory Allocation Library,
   then ASSERT().
 
-  @param  Buffer                Pointer to the buffer to free.
+  @param  Buffer                The pointer to the buffer to free.
 
 **/
 VOID

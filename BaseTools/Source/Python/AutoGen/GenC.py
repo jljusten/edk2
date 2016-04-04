@@ -1,8 +1,8 @@
 ## @file
 # Routines for generating AutoGen.h and AutoGen.c
 #
-# Copyright (c) 2007 - 2010, Intel Corporation
-# All rights reserved. This program and the accompanying materials
+# Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+# This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
 # http://opensource.org/licenses/bsd-license.php
@@ -1227,7 +1227,7 @@ def CreatePcdDatabasePhaseSpecificAutoGen (Platform, Phase):
     NumberOfExTokens = 0
     NumberOfSizeItems = 0
     GuidList = []
-
+    
     for Pcd in Platform.DynamicPcdList:
         CName = Pcd.TokenCName
         TokenSpaceGuidCName = Pcd.TokenSpaceGuidCName
@@ -1262,7 +1262,9 @@ def CreatePcdDatabasePhaseSpecificAutoGen (Platform, Phase):
         VariableHeadValueList = []
         Pcd.InitString = 'UNINIT'
 
-        if Pcd.DatumType == 'VOID*':
+        if Pcd.Type in ["DynamicVpd", "DynamicExVpd"]:
+            Pcd.TokenTypeList = ['PCD_TYPE_VPD']
+        elif Pcd.DatumType == 'VOID*':
             Pcd.TokenTypeList = ['PCD_TYPE_STRING']
         elif Pcd.DatumType == 'BOOLEAN':
             Pcd.TokenTypeList = ['PCD_DATUM_TYPE_UINT8']
@@ -1329,7 +1331,7 @@ def CreatePcdDatabasePhaseSpecificAutoGen (Platform, Phase):
                 Pcd.TokenTypeList += ['PCD_TYPE_VPD']
                 Pcd.InitString = 'INIT'
                 VpdHeadOffsetList.append(Sku.VpdOffset)
-            
+                continue
           
             if Pcd.DatumType == 'VOID*':
                 Pcd.TokenTypeList += ['PCD_TYPE_STRING']
@@ -1886,7 +1888,7 @@ def CreateUnicodeStringCode(Info, AutoGenC, AutoGenH, UniGenCFlag, UniGenBinBuff
     else:
         ShellMode = False
 
-    Header, Code = GetStringFiles(Info.UnicodeFileList, SrcList, IncList, ['.uni', '.inf'], Info.Name, CompatibleMode, ShellMode, UniGenCFlag, UniGenBinBuffer)
+    Header, Code = GetStringFiles(Info.UnicodeFileList, SrcList, IncList, Info.IncludePathList, ['.uni', '.inf'], Info.Name, CompatibleMode, ShellMode, UniGenCFlag, UniGenBinBuffer)
     if CompatibleMode or UniGenCFlag:
         AutoGenC.Append("\n//\n//Unicode String Pack Definition\n//\n")
         AutoGenC.Append(Code)

@@ -1,7 +1,7 @@
 ;------------------------------------------------------------------------------
 ; IA32 assembly file for AP startup vector.
 ;
-; Copyright (c) 2009, Intel Corporation. All rights reserved.<BR>
+; Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
 ; This program and the accompanying materials
 ; are licensed and made available under the terms and conditions of the BSD License
 ; which accompanies this distribution.  The full text of the license may be found at
@@ -60,6 +60,11 @@ RendezvousFunnelProcStart::
         dw GdtrProfile                ; mov        si, GdtrProfile
         db 66h                        ; db         66h
         db 2Eh,0Fh, 01h, 14h          ; lgdt       fword ptr cs:[si]
+
+        db 0BEh
+        dw IdtrProfile                ; mov        si, IdtrProfile
+        db 66h                        ; db         66h
+        db 2Eh,0Fh, 01h, 1Ch          ; lidt       fword ptr cs:[si]
         
         db 33h, 0C0h                  ; xor        ax,  ax
         db 8Eh, 0D8h                  ; mov        ds,  ax
@@ -80,31 +85,33 @@ ProtectedModeStart::                  ; protected mode entry point
         mov         gs,  ax
         mov         ss,  ax           ; Flat mode setup.
 
-
+        ;
+        ; ProgramStack
+        ;
+        mov         ecx, 1bh                          ; Read IA32_APIC_BASE MSR
+        rdmsr
+        and         eax, 0fffff000h
+        add         eax, 20h
+        mov         ebx, dword ptr [eax]
+        shr         ebx, 24
+        
+        xor         ecx, ecx
         mov         edi, esi
-        add         edi, LockLocation
-        mov         al,  NotVacantFlag
-TestLock::
-        xchg        byte ptr [edi], al
-        cmp         al,  NotVacantFlag
-        jz          TestLock
-
-ProgramStack::
+        add         edi, ProcessorNumber
+        mov         ecx, dword ptr [edi + 4 * ebx]    ; ECX = CpuNumber
 
         mov         edi, esi
         add         edi, StackSize
         mov         eax, dword ptr [edi]
+        inc         ecx
+        mul         ecx                               ; EAX = StackSize * (CpuNumber + 1)
+
         mov         edi, esi
         add         edi, StackStart
-        add         eax, dword ptr [edi]
-        mov         esp, eax
-        mov         dword ptr [edi], eax
+        mov         ebx, dword ptr [edi]
+        add         eax, ebx                          ; EAX = StackStart + StackSize * (CpuNumber + 1)
 
-Releaselock::
-        mov         al,  VacantFlag
-        mov         edi, esi
-        add         edi, LockLocation
-        xchg        byte ptr [edi], al
+        mov         esp, eax
 
         ;
         ; Call C Function

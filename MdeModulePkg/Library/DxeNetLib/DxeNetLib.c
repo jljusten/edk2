@@ -20,6 +20,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/HiiConfigRouting.h>
 #include <Protocol/ComponentName.h>
 #include <Protocol/ComponentName2.h>
+#include <Protocol/HiiConfigAccess.h>
 
 #include <Guid/NicIp4ConfigNvData.h>
 
@@ -33,6 +34,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/DevicePathLib.h>
 #include <Library/HiiLib.h>
 #include <Library/PrintLib.h>
+#include <Library/UefiLib.h>
 
 #define NIC_ITEM_CONFIG_SIZE   sizeof (NIC_IP4_CONFIG_INFO) + sizeof (EFI_IP4_ROUTE_TABLE) * MAX_IP4_CONFIG_IN_VARIABLE
 
@@ -1571,6 +1573,86 @@ NetMapIterate (
 
 
 /**
+  Internal function to get the child handle of the NIC handle.
+
+  @param[in]   Controller    NIC controller handle.
+  @param[out]  ChildHandle   Returned child handle.
+
+  @retval EFI_SUCCESS        Successfully to get child handle.
+  @retval Others             Failed to get child handle.
+
+**/
+EFI_STATUS
+NetGetChildHandle (
+  IN EFI_HANDLE         Controller,
+  OUT EFI_HANDLE        *ChildHandle
+  )
+{
+  EFI_STATUS                 Status;
+  EFI_HANDLE                 *Handles;
+  UINTN                      HandleCount;
+  UINTN                      Index;
+  EFI_DEVICE_PATH_PROTOCOL   *ChildDeviceDevicePath;
+  VENDOR_DEVICE_PATH         *VendorDeviceNode;
+
+  //
+  // Locate all EFI Hii Config Access protocols
+  //
+  Status = gBS->LocateHandleBuffer (
+                 ByProtocol,
+                 &gEfiHiiConfigAccessProtocolGuid,
+                 NULL,
+                 &HandleCount,
+                 &Handles
+                 );
+  if (EFI_ERROR (Status) || (HandleCount == 0)) {
+    return Status;
+  }
+
+  Status = EFI_NOT_FOUND;
+
+  for (Index = 0; Index < HandleCount; Index++) {
+
+    Status = EfiTestChildHandle (Controller, Handles[Index], &gEfiManagedNetworkServiceBindingProtocolGuid);
+    if (!EFI_ERROR (Status)) {
+      //
+      // Get device path on the child handle
+      //
+      Status = gBS->HandleProtocol (
+                     Handles[Index],
+                     &gEfiDevicePathProtocolGuid,
+                     (VOID **) &ChildDeviceDevicePath
+                     );
+
+      if (!EFI_ERROR (Status)) {
+        while (!IsDevicePathEnd (ChildDeviceDevicePath)) {
+          ChildDeviceDevicePath = NextDevicePathNode (ChildDeviceDevicePath);
+          //
+          // Parse one instance
+          //
+          if (ChildDeviceDevicePath->Type == HARDWARE_DEVICE_PATH &&
+              ChildDeviceDevicePath->SubType == HW_VENDOR_DP) {
+            VendorDeviceNode = (VENDOR_DEVICE_PATH *) ChildDeviceDevicePath;
+            if (CompareMem (&VendorDeviceNode->Guid, &gEfiNicIp4ConfigVariableGuid, sizeof (EFI_GUID)) == 0) {
+              //
+              // Found item matched gEfiNicIp4ConfigVariableGuid
+              //
+              *ChildHandle = Handles[Index];
+              FreePool (Handles);
+              return EFI_SUCCESS;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  FreePool (Handles);
+  return Status;
+}
+
+
+/**
   This is the default unload handle for all the network drivers.
 
   Disconnect the driver specified by ImageHandle from all the devices in the handle database.
@@ -2391,6 +2473,7 @@ NetLibDefaultAddressIsStatic (
   EFI_STRING                       AccessProgress;
   EFI_STRING                       AccessResults;
   EFI_STRING                       String;
+  EFI_HANDLE                       ChildHandle;
 
   ConfigInfo       = NULL;
   ConfigHdr        = NULL;
@@ -2408,10 +2491,15 @@ NetLibDefaultAddressIsStatic (
     return TRUE;
   }
 
+  Status = NetGetChildHandle (Controller, &ChildHandle);
+  if (EFI_ERROR (Status)) {
+    return TRUE;
+  }
+
   //
   // Construct config request string header
   //
-  ConfigHdr = HiiConstructConfigHdr (&gEfiNicIp4ConfigVariableGuid, EFI_NIC_IP4_CONFIG_VARIABLE, Controller);
+  ConfigHdr = HiiConstructConfigHdr (&gEfiNicIp4ConfigVariableGuid, EFI_NIC_IP4_CONFIG_VARIABLE, ChildHandle);
   if (ConfigHdr == NULL) {
     return TRUE;
   }
@@ -2442,7 +2530,7 @@ NetLibDefaultAddressIsStatic (
     goto ON_EXIT;
   }
 
-  ConfigInfo = AllocateZeroPool (sizeof (NIC_ITEM_CONFIG_SIZE));
+  ConfigInfo = AllocateZeroPool (NIC_ITEM_CONFIG_SIZE);
   if (ConfigInfo == NULL) {
     goto ON_EXIT;
   }
@@ -2720,13 +2808,17 @@ NetLibAsciiStrToIp6 (
   UINTN                          NodeVal;
   BOOLEAN                        Short;
   BOOLEAN                        Update;
+  BOOLEAN                        LeadZero;
+  UINT8                          LeadZeroCnt;
+  UINT8                          Cnt;
 
   if ((String == NULL) || (Ip6Address == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
 
-  Ip6Str     = (CHAR8 *) String;
-  AllowedCnt = 6;
+  Ip6Str      = (CHAR8 *) String;
+  AllowedCnt  = 6;
+  LeadZeroCnt = 0;
 
   //
   // An IPv6 address leading with : looks strange.
@@ -2745,6 +2837,7 @@ NetLibAsciiStrToIp6 (
   TailNodeCnt = 0;
   Short       = FALSE;
   Update      = FALSE;
+  LeadZero    = FALSE;
 
   for (Index = 0; Index < 15; Index = (UINT8) (Index + 2)) {
     TempStr = Ip6Str;
@@ -2759,10 +2852,15 @@ NetLibAsciiStrToIp6 (
 
     if (*Ip6Str == ':') {
       if (*(Ip6Str + 1) == ':') {
-        if ((*(Ip6Str + 2) == '0') || (NodeCnt > 6)) {
+        if ((NodeCnt > 6) || 
+            ((*(Ip6Str + 2) != '\0') && (AsciiStrHexToUintn (Ip6Str + 2) == 0))) {
           //
           // ::0 looks strange. report error to user.
           //
+          return EFI_INVALID_PARAMETER;
+        }
+        if ((NodeCnt == 6) && (*(Ip6Str + 2) != '\0') && 
+            (AsciiStrHexToUintn (Ip6Str + 2) != 0)) {
           return EFI_INVALID_PARAMETER;
         }
 
@@ -2796,6 +2894,9 @@ NetLibAsciiStrToIp6 (
 
         Ip6Str = Ip6Str + 2;
       } else {
+        if (*(Ip6Str + 1) == '\0') {
+          return EFI_INVALID_PARAMETER;
+        }
         Ip6Str++;
         NodeCnt++;
         if ((Short && (NodeCnt > 6)) || (!Short && (NodeCnt > 7))) {
@@ -2815,6 +2916,46 @@ NetLibAsciiStrToIp6 (
     if ((NodeVal > 0xFFFF) || (Index > 14)) {
       return EFI_INVALID_PARAMETER;
     }
+    if (NodeVal != 0) {
+      if ((*TempStr  == '0') && 
+          ((*(TempStr + 2) == ':') || (*(TempStr + 3) == ':') || 
+          (*(TempStr + 2) == '\0') || (*(TempStr + 3) == '\0'))) {
+        return EFI_INVALID_PARAMETER;
+      }
+      if ((*TempStr  == '0') && (*(TempStr + 4) != '\0') && 
+          (*(TempStr + 4) != ':')) { 
+        return EFI_INVALID_PARAMETER;
+      }
+    } else {
+      if (((*TempStr  == '0') && (*(TempStr + 1) == '0') && 
+          ((*(TempStr + 2) == ':') || (*(TempStr + 2) == '\0'))) ||
+          ((*TempStr  == '0') && (*(TempStr + 1) == '0') && (*(TempStr + 2) == '0') && 
+          ((*(TempStr + 3) == ':') || (*(TempStr + 3) == '\0')))) {
+        return EFI_INVALID_PARAMETER;
+      }
+    }
+
+    Cnt = 0;
+    while ((TempStr[Cnt] != ':') && (TempStr[Cnt] != '\0')) {
+      Cnt++; 
+    }
+    if (LeadZeroCnt == 0) {
+      if ((Cnt == 4) && (*TempStr  == '0')) {
+        LeadZero = TRUE;
+        LeadZeroCnt++;
+      }
+      if ((Cnt != 0) && (Cnt < 4)) {
+        LeadZero = FALSE;
+        LeadZeroCnt++;
+      }
+    } else {
+      if ((Cnt == 4) && (*TempStr  == '0') && !LeadZero) {
+        return EFI_INVALID_PARAMETER;
+      }
+      if ((Cnt != 0) && (Cnt < 4) && LeadZero) {
+        return EFI_INVALID_PARAMETER;
+      }
+    } 
 
     Ip6Address->Addr[Index] = (UINT8) (NodeVal >> 8);
     Ip6Address->Addr[Index + 1] = (UINT8) (NodeVal & 0xFF);
@@ -2983,7 +3124,7 @@ NetLibStrToIp6andPrefix (
   // If input string doesn't indicate the prefix length, return 0xff.
   //
   Length = 0xFF;
-  
+
   //
   // Convert the string to prefix length
   //

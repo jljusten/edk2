@@ -22,7 +22,6 @@ EFI_HANDLE                          mHandle = NULL;
 MP_SYSTEM_DATA                      mMPSystemData;
 EFI_PHYSICAL_ADDRESS                mStartupVector;
 MP_CPU_EXCHANGE_INFO                *mExchangeInfo;
-VOID                                *mStackStartAddress;
 BOOLEAN                             mStopCheckAPsStatus = FALSE;
 UINTN                               mNumberOfProcessors;
 EFI_GENERIC_MEMORY_TEST_PROTOCOL    *mGenMemoryTest;
@@ -117,7 +116,7 @@ GetNumberOfProcessors (
   @retval EFI_SUCCESS           Processor information successfully returned.
   @retval EFI_DEVICE_ERROR      Caller processor is AP.
   @retval EFI_INVALID_PARAMETER ProcessorInfoBuffer is NULL
-  @retval EFI_NOT_FOUND         Processor with the handle specified by ProcessorNumber does not exist. 
+  @retval EFI_NOT_FOUND         Processor with the handle specified by ProcessorNumber does not exist.
 
 **/
 EFI_STATUS
@@ -165,7 +164,7 @@ GetProcessorInfo (
   ASSERT_EFI_ERROR (Status);
 
   ProcessorInfoBuffer->ProcessorId = (UINT64) ProcessorContextBuffer.ApicID;
-  
+
   //
   // Get Status Flag of specified processor
   //
@@ -208,7 +207,7 @@ GetProcessorInfo (
   @param  FailedCpuList         The list of processor numbers that fail to finish the function before
                                 TimeoutInMicrosecsond expires.
 
-  @retval EFI_SUCCESS           In blocking mode, all APs have finished before the timeout expired. 
+  @retval EFI_SUCCESS           In blocking mode, all APs have finished before the timeout expired.
   @retval EFI_SUCCESS           In non-blocking mode, function has been dispatched to all enabled APs.
   @retval EFI_DEVICE_ERROR      Caller processor is AP.
   @retval EFI_NOT_STARTED       No enabled AP exists in the system.
@@ -275,7 +274,7 @@ StartupAllAPs (
           mStopCheckAPsStatus = FALSE;
           return EFI_NOT_READY;
         } else {
-          //     
+          //
           // Mark this processor as responsible for current calling.
           //
           mMPSystemData.CpuList[ProcessorNumber] = TRUE;
@@ -318,7 +317,7 @@ StartupAllAPs (
       }
     }
   }
-  
+
   //
   // If no enabled AP exists, return EFI_NOT_STARTED.
   //
@@ -532,6 +531,12 @@ SwitchBSP (
   CPU_DATA_BLOCK        *CpuData;
   UINTN                 CallerNumber;
   UINTN                 BspNumber;
+  UINTN                 ApicBase;
+  UINT32                CurrentTimerValue;
+  UINT32                CurrentTimerRegister;
+  UINT32                CurrentTimerDivide;
+  UINT64                CurrentTscValue;
+  BOOLEAN               OldInterruptState;
 
   //
   // Check whether caller processor is BSP
@@ -572,6 +577,28 @@ SwitchBSP (
     return EFI_NOT_READY;
   }
 
+  //
+  // Save and disable interrupt.
+  //
+  OldInterruptState = SaveAndDisableInterrupts ();
+	
+  //
+  // Record the current local APIC timer setting of BSP
+  //
+  ApicBase = (UINTN)AsmMsrBitFieldRead64 (MSR_IA32_APIC_BASE, 12, 35) << 12;
+  CurrentTimerValue     = MmioRead32 (ApicBase + APIC_REGISTER_TIMER_COUNT);
+  CurrentTimerRegister  = MmioRead32 (ApicBase + APIC_REGISTER_LVT_TIMER);
+  CurrentTimerDivide    = MmioRead32 (ApicBase + APIC_REGISTER_TIMER_DIVIDE);
+  //
+  // Set mask bit (BIT 16) of LVT Timer Register to disable its interrupt
+  //
+  MmioBitFieldWrite32 (ApicBase + APIC_REGISTER_LVT_TIMER, 16, 16, 1);
+
+  //
+  // Record the current TSC value
+  //
+  CurrentTscValue = AsmReadTsc ();
+  
   Status = mFrameworkMpService->SwitchBSP (
                                   mFrameworkMpService,
                                   ProcessorNumber,
@@ -579,6 +606,23 @@ SwitchBSP (
                                   );
   ASSERT_EFI_ERROR (Status);
 
+  //
+  // Restore TSC value
+  //
+  AsmWriteMsr64 (MSR_IA32_TIME_STAMP_COUNTER, CurrentTscValue);
+
+  //
+  // Restore local APIC timer setting to new BSP
+  //
+  MmioWrite32 (ApicBase + APIC_REGISTER_TIMER_DIVIDE, CurrentTimerDivide);
+  MmioWrite32 (ApicBase + APIC_REGISTER_TIMER_INIT_COUNT, CurrentTimerValue);
+  MmioWrite32 (ApicBase + APIC_REGISTER_LVT_TIMER, CurrentTimerRegister);
+
+  //
+  // Restore interrupt state.
+  //
+  SetInterruptState (OldInterruptState);
+  
   ChangeCpuState (BspNumber, EnableOldBSP);
 
   return EFI_SUCCESS;
@@ -599,7 +643,7 @@ SwitchBSP (
   @retval EFI_DEVICE_ERROR       Caller processor is AP.
   @retval EFI_NOT_FOUND          Processor with the handle specified by ProcessorNumber does not exist.
   @retval EFI_INVALID_PARAMETERS ProcessorNumber specifies the BSP.
-  
+
 **/
 EFI_STATUS
 EFIAPI
@@ -661,7 +705,7 @@ EnableDisableAP (
   ASSERT_EFI_ERROR (Status);
 
   ChangeCpuState (ProcessorNumber, EnableAP);
-  
+
   return EFI_SUCCESS;
 }
 
@@ -721,7 +765,7 @@ CheckAPsStatus (
   UINTN           ProcessorNumber;
   CPU_DATA_BLOCK  *CpuData;
   EFI_STATUS      Status;
-  
+
   //
   // If CheckAPsStatus() is stopped, then return immediately.
   //
@@ -853,7 +897,7 @@ CheckAllAPs (
       ASSERT (*mMPSystemData.FailedCpuList != NULL);
     }
     ListIndex = 0;
- 
+
     for (ProcessorNumber = 0; ProcessorNumber < mNumberOfProcessors; ProcessorNumber++) {
       //
       // Check whether this processor is responsible for StartupAllAPs().
@@ -920,7 +964,7 @@ CheckThisAP (
     AcquireSpinLock (&CpuData->CpuDataLock);
     CpuData->State = CpuStateIdle;
     ReleaseSpinLock (&CpuData->CpuDataLock);
-    
+
     if (CpuData->Finished != NULL) {
       *(CpuData->Finished) = TRUE;
     }
@@ -1076,6 +1120,71 @@ GetNextWaitingProcessorNumber (
 }
 
 /**
+  Programs Local APIC registers for virtual wire mode.
+
+  This function programs Local APIC registers for virtual wire mode.
+
+  @param  Bsp  Indicates whether the programmed processor is going to be BSP
+
+**/
+VOID
+ProgramVirtualWireMode (
+  BOOLEAN                       Bsp
+  )
+{
+  UINTN                 ApicBase;
+  UINT32                Value;
+
+  ApicBase = (UINTN)AsmMsrBitFieldRead64 (MSR_IA32_APIC_BASE, 12, 35) << 12;
+
+  //
+  // Program the Spurious Vector entry
+  // Set bit 8 (APIC Software Enable/Disable) to enable local APIC,
+  // and set Spurious Vector as 0x0F.
+  //
+  MmioBitFieldWrite32 (ApicBase + APIC_REGISTER_SPURIOUS_VECTOR_OFFSET, 0, 9, 0x10F);
+
+  //
+  // Program the LINT0 vector entry as ExtInt
+  // Set bits 8..10 to 7 as ExtInt Delivery Mode,
+  // and clear bits for Delivery Status, Interrupt Input Pin Polarity, Remote IRR,
+  // Trigger Mode, and Mask
+  //
+  if (!Bsp) {
+    DisableInterrupts ();
+  }
+  Value = MmioRead32 (ApicBase + APIC_REGISTER_LINT0_VECTOR_OFFSET);
+  Value = BitFieldWrite32 (Value, 8, 10, 7);
+  Value = BitFieldWrite32 (Value, 12, 16, 0);
+  if (!Bsp) {
+    //
+    // For APs, LINT0 is masked
+    //
+    Value = BitFieldWrite32 (Value, 16, 16, 1);
+  }
+  MmioWrite32 (ApicBase + APIC_REGISTER_LINT0_VECTOR_OFFSET, Value);
+
+  //
+  // Program the LINT1 vector entry as NMI
+  // Set bits 8..10 to 4 as NMI Delivery Mode,
+  // and clear bits for Delivery Status, Interrupt Input Pin Polarity, Remote IRR,
+  // Trigger Mode.
+  // For BSP clear Mask bit, and for AP set mask bit.
+  //
+  Value = MmioRead32 (ApicBase + APIC_REGISTER_LINT1_VECTOR_OFFSET);
+  Value = BitFieldWrite32 (Value, 8, 10, 4);
+  Value = BitFieldWrite32 (Value, 12, 16, 0);
+  if (!Bsp) {
+    //
+    // For APs, LINT1 is masked
+    //
+    Value = BitFieldWrite32 (Value, 16, 16, 1);
+  }
+  MmioWrite32 (ApicBase + APIC_REGISTER_LINT1_VECTOR_OFFSET, Value);
+}
+
+
+/**
   Wrapper function for all procedures assigned to AP.
 
   Wrapper function for all procedures assigned to AP via MP service protocol.
@@ -1091,6 +1200,16 @@ ApProcWrapper (
   VOID                  *Parameter;
   UINTN                 ProcessorNumber;
   CPU_DATA_BLOCK        *CpuData;
+
+  //
+  // Program virtual wire mode for AP, since it will be lost after AP wake up
+  //
+  ProgramVirtualWireMode (FALSE);
+
+  //
+  // Initialize Debug Agent to support source level debug on AP code.
+  //
+  InitializeDebugAgent (DEBUG_AGENT_INIT_DXE_AP, NULL, NULL);
 
   WhoAmI (&mMpService, &ProcessorNumber);
   CpuData = &mMPSystemData.CpuData[ProcessorNumber];
@@ -1134,14 +1253,14 @@ ApProcWrapper (
 
   This function sends INIT-SIPI-SIPI to AP, and assign procedure specified by ApFunction.
 
-  @param  Broadcast   If TRUE, broadcase IPI to all APs; otherwise, send to specified AP.
-  @param  ApicID      The Local APIC ID of the specified AP. If Broadcast is TRUE, it is ignored.
-  @param  ApFunction  The procedure for AP to work on.
+  @param  ProcessorNumber The processor number of the specified AP.
+  @param  ApicID          The Local APIC ID of the specified AP.
+  @param  ApFunction      The procedure for AP to work on.
 
 **/
 VOID
 SendInitSipiSipi (
-  IN BOOLEAN            Broadcast,
+  IN UINTN              ProcessorNumber,
   IN UINT32             ApicID,
   IN VOID               *ApFunction
   )
@@ -1149,26 +1268,23 @@ SendInitSipiSipi (
   UINTN                 ApicBase;
   UINT32                ICRLow;
   UINT32                ICRHigh;
-  
+
   UINT32                VectorNumber;
   UINT32                DeliveryMode;
 
-  mExchangeInfo->ApFunction = ApFunction;
-  mExchangeInfo->StackStart = mStackStartAddress;
+  ASSERT (ApicID < MAX_CPU_NUMBER);
 
-  if (Broadcast) {
-    ICRHigh = 0;
-    ICRLow  = BROADCAST_MODE_ALL_EXCLUDING_SELF_BIT | TRIGGER_MODE_LEVEL_BIT | ASSERT_BIT;
-  } else {
-    ICRHigh = ApicID << 24;
-    ICRLow  = SPECIFY_CPU_MODE_BIT | TRIGGER_MODE_LEVEL_BIT | ASSERT_BIT;
-  }
+  mExchangeInfo->ApFunction = ApFunction;
+  mExchangeInfo->ProcessorNumber[ApicID] = (UINT32) ProcessorNumber;
+
+  ICRHigh = ApicID << 24;
+  ICRLow  = SPECIFY_CPU_MODE_BIT | TRIGGER_MODE_LEVEL_BIT | ASSERT_BIT;
 
   VectorNumber = 0;
   DeliveryMode = DELIVERY_MODE_INIT;
   ICRLow      |= VectorNumber | (DeliveryMode << 8);
 
-  ApicBase = 0xfee00000;
+  ApicBase = (UINTN)AsmMsrBitFieldRead64 (MSR_IA32_APIC_BASE, 12, 35) << 12;;
 
   //
   // Write Interrupt Command Registers to send INIT IPI.
@@ -1180,11 +1296,7 @@ SendInitSipiSipi (
 
   VectorNumber = (UINT32) RShiftU64 (mStartupVector, 12);
   DeliveryMode = DELIVERY_MODE_SIPI;
-  if (Broadcast) {
-    ICRLow = BROADCAST_MODE_ALL_EXCLUDING_SELF_BIT | TRIGGER_MODE_LEVEL_BIT | ASSERT_BIT;
-  } else {
-    ICRLow = SPECIFY_CPU_MODE_BIT | TRIGGER_MODE_LEVEL_BIT | ASSERT_BIT;
-  }
+  ICRLow = SPECIFY_CPU_MODE_BIT | TRIGGER_MODE_LEVEL_BIT | ASSERT_BIT;
 
   ICRLow |= VectorNumber | (DeliveryMode << 8);
 
@@ -1203,7 +1315,7 @@ SendInitSipiSipi (
 
 /**
   Function to wake up a specified AP and assign procedure to it.
-  
+
   @param  ProcessorNumber  Handle number of the specified processor.
   @param  Procedure        Procedure to assign.
   @param  ProcArguments    Argument for Procedure.
@@ -1238,7 +1350,7 @@ WakeUpAp (
   ASSERT_EFI_ERROR (Status);
 
   SendInitSipiSipi (
-    FALSE,
+    ProcessorNumber,
     (UINT32) ProcessorInfoBuffer.ProcessorId,
     (VOID *) (UINTN) ApProcWrapper
     );
@@ -1246,7 +1358,7 @@ WakeUpAp (
 
 /**
   Terminate AP's task and set it to idle state.
-  
+
   This function terminates AP's task due to timeout by sending INIT-SIPI,
   and sends it to idle state.
 
@@ -1270,7 +1382,7 @@ ResetProcessorToIdleState (
   ASSERT_EFI_ERROR (Status);
 
   SendInitSipiSipi (
-    FALSE,
+    ProcessorNumber,
     (UINT32) ProcessorInfoBuffer.ProcessorId,
     NULL
     );
@@ -1444,7 +1556,9 @@ PrepareAPStartupVector (
 {
   MP_ASSEMBLY_ADDRESS_MAP   AddressMap;
   IA32_DESCRIPTOR           GdtrForBSP;
+  IA32_DESCRIPTOR           IdtrForBSP;
   EFI_PHYSICAL_ADDRESS      GdtForAP;
+  EFI_PHYSICAL_ADDRESS      IdtForAP;
   EFI_STATUS                Status;
 
   //
@@ -1479,10 +1593,11 @@ PrepareAPStartupVector (
 
   ZeroMem ((VOID *) mExchangeInfo, sizeof (MP_CPU_EXCHANGE_INFO));
 
-  mStackStartAddress = AllocatePages (EFI_SIZE_TO_PAGES (MAX_CPU_NUMBER * AP_STACK_SIZE));
+  mExchangeInfo->StackStart  = AllocatePages (EFI_SIZE_TO_PAGES (mNumberOfProcessors * AP_STACK_SIZE));
   mExchangeInfo->StackSize  = AP_STACK_SIZE;
 
   AsmReadGdtr (&GdtrForBSP);
+  AsmReadIdtr (&IdtrForBSP);
 
   //
   // Allocate memory under 4G to hold GDT for APs
@@ -1491,15 +1606,20 @@ PrepareAPStartupVector (
   Status   = gBS->AllocatePages (
                     AllocateMaxAddress,
                     EfiBootServicesData,
-                    EFI_SIZE_TO_PAGES (GdtrForBSP.Limit + 1),
+                    EFI_SIZE_TO_PAGES ((GdtrForBSP.Limit + 1) + (IdtrForBSP.Limit + 1)),
                     &GdtForAP
                     );
   ASSERT_EFI_ERROR (Status);
 
+  IdtForAP = (UINTN) GdtForAP + GdtrForBSP.Limit + 1;
+
   CopyMem ((VOID *) (UINTN) GdtForAP, (VOID *) GdtrForBSP.Base, GdtrForBSP.Limit + 1);
+  CopyMem ((VOID *) (UINTN) IdtForAP, (VOID *) IdtrForBSP.Base, IdtrForBSP.Limit + 1);
 
   mExchangeInfo->GdtrProfile.Base  = (UINTN) GdtForAP;
   mExchangeInfo->GdtrProfile.Limit = GdtrForBSP.Limit;
+  mExchangeInfo->IdtrProfile.Base  = (UINTN) IdtForAP;
+  mExchangeInfo->IdtrProfile.Limit = IdtrForBSP.Limit;
 
   mExchangeInfo->BufferStart = (UINT32) mStartupVector;
   mExchangeInfo->Cr3         = (UINT32) (AsmReadCr3 ());
@@ -1507,7 +1627,7 @@ PrepareAPStartupVector (
 
 /**
   Prepares memory region for processor configuration.
-  
+
   This function prepares memory region for processor configuration.
 
 **/
@@ -1525,13 +1645,13 @@ PrepareMemoryForConfiguration (
   for (Index = 0; Index < MAX_CPU_NUMBER; Index++) {
     InitializeSpinLock (&mMPSystemData.CpuData[Index].CpuDataLock);
   }
-  
+
   PrepareAPStartupVector ();
 }
 
 /**
   Gets the processor number of BSP.
-  
+
   @return  The processor number of BSP.
 
 **/
@@ -1555,7 +1675,7 @@ GetBspNumber (
                                     &ProcessorContextBuffer
                                     );
     ASSERT_EFI_ERROR (Status);
-    
+
     if (ProcessorContextBuffer.Designation == EfiCpuBSP) {
       break;
     }
@@ -1568,9 +1688,9 @@ GetBspNumber (
 /**
   Entrypoint of MP Services Protocol thunk driver.
 
-  @param[in] ImageHandle    The firmware allocated handle for the EFI image.  
+  @param[in] ImageHandle    The firmware allocated handle for the EFI image.
   @param[in] SystemTable    A pointer to the EFI System Table.
-  
+
   @retval EFI_SUCCESS       The entry point is executed successfully.
 
 **/
@@ -1583,14 +1703,12 @@ InitializeMpServicesProtocol (
 {
   EFI_STATUS Status;
 
-  PrepareMemoryForConfiguration ();
-
   //
   // Locates Framework version MP Services Protocol
   //
   Status = gBS->LocateProtocol (
-                  &gFrameworkEfiMpServiceProtocolGuid, 
-                  NULL, 
+                  &gFrameworkEfiMpServiceProtocolGuid,
+                  NULL,
                   (VOID **) &mFrameworkMpService
                   );
   ASSERT_EFI_ERROR (Status);
@@ -1605,6 +1723,8 @@ InitializeMpServicesProtocol (
                                   );
   ASSERT_EFI_ERROR (Status);
   ASSERT (mNumberOfProcessors < MAX_CPU_NUMBER);
+
+  PrepareMemoryForConfiguration ();
 
   //
   // Create timer event to check AP state for non-blocking execution.

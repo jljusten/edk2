@@ -6,7 +6,7 @@
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+  http://opensource.org/licenses/bsd-license.php.
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
@@ -45,12 +45,12 @@ GLOBAL_REMOVE_IF_UNREFERENCED EFI_GRAPHICS_OUTPUT_BLT_PIXEL mEfiColors[16] = {
   If Format is NULL, then ASSERT().
   If Format is not aligned on a 16-bit boundary, then ASSERT().
 
-  @param Format   Null-terminated Unicode format string.
+  @param Format   A Null-terminated Unicode format string.
   @param Console  The output console.
-  @param Marker   VA_LIST marker for the variable argument list.
+  @param Marker   A VA_LIST marker for the variable argument list.
 
   @return The number of Unicode characters in the produced
-          output buffer not including the Null-terminator.
+          output buffer, not including the Null-terminator.
 **/
 UINTN
 InternalPrint (
@@ -59,12 +59,14 @@ InternalPrint (
   IN  VA_LIST                          Marker
   )
 {
-  UINTN   Return;
-  CHAR16  *Buffer;
-  UINTN   BufferSize;
+  EFI_STATUS  Status;
+  UINTN       Return;
+  CHAR16      *Buffer;
+  UINTN       BufferSize;
 
   ASSERT (Format != NULL);
   ASSERT (((UINTN) Format & BIT0) == 0);
+  ASSERT (Console != NULL);
 
   BufferSize = (PcdGet32 (PcdUefiLibMaxPrintBufferSize) + 1) * sizeof (CHAR16);
 
@@ -77,7 +79,10 @@ InternalPrint (
     //
     // To be extra safe make sure Console has been initialized
     //
-    Console->OutputString (Console, Buffer);
+    Status = Console->OutputString (Console, Buffer);
+    if (EFI_ERROR (Status)) {
+      Return = 0;
+    }
   }
 
   FreePool (Buffer);
@@ -96,12 +101,13 @@ InternalPrint (
   PcdUefiLibMaxPrintBufferSize characters are sent to ConOut.
   If Format is NULL, then ASSERT().
   If Format is not aligned on a 16-bit boundary, then ASSERT().
+  If gST->ConOut is NULL, then ASSERT().
 
-  @param Format   Null-terminated Unicode format string.
-  @param ...      Variable argument list whose contents are accessed based 
+  @param Format   A Null-terminated Unicode format string.
+  @param ...      A Variable argument list whose contents are accessed based 
                   on the format string specified by Format.
   
-  @return Number of Unicode characters printed to ConOut.
+  @return The number of Unicode characters printed to ConOut.
 
 **/
 UINTN
@@ -134,12 +140,13 @@ Print (
   PcdUefiLibMaxPrintBufferSize characters are sent to StdErr.
   If Format is NULL, then ASSERT().
   If Format is not aligned on a 16-bit boundary, then ASSERT().
+  If gST->StdErr is NULL, then ASSERT().
 
-  @param Format   Null-terminated Unicode format string.
+  @param Format   A Null-terminated Unicode format string.
   @param ...      Variable argument list whose contents are accessed based 
                   on the format string specified by Format.
   
-  @return Number of Unicode characters printed to StdErr.
+  @return The number of Unicode characters printed to StdErr.
 
 **/
 UINTN
@@ -173,7 +180,7 @@ ErrorPrint (
 
   If Format is NULL, then ASSERT().
 
-  @param Format   Null-terminated ASCII format string.
+  @param Format   A Null-terminated ASCII format string.
   @param Console  The output console.
   @param Marker   VA_LIST marker for the variable argument list.
 
@@ -188,11 +195,13 @@ AsciiInternalPrint (
   IN  VA_LIST                          Marker
   )
 {
-  UINTN   Return;
-  CHAR16  *Buffer;
-  UINTN   BufferSize;
+  EFI_STATUS  Status;
+  UINTN       Return;
+  CHAR16      *Buffer;
+  UINTN       BufferSize;
 
   ASSERT (Format != NULL);
+  ASSERT (Console != NULL);
 
   BufferSize = (PcdGet32 (PcdUefiLibMaxPrintBufferSize) + 1) * sizeof (CHAR16);
 
@@ -205,7 +214,10 @@ AsciiInternalPrint (
     //
     // To be extra safe make sure Console has been initialized
     //
-    Console->OutputString (Console, Buffer);
+    Status = Console->OutputString (Console, Buffer);
+    if (EFI_ERROR (Status)) {
+      Return = 0;
+    }
   }
 
   FreePool (Buffer);
@@ -223,12 +235,13 @@ AsciiInternalPrint (
   string is greater than PcdUefiLibMaxPrintBufferSize, then only the first 
   PcdUefiLibMaxPrintBufferSize characters are sent to ConOut.
   If Format is NULL, then ASSERT().
+  If gST->ConOut is NULL, then ASSERT().
 
-  @param Format   Null-terminated ASCII format string.
+  @param Format   A Null-terminated ASCII format string.
   @param ...      Variable argument list whose contents are accessed based 
                   on the format string specified by Format.
   
-  @return Number of ASCII characters printed to ConOut.
+  @return The number of ASCII characters printed to ConOut.
 
 **/
 UINTN
@@ -261,12 +274,13 @@ AsciiPrint (
   string is greater than PcdUefiLibMaxPrintBufferSize, then only the first 
   PcdUefiLibMaxPrintBufferSize characters are sent to StdErr.
   If Format is NULL, then ASSERT().
+  If gST->StdErr is NULL, then ASSERT().
 
-  @param Format   Null-terminated ASCII format string.
+  @param Format   A Null-terminated ASCII format string.
   @param ...      Variable argument list whose contents are accessed based 
                   on the format string specified by Format.
   
-  @return Number of ASCII characters printed to ConErr.
+  @return The number of ASCII characters printed to ConErr.
 
 **/
 UINTN
@@ -306,8 +320,8 @@ AsciiErrorPrint (
   If the EFI_HII_FONT_PROTOCOL is not present in the handle database, then no
   string is printed, and 0 is returned.
 
-  @param  PointX       X coordinate to print the string.
-  @param  PointY       Y coordinate to print the string.
+  @param  PointX       An X coordinate to print the string.
+  @param  PointY       A Y coordinate to print the string.
   @param  Foreground   The foreground color of the string being printed.  This is
                        an optional parameter that may be NULL.  If it is NULL,
                        then the foreground color of the current ConOut device
@@ -316,10 +330,10 @@ AsciiErrorPrint (
                        an optional parameter that may be NULL.  If it is NULL,
                        then the background color of the current ConOut device
                        in the EFI_SYSTEM_TABLE is used.
-  @param  Buffer       Null-terminated Unicode formatted string.
+  @param  Buffer       A Null-terminated Unicode formatted string.
   @param  PrintNum     The number of Unicode formatted string to be printed.
 
-  @return  Number of Unicode Characters printed. Zero means no any character
+  @return  The number of Unicode Characters printed. Zero means no any character
            displayed successfully.
 
 **/
@@ -357,6 +371,8 @@ InternalPrintGraphic (
   RowInfoArray          = NULL;
 
   ConsoleHandle = gST->ConsoleOutHandle;
+  
+  ASSERT( ConsoleHandle != NULL);
 
   Status = gBS->HandleProtocol (
                   ConsoleHandle,
@@ -558,9 +574,10 @@ Error:
   string is printed, and 0 is returned.
   If Format is NULL, then ASSERT().
   If Format is not aligned on a 16-bit boundary, then ASSERT().
+  If gST->ConsoleOutputHandle is NULL, then ASSERT().
 
-  @param  PointX       X coordinate to print the string.
-  @param  PointY       Y coordinate to print the string.
+  @param  PointX       An X coordinate to print the string.
+  @param  PointY       A Y coordinate to print the string.
   @param  ForeGround   The foreground color of the string being printed.  This is
                        an optional parameter that may be NULL.  If it is NULL,
                        then the foreground color of the current ConOut device
@@ -569,9 +586,9 @@ Error:
                        an optional parameter that may be NULL.  If it is NULL, 
                        then the background color of the current ConOut device
                        in the EFI_SYSTEM_TABLE is used.
-  @param  Format       Null-terminated Unicode format string.  See Print Library 
+  @param  Format       A Null-terminated Unicode format string.  See Print Library 
                        for the supported format string syntax.
-  @param  ...          Variable argument list whose contents are accessed based on 
+  @param  ...          A Variable argument list whose contents are accessed based on 
                        the format string specified by Format.         
 
   @return  The number of Unicode characters printed.
@@ -634,9 +651,10 @@ PrintXY (
   If the EFI_HII_FONT_PROTOCOL is not present in the handle database, then no 
   string is printed, and 0 is returned.
   If Format is NULL, then ASSERT().
+  If gST->ConsoleOutputHandle is NULL, then ASSERT().
 
-  @param  PointX       X coordinate to print the string.
-  @param  PointY       Y coordinate to print the string.
+  @param  PointX       An X coordinate to print the string.
+  @param  PointY       A Y coordinate to print the string.
   @param  ForeGround   The foreground color of the string being printed.  This is
                        an optional parameter that may be NULL.  If it is NULL,
                        then the foreground color of the current ConOut device
@@ -645,7 +663,7 @@ PrintXY (
                        an optional parameter that may be NULL.  If it is NULL, 
                        then the background color of the current ConOut device
                        in the EFI_SYSTEM_TABLE is used.
-  @param  Format       Null-terminated ASCII format string.  See Print Library 
+  @param  Format       A Null-terminated ASCII format string.  See Print Library 
                        for the supported format string syntax.
   @param  ...          Variable argument list whose contents are accessed based on 
                        the format string specified by Format.         

@@ -1334,7 +1334,14 @@ PlatOverMngrCallback (
   EFI_STRING_ID                             NewStringToken;
   EFI_INPUT_KEY                             Key;
   PLAT_OVER_MNGR_DATA                       *FakeNvData;
-  
+
+  if ((Action == EFI_BROWSER_ACTION_FORM_OPEN) || (Action == EFI_BROWSER_ACTION_FORM_CLOSE)) {
+    //
+    // Do nothing for UEFI OPEN/CLOSE Action
+    //
+    return EFI_SUCCESS;
+  }
+
   Private = EFI_CALLBACK_INFO_FROM_THIS (This);
   FakeNvData = &Private->FakeNvData;
   if (!HiiGetBrowserData (&mPlatformOverridesManagerGuid, mVariableName, sizeof (PLAT_OVER_MNGR_DATA), (UINT8 *) FakeNvData)) {
@@ -1654,26 +1661,7 @@ PlatDriOverrideDxeInit (
   return EFI_SUCCESS;
 
 Finish:
-  if (mCallbackInfo->DriverHandle != NULL) {
-    gBS->UninstallMultipleProtocolInterfaces (
-           mCallbackInfo->DriverHandle,
-           &gEfiDevicePathProtocolGuid,
-           &mHiiVendorDevicePath,
-           &gEfiHiiConfigAccessProtocolGuid,
-           &mCallbackInfo->ConfigAccess,
-           &gEfiPlatformDriverOverrideProtocolGuid,
-           &mCallbackInfo->PlatformDriverOverride,
-           NULL
-           );
-  }
-  
-  if (mCallbackInfo->RegisteredHandle != NULL) {
-    HiiRemovePackages (mCallbackInfo->RegisteredHandle);
-  }
-
-  if (mCallbackInfo != NULL) {
-    FreePool (mCallbackInfo);
-  }
+  PlatDriOverrideDxeUnload (ImageHandle);
 
   return Status;
 }
@@ -1691,6 +1679,8 @@ PlatDriOverrideDxeUnload (
   IN EFI_HANDLE  ImageHandle
   )
 {
+  ASSERT (mCallbackInfo != NULL);
+
   if (mCallbackInfo->DriverHandle != NULL) {
     gBS->UninstallMultipleProtocolInterfaces (
            mCallbackInfo->DriverHandle,
@@ -1708,9 +1698,7 @@ PlatDriOverrideDxeUnload (
     HiiRemovePackages (mCallbackInfo->RegisteredHandle);
   }
 
-  if (mCallbackInfo != NULL) {
-    FreePool (mCallbackInfo);
-  }
+  FreePool (mCallbackInfo);
 
   return EFI_SUCCESS;
 }

@@ -1,7 +1,7 @@
 /** @file
   Internal include file for Status Code Handler PEIM.
 
-  Copyright (c) 2006 - 2009, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -30,6 +30,7 @@
 #include <Library/PcdLib.h>
 #include <Library/PeiServicesLib.h>
 #include <Library/PeimEntryPoint.h>
+#include <Library/BaseMemoryLib.h>
 
 /**
   Convert status code value and extended data to readable ASCII string, send string to serial I/O device.
@@ -55,6 +56,7 @@
 
 **/
 EFI_STATUS
+EFIAPI
 SerialStatusCodeReportWorker (
   IN CONST  EFI_PEI_SERVICES        **PeiServices,
   IN EFI_STATUS_CODE_TYPE           CodeType,
@@ -103,6 +105,7 @@ MemoryStatusCodeInitializeWorker (
 
 **/
 EFI_STATUS
+EFIAPI
 MemoryStatusCodeReportWorker (
   IN CONST  EFI_PEI_SERVICES    **PeiServices,
   IN EFI_STATUS_CODE_TYPE       CodeType,

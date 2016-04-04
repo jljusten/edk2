@@ -18,7 +18,7 @@
   MODULE_TYPE                    = UEFI_DRIVER
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = OmapDmaLib 
-  CONSTRUCTOR                    = OmapDmaLibConstructor
+
 
 [Sources.common]
   OmapDmaLib.c
@@ -35,6 +35,8 @@
   MemoryAllocationLib
   UncachedMemoryAllocationLib
   IoLib
+  BaseMemoryLib
+  ArmLib
   
   
 [Protocols]

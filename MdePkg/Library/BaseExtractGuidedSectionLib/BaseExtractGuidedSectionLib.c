@@ -5,7 +5,7 @@
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+  http://opensource.org/licenses/bsd-license.php.
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
@@ -34,7 +34,7 @@ typedef struct {
   the registered guid and Handler list. When it is initialized, it will be directly returned. 
   Or, HandlerInfo table will be initialized in this function.
 
-  @param[in, out]  InfoPointer   Pointer to the handler info structure.
+  @param[in, out]  InfoPointer   The pointer to the handler information structure.
 
   @retval  RETURN_SUCCESS            HandlerInfo table can be used to store guid and function tables.
   @retval  RETURN_OUT_OF_RESOURCES   HandlerInfo table address is not writable.
@@ -52,23 +52,23 @@ GetExtractGuidedSectionHandlerInfo (
   HandlerInfo = (EXTRACT_GUIDED_SECTION_HANDLER_INFO*)(VOID*)(UINTN) PcdGet64 (PcdGuidedExtractHandlerTableAddress);
 
   //
-  // First check whether the handler info structure is initialized.
+  // First check whether the handler information structure is initialized.
   //
   if (HandlerInfo->Signature == EXTRACT_HANDLER_INFO_SIGNATURE) {
     //
-    // The handler info has been initialized and is returned.
+    // The handler information has been initialized and is returned.
     //
     *InfoPointer = HandlerInfo;
     return RETURN_SUCCESS;
   }
 
   //
-  // Try to initialize the handler info structure
+  // Try to initialize the handler information structure
   //
   HandlerInfo->Signature = EXTRACT_HANDLER_INFO_SIGNATURE;
   if (HandlerInfo->Signature != EXTRACT_HANDLER_INFO_SIGNATURE) {
     //
-    // The handler info structure was not writeable because the memory is not ready.
+    // The handler information structure was not writeable because the memory is not ready.
     //
     *InfoPointer = NULL;
     return RETURN_OUT_OF_RESOURCES;
@@ -103,7 +103,7 @@ GetExtractGuidedSectionHandlerInfo (
   @param[out]  ExtractHandlerGuidTable  A pointer to the array of GUIDs that have been registered through
                                         ExtractGuidedSectionRegisterHandlers().
 
-  @return the number of the supported extract guided Handler.
+  @return The number of the supported extract guided Handler.
 
 **/
 UINTN
@@ -147,10 +147,10 @@ ExtractGuidedSectionGetGuidList (
 
   @param[in]  SectionGuid    A pointer to the GUID associated with the the handlers
                              of the GUIDed section type being registered.
-  @param[in]  GetInfoHandler Pointer to a function that examines a GUIDed section and returns the
+  @param[in]  GetInfoHandler The pointer to a function that examines a GUIDed section and returns the
                              size of the decoded buffer and the size of an optional scratch buffer
                              required to actually decode the data in a GUIDed section.
-  @param[in]  DecodeHandler  Pointer to a function that decodes a GUIDed section into a caller
+  @param[in]  DecodeHandler  The pointer to a function that decodes a GUIDed section into a caller
                              allocated output buffer. 
 
   @retval  RETURN_SUCCESS           The handlers were registered.
@@ -242,7 +242,7 @@ ExtractGuidedSectionRegisterHandlers (
   @param[out] SectionAttribute   A pointer to the attributes of the GUIDed section.  See the Attributes field of
                                  EFI_GUID_DEFINED_SECTION in the PI Specification.
 
-  @retval  RETURN_SUCCESS      Get the required information successfully.
+  @retval  RETURN_SUCCESS      Successfully retrieved the required information.
   @retval  RETURN_UNSUPPORTED  The GUID from the section specified by InputSection does not match any of
                                the GUIDs registered with ExtractGuidedSectionRegisterHandlers().
   @retval  Others              The return status from the handler associated with the GUID retrieved from
@@ -284,7 +284,7 @@ ExtractGuidedSectionGetInfo (
   for (Index = 0; Index < HandlerInfo->NumberOfExtractHandler; Index ++) {
     if (CompareGuid (HandlerInfo->ExtractHandlerGuidTable + Index, &(((EFI_GUID_DEFINED_SECTION *) InputSection)->SectionDefinitionGuid))) {
       //
-      // Call the match handler to get info for the input section data.
+      // Call the match handler to get information for the input section data.
       //
       return HandlerInfo->ExtractGetInfoHandlerTable [Index] (
                 InputSection,
@@ -314,7 +314,7 @@ ExtractGuidedSectionGetInfo (
   of type EXTRACT_GUIDED_SECTION_DECODE_HANDLER that was registered with ExtractGuidedSectionRegisterHandlers()
   is used to decode InputSection into the buffer specified by OutputBuffer and the authentication status of this
   decode operation is returned in AuthenticationStatus.  If the decoded buffer is identical to the data in InputSection,
-  then OutputBuffer is set to point at the data in InputSection.  Otherwise, the decoded data will be placed in caller
+  then OutputBuffer is set to point at the data in InputSection.  Otherwise, the decoded data will be placed in a caller
   allocated buffer specified by OutputBuffer.    This function is responsible for computing the  EFI_AUTH_STATUS_PLATFORM_OVERRIDE
   bit of in AuthenticationStatus.  The return status from the handler of type EXTRACT_GUIDED_SECTION_DECODE_HANDLER is returned. 
    

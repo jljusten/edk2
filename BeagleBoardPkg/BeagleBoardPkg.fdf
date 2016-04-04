@@ -171,10 +171,6 @@ READ_LOCK_STATUS   = TRUE
   #
   INF BeagleBoardPkg/Bds/Bds.inf
 
-  #
-  # Gdb Stub
-  #
-  #INF ArmPkg/Drivers/DebugSupportDxe/DebugSupportDxe.inf
 
 
 [FV.FVMAIN_COMPACT]

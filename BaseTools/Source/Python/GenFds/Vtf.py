@@ -1,9 +1,9 @@
 ## @file
 # process VTF generation
 #
-#  Copyright (c) 2007, Intel Corporation
+#  Copyright (c) 2007, Intel Corporation. All rights reserved.<BR>
 #
-#  All rights reserved. This program and the accompanying materials
+#  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution.  The full text of the license may be found at
 #  http://opensource.org/licenses/bsd-license.php
@@ -67,6 +67,14 @@ class Vtf (VtfClassObject):
         FvList = self.GetFvList()
         self.BsfInfName = os.path.join(GenFdsGlobalVariable.FvDir, self.UiName + '.inf')
         BsfInf = open (self.BsfInfName, 'w+')
+        if self.ResetBin != None:
+            BsfInf.writelines ("[OPTIONS]" + T_CHAR_LF)
+            BsfInf.writelines ("IA32_RST_BIN"     + \
+                               " = "              + \
+                               GenFdsGlobalVariable.MacroExtend(GenFdsGlobalVariable.ReplaceWorkspaceMacro(self.ResetBin)) + \
+                               T_CHAR_LF )
+            BsfInf.writelines (T_CHAR_LF )
+        
         BsfInf.writelines ("[COMPONENTS]" + T_CHAR_LF)
 
         for ComponentObj in self.ComponentStatementList :

@@ -116,10 +116,13 @@ GetImageReadFunction (
   VOID*  MemoryBuffer;
 
   Private = PEI_CORE_INSTANCE_FROM_PS_THIS (GetPeiServicesTablePointer ());
-
-  if (!Private->PeiMemoryInstalled || (Private->HobList.HandoffInformationTable->BootMode == BOOT_ON_S3_RESUME) || EFI_IMAGE_MACHINE_TYPE_SUPPORTED(EFI_IMAGE_MACHINE_IA64)) {
-    ImageContext->ImageRead = PeiImageRead;
-  } else {
+  
+  if ((Private->PeiMemoryInstalled  && !(Private->HobList.HandoffInformationTable->BootMode == BOOT_ON_S3_RESUME))  &&
+      (EFI_IMAGE_MACHINE_TYPE_SUPPORTED(EFI_IMAGE_MACHINE_X64) || EFI_IMAGE_MACHINE_TYPE_SUPPORTED(EFI_IMAGE_MACHINE_IA32))) {
+    // 
+    // Shadow algorithm makes lots of non ANSI C assumptions and only works for IA32 and X64 
+    //  compilers that have been tested
+    //
     if (Private->ShadowedImageRead == NULL) {
       MemoryBuffer = AllocatePages (0x400 / EFI_PAGE_SIZE + 1);
       ASSERT (MemoryBuffer != NULL);
@@ -128,6 +131,8 @@ GetImageReadFunction (
     }
 
     ImageContext->ImageRead = Private->ShadowedImageRead;
+  } else {
+    ImageContext->ImageRead = PeiImageRead;
   }
 
   return EFI_SUCCESS;

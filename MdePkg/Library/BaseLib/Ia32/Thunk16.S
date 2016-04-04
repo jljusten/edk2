@@ -4,7 +4,7 @@
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
-# http://opensource.org/licenses/bsd-license.php
+# http://opensource.org/licenses/bsd-license.php.
 #
 # THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 # WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
@@ -134,8 +134,8 @@ _16DsDesc:
 GdtEnd:
 
 #
-#   @param  RegSet  Pointer to a IA32_DWORD_REGS structure
-#   @param  Transition  Pointer to the transition code
+#   @param  RegSet  The pointer to a IA32_DWORD_REGS structure
+#   @param  Transition  The pointer to the transition code
 #   @return The address of the 16-bit stack after returning from user code
 #
 ASM_PFX(InternalAsmThunk16):

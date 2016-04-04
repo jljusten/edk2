@@ -31,22 +31,26 @@ __aeabi_ldivmod
     PUSH     {r4,lr}
     ASRS     r4,r1,#1
     EOR      r4,r4,r3,LSR #1
-    BPL      {pc} + 0xc  ; 0x18
+    BPL      L_Test1
     RSBS     r0,r0,#0
     RSC      r1,r1,#0
+L_Test1
     TST      r3,r3
-    BPL      {pc} + 0xc  ; 0x28
+    BPL      L_Test2
     RSBS     r2,r2,#0
     RSC      r3,r3,#0
+L_Test2
     BL       __aeabi_uldivmod  ;
     TST      r4,#0x40000000
-    BEQ      {pc} + 0xc  ; 0x3c
+    BEQ      L_Test3
     RSBS     r0,r0,#0
     RSC      r1,r1,#0
+L_Test3
     TST      r4,#0x80000000
-    BEQ      {pc} + 0xc  ; 0x4c
+    BEQ      L_Exit
     RSBS     r2,r2,#0
     RSC      r3,r3,#0
+L_Exit
     POP      {r4,pc}
  
     END

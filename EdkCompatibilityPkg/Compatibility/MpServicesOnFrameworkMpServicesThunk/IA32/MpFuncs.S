@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 # IA32 assembly file for AP startup vector.
 #
-# Copyright (c) 2009, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -12,15 +12,17 @@
 #
 #------------------------------------------------------------------------------
 
-.equ                   VacantFlag,       0x0
-.equ                   NotVacantFlag,    0xff
+#define VacantFlag       0x0
+#define NotVacantFlag    0xff
 
-.equ                   LockLocation,     RendezvousFunnelProcEnd - RendezvousFunnelProcStart
-.equ                   StackStart,       LockLocation + 0x04
-.equ                   StackSize,        LockLocation + 0x08
-.equ                   RendezvousProc,   LockLocation + 0x0C
-.equ                   GdtrProfile,      LockLocation + 0x10
-.equ                   BufferStart,      LockLocation + 0x18
+#define LockLocation     RendezvousFunnelProcEnd - RendezvousFunnelProcStart
+#define StackStart       RendezvousFunnelProcEnd - RendezvousFunnelProcStart + 0x04
+#define StackSize        RendezvousFunnelProcEnd - RendezvousFunnelProcStart + 0x08
+#define RendezvousProc   RendezvousFunnelProcEnd - RendezvousFunnelProcStart + 0x0C
+#define GdtrProfile      RendezvousFunnelProcEnd - RendezvousFunnelProcStart + 0x10
+#define IdtrProfile      RendezvousFunnelProcEnd - RendezvousFunnelProcStart + 0x16
+#define BufferStart      RendezvousFunnelProcEnd - RendezvousFunnelProcStart + 0x1C
+#define ProcessorNumber  RendezvousFunnelProcEnd - RendezvousFunnelProcStart + 0x20
 
 #-------------------------------------------------------------------------------------
 #RendezvousFunnelProc  procedure follows. All APs execute their procedure. This
@@ -58,6 +60,11 @@ RendezvousFunnelProcStart:
         .byte 0x66                    # db         66h
         .byte 0x2E,0xF,0x1,0x14       # lgdt       fword ptr cs:[si]
 
+        .byte 0xBE
+        .word IdtrProfile
+        .byte 0x66                    # db         66h
+        .byte 0x2E,0xF,0x1,0x1C       # lidt       fword ptr cs:[si]
+
         .byte 0x33,0xC0               # xor        ax,  ax
         .byte 0x8E,0xD8               # mov        ds,  ax
         .byte 0xF,0x20,0xC0           # mov        eax, cr0                    ; Get control register 0
@@ -88,30 +95,33 @@ ProtectedModeStart:                   # protected mode entry point
         .byte       0x66
         movw        %ax,%ss           # Flat mode setup.
 
-
+        #
+        # ProgramStack
+        #
+        movl        $0x1b, %ecx
+        rdmsr
+        andl        $0xfffff000, %eax
+        addl        $0x20, %eax
+        movl        (%eax), %ebx
+        shrl        $24, %ebx
+        
+        xorl        %ecx, %ecx
         movl        %esi,%edi
-        addl        $LockLocation, %edi
-        movb        $NotVacantFlag, %al
-TestLock:
-        xchgb       (%edi), %al
-        cmpb        $NotVacantFlag, %al
-        jz          TestLock
+        addl        $ProcessorNumber, %edi
+        movl        (%edi, %ebx, 4), %ecx
 
-ProgramStack:
         movl        %esi,%edi
         addl        $StackSize, %edi
         movl        (%edi), %eax
+        incl        %ecx
+        mull        %ecx
+
         movl        %esi,%edi
         addl        $StackStart, %edi
-        addl        (%edi), %eax
-        movl        %eax,%esp
-        movl        %eax, (%edi)
+        movl        (%edi), %ebx
+        addl        %ebx, %eax
 
-Releaselock:
-        movb        $VacantFlag, %al
-        movl        %esi,%edi
-        addl        $LockLocation, %edi
-        xchgb       (%edi), %al
+        movl        %eax, %esp
 
         #
         # Call C Function

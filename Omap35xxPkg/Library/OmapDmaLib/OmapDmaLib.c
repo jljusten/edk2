@@ -1,6 +1,6 @@
 /** @file
-  OMAP35xx DMA abstractions modeled on PCI IO protocol. EnableDma()/DisableDma()
-  are from OMAP35xx TRM. 
+  Abstractions for simple OMAP DMA channel.
+  
 
   Copyright (c) 2008 - 2010, Apple Inc. All rights reserved.<BR>
   
@@ -17,24 +17,10 @@
 #include <Base.h>
 #include <Library/DebugLib.h>
 #include <Library/OmapDmaLib.h>
-#include <Library/MemoryAllocationLib.h>
-#include <Library/UefiBootServicesTableLib.h>
-#include <Library/UncachedMemoryAllocationLib.h>
 #include <Library/IoLib.h>
+#include <Library/BaseMemoryLib.h>
 #include <Omap3530/Omap3530.h>
 
-#include <Protocol/Cpu.h>
-
-typedef struct {
-  EFI_PHYSICAL_ADDRESS      HostAddress;
-  EFI_PHYSICAL_ADDRESS      DeviceAddress;
-  UINTN                     NumberOfBytes;
-  DMA_MAP_OPERATION         Operation;
-} MAP_INFO_INSTANCE;
-
-
-
-EFI_CPU_ARCH_PROTOCOL      *gCpu;
 
 /**                                                                 
   Configure OMAP DMA Channel
@@ -187,192 +173,4 @@ DisableDmaChannel (
 }
 
 
-
-/**                                                                 
-  Provides the DMA controller-specific addresses needed to access system memory.
-  
-  Operation is relative to the DMA bus master.
-            
-  @param  Operation             Indicates if the bus master is going to read or write to system memory.
-  @param  HostAddress           The system memory address to map to the DMA controller.
-  @param  NumberOfBytes         On input the number of bytes to map. On output the number of bytes
-                                that were mapped.                                                 
-  @param  DeviceAddress         The resulting map address for the bus master controller to use to
-                                access the hosts HostAddress.                                        
-  @param  Mapping               A resulting value to pass to Unmap().
-                                  
-  @retval EFI_SUCCESS           The range was mapped for the returned NumberOfBytes.
-  @retval EFI_UNSUPPORTED       The HostAddress cannot be mapped as a common buffer.                                
-  @retval EFI_INVALID_PARAMETER One or more parameters are invalid.
-  @retval EFI_OUT_OF_RESOURCES  The request could not be completed due to a lack of resources.
-  @retval EFI_DEVICE_ERROR      The system hardware could not map the requested address.
-                                   
-**/
-EFI_STATUS
-EFIAPI
-DmaMap (
-  IN     DMA_MAP_OPERATION              Operation,
-  IN     VOID                           *HostAddress,
-  IN OUT UINTN                          *NumberOfBytes,
-  OUT    PHYSICAL_ADDRESS               *DeviceAddress,
-  OUT    VOID                           **Mapping
-  )
-{
-  MAP_INFO_INSTANCE     *Map;
-
-  if ( HostAddress == NULL || NumberOfBytes == NULL || 
-       DeviceAddress == NULL || Mapping == NULL ) {
-    return EFI_INVALID_PARAMETER;
-  }
-  
-
-  if (Operation >= MapOperationMaximum) {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  *DeviceAddress = ConvertToPhysicalAddress (HostAddress);
-
-  // Remember range so we can flush on the other side
-  Map = AllocatePool (sizeof (MAP_INFO_INSTANCE));
-  if (Map == NULL) {
-    return  EFI_OUT_OF_RESOURCES;
-  }
-  
-  *Mapping = Map;
-
-  Map->HostAddress   = (UINTN)HostAddress;
-  Map->DeviceAddress = *DeviceAddress;
-  Map->NumberOfBytes = *NumberOfBytes;
-  Map->Operation     = Operation;
-
-  // EfiCpuFlushTypeWriteBack, EfiCpuFlushTypeInvalidate
-  gCpu->FlushDataCache (gCpu, (EFI_PHYSICAL_ADDRESS)(UINTN)HostAddress, *NumberOfBytes, EfiCpuFlushTypeWriteBackInvalidate);
-  
-  return EFI_SUCCESS;
-}
-
-
-/**                                                                 
-  Completes the DmaMapBusMasterRead(), DmaMapBusMasterWrite(), or DmaMapBusMasterCommonBuffer()
-  operation and releases any corresponding resources.
-            
-  @param  Mapping               The mapping value returned from DmaMap*().
-                                  
-  @retval EFI_SUCCESS           The range was unmapped.
-  @retval EFI_DEVICE_ERROR      The data was not committed to the target system memory.
-                                   
-**/
-EFI_STATUS
-EFIAPI
-DmaUnmap (
-  IN  VOID                         *Mapping
-  )
-{
-  MAP_INFO_INSTANCE *Map;
-  
-  if (Mapping == NULL) {
-    ASSERT (FALSE);
-    return EFI_INVALID_PARAMETER;
-  }
-  
-  Map = (MAP_INFO_INSTANCE *)Mapping;
-  if (Map->Operation == MapOperationBusMasterWrite) {
-    //
-    // Make sure we read buffer from uncached memory and not the cache
-    //
-    gCpu->FlushDataCache (gCpu, Map->HostAddress, Map->NumberOfBytes, EfiCpuFlushTypeInvalidate);
-  } 
-  
-  FreePool (Map);
-
-  return EFI_SUCCESS;
-}
-
-/**                                                                 
-  Allocates pages that are suitable for an DmaMap() of type MapOperationBusMasterCommonBuffer.
-  mapping.                                                                       
-            
-  @param  MemoryType            The type of memory to allocate, EfiBootServicesData or
-                                EfiRuntimeServicesData.                               
-  @param  Pages                 The number of pages to allocate.                                
-  @param  HostAddress           A pointer to store the base system memory address of the
-                                allocated range.                                        
-
-                                @retval EFI_SUCCESS           The requested memory pages were allocated.
-  @retval EFI_UNSUPPORTED       Attributes is unsupported. The only legal attribute bits are
-                                MEMORY_WRITE_COMBINE and MEMORY_CACHED.                     
-  @retval EFI_INVALID_PARAMETER One or more parameters are invalid.
-  @retval EFI_OUT_OF_RESOURCES  The memory pages could not be allocated.  
-                                   
-**/EFI_STATUS
-EFIAPI
-DmaAllocateBuffer (
-  IN  EFI_MEMORY_TYPE              MemoryType,
-  IN  UINTN                        Pages,
-  OUT VOID                         **HostAddress
-  )
-{
-  if (HostAddress == NULL) {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  //
-  // The only valid memory types are EfiBootServicesData and EfiRuntimeServicesData
-  //
-  // We used uncached memory to keep coherency
-  //
-  if (MemoryType == EfiBootServicesData) {
-    *HostAddress = UncachedAllocatePages (Pages);
-  } else if (MemoryType != EfiRuntimeServicesData) {
-    *HostAddress = UncachedAllocateRuntimePages (Pages);
-  } else {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  return EFI_SUCCESS;
-}
-
-
-/**                                                                 
-  Frees memory that was allocated with DmaAllocateBuffer().
-            
-  @param  Pages                 The number of pages to free.                                
-  @param  HostAddress           The base system memory address of the allocated range.                                    
-                                  
-  @retval EFI_SUCCESS           The requested memory pages were freed.
-  @retval EFI_INVALID_PARAMETER The memory range specified by HostAddress and Pages
-                                was not allocated with DmaAllocateBuffer().
-                                     
-**/
-EFI_STATUS
-EFIAPI
-DmaFreeBuffer (
-  IN  UINTN                        Pages,
-  IN  VOID                         *HostAddress
-  )
-{
-  if (HostAddress == NULL) {
-     return EFI_INVALID_PARAMETER;
-  } 
-  
-  UncachedFreePages (HostAddress, Pages);
-  return EFI_SUCCESS;
-}
-
-
-EFI_STATUS
-EFIAPI
-OmapDmaLibConstructor (
-  IN EFI_HANDLE       ImageHandle,
-  IN EFI_SYSTEM_TABLE *SystemTable
-  )
-{
-  EFI_STATUS              Status;
-
-  // Get the Cpu protocol for later use
-  Status = gBS->LocateProtocol (&gEfiCpuArchProtocolGuid, NULL, (VOID **)&gCpu);
-  ASSERT_EFI_ERROR(Status);
-
-  return EFI_SUCCESS;
-}
 

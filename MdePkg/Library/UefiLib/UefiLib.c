@@ -5,11 +5,11 @@
   EFI Driver Model related protocols, manage Unicode string tables for UEFI Drivers, 
   and print messages on the console output and standard error devices.
 
-  Copyright (c) 2006 - 2008, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+  http://opensource.org/licenses/bsd-license.php.
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
@@ -55,8 +55,8 @@ CompareIso639LanguageCode (
   If TableGuid is NULL, then ASSERT().
   If Table is NULL, then ASSERT().
 
-  @param  TableGuid       Pointer to table's GUID type..
-  @param  Table           Pointer to the table associated with TableGuid in the EFI System Table.
+  @param  TableGuid       The pointer to table's GUID type.
+  @param  Table           The pointer to the table associated with TableGuid in the EFI System Table.
 
   @retval EFI_SUCCESS     A configuration table matching TableGuid was found.
   @retval EFI_NOT_FOUND   A configuration table matching TableGuid could not be found.
@@ -175,7 +175,7 @@ EfiCreateProtocolNotifyEvent(
   If NotifyTpl is not a legal TPL value, then ASSERT().
   If NotifyFunction is NULL, then ASSERT().
 
-  @param  Name                  Supplies GUID name of the event.
+  @param  Name                  Supplies the GUID name of the event.
   @param  NotifyTpl             Supplies the task priority level of the event notifications.
   @param  NotifyFunction        Supplies the function to notify when the event is signaled.
   @param  NotifyContext         The context parameter to pass to NotifyFunction. 
@@ -246,7 +246,7 @@ EfiNamedEventListen (
   created with EfiNamedEventListen().
   If Name is NULL, then ASSERT().
 
-  @param  Name                  Supplies GUID name of the event.
+  @param  Name                  Supplies the GUID name of the event.
 
   @retval EFI_SUCCESS           A named event was signaled.
   @retval EFI_OUT_OF_RESOURCES  There are not enough resource to signal the named event.
@@ -320,7 +320,7 @@ EfiGetCurrentTpl (
   If Priority is not a valid TPL value, then ASSERT().
 
   @param  Lock       A pointer to the lock data structure to initialize.
-  @param  Priority   EFI TPL associated with the lock.
+  @param  Priority   EFI TPL is associated with the lock.
 
   @return The lock.
 
@@ -886,7 +886,7 @@ AddUnicodeString (
       //
       NewUnicodeStringTable[NumberOfEntries].Language = AllocateCopyPool (3, Language);
       if (NewUnicodeStringTable[NumberOfEntries].Language == NULL) {
-        gBS->FreePool (NewUnicodeStringTable);
+        FreePool (NewUnicodeStringTable);
         return EFI_OUT_OF_RESOURCES;
       }
 
@@ -904,8 +904,8 @@ AddUnicodeString (
                                                               UnicodeString
                                                               );
       if (NewUnicodeStringTable[NumberOfEntries].UnicodeString == NULL) {
-        gBS->FreePool (NewUnicodeStringTable[NumberOfEntries].Language);
-        gBS->FreePool (NewUnicodeStringTable);
+        FreePool (NewUnicodeStringTable[NumberOfEntries].Language);
+        FreePool (NewUnicodeStringTable);
         return EFI_OUT_OF_RESOURCES;
       }
 
@@ -919,7 +919,7 @@ AddUnicodeString (
       // Free the old Unicode String Table
       //
       if (*UnicodeStringTable != NULL) {
-        gBS->FreePool (*UnicodeStringTable);
+        FreePool (*UnicodeStringTable);
       }
 
       //
@@ -1097,7 +1097,7 @@ AddUnicodeString2 (
   //
   NewUnicodeStringTable[NumberOfEntries].Language = AllocateCopyPool (AsciiStrSize(Language), Language);
   if (NewUnicodeStringTable[NumberOfEntries].Language == NULL) {
-    gBS->FreePool (NewUnicodeStringTable);
+    FreePool (NewUnicodeStringTable);
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -1111,8 +1111,8 @@ AddUnicodeString2 (
   //
   NewUnicodeStringTable[NumberOfEntries].UnicodeString = AllocateCopyPool (StrSize (UnicodeString), UnicodeString);
   if (NewUnicodeStringTable[NumberOfEntries].UnicodeString == NULL) {
-    gBS->FreePool (NewUnicodeStringTable[NumberOfEntries].Language);
-    gBS->FreePool (NewUnicodeStringTable);
+    FreePool (NewUnicodeStringTable[NumberOfEntries].Language);
+    FreePool (NewUnicodeStringTable);
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -1126,7 +1126,7 @@ AddUnicodeString2 (
   // Free the old Unicode String Table
   //
   if (*UnicodeStringTable != NULL) {
-    gBS->FreePool (*UnicodeStringTable);
+    FreePool (*UnicodeStringTable);
   }
 
   //
@@ -1172,20 +1172,20 @@ FreeUnicodeStringTable (
     //
     // Free the Language string from the Unicode String Table
     //
-    gBS->FreePool (UnicodeStringTable[Index].Language);
+    FreePool (UnicodeStringTable[Index].Language);
 
     //
     // Free the Unicode String from the Unicode String Table
     //
     if (UnicodeStringTable[Index].UnicodeString != NULL) {
-      gBS->FreePool (UnicodeStringTable[Index].UnicodeString);
+      FreePool (UnicodeStringTable[Index].UnicodeString);
     }
   }
 
   //
   // Free the Unicode String Table itself
   //
-  gBS->FreePool (UnicodeStringTable);
+  FreePool (UnicodeStringTable);
 
   return EFI_SUCCESS;
 }
@@ -1199,8 +1199,8 @@ FreeUnicodeStringTable (
   If Name is NULL, then ASSERT().
   If Guid is NULL, then ASSERT().
 
-  @param[in]  Name  Pointer to a Null-terminated Unicode string.
-  @param[in]  Guid  Pointer to an EFI_GUID structure
+  @param[in]  Name  The pointer to a Null-terminated Unicode string.
+  @param[in]  Guid  The pointer to an EFI_GUID structure
 
   @retval NULL   The variable could not be retrieved.
   @retval NULL   There are not enough resources available for the variable contents.
@@ -1261,7 +1261,7 @@ GetVariable (
 
   If Name is NULL, then ASSERT().
 
-  @param[in]  Name  Pointer to a Null-terminated Unicode string.
+  @param[in]  Name  The pointer to a Null-terminated Unicode string.
 
   @retval NULL   The variable could not be retrieved.
   @retval NULL   There are not enough resources available for the variable contents.

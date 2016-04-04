@@ -1,11 +1,11 @@
 /** @file
   Unicode and ASCII string primatives.
 
-  Copyright (c) 2006 - 2009, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+  http://opensource.org/licenses/bsd-license.php.
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
@@ -14,17 +14,18 @@
 
 #include "BaseLibInternals.h"
 
-#define QUOTIENT_MAX_UINTN_DIVIDED_BY_10      ((UINTN) -1 / 10)
-#define REMAINDER_MAX_UINTN_DIVIDED_BY_10    ((UINTN) -1 % 10)
+#define QUOTIENT_MAX_UINTN_DIVIDED_BY_10      ((~((UINTN) 0)) / 10U)
+#define REMAINDER_MAX_UINTN_DIVIDED_BY_10    ((~((UINTN) 0)) % 10U)
 
-#define QUOTIENT_MAX_UINTN_DIVIDED_BY_16      ((UINTN) -1 / 16)
-#define REMAINDER_MAX_UINTN_DIVIDED_BY_16    ((UINTN) -1 % 16)
 
-#define QUOTIENT_MAX_UINT64_DIVIDED_BY_10      ((UINT64) -1 / 10)
-#define REMAINDER_MAX_UINT64_DIVIDED_BY_10    ((UINT64) -1 % 10)
+#define QUOTIENT_MAX_UINTN_DIVIDED_BY_16       ((~((UINTN) 0)) / 16U)
+#define REMAINDER_MAX_UINTN_DIVIDED_BY_16     ((~((UINTN) 0)) % 16U)
 
-#define QUOTIENT_MAX_UINT64_DIVIDED_BY_16      ((UINT64) -1 / 16)
-#define REMAINDER_MAX_UINT64_DIVIDED_BY_16    ((UINT64) -1 % 16)
+#define QUOTIENT_MAX_UINT64_DIVIDED_BY_10      ((~((UINT64) 0)) / 10U)
+#define REMAINDER_MAX_UINT64_DIVIDED_BY_10    ((~((UINT64) 0)) % 10U)
+
+#define QUOTIENT_MAX_UINT64_DIVIDED_BY_16      ((~((UINT64) 0)) / 16U)
+#define REMAINDER_MAX_UINT64_DIVIDED_BY_16    ((~((UINT64) 0)) % 16U)
 
 /**
   Copies one Null-terminated Unicode string to another Null-terminated Unicode
@@ -43,8 +44,8 @@
   PcdMaximumUnicodeStringLength Unicode characters, not including the
   Null-terminator, then ASSERT().
 
-  @param  Destination Pointer to a Null-terminated Unicode string.
-  @param  Source      Pointer to a Null-terminated Unicode string.
+  @param  Destination A pointer to a Null-terminated Unicode string.
+  @param  Source      A pointer to a Null-terminated Unicode string.
 
   @return Destination.
 
@@ -101,9 +102,9 @@ StrCpy (
   PcdMaximumUnicodeStringLength Unicode characters, not including the Null-terminator,
   then ASSERT().
 
-  @param  Destination Pointer to a Null-terminated Unicode string.
-  @param  Source      Pointer to a Null-terminated Unicode string.
-  @param  Length      Maximum number of Unicode characters to copy.
+  @param  Destination A pointer to a Null-terminated Unicode string.
+  @param  Source      A pointer to a Null-terminated Unicode string.
+  @param  Length      The maximum number of Unicode characters to copy.
 
   @return Destination.
 
@@ -161,7 +162,7 @@ StrnCpy (
   PcdMaximumUnicodeStringLength Unicode characters, not including the
   Null-terminator, then ASSERT().
 
-  @param  String  Pointer to a Null-terminated Unicode string.
+  @param  String  A pointer to a Null-terminated Unicode string.
 
   @return The length of String.
 
@@ -202,7 +203,7 @@ StrLen (
   PcdMaximumUnicodeStringLength Unicode characters, not including the
   Null-terminator, then ASSERT().
 
-  @param  String  Pointer to a Null-terminated Unicode string.
+  @param  String  A pointer to a Null-terminated Unicode string.
 
   @return The size of String.
 
@@ -237,8 +238,8 @@ StrSize (
   than PcdMaximumUnicodeStringLength Unicode characters, not including the
   Null-terminator, then ASSERT().
 
-  @param  FirstString   Pointer to a Null-terminated Unicode string.
-  @param  SecondString  Pointer to a Null-terminated Unicode string.
+  @param  FirstString   A pointer to a Null-terminated Unicode string.
+  @param  SecondString  A pointer to a Null-terminated Unicode string.
 
   @retval 0      FirstString is identical to SecondString.
   @return others FirstString is not identical to SecondString.
@@ -288,9 +289,9 @@ StrCmp (
   PcdMaximumUnicodeStringLength Unicode characters, not including the Null-terminator,
   then ASSERT().
 
-  @param  FirstString   Pointer to a Null-terminated Unicode string.
-  @param  SecondString  Pointer to a Null-terminated Unicode string.
-  @param  Length        Maximum number of Unicode characters to compare.
+  @param  FirstString   A pointer to a Null-terminated Unicode string.
+  @param  SecondString  A pointer to a Null-terminated Unicode string.
+  @param  Length        The maximum number of Unicode characters to compare.
 
   @retval 0      FirstString is identical to SecondString.
   @return others FirstString is not identical to SecondString.
@@ -356,8 +357,8 @@ StrnCmp (
   PcdMaximumUnicodeStringLength Unicode characters, not including the
   Null-terminator, then ASSERT().
 
-  @param  Destination Pointer to a Null-terminated Unicode string.
-  @param  Source      Pointer to a Null-terminated Unicode string.
+  @param  Destination A pointer to a Null-terminated Unicode string.
+  @param  Source      A pointer to a Null-terminated Unicode string.
 
   @return Destination.
 
@@ -409,9 +410,9 @@ StrCat (
   and Source results in a Unicode string with more than PcdMaximumUnicodeStringLength
   Unicode characters, not including the Null-terminator, then ASSERT().
 
-  @param  Destination Pointer to a Null-terminated Unicode string.
-  @param  Source      Pointer to a Null-terminated Unicode string.
-  @param  Length      Maximum number of Unicode characters to concatenate from
+  @param  Destination A pointer to a Null-terminated Unicode string.
+  @param  Source      A pointer to a Null-terminated Unicode string.
+  @param  Length      The maximum number of Unicode characters to concatenate from
                       Source.
 
   @return Destination.
@@ -458,8 +459,8 @@ StrnCat (
   or String contains more than PcdMaximumUnicodeStringLength Unicode
   characters, not including the Null-terminator, then ASSERT().
 
-  @param  String          Pointer to a Null-terminated Unicode string.
-  @param  SearchString    Pointer to a Null-terminated Unicode string to search for.
+  @param  String          A pointer to a Null-terminated Unicode string.
+  @param  SearchString    A pointer to a Null-terminated Unicode string to search for.
 
   @retval NULL            If the SearchString does not appear in String.
   @return others          If there is a match.
@@ -641,7 +642,7 @@ InternalIsHexaDecimalDigitCharacter (
   more than PcdMaximumUnicodeStringLength Unicode characters, not including
   the Null-terminator, then ASSERT().
 
-  @param  String      Pointer to a Null-terminated Unicode string.
+  @param  String      A pointer to a Null-terminated Unicode string.
 
   @retval Value translated from String.
 
@@ -723,7 +724,7 @@ StrDecimalToUintn (
   more than PcdMaximumUnicodeStringLength Unicode characters, not including
   the Null-terminator, then ASSERT().
 
-  @param  String          Pointer to a Null-terminated Unicode string.
+  @param  String          A pointer to a Null-terminated Unicode string.
 
   @retval Value translated from String.
 
@@ -805,7 +806,7 @@ StrDecimalToUint64 (
   PcdMaximumUnicodeStringLength Unicode characters, not including the Null-terminator,
   then ASSERT().
 
-  @param  String          Pointer to a Null-terminated Unicode string.
+  @param  String          A pointer to a Null-terminated Unicode string.
 
   @retval Value translated from String.
 
@@ -898,7 +899,7 @@ StrHexToUintn (
   PcdMaximumUnicodeStringLength Unicode characters, not including the Null-terminator,
   then ASSERT().
 
-  @param  String          Pointer to a Null-terminated Unicode string.
+  @param  String          A pointer to a Null-terminated Unicode string.
 
   @retval Value translated from String.
 
@@ -1034,8 +1035,8 @@ InternalAsciiIsHexaDecimalDigitCharacter (
   than PcdMaximumAsciiStringLength Unicode characters, not including the
   Null-terminator, then ASSERT().
 
-  @param  Source        Pointer to a Null-terminated Unicode string.
-  @param  Destination   Pointer to a Null-terminated ASCII string.
+  @param  Source        A pointer to a Null-terminated Unicode string.
+  @param  Destination   A pointer to a Null-terminated ASCII string.
 
   @return Destination.
 
@@ -1101,8 +1102,8 @@ UnicodeStrToAsciiStr (
   PcdMaximumAsciiStringLength ASCII characters, not including the Null-terminator,
   then ASSERT().
 
-  @param  Destination Pointer to a Null-terminated ASCII string.
-  @param  Source      Pointer to a Null-terminated ASCII string.
+  @param  Destination A pointer to a Null-terminated ASCII string.
+  @param  Source      A pointer to a Null-terminated ASCII string.
 
   @return Destination
 
@@ -1155,9 +1156,9 @@ AsciiStrCpy (
   PcdMaximumAsciiStringLength ASCII characters, not including the Null-terminator,
   then ASSERT().
 
-  @param  Destination Pointer to a Null-terminated ASCII string.
-  @param  Source      Pointer to a Null-terminated ASCII string.
-  @param  Length      Maximum number of ASCII characters to copy.
+  @param  Destination A pointer to a Null-terminated ASCII string.
+  @param  Source      A pointer to a Null-terminated ASCII string.
+  @param  Length      The maximum number of ASCII characters to copy.
 
   @return Destination
 
@@ -1214,7 +1215,7 @@ AsciiStrnCpy (
   PcdMaximumAsciiStringLength ASCII characters, not including the Null-terminator,
   then ASSERT().
 
-  @param  String  Pointer to a Null-terminated ASCII string.
+  @param  String  A pointer to a Null-terminated ASCII string.
 
   @return The length of String.
 
@@ -1253,7 +1254,7 @@ AsciiStrLen (
   PcdMaximumAsciiStringLength ASCII characters, not including the Null-terminator,
   then ASSERT().
 
-  @param  String  Pointer to a Null-terminated ASCII string.
+  @param  String  A pointer to a Null-terminated ASCII string.
 
   @return The size of String.
 
@@ -1286,8 +1287,8 @@ AsciiStrSize (
   than PcdMaximumAsciiStringLength ASCII characters, not including the
   Null-terminator, then ASSERT().
 
-  @param  FirstString   Pointer to a Null-terminated ASCII string.
-  @param  SecondString  Pointer to a Null-terminated ASCII string.
+  @param  FirstString   A pointer to a Null-terminated ASCII string.
+  @param  SecondString  A pointer to a Null-terminated ASCII string.
 
   @retval ==0      FirstString is identical to SecondString.
   @retval !=0      FirstString is not identical to SecondString.
@@ -1383,8 +1384,8 @@ InternalAsciiHexCharToUintn (
   than PcdMaximumAsciiStringLength ASCII characters, not including the
   Null-terminator, then ASSERT().
 
-  @param  FirstString   Pointer to a Null-terminated ASCII string.
-  @param  SecondString  Pointer to a Null-terminated ASCII string.
+  @param  FirstString   A pointer to a Null-terminated ASCII string.
+  @param  SecondString  A pointer to a Null-terminated ASCII string.
 
   @retval ==0    FirstString is identical to SecondString using case insensitive
                  comparisons.
@@ -1442,9 +1443,9 @@ AsciiStriCmp (
   PcdMaximumAsciiStringLength ASCII characters, not including the Null-terminator,
   then ASSERT().
 
-  @param  FirstString   Pointer to a Null-terminated ASCII string.
-  @param  SecondString  Pointer to a Null-terminated ASCII string.
-  @param  Length        Maximum number of ASCII characters for compare.
+  @param  FirstString   A pointer to a Null-terminated ASCII string.
+  @param  SecondString  A pointer to a Null-terminated ASCII string.
+  @param  Length        The maximum number of ASCII characters for compare.
   
   @retval ==0       FirstString is identical to SecondString.
   @retval !=0       FirstString is not identical to SecondString.
@@ -1503,8 +1504,8 @@ AsciiStrnCmp (
   Source results in a ASCII string with more than PcdMaximumAsciiStringLength
   ASCII characters, then ASSERT().
 
-  @param  Destination Pointer to a Null-terminated ASCII string.
-  @param  Source      Pointer to a Null-terminated ASCII string.
+  @param  Destination A pointer to a Null-terminated ASCII string.
+  @param  Source      A pointer to a Null-terminated ASCII string.
 
   @return Destination
 
@@ -1554,9 +1555,9 @@ AsciiStrCat (
   Source results in a ASCII string with more than PcdMaximumAsciiStringLength
   ASCII characters, not including the Null-terminator, then ASSERT().
 
-  @param  Destination Pointer to a Null-terminated ASCII string.
-  @param  Source      Pointer to a Null-terminated ASCII string.
-  @param  Length      Maximum number of ASCII characters to concatenate from
+  @param  Destination A pointer to a Null-terminated ASCII string.
+  @param  Source      A pointer to a Null-terminated ASCII string.
+  @param  Length      The maximum number of ASCII characters to concatenate from
                       Source.
 
   @return Destination
@@ -1600,8 +1601,8 @@ AsciiStrnCat (
   String contains more than PcdMaximumAsciiStringLength Unicode characters
   not including the Null-terminator, then ASSERT().
 
-  @param  String          Pointer to a Null-terminated ASCII string.
-  @param  SearchString    Pointer to a Null-terminated ASCII string to search for.
+  @param  String          A pointer to a Null-terminated ASCII string.
+  @param  SearchString    A pointer to a Null-terminated ASCII string to search for.
 
   @retval NULL            If the SearchString does not appear in String.
   @retval others          If there is a match return the first occurrence of SearchingString.
@@ -1677,7 +1678,7 @@ AsciiStrStr (
   PcdMaximumAsciiStringLength ASCII characters not including the Null-terminator,
   then ASSERT().
 
-  @param  String          Pointer to a Null-terminated ASCII string.
+  @param  String          A pointer to a Null-terminated ASCII string.
 
   @retval Value translated from String.
 
@@ -1754,7 +1755,7 @@ AsciiStrDecimalToUintn (
   PcdMaximumAsciiStringLength ASCII characters not including the Null-terminator,
   then ASSERT().
 
-  @param  String          Pointer to a Null-terminated ASCII string.
+  @param  String          A pointer to a Null-terminated ASCII string.
 
   @retval Value translated from String.
 
@@ -1834,7 +1835,7 @@ AsciiStrDecimalToUint64 (
   and String contains more than PcdMaximumAsciiStringLength ASCII characters not including
   the Null-terminator, then ASSERT().
 
-  @param  String          Pointer to a Null-terminated ASCII string.
+  @param  String          A pointer to a Null-terminated ASCII string.
 
   @retval Value translated from String.
 
@@ -1926,7 +1927,7 @@ AsciiStrHexToUintn (
   and String contains more than PcdMaximumAsciiStringLength ASCII characters not including
   the Null-terminator, then ASSERT().
 
-  @param  String          Pointer to a Null-terminated ASCII string.
+  @param  String          A pointer to a Null-terminated ASCII string.
 
   @retval Value translated from String.
 
@@ -2014,8 +2015,8 @@ AsciiStrHexToUint64 (
   PcdMaximumUnicodeStringLength ASCII characters not including the
   Null-terminator, then ASSERT().
 
-  @param  Source        Pointer to a Null-terminated ASCII string.
-  @param  Destination   Pointer to a Null-terminated Unicode string.
+  @param  Source        A pointer to a Null-terminated ASCII string.
+  @param  Destination   A pointer to a Null-terminated Unicode string.
 
   @return Destination.
 

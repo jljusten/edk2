@@ -6,7 +6,7 @@
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
+  http://opensource.org/licenses/bsd-license.php.
 
   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
@@ -27,7 +27,7 @@
 
   Shift mBitBuf NumOfBits left. Read in NumOfBits of bits from source.
 
-  @param  Sd        The global scratch data
+  @param  Sd        The global scratch data.
   @param  NumOfBits The number of bits to shift and read.
 
 **/
@@ -119,10 +119,10 @@ GetBits (
   and Position Set according to code length array.
   If TableBits > 16, then ASSERT ().
 
-  @param  Sd        The global scratch data
-  @param  NumOfChar Number of symbols in the symbol set
-  @param  BitLen    Code length array
-  @param  TableBits The width of the mapping table
+  @param  Sd        The global scratch data.
+  @param  NumOfChar The number of symbols in the symbol set.
+  @param  BitLen    Code length array.
+  @param  TableBits The width of the mapping table.
   @param  Table     The table to be created.
 
   @retval  0 OK.
@@ -262,7 +262,7 @@ MakeTable (
 
   Get a position value according to Position Huffman Table.
 
-  @param  Sd the global scratch data
+  @param  Sd The global scratch data.
 
   @return The position value decoded.
 
@@ -312,8 +312,8 @@ DecodeP (
   generate the Huffman code mapping for them.
 
   @param  Sd      The global scratch data.
-  @param  nn      Number of symbols.
-  @param  nbit    Number of bits needed to represent nn.
+  @param  nn      The number of symbols.
+  @param  nbit    The number of bits needed to represent nn.
   @param  Special The special symbol that needs to be taken care of.
 
   @retval  0 OK.
@@ -401,7 +401,7 @@ ReadPTLen (
   Read in and decode the Char&Len Set Code Length Array, then
   generate the Huffman Code mapping table for the Char&Len Set.
 
-  @param  Sd the global scratch data
+  @param  Sd The global scratch data.
 
 **/
 VOID
@@ -561,7 +561,7 @@ DecodeC (
 /**
   Decode the source data and put the resulting data into the destination buffer.
 
-  @param  Sd The global scratch data
+  @param  Sd The global scratch data.
 
 **/
 VOID
@@ -659,13 +659,13 @@ Done:
   @param  SourceSize      The size, in bytes, of the source buffer.
   @param  DestinationSize A pointer to the size, in bytes, of the uncompressed buffer
                           that will be generated when the compressed buffer specified
-                          by Source and SourceSize is decompressed..
+                          by Source and SourceSize is decompressed.
   @param  ScratchSize     A pointer to the size, in bytes, of the scratch buffer that
                           is required to decompress the compressed buffer specified 
                           by Source and SourceSize.
 
   @retval  RETURN_SUCCESS The size of the uncompressed data was returned 
-                          in DestinationSize and the size of the scratch 
+                          in DestinationSize, and the size of the scratch 
                           buffer was returned in ScratchSize.
   @retval  RETURN_INVALID_PARAMETER 
                           The size of the uncompressed data or the size of 
@@ -721,7 +721,7 @@ UefiDecompressGetInfo (
   If the required scratch buffer size > 0 and Scratch is NULL, then ASSERT().
 
   @param  Source      The source buffer containing the compressed data.
-  @param  Destination The destination buffer to store the decompressed data
+  @param  Destination The destination buffer to store the decompressed data.
   @param  Scratch     A temporary scratch buffer that is used to perform the decompression.
                       This is an optional parameter that may be NULL if the 
                       required scratch buffer size is 0.

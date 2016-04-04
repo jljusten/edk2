@@ -1,8 +1,8 @@
 /** @file
 Ported ELF include files from FreeBSD
 
-Copyright (c) 2009 - 2010, Apple, Inc. All  rights reserved. 
-All rights reserved. This program and the accompanying materials
+Copyright (c) 2009 - 2010, Apple Inc. All rights reserved.<BR>
+This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
 http://opensource.org/licenses/bsd-license.php
@@ -597,7 +597,43 @@ typedef struct {
 #define	R_ARM_GOTPC		25	/* Add PC-relative GOT table address. */
 #define	R_ARM_GOT32		26	/* Add PC-relative GOT offset. */
 #define	R_ARM_PLT32		27	/* Add PC-relative PLT offset. */
-#define R_ARM_CALL          28
+#define R_ARM_CALL            28
+#define R_ARM_JMP24           29
+#define R_ARM_THM_MOVW_ABS_NC 47 
+#define R_ARM_THM_MOVT_ABS    48
+
+// Block of PC-relative relocations added to work around gcc putting
+// object relocations in static executables.
+#define R_ARM_THM_JUMP24        30  
+#define R_ARM_PREL31            42  
+#define R_ARM_MOVW_PREL_NC      45  
+#define R_ARM_MOVT_PREL         46
+#define R_ARM_THM_MOVW_PREL_NC  49
+#define R_ARM_THM_MOVT_PREL     50
+#define R_ARM_THM_JMP6          52
+#define R_ARM_THM_ALU_PREL_11_0 53
+#define R_ARM_THM_PC12          54
+#define R_ARM_REL32_NOI         56
+#define R_ARM_ALU_PC_G0_NC	    57
+#define R_ARM_ALU_PC_G0	        58
+#define R_ARM_ALU_PC_G1_NC	    59
+#define R_ARM_ALU_PC_G1	        60
+#define R_ARM_ALU_PC_G2         61
+#define R_ARM_LDR_PC_G1	        62
+#define R_ARM_LDR_PC_G2	        63
+#define R_ARM_LDRS_PC_G0	      64
+#define R_ARM_LDRS_PC_G1	      65
+#define R_ARM_LDRS_PC_G2	      66
+#define R_ARM_LDC_PC_G0	        67
+#define R_ARM_LDC_PC_G1	        68
+#define R_ARM_LDC_PC_G2	        69
+#define R_ARM_GOT_PREL          96
+#define R_ARM_THM_JUMP11       102
+#define R_ARM_THM_JUMP8        103
+#define R_ARM_TLS_GD32         104
+#define R_ARM_TLS_LDM32        105
+#define R_ARM_TLS_IE32         107
+
 #define R_ARM_THM_JUMP19    51
 #define	R_ARM_GNU_VTENTRY	100
 #define	R_ARM_GNU_VTINHERIT	101
@@ -607,6 +643,8 @@ typedef struct {
 #define	R_ARM_RABS32		253
 #define	R_ARM_RPC24		254
 #define	R_ARM_RBASE		255
+
+
 
 /*	Name			Value	   Field	Calculation */
 #define	R_IA_64_NONE		0	/* None */

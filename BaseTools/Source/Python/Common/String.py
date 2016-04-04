@@ -1,8 +1,8 @@
 ## @file
 # This file is used to define common string related functions used in parsing process
 #
-# Copyright (c) 2007 ~ 2008, Intel Corporation
-# All rights reserved. This program and the accompanying materials
+# Copyright (c) 2007 - 2008, Intel Corporation. All rights reserved.<BR>
+# This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
 # http://opensource.org/licenses/bsd-license.php
@@ -279,9 +279,16 @@ def CleanString(Line, CommentCharacter = DataType.TAB_COMMENT_SPLIT, AllowCppSty
     if AllowCppStyleComment:
         Line = Line.replace(DataType.TAB_COMMENT_R8_SPLIT, CommentCharacter)
     #
-    # remove comments
+    # remove comments, but we should escape comment character in string
     #
-    Line = Line.split(CommentCharacter, 1)[0];
+    InString = False
+    for Index in range(0, len(Line)):
+        if Line[Index] == '"':
+            InString = not InString
+        elif Line[Index] == CommentCharacter and not InString:
+            Line = Line[0: Index]
+            break
+    
     #
     # remove whitespace again
     #

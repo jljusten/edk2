@@ -243,43 +243,22 @@ INF  MdeModulePkg/Application/HelloWorld/HelloWorld.inf
 #INF  MdeModulePkg/Universal/Network/Udp4Dxe/Udp4Dxe.inf
 #INF  UnixPkg/SnpUnixDxe/SnpUnixDxe.inf
 
+#
+# Build from source or use checked in binary
+#
 #INF FatPkg/EnhancedFatDxe/Fat.inf
+INF  RuleOverride = BINARY USE = IA32 FatBinPkg/EnhancedFatDxe/Fat.inf
 
+# If  you build GccShellPkg you can source level debug shell
+#FILE APPLICATION = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdShellFile) {
+#  SECTION PE32 =Build/GccShellPkg/DEBUG_XCODE32/IA32/ShellFull.efi
+#}
+INF  RuleOverride = BINARY USE = IA32 EdkShellBinPkg/FullShell/FullShell.inf
 
-   
-################################################################################
-#  
-# FILE statements are provided so that a platform integrator can include
-# complete EFI FFS files, as well as a method for constructing FFS files
-# using curly "{}" brace scoping. The following three FILEs are
-# for binary shell, binary fat and logo module.
-#  
-################################################################################
-FILE APPLICATION = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdShellFile) {
-    SECTION COMPRESS PI_STD {
-      SECTION GUIDED {
-        SECTION PE32 = EdkShellBinPkg/FullShell/Ia32/Shell_Full.efi
-#        SECTION PE32 =Build/GccShellPkg/DEBUG_XCODE32/IA32/ShellFull.efi
-#        SECTION PE32 = Build/Unix/DEBUG_XCODE32/IA32/Ebl.efi
-      }
-    }
-  }
-
-FILE DRIVER = 961578FE-B6B7-44c3-AF35-6BC705CD2B1F {
-    SECTION COMPRESS PI_STD {
-      SECTION GUIDED {
-        SECTION PE32 = FatBinPkg/EnhancedFatDxe/Ia32/Fat.efi
-      }
-    }
-  }
 
 FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
-    SECTION COMPRESS PI_STD {
-      SECTION GUIDED {
-        SECTION RAW = MdeModulePkg/Logo/Logo.bmp
-      }
-    }
-  }
+  SECTION RAW = MdeModulePkg/Logo/Logo.bmp
+}
    
    
 ################################################################################
@@ -323,16 +302,6 @@ FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
      PE32      PE32   Align=32       $(INF_OUTPUT)/$(MODULE_NAME).efi
      UI       STRING="$(MODULE_NAME)" Optional         
      VERSION  STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)   
-  }
-
-[Rule.Common.PEIM.TIANOCOMPRESSED]
-  FILE PEIM = $(NAMED_GUID) {
-    PEI_DEPEX PEI_DEPEX Optional         $(INF_OUTPUT)/$(MODULE_NAME).depex
-    GUIDED A31280AD-481E-41B6-95E8-127F4C984779 PROCESSING_REQUIRED = TRUE {
-      PE32      PE32                     $(INF_OUTPUT)/$(MODULE_NAME).efi
-      UI        STRING="$(MODULE_NAME)" Optional
-      VERSION   STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
-    }
   }
 
 [Rule.Common.DXE_CORE]
@@ -390,3 +359,20 @@ FILE FREEFORM = PCD(gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdLogoFile) {
       }
     }
   }
+  
+  
+[Rule.Common.UEFI_DRIVER.BINARY]
+  FILE DRIVER = $(NAMED_GUID) {
+    DXE_DEPEX DXE_DEPEX Optional      |.depex
+    PE32      PE32                    |.efi
+    UI        STRING="$(MODULE_NAME)" Optional
+    VERSION   STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
+  }
+
+[Rule.Common.UEFI_APPLICATION.BINARY]
+  FILE APPLICATION = $(NAMED_GUID) {
+    PE32      PE32                    |.efi
+    UI        STRING="$(MODULE_NAME)" Optional
+    VERSION   STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
+  }
+

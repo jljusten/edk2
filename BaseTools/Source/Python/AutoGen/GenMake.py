@@ -1,8 +1,8 @@
 ## @file
 # Create makefile for MS nmake and GNU make
 #
-# Copyright (c) 2007 - 2010, Intel Corporation
-# All rights reserved. This program and the accompanying materials
+# Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+# This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
 # http://opensource.org/licenses/bsd-license.php
@@ -26,7 +26,7 @@ from BuildEngine import *
 import Common.GlobalData as GlobalData
 
 ## Regular expression for finding header file inclusions
-gIncludePattern = re.compile(r"^[ \t]*#?[ \t]*include(?:[ \t]*(?:\\(?:\r\n|\r|\n))*[ \t]*)*(?:[\"<]?[ \t]*)([\w.\\/]+)(?:[ \t]*[\">]?)", re.MULTILINE|re.UNICODE)
+gIncludePattern = re.compile(r"^[ \t]*#?[ \t]*include(?:[ \t]*(?:\\(?:\r\n|\r|\n))*[ \t]*)*(?:[\"<]?[ \t]*)([\w.\\/() \t]+)(?:[ \t]*[\">]?)", re.MULTILINE|re.UNICODE|re.IGNORECASE)
 
 ## Regular expression for matching macro used in header file inclusion
 gMacroPattern = re.compile("([_A-Z][_A-Z0-9]*)[ \t]*\((.+)\)", re.UNICODE)
@@ -754,6 +754,7 @@ cleanlib:
 
                 CurrentFilePath = F.Dir
                 for Inc in IncludedFileList:
+                    Inc = Inc.strip()
                     # if there's macro used to reference header file, expand it
                     HeaderList = gMacroPattern.findall(Inc)
                     if len(HeaderList) == 1 and len(HeaderList[0]) == 2:

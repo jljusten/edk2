@@ -154,12 +154,12 @@ CEntryPoint (
   // Start talking
   UartInit ();
  
-  InitializeDebugAgent (DEBUG_AGENT_INIT_PREMEM_SEC, NULL);
+  InitializeDebugAgent (DEBUG_AGENT_INIT_PREMEM_SEC, NULL, NULL);
   SaveAndSetDebugTimerInterrupt (TRUE);
 
   DEBUG ((EFI_D_ERROR, "UART Enabled\n"));
 
-  // Start up a free running time so that the timer lib will work
+  // Start up a free running timer so that the timer lib will work
   TimerInit ();
 
   // SEC phase needs to run library constructors by hand.

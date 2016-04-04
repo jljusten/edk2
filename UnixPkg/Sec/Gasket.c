@@ -74,20 +74,20 @@ GasketGetDayLight (void)
 
 
 int 
-Gasketpoll (struct pollfd *pfd, int nfds, int timeout)
+Gasketpoll (struct pollfd *pfd, unsigned int nfds, int timeout)
 {
   return GasketUintnUintnUintn (poll, (UINTN)pfd, nfds, timeout);
 }
 
 
-int 
+long
 Gasketread (int fd, void *buf, int count)
 {
   return  GasketUintnUintnUintn (read, fd, (UINTN)buf, count);
 }
 
 
-int 
+long
 Gasketwrite (int fd, const void *buf, int count)
 {
   return  GasketUintnUintnUintn (write, fd, (UINTN)buf, count);
@@ -168,10 +168,11 @@ Gasketopendir (const char *pathname)
 }
 
 
-void *
+void 
 Gasketrewinddir (DIR *dir)
 {
-  return (void *)(UINTN)GasketUintn (rewinddir, (UINTN)dir);
+  GasketUintn (rewinddir, (UINTN)dir);
+  return;
 }
 
 
@@ -265,22 +266,16 @@ Gasketperror (__const char *__s)
 // ... is always an int or pointer to device specific data structure
 //
 int 
-Gasketioctl (int fd, unsigned long int __request, ...)
+Gasketioctl (int fd, unsigned long int __request, void *Arg)
 {
-  VA_LIST Marker;
-  
-  VA_START (Marker, __request);
-  return GasketUintnUintnUintn (ioctl, fd, __request, VA_ARG (Marker, UINTN));
+  return GasketUintnUintnUintn (ioctl, fd, __request, (UINTN)Arg);
 }
 
 
 int 
-Gasketfcntl (int __fd, int __cmd, ...)
+Gasketfcntl (int __fd, int __cmd, void  *Arg)
 {
-  VA_LIST Marker;
-  
-  VA_START (Marker, __cmd);
-  return GasketUintnUintnUintn (fcntl, __fd, __cmd, VA_ARG (Marker, UINTN));
+  return GasketUintnUintnUintn (fcntl, __fd, __cmd, (UINTN)Arg);
 }
 
 
@@ -313,40 +308,6 @@ Gaskettcsetattr (int __fd, int __optional_actions, __const struct termios *__ter
 }
 
 
-int 
-Gasketsigaction (int sig, const struct sigaction *act, struct sigaction *oact)
-{
-  return GasketUintnUintn (sigaction, (UINTN)act, (UINTN)oact);
-}
-
-
-int 
-Gasketsetcontext (const ucontext_t *ucp)
-{
-  return GasketUintn (setcontext, (UINTN)ucp);
-}
-
-
-int 
-Gasketgetcontext (ucontext_t *ucp)
-{
-  return GasketUintn (getcontext, (UINTN)ucp);
-}
-
-
-int 
-Gasketsigemptyset (sigset_t *set)
-{
-  return GasketUintn (sigemptyset, (UINTN)set);
-}
-
-
-int 
-Gasketsigaltstack (const stack_t *ss, stack_t *oss)
-{
-  return GasketUintnUintn (sigaltstack, (UINTN)ss, (UINTN)oss);
-}
-
 
 
 RETURN_STATUS
@@ -372,7 +333,7 @@ GasketUnixPeCoffRelocateImageExtraAction (
 
 
 VOID
-GasketPeCoffLoaderUnloadImageExtraAction (
+GasketUnixPeCoffUnloadImageExtraAction (
   IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext
   )
 {

@@ -16,7 +16,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 UINT16             mKeyInput;
 EFI_GUID           mBootManagerGuid = BOOT_MANAGER_FORMSET_GUID;
-LIST_ENTRY         *mBootOptionsList;
+LIST_ENTRY         mBootOptionsList;
 BDS_COMMON_OPTION  *gOption;
 
 HII_VENDOR_DEVICE_PATH  mBootManagerHiiVendorDevicePath = {
@@ -88,6 +88,13 @@ BootManagerCallback (
   LIST_ENTRY              *Link;
   UINT16                  KeyCount;
 
+  if ((Action == EFI_BROWSER_ACTION_FORM_OPEN) || (Action == EFI_BROWSER_ACTION_FORM_CLOSE)) {
+    //
+    // Do nothing for UEFI OPEN/CLOSE Action
+    //
+    return EFI_SUCCESS;
+  }
+
   if ((Value == NULL) || (ActionRequest == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
@@ -97,7 +104,7 @@ BootManagerCallback (
   //
   KeyCount = 0;
 
-  for (Link = mBootOptionsList->ForwardLink; Link != mBootOptionsList; Link = Link->ForwardLink) {
+  for (Link = GetFirstNode (&mBootOptionsList); !IsNull (&mBootOptionsList, Link); Link = GetNextNode (&mBootOptionsList, Link)) {
     Option = CR (Link, BDS_COMMON_OPTION, Link, BDS_LOAD_OPTION_SIGNATURE);
 
     KeyCount++;
@@ -190,7 +197,6 @@ CallBootManager (
   UINTN                       ExitDataSize;
   EFI_STRING_ID               Token;
   EFI_INPUT_KEY               Key;
-  LIST_ENTRY                  BdsBootOptionList;
   CHAR16                      *HelpString;
   EFI_STRING_ID               HelpToken;
   UINT16                      *TempStr;
@@ -203,7 +209,7 @@ CallBootManager (
   EFI_IFR_GUID_LABEL          *EndLabel;
 
   gOption = NULL;
-  InitializeListHead (&BdsBootOptionList);
+  InitializeListHead (&mBootOptionsList);
 
   //
   // Connect all prior to entering the platform setup menu.
@@ -212,14 +218,8 @@ CallBootManager (
     BdsLibConnectAllDriversToAllControllers ();
     gConnectAllHappened = TRUE;
   }
-  //
-  // BugBug: Here we can not remove the legacy refresh macro, so we need
-  // get the boot order every time from "BootOrder" variable.
-  // Recreate the boot option list base on the BootOrder variable
-  //
-  BdsLibEnumerateAllBootOption (&BdsBootOptionList);
 
-  mBootOptionsList  = &BdsBootOptionList;
+  BdsLibEnumerateAllBootOption (&mBootOptionsList);
 
   HiiHandle = gBootManagerPrivate.HiiHandle;
 
@@ -248,7 +248,7 @@ CallBootManager (
 
   mKeyInput = 0;
 
-  for (Link = BdsBootOptionList.ForwardLink; Link != &BdsBootOptionList; Link = Link->ForwardLink) {
+  for (Link = GetFirstNode (&mBootOptionsList); !IsNull (&mBootOptionsList, Link); Link = GetNextNode (&mBootOptionsList, Link)) {
     Option = CR (Link, BDS_COMMON_OPTION, Link, BDS_LOAD_OPTION_SIGNATURE);
 
     //
