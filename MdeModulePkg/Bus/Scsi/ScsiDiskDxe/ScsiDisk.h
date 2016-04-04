@@ -29,6 +29,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/UefiDriverEntryPoint.h>
 #include <Library/UefiLib.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/MemoryAllocationLib.h>
 #include <Library/UefiScsiLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 
@@ -36,7 +37,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #define IS_DEVICE_FIXED(a)        (a)->FixedDevice ? 1 : 0
 
-#define SCSI_DISK_DEV_SIGNATURE EFI_SIGNATURE_32 ('s', 'c', 'd', 'k')
+#define SCSI_DISK_DEV_SIGNATURE SIGNATURE_32 ('s', 'c', 'd', 'k')
 
 typedef struct {
   UINT32                    Signature;

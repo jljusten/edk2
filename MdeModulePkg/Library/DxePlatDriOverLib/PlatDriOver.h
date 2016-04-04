@@ -19,9 +19,7 @@
 
 #include <Protocol/FirmwareVolume2.h>
 #include <Protocol/LoadedImage.h>
-#include <Protocol/PlatformDriverOverride.h>
 #include <Protocol/DevicePath.h>
-#include <Protocol/DriverBinding.h>
 #include <Protocol/BusSpecificDriverOverride.h>
 
 #include <Library/BaseLib.h>
@@ -37,9 +35,10 @@
 #include <Library/PlatDriOverLib.h>
 
 #include <Guid/OverrideVariable.h>
+#include <VariableFormat.h>
 
 
-#define PLATFORM_OVERRIDE_ITEM_SIGNATURE      EFI_SIGNATURE_32('p','d','o','i')
+#define PLATFORM_OVERRIDE_ITEM_SIGNATURE      SIGNATURE_32('p','d','o','i')
  typedef struct _PLATFORM_OVERRIDE_ITEM {
   UINTN                                 Signature;
   LIST_ENTRY                            Link;
@@ -52,7 +51,7 @@
   EFI_HANDLE                            LastReturnedImageHandle;
 } PLATFORM_OVERRIDE_ITEM;
 
-#define DRIVER_IMAGE_INFO_SIGNATURE           EFI_SIGNATURE_32('p','d','i','i')
+#define DRIVER_IMAGE_INFO_SIGNATURE           SIGNATURE_32('p','d','i','i')
 typedef struct _DRIVER_IMAGE_INFO {
   UINTN                                 Signature;
   LIST_ENTRY                            Link;
@@ -62,7 +61,7 @@ typedef struct _DRIVER_IMAGE_INFO {
   BOOLEAN                               UnStartable;
 } DRIVER_IMAGE_INFO;
 
-#define DEVICE_PATH_STACK_ITEM_SIGNATURE      EFI_SIGNATURE_32('d','p','s','i')
+#define DEVICE_PATH_STACK_ITEM_SIGNATURE      SIGNATURE_32('d','p','s','i')
 typedef struct _DEVICE_PATH_STACK_ITEM{
   UINTN                                 Signature;
   LIST_ENTRY                            Link;

@@ -20,7 +20,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <PiDxe.h>
 
-#include <Protocol/PciRootBridgeIo.h>
 #include <Guid/SystemNvDataGuid.h>
 #include <Protocol/FaultTolerantWriteLite.h>
 #include <Protocol/FirmwareVolumeBlock.h>
@@ -67,18 +66,8 @@ typedef struct {
   //
 } EFI_FTW_LITE_RECORD;
 
-#define FTW_LITE_DEVICE_SIGNATURE EFI_SIGNATURE_32 ('F', 'T', 'W', 'L')
+#define FTW_LITE_DEVICE_SIGNATURE SIGNATURE_32 ('F', 'T', 'W', 'L')
 
-//
-// MACRO for Block size.
-// Flash Erasing will do in block granularity.
-//
-#ifdef FV_BLOCK_SIZE
-#define FTW_BLOCK_SIZE  FV_BLOCK_SIZE
-#else
-#define FV_BLOCK_SIZE   0x10000
-#define FTW_BLOCK_SIZE  FV_BLOCK_SIZE
-#endif
 //
 // MACRO for FTW WORK SPACE Base & Size
 //
@@ -96,9 +85,7 @@ typedef struct {
 //
 // MACRO for FTW header and record
 //
-#define FTW_WORKING_QUEUE_SIZE  (FTW_WORK_SPACE_SIZE - sizeof (EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER))
 #define FTW_LITE_RECORD_SIZE    (sizeof (EFI_FTW_LITE_RECORD))
-#define WRITE_TOTAL_SIZE        FTW_LITE_RECORD_SIZE
 
 //
 // EFI Fault tolerant protocol private data structure
@@ -138,9 +125,9 @@ typedef struct {
   This function is the entry point of the Fault Tolerant Write driver.
 
 
-  @param ImageHandle     EFI_HANDLE: A handle for the image that is initializing
+  @param ImageHandle     A handle for the image that is initializing
                          this driver
-  @param SystemTable     EFI_SYSTEM_TABLE: A pointer to the EFI system table
+  @param SystemTable     A pointer to the EFI system table
 
   @retval  EFI_SUCCESS            FTW has finished the initialization
   @retval  EFI_ABORTED            FTW initialization error
@@ -252,7 +239,7 @@ FtwWriteRecord (
   );
 
 /**
-  To Erase one block. The size is FTW_BLOCK_SIZE
+  To erase the block with the spare block size.
 
 
   @param FtwLiteDevice   Calling context
@@ -352,26 +339,6 @@ IsInWorkingBlock (
   );
 
 /**
-
-  Check whether the block is a boot block.
-
-
-  @param FtwLiteDevice   Calling context
-  @param FvBlock         Fvb protocol instance
-  @param Lba             Lba value
-
-  @retval FALSE           This is a boot block.
-  @retval TRUE            This is not a boot block.
-
-**/
-BOOLEAN
-IsBootBlock (
-  EFI_FTW_LITE_DEVICE                 *FtwLiteDevice,
-  EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL  *FvBlock,
-  EFI_LBA                             Lba
-  );
-
-/**
   Copy the content of spare block to a target block. Size is FTW_BLOCK_SIZE.
   Spare block is accessed by FTW backup FVB protocol interface. LBA is
   FtwLiteDevice->FtwSpareLba.
@@ -416,27 +383,6 @@ FlushSpareBlockToTargetBlock (
 **/
 EFI_STATUS
 FlushSpareBlockToWorkingBlock (
-  EFI_FTW_LITE_DEVICE                 *FtwLiteDevice
-  );
-
-/**
-  Copy the content of spare block to a boot block. Size is FTW_BLOCK_SIZE.
-  Spare block is accessed by FTW backup FVB protocol interface. LBA is
-  FtwLiteDevice->FtwSpareLba.
-  Boot block is accessed by BootFvb protocol interface. LBA is 0.
-
-
-  @param FtwLiteDevice   The private data of FTW_LITE driver
-
-  @retval  EFI_SUCCESS               Spare block content is copied to boot block
-  @retval  EFI_INVALID_PARAMETER     Input parameter error
-  @retval  EFI_OUT_OF_RESOURCES      Allocate memory error
-  @retval  EFI_ABORTED               The function could not complete successfully
-                                     Notes:
-
-**/
-EFI_STATUS
-FlushSpareBlockToBootBlock (
   EFI_FTW_LITE_DEVICE                 *FtwLiteDevice
   );
 

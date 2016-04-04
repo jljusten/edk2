@@ -115,8 +115,8 @@ TcpRcvWinNow (
 **/
 UINT16
 TcpComputeWnd (
-  IN TCP_CB  *Tcb,
-  IN BOOLEAN Syn
+  IN OUT TCP_CB  *Tcb,
+  IN     BOOLEAN Syn
   )
 {
   UINT32  Wnd;
@@ -286,8 +286,8 @@ SetPersistTimer:
 **/
 INTN
 TcpTransmitSegment (
-  IN TCP_CB  *Tcb,
-  IN NET_BUF *Nbuf
+  IN OUT TCP_CB  *Tcb,
+  IN     NET_BUF *Nbuf
   )
 {
   UINT16    Len;
@@ -721,8 +721,8 @@ OnError:
 **/
 INTN
 TcpToSendData (
-  IN TCP_CB *Tcb,
-  IN INTN Force
+  IN OUT TCP_CB *Tcb,
+  IN     INTN Force
   )
 {
   UINT32    Len;
@@ -832,9 +832,6 @@ SEND_AGAIN:
   }
 
   if (TcpTransmitSegment (Tcb, Nbuf) != 0) {
-    //
-    // TODO: double check this
-    //
     NetbufTrim (Nbuf, (Nbuf->Tcp->HeadLen << 2), NET_BUF_HEAD);
     Nbuf->Tcp = NULL;
 
@@ -912,7 +909,7 @@ OnError:
 **/
 VOID
 TcpSendAck (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   )
 {
   NET_BUF *Nbuf;
@@ -951,7 +948,7 @@ TcpSendAck (
 **/
 INTN
 TcpSendZeroProbe (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   )
 {
   NET_BUF *Nbuf;
@@ -990,7 +987,7 @@ TcpSendZeroProbe (
 **/
 VOID
 TcpToSendAck (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   )
 {
   UINT32 TcpNow;

@@ -41,7 +41,7 @@ SockTcpDataToRcv (
 **/
 VOID
 SockProcessSndToken (
-  IN SOCKET *Sock
+  IN OUT SOCKET *Sock
   );
 
 /**
@@ -83,7 +83,6 @@ SockTcpDataToRcv (
   UINT32        DataLen;
   TCP_RSV_DATA  *TcpRsvData;
   BOOLEAN       Urg;
-
   ASSERT ((SockBuffer != NULL) && (IsUrg != NULL) && (BufLen > 0));
 
   RcvBufEntry = SockBufFirst (SockBuffer);
@@ -149,7 +148,7 @@ SockTcpDataToRcv (
   @param  Sock                  Pointer to the socket.
   @param  TcpRxData             Pointer to the application provided receive buffer.
   @param  RcvdBytes             The maximum length of the data can be copied.
-  @param  IsOOB                 If TURE the data is OOB, else the data is normal.
+  @param  IsOOB                 If TURE the data is OOB, FALSE the data is normal.
 
 **/
 VOID
@@ -205,8 +204,8 @@ SockSetTcpRxData (
 **/
 UINT32
 SockProcessRcvToken (
-  IN SOCKET        *Sock,
-  IN SOCK_IO_TOKEN *RcvToken
+  IN     SOCKET        *Sock,
+  IN OUT SOCK_IO_TOKEN *RcvToken
   )
 {
   UINT32                 TokenRcvdBytes;
@@ -232,7 +231,6 @@ SockProcessRcvToken (
   SockSetTcpRxData (Sock, RxData, TokenRcvdBytes, IsUrg);
 
   NetbufQueTrim (Sock->RcvBuffer.DataQueue, TokenRcvdBytes);
-//  SOCK_TRIM_RCV_BUFF (Sock, TokenRcvdBytes);
   SIGNAL_TOKEN (&(RcvToken->Token), EFI_SUCCESS);
 
   return TokenRcvdBytes;
@@ -244,7 +242,7 @@ SockProcessRcvToken (
   the buffer to socket send buffer,then try to send it.
 
   @param  Sock                  Pointer to the socket.
-  @param  TcpTxData             Pointer to the tcp txdata.
+  @param  TcpTxData             Pointer to the application provided send buffer.
 
   @retval EFI_SUCCESS           The operation is completed successfully.
   @retval EFI_OUT_OF_RESOURCES  Failed due to resource limit.
@@ -360,7 +358,7 @@ SockFlushPendingToken (
 **/
 VOID
 SockWakeConnToken (
-  IN SOCKET *Sock
+  IN OUT SOCKET *Sock
   )
 {
   ASSERT (Sock->ConnectionToken != NULL);
@@ -384,7 +382,7 @@ SockWakeConnToken (
 **/
 VOID
 SockWakeListenToken (
-  IN SOCKET *Sock
+  IN OUT SOCKET *Sock
   )
 {
   SOCKET                *Parent;
@@ -472,7 +470,7 @@ SockWakeRcvToken (
 **/
 VOID
 SockProcessSndToken (
-  IN SOCKET *Sock
+  IN OUT SOCKET *Sock
   )
 {
   UINT32                  FreeSpace;
@@ -545,7 +543,7 @@ OnError:
 
   @param  SockInitData          Pointer to the initial data of the socket.
 
-  @return Pointer to the newly created socket.
+  @return Pointer to the newly created socket, return NULL when exception occured.
 
 **/
 SOCKET *
@@ -714,7 +712,7 @@ OnError:
 **/
 VOID
 SockDestroy (
-  IN SOCKET *Sock
+  IN OUT SOCKET *Sock
   )
 {
   VOID        *SockProtocol;
@@ -806,14 +804,14 @@ FreeSock:
 
 
 /**
-  Flush the socket.
+  Flush the sndBuffer and rcvBuffer of socket.
 
   @param  Sock                  Pointer to the socket.
 
 **/
 VOID
 SockConnFlush (
-  IN SOCKET *Sock
+  IN OUT SOCKET *Sock
   )
 {
   SOCKET  *Child;
@@ -879,8 +877,8 @@ SockConnFlush (
 **/
 VOID
 SockSetState (
-  IN SOCKET     *Sock,
-  IN SOCK_STATE State
+  IN OUT SOCKET     *Sock,
+  IN     SOCK_STATE State
   )
 {
   Sock->State = State;
@@ -934,7 +932,9 @@ SockClone (
 
 /**
   Called by the low layer protocol to indicate the socket a connection is 
-  established. This function just changes the socket's state to SO_CONNECTED 
+  established. 
+  
+  This function just changes the socket's state to SO_CONNECTED 
   and signals the token used for connection establishment.
 
   @param  Sock                  Pointer to the socket associated with the
@@ -961,16 +961,18 @@ SockConnEstablished (
 
 
 /**
-  Called by the low layer protocol to indicate the connection is closed; This 
-  function flushes the socket, sets the state to SO_CLOSED and signals the close 
-  token.
+  Called by the low layer protocol to indicate the connection is closed.
+  
+  This function flushes the socket, sets the state to SO_CLOSED and signals 
+  the close token.
 
   @param  Sock                  Pointer to the socket associated with the closed
                                 connection.
+                                
 **/
 VOID
 SockConnClosed (
-  IN SOCKET *Sock
+  IN OUT SOCKET *Sock
   )
 {
   if (Sock->CloseToken != NULL) {
@@ -989,7 +991,8 @@ SockConnClosed (
 
 
 /**
-  Called by low layer protocol to indicate that some data is sent or processed; 
+  Called by low layer protocol to indicate that some data is sent or processed.
+   
   This function trims the sent data in the socket send buffer, signals the data 
   token if proper.
 
@@ -1078,7 +1081,8 @@ SockGetDataToSend (
 
 
 /**
-  Called by the low layer protocol to deliver received data to socket layer; 
+  Called by the low layer protocol to deliver received data to socket layer.
+  
   This function will append the data to the socket receive buffer, set ther 
   urgent data length and then check if any receive token can be signaled.
 
@@ -1090,9 +1094,9 @@ SockGetDataToSend (
 **/
 VOID
 SockDataRcvd (
-  IN SOCKET    *Sock,
-  IN NET_BUF   *NetBuffer,
-  IN UINT32    UrgLen
+  IN     SOCKET    *Sock,
+  IN OUT NET_BUF   *NetBuffer,
+  IN     UINT32    UrgLen
   )
 {
   ASSERT ((Sock != NULL) && (Sock->RcvBuffer.DataQueue != NULL) &&
@@ -1157,8 +1161,8 @@ SockGetFreeSpace (
 **/
 VOID
 SockRcvdErr (
-  IN SOCKET       *Sock,
-  IN EFI_STATUS   Error
+  IN OUT SOCKET       *Sock,
+  IN     EFI_STATUS   Error
   )
 {
   SOCK_TOKEN  *SockToken;
@@ -1184,18 +1188,18 @@ SockRcvdErr (
 
 
 /**
-  Called by the low layer protocol to indicate that there
-  will be no more data from the communication peer; This
-  function set the socket's state to SO_NO_MORE_DATA and
-  signal all queued IO tokens with the error status
-  EFI_CONNECTION_FIN.
+  Called by the low layer protocol to indicate that there will be no more data 
+  from the communication peer.
+  
+  This function set the socket's state to SO_NO_MORE_DATA and signal all queued 
+  IO tokens with the error status EFI_CONNECTION_FIN.
 
   @param  Sock                  Pointer to the socket.
 
 **/
 VOID
 SockNoMoreData (
-  IN SOCKET *Sock
+  IN OUT SOCKET *Sock
   )
 {
   EFI_STATUS  Err;

@@ -1,30 +1,31 @@
 /** @file
+  Routines used to operate the Ip4 configure variable
 
-Copyright (c) 2006 - 2008, Intel Corporation                                                         
+Copyright (c) 2006 - 2008, Intel Corporation.<BR>                                                         
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
-which accompanies this distribution.  The full text of the license may be found at
+which accompanies this distribution.  The full text of the license may be found at<BR>
 http://opensource.org/licenses/bsd-license.php
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  NicIp4Variable.h
-
-Abstract:
-
-  Routines used to operate the Ip4 configure variable
-
 
 **/
 
 #ifndef _NIC_IP4_VARIABLE_H_
 #define _NIC_IP4_VARIABLE_H_
 
+#include <Uefi.h>
+
+#include <Library/NetLib.h>
+#include <Library/DebugLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/UefiBootServicesTableLib.h>
+#include <Library/UefiRuntimeServicesTableLib.h>
 
 #include <Protocol/NicIp4Config.h>
+
 
 //
 // Return the size of NIC_IP4_CONFIG_INFO and EFI_IP4_IPCONFIG_DATA.
@@ -83,7 +84,7 @@ Ip4ConfigReadVariable (
 **/
 EFI_STATUS
 Ip4ConfigWriteVariable (
-  IN IP4_CONFIG_VARIABLE    *Config       OPTIONAL
+  IN IP4_CONFIG_VARIABLE    *Config        OPTIONAL
   );
 
 /**
@@ -96,7 +97,7 @@ Ip4ConfigWriteVariable (
   @param  NicAddr      The interface address to check
 
   @return The point to the NIC's IP4 configure info if it is found
-  @return in the IP4 variable, otherwise NULL.
+          in the IP4 variable, otherwise NULL.
 
 **/
 NIC_IP4_CONFIG_INFO *
@@ -115,9 +116,9 @@ Ip4ConfigFindNicVariable (
   @param  Config       The new configuration parameter (NULL to remove the old)
 
   @return The new IP4_CONFIG_VARIABLE variable if the new variable has at
-  @return least one NIC configure and no EFI_OUT_OF_RESOURCES failure.
-  @return Return NULL either because failed to locate memory for new variable
-  @return or the only NIC configure is removed from the Variable.
+          least one NIC configure and no EFI_OUT_OF_RESOURCES failure.
+          Return NULL either because failed to locate memory for new variable
+          or the only NIC configure is removed from the Variable.
 
 **/
 IP4_CONFIG_VARIABLE *
@@ -127,9 +128,18 @@ Ip4ConfigModifyVariable (
   IN NIC_IP4_CONFIG_INFO    *Config       OPTIONAL
   );
 
+/**
+  Fix the RouteTable pointer in an EFI_IP4_IPCONFIG_DATA structure. 
+  
+  The pointer is set to be immediately follow the ConfigData if there're entries
+  in the RouteTable. Otherwise it is set to NULL.
+  
+  @param  ConfigData     The IP4 IP configure data.
+
+**/
 VOID
 Ip4ConfigFixRouteTablePointer (
-  IN EFI_IP4_IPCONFIG_DATA  *ConfigData
+  IN OUT EFI_IP4_IPCONFIG_DATA  *ConfigData
   );
 
 #endif

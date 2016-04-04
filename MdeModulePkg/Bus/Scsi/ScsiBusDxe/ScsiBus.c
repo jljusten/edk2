@@ -429,11 +429,11 @@ SCSIBusDriverBindingStart (
   }
   FreePool (ScsiTargetId);
   return EFI_SUCCESS;
-  
+
 ErrorExit:
   
   if (ScsiBusDev != NULL) {
-    gBS->FreePool (ScsiBusDev);
+    FreePool (ScsiBusDev);
   }
   
   if (ExtScsiSupport) {
@@ -552,7 +552,7 @@ SCSIBusDriverBindingStop (
            This->DriverBindingHandle,
            Controller
            );
-    gBS->FreePool (ScsiBusDev);
+    FreePool (ScsiBusDev);
     return EFI_SUCCESS;
   }
 
@@ -624,7 +624,7 @@ SCSIBusDriverBindingStop (
                );
       }
     } else {
-      gBS->FreePool (ScsiIoDevice);
+      FreePool (ScsiIoDevice);
     }
   }
 
@@ -854,13 +854,9 @@ ScsiExecuteSCSICommand (
                                           );
   } else {
 
-    Status = gBS->AllocatePool (
-                     EfiBootServicesData,
-                     sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET),
-                     (VOID**)&mWorkingBuffer
-                     );
+    mWorkingBuffer = AllocatePool (sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET));
 
-    if (EFI_ERROR (Status)) {
+    if (mWorkingBuffer == NULL) {
       return EFI_DEVICE_ERROR;
     }
 
@@ -900,7 +896,7 @@ ScsiExecuteSCSICommand (
                                           );
 
       if (EFI_ERROR(Status)) {
-        gBS->FreePool(mWorkingBuffer);
+        FreePool(mWorkingBuffer);
         gBS->CloseEvent(PacketEvent);
         return Status;
       }
@@ -997,6 +993,7 @@ ScsiScanCreateDevice (
   //
   // Set Device Path
   //
+  ScsiDevicePath = NULL;
   if (ScsiIoDevice->ExtScsiSupport){
     Status = ScsiIoDevice->ExtScsiPassThru->BuildDevicePath (
                                           ScsiIoDevice->ExtScsiPassThru,
@@ -1030,10 +1027,10 @@ ScsiScanCreateDevice (
   // ScsiPassThru->BuildDevicePath() function; It is no longer used
   // after EfiAppendDevicePathNode,so free the memory it occupies.
   //
-  gBS->FreePool (ScsiDevicePath);
+  FreePool (ScsiDevicePath);
 
   if (ScsiIoDevice->DevicePath == NULL) {
-    gBS->FreePool (ScsiIoDevice);
+    FreePool (ScsiIoDevice);
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -1046,7 +1043,7 @@ ScsiScanCreateDevice (
                   NULL
                   );
   if (EFI_ERROR (Status)) {
-    gBS->FreePool (ScsiIoDevice);
+    FreePool (ScsiIoDevice);
     return EFI_OUT_OF_RESOURCES;
   } else {
     if (ScsiBusDev->ExtScsiSupport) {

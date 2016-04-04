@@ -1,6 +1,7 @@
 /** @file
-
-Copyright (c) 2005 - 2007, Intel Corporation
+  Network library.
+  
+Copyright (c) 2005 - 2007, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -8,26 +9,15 @@ http://opensource.org/licenses/bsd-license.php
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  NetLib.c
-
-Abstract:
-
-
-
 **/
 
-#include <PiDxe.h>
+#include <Uefi.h>
 
 #include <Protocol/ServiceBinding.h>
 #include <Protocol/SimpleNetwork.h>
-#include <Protocol/LoadedImage.h>
 #include <Protocol/NicIp4Config.h>
 #include <Protocol/ComponentName.h>
 #include <Protocol/ComponentName2.h>
-#include <Protocol/Ip4.h>
 #include <Protocol/Dpc.h>
 
 #include <Library/NetLib.h>
@@ -36,7 +26,6 @@ Abstract:
 #include <Library/BaseMemoryLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
-#include <Library/UefiLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/DevicePathLib.h>
 
@@ -89,15 +78,16 @@ IP4_ADDR  gIp4AllMasks[IP4_MASK_NUM] = {
 EFI_IPv4_ADDRESS  mZeroIp4Addr = {{0, 0, 0, 0}};
 
 /**
-  Return the length of the mask. If the mask is invalid,
-  return the invalid length 33, which is IP4_MASK_NUM.
+  Return the length of the mask. 
+  
+  Return the length of the mask, the correct value is from 0 to 32.
+  If the mask is invalid, return the invalid length 33, which is IP4_MASK_NUM.
   NetMask is in the host byte order.
 
-  @param  NetMask               The netmask to get the length from
+  @param[in]  NetMask              The netmask to get the length from.
 
-  @return The length of the netmask, IP4_MASK_NUM if the mask isn't
-  @return supported.
-
+  @return The length of the netmask, IP4_MASK_NUM if the mask is invalid.
+  
 **/
 INTN
 EFIAPI
@@ -119,12 +109,24 @@ NetGetMaskLength (
 
 
 /**
-  Return the class of the address, such as class a, b, c.
+  Return the class of the IP address, such as class A, B, C.
   Addr is in host byte order.
+  
+  The address of class A  starts with 0.
+  If the address belong to class A, return IP4_ADDR_CLASSA.
+  The address of class B  starts with 10. 
+  If the address belong to class B, return IP4_ADDR_CLASSB.
+  The address of class C  starts with 110. 
+  If the address belong to class C, return IP4_ADDR_CLASSC.
+  The address of class D  starts with 1110. 
+  If the address belong to class D, return IP4_ADDR_CLASSD.
+  The address of class E  starts with 1111.
+  If the address belong to class E, return IP4_ADDR_CLASSE.
 
-  @param  Addr                  The address to get the class from
+  
+  @param[in]   Addr                  The address to get the class from.
 
-  @return IP address class, such as IP4_ADDR_CLASSA
+  @return IP address class, such as IP4_ADDR_CLASSA.
 
 **/
 INTN
@@ -158,13 +160,17 @@ NetGetIpClass (
 
 /**
   Check whether the IP is a valid unicast address according to
-  the netmask. If NetMask is zero, use the IP address's class to
-  get the default mask.
+  the netmask. If NetMask is zero, use the IP address's class to get the default mask.
+  
+  If Ip is 0, IP is not a valid unicast address.
+  Class D address is used for multicasting and class E address is reserved for future. If Ip
+  belongs to class D or class E, IP is not a valid unicast address. 
+  If all bits of the host address of IP are 0 or 1, IP is also not a valid unicast address.
 
-  @param  Ip                    The IP to check againist
-  @param  NetMask               The mask of the IP
+  @param[in]  Ip                    The IP to check against.
+  @param[in]  NetMask               The mask of the IP.
 
-  @return TRUE if IP is a valid unicast address on the network, otherwise FALSE
+  @return TRUE if IP is a valid unicast address on the network, otherwise FALSE.
 
 **/
 BOOLEAN
@@ -196,9 +202,11 @@ Ip4IsUnicast (
 
 /**
   Initialize a random seed using current time.
-
-  None
-
+  
+  Get current time first. Then initialize a random seed based on some basic 
+  mathematics operation on the hour, day, minute, second, nanosecond and year 
+  of the current time.
+  
   @return The random seed initialized with current time.
 
 **/
@@ -221,10 +229,12 @@ NetRandomInitSeed (
 
 
 /**
-  Extract a UINT32 from a byte stream, then convert it to host
-  byte order. Use this function to avoid alignment error.
+  Extract a UINT32 from a byte stream.
+  
+  Copy a UINT32 from a byte stream, then converts it from Network 
+  byte order to host byte order. Use this function to avoid alignment error.
 
-  @param  Buf                   The buffer to extract the UINT32.
+  @param[in]  Buf                 The buffer to extract the UINT32.
 
   @return The UINT32 extracted.
 
@@ -243,20 +253,20 @@ NetGetUint32 (
 
 
 /**
-  Put a UINT32 to the byte stream. Convert it from host byte order
-  to network byte order before putting.
+  Put a UINT32 to the byte stream in network byte order. 
+  
+  Converts a UINT32 from host byte order to network byte order. Then copy it to the 
+  byte stream.
 
-  @param  Buf                   The buffer to put the UINT32
-  @param  Data                  The data to put
-
-  @return None
-
+  @param[in, out]  Buf          The buffer to put the UINT32.
+  @param[in]      Data          The data to put.
+  
 **/
 VOID
 EFIAPI
 NetPutUint32 (
-  IN UINT8                  *Buf,
-  IN UINT32                 Data
+  IN OUT UINT8                 *Buf,
+  IN     UINT32                Data
   )
 {
   Data = HTONL (Data);
@@ -265,17 +275,27 @@ NetPutUint32 (
 
 
 /**
-  Remove the first entry on the list
+  Remove the first node entry on the list, and return the removed node entry.
+  
+  Removes the first node Entry from a doubly linked list. It is up to the caller of
+  this function to release the memory used by the first node if that is required. On
+  exit, the removed node is returned. 
 
-  @param  Head                  The list header
+  If Head is NULL, then ASSERT().
+  If Head was not initialized, then ASSERT().
+  If PcdMaximumLinkedListLength is not zero, and the number of nodes in the
+  linked list including the head node is greater than or equal to PcdMaximumLinkedListLength,
+  then ASSERT().    
 
-  @return The entry that is removed from the list, NULL if the list is empty.
+  @param[in, out]  Head                  The list header.
+
+  @return The first node entry that is removed from the list, NULL if the list is empty.
 
 **/
 LIST_ENTRY *
 EFIAPI
 NetListRemoveHead (
-  LIST_ENTRY            *Head
+  IN OUT LIST_ENTRY            *Head
   )
 {
   LIST_ENTRY            *First;
@@ -300,17 +320,27 @@ NetListRemoveHead (
 
 
 /**
-  Remove the last entry on the list
+  Remove the last node entry on the list and and return the removed node entry.
 
-  @param  Head                  The list head
+  Removes the last node entry from a doubly linked list. It is up to the caller of
+  this function to release the memory used by the first node if that is required. On
+  exit, the removed node is returned. 
 
-  @return The entry that is removed from the list, NULL if the list is empty.
+  If Head is NULL, then ASSERT().
+  If Head was not initialized, then ASSERT().
+  If PcdMaximumLinkedListLength is not zero, and the number of nodes in the
+  linked list including the head node is greater than or equal to PcdMaximumLinkedListLength,
+  then ASSERT(). 
+  
+  @param[in, out]  Head                  The list head.
+
+  @return The last node entry that is removed from the list, NULL if the list is empty.
 
 **/
 LIST_ENTRY *
 EFIAPI
 NetListRemoveTail (
-  LIST_ENTRY            *Head
+  IN OUT LIST_ENTRY            *Head
   )
 {
   LIST_ENTRY            *Last;
@@ -335,19 +365,20 @@ NetListRemoveTail (
 
 
 /**
-  Insert the NewEntry after the PrevEntry
-
-  @param  PrevEntry             The previous entry to insert after
-  @param  NewEntry              The new entry to insert
-
-  @return None
+  Insert a new node entry after a designated node entry of a doubly linked list.
+  
+  Inserts a new node entry donated by NewEntry after the node entry donated by PrevEntry
+  of the doubly linked list.
+ 
+  @param[in, out]  PrevEntry             The previous entry to insert after.
+  @param[in, out]  NewEntry              The new entry to insert.
 
 **/
 VOID
 EFIAPI
 NetListInsertAfter (
-  IN LIST_ENTRY         *PrevEntry,
-  IN LIST_ENTRY         *NewEntry
+  IN OUT LIST_ENTRY         *PrevEntry,
+  IN OUT LIST_ENTRY         *NewEntry
   )
 {
   NewEntry->BackLink                = PrevEntry;
@@ -358,19 +389,20 @@ NetListInsertAfter (
 
 
 /**
-  Insert the NewEntry before the PostEntry
-
-  @param  PostEntry             The entry to insert before
-  @param  NewEntry              The new entry to insert
-
-  @return None
+  Insert a new node entry before a designated node entry of a doubly linked list.
+  
+  Inserts a new node entry donated by NewEntry after the node entry donated by PostEntry
+  of the doubly linked list.
+ 
+  @param[in, out]  PostEntry             The entry to insert before.
+  @param[in, out]  NewEntry              The new entry to insert.
 
 **/
 VOID
 EFIAPI
 NetListInsertBefore (
-  IN LIST_ENTRY     *PostEntry,
-  IN LIST_ENTRY     *NewEntry
+  IN OUT LIST_ENTRY     *PostEntry,
+  IN OUT LIST_ENTRY     *NewEntry
   )
 {
   NewEntry->ForwardLink             = PostEntry;
@@ -382,16 +414,22 @@ NetListInsertBefore (
 
 /**
   Initialize the netmap. Netmap is a reposity to keep the <Key, Value> pairs.
-
-  @param  Map                   The netmap to initialize
-
-  @return None
+ 
+  Initialize the forward and backward links of two head nodes donated by Map->Used 
+  and Map->Recycled of two doubly linked lists.
+  Initializes the count of the <Key, Value> pairs in the netmap to zero.
+   
+  If Map is NULL, then ASSERT().
+  If the address of Map->Used is NULl, then ASSERT().
+  If the address of Map->Recycled is NULl, then ASSERT().
+ 
+  @param[in, out]  Map                   The netmap to initialize.
 
 **/
 VOID
 EFIAPI
 NetMapInit (
-  IN NET_MAP                *Map
+  IN OUT NET_MAP                *Map
   )
 {
   ASSERT (Map != NULL);
@@ -404,16 +442,20 @@ NetMapInit (
 
 /**
   To clean up the netmap, that is, release allocated memories.
-
-  @param  Map                   The netmap to clean up.
-
-  @return None
+  
+  Removes all nodes of the Used doubly linked list and free memory of all related netmap items.
+  Removes all nodes of the Recycled doubly linked list and free memory of all related netmap items.
+  The number of the <Key, Value> pairs in the netmap is set to be zero.
+  
+  If Map is NULL, then ASSERT().
+  
+  @param[in, out]  Map                   The netmap to clean up.
 
 **/
 VOID
 EFIAPI
 NetMapClean (
-  IN NET_MAP                *Map
+  IN OUT NET_MAP            *Map
   )
 {
   NET_MAP_ITEM              *Item;
@@ -445,9 +487,14 @@ NetMapClean (
 
 
 /**
-  Test whether the netmap is empty
-
-  @param  Map                   The net map to test
+  Test whether the netmap is empty and return true if it is.
+  
+  If the number of the <Key, Value> pairs in the netmap is zero, return TRUE.
+   
+  If Map is NULL, then ASSERT().
+ 
+  
+  @param[in]  Map                   The net map to test.
 
   @return TRUE if the netmap is empty, otherwise FALSE.
 
@@ -466,7 +513,7 @@ NetMapIsEmpty (
 /**
   Return the number of the <Key, Value> pairs in the netmap.
 
-  @param  Map                   The netmap to get the entry number
+  @param[in]  Map                   The netmap to get the entry number.
 
   @return The entry number in the netmap.
 
@@ -482,17 +529,24 @@ NetMapGetCount (
 
 
 /**
-  Allocate an item for the netmap. It will try to allocate
-  a batch of items and return one.
+  Return one allocated item. 
+  
+  If the Recycled doubly linked list of the netmap is empty, it will try to allocate 
+  a batch of items if there are enough resources and add corresponding nodes to the begining
+  of the Recycled doubly linked list of the netmap. Otherwise, it will directly remove
+  the fist node entry of the Recycled doubly linked list and return the corresponding item.
+  
+  If Map is NULL, then ASSERT().
+  
+  @param[in, out]  Map          The netmap to allocate item for.
 
-  @param  Map                   The netmap to allocate item for
-
-  @return The allocated item or NULL
+  @return                       The allocated item. If NULL, the
+                                allocation failed due to resource limit.
 
 **/
 NET_MAP_ITEM *
 NetMapAllocItem (
-  IN NET_MAP                *Map
+  IN OUT NET_MAP            *Map
   )
 {
   NET_MAP_ITEM              *Item;
@@ -528,19 +582,25 @@ NetMapAllocItem (
 
 /**
   Allocate an item to save the <Key, Value> pair to the head of the netmap.
+  
+  Allocate an item to save the <Key, Value> pair and add corresponding node entry
+  to the beginning of the Used doubly linked list. The number of the <Key, Value> 
+  pairs in the netmap increase by 1.
 
-  @param  Map                   The netmap to insert into
-  @param  Key                   The user's key
-  @param  Value                 The user's value for the key
+  If Map is NULL, then ASSERT().
+  
+  @param[in, out]  Map                   The netmap to insert into.
+  @param[in]       Key                   The user's key.
+  @param[in]       Value                 The user's value for the key.
 
-  @retval EFI_OUT_OF_RESOURCES  Failed to allocate the memory for the item
-  @retval EFI_SUCCESS           The item is inserted to the head
+  @retval EFI_OUT_OF_RESOURCES  Failed to allocate the memory for the item.
+  @retval EFI_SUCCESS           The item is inserted to the head.
 
 **/
 EFI_STATUS
 EFIAPI
 NetMapInsertHead (
-  IN NET_MAP                *Map,
+  IN OUT NET_MAP            *Map,
   IN VOID                   *Key,
   IN VOID                   *Value    OPTIONAL
   )
@@ -567,18 +627,24 @@ NetMapInsertHead (
 /**
   Allocate an item to save the <Key, Value> pair to the tail of the netmap.
 
-  @param  Map                   The netmap to insert into
-  @param  Key                   The user's key
-  @param  Value                 The user's value for the key
+  Allocate an item to save the <Key, Value> pair and add corresponding node entry
+  to the tail of the Used doubly linked list. The number of the <Key, Value> 
+  pairs in the netmap increase by 1.
 
-  @retval EFI_OUT_OF_RESOURCES  Failed to allocate the memory for the item
-  @retval EFI_SUCCESS           The item is inserted to the tail
+  If Map is NULL, then ASSERT().
+  
+  @param[in, out]  Map                   The netmap to insert into.
+  @param[in]       Key                   The user's key.
+  @param[in]       Value                 The user's value for the key.
+
+  @retval EFI_OUT_OF_RESOURCES  Failed to allocate the memory for the item.
+  @retval EFI_SUCCESS           The item is inserted to the tail.
 
 **/
 EFI_STATUS
 EFIAPI
 NetMapInsertTail (
-  IN NET_MAP                *Map,
+  IN OUT NET_MAP            *Map,
   IN VOID                   *Key,
   IN VOID                   *Value    OPTIONAL
   )
@@ -604,10 +670,10 @@ NetMapInsertTail (
 
 
 /**
-  Check whther the item is in the Map
+  Check whether the item is in the Map and return TRUE if it is.
 
-  @param  Map                   The netmap to search within
-  @param  Item                  The item to search
+  @param[in]  Map                   The netmap to search within.
+  @param[in]  Item                  The item to search.
 
   @return TRUE if the item is in the netmap, otherwise FALSE.
 
@@ -631,10 +697,15 @@ NetItemInMap (
 
 
 /**
-  Find the key in the netmap
+  Find the key in the netmap and returns the point to the item contains the Key.
+  
+  Iterate the Used doubly linked list of the netmap to get every item. Compare the key of every 
+  item with the key to search. It returns the point to the item contains the Key if found.
 
-  @param  Map                   The netmap to search within
-  @param  Key                   The key to search
+  If Map is NULL, then ASSERT().
+  
+  @param[in]  Map                   The netmap to search within.
+  @param[in]  Key                   The key to search.
 
   @return The point to the item contains the Key, or NULL if Key isn't in the map.
 
@@ -664,21 +735,30 @@ NetMapFindKey (
 
 
 /**
-  Remove the item from the netmap
+  Remove the node entry of the item from the netmap and return the key of the removed item.
+  
+  Remove the node entry of the item from the Used doubly linked list of the netmap. 
+  The number of the <Key, Value> pairs in the netmap decrease by 1. Then add the node 
+  entry of the item to the Recycled doubly linked list of the netmap. If Value is not NULL,
+  Value will point to the value of the item. It returns the key of the removed item.
+  
+  If Map is NULL, then ASSERT().
+  If Item is NULL, then ASSERT().
+  if item in not in the netmap, then ASSERT().
+  
+  @param[in, out]  Map                   The netmap to remove the item from.
+  @param[in, out]  Item                  The item to remove.
+  @param[out]      Value                 The variable to receive the value if not NULL.
 
-  @param  Map                   The netmap to remove the item from
-  @param  Item                  The item to remove
-  @param  Value                 The variable to receive the value if not NULL
-
-  @return The key of the removed item.
+  @return                                The key of the removed item.
 
 **/
 VOID *
 EFIAPI
 NetMapRemoveItem (
-  IN  NET_MAP             *Map,
-  IN  NET_MAP_ITEM        *Item,
-  OUT VOID                **Value           OPTIONAL
+  IN  OUT NET_MAP             *Map,
+  IN  OUT NET_MAP_ITEM        *Item,
+  OUT VOID                    **Value           OPTIONAL
   )
 {
   ASSERT ((Map != NULL) && (Item != NULL));
@@ -697,18 +777,26 @@ NetMapRemoveItem (
 
 
 /**
-  Remove the first entry on the netmap
+  Remove the first node entry on the netmap and return the key of the removed item.
 
-  @param  Map                   The netmap to remove the head from
-  @param  Value                 The variable to receive the value if not NULL
+  Remove the first node entry from the Used doubly linked list of the netmap. 
+  The number of the <Key, Value> pairs in the netmap decrease by 1. Then add the node 
+  entry to the Recycled doubly linked list of the netmap. If parameter Value is not NULL,
+  parameter Value will point to the value of the item. It returns the key of the removed item.
+  
+  If Map is NULL, then ASSERT().
+  If the Used doubly linked list is empty, then ASSERT().
+  
+  @param[in, out]  Map                   The netmap to remove the head from.
+  @param[out]      Value                 The variable to receive the value if not NULL.
 
-  @return The key of the item removed
+  @return                                The key of the item removed.
 
 **/
 VOID *
 EFIAPI
 NetMapRemoveHead (
-  IN  NET_MAP               *Map,
+  IN OUT NET_MAP            *Map,
   OUT VOID                  **Value         OPTIONAL
   )
 {
@@ -734,18 +822,26 @@ NetMapRemoveHead (
 
 
 /**
-  Remove the last entry on the netmap
+  Remove the last node entry on the netmap and return the key of the removed item.
 
-  @param  Map                   The netmap to remove the tail from
-  @param  Value                 The variable to receive the value if not NULL
+  Remove the last node entry from the Used doubly linked list of the netmap. 
+  The number of the <Key, Value> pairs in the netmap decrease by 1. Then add the node 
+  entry to the Recycled doubly linked list of the netmap. If parameter Value is not NULL,
+  parameter Value will point to the value of the item. It returns the key of the removed item.
+  
+  If Map is NULL, then ASSERT().
+  If the Used doubly linked list is empty, then ASSERT().
+  
+  @param[in, out]  Map                   The netmap to remove the tail from.
+  @param[out]      Value                 The variable to receive the value if not NULL.
 
-  @return The key of the item removed
+  @return                                The key of the item removed.
 
 **/
 VOID *
 EFIAPI
 NetMapRemoveTail (
-  IN  NET_MAP               *Map,
+  IN OUT NET_MAP            *Map,
   OUT VOID                  **Value       OPTIONAL
   )
 {
@@ -771,16 +867,22 @@ NetMapRemoveTail (
 
 
 /**
-  Iterate through the netmap and call CallBack for each item. It will
-  contiue the traverse if CallBack returns EFI_SUCCESS, otherwise, break
-  from the loop. It returns the CallBack's last return value. This
-  function is delete safe for the current item.
+  Iterate through the netmap and call CallBack for each item.
+  
+  It will contiue the traverse if CallBack returns EFI_SUCCESS, otherwise, break
+  from the loop. It returns the CallBack's last return value. This function is 
+  delete safe for the current item.
 
-  @param  Map                   The Map to iterate through
-  @param  CallBack              The callback function to call for each item.
-  @param  Arg                   The opaque parameter to the callback
+  If Map is NULL, then ASSERT().
+  If CallBack is NULL, then ASSERT().
+  
+  @param[in]  Map                   The Map to iterate through.
+  @param[in]  CallBack              The callback function to call for each item.
+  @param[in]  Arg                   The opaque parameter to the callback.
 
-  @return It returns the CallBack's last return value.
+  @retval EFI_SUCCESS            There is no item in the netmap or CallBack for each item
+                                 return EFI_SUCCESS.
+  @retval Others                 It returns the CallBack's last return value.
 
 **/
 EFI_STATUS
@@ -795,8 +897,8 @@ NetMapIterate (
   LIST_ENTRY            *Entry;
   LIST_ENTRY            *Next;
   LIST_ENTRY            *Head;
-  NET_MAP_ITEM              *Item;
-  EFI_STATUS                Result;
+  NET_MAP_ITEM          *Item;
+  EFI_STATUS            Result;
 
   ASSERT ((Map != NULL) && (CallBack != NULL));
 
@@ -822,7 +924,10 @@ NetMapIterate (
 /**
   This is the default unload handle for all the network drivers.
 
-  @param  ImageHandle           The drivers' driver image.
+  Disconnect the driver specified by ImageHandle from all the devices in the handle database.
+  Uninstall all the protocols installed in the driver entry point.
+  
+  @param[in]  ImageHandle       The drivers' driver image.
 
   @retval EFI_SUCCESS           The image is unloaded.
   @retval Others                Failed to unload the image.
@@ -935,11 +1040,16 @@ NetLibDefaultUnload (
 
 /**
   Create a child of the service that is identified by ServiceBindingGuid.
+  
+  Get the ServiceBinding Protocol first, then use it to create a child.
 
-  @param  Controller            The controller which has the service installed.
-  @param  Image                 The image handle used to open service.
-  @param  ServiceBindingGuid    The service's Guid.
-  @param  ChildHandle           The handle to receive the create child
+  If ServiceBindingGuid is NULL, then ASSERT().
+  If ChildHandle is NULL, then ASSERT().
+  
+  @param[in]       Controller            The controller which has the service installed.
+  @param[in]       Image                 The image handle used to open service.
+  @param[in]       ServiceBindingGuid    The service's Guid.
+  @param[in, out]  ChildHandle           The handle to receive the create child
 
   @retval EFI_SUCCESS           The child is successfully created.
   @retval Others                Failed to create the child.
@@ -951,7 +1061,7 @@ NetLibCreateServiceChild (
   IN  EFI_HANDLE            Controller,
   IN  EFI_HANDLE            Image,
   IN  EFI_GUID              *ServiceBindingGuid,
-  OUT EFI_HANDLE            *ChildHandle
+  IN  OUT EFI_HANDLE        *ChildHandle
   )
 {
   EFI_STATUS                    Status;
@@ -986,11 +1096,15 @@ NetLibCreateServiceChild (
 
 /**
   Destory a child of the service that is identified by ServiceBindingGuid.
-
-  @param  Controller            The controller which has the service installed.
-  @param  Image                 The image handle used to open service.
-  @param  ServiceBindingGuid    The service's Guid.
-  @param  ChildHandle           The child to destory
+  
+  Get the ServiceBinding Protocol first, then use it to destroy a child.
+  
+  If ServiceBindingGuid is NULL, then ASSERT().
+  
+  @param[in]   Controller            The controller which has the service installed.
+  @param[in]   Image                 The image handle used to open service.
+  @param[in]   ServiceBindingGuid    The service's Guid.
+  @param[in]   ChildHandle           The child to destory
 
   @retval EFI_SUCCESS           The child is successfully destoried.
   @retval Others                Failed to destory the child.
@@ -1039,23 +1153,29 @@ NetLibDestroyServiceChild (
   SnpHandle to a unicode string. Callers are responsible for freeing the
   string storage.
 
-  @param  SnpHandle             The handle where the simple network protocol is
-                                installed on.
-  @param  ImageHandle           The image handle used to act as the agent handle to
-                                get the simple network protocol.
-  @param  MacString             The pointer to store the address of the string
-                                representation of  the mac address.
+  Get the mac address of the Simple Network protocol from the SnpHandle. Then convert
+  the mac address into a unicode string. It takes 2 unicode characters to represent 
+  a 1 byte binary buffer. Plus one unicode character for the null-terminator.
 
+
+  @param[in]   SnpHandle             The handle where the simple network protocol is
+                                     installed on.
+  @param[in]   ImageHandle           The image handle used to act as the agent handle to
+                                     get the simple network protocol.
+  @param[out]  MacString             The pointer to store the address of the string
+                                     representation of  the mac address.
+  
+  @retval EFI_SUCCESS           Convert the mac address a unicode string successfully.
   @retval EFI_OUT_OF_RESOURCES  There are not enough memory resource.
-  @retval other                 Failed to open the simple network protocol.
+  @retval Others                Failed to open the simple network protocol.
 
 **/
 EFI_STATUS
 EFIAPI
 NetLibGetMacString (
-  IN           EFI_HANDLE  SnpHandle,
-  IN           EFI_HANDLE  ImageHandle,
-  IN OUT       CHAR16      **MacString
+  IN  EFI_HANDLE            SnpHandle,
+  IN  EFI_HANDLE            ImageHandle,
+  OUT CHAR16                **MacString
   )
 {
   EFI_STATUS                   Status;
@@ -1111,8 +1231,13 @@ NetLibGetMacString (
   Check the default address used by the IPv4 driver is static or dynamic (acquired
   from DHCP).
 
-  @param  Controller     The controller handle which has the NIC Ip4 Config Protocol
-                         relative with the default address to judge.
+  If the controller handle does not have the NIC Ip4 Config Protocol installed, the 
+  default address is static. If the EFI variable to save the configuration is not found,
+  the default address is static. Otherwise, get the result from the EFI variable which 
+  saving the configuration.
+   
+  @param[in]   Controller     The controller handle which has the NIC Ip4 Config Protocol
+                              relative with the default address to judge.
 
   @retval TRUE           If the default address is static.
   @retval FALSE          If the default address is acquired from DHCP.
@@ -1166,17 +1291,21 @@ ON_EXIT:
 
 /**
   Create an IPv4 device path node.
+  
+  The header type of IPv4 device path node is MESSAGING_DEVICE_PATH.
+  The header subtype of IPv4 device path node is MSG_IPv4_DP.
+  The length of the IPv4 device path node in bytes is 19.
+  Get other info from parameters to make up the whole IPv4 device path node.
 
-  @param  Node                  Pointer to the IPv4 device path node.
-  @param  Controller            The handle where the NIC IP4 config protocol resides.
-  @param  LocalIp               The local IPv4 address.
-  @param  LocalPort             The local port.
-  @param  RemoteIp              The remote IPv4 address.
-  @param  RemotePort            The remote port.
-  @param  Protocol              The protocol type in the IP header.
-  @param  UseDefaultAddress     Whether this instance is using default address or not.
+  @param[in, out]  Node                  Pointer to the IPv4 device path node.
+  @param[in]       Controller            The handle where the NIC IP4 config protocol resides.
+  @param[in]       LocalIp               The local IPv4 address.
+  @param[in]       LocalPort             The local port.
+  @param[in]       RemoteIp              The remote IPv4 address.
+  @param[in]       RemotePort            The remote port.
+  @param[in]       Protocol              The protocol type in the IP header.
+  @param[in]       UseDefaultAddress     Whether this instance is using default address or not.
 
-  @retval None
 **/
 VOID
 EFIAPI
@@ -1213,6 +1342,7 @@ NetLibCreateIPv4DPathNode (
 
 /**
   Find the UNDI/SNP handle from controller and protocol GUID.
+  
   For example, IP will open a MNP child to transmit/receive
   packets, when MNP is stopped, IP should also be stopped. IP
   needs to find its own private data which is related the IP's
@@ -1221,10 +1351,10 @@ NetLibCreateIPv4DPathNode (
   IP opens these handle BY_DRIVER, use that info, we can get the
   UNDI/SNP handle.
 
-  @param  Controller            Then protocol handle to check
-  @param  ProtocolGuid          The protocol that is related with the handle.
+  @param[in]  Controller            Then protocol handle to check.
+  @param[in]  ProtocolGuid          The protocol that is related with the handle.
 
-  @return The UNDI/SNP handle or NULL.
+  @return The UNDI/SNP handle or NULL for errors.
 
 **/
 EFI_HANDLE
@@ -1267,14 +1397,14 @@ NetLibGetNicHandle (
 /**
   Add a Deferred Procedure Call to the end of the DPC queue.
 
-  @DpcTpl           The EFI_TPL that the DPC should be invoked.
-  @DpcProcedure     Pointer to the DPC's function.
-  @DpcContext       Pointer to the DPC's context.  Passed to DpcProcedure
-                    when DpcProcedure is invoked.
+  @param[in]  DpcTpl           The EFI_TPL that the DPC should be invoked.
+  @param[in]  DpcProcedure     Pointer to the DPC's function.
+  @param[in]  DpcContext       Pointer to the DPC's context.  Passed to DpcProcedure
+                               when DpcProcedure is invoked.
 
   @retval  EFI_SUCCESS              The DPC was queued.
-  @retval  EFI_INVALID_PARAMETER    DpcTpl is not a valid EFI_TPL.
-                                    DpcProcedure is NULL.
+  @retval  EFI_INVALID_PARAMETER    DpcTpl is not a valid EFI_TPL, or DpcProcedure
+                                    is NULL.
   @retval  EFI_OUT_OF_RESOURCES     There are not enough resources available to
                                     add the DPC to the queue.
 
@@ -1291,7 +1421,10 @@ NetLibQueueDpc (
 }
 
 /**
-  Add a Deferred Procedure Call to the end of the DPC queue.
+  Dispatch the queue of DPCs. ALL DPCs that have been queued with a DpcTpl
+  value greater than or equal to the current TPL are invoked in the order that
+  they were queued.  DPCs with higher DpcTpl values are invoked before DPCs with
+  lower DpcTpl values.
 
   @retval  EFI_SUCCESS              One or more DPCs were invoked.
   @retval  EFI_NOT_FOUND            No DPCs were invoked.
@@ -1306,15 +1439,14 @@ NetLibDispatchDpc (
   return mDpc->DispatchDpc(mDpc);
 }
 
-
 /**
   The constructor function caches the pointer to DPC protocol.
 
   The constructor function locates DPC protocol from protocol database.
   It will ASSERT() if that operation fails and it will always return EFI_SUCCESS.
 
-  @param  ImageHandle   The firmware allocated handle for the EFI image.
-  @param  SystemTable   A pointer to the EFI System Table.
+  @param[in]  ImageHandle   The firmware allocated handle for the EFI image.
+  @param[in]  SystemTable   A pointer to the EFI System Table.
 
   @retval EFI_SUCCESS   The constructor always returns EFI_SUCCESS.
 

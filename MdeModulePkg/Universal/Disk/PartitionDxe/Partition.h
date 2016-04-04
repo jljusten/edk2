@@ -41,7 +41,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 //
 // Partition private data
 //
-#define PARTITION_PRIVATE_DATA_SIGNATURE  EFI_SIGNATURE_32 ('P', 'a', 'r', 't')
+#define PARTITION_PRIVATE_DATA_SIGNATURE  SIGNATURE_32 ('P', 'a', 'r', 't')
 typedef struct {
   UINT64                    Signature;
 
@@ -143,7 +143,7 @@ PartitionDriverBindingStart (
   );
 
 /**
-  Stop this driver on ControllerHandle. Support stoping any child handles
+  Stop this driver on ControllerHandle. Support stopping any child handles
   created by this driver.
 
   @param  This              Protocol instance pointer.

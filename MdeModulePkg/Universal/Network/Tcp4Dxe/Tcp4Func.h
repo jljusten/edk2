@@ -107,7 +107,7 @@ TcpGetIss (
 **/
 VOID
 TcpInitTcbLocal (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   );
 
 /**
@@ -121,9 +121,9 @@ TcpInitTcbLocal (
 **/
 VOID
 TcpInitTcbPeer (
-  IN TCP_CB     *Tcb,
-  IN TCP_SEG    *Seg,
-  IN TCP_OPTION *Opt
+  IN OUT TCP_CB     *Tcb,
+  IN     TCP_SEG    *Seg,
+  IN     TCP_OPTION *Opt
   );
 
 /**
@@ -148,8 +148,8 @@ TcpGetRcvMss (
 **/
 VOID
 TcpSetState (
-  IN TCP_CB      *Tcb,
-  IN TCP_STATES  State
+  IN OUT TCP_CB    *Tcb,
+  IN     UINT8     State
   );
 
 //
@@ -187,8 +187,8 @@ TcpSendIpPacket (
 **/
 INTN
 TcpToSendData (
-  IN TCP_CB *Tcb,
-  IN INTN Force
+  IN OUT TCP_CB *Tcb,
+  IN     INTN Force
   );
 
 /**
@@ -199,7 +199,7 @@ TcpToSendData (
 **/
 VOID
 TcpToSendAck (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   );
 
 /**
@@ -210,7 +210,7 @@ TcpToSendAck (
 **/
 VOID
 TcpSendAck (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   );
 
 /**
@@ -224,7 +224,7 @@ TcpSendAck (
 **/
 INTN
 TcpSendZeroProbe (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   );
 
 /**
@@ -240,7 +240,7 @@ TcpSendZeroProbe (
 **/
 INTN
 TcpDeliverData (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   );
 
 /**
@@ -482,8 +482,8 @@ TcpSeqAcceptable (
 **/
 VOID
 TcpFastRecover (
-  IN TCP_CB  *Tcb,
-  IN TCP_SEG *Seg
+  IN OUT TCP_CB  *Tcb,
+  IN     TCP_SEG *Seg
   );
 
 /**
@@ -495,8 +495,8 @@ TcpFastRecover (
 **/
 VOID
 TcpFastLossRecover (
-  IN TCP_CB  *Tcb,
-  IN TCP_SEG *Seg
+  IN OUT TCP_CB  *Tcb,
+  IN     TCP_SEG *Seg
   );
 
 /**
@@ -508,8 +508,8 @@ TcpFastLossRecover (
 **/
 VOID
 TcpComputeRtt (
-  IN TCP_CB *Tcb,
-  IN UINT32 Measure
+  IN OUT TCP_CB *Tcb,
+  IN     UINT32 Measure
   );
 
 /**
@@ -518,10 +518,8 @@ TcpComputeRtt (
   @param  Tcb      Pointer to the TCP_CB of this TCP instance.
   @param  Nbuf     Pointer to the NET_BUF containing the received tcp segment.
 
-  @return 0        The data is trimmed.
-
 **/
-INTN
+VOID
 TcpTrimInWnd (
   IN TCP_CB  *Tcb,
   IN NET_BUF *Nbuf
@@ -536,8 +534,8 @@ TcpTrimInWnd (
 **/
 VOID
 TcpQueueData (
-  IN TCP_CB  *Tcb,
-  IN NET_BUF *Nbuf
+  IN OUT TCP_CB  *Tcb,
+  IN     NET_BUF *Nbuf
   );
 
 /**
@@ -585,8 +583,8 @@ TcpChecksum (
 **/
 TCP_SEG *
 TcpFormatNetbuf (
-  IN TCP_CB  *Tcb,
-  IN NET_BUF *Nbuf
+  IN     TCP_CB  *Tcb,
+  IN OUT NET_BUF *Nbuf
   );
 
 /**
@@ -598,7 +596,7 @@ TcpFormatNetbuf (
 **/
 VOID
 TcpOnAppConnect (
-  IN TCP_CB  *Tcb
+  IN OUT TCP_CB  *Tcb
   );
 
 /**
@@ -608,7 +606,7 @@ TcpOnAppConnect (
   @param  Tcb                   Pointer to the TCP_CB of this TCP instance.
 
 **/
-INTN
+VOID
 TcpOnAppConsume (
   IN TCP_CB *Tcb
   );
@@ -622,7 +620,7 @@ TcpOnAppConsume (
 **/
 VOID
 TcpOnAppClose (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   );
 
 /**
@@ -638,7 +636,7 @@ TcpOnAppClose (
 **/
 INTN
 TcpOnAppSend (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   );
 
 /**
@@ -676,7 +674,7 @@ TcpResetConnection (
 **/
 VOID
 TcpClose (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   );
 
 /**
@@ -703,9 +701,9 @@ TcpTicking (
 **/
 VOID
 TcpSetTimer (
-  IN TCP_CB *Tcb,
-  IN UINT16 Timer,
-  IN UINT32 TimeOut
+  IN OUT TCP_CB *Tcb,
+  IN     UINT16 Timer,
+  IN     UINT32 TimeOut
   );
 
 /**
@@ -717,8 +715,8 @@ TcpSetTimer (
 **/
 VOID
 TcpClearTimer (
-  IN TCP_CB *Tcb,
-  IN UINT16 Timer
+  IN OUT TCP_CB *Tcb,
+  IN     UINT16 Timer
   );
 
 /**
@@ -729,7 +727,7 @@ TcpClearTimer (
 **/
 VOID
 TcpClearAllTimer (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   );
 
 /**
@@ -740,7 +738,7 @@ TcpClearAllTimer (
 **/
 VOID
 TcpSetProbeTimer (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   );
 
 /**
@@ -751,7 +749,7 @@ TcpSetProbeTimer (
 **/
 VOID
 TcpSetKeepaliveTimer (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   );
 
 /**
@@ -762,7 +760,7 @@ TcpSetKeepaliveTimer (
 **/
 VOID
 TcpBackoffRto (
-  IN TCP_CB *Tcb
+  IN OUT TCP_CB *Tcb
   );
 
 /**

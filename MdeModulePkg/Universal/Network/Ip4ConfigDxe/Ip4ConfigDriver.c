@@ -1,28 +1,28 @@
 /** @file
+  The driver binding for IP4 CONFIG protocol.
 
-Copyright (c) 2006 - 2008, Intel Corporation
+Copyright (c) 2006 - 2008, Intel Corporation.<BR>
 All rights reserved. This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
-which accompanies this distribution.  The full text of the license may be found at
+which accompanies this distribution.  The full text of the license may be found at<BR>
 http://opensource.org/licenses/bsd-license.php
 
 THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-Module Name:
-
-  Ip4ConfigDriver.c
-
-Abstract:
-
-  The driver binding for IP4 CONFIG protocol.
-
 
 **/
 
 
 #include "Ip4Config.h"
 
+EFI_DRIVER_BINDING_PROTOCOL gIp4ConfigDriverBinding = {
+  Ip4ConfigDriverBindingSupported,
+  Ip4ConfigDriverBindingStart,
+  Ip4ConfigDriverBindingStop,
+  0xa,
+  NULL,
+  NULL
+};
 
 /**
   Stop all the auto configuration when the IP4 configure driver is
@@ -508,11 +508,3 @@ Ip4ConfigDriverBindingStop (
   return EFI_SUCCESS;
 }
 
-EFI_DRIVER_BINDING_PROTOCOL gIp4ConfigDriverBinding = {
-  Ip4ConfigDriverBindingSupported,
-  Ip4ConfigDriverBindingStart,
-  Ip4ConfigDriverBindingStop,
-  0xa,
-  NULL,
-  NULL
-};

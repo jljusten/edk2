@@ -32,9 +32,12 @@ UsbGetEndpointDesc (
   )
 {
   USB_ENDPOINT_DESC       *EpDesc;
-  UINTN                   Index;
-
-  for (Index = 0; Index < UsbIf->IfSetting->Desc.NumEndpoints; Index++) {
+  UINT8                   Index;
+  UINT8                   NumEndpoints;
+  
+  NumEndpoints = UsbIf->IfSetting->Desc.NumEndpoints;
+  
+  for (Index = 0; Index < NumEndpoints; Index++) {
     EpDesc = UsbIf->IfSetting->Endpoints[Index];
 
     if (EpDesc->Desc.EndpointAddress == EpAddr) {
@@ -71,10 +74,10 @@ UsbFreeInterface (
          );
 
   if (UsbIf->DevicePath != NULL) {
-    gBS->FreePool (UsbIf->DevicePath);
+    FreePool (UsbIf->DevicePath);
   }
 
-  gBS->FreePool (UsbIf);
+  FreePool (UsbIf);
 }
 
 
@@ -175,10 +178,10 @@ UsbCreateInterface (
 
 ON_ERROR:
   if (UsbIf->DevicePath != NULL) {
-    gBS->FreePool (UsbIf->DevicePath);
+    FreePool (UsbIf->DevicePath);
   }
 
-  gBS->FreePool (UsbIf);
+  FreePool (UsbIf);
   return NULL;
 }
 
@@ -240,7 +243,7 @@ UsbCreateDevice (
 
 /**
   Connect the USB interface with its driver. EFI USB bus will
-  create a USB interface for each seperate interface descriptor.
+  create a USB interface for each separate interface descriptor.
 
   @param  UsbIf             The interface to connect driver to.
 
@@ -280,14 +283,14 @@ UsbConnectDriver (
     //
     if (UsbBusIsWantedUsbIO (UsbIf->Device->Bus, UsbIf)) {
       OldTpl            = UsbGetCurrentTpl ();
-      DEBUG ((EFI_D_INFO, "UsbConnectDriver: TPL before connect is %d\n", OldTpl));
+      DEBUG ((EFI_D_INFO, "UsbConnectDriver: TPL before connect is %d\n", (UINT32)OldTpl));
 
       gBS->RestoreTPL (TPL_CALLBACK);
 
       Status            = gBS->ConnectController (UsbIf->Handle, NULL, NULL, TRUE);
       UsbIf->IsManaged  = (BOOLEAN)!EFI_ERROR (Status);
 
-      DEBUG ((EFI_D_INFO, "UsbConnectDriver: TPL after connect is %d\n", UsbGetCurrentTpl()));
+      DEBUG ((EFI_D_INFO, "UsbConnectDriver: TPL after connect is %d\n", (UINT32)UsbGetCurrentTpl()));
       ASSERT (UsbGetCurrentTpl () == TPL_CALLBACK);
 
       gBS->RaiseTPL (OldTpl);
@@ -472,14 +475,14 @@ UsbDisconnectDriver (
     // or disconnect at CALLBACK.
     //
     OldTpl           = UsbGetCurrentTpl ();
-    DEBUG ((EFI_D_INFO, "UsbDisconnectDriver: old TPL is %d\n", OldTpl));
+    DEBUG ((EFI_D_INFO, "UsbDisconnectDriver: old TPL is %d\n", (UINT32)OldTpl));
 
     gBS->RestoreTPL (TPL_CALLBACK);
 
     gBS->DisconnectController (UsbIf->Handle, NULL, NULL);
     UsbIf->IsManaged = FALSE;
 
-    DEBUG (( EFI_D_INFO, "UsbDisconnectDriver: TPL after disconnect is %d\n", UsbGetCurrentTpl()));
+    DEBUG (( EFI_D_INFO, "UsbDisconnectDriver: TPL after disconnect is %d\n", (UINT32)UsbGetCurrentTpl()));
     ASSERT (UsbGetCurrentTpl () == TPL_CALLBACK);
 
     gBS->RaiseTPL (OldTpl);
@@ -946,7 +949,7 @@ UsbHubEnumeration (
   UINT8                   Bit;
   UINT8                   Index;
 
-  ASSERT (Context);
+  ASSERT (Context != NULL);
 
   HubIf = (USB_INTERFACE *) Context;
 

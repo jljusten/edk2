@@ -34,6 +34,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/HiiDatabase.h>
 #include <Protocol/HiiConfigRouting.h>
 #include <Protocol/HiiConfigAccess.h>
+#include <Protocol/UgaDraw.h>
 
 
 #include <Library/BaseLib.h>
@@ -45,9 +46,11 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/HiiLib.h>
 #include <Library/ExtendedHiiLib.h>
+#include <Library/UefiLib.h>
 
 #include <Library/IfrSupportLib.h>
 #include <Library/ExtendedIfrSupportLib.h>
+#include <Library/PcdLib.h>
 
 #include <MdeModuleHii.h>
 
@@ -75,7 +78,7 @@ typedef struct {
 #pragma pack ()
 
 #define HII_THUNK_PRIVATE_DATA_FROM_THIS(Record)  CR(Record, HII_THUNK_PRIVATE_DATA, Hii, HII_THUNK_PRIVATE_DATA_SIGNATURE)
-#define HII_THUNK_PRIVATE_DATA_SIGNATURE            EFI_SIGNATURE_32 ('H', 'i', 'I', 'T')
+#define HII_THUNK_PRIVATE_DATA_SIGNATURE            SIGNATURE_32 ('H', 'i', 'I', 'T')
 typedef struct {
   UINTN                    Signature;
   EFI_HANDLE               Handle;
@@ -95,7 +98,7 @@ typedef struct {
 
 
 #define QUESTION_ID_MAP_ENTRY_FROM_LINK(Record) CR(Record, QUESTION_ID_MAP_ENTRY, Link, QUESTION_ID_MAP_ENTRY_SIGNATURE)
-#define QUESTION_ID_MAP_ENTRY_SIGNATURE            EFI_SIGNATURE_32 ('Q', 'I', 'M', 'E')
+#define QUESTION_ID_MAP_ENTRY_SIGNATURE            SIGNATURE_32 ('Q', 'I', 'M', 'E')
 typedef struct {
   UINT32            Signature;
   LIST_ENTRY        Link;
@@ -106,7 +109,7 @@ typedef struct {
 
 
 #define QUESTION_ID_MAP_FROM_LINK(Record) CR(Record, QUESTION_ID_MAP, Link, QUESTION_ID_MAP_SIGNATURE)
-#define QUESTION_ID_MAP_SIGNATURE            EFI_SIGNATURE_32 ('Q', 'I', 'M', 'P')
+#define QUESTION_ID_MAP_SIGNATURE            SIGNATURE_32 ('Q', 'I', 'M', 'P')
 typedef struct {
   UINT32            Signature;
   LIST_ENTRY        Link;
@@ -118,7 +121,7 @@ typedef struct {
 
 
 #define HII_THUNK_CONTEXT_FROM_LINK(Record) CR(Record, HII_THUNK_CONTEXT, Link, HII_THUNK_CONTEXT_SIGNATURE)
-#define HII_THUNK_CONTEXT_SIGNATURE            EFI_SIGNATURE_32 ('H', 'T', 'H', 'M')
+#define HII_THUNK_CONTEXT_SIGNATURE            SIGNATURE_32 ('H', 'T', 'H', 'M')
 typedef struct {
   LIST_ENTRY                Link;
   UINT32                    Signature;
@@ -165,7 +168,7 @@ typedef struct {
 
 
 
-#define BUFFER_STORAGE_ENTRY_SIGNATURE              EFI_SIGNATURE_32 ('H', 'T', 's', 'k')
+#define BUFFER_STORAGE_ENTRY_SIGNATURE              SIGNATURE_32 ('H', 'T', 's', 'k')
 #define BUFFER_STORAGE_ENTRY_FROM_LINK(Record) CR(Record, BUFFER_STORAGE_ENTRY, Link, BUFFER_STORAGE_ENTRY_SIGNATURE)
 typedef struct {
   LIST_ENTRY Link;
@@ -178,7 +181,7 @@ typedef struct {
 
 
 
-#define CONFIG_ACCESS_PRIVATE_SIGNATURE            EFI_SIGNATURE_32 ('H', 'T', 'c', 'a')
+#define CONFIG_ACCESS_PRIVATE_SIGNATURE            SIGNATURE_32 ('H', 'T', 'c', 'a')
 #define CONFIG_ACCESS_PRIVATE_FROM_PROTOCOL(Record) CR(Record, CONFIG_ACCESS_PRIVATE, ConfigAccessProtocol, CONFIG_ACCESS_PRIVATE_SIGNATURE)
 typedef struct {
   UINT32                         Signature;
@@ -193,7 +196,7 @@ typedef struct {
 
 
 
-#define EFI_FORMBROWSER_THUNK_PRIVATE_DATA_SIGNATURE            EFI_SIGNATURE_32 ('F', 'B', 'T', 'd')
+#define EFI_FORMBROWSER_THUNK_PRIVATE_DATA_SIGNATURE            SIGNATURE_32 ('F', 'B', 'T', 'd')
 #define EFI_FORMBROWSER_THUNK_PRIVATE_DATA_FROM_THIS(Record)   CR(Record, EFI_FORMBROWSER_THUNK_PRIVATE_DATA, FormBrowser, EFI_FORMBROWSER_THUNK_PRIVATE_DATA_SIGNATURE)
 typedef struct {
   UINTN                     Signature;
@@ -441,6 +444,17 @@ FwUpdateDataToUefiUpdateData (
   IN       HII_THUNK_CONTEXT                *ThunkContext,
   IN CONST FRAMEWORK_EFI_HII_UPDATE_DATA    *FwUpdateData,
   OUT      EFI_HII_UPDATE_DATA              **UefiUpdateData
+  )
+;
+
+/** 
+
+  Initialize string packages in HII database.
+
+**/
+VOID
+InitSetBrowserStrings (
+  VOID
   )
 ;
 

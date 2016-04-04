@@ -1,6 +1,6 @@
 /** @file
 
-  Internal generic functions to support fault tolerant write.
+  Internal generic functions to operate flash block.
 
 Copyright (c) 2006 - 2008, Intel Corporation                                                         
 All rights reserved. This program and the accompanying materials                          
@@ -54,7 +54,7 @@ IsErasedFlashBuffer (
 }
 
 /**
-  To Erase one block. The size is FTW_BLOCK_SIZE
+  To erase the block with the spare block size.
 
 
   @param FtwLiteDevice   Calling context
@@ -423,7 +423,7 @@ FlushSpareBlockToWorkingBlock (
   //   Set WorkingBlockInvalid in EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER
   //   before erase the working block.
   //
-  //  Offset = EFI_FIELD_OFFSET(EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER,
+  //  Offset = OFFSET_OF(EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER,
   //                            WorkingBlockInvalid);
   // To skip Signature and Crc: sizeof(EFI_GUID)+sizeof(UINT32).
   //
@@ -481,7 +481,7 @@ FlushSpareBlockToWorkingBlock (
   //
   // Update the VALID of the working block
   //
-  // Offset = EFI_FIELD_OFFSET(EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER,
+  // Offset = OFFSET_OF(EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER,
   //                           WorkingBlockValid);
   // Hardcode offset sizeof(EFI_GUID)+sizeof(UINT32), to skip Signature and Crc
   //

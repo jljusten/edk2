@@ -62,7 +62,7 @@ typedef struct {
   BOOLEAN DeviceProcessed[MAX_IDE_DEVICE];
 } IDE_BUS_DRIVER_PRIVATE_DATA;
 
-#define IDE_BLK_IO_DEV_SIGNATURE  EFI_SIGNATURE_32 ('i', 'b', 'i', 'd')
+#define IDE_BLK_IO_DEV_SIGNATURE  SIGNATURE_32 ('i', 'b', 'i', 'd')
 
 typedef struct {
   UINT32                      Signature;
@@ -127,7 +127,7 @@ extern EFI_DRIVER_DIAGNOSTICS2_PROTOCOL gIDEBusDriverDiagnostics2;
   @param  ImageHandle TODO: add argument description
   @param  SystemTable TODO: add argument description
 
-  TODO: add return values
+  TODO: add return values.
 
 **/
 EFI_STATUS
@@ -144,7 +144,7 @@ IDEBusControllerDriverEntryPoint (
   @param  Controller TODO: add argument description
   @param  RemainingDevicePath TODO: add argument description
 
-  TODO: add return values
+  TODO: add return values.
 
 **/
 EFI_STATUS
@@ -162,7 +162,7 @@ IDEBusDriverBindingSupported (
   @param  Controller TODO: add argument description
   @param  RemainingDevicePath TODO: add argument description
 
-  TODO: add return values
+  TODO: add return values.
 
 **/
 EFI_STATUS
@@ -181,7 +181,7 @@ IDEBusDriverBindingStart (
   @param  NumberOfChildren TODO: add argument description
   @param  ChildHandleBuffer TODO: add argument description
 
-  TODO: add return values
+  TODO: add return values.
 
 **/
 EFI_STATUS
@@ -245,7 +245,7 @@ IDEBusDriverDiagnosticsRunDiagnostics (
   @param  This TODO: add argument description
   @param  ExtendedVerification TODO: add argument description
 
-  TODO: add return values
+  TODO: add return values.
 
 **/
 EFI_STATUS
@@ -286,7 +286,7 @@ IDEBlkIoReadBlocks (
   @param  BufferSize TODO: add argument description
   @param  Buffer TODO: add argument description
 
-  TODO: add return values
+  TODO: add return values.
 
 **/
 EFI_STATUS
@@ -304,7 +304,7 @@ IDEBlkIoWriteBlocks (
 
   @param  This TODO: add argument description
 
-  TODO: add return values
+  TODO: add return values.
 
 **/
 EFI_STATUS
@@ -319,7 +319,7 @@ IDEBlkIoFlushBlocks (
   @param  PciIo TODO: add argument description
   @param  Enable TODO: add argument description
 
-  TODO: add return values
+  TODO: add return values.
 
 **/
 EFI_STATUS
@@ -335,7 +335,7 @@ IDERegisterDecodeEnableorDisable (
   @param  InquiryData TODO: add argument description
   @param  IntquiryDataSize TODO: add argument description
 
-  TODO: add return values
+  TODO: add return values.
 
 **/
 EFI_STATUS
@@ -353,7 +353,7 @@ IDEDiskInfoInquiry (
   @param  IdentifyData TODO: add argument description
   @param  IdentifyDataSize TODO: add argument description
 
-  TODO: add return values
+  TODO: add return values.
 
 **/
 EFI_STATUS
@@ -372,7 +372,7 @@ IDEDiskInfoIdentify (
   @param  SenseDataSize TODO: add argument description
   @param  SenseDataNumber TODO: add argument description
 
-  TODO: add return values
+  TODO: add return values.
 
 **/
 EFI_STATUS
@@ -391,7 +391,7 @@ IDEDiskInfoSenseData (
   @param  IdeChannel TODO: add argument description
   @param  IdeDevice TODO: add argument description
 
-  TODO: add return values
+  TODO: add return values.
 
 **/
 EFI_STATUS

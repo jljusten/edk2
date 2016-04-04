@@ -43,7 +43,7 @@ extern EFI_COMPONENT_NAME2_PROTOCOL gDebugPortComponentName2;
 //
 // local type definitions
 //
-#define DEBUGPORT_DEVICE_SIGNATURE  EFI_SIGNATURE_32 ('D', 'B', 'G', 'P')
+#define DEBUGPORT_DEVICE_SIGNATURE  SIGNATURE_32 ('D', 'B', 'G', 'P')
 
 //
 // Device structure used by driver
@@ -84,7 +84,7 @@ typedef struct {
 #define IS_UART_DEVICEPATH(dp)           (DevicePathType (dp) == MESSAGING_DEVICE_PATH && DevicePathSubType (dp) == MSG_UART_DP)
 
 /**
-  Debug Port Driver entry pointo. 
+  Debug Port Driver entry point. 
 
   Reads DebugPort variable to determine what device and settings to use as the
   debug port.  Binds exclusively to SerialIo. Reverts to defaults if no variable

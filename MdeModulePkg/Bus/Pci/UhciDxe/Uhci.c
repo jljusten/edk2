@@ -318,7 +318,7 @@ Uhci2GetCapability (
 
   Uhc->RootPorts = *PortNumber;
 
-  DEBUG ((EFI_D_INFO, "Uhci2GetCapability: %d ports\n", Uhc->RootPorts));
+  DEBUG ((EFI_D_INFO, "Uhci2GetCapability: %d ports\n", (UINT32)Uhc->RootPorts));
   return EFI_SUCCESS;
 }
 
@@ -1490,7 +1490,7 @@ UhciAllocateDev (
   return Uhc;
 
 ON_ERROR:
-  gBS->FreePool (Uhc);
+  FreePool (Uhc);
   return NULL;
 }
 
@@ -1520,7 +1520,7 @@ UhciFreeDev (
     FreeUnicodeStringTable (Uhc->CtrlNameTable);
   }
 
-  gBS->FreePool (Uhc);
+  FreePool (Uhc);
 }
 
 
