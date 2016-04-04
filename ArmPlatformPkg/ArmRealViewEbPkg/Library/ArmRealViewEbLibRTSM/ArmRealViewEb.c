@@ -16,7 +16,9 @@
 #include <Library/ArmPlatformLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PcdLib.h>
+
 #include <Drivers/PL341Dmc.h>
+#include <Drivers/SP804Timer.h>
 
 /**
   Return if Trustzone is supported by your platform
@@ -29,9 +31,13 @@
   @return   A non-zero value if Trustzone supported.
 
 **/
-UINTN ArmPlatformTrustzoneSupported(VOID) {
+UINTN
+ArmPlatformTrustzoneSupported (
+  VOID
+  )
+{
   // There is no Trustzone controllers (TZPC & TZASC) and no Secure Memory on RTSM
-	return FALSE;
+  return FALSE;
 }
 
 /**
@@ -41,8 +47,12 @@ UINTN ArmPlatformTrustzoneSupported(VOID) {
   of the secure peripherals and memory regions.
 
 **/
-VOID ArmPlatformTrustzoneInit(VOID) {
-	ASSERT(FALSE);
+VOID
+ArmPlatformTrustzoneInit (
+  VOID
+  )
+{
+  ASSERT(FALSE);
 }
 
 /**
@@ -52,9 +62,63 @@ VOID ArmPlatformTrustzoneInit(VOID) {
   This function can do nothing if this feature is not relevant to your platform.
 
 **/
-VOID ArmPlatformBootRemapping(VOID) {
+VOID
+ArmPlatformBootRemapping (
+  VOID
+  )
+{
   // Disable memory remapping and return to normal mapping
-	MmioOr32 (ARM_EB_SYSCTRL, BIT8); //EB_SP810_CTRL_BASE
+  MmioOr32 (ARM_EB_SYSCTRL, BIT8); //EB_SP810_CTRL_BASE
+}
+
+/**
+  Return the current Boot Mode
+
+  This function returns the boot reason on the platform
+
+**/
+EFI_BOOT_MODE
+ArmPlatformGetBootMode (
+  VOID
+  )
+{
+  return BOOT_WITH_FULL_CONFIGURATION;
+}
+
+/**
+  Initialize controllers that must setup at the early stage
+
+  Some peripherals must be initialized in Secure World.
+  For example, some L2x0 requires to be initialized in Secure World
+
+**/
+VOID
+ArmPlatformSecInitialize (
+  VOID
+  ) {
+  // Do nothing yet
+}
+
+/**
+  Initialize controllers that must setup in the normal world
+
+  This function is called by the ArmPlatformPkg/Pei or ArmPlatformPkg/Pei/PlatformPeim
+  in the PEI phase.
+
+**/
+VOID
+ArmPlatformNormalInitialize (
+  VOID
+  )
+{
+  // Configure periodic timer (TIMER0) for 1MHz operation
+  MmioOr32 (SP810_CTRL_BASE + SP810_SYS_CTRL_REG, SP810_SYS_CTRL_TIMER0_TIMCLK);
+  // Configure 1MHz clock
+  MmioOr32 (SP810_CTRL_BASE + SP810_SYS_CTRL_REG, SP810_SYS_CTRL_TIMER1_TIMCLK);
+  // configure SP810 to use 1MHz clock and disable
+  MmioAndThenOr32 (SP810_CTRL_BASE + SP810_SYS_CTRL_REG, ~SP810_SYS_CTRL_TIMER2_EN, SP810_SYS_CTRL_TIMER2_TIMCLK);
+  // Configure SP810 to use 1MHz clock and disable
+  MmioAndThenOr32 (SP810_CTRL_BASE + SP810_SYS_CTRL_REG, ~SP810_SYS_CTRL_TIMER3_EN, SP810_SYS_CTRL_TIMER3_TIMCLK);
 }
 
 /**
@@ -63,6 +127,10 @@ VOID ArmPlatformBootRemapping(VOID) {
   This memory is generally represented by the DRAM.
 
 **/
-VOID ArmPlatformInitializeSystemMemory(VOID) {
-    // We do not need to initialize the System Memory on RTSM
+VOID
+ArmPlatformInitializeSystemMemory (
+  VOID
+  )
+{
+  // We do not need to initialize the System Memory on RTSM
 }

@@ -1,7 +1,7 @@
 /** @file
   Main file for exit shell level 1 function.
 
-  Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -36,6 +36,8 @@ ShellCommandRunExit (
   LIST_ENTRY          *Package;
   CHAR16              *ProblemParam;
   SHELL_STATUS        ShellStatus;
+  UINT64              RetVal;
+  CONST CHAR16        *Return;
 
   ShellStatus         = SHELL_SUCCESS;
 
@@ -63,15 +65,28 @@ ShellCommandRunExit (
   } else {
 
     //
-    // If we are in a batch file and /b then pass TRUE otherwise false...
-    //
-    ShellCommandRegisterExit((BOOLEAN)(gEfiShellProtocol->BatchIsActive() && ShellCommandLineGetFlag(Package, L"/b")));
-
-    //
     // return the specified error code
     //
-    if (ShellCommandLineGetRawValue(Package, 1) != NULL) {
-      ShellStatus = (SHELL_STATUS)(ShellStrToUintn(ShellCommandLineGetRawValue(Package, 1)));
+    Return = ShellCommandLineGetRawValue(Package, 1);
+    if (Return != NULL) {
+      Status = ShellConvertStringToUint64(Return, &RetVal, FALSE, FALSE);
+      if (EFI_ERROR(Status)) {
+        ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_PROBLEM), gShellLevel1HiiHandle, Return);
+        ShellStatus = SHELL_INVALID_PARAMETER;
+      } else {
+        //
+        // If we are in a batch file and /b then pass TRUE otherwise false...
+        //
+        ShellCommandRegisterExit((BOOLEAN)(gEfiShellProtocol->BatchIsActive() && ShellCommandLineGetFlag(Package, L"/b")));
+
+        ShellStatus = (SHELL_STATUS)(RetVal);
+      }
+    } else {
+      // If we are in a batch file and /b then pass TRUE otherwise false...
+      //
+      ShellCommandRegisterExit((BOOLEAN)(gEfiShellProtocol->BatchIsActive() && ShellCommandLineGetFlag(Package, L"/b")));
+
+      ShellStatus = (SHELL_STATUS)0;
     }
 
     ShellCommandLineFreeVarList (Package);

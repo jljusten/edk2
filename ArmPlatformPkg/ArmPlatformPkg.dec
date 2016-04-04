@@ -33,25 +33,71 @@
 
 [Guids.common]
   gArmPlatformTokenSpaceGuid    =  { 0x9c0aaed4, 0x74c5, 0x4043, { 0xb4, 0x17, 0xa3, 0x22, 0x38, 0x14, 0xce, 0x76 } }
+  #
+  # Following Guid must match FILE_GUID in MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
+  #
+  gVariableRuntimeDxeFileGuid = { 0xcbd2e4d5, 0x7068, 0x4ff5, { 0xb4, 0x62, 0x98, 0x22, 0xb4, 0xad, 0x8d, 0x60 } }
 
 [PcdsFeatureFlag.common]
   gArmPlatformTokenSpaceGuid.PcdStandalone|FALSE|BOOLEAN|0x00000001
+  # Set this PCD to TRUE to map NORFlash at 0x0. FALSE means the DRAM is mapped at 0x0.
+  gArmPlatformTokenSpaceGuid.PcdNorFlashRemapping|FALSE|BOOLEAN|0x00000012
 
 [PcdsFixedAtBuild.common]
-  # This PCD should be a FeaturePcd. But we used this PCD as an '#if' in an ASM file.
+  # These PCDs should be FeaturePcds. But we used these PCDs as an '#if' in an ASM file.
   # Using a FeaturePcd make a '(BOOLEAN) casting for its value which is not understood by the preprocessor.
-  gArmPlatformTokenSpaceGuid.PcdMPCoreSupport|0|UINT32|0x00000002
-  
-  gArmPlatformTokenSpaceGuid.PcdPeiServicePtrAddr|0|UINT32|0x00000003
+  gArmPlatformTokenSpaceGuid.PcdMPCoreSupport|0|UINT32|0x00000003
   
   # Stack for CPU Cores in Secure Mode
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresSecStackBase|0|UINT32|0x00000004
-  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecStackSize|0|UINT32|0x00000005
+  gArmPlatformTokenSpaceGuid.PcdCPUCoresSecStackBase|0|UINT32|0x00000005
+  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecStackSize|0|UINT32|0x00000006
 
   # Stack for CPU Cores in Secure Monitor Mode
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresSecMonStackBase|0|UINT32|0x00000006
-  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecMonStackSize|0|UINT32|0x00000007
+  gArmPlatformTokenSpaceGuid.PcdCPUCoresSecMonStackBase|0|UINT32|0x00000007
+  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecMonStackSize|0|UINT32|0x00000008
 
   # Stack for CPU Cores in Non Secure Mode
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresNonSecStackBase|0|UINT32|0x00000008
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresNonSecStackSize|0|UINT32|0x00000009
+  gArmPlatformTokenSpaceGuid.PcdCPUCoresNonSecStackBase|0|UINT32|0x00000009
+  gArmPlatformTokenSpaceGuid.PcdCPUCoresNonSecStackSize|0|UINT32|0x0000000A
+    
+  # Size of the region used by UEFI in permanent memory (Reserved 128MB by default)
+  gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize|0x08000000|UINT32|0x00000015
+
+  # Size of the region reserved for fixed address allocations (Reserved 128MB by default)
+  gArmPlatformTokenSpaceGuid.PcdSystemMemoryFixRegionSize|0x08000000|UINT32|0x00000014
+
+  # Size to reserve in the primary core stack for PEI Global Variables
+  #  = sizeof(UINTN) /* PcdPeiServicePtr or HobListPtr */
+  gArmPlatformTokenSpaceGuid.PcdPeiGlobalVariableSize|0x4|UINT32|0x00000016
+  # PeiServicePtr and HobListPtr shares the same location in the PEI Global Variable list
+  # PeiServicePtr is only valid with PEI Core and HobListPtr only when the PEI Core is skipped. 
+  gArmPlatformTokenSpaceGuid.PcdPeiServicePtrGlobalOffset|0x4|UINT32|0x00000017
+  gArmPlatformTokenSpaceGuid.PcdHobListPtrGlobalOffset|0x4|UINT32|0x00000018
+
+  #
+  # ARM Primecells
+  #
+  gArmPlatformTokenSpaceGuid.PcdSP804FrequencyInMHz|1|UINT32|0x0000001D
+  gArmPlatformTokenSpaceGuid.PcdSP804Timer0InterruptNum|0|UINT32|0x0000001E
+
+  #
+  # BDS - Boot Manager
+  #
+  gArmPlatformTokenSpaceGuid.PcdFirmwareVendor|"ARM Platform"|VOID*|0x00000019
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootDescription|L""|VOID*|0x0000000C
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootDevicePath|L""|VOID*|0x0000000D
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|""|VOID*|0x000000F
+  # PcdDefaultBootType define the type of the binary pointed by PcdDefaultBootDevicePath: 
+  #  - 0 = an EFI application
+  #  - 1 = a Linux kernel with ATAG support
+  #  - 2 = a Linux kernel with FDT support
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootType|0|UINT32|0x00000010
+  gArmPlatformTokenSpaceGuid.PcdFdtDevicePath|L""|VOID*|0x00000011
+  
+  ## Timeout value for displaying progressing bar in before boot OS.
+  #  According to UEFI 2.0 spec, the default TimeOut should be 0xffff.
+  gArmPlatformTokenSpaceGuid.PcdPlatformBootTimeOut|0xffff|UINT16|0x0000001A
+  
+  gArmPlatformTokenSpaceGuid.PcdDefaultConInPaths|L""|VOID*|0x0000001B
+  gArmPlatformTokenSpaceGuid.PcdDefaultConOutPaths|L""|VOID*|0x0000001C
+  

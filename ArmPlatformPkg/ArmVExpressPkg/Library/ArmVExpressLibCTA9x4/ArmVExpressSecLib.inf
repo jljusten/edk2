@@ -27,14 +27,18 @@
   ArmPlatformPkg/ArmPlatformPkg.dec
 
 [LibraryClasses]
-  IoLib
   ArmLib
   ArmTrustZoneLib
-  PL354SmcSecLib
-  PL341DmcLib
+  ArmPlatformSysConfigLib
+  IoLib
+  L2X0CacheLib
   PL301AxiLib
+  PL341DmcLib
+  PL354SmcLib
+  SerialPortLib
 
 [Sources.common]
+  CTA9x4Sec.c
   CTA9x4.c
   CTA9x4Helper.asm   | RVCT
   CTA9x4Helper.S     | GCC
@@ -44,7 +48,7 @@
 [FeaturePcd]
   gEmbeddedTokenSpaceGuid.PcdCacheEnable
   gArmPlatformTokenSpaceGuid.PcdStandalone
+  gArmPlatformTokenSpaceGuid.PcdNorFlashRemapping
 
 [FixedPcd]
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedFdBaseAddress
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedFdSize
+  gArmTokenSpaceGuid.PcdL2x0ControllerBase

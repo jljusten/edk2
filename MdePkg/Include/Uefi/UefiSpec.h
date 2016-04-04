@@ -23,6 +23,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <Protocol/DevicePath.h>
 #include <Protocol/SimpleTextIn.h>
+#include <Protocol/SimpleTextInEx.h>
 #include <Protocol/SimpleTextOut.h>
 
 ///
@@ -1491,7 +1492,7 @@ EFI_STATUS
 
   @retval EFI_SUCCESS           The (Guid, Table) pair was added, updated, or removed.
   @retval EFI_NOT_FOUND         An attempt was made to delete a nonexistent entry.
-  @retval EFI_INVALID_PARAMETER Guid is not valid.
+  @retval EFI_INVALID_PARAMETER Guid is NULL.
   @retval EFI_OUT_OF_RESOURCES  There is not enough memory available to complete the operation.
 
 **/
@@ -1723,16 +1724,17 @@ EFI_STATUS
 // EFI Runtime Services Table
 //
 #define EFI_SYSTEM_TABLE_SIGNATURE      SIGNATURE_64 ('I','B','I',' ','S','Y','S','T')
+#define EFI_2_31_SYSTEM_TABLE_REVISION  ((2 << 16) | (31))
 #define EFI_2_30_SYSTEM_TABLE_REVISION  ((2 << 16) | (30))
 #define EFI_2_20_SYSTEM_TABLE_REVISION  ((2 << 16) | (20))
 #define EFI_2_10_SYSTEM_TABLE_REVISION  ((2 << 16) | (10))
 #define EFI_2_00_SYSTEM_TABLE_REVISION  ((2 << 16) | (00))
 #define EFI_1_10_SYSTEM_TABLE_REVISION  ((1 << 16) | (10))
 #define EFI_1_02_SYSTEM_TABLE_REVISION  ((1 << 16) | (02))
-#define EFI_SYSTEM_TABLE_REVISION       EFI_2_30_SYSTEM_TABLE_REVISION
+#define EFI_SYSTEM_TABLE_REVISION       EFI_2_31_SYSTEM_TABLE_REVISION
 
 #define EFI_RUNTIME_SERVICES_SIGNATURE  SIGNATURE_64 ('R','U','N','T','S','E','R','V')
-#define EFI_RUNTIME_SERVICES_REVISION   EFI_2_30_SYSTEM_TABLE_REVISION
+#define EFI_RUNTIME_SERVICES_REVISION   EFI_2_31_SYSTEM_TABLE_REVISION
 
 ///
 /// EFI Runtime Services Table.
@@ -1784,7 +1786,7 @@ typedef struct {
 
 
 #define EFI_BOOT_SERVICES_SIGNATURE   SIGNATURE_64 ('B','O','O','T','S','E','R','V')
-#define EFI_BOOT_SERVICES_REVISION    EFI_2_30_SYSTEM_TABLE_REVISION
+#define EFI_BOOT_SERVICES_REVISION    EFI_2_31_SYSTEM_TABLE_REVISION
 
 ///
 /// EFI Boot Services Table.

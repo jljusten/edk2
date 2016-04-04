@@ -13,31 +13,19 @@
 *
 **/
 
-#include <PiPei.h>
-#include <Ppi/TemporaryRamSupport.h>
 #include <Library/DebugLib.h>
 #include <Library/PcdLib.h>
 #include <Library/IoLib.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/PrintLib.h>
 #include <Library/ArmLib.h>
+#include <Library/SerialPortLib.h>
 #include <Chipset/ArmV7.h>
 
-EFI_STATUS
-EFIAPI
-SecTemporaryRamSupport (
-  IN CONST EFI_PEI_SERVICES   **PeiServices,
-  IN EFI_PHYSICAL_ADDRESS     TemporaryMemoryBase,
-  IN EFI_PHYSICAL_ADDRESS     PermanentMemoryBase,
-  IN UINTN                    CopySize
-  );
+#include "PrePeiCore.h"
 
-VOID
-SecSwitchStack (
-  INTN    StackDelta
-  );
-
-TEMPORARY_RAM_SUPPORT_PPI   mSecTemporaryRamSupportPpi = {SecTemporaryRamSupport};
+EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI   mSecTemporaryRamSupportPpi = {SecTemporaryRamSupport};
 
 EFI_PEI_PPI_DESCRIPTOR      gSecPpiTable[] = {
   {
@@ -46,10 +34,6 @@ EFI_PEI_PPI_DESCRIPTOR      gSecPpiTable[] = {
     &mSecTemporaryRamSupportPpi
   }
 };
-
-// Vector Table for Pei Phase
-VOID  PeiVectorTable (VOID);
-
 
 VOID
 CEntryPoint (
@@ -64,8 +48,8 @@ CEntryPoint (
   ArmInvalidateInstructionCache();
 
   // Enable Instruction & Data caches
-  ArmEnableDataCache();
-  ArmEnableInstructionCache();
+  ArmEnableDataCache ();
+  ArmEnableInstructionCache ();
 
   //
   // Note: Doesn't have to Enable CPU interface in non-secure world,
@@ -81,9 +65,9 @@ CEntryPoint (
   //If not primary Jump to Secondary Main
   if(0 == CoreId) {
     //Goto primary Main.
-    primary_main(PeiCoreEntryPoint);
+    PrimaryMain (PeiCoreEntryPoint);
   } else {
-    secondary_main(CoreId);
+    SecondaryMain (CoreId);
   }
 
   // PEI Core should always load and never return
@@ -101,7 +85,7 @@ SecTemporaryRamSupport (
 {
   //
   // Migrate the whole temporary memory to permenent memory.
-  // 
+  //
   CopyMem (
     (VOID*)(UINTN)PermanentMemoryBase, 
     (VOID*)(UINTN)TemporaryMemoryBase, 
@@ -113,35 +97,44 @@ SecTemporaryRamSupport (
   return EFI_SUCCESS;
 }
 
-VOID PeiCommonExceptionEntry(UINT32 Entry, UINT32 LR) {
+VOID
+PeiCommonExceptionEntry (
+  IN UINT32 Entry,
+  IN UINT32 LR
+  )
+{
+  CHAR8           Buffer[100];
+  UINTN           CharCount;
+
   switch (Entry) {
   case 0:
-    DEBUG((EFI_D_ERROR,"Reset Exception at 0x%X\n",LR));
+    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"Reset Exception at 0x%X\n\r",LR);
     break;
   case 1:
-    DEBUG((EFI_D_ERROR,"Undefined Exception at 0x%X\n",LR));
+    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"Undefined Exception at 0x%X\n\r",LR);
     break;
   case 2:
-    DEBUG((EFI_D_ERROR,"SWI Exception at 0x%X\n",LR));
+    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"SWI Exception at 0x%X\n\r",LR);
     break;
   case 3:
-    DEBUG((EFI_D_ERROR,"PrefetchAbort Exception at 0x%X\n",LR));
+    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"PrefetchAbort Exception at 0x%X\n\r",LR);
     break;
   case 4:
-    DEBUG((EFI_D_ERROR,"DataAbort Exception at 0x%X\n",LR));
+    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"DataAbort Exception at 0x%X\n\r",LR);
     break;
   case 5:
-    DEBUG((EFI_D_ERROR,"Reserved Exception at 0x%X\n",LR));
+    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"Reserved Exception at 0x%X\n\r",LR);
     break;
   case 6:
-    DEBUG((EFI_D_ERROR,"IRQ Exception at 0x%X\n",LR));
+    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"IRQ Exception at 0x%X\n\r",LR);
     break;
   case 7:
-    DEBUG((EFI_D_ERROR,"FIQ Exception at 0x%X\n",LR));
+    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"FIQ Exception at 0x%X\n\r",LR);
     break;
   default:
-    DEBUG((EFI_D_ERROR,"Unknown Exception at 0x%X\n",LR));
+    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"Unknown Exception at 0x%X\n\r",LR);
     break;
   }
+  SerialPortWrite ((UINT8 *) Buffer, CharCount);
   while(1);
 }

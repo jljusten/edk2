@@ -12,27 +12,26 @@
 *
 **/
 
-#ifndef __BDS_ENTRY_H__
-#define __BDS_ENTRY_H__
+#ifndef _BDS_UNIX_LIB_H_
+#define _BDS_UNIX_LIB_H_
 
-EFI_STATUS
-BdsConnectAllDrivers ( VOID );
+/**
+  Start a Linux kernel from a Device Path
 
+  @param  LinuxKernel           Device Path to the Linux Kernel
+  @param  Parameters            Linux kernel agruments
+  @param  Fdt                   Device Path to the Flat Device Tree
+
+  @retval EFI_SUCCESS           All drivers have been connected
+  @retval EFI_NOT_FOUND         The Linux kernel Device Path has not been found
+  @retval EFI_OUT_OF_RESOURCES  There is not enough resource memory to store the matching results.
+
+**/
 EFI_STATUS
 BdsBootLinux (
-    IN  CONST CHAR16* LinuxKernel,
-    IN  CONST CHAR8*  ATag,
-    IN  CONST CHAR16* Fdt
-);
-
-EFI_STATUS
-BdsLoadApplication (
-    IN  CHAR16* EfiApp
-);
-
-EFI_STATUS
-BdsLoadApplicationFromPath (
-    IN  CHAR16* EfiAppPath
-);
+  IN  EFI_DEVICE_PATH_PROTOCOL* LinuxKernelDevicePath,
+  IN  CONST CHAR8*              Arguments,
+  IN  EFI_DEVICE_PATH_PROTOCOL* FdtDevicePath
+  );
 
 #endif

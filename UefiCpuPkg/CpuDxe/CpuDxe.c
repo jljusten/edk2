@@ -581,19 +581,28 @@ CpuGetTimerValue (
 
 
 /**
-  Set memory cacheability attributes for given range of memeory.
+  Implementation of SetMemoryAttributes() service of CPU Architecture Protocol.
 
-  @param  This                   Protocol instance structure
-  @param  BaseAddress            Specifies the start address of the
-                                 memory range
-  @param  Length                 Specifies the length of the memory range
-  @param  Attributes             The memory cacheability for the memory range
+  This function modifies the attributes for the memory region specified by BaseAddress and
+  Length from their current attributes to the attributes specified by Attributes.
 
-  @retval EFI_SUCCESS            If the cacheability of that memory range is
-                                 set successfully
-  @retval EFI_UNSUPPORTED        If the desired operation cannot be done
-  @retval EFI_INVALID_PARAMETER  The input parameter is not correct,
-                                 such as Length = 0
+  @param  This             The EFI_CPU_ARCH_PROTOCOL instance.
+  @param  BaseAddress      The physical address that is the start address of a memory region.
+  @param  Length           The size in bytes of the memory region.
+  @param  Attributes       The bit mask of attributes to set for the memory region.
+
+  @retval EFI_SUCCESS           The attributes were set for the memory region.
+  @retval EFI_ACCESS_DENIED     The attributes for the memory resource range specified by
+                                BaseAddress and Length cannot be modified.
+  @retval EFI_INVALID_PARAMETER Length is zero.
+                                Attributes specified an illegal combination of attributes that
+                                cannot be set together.
+  @retval EFI_OUT_OF_RESOURCES  There are not enough system resources to modify the attributes of
+                                the memory resource range.
+  @retval EFI_UNSUPPORTED       The processor does not support one or more bytes of the memory
+                                resource range specified by BaseAddress and Length.
+                                The bit mask of attributes is not support for the memory resource
+                                range specified by BaseAddress and Length.
 
 **/
 EFI_STATUS
@@ -644,8 +653,14 @@ CpuSetMemoryAttributes (
     CacheType = CacheWriteBack;
     break;
 
-  default:
+  case EFI_MEMORY_UCE:
+  case EFI_MEMORY_RP:
+  case EFI_MEMORY_XP:
+  case EFI_MEMORY_RUNTIME:
     return EFI_UNSUPPORTED;
+
+  default:
+    return EFI_INVALID_PARAMETER;
   }
   //
   // call MTRR libary function
@@ -1126,7 +1141,7 @@ InitInterruptDescriptorTable (
   //
   // Initialize Exception Handlers
   //
-  for (Index = 0; Index < 32; Index++) {
+  for (Index = OldIdtSize; Index < 32; Index++) {
     Status = CpuRegisterInterruptHandler (&gCpu, Index, CommonExceptionHandler);
     ASSERT_EFI_ERROR (Status);
   }
@@ -1136,6 +1151,25 @@ InitInterruptDescriptorTable (
   //
   InitializeExternalVectorTablePtr (ExternalVectorTable);
 
+}
+
+
+/**
+  Callback function for idle events.
+ 
+  @param  Event                 Event whose notification function is being invoked.
+  @param  Context               The pointer to the notification function's context,
+                                which is implementation-dependent.
+
+**/
+VOID
+EFIAPI
+IdleLoopEventCallback (
+  IN EFI_EVENT                Event,
+  IN VOID                     *Context
+  )
+{
+  CpuSleep ();
 }
 
 
@@ -1158,6 +1192,7 @@ InitializeCpu (
   )
 {
   EFI_STATUS  Status;
+  EFI_EVENT   IdleLoopEvent;
 
   //
   // Make sure interrupts are disabled
@@ -1188,6 +1223,19 @@ InitializeCpu (
   // Refresh GCD memory space map according to MTRR value.
   //
   RefreshGcdMemoryAttributes ();
+
+  //
+  // Setup a callback for idle events
+  //
+  Status = gBS->CreateEventEx (
+                  EVT_NOTIFY_SIGNAL,
+                  TPL_NOTIFY,
+                  IdleLoopEventCallback,
+                  NULL,
+                  &gIdleLoopEventGuid,
+                  &IdleLoopEvent
+                  );
+  ASSERT_EFI_ERROR (Status);
 
   return Status;
 }

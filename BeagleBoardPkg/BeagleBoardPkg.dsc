@@ -39,6 +39,7 @@
   UncachedMemoryAllocationLib|ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
 #  UncachedMemoryAllocationLib|ArmPkg/Library/DebugUncachedMemoryAllocationLib/DebugUncachedMemoryAllocationLib.inf
 !endif
+  DebugPrintErrorLevelLib|MdePkg/Library/BaseDebugPrintErrorLevelLib/BaseDebugPrintErrorLevelLib.inf
 
   ArmLib|ArmPkg/Library/ArmLib/ArmV7/ArmV7Lib.inf
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
@@ -237,7 +238,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdTurnOffUsbLegacySupport|TRUE
   
 [PcdsFixedAtBuild.common]
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedPrompt|"BeagleEdk2 %a"
+  gEmbeddedTokenSpaceGuid.PcdEmbeddedPrompt|"BeagleEdk2"
   gEmbeddedTokenSpaceGuid.PcdPrePiCpuMemorySize|32
   gEmbeddedTokenSpaceGuid.PcdPrePiCpuIoSize|0
   gEfiMdePkgTokenSpaceGuid.PcdMaximumUnicodeStringLength|1000000

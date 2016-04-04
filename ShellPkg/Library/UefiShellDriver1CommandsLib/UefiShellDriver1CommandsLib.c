@@ -1,7 +1,7 @@
 /** @file
   Main file for NULL named library for level 1 shell command functions.
 
-  Copyright (c) 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2010 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -16,11 +16,18 @@
 
 STATIC CONST CHAR16 mFileName[] = L"Driver1Commands";
 EFI_HANDLE gShellDriver1HiiHandle = NULL;
+BOOLEAN    gInReconnect = FALSE;
+
 CONST EFI_GUID gShellDriver1HiiGuid = \
   { \
   0xaf0b742, 0x63ec, 0x45bd, {0x8d, 0xb6, 0x71, 0xad, 0x7f, 0x2f, 0xe8, 0xe8} \
   };
 
+/**
+  Function to return the name of the file containing help if HII will not be used.
+
+  @return The filename.
+**/
 CONST CHAR16*
 EFIAPI
 ShellCommandGetManFileNameDriver1 (
@@ -50,7 +57,7 @@ UefiShellDriver1CommandsLibConstructor (
   // check our bit of the profiles mask
   //
   if ((PcdGet8(PcdShellProfileMask) & BIT0) == 0) {
-    return (EFI_UNSUPPORTED);
+    return (EFI_SUCCESS);
   }
 
   //
@@ -81,6 +88,9 @@ UefiShellDriver1CommandsLibConstructor (
 
 /**
   Destructor for the library.  free any resources.
+
+  @param ImageHandle            The image handle of the process.
+  @param SystemTable            The EFI System Table pointer.
 **/
 EFI_STATUS
 EFIAPI

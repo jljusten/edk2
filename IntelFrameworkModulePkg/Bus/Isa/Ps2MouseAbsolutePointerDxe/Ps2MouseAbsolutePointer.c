@@ -2,7 +2,7 @@
   A faked PS/2 Absolute Pointer driver. Routines that interacts with callers,
   conforming to EFI driver model
   
-Copyright (c) 2006 - 2007, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -230,6 +230,12 @@ PS2MouseAbsolutePointerDriverStart (
   //
   // Initialize keyboard controller if necessary
   //
+  REPORT_STATUS_CODE_WITH_DEVICE_PATH (  
+    EFI_PROGRESS_CODE,
+    EFI_PERIPHERAL_MOUSE | EFI_P_MOUSE_PC_SELF_TEST,
+    ParentDevicePath
+    );
+
   IsaIo->Io.Read (IsaIo, EfiIsaIoWidthUint8, KBC_CMD_STS_PORT, 1, &Data);
   if ((Data & KBC_SYSF) != KBC_SYSF) {
     Status = KbcSelfTest (IsaIo);
@@ -444,10 +450,6 @@ PS2MouseAbsolutePointerDriverStop (
   if (EFI_ERROR (Status)) {
     return Status;
   }
-  //
-  // Disable mouse on keyboard controller
-  //
-  KbcDisableAux (MouseAbsolutePointerDev->IsaIo);
 
   //
   // Cancel mouse data polling timer, close timer event

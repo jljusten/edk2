@@ -1,7 +1,7 @@
 /** @file
   The driver binding for IP4 CONFIG protocol.
 
-Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at<BR>
@@ -77,7 +77,9 @@ IP4_CONFIG_INSTANCE        mIp4ConfigTemplate = {
   (NIC_IP4_CONFIG_INFO *) NULL,
   (EFI_DHCP4_PROTOCOL *) NULL,
   NULL,
-  NULL
+  NULL,
+  NULL,
+  TRUE
 };
 
 /**
@@ -286,24 +288,27 @@ Ip4ConfigDriverBindingStart (
   }
 
   //
+  // A dedicated timer is used to poll underlying media status.
+  //
+  Status = gBS->CreateEvent (
+                  EVT_NOTIFY_SIGNAL | EVT_TIMER,
+                  TPL_CALLBACK,
+                  MediaChangeDetect,
+                  Instance,
+                  &Instance->Timer
+                  );
+
+  if (EFI_ERROR (Status)) {
+    goto ON_ERROR;
+  }
+
+  //
   // Get the previous configure parameters. If an error happend here,
   // just ignore it because the driver should be able to operate.
   //
   NicConfig = Ip4ConfigReadVariable (Instance);
   if (NicConfig != NULL) {
-    if (NicConfig->Perment) {
-      if (NicConfig->Source == IP4_CONFIG_SOURCE_STATIC) {
-        //
-        // Don't modify the permanent static configuration.
-        //
-      } else if (NicConfig->Source == IP4_CONFIG_SOURCE_DHCP) {
-        //
-        // Remove the previous acquired DHCP parameters.
-        //
-        ZeroMem (&NicConfig->Ip4Info, sizeof (EFI_IP4_IPCONFIG_DATA));
-        Ip4ConfigWriteVariable (Instance, NicConfig);
-      }
-    } else {
+    if (!NicConfig->Perment) {
       //
       // Delete the non-permanent configuration.
       //
@@ -476,6 +481,12 @@ Ip4ConfigDriverBindingStop (
     FreePool (Instance->MacString);
   }
 
+  if (Instance->Timer != NULL) {
+    gBS->SetTimer (Instance->Timer, TimerCancel, 0);
+    gBS->CloseEvent (Instance->Timer);
+    Instance->Timer = NULL;
+  }
+  
   Ip4ConfigCleanConfig (Instance);
   FreePool (Instance);
 

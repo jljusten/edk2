@@ -1,6 +1,6 @@
 /** @file
 
-Copyright (c) 2006 - 2009, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -135,6 +135,7 @@ WinNtGopConvertParamToEfiKey (
   case VK_F22:        Key->ScanCode = SCAN_F22;        break;
   case VK_F23:        Key->ScanCode = SCAN_F23;        break;
   case VK_F24:        Key->ScanCode = SCAN_F24;        break;
+  case VK_PAUSE:      Key->ScanCode = SCAN_PAUSE;      break;
 
   //
   // Set toggle state
@@ -697,7 +698,7 @@ WinNtGopThreadWindowProc (
     case VK_F10:
       Key.ScanCode    = SCAN_F10;
       Key.UnicodeChar = 0;
-      GopPrivateAddQ (Private, Key);
+      GopPrivateAddKey (Private, Key);
       return 0;
     }
 
@@ -720,7 +721,7 @@ WinNtGopThreadWindowProc (
 
     if (Key.ScanCode != 0) {
       Key.UnicodeChar = 0;
-      GopPrivateAddQ (Private, Key);
+      GopPrivateAddKey (Private, Key);
     }
 
     return 0;
@@ -749,7 +750,7 @@ WinNtGopThreadWindowProc (
     WinNtGopConvertParamToEfiKey (Private, &wParam, &Key);
     if (Key.ScanCode != 0) {
       Key.UnicodeChar = 0;
-      GopPrivateAddQ (Private, Key);
+      GopPrivateAddKey (Private, Key);
     }
 
     return 0;
@@ -770,7 +771,7 @@ WinNtGopThreadWindowProc (
       if (wParam != 0) {
         Key.UnicodeChar = (CHAR16) wParam;
         Key.ScanCode    = 0;
-        GopPrivateAddQ (Private, Key);
+        GopPrivateAddKey (Private, Key);
       }
     }
 

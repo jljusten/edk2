@@ -16,7 +16,7 @@
   never removed. Such design ensures sytem function well during none console
   device situation.
 
-Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -169,7 +169,6 @@ GLOBAL_REMOVE_IF_UNREFERENCED TEXT_OUT_SPLITTER_PRIVATE_DATA mConOut = {
   (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *) NULL,
   0,
   0,
-  TRUE,
 
   0,
   (TEXT_OUT_AND_GOP_DATA *) NULL,
@@ -225,7 +224,6 @@ GLOBAL_REMOVE_IF_UNREFERENCED TEXT_OUT_SPLITTER_PRIVATE_DATA mStdErr = {
   (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *) NULL,
   0,
   0,
-  TRUE,
 
   0,
   (TEXT_OUT_AND_GOP_DATA *) NULL,
@@ -1865,7 +1863,7 @@ ConSplitterTextInDeleteDevice (
   //
   for (Index = 0; Index < Private->CurrentNumberOfConsoles; Index++) {
     if (Private->TextInList[Index] == TextIn) {
-      for (Index = Index; Index < Private->CurrentNumberOfConsoles - 1; Index++) {
+      for (; Index < Private->CurrentNumberOfConsoles - 1; Index++) {
         Private->TextInList[Index] = Private->TextInList[Index + 1];
       }
 
@@ -1945,7 +1943,7 @@ ConSplitterTextInExDeleteDevice (
   //
   for (Index = 0; Index < Private->CurrentNumberOfExConsoles; Index++) {
     if (Private->TextInExList[Index] == TextInEx) {
-      for (Index = Index; Index < Private->CurrentNumberOfExConsoles - 1; Index++) {
+      for (; Index < Private->CurrentNumberOfExConsoles - 1; Index++) {
         Private->TextInExList[Index] = Private->TextInExList[Index + 1];
       }
 
@@ -2022,7 +2020,7 @@ ConSplitterSimplePointerDeleteDevice (
   //
   for (Index = 0; Index < Private->CurrentNumberOfPointers; Index++) {
     if (Private->PointerList[Index] == SimplePointer) {
-      for (Index = Index; Index < Private->CurrentNumberOfPointers - 1; Index++) {
+      for (; Index < Private->CurrentNumberOfPointers - 1; Index++) {
         Private->PointerList[Index] = Private->PointerList[Index + 1];
       }
 
@@ -2099,7 +2097,7 @@ ConSplitterAbsolutePointerDeleteDevice (
   //
   for (Index = 0; Index < Private->CurrentNumberOfAbsolutePointers; Index++) {
     if (Private->AbsolutePointerList[Index] == AbsolutePointer) {
-      for (Index = Index; Index < Private->CurrentNumberOfAbsolutePointers - 1; Index++) {
+      for (; Index < Private->CurrentNumberOfAbsolutePointers - 1; Index++) {
         Private->AbsolutePointerList[Index] = Private->AbsolutePointerList[Index + 1];
       }
 
@@ -2832,9 +2830,7 @@ Done:
 
   //
   // Force GraphicsOutput mode to be set,
-  // regardless whether the console is in EfiConsoleControlScreenGraphics or EfiConsoleControlScreenText mode
   //
-  Private->HardwareNeedsStarting = TRUE;
   
   Mode = &Private->GraphicsOutputModeBuffer[CurrentIndex];
   if ((GraphicsOutput != NULL) &&

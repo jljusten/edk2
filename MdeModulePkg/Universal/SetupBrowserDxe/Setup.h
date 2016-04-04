@@ -1,7 +1,7 @@
 /** @file
 Private MACRO, structure and function definitions for Setup Browser module.
 
-Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -152,10 +152,7 @@ typedef struct {
 //
 #define EXPRESSION_STACK_SIZE_INCREMENT    0x100
 
-#define EFI_SPECIFICATION_MAJOR_VERSION    0x2
-#define EFI_SPECIFICATION_MINOR_VERSION    0x1
-#define EFI_SPECIFICATION_ERRATA_VERSION   0x0
-#define EFI_IFR_SPECIFICATION_VERSION  (UINT16)((EFI_SPECIFICATION_MAJOR_VERSION << 8) | (EFI_SPECIFICATION_MINOR_VERSION << 4) | EFI_SPECIFICATION_ERRATA_VERSION)
+#define EFI_IFR_SPECIFICATION_VERSION  (UINT16) (((EFI_SYSTEM_TABLE_REVISION >> 16) << 8) | (((EFI_SYSTEM_TABLE_REVISION & 0xFFFF) / 10) << 4) | ((EFI_SYSTEM_TABLE_REVISION & 0xFFFF) % 10))
 
 
 #define SETUP_DRIVER_SIGNATURE SIGNATURE_32 ('F', 'B', 'D', 'V')
@@ -379,6 +376,7 @@ typedef struct {
   EFI_QUESTION_ID       RefQuestionId;    // for EFI_IFR_REF2
   EFI_GUID              RefFormSetId;     // for EFI_IFR_REF3
   EFI_STRING_ID         RefDevicePath;    // for EFI_IFR_REF4
+  EFI_GUID              RefreshGuid;      // for EFI_IFR_REFRESH_ID
 
   //
   // Get from IFR parsing
@@ -403,6 +401,19 @@ typedef struct {
 
 #define FORM_BROWSER_STATEMENT_FROM_LINK(a)  CR (a, FORM_BROWSER_STATEMENT, Link, FORM_BROWSER_STATEMENT_SIGNATURE)
 
+#define FORM_BROWSER_CONFIG_REQUEST_SIGNATURE  SIGNATURE_32 ('F', 'C', 'R', 'S')
+typedef struct {
+  UINTN                 Signature;
+  LIST_ENTRY            Link;
+
+  CHAR16                *ConfigRequest; // <ConfigRequest> = <ConfigHdr> + <RequestElement>
+  UINTN                 ElementCount;   // Number of <RequestElement> in the <ConfigRequest>  
+  UINTN                 SpareStrLen;
+
+  FORMSET_STORAGE       *Storage;
+} FORM_BROWSER_CONFIG_REQUEST;
+#define FORM_BROWSER_CONFIG_REQUEST_FROM_LINK(a)  CR (a, FORM_BROWSER_CONFIG_REQUEST, Link, FORM_BROWSER_CONFIG_REQUEST_SIGNATURE)
+
 #define FORM_BROWSER_FORM_SIGNATURE  SIGNATURE_32 ('F', 'F', 'R', 'M')
 #define STANDARD_MAP_FORM_TYPE 0x01
 
@@ -416,8 +427,13 @@ typedef struct {
 
   EFI_IMAGE_ID      ImageId;
 
+  BOOLEAN           ModalForm;            // Whether this is a modal form.
+
+  BOOLEAN           NvUpdateRequired;     // Whether this form has NV update request.
+
   LIST_ENTRY        ExpressionListHead;   // List of Expressions (FORM_EXPRESSION)
   LIST_ENTRY        StatementListHead;    // List of Statements and Questions (FORM_BROWSER_STATEMENT)
+  LIST_ENTRY        ConfigRequestHead;    // List of configreques for all storage.
   FORM_EXPRESSION   *SuppressExpression;  // nesting inside of SuppressIf
 } FORM_BROWSER_FORM;
 
@@ -475,7 +491,6 @@ typedef struct {
   UINTN                 ClassOfVfr;
   UINTN                 FunctionKeySetting;
   BOOLEAN               ResetRequired;
-  BOOLEAN               NvUpdateRequired;
   UINT16                Direction;
   EFI_SCREEN_DESCRIPTOR ScreenDimensions;
   CHAR16                *FunctionNineString;
@@ -531,7 +546,6 @@ extern EFI_HII_HANDLE        gFrontPageHandle;
 extern UINTN                 gClassOfVfr;
 extern UINTN                 gFunctionKeySetting;
 extern BOOLEAN               gResetRequired;
-extern BOOLEAN               gNvUpdateRequired;
 extern EFI_HII_HANDLE        gHiiHandle;
 extern UINT16                gDirection;
 extern EFI_SCREEN_DESCRIPTOR gScreenDimensions;
@@ -706,10 +720,13 @@ DestroyFormSet (
 /**
   This function displays the page frame.
 
+  @param  Selection              Selection contains the information about 
+                                 the Selection, form and formset to be displayed.
+                                 Selection action may be updated in retrieve callback.
 **/
 VOID
 DisplayPageFrame (
-  VOID
+  IN UI_MENU_SELECTION    *Selection
   );
 
 /**
@@ -836,6 +853,7 @@ GetValueByName (
   @param  Storage                The NameValue Storage.
   @param  Name                   The Name.
   @param  Value                  The Value to set.
+  @param  Edit                   Whether update editValue or Value.
 
   @retval EFI_SUCCESS            Value found for given Name.
   @retval EFI_NOT_FOUND          No such Name found in NameValue storage.
@@ -845,7 +863,8 @@ EFI_STATUS
 SetValueByName (
   IN FORMSET_STORAGE         *Storage,
   IN CHAR16                  *Name,
-  IN CHAR16                  *Value
+  IN CHAR16                  *Value,
+  IN BOOLEAN                 Edit
   );
 
 /**
@@ -909,10 +928,28 @@ ValidateQuestion (
   );
 
 /**
-  Submit a Form.
+  Discard data for form level or formset level.
 
   @param  FormSet                FormSet data structure.
   @param  Form                   Form data structure.
+  @param  SingleForm             whether submit single form or formset.
+
+  @retval EFI_SUCCESS            The function completed successfully.
+
+**/
+EFI_STATUS
+DiscardForm (
+  IN FORM_BROWSER_FORMSET             *FormSet,
+  IN FORM_BROWSER_FORM                *Form,
+  IN BOOLEAN                          SingleForm
+  );
+
+/**
+  Submit data for form level or formset level.
+
+  @param  FormSet                FormSet data structure.
+  @param  Form                   Form data structure.
+  @param  SingleForm             whether submit single form or formset.
 
   @retval EFI_SUCCESS            The function completed successfully.
 
@@ -920,7 +957,8 @@ ValidateQuestion (
 EFI_STATUS
 SubmitForm (
   IN FORM_BROWSER_FORMSET             *FormSet,
-  IN FORM_BROWSER_FORM                *Form
+  IN FORM_BROWSER_FORM                *Form,
+  IN BOOLEAN                          SingleForm
   );
 
 /**
@@ -1031,8 +1069,9 @@ LoadFormSetConfig (
 /**
   Convert setting of Buffer Storage or NameValue Storage to <ConfigResp>.
 
-  @param  Storage                The Storage to be conveted.
+  @param  Buffer                 The Storage to be conveted.
   @param  ConfigResp             The returned <ConfigResp>.
+  @param  SingleForm             Whether update data for single form or formset level.
 
   @retval EFI_SUCCESS            Convert success.
   @retval EFI_INVALID_PARAMETER  Incorrect storage type.
@@ -1040,8 +1079,9 @@ LoadFormSetConfig (
 **/
 EFI_STATUS
 StorageToConfigResp (
-  IN FORMSET_STORAGE         *Storage,
-  IN CHAR16                  **ConfigResp
+  IN VOID                    *Buffer,
+  IN CHAR16                  **ConfigResp,
+  IN BOOLEAN                 SingleForm
   );
 
 /**
@@ -1198,4 +1238,71 @@ BrowserCallback (
   IN CONST CHAR16                      *VariableName  OPTIONAL
   );
 
+/**
+  Find menu which will show next time.
+
+  @param Selection       On input, Selection tell setup browser the information
+                         about the Selection, form and formset to be displayed.
+                         On output, Selection return the screen item that is selected
+                         by user.
+  @param Repaint         Whether need to repaint the menu.
+  @param NewLine         Whether need to show at new line.
+  
+  @retval TRUE           Need return.
+  @retval FALSE          No need to return.
+**/
+BOOLEAN
+FindNextMenu (
+  IN OUT UI_MENU_SELECTION    *Selection,
+  IN     BOOLEAN              *Repaint, 
+  IN     BOOLEAN              *NewLine  
+  );
+
+/**
+  check whether the formset need to update the NV.
+
+  @param  FormSet                FormSet data structure.
+  @param  SetValue               Whether set new value or clear old value.
+
+**/
+VOID
+UpdateNvInfoInForm (
+  IN FORM_BROWSER_FORMSET  *FormSet,
+  IN BOOLEAN               SetValue
+  );
+
+/**
+  check whether the formset need to update the NV.
+
+  @param  FormSet                FormSet data structure.
+
+  @retval TRUE                   Need to update the NV.
+  @retval FALSE                  No need to update the NV.
+**/
+BOOLEAN 
+IsNvUpdateRequired (
+  IN FORM_BROWSER_FORMSET  *FormSet
+  );
+
+/**
+  Call the call back function for the question and process the return action.
+
+  @param Selection             On input, Selection tell setup browser the information
+                               about the Selection, form and formset to be displayed.
+                               On output, Selection return the screen item that is selected
+                               by user.
+  @param Statement             The Question which need to call.
+  @param Action                The action request.
+  @param SkipSaveOrDiscard     Whether skip save or discard action.
+
+  @retval EFI_SUCCESS          The call back function excutes successfully.
+  @return Other value if the call back function failed to excute.  
+**/
+EFI_STATUS 
+ProcessCallBackFunction (
+  IN OUT UI_MENU_SELECTION               *Selection,
+  IN     FORM_BROWSER_STATEMENT          *Question,
+  IN     EFI_BROWSER_ACTION              Action,
+  IN     BOOLEAN                         SkipSaveOrDiscard
+  );
 #endif

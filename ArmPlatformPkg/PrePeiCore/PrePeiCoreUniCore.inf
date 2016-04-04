@@ -33,7 +33,6 @@
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
-  EmbeddedPkg/EmbeddedPkg.dec
   ArmPkg/ArmPkg.dec
   ArmPlatformPkg/ArmPlatformPkg.dec
 
@@ -51,11 +50,13 @@
   gArmPlatformTokenSpaceGuid.PcdStandalone
   
 [FixedPcd]
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedFdBaseAddress
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedFdSize
+  gArmTokenSpaceGuid.PcdNormalFvBaseAddress
+  gArmTokenSpaceGuid.PcdNormalFvSize
 
   gArmPlatformTokenSpaceGuid.PcdCPUCoresNonSecStackBase
   gArmPlatformTokenSpaceGuid.PcdCPUCoresNonSecStackSize
+  
+  gArmPlatformTokenSpaceGuid.PcdPeiGlobalVariableSize
   
   gArmTokenSpaceGuid.PcdGicDistributorBase
   gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase

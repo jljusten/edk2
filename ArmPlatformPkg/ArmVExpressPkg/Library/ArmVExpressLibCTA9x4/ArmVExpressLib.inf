@@ -31,8 +31,11 @@
   ArmLib
   ArmTrustZoneLib
   MemoryAllocationLib
+  PL354SmcLib
   PL341DmcLib
   PL301AxiLib
+  L2X0CacheLib
+  SerialPortLib
 
 [Sources.common]
   CTA9x4.c
@@ -43,7 +46,7 @@
 [FeaturePcd]
   gEmbeddedTokenSpaceGuid.PcdCacheEnable
   gArmPlatformTokenSpaceGuid.PcdStandalone
+  gArmPlatformTokenSpaceGuid.PcdNorFlashRemapping
 
 [FixedPcd]
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedFdBaseAddress
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedFdSize
+  gArmTokenSpaceGuid.PcdL2x0ControllerBase

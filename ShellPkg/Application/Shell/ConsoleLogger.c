@@ -1,7 +1,7 @@
 /** @file
   Provides interface to shell console logger.
 
-  Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -39,40 +39,40 @@ ConsoleLoggerInstall(
   EFI_STATUS Status;
   ASSERT(ConsoleInfo != NULL);
 
-  (*ConsoleInfo) = AllocatePool(sizeof(CONSOLE_LOGGER_PRIVATE_DATA));
+  (*ConsoleInfo) = AllocateZeroPool(sizeof(CONSOLE_LOGGER_PRIVATE_DATA));
   if ((*ConsoleInfo) == NULL) {
     return (EFI_OUT_OF_RESOURCES);
   }
 
-  (*ConsoleInfo)->Signature        = CONSOLE_LOGGER_PRIVATE_DATA_SIGNATURE;
-  (*ConsoleInfo)->OldConOut        = NULL;
-  (*ConsoleInfo)->OldConHandle     = NULL;
-  (*ConsoleInfo)->Buffer           = NULL;
-  (*ConsoleInfo)->BufferSize       = 0;
-  (*ConsoleInfo)->OriginalStartRow = 0;
-  (*ConsoleInfo)->CurrentStartRow  = 0;
-  (*ConsoleInfo)->RowsPerScreen    = 0;
-  (*ConsoleInfo)->ColsPerScreen    = 0;
-  (*ConsoleInfo)->Attributes       = NULL;
-  (*ConsoleInfo)->AttribSize       = 0;
-  (*ConsoleInfo)->ScreenCount      = ScreensToSave;
-  (*ConsoleInfo)->HistoryMode.MaxMode       = 1;
-  (*ConsoleInfo)->HistoryMode.Mode          = 0;
-  (*ConsoleInfo)->HistoryMode.Attribute     = 0;
-  (*ConsoleInfo)->HistoryMode.CursorColumn  = 0;
-  (*ConsoleInfo)->HistoryMode.CursorRow     = 0;
-  (*ConsoleInfo)->HistoryMode.CursorVisible = FALSE;
-  (*ConsoleInfo)->OurConOut.Reset           = ConsoleLoggerReset;
-  (*ConsoleInfo)->OurConOut.OutputString    = ConsoleLoggerOutputString;
-  (*ConsoleInfo)->OurConOut.TestString      = ConsoleLoggerTestString;
-  (*ConsoleInfo)->OurConOut.QueryMode       = ConsoleLoggerQueryMode;
-  (*ConsoleInfo)->OurConOut.SetMode         = ConsoleLoggerSetMode;
-  (*ConsoleInfo)->OurConOut.SetAttribute    = ConsoleLoggerSetAttribute;
-  (*ConsoleInfo)->OurConOut.ClearScreen     = ConsoleLoggerClearScreen;
+  (*ConsoleInfo)->Signature                   = CONSOLE_LOGGER_PRIVATE_DATA_SIGNATURE;
+  (*ConsoleInfo)->OldConOut                   = gST->ConOut;
+  (*ConsoleInfo)->OldConHandle                = gST->ConsoleOutHandle;
+  (*ConsoleInfo)->Buffer                      = NULL;
+  (*ConsoleInfo)->BufferSize                  = 0;
+  (*ConsoleInfo)->OriginalStartRow            = 0;
+  (*ConsoleInfo)->CurrentStartRow             = 0;
+  (*ConsoleInfo)->RowsPerScreen               = 0;
+  (*ConsoleInfo)->ColsPerScreen               = 0;
+  (*ConsoleInfo)->Attributes                  = NULL;
+  (*ConsoleInfo)->AttribSize                  = 0;
+  (*ConsoleInfo)->ScreenCount                 = ScreensToSave;
+  (*ConsoleInfo)->HistoryMode.MaxMode         = 1;
+  (*ConsoleInfo)->HistoryMode.Mode            = 0;
+  (*ConsoleInfo)->HistoryMode.Attribute       = 0;
+  (*ConsoleInfo)->HistoryMode.CursorColumn    = 0;
+  (*ConsoleInfo)->HistoryMode.CursorRow       = 0;
+  (*ConsoleInfo)->HistoryMode.CursorVisible   = FALSE;
+  (*ConsoleInfo)->OurConOut.Reset             = ConsoleLoggerReset;
+  (*ConsoleInfo)->OurConOut.OutputString      = ConsoleLoggerOutputString;
+  (*ConsoleInfo)->OurConOut.TestString        = ConsoleLoggerTestString;
+  (*ConsoleInfo)->OurConOut.QueryMode         = ConsoleLoggerQueryMode;
+  (*ConsoleInfo)->OurConOut.SetMode           = ConsoleLoggerSetMode;
+  (*ConsoleInfo)->OurConOut.SetAttribute      = ConsoleLoggerSetAttribute;
+  (*ConsoleInfo)->OurConOut.ClearScreen       = ConsoleLoggerClearScreen;
   (*ConsoleInfo)->OurConOut.SetCursorPosition = ConsoleLoggerSetCursorPosition;
-  (*ConsoleInfo)->OurConOut.EnableCursor    = ConsoleLoggerEnableCursor;
-  (*ConsoleInfo)->OurConOut.Mode            = NULL;
-  (*ConsoleInfo)->Enabled                   = TRUE;
+  (*ConsoleInfo)->OurConOut.EnableCursor      = ConsoleLoggerEnableCursor;
+  (*ConsoleInfo)->OurConOut.Mode              = gST->ConOut->Mode;
+  (*ConsoleInfo)->Enabled                     = TRUE;
 
   Status = ConsoleLoggerResetBuffers(*ConsoleInfo);
   if (EFI_ERROR(Status)) {
@@ -90,11 +90,8 @@ ConsoleLoggerInstall(
     return (Status);
   }
 
-  (*ConsoleInfo)->OldConOut = gST->ConOut;
-  (*ConsoleInfo)->OldConHandle = gST->ConsoleOutHandle;
-
   gST->ConsoleOutHandle = gImageHandle;
-  gST->ConOut = &(*ConsoleInfo)->OurConOut;
+  gST->ConOut           = &(*ConsoleInfo)->OurConOut;
 
   return (Status);
 }
@@ -103,7 +100,7 @@ ConsoleLoggerInstall(
   Return the system to the state it was before InstallConsoleLogger
   was installed.
 
-  @param[in,out] ConsoleInfo   The object from the install function.
+  @param[in] ConsoleInfo  The object from the install function.
 
   @retval EFI_SUCCESS     The operation was successful
   @return other           The operation failed.  This was from UninstallProtocolInterface.
@@ -261,10 +258,12 @@ UpdateDisplayFromHistory(
   CHAR16          *StringSegment;
   CHAR16          *StringSegmentEnd;
   CHAR16          StringSegmentEndChar;
+  INT32           OrigAttribute;
 
   ASSERT(ConsoleInfo != NULL);
   TempCharHolder = CHAR_NULL;
   RetVal = EFI_SUCCESS;
+  OrigAttribute = ConsoleInfo->OldConOut->Mode->Attribute;
 
   //
   // Disable cursor visibility and move it to the top left corner
@@ -372,6 +371,11 @@ UpdateDisplayFromHistory(
     if (EFI_ERROR (Status)) {
       RetVal = Status;
     }
+  } else {
+    ConsoleInfo->OldConOut->SetAttribute (
+                                ConsoleInfo->OldConOut,
+                                OrigAttribute
+                               );
   }
 
   return (RetVal);
@@ -631,7 +635,10 @@ ConsoleLoggerDoPageBreak(
   }
   if (*Resp == ShellPromptResponseContinue) {
     FreePool(Resp);
-    ShellInfoObject.ConsoleInfo->RowCounter = 0;
+    ShellInfoObject.ConsoleInfo->RowCounter                   = 0;
+//    ShellInfoObject.ConsoleInfo->OurConOut.Mode->CursorRow    = 0;
+//    ShellInfoObject.ConsoleInfo->OurConOut.Mode->CursorColumn = 0;
+
     return (EFI_SUCCESS);
   } else if (*Resp == ShellPromptResponseQuit) {
     FreePool(Resp);
@@ -660,16 +667,23 @@ ConsoleLoggerDoPageBreak(
 EFI_STATUS
 EFIAPI
 ConsoleLoggerPrintWithPageBreak(
-  IN CHAR16   *String,
+  IN CONST CHAR16   *String,
   IN CONSOLE_LOGGER_PRIVATE_DATA *ConsoleInfo
   )
 {
   CONST CHAR16  *Walker;
   CONST CHAR16  *LineStart;
+  CHAR16        *StringCopy;
   CHAR16        TempChar;
 
-  for ( Walker = String
-      , LineStart = String
+  StringCopy = NULL;
+  StringCopy = StrnCatGrow(&StringCopy, NULL, String, 0);
+  if (StringCopy == NULL) {
+    return (EFI_OUT_OF_RESOURCES);
+  }
+
+  for ( Walker = StringCopy
+      , LineStart = StringCopy
       ; Walker != NULL && *Walker != CHAR_NULL
       ; Walker++
      ){
@@ -722,7 +736,7 @@ ConsoleLoggerPrintWithPageBreak(
       //
       // check if that is the last column
       //
-      if ((INTN)ConsoleInfo->ColsPerScreen == ConsoleInfo->OurConOut.Mode->CursorColumn - 1) {
+      if ((INTN)ConsoleInfo->ColsPerScreen == ConsoleInfo->OurConOut.Mode->CursorColumn + 1) {
         //
         // output a line similar to the linefeed character.
         //
@@ -746,7 +760,7 @@ ConsoleLoggerPrintWithPageBreak(
         //
         // Update LineStart Variable
         //
-        LineStart = Walker;
+        LineStart = Walker + 1;
 
         //
         // increment row count and zero the column
@@ -766,6 +780,7 @@ ConsoleLoggerPrintWithPageBreak(
         //
         // We got an error which means 'break' and halt the printing
         //
+        SHELL_FREE_NON_NULL(StringCopy);
         return (EFI_DEVICE_ERROR);
       }
     }
@@ -775,6 +790,7 @@ ConsoleLoggerPrintWithPageBreak(
     ConsoleLoggerOutputStringSplit (LineStart, ConsoleInfo);
   }
 
+  SHELL_FREE_NON_NULL(StringCopy);
   return (EFI_SUCCESS);
 }
 
@@ -801,9 +817,22 @@ ConsoleLoggerOutputString (
   IN  CHAR16                          *WString
   )
 {
+  EFI_INPUT_KEY               Key;
+  UINTN                       EventIndex;
   CONSOLE_LOGGER_PRIVATE_DATA *ConsoleInfo;
   ConsoleInfo = CONSOLE_LOGGER_PRIVATE_DATA_FROM_THIS(This);
+  if (ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleOut) {
+    return (EFI_UNSUPPORTED);
+  }
   ASSERT(ShellInfoObject.ConsoleInfo == ConsoleInfo);
+  if (ShellInfoObject.HaltOutput) {
+    //
+    // just get some key
+    //
+    gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &EventIndex);
+    gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
+    ShellInfoObject.HaltOutput = FALSE;
+  }
   if (!ShellInfoObject.ConsoleInfo->Enabled) {
     return (EFI_DEVICE_ERROR);
   } else if (ShellInfoObject.PageBreakEnabled) {
@@ -893,8 +922,8 @@ ConsoleLoggerQueryMode (
 EFI_STATUS
 EFIAPI
 ConsoleLoggerSetMode (
-  IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  *This,
-  IN  UINTN                         ModeNumber
+  IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL   *This,
+  IN  UINTN                             ModeNumber
   )
 {
   EFI_STATUS                  Status;
@@ -911,6 +940,7 @@ ConsoleLoggerSetMode (
   // Check that the buffers are still correct for logging
   //
   if (!EFI_ERROR (Status)) {
+    ConsoleInfo->OurConOut.Mode = gST->ConOut->Mode;
     ConsoleLoggerResetBuffers(ConsoleInfo);
   }
 
@@ -981,9 +1011,12 @@ ConsoleLoggerClearScreen (
   INT32             *Attributes;
   UINTN             Row;
   UINTN             Column;
-
-
   CONSOLE_LOGGER_PRIVATE_DATA *ConsoleInfo;
+
+  if (ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleOut) {
+    return (EFI_UNSUPPORTED);
+  }
+
   ConsoleInfo = CONSOLE_LOGGER_PRIVATE_DATA_FROM_THIS(This);
 
   //
@@ -1044,8 +1077,12 @@ ConsoleLoggerSetCursorPosition (
   )
 {
   EFI_STATUS                  Status;
-
   CONSOLE_LOGGER_PRIVATE_DATA *ConsoleInfo;
+
+  if (ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleOut) {
+    return (EFI_UNSUPPORTED);
+  }
+
   ConsoleInfo = CONSOLE_LOGGER_PRIVATE_DATA_FROM_THIS(This);
   //
   // Forward the request to the original ConOut
@@ -1154,8 +1191,6 @@ ConsoleLoggerResetBuffers(
     return (EFI_OUT_OF_RESOURCES);
   }
 
-  ConsoleInfo->OurConOut.Mode = gST->ConOut->Mode;
-  ConsoleInfo->OldConOut = gST->ConOut;
   CopyMem (&ConsoleInfo->HistoryMode, ConsoleInfo->OldConOut->Mode, sizeof (EFI_SIMPLE_TEXT_OUTPUT_MODE));
 
   return (EFI_SUCCESS);

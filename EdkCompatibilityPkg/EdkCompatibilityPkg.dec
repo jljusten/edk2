@@ -5,7 +5,7 @@
 # contains the header files and libraries found in the original EDK. EdkCompatibilityPkg code is ANSI C compliant, so the modules can be built with GCC tool-chains. 
 # This package also incorporates bug fixes released in EDK 1.06.
 # 
-# Copyright (c) 2008 - 2010, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2008 - 2011, Intel Corporation. All rights reserved.<BR>
 #
 #    This program and the accompanying materials are licensed and made available under
 #    the terms and conditions of the BSD License which accompanies this distribution.
@@ -17,37 +17,15 @@
 #
 ##
 
-################################################################################
-#
-# Defines Section - statements that will be processed to create a Makefile.
-#
-################################################################################
-
 [Defines]
   DEC_SPECIFICATION              = 0x00010005
   PACKAGE_NAME                   = EdkCompatibilityPkg
   PACKAGE_GUID                   = 98EDD7B0-2A6C-4b4a-AC72-4AAE0F95A3F8
   PACKAGE_VERSION                = 0.91
   
-  
-################################################################################
-#
-# Include Section - list of Include Paths that are provided by this package.
-#                   Comments are used for Keywords and Module Types.
-#
-# Supported Module Types:
-#  BASE SEC PEI_CORE PEIM DXE_CORE DXE_DRIVER DXE_RUNTIME_DRIVER DXE_SMM_DRIVER DXE_SAL_DRIVER UEFI_DRIVER UEFI_APPLICATION
-#
-################################################################################
 [Includes]
   Compatibility/Include
 
-################################################################################
-#
-# Library Class Header section - list of Library Class header files that are
-#                                provided by this package.
-#
-################################################################################
 [LibraryClasses]
   ##  @libraryclass  Provides functions for language conversion between
   #                  ISO 639-2 and RFC 4646 styles.
@@ -66,6 +44,6 @@
   gEfiPrintProtocolGuid                   = { 0xdf2d868e, 0x32fc, 0x4cf0, {0x8e, 0x6b, 0xff, 0xd9, 0x5d, 0x13, 0x43, 0xd0} }
   gEfiSmmBaseHelperReadyProtocolGuid      = { 0x910dca07, 0x1f94, 0x4ee7, { 0xaf, 0x2f, 0xff, 0x72, 0xf3, 0x15, 0x43, 0x53 } }
 
-[PcdsDynamic]
+[PcdsDynamic, PcdsDynamicEx]
   gEfiEdkCompatibilityPkgTokenSpaceGuid.BootScriptThunkDataPtr|0x0|UINT64|0x30000001
 

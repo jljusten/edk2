@@ -1,7 +1,7 @@
 /** @file
   Provides interface to shell internal functions for shell commands.
 
-  Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -17,7 +17,7 @@
 /// The tag for use in identifying UNICODE files.
 /// If the file is UNICODE, the first 16 bits of the file will equal this value.
 enum {
-  UnicodeFileTag = 0xFEFF
+  gUnicodeFileTag = 0xFEFF
 };
 
 // STATIC local variables
@@ -34,8 +34,6 @@ STATIC UINTN                              mBlkMaxCount = 0;
 STATIC BUFFER_LIST                        mFileHandleList;
 
 // global variables required by library class.
-EFI_SHELL_PROTOCOL                *gEfiShellProtocol            = NULL;
-EFI_SHELL_PARAMETERS_PROTOCOL     *gEfiShellParametersProtocol  = NULL;
 EFI_UNICODE_COLLATION_PROTOCOL    *gUnicodeCollation            = NULL;
 EFI_DEVICE_PATH_TO_TEXT_PROTOCOL  *gDevPathToText               = NULL;
 SHELL_MAP_LIST                    gShellMapList;
@@ -59,24 +57,6 @@ CommandInit(
   )
 {
   EFI_STATUS Status;
-  if (gEfiShellParametersProtocol == NULL) {
-    Status = gBS->OpenProtocol(gImageHandle,
-                               &gEfiShellParametersProtocolGuid,
-                               (VOID **)&gEfiShellParametersProtocol,
-                               gImageHandle,
-                               NULL,
-                               EFI_OPEN_PROTOCOL_GET_PROTOCOL
-                              );
-    if (EFI_ERROR(Status)) {
-      return (EFI_DEVICE_ERROR);
-    }
-  }
-  if (gEfiShellProtocol == NULL) {
-    Status = gBS->LocateProtocol(&gEfiShellProtocolGuid, NULL, (VOID**)&gEfiShellProtocol);
-    if (EFI_ERROR(Status)) {
-      return (EFI_DEVICE_ERROR);
-    }
-  }
   if (gUnicodeCollation == NULL) {
     Status = gBS->LocateProtocol(&gEfiUnicodeCollation2ProtocolGuid, NULL, (VOID**)&gUnicodeCollation);
     if (EFI_ERROR(Status)) {
@@ -206,6 +186,10 @@ ShellCommandLibDestructor (
   if (mProfileList != NULL) {
     FreePool(mProfileList);
   }
+
+  gUnicodeCollation            = NULL;
+  gDevPathToText               = NULL;
+  gShellCurDir                 = NULL;
 
   return (RETURN_SUCCESS);
 }
@@ -374,9 +358,9 @@ ShellCommandRegisterCommandName (
   //
   // allocate memory for new struct
   //
-  Node = AllocatePool(sizeof(SHELL_COMMAND_INTERNAL_LIST_ENTRY));
+  Node = AllocateZeroPool(sizeof(SHELL_COMMAND_INTERNAL_LIST_ENTRY));
   ASSERT(Node != NULL);
-  Node->CommandString = AllocatePool(StrSize(CommandString));
+  Node->CommandString = AllocateZeroPool(StrSize(CommandString));
   ASSERT(Node->CommandString != NULL);
 
   //
@@ -439,8 +423,6 @@ ShellCommandGetProfileList (
   it will be appended to the returned help text. If the section does not exist, no
   information will be returned. If Sections is NULL, then all help text information
   available will be returned.
-
-  @param          Sections          pointer to string representing which section to get help on.
 
   @param[in]  CommandString         Pointer to the command name.  This is the name
                                     found on the command line in the shell.
@@ -546,13 +528,19 @@ ShellCommandGetManFileNameHandler (
   (via LIST_ENTRY structure).  enumerate through it using the BaseLib linked
   list functions.  do not modify the values.
 
+  @param[in] Sort       TRUE to alphabetically sort the values first.  FALSE otherwise.
+
   @return a Linked list of all available shell commands.
 **/
 CONST COMMAND_LIST*
 EFIAPI
 ShellCommandGetCommandList (
+  IN CONST BOOLEAN Sort
   )
 {
+//  if (!Sort) {
+//    return ((COMMAND_LIST*)(&mCommandList));
+//  }
   return ((COMMAND_LIST*)(&mCommandList));
 }
 
@@ -587,10 +575,10 @@ ShellCommandRegisterAlias (
   //
   // allocate memory for new struct
   //
-  Node = AllocatePool(sizeof(ALIAS_LIST));
+  Node = AllocateZeroPool(sizeof(ALIAS_LIST));
   ASSERT(Node != NULL);
-  Node->CommandString = AllocatePool(StrSize(Command));
-  Node->Alias = AllocatePool(StrSize(Alias));
+  Node->CommandString = AllocateZeroPool(StrSize(Command));
+  Node->Alias = AllocateZeroPool(StrSize(Alias));
   ASSERT(Node->CommandString != NULL);
   ASSERT(Node->Alias != NULL);
 
@@ -625,7 +613,7 @@ ShellCommandGetInitAliasList (
 }
 
 /**
-  Determine if a given alias is on the list of built in alias'
+  Determine if a given alias is on the list of built in alias'.
 
   @param[in] Alias              The alias to test for
 
@@ -694,6 +682,8 @@ ShellCommandGetEchoState(
 
   If State is TRUE, Echo will be enabled.
   If State is FALSE, Echo will be disabled.
+
+  @param[in] State      How to set echo.
 **/
 VOID
 EFIAPI
@@ -1040,7 +1030,7 @@ ShellCommandCreateInitialMappingsAndPaths(
     //
     // Get all Device Paths
     //
-    DevicePathList = AllocatePool(sizeof(EFI_DEVICE_PATH_PROTOCOL*) * Count);
+    DevicePathList = AllocateZeroPool(sizeof(EFI_DEVICE_PATH_PROTOCOL*) * Count);
     ASSERT(DevicePathList != NULL);
 
     for (Count = 0 ; HandleList[Count] != NULL ; Count++) {
@@ -1097,7 +1087,7 @@ ShellCommandCreateInitialMappingsAndPaths(
     //
     // Get all Device Paths
     //
-    DevicePathList = AllocatePool(sizeof(EFI_DEVICE_PATH_PROTOCOL*) * Count);
+    DevicePathList = AllocateZeroPool(sizeof(EFI_DEVICE_PATH_PROTOCOL*) * Count);
     ASSERT(DevicePathList != NULL);
 
     for (Count = 0 ; HandleList[Count] != NULL ; Count++) {
@@ -1132,6 +1122,13 @@ ShellCommandCreateInitialMappingsAndPaths(
   return (EFI_SUCCESS);
 }
 
+/**
+  Function to make sure all directory delimeters are backslashes.
+
+  @param[in,out] Path     The path to modify.
+
+  @return Path.
+**/
 CHAR16*
 EFIAPI
 ShellCommandCleanPath (
@@ -1189,7 +1186,7 @@ ConvertEfiFileProtocolToShellHandle(
     if (Buffer == NULL) {
       return (NULL);
     }
-    NewNode             = AllocatePool(sizeof(BUFFER_LIST));
+    NewNode             = AllocateZeroPool(sizeof(BUFFER_LIST));
     if (NewNode == NULL) {
       return (NULL);
     }
@@ -1232,7 +1229,7 @@ ShellFileHandleGetPath(
 }
 
 /**
-  Remove a SHELL_FILE_HANDLE frmo the list of SHELL_FILE_HANDLES.
+  Remove a SHELL_FILE_HANDLE from the list of SHELL_FILE_HANDLES.
 
   @param[in] Handle     The SHELL_FILE_HANDLE to remove.
 
@@ -1340,7 +1337,7 @@ ShellFileHandleReturnLine(
 
   Status = ShellFileHandleReadLine(Handle, RetVal, &Size, FALSE, Ascii);
   if (Status == EFI_BUFFER_TOO_SMALL) {
-    RetVal = AllocatePool(Size);
+    RetVal = AllocateZeroPool(Size);
     Status = ShellFileHandleReadLine(Handle, RetVal, &Size, FALSE, Ascii);
   }
   ASSERT_EFI_ERROR(Status);
@@ -1409,7 +1406,7 @@ ShellFileHandleReadLine(
     CharSize = sizeof(CHAR16);
     Status = gEfiShellProtocol->ReadFile(Handle, &CharSize, &CharBuffer);
     ASSERT_EFI_ERROR(Status);
-    if (CharBuffer == UnicodeFileTag) {
+    if (CharBuffer == gUnicodeFileTag) {
       *Ascii = FALSE;
     } else {
       *Ascii = TRUE;
@@ -1462,6 +1459,8 @@ ShellFileHandleReadLine(
 }
 /**
   Frees any BUFFER_LIST defined type.
+
+  @param[in] List     The BUFFER_LIST object to free.
 **/
 VOID
 EFIAPI
@@ -1493,7 +1492,7 @@ FreeBufferList (
 /**
   Chops off last directory or file entry in a path leaving the trailing slash
 
-  @param[in,out] Path
+  @param[in,out] PathToReturn The path to modify.
 
   @retval FALSE     No directory was found to chop off.
   @retval TRUE      A directory was chopped off.
@@ -1505,11 +1504,11 @@ ChopLastSlash(
   )
 {
   CHAR16        *Walker;
-  CHAR16        *LastSlash = NULL;
+  CHAR16        *LastSlash;
   //
   // get directory name from path... ('chop' off extra)
   //
-  for ( Walker = PathToReturn
+  for ( Walker = PathToReturn, LastSlash = NULL
       ; Walker != NULL && *Walker != CHAR_NULL
       ; Walker++
      ){
@@ -1522,5 +1521,53 @@ ChopLastSlash(
     return (TRUE);
   }
   return (FALSE);
+}
+
+/**
+  Function to clean up paths.  Removes the following items:
+    single periods in the path (no need for the current directory tag)
+    double periods in the path and removes a single parent directory.
+
+  This will be done inline and the resultant string may be be 'too big'.
+
+  @param[in] PathToReturn  The pointer to the string containing the path.
+
+  @return PathToReturn is always returned.
+**/
+CHAR16*
+EFIAPI
+CleanPath(
+  IN CHAR16 *PathToReturn
+  )
+{
+  CHAR16  *TempString;
+  UINTN   TempSize;
+  if (PathToReturn==NULL) {
+    return(NULL);
+  }
+  //
+  // Fix up the directory name
+  //
+  while ((TempString = StrStr(PathToReturn, L"\\..\\")) != NULL) {
+    *TempString = CHAR_NULL;
+    TempString  += 4;
+    ChopLastSlash(PathToReturn);
+    TempSize = StrSize(TempString);
+    CopyMem(PathToReturn+StrLen(PathToReturn), TempString, TempSize);
+  }
+  if ((TempString = StrStr(PathToReturn, L"\\..")) != NULL && *(TempString + 3) == CHAR_NULL) {
+    *TempString = CHAR_NULL;
+    ChopLastSlash(PathToReturn);
+  }
+  while ((TempString = StrStr(PathToReturn, L"\\.\\")) != NULL) {
+    *TempString = CHAR_NULL;
+    TempString  += 2;
+    TempSize = StrSize(TempString);
+    CopyMem(PathToReturn+StrLen(PathToReturn), TempString, TempSize);
+  }
+  if ((TempString = StrStr(PathToReturn, L"\\.")) != NULL && *(TempString + 2) == CHAR_NULL) {
+    *TempString = CHAR_NULL;
+  }
+  return (PathToReturn);
 }
 

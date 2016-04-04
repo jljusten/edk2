@@ -65,7 +65,47 @@ VOID ArmPlatformIsMemoryInitialized(VOID);
   pointer is not used (probably required to use assembly language)
 
 **/
-VOID ArmPlatformInitializeBootMemory(VOID);
+VOID
+ArmPlatformInitializeBootMemory (
+  VOID
+  );
+
+/**
+  Return the current Boot Mode
+
+  This function returns the boot reason on the platform
+
+  @return   Return the current Boot Mode of the platform
+
+**/
+EFI_BOOT_MODE
+ArmPlatformGetBootMode (
+  VOID
+  );
+
+/**
+  Initialize controllers that must setup at the early stage
+
+  Some peripherals must be initialized in Secure World.
+  For example, some L2x0 requires to be initialized in Secure World
+
+**/
+VOID
+ArmPlatformSecInitialize (
+  VOID
+  );
+
+/**
+  Initialize controllers that must setup in the normal world
+
+  This function is called by the ArmPlatformPkg/Pei or ArmPlatformPkg/Pei/PlatformPeim
+  in the PEI phase.
+
+**/
+VOID
+ArmPlatformNormalInitialize (
+  VOID
+  );
 
 /**
   Initialize the system (or sometimes called permanent) memory
@@ -73,7 +113,10 @@ VOID ArmPlatformInitializeBootMemory(VOID);
   This memory is generally represented by the DRAM.
 
 **/
-VOID ArmPlatformInitializeSystemMemory(VOID);
+VOID
+ArmPlatformInitializeSystemMemory (
+  VOID
+  );
 
 /**
   Remap the memory at 0x0
@@ -82,7 +125,10 @@ VOID ArmPlatformInitializeSystemMemory(VOID);
   This function can do nothing if this feature is not relevant to your platform.
 
 **/
-VOID ArmPlatformBootRemapping(VOID);
+VOID
+ArmPlatformBootRemapping (
+  VOID
+  );
 
 /**
   Return if Trustzone is supported by your platform
@@ -95,7 +141,10 @@ VOID ArmPlatformBootRemapping(VOID);
   @return   A non-zero value if Trustzone supported.
 
 **/
-UINTN ArmPlatformTrustzoneSupported(VOID);
+UINTN
+ArmPlatformTrustzoneSupported (
+  VOID
+  );
 
 /**
   Initialize the Secure peripherals and memory regions
@@ -104,22 +153,10 @@ UINTN ArmPlatformTrustzoneSupported(VOID);
   of the secure peripherals and memory regions.
 
 **/
-VOID ArmPlatformTrustzoneInit(VOID);
-
-/**
-  Return the information about the memory region in permanent memory used by PEI
-
-  One of the PEI Module must install the permament memory used by PEI. This function returns the
-  information about this region for your platform to this PEIM module.
-
-  @param[out]   PeiMemoryBase       Base of the memory region used by PEI core and modules
-  @param[out]   PeiMemorySize       Size of the memory region used by PEI core and modules
-
-**/
-VOID ArmPlatformGetPeiMemory (
-    OUT UINTN*                                   PeiMemoryBase,
-    OUT UINTN*                                   PeiMemorySize
-    );
+VOID
+ArmPlatformTrustzoneInit (
+  VOID
+  );
 
 /**
   Return the Virtual Memory Map of your platform
@@ -131,9 +168,10 @@ VOID ArmPlatformGetPeiMemory (
                                     entry
 
 **/
-VOID ArmPlatformGetVirtualMemoryMap (
-    OUT ARM_MEMORY_REGION_DESCRIPTOR** VirtualMemoryMap
-);
+VOID
+ArmPlatformGetVirtualMemoryMap (
+  OUT ARM_MEMORY_REGION_DESCRIPTOR** VirtualMemoryMap
+  );
 
 /**
   Return the EFI Memory Map of your platform
@@ -145,8 +183,9 @@ VOID ArmPlatformGetVirtualMemoryMap (
                                     EFI Memory region. This array must be ended by a zero-filled entry
 
 **/
-VOID ArmPlatformGetEfiMemoryMap (
-    OUT ARM_SYSTEM_MEMORY_REGION_DESCRIPTOR** EfiMemoryMap
-);
+EFI_STATUS
+ArmPlatformGetAdditionalSystemMemory (
+  OUT ARM_SYSTEM_MEMORY_REGION_DESCRIPTOR** EfiMemoryMap
+  );
 
 #endif

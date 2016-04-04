@@ -59,6 +59,7 @@
   MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
   MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
   MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
+  MdePkg/Library/BaseDebugPrintErrorLevelLib/BaseDebugPrintErrorLevelLib.inf
   MdePkg/Library/BaseLib/BaseLib.inf
   MdePkg/Library/BaseMemoryLib/BaseMemoryLib.inf
   MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
@@ -149,7 +150,14 @@
   MdePkg/Library/SecPeiDxeTimerLibCpu/SecPeiDxeTimerLibCpu.inf
   MdePkg/Library/UefiPalLib/UefiPalLib.inf
   MdePkg/Library/UefiSalLib/UefiSalLib.inf
-
+  MdePkg/Library/DxeExtendedSalLib/DxeExtendedSalLib.inf
+  MdePkg/Library/DxeIoLibEsal/DxeIoLibEsal.inf
+  MdePkg/Library/DxePalLibEsal/DxePalLibEsal.inf
+  MdePkg/Library/DxePciLibEsal/DxePciLibEsal.inf
+  MdePkg/Library/DxePciSegmentLibEsal/DxePciSegmentLibEsal.inf
+  MdePkg/Library/DxeRuntimeExtendedSalLib/DxeRuntimeExtendedSalLib.inf
+  MdePkg/Library/DxeSalLibEsal/DxeSalLibEsal.inf
+  MdePkg/Library/DxeTimerLibEsal/DxeTimerLibEsal.inf  
+  
 [Components.EBC]
   MdePkg/Library/UefiRuntimeLib/UefiRuntimeLib.inf
-

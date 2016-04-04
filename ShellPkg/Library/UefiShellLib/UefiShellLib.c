@@ -1,7 +1,7 @@
 /** @file
   Provides interface to shell functionality for shell commands and applications.
 
-  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -14,6 +14,7 @@
 
 #include "UefiShellLib.h"
 #include <ShellBase.h>
+#include <Library/SortLib.h>
 
 #define FIND_XXXXX_FILE_BUFFER_SIZE (SIZE_OF_EFI_FILE_INFO + MAX_FILE_NAME_LEN)
 
@@ -29,12 +30,10 @@ SHELL_PARAM_ITEM SfoParamList[] = {
   };
 EFI_SHELL_ENVIRONMENT2        *mEfiShellEnvironment2;
 EFI_SHELL_INTERFACE           *mEfiShellInterface;
-EFI_SHELL_PROTOCOL            *mEfiShellProtocol;
-EFI_SHELL_PARAMETERS_PROTOCOL *mEfiShellParametersProtocol;
+EFI_SHELL_PROTOCOL            *gEfiShellProtocol;
+EFI_SHELL_PARAMETERS_PROTOCOL *gEfiShellParametersProtocol;
 EFI_HANDLE                    mEfiShellEnvironment2Handle;
 FILE_HANDLE_FUNCTION_MAP      FileFunctionMap;
-CHAR16                        *mPostReplaceFormat;
-CHAR16                        *mPostReplaceFormat2;
 
 /**
   Check if a Unicode character is a hexadecimal character.
@@ -123,7 +122,7 @@ ShellFindSE2 (
     // maybe it's not there???
     //
     if (Status == EFI_BUFFER_TOO_SMALL) {
-      Buffer = (EFI_HANDLE*)AllocatePool(BufferSize);
+      Buffer = (EFI_HANDLE*)AllocateZeroPool(BufferSize);
       ASSERT(Buffer != NULL);
       Status = gBS->LocateHandle (ByProtocol,
                                   &gEfiShellEnvironment2Guid,
@@ -159,12 +158,14 @@ ShellFindSE2 (
   return (Status);
 }
 
-/*/
+/**
   Function to do most of the work of the constructor.  Allows for calling 
   multiple times without complete re-initialization.
 
   @param[in] ImageHandle  A copy of the ImageHandle.
   @param[in] SystemTable  A pointer to the SystemTable for the application.
+
+  @retval EFI_SUCCESS   The operationw as successful.
 **/
 EFI_STATUS
 EFIAPI
@@ -174,10 +175,6 @@ ShellLibConstructorWorker (
   )
 {
   EFI_STATUS  Status;
-  mPostReplaceFormat = AllocateZeroPool (PcdGet16 (PcdShellPrintBufferSize));
-  ASSERT (mPostReplaceFormat != NULL);
-  mPostReplaceFormat2 = AllocateZeroPool (PcdGet16 (PcdShellPrintBufferSize));
-  ASSERT (mPostReplaceFormat2 != NULL);
 
   //
   // UEFI 2.0 shell interfaces (used preferentially)
@@ -185,7 +182,7 @@ ShellLibConstructorWorker (
   Status = gBS->OpenProtocol(
     ImageHandle,
     &gEfiShellProtocolGuid,
-    (VOID **)&mEfiShellProtocol,
+    (VOID **)&gEfiShellProtocol,
     ImageHandle,
     NULL,
     EFI_OPEN_PROTOCOL_GET_PROTOCOL
@@ -197,25 +194,25 @@ ShellLibConstructorWorker (
     Status = gBS->LocateProtocol(
       &gEfiShellProtocolGuid,
       NULL,
-      (VOID **)&mEfiShellProtocol
+      (VOID **)&gEfiShellProtocol
      );
     if (EFI_ERROR(Status)) {
-      mEfiShellProtocol = NULL;
+      gEfiShellProtocol = NULL;
     }
   }
   Status = gBS->OpenProtocol(
     ImageHandle,
     &gEfiShellParametersProtocolGuid,
-    (VOID **)&mEfiShellParametersProtocol,
+    (VOID **)&gEfiShellParametersProtocol,
     ImageHandle,
     NULL,
     EFI_OPEN_PROTOCOL_GET_PROTOCOL
    );
   if (EFI_ERROR(Status)) {
-    mEfiShellParametersProtocol = NULL;
+    gEfiShellParametersProtocol = NULL;
   }
 
-  if (mEfiShellParametersProtocol == NULL || mEfiShellProtocol == NULL) {
+  if (gEfiShellParametersProtocol == NULL || gEfiShellProtocol == NULL) {
     //
     // Moved to seperate function due to complexity
     //
@@ -241,18 +238,18 @@ ShellLibConstructorWorker (
   // only success getting 2 of either the old or new, but no 1/2 and 1/2
   //
   if ((mEfiShellEnvironment2 != NULL && mEfiShellInterface          != NULL) ||
-      (mEfiShellProtocol     != NULL && mEfiShellParametersProtocol != NULL)   ) {
-    if (mEfiShellProtocol != NULL) {
-      FileFunctionMap.GetFileInfo     = mEfiShellProtocol->GetFileInfo;
-      FileFunctionMap.SetFileInfo     = mEfiShellProtocol->SetFileInfo;
-      FileFunctionMap.ReadFile        = mEfiShellProtocol->ReadFile;
-      FileFunctionMap.WriteFile       = mEfiShellProtocol->WriteFile;
-      FileFunctionMap.CloseFile       = mEfiShellProtocol->CloseFile;
-      FileFunctionMap.DeleteFile      = mEfiShellProtocol->DeleteFile;
-      FileFunctionMap.GetFilePosition = mEfiShellProtocol->GetFilePosition;
-      FileFunctionMap.SetFilePosition = mEfiShellProtocol->SetFilePosition;
-      FileFunctionMap.FlushFile       = mEfiShellProtocol->FlushFile;
-      FileFunctionMap.GetFileSize     = mEfiShellProtocol->GetFileSize;
+      (gEfiShellProtocol     != NULL && gEfiShellParametersProtocol != NULL)   ) {
+    if (gEfiShellProtocol != NULL) {
+      FileFunctionMap.GetFileInfo     = gEfiShellProtocol->GetFileInfo;
+      FileFunctionMap.SetFileInfo     = gEfiShellProtocol->SetFileInfo;
+      FileFunctionMap.ReadFile        = gEfiShellProtocol->ReadFile;
+      FileFunctionMap.WriteFile       = gEfiShellProtocol->WriteFile;
+      FileFunctionMap.CloseFile       = gEfiShellProtocol->CloseFile;
+      FileFunctionMap.DeleteFile      = gEfiShellProtocol->DeleteFile;
+      FileFunctionMap.GetFilePosition = gEfiShellProtocol->GetFilePosition;
+      FileFunctionMap.SetFilePosition = gEfiShellProtocol->SetFilePosition;
+      FileFunctionMap.FlushFile       = gEfiShellProtocol->FlushFile;
+      FileFunctionMap.GetFileSize     = gEfiShellProtocol->GetFileSize;
     } else {
       FileFunctionMap.GetFileInfo     = (EFI_SHELL_GET_FILE_INFO)FileHandleGetInfo;
       FileFunctionMap.SetFileInfo     = (EFI_SHELL_SET_FILE_INFO)FileHandleSetInfo;
@@ -288,12 +285,10 @@ ShellLibConstructor (
   )
 {
   mEfiShellEnvironment2       = NULL;
-  mEfiShellProtocol           = NULL;
-  mEfiShellParametersProtocol = NULL;
+  gEfiShellProtocol           = NULL;
+  gEfiShellParametersProtocol = NULL;
   mEfiShellInterface          = NULL;
   mEfiShellEnvironment2Handle = NULL;
-  mPostReplaceFormat          = NULL;
-  mPostReplaceFormat2         = NULL;
 
   //
   // verify that auto initialize is not set false
@@ -335,30 +330,21 @@ ShellLibDestructor (
                        NULL);
     mEfiShellInterface = NULL;
   }
-  if (mEfiShellProtocol != NULL) {
+  if (gEfiShellProtocol != NULL) {
     gBS->CloseProtocol(ImageHandle,
                        &gEfiShellProtocolGuid,
                        ImageHandle,
                        NULL);
-    mEfiShellProtocol = NULL;
+    gEfiShellProtocol = NULL;
   }
-  if (mEfiShellParametersProtocol != NULL) {
+  if (gEfiShellParametersProtocol != NULL) {
     gBS->CloseProtocol(ImageHandle,
                        &gEfiShellParametersProtocolGuid,
                        ImageHandle,
                        NULL);
-    mEfiShellParametersProtocol = NULL;
+    gEfiShellParametersProtocol = NULL;
   }
   mEfiShellEnvironment2Handle = NULL;
-
-  if (mPostReplaceFormat != NULL) {
-    FreePool(mPostReplaceFormat);
-  }
-  if (mPostReplaceFormat2 != NULL) {
-    FreePool(mPostReplaceFormat2);
-  }
-  mPostReplaceFormat          = NULL;
-  mPostReplaceFormat2         = NULL;
 
   return (EFI_SUCCESS);
 }
@@ -497,20 +483,18 @@ ShellOpenFileByDevicePath(
   EFI_FILE_PROTOCOL               *Handle1;
   EFI_FILE_PROTOCOL               *Handle2;
 
-  //
-  // ASERT for FileHandle, FilePath, and DeviceHandle being NULL
-  //
-  ASSERT(FilePath != NULL);
-  ASSERT(FileHandle != NULL);
-  ASSERT(DeviceHandle != NULL);
+  if (FilePath == NULL || FileHandle == NULL || DeviceHandle == NULL) {
+    return (EFI_INVALID_PARAMETER);
+  }
+
   //
   // which shell interface should we use
   //
-  if (mEfiShellProtocol != NULL) {
+  if (gEfiShellProtocol != NULL) {
     //
     // use UEFI Shell 2.0 method.
     //
-    FileName = mEfiShellProtocol->GetFilePathFromDevicePath(*FilePath);
+    FileName = gEfiShellProtocol->GetFilePathFromDevicePath(*FilePath);
     if (FileName == NULL) {
       return (EFI_INVALID_PARAMETER);
     }
@@ -615,7 +599,7 @@ ShellOpenFileByDevicePath(
   otherwise, the Filehandle is NULL. The Attributes is valid only for
   EFI_FILE_MODE_CREATE.
 
-  if FileNAme is NULL then ASSERT()
+  if FileName is NULL then ASSERT()
 
   @param  FileName 		  pointer to file name
   @param  FileHandle		pointer to the file handle.
@@ -662,14 +646,14 @@ ShellOpenFileByName(
     return (EFI_INVALID_PARAMETER);
   }
 
-  if (mEfiShellProtocol != NULL) {
+  if (gEfiShellProtocol != NULL) {
     if ((OpenMode & EFI_FILE_MODE_CREATE) == EFI_FILE_MODE_CREATE && (Attributes & EFI_FILE_DIRECTORY) == EFI_FILE_DIRECTORY) {
       return ShellCreateDirectory(FileName, FileHandle);
     }
     //
     // Use UEFI Shell 2.0 method
     //
-    Status = mEfiShellProtocol->OpenFileByName(FileName,
+    Status = gEfiShellProtocol->OpenFileByName(FileName,
                                                FileHandle,
                                                OpenMode);
     if (StrCmp(FileName, L"NUL") != 0 && !EFI_ERROR(Status) && ((OpenMode & EFI_FILE_MODE_CREATE) != 0)){
@@ -732,11 +716,11 @@ ShellCreateDirectory(
   OUT SHELL_FILE_HANDLE                  *FileHandle
   )
 {
-  if (mEfiShellProtocol != NULL) {
+  if (gEfiShellProtocol != NULL) {
     //
     // Use UEFI Shell 2.0 method
     //
-    return (mEfiShellProtocol->CreateFile(DirectoryName,
+    return (gEfiShellProtocol->CreateFile(DirectoryName,
                           EFI_FILE_DIRECTORY,
                           FileHandle
                          ));
@@ -817,7 +801,7 @@ ShellReadFile(
 EFI_STATUS
 EFIAPI
 ShellWriteFile(
-  IN SHELL_FILE_HANDLE                     FileHandle,
+  IN SHELL_FILE_HANDLE          FileHandle,
   IN OUT UINTN                  *BufferSize,
   IN VOID                       *Buffer
   )
@@ -1047,12 +1031,12 @@ ShellGetExecutionBreakFlag(
   //
   // Check for UEFI Shell 2.0 protocols
   //
-  if (mEfiShellProtocol != NULL) {
+  if (gEfiShellProtocol != NULL) {
 
     //
     // We are using UEFI Shell 2.0; see if the event has been triggered
     //
-    if (gBS->CheckEvent(mEfiShellProtocol->ExecutionBreak) != EFI_SUCCESS) {
+    if (gBS->CheckEvent(gEfiShellProtocol->ExecutionBreak) != EFI_SUCCESS) {
       return (FALSE);
     }
     return (TRUE);
@@ -1061,8 +1045,11 @@ ShellGetExecutionBreakFlag(
   //
   // using EFI Shell; call the function to check
   //
-  ASSERT(mEfiShellEnvironment2 != NULL);
-  return (mEfiShellEnvironment2->GetExecutionBreak());
+  if (mEfiShellEnvironment2 != NULL) {
+    return (mEfiShellEnvironment2->GetExecutionBreak());
+  }
+
+  return (FALSE);
 }
 /**
   return the value of an environment variable
@@ -1084,19 +1071,18 @@ ShellGetEnvironmentVariable (
   //
   // Check for UEFI Shell 2.0 protocols
   //
-  if (mEfiShellProtocol != NULL) {
-    return (mEfiShellProtocol->GetEnv(EnvKey));
+  if (gEfiShellProtocol != NULL) {
+    return (gEfiShellProtocol->GetEnv(EnvKey));
   }
 
   //
-  // ASSERT that we must have EFI shell
+  // Check for EFI shell
   //
-  ASSERT(mEfiShellEnvironment2 != NULL);
+  if (mEfiShellEnvironment2 != NULL) {
+    return (mEfiShellEnvironment2->GetEnv((CHAR16*)EnvKey));
+  }
 
-  //
-  // using EFI Shell
-  //
-  return (mEfiShellEnvironment2->GetEnv((CHAR16*)EnvKey));
+  return NULL;
 }
 /**
   set the value of an environment variable
@@ -1129,8 +1115,8 @@ ShellSetEnvironmentVariable (
   //
   // Check for UEFI Shell 2.0 protocols
   //
-  if (mEfiShellProtocol != NULL) {
-    return (mEfiShellProtocol->SetEnv(EnvKey, EnvVal, Volatile));
+  if (gEfiShellProtocol != NULL) {
+    return (gEfiShellProtocol->SetEnv(EnvKey, EnvVal, Volatile));
   }
 
   //
@@ -1169,7 +1155,6 @@ ShellSetEnvironmentVariable (
   @retval EFI_OUT_OF_RESOURCES    Out of resources.
   @retval EFI_UNSUPPORTED         The operation is not allowed.
 **/
-
 EFI_STATUS
 EFIAPI
 ShellExecute (
@@ -1183,26 +1168,30 @@ ShellExecute (
   //
   // Check for UEFI Shell 2.0 protocols
   //
-  if (mEfiShellProtocol != NULL) {
+  if (gEfiShellProtocol != NULL) {
     //
     // Call UEFI Shell 2.0 version (not using Output parameter)
     //
-    return (mEfiShellProtocol->Execute(ParentHandle,
+    return (gEfiShellProtocol->Execute(ParentHandle,
                                       CommandLine,
                                       EnvironmentVariables,
                                       Status));
   }
+
   //
-  // ASSERT that we must have EFI shell
+  // Check for EFI shell
   //
-  ASSERT(mEfiShellEnvironment2 != NULL);
-  //
-  // Call EFI Shell version (not using EnvironmentVariables or Status parameters)
-  // Due to oddity in the EFI shell we want to dereference the ParentHandle here
-  //
-  return (mEfiShellEnvironment2->Execute(*ParentHandle,
-                                        CommandLine,
-                                        Output));
+  if (mEfiShellEnvironment2 != NULL) {
+    //
+    // Call EFI Shell version (not using EnvironmentVariables or Status parameters)
+    // Due to oddity in the EFI shell we want to dereference the ParentHandle here
+    //
+    return (mEfiShellEnvironment2->Execute(*ParentHandle,
+                                          CommandLine,
+                                          Output));
+  }
+
+  return (EFI_UNSUPPORTED);
 }
 /**
   Retreives the current directory path
@@ -1225,14 +1214,18 @@ ShellGetCurrentDir (
   //
   // Check for UEFI Shell 2.0 protocols
   //
-  if (mEfiShellProtocol != NULL) {
-    return (mEfiShellProtocol->GetCurDir(DeviceName));
+  if (gEfiShellProtocol != NULL) {
+    return (gEfiShellProtocol->GetCurDir(DeviceName));
   }
+
   //
-  // ASSERT that we must have EFI shell
+  // Check for EFI shell
   //
-  ASSERT(mEfiShellEnvironment2 != NULL);
-  return (mEfiShellEnvironment2->CurDir(DeviceName));
+  if (mEfiShellEnvironment2 != NULL) {
+    return (mEfiShellEnvironment2->CurDir(DeviceName));
+  }
+
+  return (NULL);
 }
 /**
   sets (enabled or disabled) the page break mode
@@ -1255,43 +1248,45 @@ ShellSetPageBreakMode (
     //
     // check for UEFI Shell 2.0
     //
-    if (mEfiShellProtocol != NULL) {
+    if (gEfiShellProtocol != NULL) {
       //
       // Enable with UEFI 2.0 Shell
       //
-      mEfiShellProtocol->EnablePageBreak();
+      gEfiShellProtocol->EnablePageBreak();
       return;
     } else {
       //
-      // ASSERT that must have EFI Shell
+      // Check for EFI shell
       //
-      ASSERT(mEfiShellEnvironment2 != NULL);
-      //
-      // Enable with EFI Shell
-      //
-      mEfiShellEnvironment2->EnablePageBreak (DEFAULT_INIT_ROW, DEFAULT_AUTO_LF);
-      return;
+      if (mEfiShellEnvironment2 != NULL) {
+        //
+        // Enable with EFI Shell
+        //
+        mEfiShellEnvironment2->EnablePageBreak (DEFAULT_INIT_ROW, DEFAULT_AUTO_LF);
+        return;
+      }
     }
   } else {
     //
     // check for UEFI Shell 2.0
     //
-    if (mEfiShellProtocol != NULL) {
+    if (gEfiShellProtocol != NULL) {
       //
       // Disable with UEFI 2.0 Shell
       //
-      mEfiShellProtocol->DisablePageBreak();
+      gEfiShellProtocol->DisablePageBreak();
       return;
     } else {
       //
-      // ASSERT that must have EFI Shell
+      // Check for EFI shell
       //
-      ASSERT(mEfiShellEnvironment2 != NULL);
-      //
-      // Disable with EFI Shell
-      //
-      mEfiShellEnvironment2->DisablePageBreak ();
-      return;
+      if (mEfiShellEnvironment2 != NULL) {
+        //
+        // Disable with EFI Shell
+        //
+        mEfiShellEnvironment2->DisablePageBreak ();
+        return;
+      }
     }
   }
 }
@@ -1450,7 +1445,7 @@ ShellOpenFileMetaArg (
   //
   // Check for UEFI Shell 2.0 protocols
   //
-  if (mEfiShellProtocol != NULL) {
+  if (gEfiShellProtocol != NULL) {
     if (*ListHead == NULL) {
       *ListHead = (EFI_SHELL_FILE_INFO*)AllocateZeroPool(sizeof(EFI_SHELL_FILE_INFO));
       if (*ListHead == NULL) {
@@ -1458,13 +1453,13 @@ ShellOpenFileMetaArg (
       }
       InitializeListHead(&((*ListHead)->Link));
     }
-    Status = mEfiShellProtocol->OpenFileList(Arg,
+    Status = gEfiShellProtocol->OpenFileList(Arg,
                                            OpenMode,
                                            ListHead);
     if (EFI_ERROR(Status)) {
-      mEfiShellProtocol->RemoveDupInFileList(ListHead);
+      gEfiShellProtocol->RemoveDupInFileList(ListHead);
     } else {
-      Status = mEfiShellProtocol->RemoveDupInFileList(ListHead);
+      Status = gEfiShellProtocol->RemoveDupInFileList(ListHead);
     }
     if (*ListHead != NULL && IsListEmpty(&(*ListHead)->Link)) {
       FreePool(*ListHead);
@@ -1475,49 +1470,50 @@ ShellOpenFileMetaArg (
   }
 
   //
-  // ASSERT that we must have EFI shell
+  // Check for EFI shell
   //
-  ASSERT(mEfiShellEnvironment2 != NULL);
+  if (mEfiShellEnvironment2 != NULL) {
+    //
+    // make sure the list head is initialized
+    //
+    InitializeListHead(&mOldStyleFileList);
 
-  //
-  // make sure the list head is initialized
-  //
-  InitializeListHead(&mOldStyleFileList);
+    //
+    // Get the EFI Shell list of files
+    //
+    Status = mEfiShellEnvironment2->FileMetaArg(Arg, &mOldStyleFileList);
+    if (EFI_ERROR(Status)) {
+      *ListHead = NULL;
+      return (Status);
+    }
 
-  //
-  // Get the EFI Shell list of files
-  //
-  Status = mEfiShellEnvironment2->FileMetaArg(Arg, &mOldStyleFileList);
-  if (EFI_ERROR(Status)) {
-    *ListHead = NULL;
+    if (*ListHead == NULL) {
+      *ListHead = (EFI_SHELL_FILE_INFO    *)AllocateZeroPool(sizeof(EFI_SHELL_FILE_INFO));
+      if (*ListHead == NULL) {
+        return (EFI_OUT_OF_RESOURCES);
+      }
+      InitializeListHead(&((*ListHead)->Link));
+    }
+
+    //
+    // Convert that to equivalent of UEFI Shell 2.0 structure
+    //
+    InternalShellConvertFileListType(&mOldStyleFileList, &(*ListHead)->Link);
+
+    //
+    // Free the EFI Shell version that was converted.
+    //
+    mEfiShellEnvironment2->FreeFileList(&mOldStyleFileList);
+
+    if ((*ListHead)->Link.ForwardLink == (*ListHead)->Link.BackLink && (*ListHead)->Link.BackLink == &((*ListHead)->Link)) {
+      FreePool(*ListHead);
+      *ListHead = NULL;
+      Status = EFI_NOT_FOUND;
+    }
     return (Status);
   }
 
-  if (*ListHead == NULL) {
-    *ListHead = (EFI_SHELL_FILE_INFO    *)AllocateZeroPool(sizeof(EFI_SHELL_FILE_INFO));
-    if (*ListHead == NULL) {
-      return (EFI_OUT_OF_RESOURCES);
-    }
-    InitializeListHead(&((*ListHead)->Link));
-  }
-
-  //
-  // Convert that to equivalent of UEFI Shell 2.0 structure
-  //
-  InternalShellConvertFileListType(&mOldStyleFileList, &(*ListHead)->Link);
-
-  //
-  // Free the EFI Shell version that was converted.
-  //
-  mEfiShellEnvironment2->FreeFileList(&mOldStyleFileList);
-
-  if ((*ListHead)->Link.ForwardLink == (*ListHead)->Link.BackLink && (*ListHead)->Link.BackLink == &((*ListHead)->Link)) {
-    FreePool(*ListHead);
-    *ListHead = NULL;
-    Status = EFI_NOT_FOUND;
-  }
-
-  return (Status);
+  return (EFI_UNSUPPORTED);
 }
 /**
   Free the linked list returned from ShellOpenFileMetaArg.
@@ -1544,9 +1540,9 @@ ShellCloseFileMetaArg (
   //
   // Check for UEFI Shell 2.0 protocols
   //
-  if (mEfiShellProtocol != NULL) {
-    return (mEfiShellProtocol->FreeFileList(ListHead));
-  } else {
+  if (gEfiShellProtocol != NULL) {
+    return (gEfiShellProtocol->FreeFileList(ListHead));
+  } else if (mEfiShellEnvironment2 != NULL) {
     //
     // Since this is EFI Shell version we need to free our internally made copy
     // of the list
@@ -1563,6 +1559,8 @@ ShellCloseFileMetaArg (
     }
     return EFI_SUCCESS;
   }
+
+  return (EFI_UNSUPPORTED);
 }
 
 /**
@@ -1652,6 +1650,9 @@ ShellFindFilePath (
         }
         if (TestPath[StrLen(TestPath)-1] != L'\\') {
           StrCat(TestPath, L"\\");
+        }
+        if (FileName[0] == L'\\') {
+          FileName++;
         }
         StrCat(TestPath, FileName);
         if (StrStr(Walker, L";") != NULL) {
@@ -1770,10 +1771,11 @@ EFIAPI
 InternalIsOnCheckList (
   IN CONST CHAR16               *Name,
   IN CONST SHELL_PARAM_ITEM     *CheckList,
-  OUT SHELL_PARAM_TYPE                 *Type
+  OUT SHELL_PARAM_TYPE          *Type
   )
 {
   SHELL_PARAM_ITEM              *TempListItem;
+  CHAR16                        *TempString;
 
   //
   // ASSERT that all 3 pointer parameters aren't NULL
@@ -1788,6 +1790,7 @@ InternalIsOnCheckList (
   if ((StrCmp(Name, L"-?") == 0) ||
       (StrCmp(Name, L"-b") == 0)
      ) {
+     *Type = TypeFlag;
      return (TRUE);
   }
 
@@ -1799,10 +1802,22 @@ InternalIsOnCheckList (
     // If the Type is TypeStart only check the first characters of the passed in param
     // If it matches set the type and return TRUE
     //
-    if (TempListItem->Type == TypeStart && StrnCmp(Name, TempListItem->Name, StrLen(TempListItem->Name)) == 0) {
-      *Type = TempListItem->Type;
-      return (TRUE);
-    } else if (StrCmp(Name, TempListItem->Name) == 0) {
+    if (TempListItem->Type == TypeStart) { 
+      if (StrnCmp(Name, TempListItem->Name, StrLen(TempListItem->Name)) == 0) {
+        *Type = TempListItem->Type;
+        return (TRUE);
+      }
+      TempString = NULL;
+      TempString = StrnCatGrow(&TempString, NULL, Name, StrLen(TempListItem->Name));
+      if (TempString != NULL) {
+        if (StringNoCaseCompare(&TempString, &TempListItem->Name) == 0) {
+          *Type = TempListItem->Type;
+          FreePool(TempString);
+          return (TRUE);
+        }
+        FreePool(TempString);
+      }
+    } else if (StringNoCaseCompare(&Name, &TempListItem->Name) == 0) {
       *Type = TempListItem->Type;
       return (TRUE);
     }
@@ -1888,11 +1903,12 @@ InternalCommandLineParse (
   )
 {
   UINTN                         LoopCounter;
-  SHELL_PARAM_TYPE                     CurrentItemType;
+  SHELL_PARAM_TYPE              CurrentItemType;
   SHELL_PARAM_PACKAGE           *CurrentItemPackage;
   UINTN                         GetItemValue;
   UINTN                         ValueSize;
   UINTN                         Count;
+  CONST CHAR16                  *TempPointer;
 
   CurrentItemPackage = NULL;
   GetItemValue = 0;
@@ -1938,9 +1954,9 @@ InternalCommandLineParse (
       //
       // this is a flag
       //
-      CurrentItemPackage = AllocatePool(sizeof(SHELL_PARAM_PACKAGE));
+      CurrentItemPackage = AllocateZeroPool(sizeof(SHELL_PARAM_PACKAGE));
       ASSERT(CurrentItemPackage != NULL);
-      CurrentItemPackage->Name  = AllocatePool(StrSize(Argv[LoopCounter]));
+      CurrentItemPackage->Name  = AllocateZeroPool(StrSize(Argv[LoopCounter]));
       ASSERT(CurrentItemPackage->Name != NULL);
       StrCpy(CurrentItemPackage->Name,  Argv[LoopCounter]);
       CurrentItemPackage->Type  = CurrentItemType;
@@ -1996,27 +2012,35 @@ InternalCommandLineParse (
       //
       // add this one as a non-flag
       //
-      CurrentItemPackage = AllocatePool(sizeof(SHELL_PARAM_PACKAGE));
+
+      TempPointer = Argv[LoopCounter];
+      if ((*TempPointer == L'^' && *(TempPointer+1) == L'-') 
+       || (*TempPointer == L'^' && *(TempPointer+1) == L'/')
+       || (*TempPointer == L'^' && *(TempPointer+1) == L'+')
+      ){
+        TempPointer++;
+      }
+      CurrentItemPackage = AllocateZeroPool(sizeof(SHELL_PARAM_PACKAGE));
       ASSERT(CurrentItemPackage != NULL);
       CurrentItemPackage->Name  = NULL;
       CurrentItemPackage->Type  = TypePosition;
-      CurrentItemPackage->Value = AllocatePool(StrSize(Argv[LoopCounter]));
+      CurrentItemPackage->Value = AllocateZeroPool(StrSize(TempPointer));
       ASSERT(CurrentItemPackage->Value != NULL);
-      StrCpy(CurrentItemPackage->Value, Argv[LoopCounter]);
+      StrCpy(CurrentItemPackage->Value, TempPointer);
       CurrentItemPackage->OriginalPosition = Count++;
       InsertHeadList(*CheckPackage, &CurrentItemPackage->Link);
-    } else if (ProblemParam != NULL) {
+    } else {
       //
       // this was a non-recognised flag... error!
       //
-      *ProblemParam = AllocatePool(StrSize(Argv[LoopCounter]));
-      ASSERT(*ProblemParam != NULL);
-      StrCpy(*ProblemParam, Argv[LoopCounter]);
+      if (ProblemParam != NULL) {
+        *ProblemParam = AllocateZeroPool(StrSize(Argv[LoopCounter]));
+        ASSERT(*ProblemParam != NULL);
+        StrCpy(*ProblemParam, Argv[LoopCounter]);      
+      }
       ShellCommandLineFreeVarList(*CheckPackage);
       *CheckPackage = NULL;
       return (EFI_VOLUME_CORRUPTED);
-    } else {
-      //ASSERT(FALSE);
     }
   }
   if (GetItemValue != 0) {
@@ -2075,13 +2099,13 @@ ShellCommandLineParseEx (
   //
   // Check for UEFI Shell 2.0 protocols
   //
-  if (mEfiShellParametersProtocol != NULL) {
+  if (gEfiShellParametersProtocol != NULL) {
     return (InternalCommandLineParse(CheckList,
                                      CheckPackage,
                                      ProblemParam,
                                      AutoPageBreak,
-                                     (CONST CHAR16**) mEfiShellParametersProtocol->Argv,
-                                     mEfiShellParametersProtocol->Argc,
+                                     (CONST CHAR16**) gEfiShellParametersProtocol->Argv,
+                                     gEfiShellParametersProtocol->Argc,
                                      AlwaysAllowNumbers));
   }
 
@@ -2183,6 +2207,7 @@ ShellCommandLineGetFlag (
   )
 {
   LIST_ENTRY                    *Node;
+  CHAR16                        *TempString;
 
   //
   // ASSERT that both CheckPackage and KeyString aren't NULL
@@ -2202,7 +2227,7 @@ ShellCommandLineGetFlag (
   for ( Node = GetFirstNode(CheckPackage)
       ; !IsNull (CheckPackage, Node)
       ; Node = GetNextNode(CheckPackage, Node)
-     ){
+      ){
     //
     // If the Name matches, return TRUE (and there may be NULL name)
     //
@@ -2210,11 +2235,20 @@ ShellCommandLineGetFlag (
       //
       // If Type is TypeStart then only compare the begining of the strings
       //
-      if ( ((SHELL_PARAM_PACKAGE*)Node)->Type == TypeStart
-        && StrnCmp(KeyString, ((SHELL_PARAM_PACKAGE*)Node)->Name, StrLen(KeyString)) == 0
-       ){
-        return (TRUE);
-      } else if (StrCmp(KeyString, ((SHELL_PARAM_PACKAGE*)Node)->Name) == 0) {
+      if (((SHELL_PARAM_PACKAGE*)Node)->Type == TypeStart) {
+        if (StrnCmp(KeyString, ((SHELL_PARAM_PACKAGE*)Node)->Name, StrLen(KeyString)) == 0) {
+          return (TRUE);
+        }
+        TempString = NULL;
+        TempString = StrnCatGrow(&TempString, NULL, KeyString, StrLen(((SHELL_PARAM_PACKAGE*)Node)->Name));
+        if (TempString != NULL) {
+          if (StringNoCaseCompare(&KeyString, &((SHELL_PARAM_PACKAGE*)Node)->Name) == 0) {
+            FreePool(TempString);
+            return (TRUE);
+          }
+          FreePool(TempString);
+        }
+      } else if (StringNoCaseCompare(&KeyString, &((SHELL_PARAM_PACKAGE*)Node)->Name) == 0) {
         return (TRUE);
       }
     }
@@ -2242,6 +2276,7 @@ ShellCommandLineGetValue (
   )
 {
   LIST_ENTRY                    *Node;
+  CHAR16                        *TempString;
 
   //
   // check for CheckPackage == NULL
@@ -2256,25 +2291,28 @@ ShellCommandLineGetValue (
   for ( Node = GetFirstNode(CheckPackage)
       ; !IsNull (CheckPackage, Node)
       ; Node = GetNextNode(CheckPackage, Node)
-     ){
+      ){
     //
-    // If the Name matches, return the value (name can be NULL)
+    // If the Name matches, return TRUE (and there may be NULL name)
     //
     if (((SHELL_PARAM_PACKAGE*)Node)->Name != NULL) {
       //
       // If Type is TypeStart then only compare the begining of the strings
       //
-      if ( ((SHELL_PARAM_PACKAGE*)Node)->Type == TypeStart
-        && StrnCmp(KeyString, ((SHELL_PARAM_PACKAGE*)Node)->Name, StrLen(KeyString)) == 0
-       ){
-        //
-        // return the string part after the flag
-        //
-        return (((SHELL_PARAM_PACKAGE*)Node)->Name + StrLen(KeyString));
-      } else if (StrCmp(KeyString, ((SHELL_PARAM_PACKAGE*)Node)->Name) == 0) {
-        //
-        // return the value
-        //
+      if (((SHELL_PARAM_PACKAGE*)Node)->Type == TypeStart) {
+        if (StrnCmp(KeyString, ((SHELL_PARAM_PACKAGE*)Node)->Name, StrLen(KeyString)) == 0) {
+          return (((SHELL_PARAM_PACKAGE*)Node)->Name + StrLen(KeyString));
+        }
+        TempString = NULL;
+        TempString = StrnCatGrow(&TempString, NULL, KeyString, StrLen(((SHELL_PARAM_PACKAGE*)Node)->Name));
+        if (TempString != NULL) {
+          if (StringNoCaseCompare(&KeyString, &((SHELL_PARAM_PACKAGE*)Node)->Name) == 0) {
+            FreePool(TempString);
+            return (((SHELL_PARAM_PACKAGE*)Node)->Name + StrLen(KeyString));
+          }
+          FreePool(TempString);
+        }
+      } else if (StringNoCaseCompare(&KeyString, &((SHELL_PARAM_PACKAGE*)Node)->Name) == 0) {
         return (((SHELL_PARAM_PACKAGE*)Node)->Value);
       }
     }
@@ -2519,8 +2557,8 @@ InternalPrintTo (
   if (Size == 0) {
     return (EFI_SUCCESS);
   }
-  if (mEfiShellParametersProtocol != NULL) {
-    return (mEfiShellProtocol->WriteFile(mEfiShellParametersProtocol->StdOut, &Size, (VOID*)String));
+  if (gEfiShellParametersProtocol != NULL) {
+    return (gEfiShellProtocol->WriteFile(gEfiShellParametersProtocol->StdOut, &Size, (VOID*)String));
   }
   if (mEfiShellInterface          != NULL) {
     //
@@ -2554,8 +2592,8 @@ InternalPrintTo (
 
   Note: The background color is controlled by the shell command cls.
 
-  @param[in] Row        the row to print at
   @param[in] Col        the column to print at
+  @param[in] Row        the row to print at
   @param[in] Format     the format string
   @param[in] Marker     the marker for the variable argument list
 
@@ -2568,13 +2606,24 @@ InternalShellPrintWorker(
   IN INT32                Col OPTIONAL,
   IN INT32                Row OPTIONAL,
   IN CONST CHAR16         *Format,
-  VA_LIST                 Marker
+  IN VA_LIST              Marker
   )
 {
   EFI_STATUS        Status;
   CHAR16            *ResumeLocation;
   CHAR16            *FormatWalker;
   UINTN             OriginalAttribute;
+  CHAR16            *mPostReplaceFormat;
+  CHAR16            *mPostReplaceFormat2;
+
+  mPostReplaceFormat = AllocateZeroPool (PcdGet16 (PcdShellPrintBufferSize));
+  mPostReplaceFormat2 = AllocateZeroPool (PcdGet16 (PcdShellPrintBufferSize));
+
+  if (mPostReplaceFormat == NULL || mPostReplaceFormat2 == NULL) {
+    SHELL_FREE_NON_NULL(mPostReplaceFormat);
+    SHELL_FREE_NON_NULL(mPostReplaceFormat2);
+    return (EFI_OUT_OF_RESOURCES);
+  }
 
   Status            = EFI_SUCCESS;
   OriginalAttribute = gST->ConOut->Mode->Attribute;
@@ -2600,7 +2649,6 @@ InternalShellPrintWorker(
 
   if (Col != -1 && Row != -1) {
     Status = gST->ConOut->SetCursorPosition(gST->ConOut, Col, Row);
-    ASSERT_EFI_ERROR(Status);
   }
 
   FormatWalker = mPostReplaceFormat2;
@@ -2667,6 +2715,9 @@ InternalShellPrintWorker(
   }
 
   gST->ConOut->SetAttribute(gST->ConOut, OriginalAttribute);
+
+  SHELL_FREE_NON_NULL(mPostReplaceFormat);
+  SHELL_FREE_NON_NULL(mPostReplaceFormat2);
   return (Status);
 }
 
@@ -2808,13 +2859,13 @@ ShellIsDirectory(
     //
     // try good logic first.
     //
-    if (mEfiShellProtocol != NULL) {
+    if (gEfiShellProtocol != NULL) {
       TempLocation  = StrnCatGrow(&TempLocation, NULL, DirName, 0);
       TempLocation2 = StrStr(TempLocation, L":");
       if (TempLocation2 != NULL && StrLen(StrStr(TempLocation, L":")) == 2) {
         *(TempLocation2+1) = CHAR_NULL;
       }
-      if (mEfiShellProtocol->GetDevicePathFromMap(TempLocation) != NULL) {
+      if (gEfiShellProtocol->GetDevicePathFromMap(TempLocation) != NULL) {
         FreePool(TempLocation);
         return (EFI_SUCCESS);
       }
@@ -2908,13 +2959,15 @@ ShellIsFileInPath(
   FreePool(NewName);
   return (Status);
 }
+
 /**
   Function to determine whether a string is decimal or hex representation of a number
   and return the number converted from the string.
 
   @param[in] String   String representation of a number
 
-  @retval all         the number
+  @return             the number
+  @retval (UINTN)(-1) An error ocurred.
 **/
 UINTN
 EFIAPI
@@ -2922,17 +2975,19 @@ ShellStrToUintn(
   IN CONST CHAR16 *String
   )
 {
-  CONST CHAR16  *Walker;
-  for (Walker = String; Walker != NULL && *Walker != CHAR_NULL && *Walker == L' '; Walker++);
-  if (Walker == NULL || *Walker == CHAR_NULL) {
-    ASSERT(FALSE);
-    return ((UINTN)(-1));
-  } else {
-    if (StrnCmp(Walker, L"0x", 2) == 0 || StrnCmp(Walker, L"0X", 2) == 0){
-      return (StrHexToUintn(Walker));
-    }
-    return (StrDecimalToUintn(Walker));
+  UINT64        RetVal;
+  BOOLEAN       Hex;
+
+  Hex = FALSE;
+
+  if (!InternalShellIsHexOrDecimalNumber(String, Hex, TRUE)) {
+    Hex = TRUE;
   }
+
+  if (!EFI_ERROR(ShellConvertStringToUint64(String, &RetVal, Hex, TRUE))) {
+    return ((UINTN)RetVal);
+  }
+  return ((UINTN)(-1));
 }
 
 /**
@@ -3086,7 +3141,7 @@ ShellPromptForResponse (
   Buffer  = NULL;
   Size    = 0;
   if (Type != ShellPromptResponseTypeFreeform) {
-    Resp = (SHELL_PROMPT_RESPONSE*)AllocatePool(sizeof(SHELL_PROMPT_RESPONSE));
+    Resp = (SHELL_PROMPT_RESPONSE*)AllocateZeroPool(sizeof(SHELL_PROMPT_RESPONSE));
     if (Resp == NULL) {
       return (EFI_OUT_OF_RESOURCES);
     }
@@ -3315,7 +3370,7 @@ ShellPromptForResponseHii (
 **/
 BOOLEAN
 EFIAPI
-ShellIsHexOrDecimalNumber (
+InternalShellIsHexOrDecimalNumber (
   IN CONST CHAR16   *String,
   IN CONST BOOLEAN  ForceHex,
   IN CONST BOOLEAN  StopAtSpace
@@ -3372,6 +3427,7 @@ ShellIsHexOrDecimalNumber (
       }
     }
   }
+
   return (TRUE);
 }
 
@@ -3404,4 +3460,351 @@ ShellFileExists(
   ShellCloseFileMetaArg(&List);
 
   return (EFI_SUCCESS);
+}
+
+/**
+  Convert a Unicode character to upper case only if 
+  it maps to a valid small-case ASCII character.
+
+  This internal function only deal with Unicode character
+  which maps to a valid small-case ASCII character, i.e.
+  L'a' to L'z'. For other Unicode character, the input character
+  is returned directly.
+
+  @param  Char  The character to convert.
+
+  @retval LowerCharacter   If the Char is with range L'a' to L'z'.
+  @retval Unchanged        Otherwise.
+
+**/
+CHAR16
+EFIAPI
+InternalShellCharToUpper (
+  IN      CHAR16                    Char
+  )
+{
+  if (Char >= L'a' && Char <= L'z') {
+    return (CHAR16) (Char - (L'a' - L'A'));
+  }
+
+  return Char;
+}
+
+/**
+  Convert a Unicode character to numerical value.
+
+  This internal function only deal with Unicode character
+  which maps to a valid hexadecimal ASII character, i.e.
+  L'0' to L'9', L'a' to L'f' or L'A' to L'F'. For other 
+  Unicode character, the value returned does not make sense.
+
+  @param  Char  The character to convert.
+
+  @return The numerical value converted.
+
+**/
+UINTN
+EFIAPI
+InternalShellHexCharToUintn (
+  IN      CHAR16                    Char
+  )
+{
+  if (ShellIsDecimalDigitCharacter (Char)) {
+    return Char - L'0';
+  }
+
+  return (UINTN) (10 + InternalShellCharToUpper (Char) - L'A');
+}
+
+/**
+  Convert a Null-terminated Unicode hexadecimal string to a value of type UINT64.
+
+  This function returns a value of type UINTN by interpreting the contents
+  of the Unicode string specified by String as a hexadecimal number.
+  The format of the input Unicode string String is:
+
+                  [spaces][zeros][x][hexadecimal digits].
+
+  The valid hexadecimal digit character is in the range [0-9], [a-f] and [A-F].
+  The prefix "0x" is optional. Both "x" and "X" is allowed in "0x" prefix.
+  If "x" appears in the input string, it must be prefixed with at least one 0.
+  The function will ignore the pad space, which includes spaces or tab characters,
+  before [zeros], [x] or [hexadecimal digit]. The running zero before [x] or
+  [hexadecimal digit] will be ignored. Then, the decoding starts after [x] or the
+  first valid hexadecimal digit. Then, the function stops at the first character that is
+  a not a valid hexadecimal character or NULL, whichever one comes first.
+
+  If String has only pad spaces, then zero is returned.
+  If String has no leading pad spaces, leading zeros or valid hexadecimal digits,
+  then zero is returned.
+
+  @param[in]  String      A pointer to a Null-terminated Unicode string.
+  @param[out] Value       Upon a successful return the value of the conversion.
+  @param[in] StopAtSpace  FALSE to skip spaces.
+
+  @retval EFI_SUCCESS             The conversion was successful.
+  @retval EFI_INVALID_PARAMETER   A parameter was NULL or invalid.
+  @retval EFI_DEVICE_ERROR        An overflow occured.
+**/
+EFI_STATUS
+EFIAPI
+InternalShellStrHexToUint64 (
+  IN CONST CHAR16   *String,
+     OUT   UINT64   *Value,
+  IN CONST BOOLEAN  StopAtSpace
+  )
+{
+  UINT64    Result;
+
+  if (String == NULL || StrSize(String) == 0 || Value == NULL) {
+    return (EFI_INVALID_PARAMETER);
+  }
+  
+  //
+  // Ignore the pad spaces (space or tab) 
+  //
+  while ((*String == L' ') || (*String == L'\t')) {
+    String++;
+  }
+
+  //
+  // Ignore leading Zeros after the spaces
+  //
+  while (*String == L'0') {
+    String++;
+  }
+
+  if (InternalShellCharToUpper (*String) == L'X') {
+    if (*(String - 1) != L'0') {
+      return 0;
+    }
+    //
+    // Skip the 'X'
+    //
+    String++;
+  }
+
+  Result = 0;
+  
+  //
+  // Skip spaces if requested
+  //
+  while (StopAtSpace && *String == L' ') {
+    String++;
+  }
+  
+  while (ShellIsHexaDecimalDigitCharacter (*String)) {
+    //
+    // If the Hex Number represented by String overflows according 
+    // to the range defined by UINTN, then ASSERT().
+    //
+    if (!(Result <= (RShiftU64((((UINT64) ~0) - InternalShellHexCharToUintn (*String)), 4)))) {
+//    if (!(Result <= ((((UINT64) ~0) - InternalShellHexCharToUintn (*String)) >> 4))) {
+      return (EFI_DEVICE_ERROR);
+    }
+
+    Result = (LShiftU64(Result, 4));
+    Result += InternalShellHexCharToUintn (*String);
+    String++;
+
+    //
+    // Skip spaces if requested
+    //
+    while (StopAtSpace && *String == L' ') {
+      String++;
+    }
+  }
+
+  *Value = Result;
+  return (EFI_SUCCESS);
+}
+
+/**
+  Convert a Null-terminated Unicode decimal string to a value of
+  type UINT64.
+
+  This function returns a value of type UINT64 by interpreting the contents
+  of the Unicode string specified by String as a decimal number. The format
+  of the input Unicode string String is:
+
+                  [spaces] [decimal digits].
+
+  The valid decimal digit character is in the range [0-9]. The
+  function will ignore the pad space, which includes spaces or
+  tab characters, before [decimal digits]. The running zero in the
+  beginning of [decimal digits] will be ignored. Then, the function
+  stops at the first character that is a not a valid decimal character
+  or a Null-terminator, whichever one comes first.
+
+  If String has only pad spaces, then 0 is returned.
+  If String has no pad spaces or valid decimal digits,
+  then 0 is returned.
+
+  @param[in]  String      A pointer to a Null-terminated Unicode string.
+  @param[out] Value       Upon a successful return the value of the conversion.
+  @param[in] StopAtSpace  FALSE to skip spaces.
+
+  @retval EFI_SUCCESS             The conversion was successful.
+  @retval EFI_INVALID_PARAMETER   A parameter was NULL or invalid.
+  @retval EFI_DEVICE_ERROR        An overflow occured.
+**/
+EFI_STATUS
+EFIAPI
+InternalShellStrDecimalToUint64 (
+  IN CONST CHAR16 *String,
+     OUT   UINT64 *Value,
+  IN CONST BOOLEAN  StopAtSpace
+  )
+{
+  UINT64     Result;
+
+  if (String == NULL || StrSize (String) == 0 || Value == NULL) {
+    return (EFI_INVALID_PARAMETER);
+  }
+
+  //
+  // Ignore the pad spaces (space or tab)
+  //
+  while ((*String == L' ') || (*String == L'\t')) {
+    String++;
+  }
+
+  //
+  // Ignore leading Zeros after the spaces
+  //
+  while (*String == L'0') {
+    String++;
+  }
+
+  Result = 0;
+
+  //
+  // Skip spaces if requested
+  //
+  while (StopAtSpace && *String == L' ') {
+    String++;
+  }
+  while (ShellIsDecimalDigitCharacter (*String)) {
+    //
+    // If the number represented by String overflows according 
+    // to the range defined by UINT64, then ASSERT().
+    //
+    
+    if (!(Result <= (DivU64x32((((UINT64) ~0) - (*String - L'0')),10)))) {
+      return (EFI_DEVICE_ERROR);
+    }
+
+    Result = MultU64x32(Result, 10) + (*String - L'0');
+    String++;
+
+    //
+    // Stop at spaces if requested
+    //
+    if (StopAtSpace && *String == L' ') {
+      break;
+    }
+  }
+
+  *Value = Result;
+  
+  return (EFI_SUCCESS);
+}
+
+/**
+  Function to verify and convert a string to its numerical value.
+
+  If Hex it must be preceeded with a 0x, 0X, or has ForceHex set TRUE.
+
+  @param[in] String       The string to evaluate.
+  @param[out] Value       Upon a successful return the value of the conversion.
+  @param[in] ForceHex     TRUE - always assume hex.
+  @param[in] StopAtSpace  FALSE to skip spaces.
+  
+  @retval EFI_SUCCESS             The conversion was successful.
+  @retval EFI_INVALID_PARAMETER   String contained an invalid character.
+  @retval EFI_NOT_FOUND           String was a number, but Value was NULL.
+**/
+EFI_STATUS
+EFIAPI
+ShellConvertStringToUint64(
+  IN CONST CHAR16   *String,
+     OUT   UINT64   *Value,
+  IN CONST BOOLEAN  ForceHex,
+  IN CONST BOOLEAN  StopAtSpace
+  )
+{
+  UINT64        RetVal;
+  CONST CHAR16  *Walker;
+  EFI_STATUS    Status;
+  BOOLEAN       Hex;
+
+  Hex = ForceHex;
+
+  if (!InternalShellIsHexOrDecimalNumber(String, Hex, StopAtSpace)) {
+    if (!Hex) {
+      Hex = TRUE;
+      if (!InternalShellIsHexOrDecimalNumber(String, Hex, StopAtSpace)) {
+        return (EFI_INVALID_PARAMETER);
+      }
+    } else {
+      return (EFI_INVALID_PARAMETER);
+    }
+  }
+
+  //
+  // Chop off leading spaces
+  //
+  for (Walker = String; Walker != NULL && *Walker != CHAR_NULL && *Walker == L' '; Walker++);
+
+  //
+  // make sure we have something left that is numeric.
+  //
+  if (Walker == NULL || *Walker == CHAR_NULL || !InternalShellIsHexOrDecimalNumber(Walker, Hex, StopAtSpace)) {
+    return (EFI_INVALID_PARAMETER);
+  } 
+
+  //
+  // do the conversion.
+  //
+  if (Hex || StrnCmp(Walker, L"0x", 2) == 0 || StrnCmp(Walker, L"0X", 2) == 0){
+    Status = InternalShellStrHexToUint64(Walker, &RetVal, StopAtSpace);
+  } else {
+    Status = InternalShellStrDecimalToUint64(Walker, &RetVal, StopAtSpace);
+  }
+
+  if (Value == NULL && !EFI_ERROR(Status)) {
+    return (EFI_NOT_FOUND);
+  }
+
+  if (Value != NULL) {
+    *Value = RetVal;
+  }
+
+  return (Status);
+}
+
+/**
+  Function to determin if an entire string is a valid number.
+
+  If Hex it must be preceeded with a 0x or has ForceHex, set TRUE.
+
+  @param[in] String       The string to evaluate.
+  @param[in] ForceHex     TRUE - always assume hex.
+  @param[in] StopAtSpace  TRUE to halt upon finding a space, FALSE to keep going.
+
+  @retval TRUE        It is all numeric (dec/hex) characters.
+  @retval FALSE       There is a non-numeric character.
+**/
+BOOLEAN
+EFIAPI
+ShellIsHexOrDecimalNumber (
+  IN CONST CHAR16   *String,
+  IN CONST BOOLEAN  ForceHex,
+  IN CONST BOOLEAN  StopAtSpace
+  )
+{
+  if (ShellConvertStringToUint64(String, NULL, ForceHex, StopAtSpace) == EFI_NOT_FOUND) {
+    return (TRUE);
+  }
+  return (FALSE);
 }

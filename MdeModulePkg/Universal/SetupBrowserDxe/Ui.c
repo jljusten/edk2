@@ -16,7 +16,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 LIST_ENTRY          gMenuOption;
 LIST_ENTRY          gMenuList = INITIALIZE_LIST_HEAD_VARIABLE (gMenuList);
-MENU_REFRESH_ENTRY  *gMenuRefreshHead;
+MENU_REFRESH_ENTRY  *gMenuRefreshHead;                // Menu list used for refresh timer opcode.
+MENU_REFRESH_ENTRY  *gMenuEventGuidRefreshHead;       // Menu list used for refresh event guid opcode.
 
 //
 // Search table for UiDisplayMenu()
@@ -320,9 +321,115 @@ UiFreeRefreshList (
     gMenuRefreshHead = OldMenuRefreshEntry;
   }
 
-  gMenuRefreshHead = NULL;
+  while (gMenuEventGuidRefreshHead != NULL) {
+    OldMenuRefreshEntry = gMenuEventGuidRefreshHead->Next;
+    if (gMenuEventGuidRefreshHead != NULL) {
+      gBS->CloseEvent(gMenuEventGuidRefreshHead->Event);
+    }
+    FreePool (gMenuEventGuidRefreshHead);
+    gMenuEventGuidRefreshHead = OldMenuRefreshEntry;
+  }
 }
 
+
+
+/**
+  Refresh question.
+
+  @param     MenuRefreshEntry    Menu refresh structure which has info about the refresh question.
+**/
+EFI_STATUS 
+RefreshQuestion (
+  IN   MENU_REFRESH_ENTRY    *MenuRefreshEntry
+  )
+{
+  CHAR16                          *OptionString;
+  UINTN                           Index;
+  EFI_STATUS                      Status;
+  UI_MENU_SELECTION               *Selection;
+  FORM_BROWSER_STATEMENT          *Question;
+
+  Selection = MenuRefreshEntry->Selection;
+  Question = MenuRefreshEntry->MenuOption->ThisTag;
+
+  Status = GetQuestionValue (Selection->FormSet, Selection->Form, Question, FALSE);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  OptionString = NULL;
+  ProcessOptions (Selection, MenuRefreshEntry->MenuOption, FALSE, &OptionString);
+
+  if (OptionString != NULL) {
+    //
+    // If leading spaces on OptionString - remove the spaces
+    //
+    for (Index = 0; OptionString[Index] == L' '; Index++)
+      ;
+
+    //
+    // If old Text is longer than new string, need to clean the old string before paint the newer.
+    // This option is no need for time/date opcode, because time/data opcode has fixed string length.
+    //
+    if ((MenuRefreshEntry->MenuOption->ThisTag->Operand != EFI_IFR_DATE_OP) &&
+      (MenuRefreshEntry->MenuOption->ThisTag->Operand != EFI_IFR_TIME_OP)) {
+      ClearLines (
+        MenuRefreshEntry->CurrentColumn, 
+        MenuRefreshEntry->CurrentColumn + gOptionBlockWidth - 1,
+        MenuRefreshEntry->CurrentRow,
+        MenuRefreshEntry->CurrentRow,
+        PcdGet8 (PcdBrowserFieldTextColor) | FIELD_BACKGROUND
+        );
+    }
+
+    gST->ConOut->SetAttribute (gST->ConOut, MenuRefreshEntry->CurrentAttribute);
+    PrintStringAt (MenuRefreshEntry->CurrentColumn, MenuRefreshEntry->CurrentRow, &OptionString[Index]);
+    FreePool (OptionString);
+  }
+
+  //
+  // Question value may be changed, need invoke its Callback()
+  //
+  Status = ProcessCallBackFunction (Selection, Question, EFI_BROWSER_ACTION_CHANGING, FALSE);
+
+  return Status;
+}
+
+/**
+  Refresh the question which has refresh guid event attribute.
+  
+  @param Event    The event which has this function related.     
+  @param Context  The input context info related to this event or the status code return to the caller.
+**/
+VOID
+EFIAPI
+RefreshQuestionNotify(
+  IN      EFI_EVENT Event,
+  IN      VOID      *Context
+  )
+{
+  MENU_REFRESH_ENTRY              *MenuRefreshEntry;
+  UI_MENU_SELECTION               *Selection;
+
+  //
+  // Reset FormPackage update flag
+  //
+  mHiiPackageListUpdated = FALSE;
+
+  MenuRefreshEntry = (MENU_REFRESH_ENTRY *)Context;
+  ASSERT (MenuRefreshEntry != NULL);
+  Selection = MenuRefreshEntry->Selection;
+
+  RefreshQuestion (MenuRefreshEntry);
+  
+  if (mHiiPackageListUpdated) {
+    //
+    // Package list is updated, force to reparse IFR binary of target Formset
+    //
+    mHiiPackageListUpdated = FALSE;
+    Selection->Action = UI_ACTION_REFRESH_FORMSET;
+  } 
+}
 
 
 /**
@@ -334,96 +441,25 @@ RefreshForm (
   VOID
   )
 {
-  CHAR16                          *OptionString;
   MENU_REFRESH_ENTRY              *MenuRefreshEntry;
-  UINTN                           Index;
   EFI_STATUS                      Status;
   UI_MENU_SELECTION               *Selection;
-  FORM_BROWSER_STATEMENT          *Question;
-  EFI_HII_CONFIG_ACCESS_PROTOCOL  *ConfigAccess;
-  EFI_BROWSER_ACTION_REQUEST      ActionRequest;
 
   if (gMenuRefreshHead != NULL) {
-
+    //
+    // call from refresh interval process.
+    //
     MenuRefreshEntry = gMenuRefreshHead;
-
+    Selection = MenuRefreshEntry->Selection;
     //
     // Reset FormPackage update flag
     //
     mHiiPackageListUpdated = FALSE;
 
     do {
-      Selection = MenuRefreshEntry->Selection;
-      Question = MenuRefreshEntry->MenuOption->ThisTag;
-
-      Status = GetQuestionValue (Selection->FormSet, Selection->Form, Question, FALSE);
+      Status = RefreshQuestion (MenuRefreshEntry);
       if (EFI_ERROR (Status)) {
         return Status;
-      }
-
-      OptionString = NULL;
-      ProcessOptions (Selection, MenuRefreshEntry->MenuOption, FALSE, &OptionString);
-
-      if (OptionString != NULL) {
-        //
-        // If leading spaces on OptionString - remove the spaces
-        //
-        for (Index = 0; OptionString[Index] == L' '; Index++)
-          ;
-
-        //
-        // If old Text is longer than new string, need to clean the old string before paint the newer.
-        // This option is no need for time/date opcode, because time/data opcode has fixed string length.
-        //
-        if ((MenuRefreshEntry->MenuOption->ThisTag->Operand != EFI_IFR_DATE_OP) &&
-          (MenuRefreshEntry->MenuOption->ThisTag->Operand != EFI_IFR_TIME_OP)) {
-          ClearLines (
-            MenuRefreshEntry->CurrentColumn, 
-            MenuRefreshEntry->CurrentColumn + gOptionBlockWidth - 1,
-            MenuRefreshEntry->CurrentRow,
-            MenuRefreshEntry->CurrentRow,
-            PcdGet8 (PcdBrowserFieldTextColor) | FIELD_BACKGROUND
-            );
-        }
-
-        gST->ConOut->SetAttribute (gST->ConOut, MenuRefreshEntry->CurrentAttribute);
-        PrintStringAt (MenuRefreshEntry->CurrentColumn, MenuRefreshEntry->CurrentRow, &OptionString[Index]);
-        FreePool (OptionString);
-      }
-
-      //
-      // Question value may be changed, need invoke its Callback()
-      //
-      ConfigAccess = Selection->FormSet->ConfigAccess;
-      if (((Question->QuestionFlags & EFI_IFR_FLAG_CALLBACK) != 0) && (ConfigAccess != NULL)) {
-        ActionRequest = EFI_BROWSER_ACTION_REQUEST_NONE;
-        Status = ConfigAccess->Callback (
-                                 ConfigAccess,
-                                 EFI_BROWSER_ACTION_CHANGING,
-                                 Question->QuestionId,
-                                 Question->HiiValue.Type,
-                                 &Question->HiiValue.Value,
-                                 &ActionRequest
-                                 );
-        if (!EFI_ERROR (Status)) {
-          switch (ActionRequest) {
-          case EFI_BROWSER_ACTION_REQUEST_RESET:
-            gResetRequired = TRUE;
-            break;
-
-          case EFI_BROWSER_ACTION_REQUEST_SUBMIT:
-            SubmitForm (Selection->FormSet, Selection->Form);
-            break;
-
-          case EFI_BROWSER_ACTION_REQUEST_EXIT:
-            Selection->Action = UI_ACTION_EXIT;
-            gNvUpdateRequired = FALSE;
-            break;
-
-          default:
-            break;
-          }
-        }
       }
 
       MenuRefreshEntry = MenuRefreshEntry->Next;
@@ -1004,6 +1040,7 @@ CreateMultiStringPopUp (
 /**
   Update status bar on the bottom of menu.
 
+  @param  Selection              Current Selction info.
   @param  MessageType            The type of message to be shown.
   @param  Flags                  The flags in Question header.
   @param  State                  Set or clear.
@@ -1011,6 +1048,7 @@ CreateMultiStringPopUp (
 **/
 VOID
 UpdateStatusBar (
+  IN  UI_MENU_SELECTION           *Selection,
   IN  UINTN                       MessageType,
   IN  UINT8                       Flags,
   IN  BOOLEAN                     State
@@ -1054,7 +1092,9 @@ UpdateStatusBar (
           );
         gResetRequired    = (BOOLEAN) (gResetRequired | ((Flags & EFI_IFR_FLAG_RESET_REQUIRED) == EFI_IFR_FLAG_RESET_REQUIRED));
 
-        gNvUpdateRequired = TRUE;
+        if (Selection != NULL) {
+          Selection->Form->NvUpdateRequired = TRUE;
+        }
       } else {
         gST->ConOut->SetAttribute (gST->ConOut, PcdGet8 (PcdBrowserFieldTextHighlightColor));
         for (Index = 0; Index < (GetStringWidth (NvUpdateMessage) - 2) / 2; Index++) {
@@ -1065,18 +1105,20 @@ UpdateStatusBar (
             );
         }
 
-        gNvUpdateRequired = FALSE;
+        if (Selection != NULL) {
+          Selection->Form->NvUpdateRequired = FALSE;
+        }
       }
     }
     break;
 
   case REFRESH_STATUS_BAR:
     if (mInputError) {
-      UpdateStatusBar (INPUT_ERROR, Flags, TRUE);
+      UpdateStatusBar (Selection, INPUT_ERROR, Flags, TRUE);
     }
 
-    if (gNvUpdateRequired) {
-      UpdateStatusBar (NV_UPDATE_REQUIRED, Flags, TRUE);
+    if (IsNvUpdateRequired(Selection->FormSet)) {
+      UpdateStatusBar (NULL, NV_UPDATE_REQUIRED, Flags, TRUE);
     }
     break;
 
@@ -1640,8 +1682,6 @@ UiDisplayMenu (
   CHAR16                          *OptionString;
   CHAR16                          *OutputString;
   CHAR16                          *FormattedString;
-  CHAR16                          YesResponse;
-  CHAR16                          NoResponse;
   BOOLEAN                         NewLine;
   BOOLEAN                         Repaint;
   BOOLEAN                         SavedValue;
@@ -1661,6 +1701,7 @@ UiDisplayMenu (
   UI_CONTROL_FLAG                 ControlFlag;
   EFI_SCREEN_DESCRIPTOR           LocalScreen;
   MENU_REFRESH_ENTRY              *MenuRefreshEntry;
+  MENU_REFRESH_ENTRY              *MenuUpdateEntry;  
   UI_SCREEN_OPERATION             ScreenOperation;
   UINT8                           MinRefreshInterval;
   UINTN                           BufferSize;
@@ -1673,6 +1714,7 @@ UiDisplayMenu (
   UI_MENU_LIST                    *CurrentMenu;
   UI_MENU_LIST                    *MenuList;
   FORM_BROWSER_FORM               *RefForm;
+  UINTN                           ModalSkipColumn;
 
   CopyMem (&LocalScreen, &gScreenDimensions, sizeof (EFI_SCREEN_DESCRIPTOR));
 
@@ -1695,6 +1737,7 @@ UiDisplayMenu (
   PreviousMenuOption  = NULL;
   SavedMenuOption     = NULL;
   RefForm             = NULL;
+  ModalSkipColumn     = (LocalScreen.RightColumn - LocalScreen.LeftColumn) / 6;
 
   ZeroMem (&Key, sizeof (EFI_INPUT_KEY));
 
@@ -1706,7 +1749,12 @@ UiDisplayMenu (
     Row     = LocalScreen.TopRow + NONE_FRONT_PAGE_HEADER_HEIGHT + SCROLL_ARROW_HEIGHT;
   }
 
-  Col = LocalScreen.LeftColumn + LEFT_SKIPPED_COLUMNS;
+  if (Selection->Form->ModalForm) {
+    Col = LocalScreen.LeftColumn + LEFT_SKIPPED_COLUMNS + ModalSkipColumn;
+  } else {
+    Col = LocalScreen.LeftColumn + LEFT_SKIPPED_COLUMNS;
+  }
+
   BottomRow = LocalScreen.BottomRow - STATUS_BAR_HEIGHT - FOOTER_HEIGHT - SCROLL_ARROW_HEIGHT - 1;
 
   Selection->TopRow = TopRow;
@@ -1730,6 +1778,7 @@ UiDisplayMenu (
     CurrentMenu = UiAddMenuList (NULL, &Selection->FormSetGuid, Selection->FormId);
   }
   ASSERT (CurrentMenu != NULL);
+  Selection->CurrentMenu = CurrentMenu;
 
   if (Selection->QuestionId == 0) {
     //
@@ -1745,7 +1794,7 @@ UiDisplayMenu (
   NewPos = gMenuOption.ForwardLink;
 
   gST->ConOut->EnableCursor (gST->ConOut, FALSE);
-  UpdateStatusBar (REFRESH_STATUS_BAR, (UINT8) 0, TRUE);
+  UpdateStatusBar (Selection, REFRESH_STATUS_BAR, (UINT8) 0, TRUE);
 
   ControlFlag = CfInitialization;
   Selection->Action = UI_ACTION_NONE;
@@ -1781,14 +1830,23 @@ UiDisplayMenu (
         Temp            = (UINTN) SkipValue;
         Temp2           = (UINTN) SkipValue;
 
-        ClearLines (
-          LocalScreen.LeftColumn,
-          LocalScreen.RightColumn,
-          TopRow - SCROLL_ARROW_HEIGHT,
-          BottomRow + SCROLL_ARROW_HEIGHT,
-          PcdGet8 (PcdBrowserFieldTextColor) | FIELD_BACKGROUND
-          );
-
+        if (Selection->Form->ModalForm) {
+          ClearLines (
+            LocalScreen.LeftColumn + ModalSkipColumn,
+            LocalScreen.LeftColumn + ModalSkipColumn + gPromptBlockWidth + gOptionBlockWidth,
+            TopRow - SCROLL_ARROW_HEIGHT,
+            BottomRow + SCROLL_ARROW_HEIGHT,
+            PcdGet8 (PcdBrowserFieldTextColor) | FIELD_BACKGROUND
+            );   
+        } else {
+          ClearLines (
+            LocalScreen.LeftColumn,
+            LocalScreen.RightColumn,
+            TopRow - SCROLL_ARROW_HEIGHT,
+            BottomRow + SCROLL_ARROW_HEIGHT,
+            PcdGet8 (PcdBrowserFieldTextColor) | FIELD_BACKGROUND
+            );
+        }
         UiFreeRefreshList ();
         MinRefreshInterval = 0;
 
@@ -1796,7 +1854,11 @@ UiDisplayMenu (
           MenuOption          = MENU_OPTION_FROM_LINK (Link);
           MenuOption->Row     = Row;
           MenuOption->Col     = Col;
-          MenuOption->OptCol  = gPromptBlockWidth + 1 + LocalScreen.LeftColumn;
+          if (Selection->Form->ModalForm) {
+            MenuOption->OptCol  = gPromptBlockWidth + 1 + LocalScreen.LeftColumn + ModalSkipColumn;
+          } else {
+            MenuOption->OptCol  = gPromptBlockWidth + 1 + LocalScreen.LeftColumn;
+          }
 
           Statement = MenuOption->ThisTag;
           if (Statement->InSubtitle) {
@@ -1876,55 +1938,6 @@ UiDisplayMenu (
               OptionString[Count] = CHAR_NULL;
             }
 
-            //
-            // If Question request refresh, register the op-code
-            //
-            if (Statement->RefreshInterval != 0) {
-              //
-              // Menu will be refreshed at minimal interval of all Questions
-              // which have refresh request
-              //
-              if (MinRefreshInterval == 0 || Statement->RefreshInterval < MinRefreshInterval) {
-                MinRefreshInterval = Statement->RefreshInterval;
-              }
-
-              if (gMenuRefreshHead == NULL) {
-                MenuRefreshEntry = AllocateZeroPool (sizeof (MENU_REFRESH_ENTRY));
-                ASSERT (MenuRefreshEntry != NULL);
-                MenuRefreshEntry->MenuOption        = MenuOption;
-                MenuRefreshEntry->Selection         = Selection;
-                MenuRefreshEntry->CurrentColumn     = MenuOption->OptCol;
-                MenuRefreshEntry->CurrentRow        = MenuOption->Row;
-                if (MenuOption->GrayOut) {
-                  MenuRefreshEntry->CurrentAttribute = FIELD_TEXT_GRAYED | FIELD_BACKGROUND;
-                } else {               
-                  MenuRefreshEntry->CurrentAttribute = PcdGet8 (PcdBrowserFieldTextColor) | FIELD_BACKGROUND;
-                }
-                gMenuRefreshHead                    = MenuRefreshEntry;
-              } else {
-                //
-                // Advance to the last entry
-                //
-                for (MenuRefreshEntry = gMenuRefreshHead;
-                     MenuRefreshEntry->Next != NULL;
-                     MenuRefreshEntry = MenuRefreshEntry->Next
-                    )
-                  ;
-                MenuRefreshEntry->Next = AllocateZeroPool (sizeof (MENU_REFRESH_ENTRY));
-                ASSERT (MenuRefreshEntry->Next != NULL);
-                MenuRefreshEntry                    = MenuRefreshEntry->Next;
-                MenuRefreshEntry->MenuOption        = MenuOption;
-                MenuRefreshEntry->Selection         = Selection;
-                MenuRefreshEntry->CurrentColumn     = MenuOption->OptCol;
-                MenuRefreshEntry->CurrentRow        = MenuOption->Row;
-                if (MenuOption->GrayOut) {
-                  MenuRefreshEntry->CurrentAttribute = FIELD_TEXT_GRAYED | FIELD_BACKGROUND;
-                } else {               
-                  MenuRefreshEntry->CurrentAttribute = PcdGet8 (PcdBrowserFieldTextColor) | FIELD_BACKGROUND;
-                }
-              }
-            }
-
             Width       = (UINT16) gOptionBlockWidth;
             OriginalRow = Row;
 
@@ -1962,6 +1975,71 @@ UiDisplayMenu (
 
             FreePool (OptionString);
           }
+
+          //
+          // If Question has refresh guid, register the op-code.
+          //
+          if (!CompareGuid (&Statement->RefreshGuid, &gZeroGuid)) {
+            if (gMenuEventGuidRefreshHead == NULL) {
+              MenuUpdateEntry = AllocateZeroPool (sizeof (MENU_REFRESH_ENTRY));
+              gMenuEventGuidRefreshHead = MenuUpdateEntry;
+            } else {
+              MenuUpdateEntry = gMenuEventGuidRefreshHead;
+              while (MenuUpdateEntry->Next != NULL) {
+                MenuUpdateEntry = MenuUpdateEntry->Next; 
+              }
+              MenuUpdateEntry->Next = AllocateZeroPool (sizeof (MENU_REFRESH_ENTRY));
+              MenuUpdateEntry = MenuUpdateEntry->Next; 
+            }
+            ASSERT (MenuUpdateEntry != NULL);
+            Status = gBS->CreateEventEx (EVT_NOTIFY_SIGNAL, TPL_NOTIFY, RefreshQuestionNotify, MenuUpdateEntry, &Statement->RefreshGuid, &MenuUpdateEntry->Event);
+            ASSERT (!EFI_ERROR (Status));
+            MenuUpdateEntry->MenuOption        = MenuOption;
+            MenuUpdateEntry->Selection         = Selection;
+            MenuUpdateEntry->CurrentColumn     = MenuOption->OptCol;
+            MenuUpdateEntry->CurrentRow        = MenuOption->Row;
+            if (MenuOption->GrayOut) {
+              MenuUpdateEntry->CurrentAttribute = FIELD_TEXT_GRAYED | FIELD_BACKGROUND;
+            } else {
+              MenuUpdateEntry->CurrentAttribute = PcdGet8 (PcdBrowserFieldTextColor) | FIELD_BACKGROUND;
+            }
+          }
+          
+          //
+          // If Question request refresh, register the op-code
+          //
+          if (Statement->RefreshInterval != 0) {
+            //
+            // Menu will be refreshed at minimal interval of all Questions
+            // which have refresh request
+            //
+            if (MinRefreshInterval == 0 || Statement->RefreshInterval < MinRefreshInterval) {
+              MinRefreshInterval = Statement->RefreshInterval;
+            }
+            
+            if (gMenuRefreshHead == NULL) {
+              MenuRefreshEntry = AllocateZeroPool (sizeof (MENU_REFRESH_ENTRY));
+              gMenuRefreshHead = MenuRefreshEntry;
+            } else {
+              MenuRefreshEntry = gMenuRefreshHead;
+              while (MenuRefreshEntry->Next != NULL) {
+                MenuRefreshEntry = MenuRefreshEntry->Next; 
+              }
+              MenuRefreshEntry->Next = AllocateZeroPool (sizeof (MENU_REFRESH_ENTRY));
+              MenuRefreshEntry = MenuRefreshEntry->Next;
+            }
+            ASSERT (MenuRefreshEntry != NULL);            
+            MenuRefreshEntry->MenuOption        = MenuOption;
+            MenuRefreshEntry->Selection         = Selection;
+            MenuRefreshEntry->CurrentColumn     = MenuOption->OptCol;
+            MenuRefreshEntry->CurrentRow        = MenuOption->Row;
+            if (MenuOption->GrayOut) {
+              MenuRefreshEntry->CurrentAttribute = FIELD_TEXT_GRAYED | FIELD_BACKGROUND;
+            } else {               
+              MenuRefreshEntry->CurrentAttribute = PcdGet8 (PcdBrowserFieldTextColor) | FIELD_BACKGROUND;
+            }
+          }
+          
           //
           // If this is a text op with secondary text information
           //
@@ -2317,6 +2395,9 @@ UiDisplayMenu (
 
     case CfUpdateHelpString:
       ControlFlag = CfPrepareToReadKey;
+      if (Selection->Form->ModalForm) {
+        break;
+      }
 
       if (Repaint || NewLine) {
         //
@@ -2471,6 +2552,12 @@ UiDisplayMenu (
           //
         } else {
           for (Index = 0; Index < sizeof (gScanCodeToOperation) / sizeof (gScanCodeToOperation[0]); Index++) {
+            if (Selection->Form->ModalForm && 
+              (Key.ScanCode == SCAN_F9 || Key.ScanCode == SCAN_F10 || Key.ScanCode == SCAN_ESC)) {
+              ControlFlag = CfReadKey;
+              break;
+            }
+
             if (Key.ScanCode == gScanCodeToOperation[Index].ScanCode) {
               if (Key.ScanCode == SCAN_F9) {
                 //
@@ -2527,6 +2614,9 @@ UiDisplayMenu (
       switch (Statement->Operand) {
       case EFI_IFR_REF_OP:
         if (Statement->RefDevicePath != 0) {
+          if (Selection->Form->ModalForm) {
+            break;
+          }
           //
           // Goto another Hii Package list
           //
@@ -2582,6 +2672,9 @@ UiDisplayMenu (
           Selection->FormId = Statement->RefFormId;
           Selection->QuestionId = Statement->RefQuestionId;
         } else if (!CompareGuid (&Statement->RefFormSetId, &gZeroGuid)) {
+          if (Selection->Form->ModalForm) {
+            break;
+          }
           //
           // Goto another Formset, check for uncommitted data
           //
@@ -2697,84 +2790,10 @@ UiDisplayMenu (
       // We come here when someone press ESC
       //
       ControlFlag = CfCheckSelection;
-
-      if (CurrentMenu->Parent != NULL) {
-        //
-        // we have a parent, so go to the parent menu
-        //
-        if (CompareGuid (&CurrentMenu->FormSetGuid, &CurrentMenu->Parent->FormSetGuid)) {
-          //
-          // The parent menu and current menu are in the same formset
-          //
-          Selection->Action = UI_ACTION_REFRESH_FORM;
-        } else {
-          Selection->Action = UI_ACTION_REFRESH_FORMSET;
-        }
-        Selection->Statement = NULL;
-
-        Selection->FormId = CurrentMenu->Parent->FormId;
-        Selection->QuestionId = CurrentMenu->Parent->QuestionId;
-
-        //
-        // Clear highlight record for this menu
-        //
-        CurrentMenu->QuestionId = 0;
-        break;
-      }
-
-      if ((gClassOfVfr & FORMSET_CLASS_FRONT_PAGE) == FORMSET_CLASS_FRONT_PAGE) {
-        //
-        // We never exit FrontPage, so skip the ESC
-        //
-        Selection->Action = UI_ACTION_NONE;
-        break;
-      }
-
-      //
-      // We are going to leave current FormSet, so check uncommited data in this FormSet
-      //
-      if (gNvUpdateRequired) {
-        Status      = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-
-        YesResponse = gYesResponse[0];
-        NoResponse  = gNoResponse[0];
-
-        //
-        // If NV flag is up, prompt user
-        //
-        do {
-          CreateDialog (4, TRUE, 0, NULL, &Key, gEmptyString, gSaveChanges, gAreYouSure, gEmptyString);
-        } while
-        (
-          (Key.ScanCode != SCAN_ESC) &&
-          ((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) != (NoResponse | UPPER_LOWER_CASE_OFFSET)) &&
-          ((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) != (YesResponse | UPPER_LOWER_CASE_OFFSET))
-        );
-
-        if (Key.ScanCode == SCAN_ESC) {
-          //
-          // User hits the ESC key
-          //
-          Repaint = TRUE;
-          NewLine = TRUE;
-
-          Selection->Action = UI_ACTION_NONE;
-          break;
-        }
-
-        //
-        // If the user hits the YesResponse key
-        //
-        if ((Key.UnicodeChar | UPPER_LOWER_CASE_OFFSET) == (YesResponse | UPPER_LOWER_CASE_OFFSET)) {
-          Status = SubmitForm (Selection->FormSet, Selection->Form);
-        }
-      }
-
-      Selection->Action = UI_ACTION_EXIT;
-      Selection->Statement = NULL;
-      CurrentMenu->QuestionId = 0;
-
-      return EFI_SUCCESS;
+      if (FindNextMenu (Selection, &Repaint, &NewLine)) {
+        return EFI_SUCCESS;
+      } 
+      break;
 
     case CfUiLeft:
       ControlFlag = CfCheckSelection;
@@ -2869,7 +2888,7 @@ UiDisplayMenu (
         AdjustDateAndTimePosition (TRUE, &TopOfScreen);
         AdjustDateAndTimePosition (TRUE, &NewPos);
         MenuOption = MENU_OPTION_FROM_LINK (SavedListEntry);
-        UpdateStatusBar (INPUT_ERROR, MenuOption->ThisTag->QuestionFlags, FALSE);
+        UpdateStatusBar (Selection, INPUT_ERROR, MenuOption->ThisTag->QuestionFlags, FALSE);
       } else {
         //
         // Scroll up to the last page.
@@ -3166,7 +3185,7 @@ UiDisplayMenu (
 
         MenuOption = MENU_OPTION_FROM_LINK (SavedListEntry);
 
-        UpdateStatusBar (INPUT_ERROR, MenuOption->ThisTag->QuestionFlags, FALSE);
+        UpdateStatusBar (Selection, INPUT_ERROR, MenuOption->ThisTag->QuestionFlags, FALSE);
 
       } else {
         //
@@ -3197,12 +3216,12 @@ UiDisplayMenu (
       //
       // Submit the form
       //
-      Status = SubmitForm (Selection->FormSet, Selection->Form);
+      Status = SubmitForm (Selection->FormSet, Selection->Form, FALSE);
 
       if (!EFI_ERROR (Status)) {
         ASSERT(MenuOption != NULL);
-        UpdateStatusBar (INPUT_ERROR, MenuOption->ThisTag->QuestionFlags, FALSE);
-        UpdateStatusBar (NV_UPDATE_REQUIRED, MenuOption->ThisTag->QuestionFlags, FALSE);
+        UpdateStatusBar (Selection, INPUT_ERROR, MenuOption->ThisTag->QuestionFlags, FALSE);
+        UpdateStatusBar (Selection, NV_UPDATE_REQUIRED, MenuOption->ThisTag->QuestionFlags, FALSE);
       } else {
         do {
           CreateDialog (4, TRUE, 0, NULL, &Key, gEmptyString, gSaveFailed, gPressEnter, gEmptyString);
@@ -3231,7 +3250,7 @@ UiDisplayMenu (
         //
         // Show NV update flag on status bar
         //
-        gNvUpdateRequired = TRUE;
+        UpdateNvInfoInForm(Selection->FormSet, TRUE);
         gResetRequired = TRUE;
       }
       break;

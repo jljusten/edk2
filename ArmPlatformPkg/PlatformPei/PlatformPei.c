@@ -24,6 +24,7 @@
 //
 // The Library classes this module consumes
 //
+#include <Library/ArmPlatformLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PeimEntryPoint.h>
 #include <Library/PcdLib.h>
@@ -73,16 +74,14 @@ Returns:
 
   DEBUG ((EFI_D_ERROR, "Platform PEIM Loaded\n"));
 
+  // Initialize the platform specific controllers
+  ArmPlatformNormalInitialize ();
+
   BuildCpuHob (PcdGet8 (PcdPrePiCpuMemorySize), PcdGet8 (PcdPrePiCpuIoSize));
   
-  BuildFvHob (FixedPcdGet32(PcdFlashFvMainBase), FixedPcdGet32(PcdFlashFvMainSize));
+  BuildFvHob (PcdGet32(PcdNormalFvBaseAddress), PcdGet32(PcdNormalFvSize));
   
-  //
-  // Let's assume things are OK if not told otherwise
-  // Should we read an environment variable in order to easily change this?
-  //
-  BootMode  = BOOT_WITH_FULL_CONFIGURATION;
-
+  BootMode  = ArmPlatformGetBootMode ();
   Status    = (**PeiServices).SetBootMode (PeiServices, (UINT8) BootMode);
   ASSERT_EFI_ERROR (Status);
 

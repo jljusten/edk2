@@ -34,6 +34,8 @@
 [Sources.common]
   ArmRealViewEb.c
   ArmRealViewEbMem.c
+  ArmRealViewEbHelper.asm   | RVCT
+  ArmRealViewEbHelper.S     | GCC
 
 [Protocols]
 
@@ -42,5 +44,3 @@
   gArmPlatformTokenSpaceGuid.PcdStandalone
 
 [FixedPcd]
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedFdBaseAddress
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedFdSize

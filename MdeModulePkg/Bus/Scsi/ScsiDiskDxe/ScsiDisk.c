@@ -1,7 +1,7 @@
 /** @file
   SCSI disk driver that layers on every SCSI IO protocol in the system.
 
-Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -166,6 +166,9 @@ ScsiDiskDriverBindingStart (
   UINT8                 Index;
   UINT8                 MaxRetry;
   BOOLEAN               NeedRetry;
+  BOOLEAN               MustReadCapacity;
+
+  MustReadCapacity = TRUE;
 
   ScsiDiskDevice = (SCSI_DISK_DEV *) AllocateZeroPool (sizeof (SCSI_DISK_DEV));
   if (ScsiDiskDevice == NULL) {
@@ -187,6 +190,7 @@ ScsiDiskDriverBindingStart (
 
   ScsiDiskDevice->Signature         = SCSI_DISK_DEV_SIGNATURE;
   ScsiDiskDevice->ScsiIo            = ScsiIo;
+  ScsiDiskDevice->BlkIo.Revision    = EFI_BLOCK_IO_PROTOCOL_REVISION3;
   ScsiDiskDevice->BlkIo.Media       = &ScsiDiskDevice->BlkIoMedia;
   ScsiDiskDevice->BlkIo.Reset       = ScsiDiskReset;
   ScsiDiskDevice->BlkIo.ReadBlocks  = ScsiDiskReadBlocks;
@@ -198,10 +202,12 @@ ScsiDiskDriverBindingStart (
   switch (ScsiDiskDevice->DeviceType) {
   case EFI_SCSI_TYPE_DISK:
     ScsiDiskDevice->BlkIo.Media->BlockSize = 0x200;
+    MustReadCapacity = TRUE;
     break;
 
   case EFI_SCSI_TYPE_CDROM:
     ScsiDiskDevice->BlkIo.Media->BlockSize = 0x800;
+    MustReadCapacity = FALSE;
     break;
   }
   //
@@ -248,7 +254,7 @@ ScsiDiskDriverBindingStart (
   // The second parameter "TRUE" means must
   // retrieve media capacity
   //
-  Status = ScsiDiskDetectMedia (ScsiDiskDevice, TRUE, &Temp);
+  Status = ScsiDiskDetectMedia (ScsiDiskDevice, MustReadCapacity, &Temp);
   if (!EFI_ERROR (Status)) {
     //
     // Determine if Block IO should be produced on this controller handle
@@ -454,17 +460,8 @@ ScsiDiskReadBlocks (
   BOOLEAN             MediaChange;
   EFI_TPL             OldTpl;
 
-  MediaChange = FALSE;
-  if (Buffer == NULL) {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  if (BufferSize == 0) {
-    return EFI_SUCCESS;
-  }
-
-  OldTpl = gBS->RaiseTPL (TPL_CALLBACK);
-
+  MediaChange    = FALSE;
+  OldTpl         = gBS->RaiseTPL (TPL_CALLBACK);
   ScsiDiskDevice = SCSI_DISK_DEV_FROM_THIS (This);
 
   if (!IS_DEVICE_FIXED(ScsiDiskDevice)) {
@@ -499,6 +496,16 @@ ScsiDiskReadBlocks (
 
   if (MediaId != Media->MediaId) {
     Status = EFI_MEDIA_CHANGED;
+    goto Done;
+  }
+
+  if (Buffer == NULL) {
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
+  if (BufferSize == 0) {
+    Status = EFI_SUCCESS;
     goto Done;
   }
 
@@ -569,17 +576,8 @@ ScsiDiskWriteBlocks (
   BOOLEAN             MediaChange;
   EFI_TPL             OldTpl;
 
-  MediaChange = FALSE;
-  if (Buffer == NULL) {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  if (BufferSize == 0) {
-    return EFI_SUCCESS;
-  }
-
-  OldTpl = gBS->RaiseTPL (TPL_CALLBACK);
-
+  MediaChange    = FALSE;
+  OldTpl         = gBS->RaiseTPL (TPL_CALLBACK);
   ScsiDiskDevice = SCSI_DISK_DEV_FROM_THIS (This);
 
   if (!IS_DEVICE_FIXED(ScsiDiskDevice)) {
@@ -614,6 +612,16 @@ ScsiDiskWriteBlocks (
 
   if (MediaId != Media->MediaId) {
     Status = EFI_MEDIA_CHANGED;
+    goto Done;
+  }
+
+  if (BufferSize == 0) {
+    Status = EFI_SUCCESS;
+    goto Done;
+  }
+
+  if (Buffer == NULL) {
+    Status = EFI_INVALID_PARAMETER;
     goto Done;
   }
 
@@ -707,6 +715,7 @@ ScsiDiskDetectMedia (
   CopyMem (&OldMedia, ScsiDiskDevice->BlkIo.Media, sizeof (OldMedia));
   *MediaChange        = FALSE;
   MaxRetry            = 3;
+  Action              = ACTION_NO_ACTION;
 
   for (Index = 0; Index < MaxRetry; Index++) {
     Status = ScsiDiskTestUnitReady (
@@ -716,7 +725,19 @@ ScsiDiskDetectMedia (
               &NumberOfSenseKeys
               );
     if (!EFI_ERROR (Status)) {
-      break;
+      Status = DetectMediaParsingSenseKeys (
+                 ScsiDiskDevice,
+                 SenseData,
+                 NumberOfSenseKeys,
+                 &Action
+                 );
+      if (EFI_ERROR (Status)) {
+        return Status;
+      } else if (Action == ACTION_RETRY_COMMAND_LATER) {
+        continue;
+      } else {
+        break;
+      }
     }
 
     if (!NeedRetry) {
@@ -728,22 +749,11 @@ ScsiDiskDetectMedia (
     return EFI_DEVICE_ERROR;
   }
 
-  Status = DetectMediaParsingSenseKeys (
-            ScsiDiskDevice,
-            SenseData,
-            NumberOfSenseKeys,
-            &Action
-            );
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
   //
   // ACTION_NO_ACTION: need not read capacity
   // other action code: need read capacity
   //
-  if (Action == ACTION_NO_ACTION) {
-    NeedReadCapacity = FALSE;
-  } else {
+  if (Action == ACTION_READ_CAPACITY) {
     NeedReadCapacity = TRUE;
   }
 
@@ -873,15 +883,18 @@ ScsiDiskInquiryDevice (
      OUT  BOOLEAN         *NeedRetry
   )
 {
-  UINT32              InquiryDataLength;
-  UINT8               SenseDataLength;
-  UINT8               HostAdapterStatus;
-  UINT8               TargetStatus;
-  EFI_SCSI_SENSE_DATA *SenseDataArray;
-  UINTN               NumberOfSenseKeys;
-  EFI_STATUS          Status;
-  UINT8               MaxRetry;
-  UINT8               Index;
+  UINT32                                InquiryDataLength;
+  UINT8                                 SenseDataLength;
+  UINT8                                 HostAdapterStatus;
+  UINT8                                 TargetStatus;
+  EFI_SCSI_SENSE_DATA                   *SenseDataArray;
+  UINTN                                 NumberOfSenseKeys;
+  EFI_STATUS                            Status;
+  UINT8                                 MaxRetry;
+  UINT8                                 Index;
+  EFI_SCSI_SUPPORTED_VPD_PAGES_VPD_PAGE SupportedVpdPages;
+  EFI_SCSI_BLOCK_LIMITS_VPD_PAGE        BlockLimits;
+  UINTN                                 PageLength;
 
   InquiryDataLength = sizeof (EFI_SCSI_INQUIRY_DATA);
   SenseDataLength   = 0;
@@ -901,27 +914,86 @@ ScsiDiskInquiryDevice (
     // no need to check HostAdapterStatus and TargetStatus
     //
   if ((Status == EFI_SUCCESS) || (Status == EFI_WARN_BUFFER_TOO_SMALL)) {
-     ParseInquiryData (ScsiDiskDevice);
-     return EFI_SUCCESS;
+    ParseInquiryData (ScsiDiskDevice);
+
+    if (ScsiDiskDevice->DeviceType == EFI_SCSI_TYPE_DISK) {
+      //
+      // Check whether the device supports Block Limits VPD page (0xB0)
+      //
+      ZeroMem (&SupportedVpdPages, sizeof (SupportedVpdPages));
+      InquiryDataLength = sizeof (SupportedVpdPages);
+      SenseDataLength   = 0;
+      Status = ScsiInquiryCommandEx (
+                 ScsiDiskDevice->ScsiIo,
+                 EFI_TIMER_PERIOD_SECONDS (1),
+                 NULL,
+                 &SenseDataLength,
+                 &HostAdapterStatus,
+                 &TargetStatus,
+                 (VOID *) &SupportedVpdPages,
+                 &InquiryDataLength,
+                 TRUE,
+                 EFI_SCSI_PAGE_CODE_SUPPORTED_VPD
+                 );
+      if (!EFI_ERROR (Status)) {
+        PageLength = (SupportedVpdPages.PageLength2 << 8)
+                   |  SupportedVpdPages.PageLength1;
+        for (Index = 0; Index < PageLength; Index++) {
+          if (SupportedVpdPages.SupportedVpdPageList[Index] == EFI_SCSI_PAGE_CODE_BLOCK_LIMITS_VPD) {
+            break;
+          }
+        }
+
+        //
+        // Query the Block Limits VPD page
+        //
+        if (Index < PageLength) {
+          ZeroMem (&BlockLimits, sizeof (BlockLimits));
+          InquiryDataLength = sizeof (BlockLimits);
+          SenseDataLength   = 0;
+          Status = ScsiInquiryCommandEx (
+                     ScsiDiskDevice->ScsiIo,
+                     EFI_TIMER_PERIOD_SECONDS (1),
+                     NULL,
+                     &SenseDataLength,
+                     &HostAdapterStatus,
+                     &TargetStatus,
+                     (VOID *) &BlockLimits,
+                     &InquiryDataLength,
+                     TRUE,
+                     EFI_SCSI_PAGE_CODE_BLOCK_LIMITS_VPD
+                     );
+          if (!EFI_ERROR (Status)) {
+            ScsiDiskDevice->BlkIo.Media->OptimalTransferLengthGranularity = 
+              (BlockLimits.OptimalTransferLengthGranularity2 << 8) |
+               BlockLimits.OptimalTransferLengthGranularity1;
+          }
+        }
+      }
+    }
+  }
+
+  if (!EFI_ERROR (Status)) {
+    return EFI_SUCCESS;
+
+  } else if (Status == EFI_NOT_READY) {
+    *NeedRetry = TRUE;
+    return EFI_DEVICE_ERROR;
  
-   } else if (Status == EFI_NOT_READY) {
-     *NeedRetry = TRUE;
-     return EFI_DEVICE_ERROR;
- 
-   } else if ((Status == EFI_INVALID_PARAMETER) || (Status == EFI_UNSUPPORTED)) {
-     *NeedRetry = FALSE;
-     return EFI_DEVICE_ERROR;
-   }
-   //
-   // go ahead to check HostAdapterStatus and TargetStatus
-   // (EFI_TIMEOUT, EFI_DEVICE_ERROR)
-   //
- 
-   Status = CheckHostAdapterStatus (HostAdapterStatus);
-   if ((Status == EFI_TIMEOUT) || (Status == EFI_NOT_READY)) {
-     *NeedRetry = TRUE;
-     return EFI_DEVICE_ERROR;
-   } else if (Status == EFI_DEVICE_ERROR) {
+  } else if ((Status == EFI_INVALID_PARAMETER) || (Status == EFI_UNSUPPORTED)) {
+    *NeedRetry = FALSE;
+    return EFI_DEVICE_ERROR;
+  }
+  //
+  // go ahead to check HostAdapterStatus and TargetStatus
+  // (EFI_TIMEOUT, EFI_DEVICE_ERROR)
+  //
+
+  Status = CheckHostAdapterStatus (HostAdapterStatus);
+  if ((Status == EFI_TIMEOUT) || (Status == EFI_NOT_READY)) {
+    *NeedRetry = TRUE;
+    return EFI_DEVICE_ERROR;
+  } else if (Status == EFI_DEVICE_ERROR) {
       //
       // reset the scsi channel
       //
@@ -1137,6 +1209,11 @@ DetectMediaParsingSenseKeys (
 
   if (ScsiDiskIsMediaChange (SenseData, NumberOfSenseKeys)) {
     ScsiDiskDevice->BlkIo.Media->MediaId++;
+    return EFI_SUCCESS;
+  }
+
+  if (ScsiDiskIsResetBefore (SenseData, NumberOfSenseKeys)) {
+    *Action = ACTION_RETRY_COMMAND_LATER;
     return EFI_SUCCESS;
   }
 
@@ -1520,10 +1597,6 @@ GetMediaInfo (
 {
   UINT8       *Ptr;
 
-  ScsiDiskDevice->BlkIo.Media->LowestAlignedLba               = 0;
-  ScsiDiskDevice->BlkIo.Media->LogicalBlocksPerPhysicalBlock  = 1;
-  
-
   if (!ScsiDiskDevice->Cdb16Byte) {
     ScsiDiskDevice->BlkIo.Media->LastBlock =  (Capacity10->LastLba3 << 24) |
                                               (Capacity10->LastLba2 << 16) |
@@ -1534,9 +1607,9 @@ GetMediaInfo (
                                              (Capacity10->BlockSize2 << 16) | 
                                              (Capacity10->BlockSize1 << 8)  |
                                               Capacity10->BlockSize0;
-    ScsiDiskDevice->BlkIo.Revision = EFI_BLOCK_IO_PROTOCOL_REVISION;      
+    ScsiDiskDevice->BlkIo.Media->LowestAlignedLba               = 0;
+    ScsiDiskDevice->BlkIo.Media->LogicalBlocksPerPhysicalBlock  = 0;
   } else {
-
     Ptr = (UINT8*)&ScsiDiskDevice->BlkIo.Media->LastBlock;
     *Ptr++ = Capacity16->LastLba0;
     *Ptr++ = Capacity16->LastLba1;
@@ -1546,17 +1619,16 @@ GetMediaInfo (
     *Ptr++ = Capacity16->LastLba5;
     *Ptr++ = Capacity16->LastLba6;
     *Ptr   = Capacity16->LastLba7;
-  
+
     ScsiDiskDevice->BlkIo.Media->BlockSize = (Capacity16->BlockSize3 << 24) |
                                              (Capacity16->BlockSize2 << 16) | 
                                              (Capacity16->BlockSize1 << 8)  |
                                               Capacity16->BlockSize0;
 
-    ScsiDiskDevice->BlkIo.Media->LowestAlignedLba = (Capacity16->LowestAlignLogic2 << 8)|(Capacity16->LowestAlignLogic1);
-    ScsiDiskDevice->BlkIo.Media->LogicalBlocksPerPhysicalBlock  = Capacity16->LogicPerPhysical;
-    ScsiDiskDevice->BlkIo.Revision = EFI_BLOCK_IO_PROTOCOL_REVISION2;  
+    ScsiDiskDevice->BlkIo.Media->LowestAlignedLba = (Capacity16->LowestAlignLogic2 << 8) |
+                                                     Capacity16->LowestAlignLogic1;
+    ScsiDiskDevice->BlkIo.Media->LogicalBlocksPerPhysicalBlock  = (1 << Capacity16->LogicPerPhysical);
   }
-
 
   ScsiDiskDevice->BlkIo.Media->MediaPresent = TRUE;
   

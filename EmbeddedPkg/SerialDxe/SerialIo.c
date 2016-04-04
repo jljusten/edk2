@@ -188,11 +188,17 @@ SerialRead (
   OUT VOID                   *Buffer
   )
 {
-  UINTN Count;
+  UINTN Count = 0;
   
-  Count = SerialPortRead (Buffer, *BufferSize);
-  *BufferSize = Count;
-  return (Count == 0) ? EFI_DEVICE_ERROR : EFI_SUCCESS;
+  if (SerialPortPoll()) {
+    Count = SerialPortRead (Buffer, *BufferSize);
+    *BufferSize = Count;
+    return (Count == 0) ? EFI_DEVICE_ERROR : EFI_SUCCESS;
+  }
+  
+  // No data to return
+  *BufferSize = 0;
+  return EFI_SUCCESS;
 }
 
 
@@ -235,7 +241,7 @@ SIMPLE_TEXT_OUT_DEVICE_PATH mDevicePath = {
     EFI_CALLER_ID_GUID // Use the drivers GUID
   },
   {
-    { END_DEVICE_PATH_TYPE, END_ENTIRE_DEVICE_PATH_SUBTYPE, sizeof (UART_DEVICE_PATH), 0},
+    { MESSAGING_DEVICE_PATH, MSG_UART_DP, sizeof (UART_DEVICE_PATH), 0},
     0,        // Reserved
     FixedPcdGet64 (PcdUartDefaultBaudRate),   // BaudRate
     FixedPcdGet8 (PcdUartDefaultDataBits),    // DataBits

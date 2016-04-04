@@ -27,10 +27,10 @@
 
 [FD.Sec_ArmVExpress_EFI]
 BaseAddress   = 0x44000000|gArmTokenSpaceGuid.PcdSecureFdBaseAddress  #The base address of the Secure FLASH Device.
-Size          = 0x00200000|gArmTokenSpaceGuid.PcdSecureFdSize         #The size in bytes of the Secure FLASH Device
+Size          = 0x00080000|gArmTokenSpaceGuid.PcdSecureFdSize         #The size in bytes of the Secure FLASH Device
 ErasePolarity = 1
 BlockSize     = 0x00001000
-NumBlocks     = 0x200
+NumBlocks     = 0x80
 
 ################################################################################
 #
@@ -48,18 +48,18 @@ NumBlocks     = 0x200
 #
 ################################################################################
 
-0x00000000|0x00200000
-gEmbeddedTokenSpaceGuid.PcdFlashFvSecBase|gEmbeddedTokenSpaceGuid.PcdFlashFvSecSize
+0x00000000|0x00080000
+gArmTokenSpaceGuid.PcdSecureFvBaseAddress|gArmTokenSpaceGuid.PcdSecureFvBaseSize
 FV = FVMAIN_SEC
 
 
 [FD.ArmVExpress_EFI]
 !if $(EDK2_ARMVE_STANDALONE) == 1
-BaseAddress   = 0x45000000|gEmbeddedTokenSpaceGuid.PcdEmbeddedFdBaseAddress  # The base address of the Firmware in NOR Flash.
+BaseAddress   = 0x45000000|gArmTokenSpaceGuid.PcdNormalFdBaseAddress  # The base address of the Firmware in NOR Flash.
 !else
-BaseAddress   = 0x80000000|gEmbeddedTokenSpaceGuid.PcdEmbeddedFdBaseAddress  # The base address of the Firmware in remapped DRAM.
+BaseAddress   = 0x80000000|gArmTokenSpaceGuid.PcdNormalFdBaseAddress  # The base address of the Firmware in remapped DRAM.
 !endif
-Size          = 0x00200000|gEmbeddedTokenSpaceGuid.PcdEmbeddedFdSize         # The size in bytes of the FLASH Device
+Size          = 0x00200000|gArmTokenSpaceGuid.PcdNormalFdSize         # The size in bytes of the FLASH Device
 ErasePolarity = 1
 
 # This one is tricky, it must be: BlockSize * NumBlocks = Size
@@ -83,83 +83,8 @@ NumBlocks     = 0x200
 ################################################################################
 
 0x00000000|0x00200000
-gEmbeddedTokenSpaceGuid.PcdFlashFvMainBase|gEmbeddedTokenSpaceGuid.PcdFlashFvMainSize
+gArmTokenSpaceGuid.PcdNormalFvBaseAddress|gArmTokenSpaceGuid.PcdNormalFvBaseSize
 FV = FVMAIN_COMPACT
-
-
-[FD.NVVariableStore]
-BaseAddress   = 0x47FC0000
-Size          = 0x00030000
-ErasePolarity = 1
-BlockSize     = 0x00010000
-NumBlocks     = 0x3
-
-0x00000000|0x00010000
-gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase|gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize
-#NV_VARIABLE_STORE
-DATA = {
-  ## This is the EFI_FIRMWARE_VOLUME_HEADER
-  # ZeroVector []
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  # FileSystemGuid: gEfiSystemNvDataFvGuid         =
-  #  { 0xFFF12B8D, 0x7696, 0x4C8B, { 0xA9, 0x85, 0x27, 0x47, 0x07, 0x5B, 0x4F, 0x50 }}
-  0x8D, 0x2B, 0xF1, 0xFF, 0x96, 0x76, 0x8B, 0x4C,
-  0xA9, 0x85, 0x27, 0x47, 0x07, 0x5B, 0x4F, 0x50,
-  # FvLength: 0x30000
-  0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
-  #Signature "_FVH"       #Attributes
-  0x5f, 0x46, 0x56, 0x48, 0xff, 0xfe, 0x04, 0x00,
-  #HeaderLength #CheckSum #ExtHeaderOffset #Reserved #Revision
-  0x48, 0x00, 0x34, 0x09, 0x00, 0x00, 0x00, 0x02,
-  #Blockmap[0]: 3 Blocks * 0x10000 Bytes / Block
-  0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
-  #Blockmap[1]: End
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  
-  ## This is the VARIABLE_STORE_HEADER
-  #Signature: gEfiVariableGuid =
-  #  { 0xddcf3616, 0x3275, 0x4164, { 0x98, 0xb6, 0xfe, 0x85, 0x70, 0x7f, 0xfe, 0x7d }}
-  0x16, 0x36, 0xcf, 0xdd, 0x75, 0x32, 0x64, 0x41,
-  0x98, 0xb6, 0xfe, 0x85, 0x70, 0x7f, 0xfe, 0x7d,
-  #Size: 0x10000 (gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize) - 0x48 (size of EFI_FIRMWARE_VOLUME_HEADER: HeaderLength) = 0xFFB8
-  # This can speed up the Variable Dispatch a bit.
-  0xB8, 0xFF, 0x00, 0x00,
-  #FORMATTED: 0x5A #HEALTHY: 0xFE #Reserved: UINT16 #Reserved1: UINT32
-  0x5A, 0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-}
-
-0x00010000|0x00010000
-gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingBase|gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingSize
-#FTW_SPARE_STORE - See EFI_FAULT_TOLERANT_WORKING_BLOCK_HEADER
-DATA = {
-  #Signature: gEfiSystemNvDataFvGuid =
-  #  { 0xfff12b8d, 0x7696, 0x4c8b, { 0xa9, 0x85, 0x27, 0x47, 0x07, 0x5b, 0x4f, 0x50 } }
-  0x8d, 0x2b, 0xf1, 0xff, 0x96, 0x32, 0x8b, 0x4c,
-  0xa9, 0x85, 0x27, 0x47, 0x07, 0x5b, 0x4f, 0x50,
-  #FIXME: 32bit CRC caculated for this header.
-  0x00, 0x00, 0x00, 0x00,
-  # Working block valid bit
-  0x00,
-  # Total size of the following write queue range. (64bit)
-  0xB8, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  
-  # Write Queue data: EFI_FAULT_TOLERANT_WRITE_HEADER
-  # State
-  0x00,
-  # CallerId: Guid
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  # NumberOfWrites, PrivateDataSize
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-}
-
-0x00020000|0x00010000
-gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareBase|gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareSize
-DATA = {
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-}
-
 
 
 ################################################################################
@@ -222,20 +147,28 @@ READ_LOCK_STATUS   = TRUE
   INF ArmPkg/Drivers/CpuDxe/CpuDxe.inf
   INF MdeModulePkg/Core/RuntimeDxe/RuntimeDxe.inf
   INF MdeModulePkg/Universal/SecurityStubDxe/SecurityStubDxe.inf
-  INF MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
   INF MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
   INF MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
   INF MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
-  INF EmbeddedPkg/EmbeddedMonotonicCounter/EmbeddedMonotonicCounter.inf
+  INF MdeModulePkg/Universal/MonotonicCounterRuntimeDxe/MonotonicCounterRuntimeDxe.inf
   INF EmbeddedPkg/ResetRuntimeDxe/ResetRuntimeDxe.inf
   INF EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
   INF EmbeddedPkg/MetronomeDxe/MetronomeDxe.inf
-   
-  INF EmbeddedPkg/SimpleTextInOutSerial/SimpleTextInOutSerial.inf
+
+  #
+  # Multiple Console IO support
+  #
+  INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
+  INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+  INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+  INF MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
+  INF EmbeddedPkg/SerialDxe/SerialDxe.inf
 
   INF ArmPkg/Drivers/PL390Gic/PL390GicDxe.inf
   INF ArmPlatformPkg/Drivers/SP804TimerDxe/SP804TimerDxe.inf
-  INF ArmPlatformPkg/ArmVExpressPkg/NorFlashDxe/NorFlashDxe.inf
+  INF ArmPlatformPkg/Drivers/NorFlashDxe/NorFlashDxe.inf
+  INF ArmPlatformPkg/Drivers/LcdGraphicsOutputDxe/PL111LcdGraphicsOutputDxe.inf
+  INF ArmPlatformPkg/Drivers/SP805WatchdogDxe/SP805WatchdogDxe.inf
 
   #
   # Semi-hosting filesystem
@@ -253,7 +186,7 @@ READ_LOCK_STATUS   = TRUE
   #
   # Multimedia Card Interface
   #
-  INF ArmPkg/Universal/MmcDxe/MmcDxe.inf
+  INF EmbeddedPkg/Universal/MmcDxe/MmcDxe.inf
   INF ArmPkg/Drivers/PL180MciDxe/PL180MciDxe.inf
   
   #
@@ -332,7 +265,7 @@ READ_LOCK_STATUS   = TRUE
 
 [Rule.Common.SEC]
   FILE SEC = $(NAMED_GUID) RELOCS_STRIPPED {
-    TE  TE    Align = 8      |.efi
+    TE  TE    Align = 32      |.efi
   }
 
 [Rule.Common.PEI_CORE]

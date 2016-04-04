@@ -1,7 +1,7 @@
 ## @file
 #  Cryptographic Library Package for UEFI Security Implementation.
 #
-#  Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution.  The full text of the license may be found at
@@ -23,7 +23,7 @@
   PLATFORM_VERSION               = 0.91
   DSC_SPECIFICATION              = 0x00010005
   OUTPUT_DIRECTORY               = Build/CryptoPkg
-  SUPPORTED_ARCHITECTURES        = IA32|X64|IPF|EBC
+  SUPPORTED_ARCHITECTURES        = IA32|X64|IPF|EBC|ARM
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
 
@@ -38,6 +38,7 @@
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  DebugPrintErrorLevelLib|MdePkg/Library/BaseDebugPrintErrorLevelLib/BaseDebugPrintErrorLevelLib.inf  
   PrintLib|MdePkg/Library/BasePrintLib/BasePrintLib.inf
   UefiLib|MdePkg/Library/UefiLib/UefiLib.inf
   DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
@@ -49,6 +50,14 @@
 
   IntrinsicLib|CryptoPkg/Library/IntrinsicLib/IntrinsicLib.inf
   OpensslLib|CryptoPkg/Library/OpensslLib/OpensslLib.inf
+
+[LibraryClasses.ARM]
+  #
+  # It is not possible to prevent the ARM compiler for generic intrinsic functions.
+  # This library provides the instrinsic functions generate by a given compiler.
+  # [LibraryClasses.ARM] and NULL mean link this library into all ARM images.
+  #
+  NULL|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
 
 [LibraryClasses.common.PEIM]
   BaseCryptLib|CryptoPkg/Library/BaseCryptLib/PeiCryptLib.inf

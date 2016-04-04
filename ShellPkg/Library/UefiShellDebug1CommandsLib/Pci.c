@@ -1,7 +1,7 @@
 /** @file
   Main file for Pci shell Debug1 function.
 
-  Copyright (c) 2005 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2005 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -1258,90 +1258,26 @@ PCI_CLASS_ENTRY PCIPIFClass_0e00[] = {
   }
 };
 
-#define EFI_HEX_DISP_SIZE   32
-BOOLEAN
-PrivateDumpHex (
-  IN UINTN        Indent,
-  IN UINTN        Offset,
-  IN UINTN        DataSize,
-  IN VOID         *UserData
-  )
-/*++
 
-Routine Description:
+/**
+  Generates printable Unicode strings that represent PCI device class,
+  subclass and programmed I/F based on a value passed to the function.
 
-  Add page break feature to the DumpHex
-
-Arguments:
-  Indent           - The indent space
-
-  Offset           - The offset
-
-  DataSize         - The data size
-
-  UserData         - The data
-
-Returns:
-
-  TRUE             - The dump is broke
-  FALSE            - The dump is completed
-
+  @param[in] ClassCode      Value representing the PCI "Class Code" register read from a
+                 PCI device. The encodings are:
+                     bits 23:16 - Base Class Code
+                     bits 15:8  - Sub-Class Code
+                     bits  7:0  - Programming Interface
+  @param[in,out] ClassStrings   Pointer of PCI_CLASS_STRINGS structure, which contains
+                 printable class strings corresponding to ClassCode. The
+                 caller must not modify the strings that are pointed by
+                 the fields in ClassStrings.
 **/
-{
-  UINTN DispSize;
-  UINT8 *DispData;
-
-  DispSize  = EFI_HEX_DISP_SIZE;
-  DispData  = (UINT8 *) UserData;
-
-  while (DataSize!=0) {
-    if (ShellGetExecutionBreakFlag ()) {
-      return TRUE;
-    }
-
-    if (DataSize > EFI_HEX_DISP_SIZE) {
-      DataSize -= EFI_HEX_DISP_SIZE;
-    } else {
-      DispSize  = DataSize;
-      DataSize  = 0;
-    }
-
-    DumpHex (Indent, Offset + DispData - (UINT8 *) UserData, DispSize, DispData);
-    DispData += DispSize;
-  }
-
-  return FALSE;
-}
-
-//
-// Implemetations
-//
 VOID
 PciGetClassStrings (
   IN      UINT32               ClassCode,
   IN OUT  PCI_CLASS_STRINGS    *ClassStrings
   )
-/*++
-Routine Description:
-
-  Generates printable Unicode strings that represent PCI device class,
-  subclass and programmed I/F based on a value passed to the function.
-
-Arguments:
-
-  ClassCode      Value representing the PCI "Class Code" register read from a
-                 PCI device. The encodings are:
-                     bits 23:16 - Base Class Code
-                     bits 15:8  - Sub-Class Code
-                     bits  7:0  - Programming Interface
-  ClassStrings   Pointer of PCI_CLASS_STRINGS structure, which contains
-                 printable class strings corresponding to ClassCode. The
-                 caller must not modify the strings that are pointed by
-                 the fields in ClassStrings.
-Returns:
-
-  None
-**/
 {
   INTN            Index;
   UINT8           Code;
@@ -1437,25 +1373,18 @@ Returns:
   return ;
 }
 
+/**
+  Print strings that represent PCI device class, subclass and programmed I/F.
+
+  @param[in] ClassCodePtr   Points to the memory which stores register Class Code in PCI
+                 configuation space.
+  @param[in] IncludePIF     If the printed string should include the programming I/F part
+**/
 VOID
 PciPrintClassCode (
   IN      UINT8               *ClassCodePtr,
   IN      BOOLEAN             IncludePIF
   )
-/*++
-Routine Description:
-
-  Print strings that represent PCI device class, subclass and programmed I/F
-
-Arguments:
-
-  ClassCodePtr   Points to the memory which stores register Class Code in PCI
-                 configuation space.
-  IncludePIF     If the printed string should include the programming I/F part
-Returns:
-
-  None
-**/
 {
   UINT32            ClassCode;
   PCI_CLASS_STRINGS ClassStrings;
@@ -1498,12 +1427,22 @@ Returns:
   }
 }
 
-EFI_STATUS
-PciDump (
-  IN EFI_HANDLE                             ImageHandle,
-  IN EFI_SYSTEM_TABLE                       *SystemTable
-  );
+/**
+  This function finds out the protocol which is in charge of the given
+  segment, and its bus range covers the current bus number. It lookes
+  each instances of RootBridgeIoProtocol handle, until the one meets the
+  criteria is found.
 
+  @param[in] HandleBuf       Buffer which holds all PCI_ROOT_BRIDIGE_IO_PROTOCOL handles.
+  @param[in] HandleCount     Count of all PCI_ROOT_BRIDIGE_IO_PROTOCOL handles.
+  @param[in] Segment         Segment number of device we are dealing with.
+  @param[in] Bus             Bus number of device we are dealing with.
+  @param[out] IoDev          Handle used to access configuration space of PCI device.
+
+  @retval EFI_SUCCESS             The command completed successfully.
+  @retval EFI_INVALID_PARAMETER   Invalid parameter.
+
+**/
 EFI_STATUS
 PciFindProtocolInterface (
   IN  EFI_HANDLE                            *HandleBuf,
@@ -1513,6 +1452,16 @@ PciFindProtocolInterface (
   OUT EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL       **IoDev
   );
 
+/**
+  This function gets the protocol interface from the given handle, and
+  obtains its address space descriptors.
+
+  @param[in] Handle          The PCI_ROOT_BRIDIGE_IO_PROTOCOL handle.
+  @param[out] IoDev          Handle used to access configuration space of PCI device.
+  @param[out] Descriptors    Points to the address space descriptors.
+
+  @retval EFI_SUCCESS     The command completed successfully
+**/
 EFI_STATUS
 PciGetProtocolAndResource (
   IN  EFI_HANDLE                            Handle,
@@ -1520,6 +1469,19 @@ PciGetProtocolAndResource (
   OUT EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR     **Descriptors
   );
 
+/**
+  This function get the next bus range of given address space descriptors.
+  It also moves the pointer backward a node, to get prepared to be called
+  again.
+
+  @param[in,out] Descriptors Points to current position of a serial of address space
+                             descriptors.
+  @param[out] MinBus         The lower range of bus number.
+  @param[out] ManBus         The upper range of bus number.
+  @param[out] IsEnd          Meet end of the serial of descriptors.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciGetNextBusRange (
   IN OUT EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR  **Descriptors,
@@ -1528,6 +1490,17 @@ PciGetNextBusRange (
   OUT    BOOLEAN                            *IsEnd
   );
 
+/**
+  Explain the data in PCI configuration space. The part which is common for
+  PCI device and bridge is interpreted in this function. It calls other
+  functions to interpret data unique for device or bridge.
+
+  @param[in] ConfigSpace     Data in PCI configuration space.
+  @param[in] Address         Address used to access configuration space of this PCI device.
+  @param[in] IoDev           Handle used to access configuration space of PCI device.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainData (
   IN PCI_CONFIG_SPACE                       *ConfigSpace,
@@ -1535,6 +1508,15 @@ PciExplainData (
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL        *IoDev
   );
 
+/**
+  Explain the device specific part of data in PCI configuration space.
+
+  @param[in] Device          Data in PCI configuration space.
+  @param[in] Address         Address used to access configuration space of this PCI device.
+  @param[in] IoDev           Handle used to access configuration space of PCI device.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainDeviceData (
   IN PCI_DEVICE_HEADER                      *Device,
@@ -1542,13 +1524,33 @@ PciExplainDeviceData (
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL        *IoDev
   );
 
+/**
+  Explain the bridge specific part of data in PCI configuration space.
+
+  @param[in] Bridge          Bridge specific data region in PCI configuration space.
+  @param[in] Address         Address used to access configuration space of this PCI device.
+  @param[in] IoDev           Handle used to access configuration space of PCI device.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainBridgeData (
-  IN PCI_BRIDGE_HEADER                      *Bridge,
-  IN UINT64                                 Address,
-  IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL        *IoDev
+  IN  PCI_BRIDGE_HEADER                     *Bridge,
+  IN  UINT64                                Address,
+  IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL       *IoDev
   );
 
+/**
+  Explain the Base Address Register(Bar) in PCI configuration space.
+
+  @param[in] Bar             Points to the Base Address Register intended to interpret.
+  @param[in] Command         Points to the register Command.
+  @param[in] Address         Address used to access configuration space of this PCI device.
+  @param[in] IoDev           Handle used to access configuration space of PCI device.
+  @param[in,out] Index       The Index.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainBar (
   IN UINT32                                 *Bar,
@@ -1558,6 +1560,15 @@ PciExplainBar (
   IN OUT UINTN                              *Index
   );
 
+/**
+  Explain the cardbus specific part of data in PCI configuration space.
+
+  @param[in] CardBus         CardBus specific region of PCI configuration space.
+  @param[in] Address         Address used to access configuration space of this PCI device.
+  @param[in] IoDev           Handle used to access configuration space of PCI device.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainCardBusData (
   IN PCI_CARDBUS_HEADER                     *CardBus,
@@ -1565,6 +1576,17 @@ PciExplainCardBusData (
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL        *IoDev
   );
 
+/**
+  Explain each meaningful bit of register Status. The definition of Status is
+  slightly different depending on the PCI header type.
+
+  @param[in] Status          Points to the content of register Status.
+  @param[in] MainStatus      Indicates if this register is main status(not secondary
+                             status).
+  @param[in] HeaderType      Header type of this PCI device.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainStatus (
   IN UINT16                                 *Status,
@@ -1572,17 +1594,41 @@ PciExplainStatus (
   IN PCI_HEADER_TYPE                        HeaderType
   );
 
+/**
+  Explain each meaningful bit of register Command.
+
+  @param[in] Command         Points to the content of register Command.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainCommand (
   IN UINT16                                 *Command
   );
 
+/**
+  Explain each meaningful bit of register Bridge Control.
+
+  @param[in] BridgeControl   Points to the content of register Bridge Control.
+  @param[in] HeaderType      The headertype.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainBridgeControl (
   IN UINT16                                 *BridgeControl,
   IN PCI_HEADER_TYPE                        HeaderType
   );
 
+/**
+  Print each capability structure.
+
+  @param[in] IoDev      The pointer to the deivce.
+  @param[in] Address    The address to start at.
+  @param[in] CapPtr     The offset from the address.
+
+  @retval EFI_SUCCESS     The operation was successful.
+**/
 EFI_STATUS
 PciExplainCapabilityStruct (
   IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL         *IoDev,
@@ -1590,6 +1636,13 @@ PciExplainCapabilityStruct (
   IN  UINT8                                   CapPtr
   );
 
+/**
+  Display Pcie device structure.
+
+  @param[in] IoDev          The pointer to the root pci protocol.
+  @param[in] Address        The Address to start at.
+  @param[in] CapabilityPtr  The offset from the address to start.
+**/
 EFI_STATUS
 PciExplainPciExpress (
   IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL         *IoDev,
@@ -1597,70 +1650,161 @@ PciExplainPciExpress (
   IN  UINT8                                   CapabilityPtr
   );
 
+/**
+  Print out information of the capability information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieCapReg (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
+/**
+  Print out information of the device capability information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieDeviceCap (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
+/**
+  Print out information of the device control information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieDeviceControl (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
+/**
+  Print out information of the device status information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieDeviceStatus (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
+/**
+  Print out information of the device link information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieLinkCap (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
+/**
+  Print out information of the device link control information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieLinkControl (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
+/**
+  Print out information of the device link status information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieLinkStatus (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
+/**
+  Print out information of the device slot information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieSlotCap (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
+/**
+  Print out information of the device slot control information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieSlotControl (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
+/**
+  Print out information of the device slot status information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieSlotStatus (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
+/**
+  Print out information of the device root information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieRootControl (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
+/**
+  Print out information of the device root capability information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieRootCap (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
+/**
+  Print out information of the device root status information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieRootStatus (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-);
+  );
 
 typedef EFI_STATUS (*PCIE_EXPLAIN_FUNCTION) (IN PCIE_CAP_STURCTURE *PciExpressCap);
 
@@ -1871,6 +2015,12 @@ CHAR16 *IndicatorTable[] = {
 };
 
 
+/**
+  Function for 'pci' command.
+
+  @param[in] ImageHandle  Handle to the Image (NULL if Internal).
+  @param[in] SystemTable  Pointer to the System Table (NULL if Internal).
+**/
 SHELL_STATUS
 EFIAPI
 ShellCommandRunPci (
@@ -1938,14 +2088,29 @@ ShellCommandRunPci (
     }
   } else {
 
+    if (ShellCommandLineGetCount(Package) == 2) {
+      ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_TOO_FEW), gShellDebug1HiiHandle);
+      ShellStatus = SHELL_INVALID_PARAMETER;
+      goto Done;
+    }
 
+    if (ShellCommandLineGetCount(Package) > 4) {
+      ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_TOO_MANY), gShellDebug1HiiHandle);
+      ShellStatus = SHELL_INVALID_PARAMETER;
+      goto Done;
+    }
+    if (ShellCommandLineGetFlag(Package, L"-s") && ShellCommandLineGetValue(Package, L"-s") == NULL) {
+      ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_NO_VALUE), gShellDebug1HiiHandle, L"-s");
+      ShellStatus = SHELL_INVALID_PARAMETER;
+      goto Done;
+    }
     //
     // Get all instances of PciRootBridgeIo. Allocate space for 1 EFI_HANDLE and
     // call LibLocateHandle(), if EFI_BUFFER_TOO_SMALL is returned, allocate enough
     // space for handles and call it again.
     //
     HandleBufSize = sizeof (EFI_HANDLE);
-    HandleBuf     = (EFI_HANDLE *) AllocatePool (HandleBufSize);
+    HandleBuf     = (EFI_HANDLE *) AllocateZeroPool (HandleBufSize);
     if (HandleBuf == NULL) {
       ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_OUT_MEM), gShellDebug1HiiHandle);
       ShellStatus = SHELL_OUT_OF_RESOURCES;
@@ -1987,7 +2152,7 @@ ShellCommandRunPci (
     //
     // Argument Count == 1(no other argument): enumerate all pci functions
     //
-    if (ShellCommandLineGetCount(Package) == 0) {
+    if (ShellCommandLineGetCount(Package) == 1) {
       gST->ConOut->QueryMode (
                     gST->ConOut,
                     gST->ConOut->Mode->Mode,
@@ -2134,20 +2299,6 @@ ShellCommandRunPci (
       goto Done;
     }
 
-    if (ShellCommandLineGetCount(Package) == 1) {
-      ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_TOO_FEW), gShellDebug1HiiHandle);
-      ShellStatus = SHELL_INVALID_PARAMETER;
-      goto Done;
-    }
-    //
-    // Arg count >= 3, dump binary of specified function, interpret if necessary
-    //
-    if (ShellCommandLineGetCount(Package) > 3) {
-      ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_TOO_MANY), gShellDebug1HiiHandle);
-      ShellStatus = SHELL_INVALID_PARAMETER;
-      goto Done;
-    }
-
     ExplainData                   = FALSE;
     Segment                       = 0;
     Bus                           = 0;
@@ -2159,7 +2310,7 @@ ShellCommandRunPci (
 
     Temp = ShellCommandLineGetValue(Package, L"-s");
     if (Temp != NULL) {
-      Segment = (UINT16) StrHexToUintn (Temp);
+      Segment = (UINT16) ShellStrToUintn (Temp);
     }
 
     //
@@ -2168,7 +2319,7 @@ ShellCommandRunPci (
     //
     Temp = ShellCommandLineGetRawValue(Package, 1);
     if (Temp != NULL) {
-      Bus = (UINT16)StrHexToUintn(Temp);
+      Bus = (UINT16)ShellStrToUintn(Temp);
       if (Bus > MAX_BUS_NUMBER) {
         ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_PROBLEM), gShellDebug1HiiHandle, Temp);
         ShellStatus = SHELL_INVALID_PARAMETER;
@@ -2177,7 +2328,7 @@ ShellCommandRunPci (
     }
     Temp = ShellCommandLineGetRawValue(Package, 2);
     if (Temp != NULL) {
-      Device = (UINT16) StrHexToUintn(Temp);
+      Device = (UINT16) ShellStrToUintn(Temp);
       if (Device > MAX_DEVICE_NUMBER){
         ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_PROBLEM), gShellDebug1HiiHandle, Temp);
         ShellStatus = SHELL_INVALID_PARAMETER;
@@ -2187,7 +2338,7 @@ ShellCommandRunPci (
 
     Temp = ShellCommandLineGetRawValue(Package, 3);
     if (Temp != NULL) {
-      Func = (UINT16) StrHexToUintn(Temp);
+      Func = (UINT16) ShellStrToUintn(Temp);
       if (Func > MAX_FUNCTION_NUMBER){
         ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_PROBLEM), gShellDebug1HiiHandle, Temp);
         ShellStatus = SHELL_INVALID_PARAMETER;
@@ -2255,13 +2406,13 @@ ShellCommandRunPci (
     //
     SizeOfHeader = sizeof (ConfigSpace.Common) + sizeof (ConfigSpace.NonCommon);
 
-    PrivateDumpHex (2, 0, SizeOfHeader, &ConfigSpace);
+    DumpHex (2, 0, SizeOfHeader, &ConfigSpace);
     ShellPrintEx(-1,-1, L"\r\n");
 
     //
     // Dump device dependent Part of configuration space
     //
-    PrivateDumpHex (
+    DumpHex (
       2,
       SizeOfHeader,
       sizeof (ConfigSpace) - SizeOfHeader,
@@ -2286,6 +2437,22 @@ Done:
   return ShellStatus;
 }
 
+/**
+  This function finds out the protocol which is in charge of the given
+  segment, and its bus range covers the current bus number. It lookes
+  each instances of RootBridgeIoProtocol handle, until the one meets the
+  criteria is found.
+
+  @param[in] HandleBuf       Buffer which holds all PCI_ROOT_BRIDIGE_IO_PROTOCOL handles.
+  @param[in] HandleCount     Count of all PCI_ROOT_BRIDIGE_IO_PROTOCOL handles.
+  @param[in] Segment         Segment number of device we are dealing with.
+  @param[in] Bus             Bus number of device we are dealing with.
+  @param[out] IoDev          Handle used to access configuration space of PCI device.
+
+  @retval EFI_SUCCESS             The command completed successfully.
+  @retval EFI_INVALID_PARAMETER   Invalid parameter.
+
+**/
 EFI_STATUS
 PciFindProtocolInterface (
   IN  EFI_HANDLE                            *HandleBuf,
@@ -2294,29 +2461,6 @@ PciFindProtocolInterface (
   IN  UINT16                                Bus,
   OUT EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL       **IoDev
   )
-/*++
-
-Routine Description:
-
-  This function finds out the protocol which is in charge of the given
-  segment, and its bus range covers the current bus number. It lookes
-  each instances of RootBridgeIoProtocol handle, until the one meets the
-  criteria is found.
-
-Arguments:
-
-  HandleBuf       Buffer which holds all PCI_ROOT_BRIDIGE_IO_PROTOCOL handles
-  HandleCount     Count of all PCI_ROOT_BRIDIGE_IO_PROTOCOL handles
-  Segment         Segment number of device we are dealing with
-  Bus             Bus number of device we are dealing with
-  IoDev           Handle used to access configuration space of PCI device
-
-Returns:
-
-  EFI_SUCCESS           - The command completed successfully
-  EFI_INVALID_PARAMETER - Invalid parameter
-
-**/
 {
   UINTN                             Index;
   EFI_STATUS                        Status;
@@ -2371,30 +2515,22 @@ Returns:
   }
 }
 
+/**
+  This function gets the protocol interface from the given handle, and
+  obtains its address space descriptors.
+
+  @param[in] Handle          The PCI_ROOT_BRIDIGE_IO_PROTOCOL handle.
+  @param[out] IoDev          Handle used to access configuration space of PCI device.
+  @param[out] Descriptors    Points to the address space descriptors.
+
+  @retval EFI_SUCCESS     The command completed successfully
+**/
 EFI_STATUS
 PciGetProtocolAndResource (
   IN  EFI_HANDLE                            Handle,
   OUT EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL       **IoDev,
   OUT EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR     **Descriptors
   )
-/*++
-
-Routine Description:
-
-  This function gets the protocol interface from the given handle, and
-  obtains its address space descriptors.
-
-Arguments:
-
-  Handle          The PCI_ROOT_BRIDIGE_IO_PROTOCOL handle
-  IoDev           Handle used to access configuration space of PCI device
-  Descriptors     Points to the address space descriptors
-
-Returns:
-
-  EFI_SUCCESS     The command completed successfully
-
-**/
 {
   EFI_STATUS  Status;
 
@@ -2423,6 +2559,19 @@ Returns:
   }
 }
 
+/**
+  This function get the next bus range of given address space descriptors.
+  It also moves the pointer backward a node, to get prepared to be called
+  again.
+
+  @param[in,out] Descriptors Points to current position of a serial of address space
+                             descriptors.
+  @param[out] MinBus         The lower range of bus number.
+  @param[out] ManBus         The upper range of bus number.
+  @param[out] IsEnd          Meet end of the serial of descriptors.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciGetNextBusRange (
   IN OUT EFI_ACPI_ADDRESS_SPACE_DESCRIPTOR  **Descriptors,
@@ -2430,27 +2579,6 @@ PciGetNextBusRange (
   OUT    UINT16                             *MaxBus,
   OUT    BOOLEAN                            *IsEnd
   )
-/*++
-
-Routine Description:
-
-  This function get the next bus range of given address space descriptors.
-  It also moves the pointer backward a node, to get prepared to be called
-  again.
-
-Arguments:
-
-  Descriptors     points to current position of a serial of address space
-                  descriptors
-  MinBus          The lower range of bus number
-  ManBus          The upper range of bus number
-  IsEnd           Meet end of the serial of descriptors
-
-Returns:
-
-  EFI_SUCCESS     The command completed successfully
-
-**/
 {
   *IsEnd = FALSE;
 
@@ -2469,49 +2597,42 @@ Returns:
   // if a bus typed one is found and its bus range covers bus, this handle
   // is the handle we are looking for.
   //
-  if ((*Descriptors)->Desc == ACPI_END_TAG_DESCRIPTOR) {
-    *IsEnd = TRUE;
-  }
 
   while ((*Descriptors)->Desc != ACPI_END_TAG_DESCRIPTOR) {
     if ((*Descriptors)->ResType == ACPI_ADDRESS_SPACE_TYPE_BUS) {
       *MinBus = (UINT16) (*Descriptors)->AddrRangeMin;
       *MaxBus = (UINT16) (*Descriptors)->AddrRangeMax;
       (*Descriptors)++;
-      break;
+      return (EFI_SUCCESS);
     }
 
     (*Descriptors)++;
   }
 
+  if ((*Descriptors)->Desc == ACPI_END_TAG_DESCRIPTOR) {
+    *IsEnd = TRUE;
+  }
+
   return EFI_SUCCESS;
 }
 
+/**
+  Explain the data in PCI configuration space. The part which is common for
+  PCI device and bridge is interpreted in this function. It calls other
+  functions to interpret data unique for device or bridge.
+
+  @param[in] ConfigSpace     Data in PCI configuration space.
+  @param[in] Address         Address used to access configuration space of this PCI device.
+  @param[in] IoDev           Handle used to access configuration space of PCI device.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainData (
   IN PCI_CONFIG_SPACE                       *ConfigSpace,
   IN UINT64                                 Address,
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL        *IoDev
   )
-/*++
-
-Routine Description:
-
-  Explain the data in PCI configuration space. The part which is common for
-  PCI device and bridge is interpreted in this function. It calls other
-  functions to interpret data unique for device or bridge.
-
-Arguments:
-
-  ConfigSpace     Data in PCI configuration space
-  Address         Address used to access configuration space of this PCI device
-  IoDev           Handle used to access configuration space of PCI device
-
-Returns:
-
-  EFI_SUCCESS     The command completed successfully
-
-**/
 {
   PCI_COMMON_HEADER *Common;
   PCI_HEADER_TYPE   HeaderType;
@@ -2554,9 +2675,9 @@ Returns:
   //
   // Print register BIST
   //
-  ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_PCI_LINE_BIST), gShellDebug1HiiHandle, INDEX_OF (&(Common->BIST)));
-  if ((Common->BIST & PCI_BIT_7) != 0) {
-    ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_PCI_LINE_CAP), gShellDebug1HiiHandle, 0x0f & Common->BIST);
+  ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_PCI_LINE_BIST), gShellDebug1HiiHandle, INDEX_OF (&(Common->Bist)));
+  if ((Common->Bist & PCI_BIT_7) != 0) {
+    ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_PCI_LINE_CAP), gShellDebug1HiiHandle, 0x0f & Common->Bist);
   } else {
     ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_PCI_LINE_CAP_NO), gShellDebug1HiiHandle);
   }
@@ -2660,6 +2781,9 @@ Returns:
              );
     CapPtr = ConfigSpace->NonCommon.CardBus.CapabilitiesPtr;
     break;
+  case PciUndefined:
+  default:
+    break;
   }
   //
   // If Status bit4 is 1, dump or explain capability structure
@@ -2671,29 +2795,21 @@ Returns:
   return Status;
 }
 
+/**
+  Explain the device specific part of data in PCI configuration space.
+
+  @param[in] Device          Data in PCI configuration space.
+  @param[in] Address         Address used to access configuration space of this PCI device.
+  @param[in] IoDev           Handle used to access configuration space of PCI device.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainDeviceData (
   IN PCI_DEVICE_HEADER                      *Device,
   IN UINT64                                 Address,
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL        *IoDev
   )
-/*++
-
-Routine Description:
-
-  Explain the device specific part of data in PCI configuration space.
-
-Arguments:
-
-  Device          Data in PCI configuration space
-  Address         Address used to access configuration space of this PCI device
-  IoDev           Handle used to access configuration space of PCI device
-
-Returns:
-
-  EFI_SUCCESS     The command completed successfully
-
-**/
 {
   UINTN       Index;
   BOOLEAN     BarExist;
@@ -2828,29 +2944,21 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Explain the bridge specific part of data in PCI configuration space.
+
+  @param[in] Bridge          Bridge specific data region in PCI configuration space.
+  @param[in] Address         Address used to access configuration space of this PCI device.
+  @param[in] IoDev           Handle used to access configuration space of PCI device.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainBridgeData (
   IN  PCI_BRIDGE_HEADER                     *Bridge,
   IN  UINT64                                Address,
   IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL       *IoDev
   )
-/*++
-
-Routine Description:
-
-  Explain the bridge specific part of data in PCI configuration space.
-
-Arguments:
-
-  Bridge          Bridge specific data region in PCI configuration space
-  Address         Address used to access configuration space of this PCI device
-  IoDev           Handle used to access configuration space of PCI device
-
-Returns:
-
-  EFI_SUCCESS     The command completed successfully
-
-**/
 {
   UINTN       Index;
   BOOLEAN     BarExist;
@@ -3037,6 +3145,17 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Explain the Base Address Register(Bar) in PCI configuration space.
+
+  @param[in] Bar             Points to the Base Address Register intended to interpret.
+  @param[in] Command         Points to the register Command.
+  @param[in] Address         Address used to access configuration space of this PCI device.
+  @param[in] IoDev           Handle used to access configuration space of PCI device.
+  @param[in,out] Index       The Index.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainBar (
   IN UINT32                                 *Bar,
@@ -3045,25 +3164,6 @@ PciExplainBar (
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL        *IoDev,
   IN OUT UINTN                              *Index
   )
-/*++
-
-Routine Description:
-
-  Explain the Base Address Register(Bar) in PCI configuration space.
-
-Arguments:
-
-  Bar             Points to the Base Address Register intended to interpret
-  Command         Points to the register Command
-  Address         Address used to access configuration space of this PCI device
-  IoDev           Handle used to access configuration space of PCI device
-  Index           The Index
-
-Returns:
-
-  EFI_SUCCESS     The command completed successfully
-
-**/
 {
   UINT16  OldCommand;
   UINT16  NewCommand;
@@ -3099,8 +3199,8 @@ Returns:
     } else if ((*Bar & PCI_BIT_1) == 0 && (*Bar & PCI_BIT_2) != 0) {
       Bar64 = 0x0;
       CopyMem (&Bar64, Bar, sizeof (UINT64));
-      ShellPrintHiiEx(-1, -1, NULL,STRING_TOKEN (STR_PCI2_ONE_VAR_2), gShellDebug1HiiHandle, RShiftU64 ((Bar64 & 0xfffffffffffffff0), 32));
-      ShellPrintHiiEx(-1, -1, NULL,STRING_TOKEN (STR_PCI2_ONE_VAR_3), gShellDebug1HiiHandle, (UINT32) (Bar64 & 0xfffffffffffffff0));
+      ShellPrintHiiEx(-1, -1, NULL,STRING_TOKEN (STR_PCI2_ONE_VAR_2), gShellDebug1HiiHandle, RShiftU64 ((Bar64 & 0xfffffffffffffff0ULL), 32));
+      ShellPrintHiiEx(-1, -1, NULL,STRING_TOKEN (STR_PCI2_ONE_VAR_3), gShellDebug1HiiHandle, (UINT32) (Bar64 & 0xfffffffffffffff0ULL));
       ShellPrintHiiEx(-1, -1, NULL,STRING_TOKEN (STR_PCI2_MEM), gShellDebug1HiiHandle);
       ShellPrintHiiEx(-1, -1, NULL,STRING_TOKEN (STR_PCI2_64_BITS), gShellDebug1HiiHandle);
       IsBar32 = FALSE;
@@ -3171,18 +3271,18 @@ Returns:
 
     OldBar64 = 0x0;
     CopyMem (&OldBar64, Bar, sizeof (UINT64));
-    NewBar64 = 0xffffffffffffffff;
+    NewBar64 = 0xffffffffffffffffULL;
 
     IoDev->Pci.Write (IoDev, EfiPciWidthUint32, RegAddress, 2, &NewBar64);
     IoDev->Pci.Read (IoDev, EfiPciWidthUint32, RegAddress, 2, &NewBar64);
     IoDev->Pci.Write (IoDev, EfiPciWidthUint32, RegAddress, 2, &OldBar64);
 
     if (IsMem) {
-      NewBar64  = NewBar64 & 0xfffffffffffffff0;
+      NewBar64  = NewBar64 & 0xfffffffffffffff0ULL;
       NewBar64  = (~NewBar64) + 1;
 
     } else {
-      NewBar64  = NewBar64 & 0xfffffffffffffffc;
+      NewBar64  = NewBar64 & 0xfffffffffffffffcULL;
       NewBar64  = (~NewBar64) + 1;
       NewBar64  = NewBar64 & 0x000000000000ffff;
     }
@@ -3205,9 +3305,9 @@ Returns:
       ShellPrintHiiEx(-1, -1, NULL,
         STRING_TOKEN (STR_PCI2_RSHIFT),
         gShellDebug1HiiHandle,
-        RShiftU64 ((NewBar64 + (Bar64 & 0xfffffffffffffff0) - 1), 32)
+        RShiftU64 ((NewBar64 + (Bar64 & 0xfffffffffffffff0ULL) - 1), 32)
        );
-      ShellPrintHiiEx(-1, -1, NULL,STRING_TOKEN (STR_PCI2_RSHIFT), gShellDebug1HiiHandle, (UINT32) (NewBar64 + (Bar64 & 0xfffffffffffffff0) - 1));
+      ShellPrintHiiEx(-1, -1, NULL,STRING_TOKEN (STR_PCI2_RSHIFT), gShellDebug1HiiHandle, (UINT32) (NewBar64 + (Bar64 & 0xfffffffffffffff0ULL) - 1));
 
     }
   } else {
@@ -3218,29 +3318,21 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Explain the cardbus specific part of data in PCI configuration space.
+
+  @param[in] CardBus         CardBus specific region of PCI configuration space.
+  @param[in] Address         Address used to access configuration space of this PCI device.
+  @param[in] IoDev           Handle used to access configuration space of PCI device.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainCardBusData (
   IN PCI_CARDBUS_HEADER                     *CardBus,
   IN UINT64                                 Address,
   IN EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL        *IoDev
   )
-/*++
-
-Routine Description:
-
-  Explain the cardbus specific part of data in PCI configuration space.
-
-Arguments:
-
-  CardBus         CardBus specific region of PCI configuration space
-  Address         Address used to access configuration space of this PCI device
-  IoDev           Handle used to access configuration space of PCI device
-
-Returns:
-
-  EFI_SUCCESS     The command completed successfully
-
-**/
 {
   BOOLEAN           Io32Bit;
   PCI_CARDBUS_DATA  *CardBusData;
@@ -3316,7 +3408,7 @@ Returns:
     INDEX_OF (&(CardBus->IoBase0)),
     Io32Bit ? L"          32 bit" : L"          16 bit",
     CardBus->IoBase0 & (Io32Bit ? 0xfffffffc : 0x0000fffc),
-    CardBus->IoLimit0 & (Io32Bit ? 0xffffffff : 0x0000ffff) | 0x00000003
+    (CardBus->IoLimit0 & (Io32Bit ? 0xffffffff : 0x0000ffff)) | 0x00000003
    );
 
   Io32Bit = (BOOLEAN) (CardBus->IoBase1 & PCI_BIT_0);
@@ -3326,7 +3418,7 @@ Returns:
     INDEX_OF (&(CardBus->IoBase1)),
     Io32Bit ? L"          32 bit" : L"          16 bit",
     CardBus->IoBase1 & (Io32Bit ? 0xfffffffc : 0x0000fffc),
-    CardBus->IoLimit1 & (Io32Bit ? 0xffffffff : 0x0000ffff) | 0x00000003
+    (CardBus->IoLimit1 & (Io32Bit ? 0xffffffff : 0x0000ffff)) | 0x00000003
    );
 
   //
@@ -3372,31 +3464,23 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Explain each meaningful bit of register Status. The definition of Status is
+  slightly different depending on the PCI header type.
+
+  @param[in] Status          Points to the content of register Status.
+  @param[in] MainStatus      Indicates if this register is main status(not secondary
+                             status).
+  @param[in] HeaderType      Header type of this PCI device.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainStatus (
   IN UINT16                                 *Status,
   IN BOOLEAN                                MainStatus,
   IN PCI_HEADER_TYPE                        HeaderType
   )
-/*++
-
-Routine Description:
-
-  Explain each meaningful bit of register Status. The definition of Status is
-  slightly different depending on the PCI header type.
-
-Arguments:
-
-  Status          Points to the content of register Status
-  MainStatus      Indicates if this register is main status(not secondary
-                  status)
-  HeaderType      Header type of this PCI device
-
-Returns:
-
-  EFI_SUCCESS     The command completed successfully
-
-**/
 {
   if (MainStatus) {
     ShellPrintHiiEx(-1, -1, NULL,STRING_TOKEN (STR_PCI2_STATUS), gShellDebug1HiiHandle, INDEX_OF (Status), *Status);
@@ -3479,25 +3563,17 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Explain each meaningful bit of register Command.
+
+  @param[in] Command         Points to the content of register Command.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainCommand (
   IN UINT16                                 *Command
   )
-/*++
-
-Routine Description:
-
-  Explain each meaningful bit of register Command.
-
-Arguments:
-
-  Command         Points to the content of register Command
-
-Returns:
-
-  EFI_SUCCESS     The command completed successfully
-
-**/
 {
   //
   // Print the binary value of register Command
@@ -3570,27 +3646,19 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Explain each meaningful bit of register Bridge Control.
+
+  @param[in] BridgeControl   Points to the content of register Bridge Control.
+  @param[in] HeaderType      The headertype.
+
+  @retval EFI_SUCCESS     The command completed successfully.
+**/
 EFI_STATUS
 PciExplainBridgeControl (
   IN UINT16                                 *BridgeControl,
   IN PCI_HEADER_TYPE                        HeaderType
   )
-/*++
-
-Routine Description:
-
-  Explain each meaningful bit of register Bridge Control.
-
-Arguments:
-
-  BridgeControl   Points to the content of register Bridge Control
-  HeaderType      The headertype
-
-Returns:
-
-  EFI_SUCCESS     The command completed successfully
-
-**/
 {
   ShellPrintHiiEx(-1, -1, NULL,
     STRING_TOKEN (STR_PCI2_BRIDGE_CONTROL),
@@ -3682,6 +3750,15 @@ Returns:
   return EFI_SUCCESS;
 }
 
+/**
+  Print each capability structure.
+
+  @param[in] IoDev      The pointer to the deivce.
+  @param[in] Address    The address to start at.
+  @param[in] CapPtr     The offset from the address.
+
+  @retval EFI_SUCCESS     The operation was successful.
+**/
 EFI_STATUS
 PciExplainCapabilityStruct (
   IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL         *IoDev,
@@ -3721,10 +3798,17 @@ PciExplainCapabilityStruct (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the capability information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieCapReg (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT16 PcieCapReg;
   CHAR16 *DevicePortType;
@@ -3762,10 +3846,17 @@ ExplainPcieCapReg (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the device capability information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieDeviceCap (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT16 PcieCapReg;
   UINT32 PcieDeviceCap;
@@ -3794,8 +3885,8 @@ ExplainPcieDeviceCap (
   // Endpoint L0s and L1 Acceptable Latency is only valid for Endpoint
   //
   if (IS_PCIE_ENDPOINT (DevicePortType)) {
-    L0sLatency = (UINT8) PCIE_CAP_L0sLatency (PcieDeviceCap);
-    L1Latency  = (UINT8) PCIE_CAP_L1Latency (PcieDeviceCap);
+    L0sLatency = (UINT8) PCIE_CAP_L0SLATENCY (PcieDeviceCap);
+    L1Latency  = (UINT8) PCIE_CAP_L1LATENCY (PcieDeviceCap);
     Print (L"  Endpoint L0s Acceptable Latency(8:6):     ");
     if (L0sLatency < 4) {
       Print (L"%EMaximum of %d ns%N\n", 1 << (L0sLatency + 6));
@@ -3844,10 +3935,17 @@ ExplainPcieDeviceCap (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the device control information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieDeviceControl (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT16 PcieCapReg;
   UINT16 PcieDeviceControl;
@@ -3914,10 +4012,17 @@ ExplainPcieDeviceControl (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the device status information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieDeviceStatus (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT16 PcieDeviceStatus;
 
@@ -3949,14 +4054,21 @@ ExplainPcieDeviceStatus (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the device link information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieLinkCap (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT32 PcieLinkCap;
   CHAR16 *SupLinkSpeeds;
-  CHAR16 *ASPM;
+  CHAR16 *AspmValue;
 
   PcieLinkCap = PciExpressCap->LinkCap;
   switch (PCIE_CAP_SUP_LINK_SPEEDS (PcieLinkCap)) {
@@ -3980,26 +4092,26 @@ ExplainPcieLinkCap (
    );
   switch (PCIE_CAP_ASPM_SUPPORT (PcieLinkCap)) {
     case 1:
-      ASPM = L"L0s Entry";
+      AspmValue = L"L0s Entry";
       break;
     case 3:
-      ASPM = L"L0s and L1";
+      AspmValue = L"L0s and L1";
       break;
     default:
-      ASPM = L"Reserved";
+      AspmValue = L"Reserved";
       break;
   }
   Print (
     L"  Active State Power Management Support(11:10):       %E%s Supported%N\n",
-    ASPM
+    AspmValue
    );
   Print (
     L"  L0s Exit Latency(14:12):                            %E%s%N\n",
-    L0sLatencyStrTable[PCIE_CAP_L0s_LATENCY (PcieLinkCap)]
+    L0sLatencyStrTable[PCIE_CAP_L0S_LATENCY (PcieLinkCap)]
    );
   Print (
     L"  L1 Exit Latency(17:15):                             %E%s%N\n",
-    L1LatencyStrTable[PCIE_CAP_L0s_LATENCY (PcieLinkCap)]
+    L1LatencyStrTable[PCIE_CAP_L0S_LATENCY (PcieLinkCap)]
    );
   Print (
     L"  Clock Power Management(18):                         %E%d%N\n",
@@ -4024,10 +4136,17 @@ ExplainPcieLinkCap (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the device link control information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieLinkControl (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT16 PcieLinkControl;
   UINT8  DevicePortType;
@@ -4088,10 +4207,17 @@ ExplainPcieLinkControl (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the device link status information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieLinkStatus (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT16 PcieLinkStatus;
   CHAR16 *SupLinkSpeeds;
@@ -4139,10 +4265,17 @@ ExplainPcieLinkStatus (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the device slot information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieSlotCap (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT32 PcieSlotCap;
 
@@ -4200,10 +4333,17 @@ ExplainPcieSlotCap (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the device slot control information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieSlotControl (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT16 PcieSlotControl;
 
@@ -4257,10 +4397,17 @@ ExplainPcieSlotControl (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the device slot status information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieSlotStatus (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT16 PcieSlotStatus;
 
@@ -4311,10 +4458,17 @@ ExplainPcieSlotStatus (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the device root information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieRootControl (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT16 PcieRootControl;
 
@@ -4344,10 +4498,17 @@ ExplainPcieRootControl (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the device root capability information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieRootCap (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT16 PcieRootCap;
 
@@ -4361,10 +4522,17 @@ ExplainPcieRootCap (
   return EFI_SUCCESS;
 }
 
+/**
+  Print out information of the device root status information.
+
+  @param[in] PciExpressCap  The pointer to the structure about the device.
+
+  @retval EFI_SUCCESS   The operation was successful.
+**/
 EFI_STATUS
 ExplainPcieRootStatus (
   IN PCIE_CAP_STURCTURE *PciExpressCap
-)
+  )
 {
   UINT32 PcieRootStatus;
 
@@ -4385,6 +4553,13 @@ ExplainPcieRootStatus (
   return EFI_SUCCESS;
 }
 
+/**
+  Display Pcie device structure.
+
+  @param[in] IoDev          The pointer to the root pci protocol.
+  @param[in] Address        The Address to start at.
+  @param[in] CapabilityPtr  The offset from the address to start.
+**/
 EFI_STATUS
 PciExplainPciExpress (
   IN  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL         *IoDev,
@@ -4496,7 +4671,7 @@ PciExplainPciExpress (
 
   ExtendRegSize = 0x1000 - 0x100;
 
-  ExRegBuffer   = (UINT8 *) AllocatePool (ExtendRegSize);
+  ExRegBuffer   = (UINT8 *) AllocateZeroPool (ExtendRegSize);
 
   //
   // PciRootBridgeIo protocol should support pci express extend space IO
@@ -4518,14 +4693,16 @@ PciExplainPciExpress (
   //
   Print (L"\n%HStart dumping PCIex extended configuration space (0x100 - 0xFFF).%N\n\n");
 
-  PrivateDumpHex (
-    2,
-    0x100,
-    ExtendRegSize,
-    (VOID *) (ExRegBuffer)
-   );
+  if (ExRegBuffer != NULL) {
+    DumpHex (
+      2,
+      0x100,
+      ExtendRegSize,
+      (VOID *) (ExRegBuffer)
+     );
 
-  FreePool ((VOID *) ExRegBuffer);
+    FreePool ((VOID *) ExRegBuffer);
+  }
 
 Done:
   return EFI_SUCCESS;

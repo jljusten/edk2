@@ -1,7 +1,7 @@
 /** @file
   This is THE shell (application)
 
-  Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -55,12 +55,89 @@ SHELL_INFO ShellInfoObject = {
   NULL,
   NULL,
   NULL,
-  NULL
+  NULL,
+  FALSE
 };
 
 STATIC CONST CHAR16 mScriptExtension[]      = L".NSH";
 STATIC CONST CHAR16 mExecutableExtensions[] = L".NSH;.EFI";
 STATIC CONST CHAR16 mStartupScript[]        = L"startup.nsh";
+
+/**
+  Function to start monitoring for CTRL-S using SimpleTextInputEx.  This 
+  feature's enabled state was not known when the shell initially launched.
+
+  @retval EFI_SUCCESS           The feature is enabled.
+  @retval EFI_OUT_OF_RESOURCES  There is not enough mnemory available.
+**/
+EFI_STATUS
+EFIAPI
+InternalEfiShellStartCtrlSMonitor(
+  VOID
+  )
+{
+  EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL *SimpleEx;
+  EFI_KEY_DATA                      KeyData;
+  EFI_STATUS                        Status;
+
+  Status = gBS->OpenProtocol(
+    gST->ConsoleInHandle,
+    &gEfiSimpleTextInputExProtocolGuid,
+    (VOID**)&SimpleEx,
+    gImageHandle,
+    NULL,
+    EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+  if (EFI_ERROR(Status)) {
+    ShellPrintHiiEx(
+      -1, 
+      -1, 
+      NULL,
+      STRING_TOKEN (STR_SHELL_NO_IN_EX),
+      ShellInfoObject.HiiHandle);
+    return (EFI_SUCCESS);
+  }
+
+  KeyData.KeyState.KeyToggleState = 0;
+  KeyData.Key.ScanCode            = 0;
+  KeyData.KeyState.KeyShiftState  = EFI_SHIFT_STATE_VALID|EFI_LEFT_CONTROL_PRESSED;
+  KeyData.Key.UnicodeChar         = L's';
+
+  Status = SimpleEx->RegisterKeyNotify(
+    SimpleEx,
+    &KeyData,
+    NotificationFunction,
+    &ShellInfoObject.CtrlSNotifyHandle1);
+  
+  KeyData.KeyState.KeyShiftState  = EFI_SHIFT_STATE_VALID|EFI_RIGHT_CONTROL_PRESSED;
+  if (!EFI_ERROR(Status)) {
+    Status = SimpleEx->RegisterKeyNotify(
+      SimpleEx,
+      &KeyData,
+      NotificationFunction,
+      &ShellInfoObject.CtrlSNotifyHandle2);
+  }
+  KeyData.KeyState.KeyShiftState  = EFI_SHIFT_STATE_VALID|EFI_LEFT_CONTROL_PRESSED;
+  KeyData.Key.UnicodeChar         = 19;
+
+  if (!EFI_ERROR(Status)) {
+    Status = SimpleEx->RegisterKeyNotify(
+      SimpleEx,
+      &KeyData,
+      NotificationFunction,
+      &ShellInfoObject.CtrlSNotifyHandle2);
+  }  
+  KeyData.KeyState.KeyShiftState  = EFI_SHIFT_STATE_VALID|EFI_RIGHT_CONTROL_PRESSED;
+  if (!EFI_ERROR(Status)) {
+    Status = SimpleEx->RegisterKeyNotify(
+      SimpleEx,
+      &KeyData,
+      NotificationFunction,
+      &ShellInfoObject.CtrlSNotifyHandle2);
+  }
+  return (Status);
+}
+
+
 
 /**
   The entry point for the application.
@@ -79,17 +156,11 @@ UefiMain (
   IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
-  EFI_STATUS  Status;
-  CHAR16      *TempString;
-  UINTN       Size;
-//    EFI_INPUT_KEY                 Key;
-
-//  gST->ConOut->OutputString(gST->ConOut, L"ReadKeyStroke Calling\r\n");
-//
-//  Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-//
-//  gST->ConOut->OutputString(gST->ConOut, L"ReadKeyStroke Done\r\n");
-//  gBS->Stall (1000000);
+  EFI_STATUS                      Status;
+  CHAR16                          *TempString;
+  UINTN                           Size;
+  EFI_HANDLE                      ConInHandle;
+  EFI_SIMPLE_TEXT_INPUT_PROTOCOL  *OldConIn;
 
   if (PcdGet8(PcdShellSupportLevel) > 3) {
     return (EFI_UNSUPPORTED);
@@ -278,6 +349,25 @@ UefiMain (
         Status = InernalEfiShellStartMonitor();
       }
 
+      if (!EFI_ERROR(Status) && !ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleIn) {
+        //
+        // Set up the event for CTRL-S monitoring...
+        //
+        Status = InternalEfiShellStartCtrlSMonitor();
+      }
+
+      if (!EFI_ERROR(Status) && ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleIn) {
+        //
+        // close off the gST->ConIn
+        //
+        OldConIn      = gST->ConIn;
+        ConInHandle   = gST->ConsoleInHandle;
+        gST->ConIn = CreateSimpleTextInOnFile((SHELL_FILE_HANDLE)&FileInterfaceNulFile, &gST->ConsoleInHandle);
+      } else {
+        OldConIn      = NULL;
+        ConInHandle   = NULL;
+      }
+
       if (!EFI_ERROR(Status) && PcdGet8(PcdShellSupportLevel) >= 1) {
         //
         // process the startup script or launch the called app.
@@ -315,6 +405,11 @@ UefiMain (
           //
           Status = DoShellPrompt();
         } while (!ShellCommandGetExit());
+      }
+      if (OldConIn != NULL && ConInHandle != NULL) {
+        CloseSimpleTextInOnFile (gST->ConIn);
+        gST->ConIn            = OldConIn;
+        gST->ConsoleInHandle  = ConInHandle;
       }
     }
   }
@@ -465,8 +560,6 @@ IsScriptOnlyCommand(
   return (FALSE);
 }
 
-
-
 /**
   This function will populate the 2 device path protocol parameters based on the
   global gImageHandle.  The DevPath will point to the device path for the handle that has
@@ -515,6 +608,11 @@ GetDevicePathsForImageAndFile (
     if (!EFI_ERROR (Status)) {
       *DevPath  = DuplicateDevicePath (ImageDevicePath);
       *FilePath = DuplicateDevicePath (LoadedImage->FilePath);
+      gBS->CloseProtocol(
+                  LoadedImage->DeviceHandle,
+                  &gEfiDevicePathProtocolGuid,
+                  gImageHandle,
+                  NULL);
     }
     gBS->CloseProtocol(
                 gImageHandle,
@@ -537,6 +635,7 @@ STATIC CONST SHELL_PARAM_ITEM mShellParamList[] = {
   {L"-delay",         TypeValue},
   {NULL, TypeMax}
   };
+
 /**
   Process all Uefi Shell 2.0 command line options.
 
@@ -577,6 +676,7 @@ ProcessCommandLine(
   UINTN         Count;
   UINTN         LoopVar;
   CHAR16        *ProblemParam;
+  UINT64        Intermediate;
 
   Package       = NULL;
   ProblemParam  = NULL;
@@ -587,7 +687,7 @@ ProcessCommandLine(
   Size = 0;
   TempConst = ShellCommandLineGetRawValue(Package, Count++);
   if (TempConst != NULL && StrLen(TempConst)) {
-    ShellInfoObject.ShellInitSettings.FileName = AllocatePool(StrSize(TempConst));
+    ShellInfoObject.ShellInitSettings.FileName = AllocateZeroPool(StrSize(TempConst));
     if (ShellInfoObject.ShellInitSettings.FileName == NULL) {
       return (EFI_OUT_OF_RESOURCES);
     }
@@ -641,17 +741,19 @@ ProcessCommandLine(
   ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoVersion    = ShellCommandLineGetFlag(Package, L"-noversion");
   ShellInfoObject.ShellInitSettings.BitUnion.Bits.Delay        = ShellCommandLineGetFlag(Package, L"-delay");
 
-  if (ShellInfoObject.ShellInitSettings.BitUnion.Bits.Delay) {
-    TempConst = ShellCommandLineGetValue(Package, L"-delay");
-    if (TempConst != NULL) {
-      ShellInfoObject.ShellInitSettings.Delay = StrDecimalToUintn (TempConst);
-    } else {
-      ShellInfoObject.ShellInitSettings.Delay = 5;
-    }
-  } else {
-    ShellInfoObject.ShellInitSettings.Delay = 5;
-  }
+  ShellInfoObject.ShellInitSettings.Delay = 5;
 
+  if (ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoInterrupt) {
+    ShellInfoObject.ShellInitSettings.Delay = 0;
+  } else if (ShellInfoObject.ShellInitSettings.BitUnion.Bits.Delay) {
+    TempConst = ShellCommandLineGetValue(Package, L"-delay");
+    if (TempConst != NULL && *TempConst == L':') {
+      TempConst++;
+    }
+    if (TempConst != NULL && !EFI_ERROR(ShellConvertStringToUint64(TempConst, &Intermediate, FALSE, FALSE))) {
+      ShellInfoObject.ShellInitSettings.Delay = (UINTN)Intermediate;
+    }
+  }
   ShellCommandLineFreeVarList(Package);
 
   return (Status);
@@ -681,7 +783,9 @@ DoStartupScript(
   EFI_DEVICE_PATH_PROTOCOL      *NewPath;
   EFI_DEVICE_PATH_PROTOCOL      *NamePath;
   CHAR16                        *FileStringPath;
+  CHAR16                        *TempSpot;
   UINTN                         NewSize;
+  CONST CHAR16                  *MapName;
 
   Key.UnicodeChar = CHAR_NULL;
   Key.ScanCode    = 0;
@@ -723,13 +827,15 @@ DoStartupScript(
   //
   // print out our warning and see if they press a key
   //
-  for ( Status = EFI_UNSUPPORTED, Delay = (ShellInfoObject.ShellInitSettings.Delay * 10)
-      ; Delay > 0 && EFI_ERROR(Status)
+  for ( Status = EFI_UNSUPPORTED, Delay = ShellInfoObject.ShellInitSettings.Delay * 10
+      ; Delay != 0 && EFI_ERROR(Status)
       ; Delay--
      ){
     ShellPrintHiiEx(0, gST->ConOut->Mode->CursorRow, NULL, STRING_TOKEN (STR_SHELL_STARTUP_QUESTION), ShellInfoObject.HiiHandle, Delay/10);
     gBS->Stall (100000);
-    Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
+    if (!ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleIn) {
+      Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
+    }
   }
   ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_SHELL_CRLF), ShellInfoObject.HiiHandle);
 
@@ -740,25 +846,39 @@ DoStartupScript(
     return (EFI_SUCCESS);
   }
 
-  NamePath = FileDevicePath (NULL, mStartupScript);
   //
-  // Try the first location
+  // Try the first location (must be file system)
   //
-  NewPath = AppendDevicePathNode (ImagePath, NamePath);
-  Status = InternalOpenFileDevicePath(NewPath, &FileHandle, EFI_FILE_MODE_READ, 0);
-  if (EFI_ERROR(Status)) {
-    //
-    // Try the second location
-    //
-    FreePool(NewPath);
-    NewPath = AppendDevicePathNode (FilePath , NamePath);
-    Status = InternalOpenFileDevicePath(NewPath, &FileHandle, EFI_FILE_MODE_READ, 0);
+  MapName = ShellInfoObject.NewEfiShellProtocol->GetMapFromDevicePath(&ImagePath);
+  if (MapName != NULL) {
+    FileStringPath = NULL;
+    NewSize = 0;
+    FileStringPath = StrnCatGrow(&FileStringPath, &NewSize, MapName, 0);
+    TempSpot = StrStr(FileStringPath, L";");
+    if (TempSpot != NULL) {
+      *TempSpot = CHAR_NULL;
+    }
+    FileStringPath = StrnCatGrow(&FileStringPath, &NewSize, ((FILEPATH_DEVICE_PATH*)FilePath)->PathName, 0);
+    ChopLastSlash(FileStringPath);
+    FileStringPath = StrnCatGrow(&FileStringPath, &NewSize, mStartupScript, 0);
+    Status = ShellInfoObject.NewEfiShellProtocol->OpenFileByName(FileStringPath, &FileHandle, EFI_FILE_MODE_READ);
+    FreePool(FileStringPath);
   }
+  if (EFI_ERROR(Status)) {
+    NamePath = FileDevicePath (NULL, mStartupScript);
+    NewPath = AppendDevicePathNode (ImagePath, NamePath);
+    FreePool(NamePath);
 
+    //
+    // Try the location
+    //
+    Status = InternalOpenFileDevicePath(NewPath, &FileHandle, EFI_FILE_MODE_READ, 0);
+    FreePool(NewPath);
+  }
   //
   // If we got a file, run it
   //
-  if (!EFI_ERROR(Status)) {
+  if (!EFI_ERROR(Status) && FileHandle != NULL) {
     Status = RunScriptFileHandle (FileHandle, mStartupScript);
     ShellInfoObject.NewEfiShellProtocol->CloseFile(FileHandle);
   } else {
@@ -775,8 +895,6 @@ DoStartupScript(
     }
   }
 
-  FreePool(NamePath);
-  FreePool(NewPath);
 
   return (Status);
 }
@@ -920,7 +1038,7 @@ ShellConvertAlias(
     return (EFI_SUCCESS);
   }
   FreePool(*CommandString);
-  *CommandString = AllocatePool(StrSize(NewString));
+  *CommandString = AllocateZeroPool(StrSize(NewString));
   if (*CommandString == NULL) {
     return (EFI_OUT_OF_RESOURCES);
   }
@@ -1185,7 +1303,7 @@ RunCommand(
   UINTN                     PostAliasSize;
   CHAR16                    *PostVariableCmdLine;
   CHAR16                    *CommandWithPath;
-  EFI_DEVICE_PATH_PROTOCOL  *DevPath;
+  CONST EFI_DEVICE_PATH_PROTOCOL  *DevPath;
   CONST CHAR16              *TempLocation;
   CONST CHAR16              *TempLocation2;
   SHELL_FILE_HANDLE         OriginalStdIn;
@@ -1319,23 +1437,12 @@ RunCommand(
 
     Status = UpdateStdInStdOutStdErr(ShellInfoObject.NewShellParametersProtocol, PostVariableCmdLine, &OriginalStdIn, &OriginalStdOut, &OriginalStdErr, &OriginalSystemTableInfo);
     if (EFI_ERROR(Status)) {
-      ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_SHELL_INVALID_REDIR), ShellInfoObject.HiiHandle);
-    } else {
-      //
-      // remove the < and/or > from the command line now
-      //
-      for (TempLocation3 = PostVariableCmdLine ; TempLocation3 != NULL && *TempLocation3 != CHAR_NULL ; TempLocation3++) {
-        if (*TempLocation3 == L'^') {
-          if (*(TempLocation3+1) == L'<' || *(TempLocation3+1) == L'>') {
-            CopyMem(TempLocation3, TempLocation3+1, StrSize(TempLocation3) - sizeof(TempLocation3[0]));
-          }
-        } else if (*TempLocation3 == L'>') {
-          *TempLocation3 = CHAR_NULL;
-        } else if ((*TempLocation3 == L'1' || *TempLocation3 == L'2')&&(*(TempLocation3+1) == L'>')) {
-          *TempLocation3 = CHAR_NULL;
-        }
+      if (Status == EFI_NOT_FOUND) {
+        ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_SHELL_REDUNDA_REDIR), ShellInfoObject.HiiHandle);
+      } else {
+        ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_SHELL_INVALID_REDIR), ShellInfoObject.HiiHandle);
       }
-
+    } else {
       while (PostVariableCmdLine[StrLen(PostVariableCmdLine)-1] == L' ') {
         PostVariableCmdLine[StrLen(PostVariableCmdLine)-1] = CHAR_NULL;
       }
@@ -1452,7 +1559,6 @@ RunCommand(
   SHELL_FREE_NON_NULL(CommandName);
   SHELL_FREE_NON_NULL(CommandWithPath);
   SHELL_FREE_NON_NULL(PostVariableCmdLine);
-  SHELL_FREE_NON_NULL(DevPath);
 
   return (Status);
 }
@@ -1591,12 +1697,12 @@ RunScriptFileHandle (
   //
   // Now enumerate through the commands and run each one.
   //
-  CommandLine = AllocatePool(PcdGet16(PcdShellPrintBufferSize));
+  CommandLine = AllocateZeroPool(PcdGet16(PcdShellPrintBufferSize));
   if (CommandLine == NULL) {
     DeleteScriptFileStruct(NewScriptFile);
     return (EFI_OUT_OF_RESOURCES);
   }
-  CommandLine2 = AllocatePool(PcdGet16(PcdShellPrintBufferSize));
+  CommandLine2 = AllocateZeroPool(PcdGet16(PcdShellPrintBufferSize));
   if (CommandLine2 == NULL) {
     FreePool(CommandLine);
     DeleteScriptFileStruct(NewScriptFile);
@@ -1732,11 +1838,17 @@ RunScriptFileHandle (
     }
   }
 
-  ShellCommandSetEchoState(PreScriptEchoState);
 
   FreePool(CommandLine);
   FreePool(CommandLine2);
   ShellCommandSetNewScript (NULL);
+
+  //
+  // Only if this was the last script reset the state.
+  //
+  if (ShellCommandGetCurrentScriptFile()==NULL) {
+    ShellCommandSetEchoState(PreScriptEchoState);
+  }
   return (EFI_SUCCESS);
 }
 

@@ -14,7 +14,7 @@
 #  BDSDxe also maintain the UI for "Boot Manager, Boot Maintaince Manager, Device Manager" which
 #  is used for user to configure boot option or maintain hardware device.
 #  
-#  Copyright (c) 2008 - 2010, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2008 - 2011, Intel Corporation. All rights reserved.<BR>
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution.  The full text of the license may be found at
@@ -53,6 +53,7 @@
   HwErrRecSupport.h
 
   DeviceMngr/DeviceManager.h
+  DeviceMngr/DeviceManagerVfr.h
   DeviceMngr/DeviceManagerVfr.Vfr
   DeviceMngr/DriverHealthVfr.Vfr
   DeviceMngr/DeviceManagerStrings.uni
@@ -112,7 +113,6 @@
   UefiHiiServicesLib
   
 [Guids]
-  gEfiGlobalVariableGuid                        ## SOMETIMES_PRODUCES ## Variable:L"BootNext" (The number of next boot option)
                                                 ## SOMETIMES_PRODUCES ## Variable:L"BootXX" (Boot option variable)
                                                 ## SOMETIMES_PRODUCES ## Variable:L"PlatformLang" (Platform supported languange in Rfc4646 format)
                                                 ## SOMETIMES_PRODUCES ## Variable:L"Lang" (Platform supported languange in Iso639 format)
@@ -128,6 +128,7 @@
                                                 ## SOMETIMES_CONSUMES ## Variable:L"ConIn" (The device path of console in device)
                                                 ## SOMETIMES_CONSUMES ## Variable:L"ConOut" (The device path of console out device)
                                                 ## SOMETIMES_CONSUMES ## Variable:L"ErrOut" (The device path of error out device)
+  gEfiGlobalVariableGuid                        ## SOMETIMES_PRODUCES ## Variable:L"BootNext" (The number of next boot option)
   gEfiFileSystemVolumeLabelInfoIdGuid           ## CONSUMES ## GUID (Indicate the information type is volume)
   gEfiFileInfoGuid                              ## CONSUMES ## GUID (Indicate the information type is file)
   gEfiHiiPlatformSetupFormsetGuid               ## CONSUMES ## GUID (Indicate the formset class guid to be displayed)
@@ -141,7 +142,7 @@
   gEfiSmbiosProtocolGuid                        ## PROTOCOL CONSUMES
   gEfiGenericMemTestProtocolGuid                ## PROTOCOL CONSUMES
   gEfiLegacyBiosProtocolGuid                    ## PROTOCOL CONSUMES
-  gEfiUgaDrawProtocolGuid |PcdUgaConsumeSupport ## PROTOCOL SOMETIMES_CONSUMES
+  gEfiUgaDrawProtocolGuid |gEfiMdePkgTokenSpaceGuid.PcdUgaConsumeSupport ## PROTOCOL SOMETIMES_CONSUMES
   gEfiBlockIoProtocolGuid                       ## PROTOCOL CONSUMES
   gEfiGraphicsOutputProtocolGuid                ## PROTOCOL SOMETIMES_CONSUMES
   gEfiSimpleTextInputExProtocolGuid             ## PROTOCOL CONSUMES

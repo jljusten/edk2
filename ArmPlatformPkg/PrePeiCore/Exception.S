@@ -29,9 +29,6 @@ GCC_ASM_EXPORT(PeiVectorTable)
 //Default Exception Handlers
 //============================================================
   
-//FIXME: One of the EDK2 tool is broken. It does not look to respect the alignment. Even, if we specify 32-byte alignment for this file.
-Dummy1: .word      0
-Dummy2: .word      0
   
 ASM_PFX(PeiVectorTable):
   b _DefaultResetHandler
@@ -87,20 +84,19 @@ _DefaultReserved:
   # Switch to SVC for common stack
   cps  #0x13
   mov  r0, #5
-  blx  PeiCommonExceptionEntry
+  blx  ASM_PFX(PeiCommonExceptionEntry)
 
 _DefaultIrq:
   sub  r1, LR, #4
   # Switch to SVC for common stack
   cps  #0x13
   mov  r0, #6
-  blx  PeiCommonExceptionEntry
+  blx  ASM_PFX(PeiCommonExceptionEntry)
 
 _DefaultFiq:
   sub  r1, LR, #4
   # Switch to SVC for common stack
   cps  #0x13
   mov  r0, #7
-  blx  PeiCommonExceptionEntry
+  blx  ASM_PFX(PeiCommonExceptionEntry)
 
-.end

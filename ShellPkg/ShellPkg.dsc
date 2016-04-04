@@ -16,10 +16,10 @@
 [Defines]
   PLATFORM_NAME                  = Shell
   PLATFORM_GUID                  = E1DC9BF8-7013-4c99-9437-795DAA45F3BD
-  PLATFORM_VERSION               = 0.40
+  PLATFORM_VERSION               = 0.50
   DSC_SPECIFICATION              = 0x00010006
   OUTPUT_DIRECTORY               = Build/Shell
-  SUPPORTED_ARCHITECTURES        = IA32|IPF|X64|EBC
+  SUPPORTED_ARCHITECTURES        = IA32|IPF|X64|EBC|ARM
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
 
@@ -27,7 +27,7 @@
   UefiApplicationEntryPoint|MdePkg/Library/UefiApplicationEntryPoint/UefiApplicationEntryPoint.inf
   UefiBootServicesTableLib|MdePkg/Library/UefiBootServicesTableLib/UefiBootServicesTableLib.inf
   DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
-  DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  DebugLib|MdePkg/Library/UefiDebugLibConOut/UefiDebugLibConOut.inf
   DebugPrintErrorLevelLib|MdePkg/Library/BaseDebugPrintErrorLevelLib/BaseDebugPrintErrorLevelLib.inf  
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
@@ -38,20 +38,35 @@
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
   UefiHiiServicesLib|MdeModulePkg/Library/UefiHiiServicesLib/UefiHiiServicesLib.inf
   HiiLib|MdeModulePkg/Library/UefiHiiLib/UefiHiiLib.inf
+  NetLib|MdeModulePkg/Library/DxeNetLib/DxeNetLib.inf
 
   ShellLib|ShellPkg/Library/UefiShellLib/UefiShellLib.inf
   ShellCommandLib|ShellPkg/Library/UefiShellCommandLib/UefiShellCommandLib.inf
-  FileHandleLib|ShellPkg/Library/BaseFileHandleLib/BaseFileHandleLib.inf
+  FileHandleLib|ShellPkg/Library/UefiFileHandleLib/UefiFileHandleLib.inf
   ShellCEntryLib|ShellPkg/Library/UefiShellCEntryLib/UefiShellCEntryLib.inf
-  SortLib|ShellPkg/Library/BaseSortLib/BaseSortLib.inf
+  SortLib|ShellPkg/Library/UefiSortLib/UefiSortLib.inf
   HandleParsingLib|ShellPkg/Library/UefiHandleParsingLib/UefiHandleParsingLib.inf
   
   PeCoffGetEntryPointLib|MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
 
-[PcdsFixedAtBuild.common]
+[LibraryClasses.ARM]
+  #
+  # It is not possible to prevent the ARM compiler for generic intrinsic functions.
+  # This library provides the instrinsic functions generate by a given compiler.
+  # [LibraryClasses.ARM] and NULL mean link this library into all ARM images.
+  #
+  NULL|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
 
-[Components.common]
-  ShellPkg/Library/BaseFileHandleLib/BaseFileHandleLib.inf
+[PcdsFixedAtBuild]
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0xFF
+  gEfiShellPkgTokenSpaceGuid.PcdShellLibAutoInitialize|FALSE
+  gEfiMdePkgTokenSpaceGuid.PcdUefiLibMaxPrintBufferSize|16000
+!ifdef $(NO_SHELL_PROFILES)
+  gEfiShellPkgTokenSpaceGuid.PcdShellProfileMask|0x00
+!endif
+
+[Components]
+  ShellPkg/Library/UefiFileHandleLib/UefiFileHandleLib.inf
   ShellPkg/Library/UefiShellLib/UefiShellLib.inf
   ShellPkg/Library/UefiShellCommandLib/UefiShellCommandLib.inf
   ShellPkg/Library/UefiShellLevel2CommandsLib/UefiShellLevel2CommandsLib.inf
@@ -59,32 +74,14 @@
 
   ShellPkg/Application/Shell/Shell.inf {
     <LibraryClasses>
-      DebugLib|MdePkg/Library/UefiDebugLibConOut/UefiDebugLibConOut.inf
-      ShellCommandLib|ShellPkg/Library/UefiShellCommandLib/UefiShellCommandLib.inf
       NULL|ShellPkg/Library/UefiShellLevel2CommandsLib/UefiShellLevel2CommandsLib.inf
       NULL|ShellPkg/Library/UefiShellLevel1CommandsLib/UefiShellLevel1CommandsLib.inf
       NULL|ShellPkg/Library/UefiShellLevel3CommandsLib/UefiShellLevel3CommandsLib.inf
+!ifndef $(NO_SHELL_PROFILES)
       NULL|ShellPkg/Library/UefiShellDriver1CommandsLib/UefiShellDriver1CommandsLib.inf
       NULL|ShellPkg/Library/UefiShellInstall1CommandsLib/UefiShellInstall1CommandsLib.inf
-      HandleParsingLib|ShellPkg/Library/UefiHandleParsingLib/UefiHandleParsingLib.inf
-      FileHandleLib|ShellPkg/Library/BaseFileHandleLib/BaseFileHandleLib.inf
-      ShellLib|ShellPkg/Library/UefiShellLib/UefiShellLib.inf
-      SortLib|ShellPkg/Library/UefiSortLib/UefiSortLib.inf
-      PrintLib|MdePkg/Library/BasePrintLib/BasePrintLib.inf
-
-    <PcdsFixedAtBuild>
-      gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0xFF
-      gEfiShellPkgTokenSpaceGuid.PcdShellLibAutoInitialize|FALSE
-      gEfiMdePkgTokenSpaceGuid.PcdUefiLibMaxPrintBufferSize|16000
+      NULL|ShellPkg/Library/UefiShellDebug1CommandsLib/UefiShellDebug1CommandsLib.inf
+      NULL|ShellPkg/Library/UefiShellNetwork1CommandsLib/UefiShellNetwork1CommandsLib.inf
+!endif
   }
 
-
-  ShellPkg/Application/ShellCTestApp/ShellCTestApp.inf {
-    <LibraryClasses>
-      ShellCEntryLib|ShellPkg/Library/UefiShellCEntryLib/UefiShellCEntryLib.inf
-  }
-  ShellPkg/Application/ShellSortTestApp/ShellSortTestApp.inf {
-    <LibraryClasses>
-      ShellCEntryLib|ShellPkg/Library/UefiShellCEntryLib/UefiShellCEntryLib.inf
-  }
-  ShellPkg/Application/ShellExecTestApp/SA.inf

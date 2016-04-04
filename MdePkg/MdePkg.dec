@@ -211,6 +211,9 @@
   ##  @libraryclass  Provides library services to make PAL Calls.
   PalLib|Include/Library/PalLib.h
 
+  ##  @libraryclass  Provides library services to make Extended SAL Calls.
+  ExtendedSalLib|Include/Library/ExtendedSalLib.h
+  
 [Guids]
   #
   # GUID defined in UEFI2.1/UEFI2.0/EFI1.1
@@ -364,6 +367,15 @@
 
   ## Include/Guid/ImageAuthentication.h
   gEfiCertX509Guid = { 0xa5c059a1, 0x94e4, 0x4aa7, {0x87, 0xb5, 0xab, 0x15, 0x5c, 0x2b, 0xf0, 0x72 }}
+
+  ## Include/Guid/ImageAuthentication.h
+  gEfiCertSha224Guid = { 0xb6e5233, 0xa65c, 0x44c9, {0x94, 0x7, 0xd9, 0xab, 0x83, 0xbf, 0xc8, 0xbd }}
+
+  ## Include/Guid/ImageAuthentication.h
+  gEfiCertSha384Guid = { 0xff3e5307, 0x9fd0, 0x48c9, {0x85, 0xf1, 0x8a, 0xd5, 0x6c, 0x70, 0x1e, 0x1 }}
+
+  ## Include/Guid/ImageAuthentication.h
+  gEfiCertSha512Guid = { 0x93e0fae, 0xa6c4, 0x4f50, {0x9f, 0x1b, 0xd4, 0x1e, 0x2b, 0x89, 0xc1, 0x9a }}
 
   #
   # GUID defined in UEFI2.2
@@ -885,6 +897,9 @@
   ## Include/Protocol/BlockIo.h
   gEfiBlockIoProtocolGuid        = { 0x964E5B21, 0x6459, 0x11D2, { 0x8E, 0x39, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B }}
 
+  ## Include/Protocol/BlockIo2.h
+  gEfiBlockIo2ProtocolGuid       = { 0xa77b2472, 0xe282, 0x4e9f, {0xa2, 0x45, 0xc2, 0xc0, 0xe2, 0x7b, 0xbc, 0xc1 }}
+
   ## Include/Protocol/UnicodeCollation.h
   gEfiUnicodeCollationProtocolGuid = { 0x1D85CD7F, 0xF43D, 0x11D2, { 0x9A, 0x0C, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D }}
 
@@ -1103,6 +1118,12 @@
 
   ## Include/Protocol/IpSec.h
   gEfiIpSecProtocolGuid                = { 0xdfb386f7, 0xe100, 0x43ad, {0x9c, 0x9a, 0xed, 0x90, 0xd0, 0x8a, 0x5e, 0x12 }}
+  
+  ## Include/Protocol/IpSec.h
+  gEfiIpSec2ProtocolGuid               = { 0xa3979e64, 0xace8, 0x4ddc, {0xbc, 0x7, 0x4d, 0x66, 0xb8, 0xfd, 0x9, 0x77 }}
+
+  ## Include/Protocol/StorageSecurityCommand.h
+  gEfiStorageSecurityCommandProtocolGuid = { 0xc88b0b6d, 0x0dfc, 0x49a7, { 0x9c, 0xb4, 0x49, 0x7, 0x4b, 0x4c, 0x3a, 0x78 } } 
 
 [PcdsFeatureFlag]
   ## If TRUE, the component name protocol will not be installed.
@@ -1296,7 +1317,7 @@
   ## Indicates the default timeouts for USB transfers in milliseconds
   gEfiMdePkgTokenSpaceGuid.PcdUsbTransferTimeoutValue|3000|UINT32|0x00000026
 
-[PcdsFixedAtBuild,PcdsPatchableInModule,PcdsDynamic]
+[PcdsFixedAtBuild, PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
   ## This value is used to set the base address of pci express hierarchy
   gEfiMdePkgTokenSpaceGuid.PcdPciExpressBaseAddress|0xE0000000|UINT64|0x0000000a
 

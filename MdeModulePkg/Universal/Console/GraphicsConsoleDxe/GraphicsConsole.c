@@ -42,10 +42,11 @@ GRAPHICS_CONSOLE_DEV    mGraphicsConsoleDevTemplate = {
     TRUE
   },
   {
-    { 80, 25, 0, 0, 0, 0 },  // Mode 0
-    { 80, 50, 0, 0, 0, 0 },  // Mode 1
-    { 100,31, 0, 0, 0, 0 },  // Mode 2
-    {  0,  0, 0, 0, 0, 0 }   // Mode 3
+    { 80, 25, 0, 0, 0, 0, 0 },  // Mode 0
+    { 80, 50, 0, 0, 0, 0, 0 },  // Mode 1
+    { 100,31, 0, 0, 0, 0, 0 },  // Mode 2
+    {  0,  0, 0, 0, 0, 0, 0 },  // Mode 3
+    {  0,  0, 0, 0, 0, 0, 0 }   // Mode 4
   },
   (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *) NULL
 };
@@ -238,11 +239,13 @@ GraphicsConsoleControllerDriverStart (
   UINT32                               VerticalResolution;
   UINT32                               ColorDepth;
   UINT32                               RefreshRate;
+  UINTN                                ModeIndex;
   UINTN                                MaxMode;
   UINTN                                Columns;
   UINTN                                Rows;
   UINT32                               ModeNumber;
   EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE    *Mode;
+  GRAPHICS_CONSOLE_MODE_DATA           *ModeData;
   ModeNumber = 0;
 
   //
@@ -375,78 +378,63 @@ GraphicsConsoleControllerDriverStart (
   }
 
   //
+  // Add Mode #3 that uses the entire display for user-defined mode
+  //
+  Private->ModeData[3].Columns = HorizontalResolution / EFI_GLYPH_WIDTH;
+  Private->ModeData[3].Rows    = VerticalResolution / EFI_GLYPH_HEIGHT;
+
+  //
+  // Add Mode #4 that uses the PCD values
+  //
+  Private->ModeData[4].Columns = (UINTN) PcdGet32 (PcdConOutColumn);
+  Private->ModeData[4].Rows    = (UINTN) PcdGet32 (PcdConOutRow);
+
+  //
   // Compute the maximum number of text Rows and Columns that this current graphics mode can support
   //
   Columns = HorizontalResolution / EFI_GLYPH_WIDTH;
   Rows    = VerticalResolution / EFI_GLYPH_HEIGHT;
 
   //
-  // See if the mode is too small to support the required 80x25 text mode
+  // Here we make sure that mode 0 is valid
   //
-  if (Columns < 80 || Rows < 25) {
-    goto Error;
+  if (Columns < Private->ModeData[0].Columns ||
+      Rows < Private->ModeData[0].Rows) {
+    //
+    // 80x25 cannot be supported.
+    //
+    // Fallback to using the PcdConOutColumn and PcdConOutRow
+    // for mode 0.  If the PCDs are also to large, then mode 0
+    // will be shrunk to fit as needed.
+    //
+    Private->ModeData[0].Columns = MIN (Private->ModeData[4].Columns, Columns);
+    Private->ModeData[0].Rows    = MIN (Private->ModeData[4].Rows, Rows);
   }
-  //
-  // Add Mode #0 that must be 80x25
-  //
+
   MaxMode = 0;
-  Private->ModeData[MaxMode].GopWidth      = HorizontalResolution;
-  Private->ModeData[MaxMode].GopHeight     = VerticalResolution;
-  Private->ModeData[MaxMode].GopModeNumber = ModeNumber;
-  Private->ModeData[MaxMode].DeltaX        = (HorizontalResolution - (80 * EFI_GLYPH_WIDTH)) >> 1;
-  Private->ModeData[MaxMode].DeltaY        = (VerticalResolution - (25 * EFI_GLYPH_HEIGHT)) >> 1;
-  MaxMode++;
-
-  //
-  // If it is possible to support Mode #1 - 80x50, than add it as an active mode
-  //
-  if (Rows >= 50) {
-    Private->ModeData[MaxMode].GopWidth      = HorizontalResolution;
-    Private->ModeData[MaxMode].GopHeight     = VerticalResolution;
-    Private->ModeData[MaxMode].GopModeNumber = ModeNumber;
-    Private->ModeData[MaxMode].DeltaX        = (HorizontalResolution - (80 * EFI_GLYPH_WIDTH)) >> 1;
-    Private->ModeData[MaxMode].DeltaY        = (VerticalResolution - (50 * EFI_GLYPH_HEIGHT)) >> 1;
-    MaxMode++;
+  for (ModeIndex = 0; ModeIndex < GRAPHICS_MAX_MODE; ModeIndex++) {
+    ModeData = &Private->ModeData[ModeIndex];
+    ModeData->GopWidth      = HorizontalResolution;
+    ModeData->GopHeight     = VerticalResolution;
+    ModeData->GopModeNumber = ModeNumber;
+    if (Columns >= ModeData->Columns &&
+        Rows >= ModeData->Rows) {
+      ModeData->DeltaX        = (HorizontalResolution - (ModeData->Columns * EFI_GLYPH_WIDTH)) >> 1;
+      ModeData->DeltaY        = (VerticalResolution - (ModeData->Rows * EFI_GLYPH_HEIGHT)) >> 1;
+      MaxMode = ModeIndex + 1;
+    } else {
+      ModeData->Columns       = 0;
+      ModeData->Rows          = 0;
+      ModeData->DeltaX        = 0;
+      ModeData->DeltaY        = 0;
+    }
   }
 
   //
-  // If it is not to support Mode #1 - 80x50, then skip it
+  // See if the resolution was too small to support any text modes
   //
-  if (MaxMode < 2) {
-    Private->ModeData[MaxMode].Columns       = 0;
-    Private->ModeData[MaxMode].Rows          = 0;
-    Private->ModeData[MaxMode].GopWidth      = HorizontalResolution;
-    Private->ModeData[MaxMode].GopHeight     = VerticalResolution;
-    Private->ModeData[MaxMode].GopModeNumber = ModeNumber;
-    Private->ModeData[MaxMode].DeltaX        = 0;
-    Private->ModeData[MaxMode].DeltaY        = 0;
-    MaxMode++;
-  }
-
-  //
-  // Add Mode #2 that must be 100x31 (graphic mode >= 800x600)
-  //
-  if (Columns >= 100 && Rows >= 31) {
-    Private->ModeData[MaxMode].GopWidth      = HorizontalResolution;
-    Private->ModeData[MaxMode].GopHeight     = VerticalResolution;
-    Private->ModeData[MaxMode].GopModeNumber = ModeNumber;
-    Private->ModeData[MaxMode].DeltaX        = (HorizontalResolution - (100 * EFI_GLYPH_WIDTH)) >> 1;
-    Private->ModeData[MaxMode].DeltaY        = (VerticalResolution - (31 * EFI_GLYPH_HEIGHT)) >> 1;
-    MaxMode++;
-  }
-
-  //
-  // Add Mode #3 that uses the entire display for user-defined mode
-  //
-  if (HorizontalResolution > 800 && VerticalResolution > 600) {
-    Private->ModeData[MaxMode].Columns       = HorizontalResolution/EFI_GLYPH_WIDTH;
-    Private->ModeData[MaxMode].Rows          = VerticalResolution/EFI_GLYPH_HEIGHT;
-    Private->ModeData[MaxMode].GopWidth      = HorizontalResolution;
-    Private->ModeData[MaxMode].GopHeight     = VerticalResolution;
-    Private->ModeData[MaxMode].GopModeNumber = ModeNumber;
-    Private->ModeData[MaxMode].DeltaX        = (HorizontalResolution % EFI_GLYPH_WIDTH) >> 1;
-    Private->ModeData[MaxMode].DeltaY        = (VerticalResolution % EFI_GLYPH_HEIGHT) >> 1;
-    MaxMode++;
+  if (MaxMode == 0) {
+    goto Error;
   }
 
   //
@@ -827,7 +815,7 @@ GraphicsConsoleConOutOutputString (
   //
   GetTextColors (This, &Foreground, &Background);
 
-  EraseCursor (This);
+  FlushCursor (This);
 
   Warning = FALSE;
 
@@ -847,7 +835,7 @@ GraphicsConsoleConOutOutputString (
         This->Mode->CursorRow--;
         This->Mode->CursorColumn = (INT32) (MaxColumn - 1);
         This->OutputString (This, SpaceStr);
-        EraseCursor (This);
+        FlushCursor (This);
         This->Mode->CursorRow--;
         This->Mode->CursorColumn = (INT32) (MaxColumn - 1);
       } else if (This->Mode->CursorColumn > 0) {
@@ -857,7 +845,7 @@ GraphicsConsoleConOutOutputString (
         //
         This->Mode->CursorColumn--;
         This->OutputString (This, SpaceStr);
-        EraseCursor (This);
+        FlushCursor (This);
         This->Mode->CursorColumn--;
       }
 
@@ -1016,16 +1004,16 @@ GraphicsConsoleConOutOutputString (
       }
 
       if (This->Mode->CursorColumn >= (INT32) MaxColumn) {
-        EraseCursor (This);
+        FlushCursor (This);
         This->OutputString (This, mCrLfString);
-        EraseCursor (This);
+        FlushCursor (This);
       }
     }
   }
 
   This->Mode->Attribute = OriginAttribute;
 
-  EraseCursor (This);
+  FlushCursor (This);
 
   if (Warning) {
     Status = EFI_WARN_UNKNOWN_GLYPH;
@@ -1234,7 +1222,7 @@ GraphicsConsoleConOutSetMode (
     // Otherwise, the size of the text console and/or the GOP/UGA mode will be changed,
     // so erase the cursor, and free the LineBuffer for the current mode
     //
-    EraseCursor (This);
+    FlushCursor (This);
 
     FreePool (Private->LineBuffer);
   }
@@ -1325,9 +1313,12 @@ GraphicsConsoleConOutSetMode (
   This->Mode->Mode = (INT32) ModeNumber;
 
   //
-  // Move the text cursor to the upper left hand corner of the display and enable it
+  // Move the text cursor to the upper left hand corner of the display and flush it
   //
-  This->SetCursorPosition (This, 0, 0);
+  This->Mode->CursorColumn  = 0;
+  This->Mode->CursorRow     = 0;
+
+  FlushCursor (This);  
 
   Status = EFI_SUCCESS;
 
@@ -1372,11 +1363,11 @@ GraphicsConsoleConOutSetAttribute (
 
   OldTpl = gBS->RaiseTPL (TPL_NOTIFY);
 
-  EraseCursor (This);
+  FlushCursor (This);
 
   This->Mode->Attribute = (INT32) Attribute;
 
-  EraseCursor (This);
+  FlushCursor (This);
 
   gBS->RestoreTPL (OldTpl);
 
@@ -1453,7 +1444,7 @@ GraphicsConsoleConOutClearScreen (
   This->Mode->CursorColumn  = 0;
   This->Mode->CursorRow     = 0;
 
-  EraseCursor (This);
+  FlushCursor (This);
 
   gBS->RestoreTPL (OldTpl);
 
@@ -1510,12 +1501,12 @@ GraphicsConsoleConOutSetCursorPosition (
     goto Done;
   }
 
-  EraseCursor (This);
+  FlushCursor (This);
 
   This->Mode->CursorColumn  = (INT32) Column;
   This->Mode->CursorRow     = (INT32) Row;
 
-  EraseCursor (This);
+  FlushCursor (This);
 
 Done:
   gBS->RestoreTPL (OldTpl);
@@ -1547,11 +1538,11 @@ GraphicsConsoleConOutEnableCursor (
 
   OldTpl = gBS->RaiseTPL (TPL_NOTIFY);
 
-  EraseCursor (This);
+  FlushCursor (This);
 
   This->Mode->CursorVisible = Visible;
 
-  EraseCursor (This);
+  FlushCursor (This);
 
   gBS->RestoreTPL (OldTpl);
   return EFI_SUCCESS;
@@ -1736,7 +1727,12 @@ DrawUnicodeWeightAtCursorN (
 }
 
 /**
-  Erase the cursor on the screen.
+  Flush the cursor on the screen.
+  
+  If CursorVisible is FALSE, nothing to do and return directly.
+  If CursorVisible is TRUE, 
+     i) If the cursor shows on screen, it will be erased.
+    ii) If the cursor does not show on screen, it will be shown. 
 
   @param  This                  Protocol instance pointer.
 
@@ -1744,7 +1740,7 @@ DrawUnicodeWeightAtCursorN (
 
 **/
 EFI_STATUS
-EraseCursor (
+FlushCursor (
   IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  *This
   )
 {

@@ -1,7 +1,7 @@
 /** @file
   Root include file to support building OpenSSL Crypto Library.
 
-Copyright (c) 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2010 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -30,10 +30,18 @@ typedef VOID  *FILE;
 //
 // Map all va_xxxx elements to VA_xxx defined in MdePkg/Include/Base.h
 //
+#if !defined(__CC_ARM) // if va_list is not already defined
 #define va_list   VA_LIST
 #define va_arg    VA_ARG
 #define va_start  VA_START
 #define va_end    VA_END
+#else // __CC_ARM
+#define va_start(Marker, Parameter)   __va_start(Marker, Parameter)
+#define va_arg(Marker, TYPE)          __va_arg(Marker, TYPE)
+#define va_end(Marker)                ((void)0)
+#endif
+
+
 
 //
 // #defines from EFI Application Toolkit required to buiild Open SSL
@@ -211,9 +219,9 @@ __sighandler_t *signal     (int, __sighandler_t *);
 //
 // Global variables from EFI Application Toolkit required to buiild Open SSL
 //
-FILE  *stderr;
-FILE  *stdin;
-FILE  *stdout;
+extern FILE  *stderr;
+extern FILE  *stdin;
+extern FILE  *stdout;
 
 //
 // Macros that directly map functions to BaseLib, BaseMemoryLib, and DebugLib functions

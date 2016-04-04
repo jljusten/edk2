@@ -1,7 +1,7 @@
 /** @file
 Implementation of interfaces function for EFI_HII_CONFIG_ROUTING_PROTOCOL.
 
-Copyright (c) 2007 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -453,8 +453,9 @@ GetValueOfNumber (
   UINTN                    Index;
   CHAR16                   TemStr[2];
 
-  ASSERT (StringPtr != NULL && Number != NULL && Len != NULL);
-  ASSERT (*StringPtr != L'\0');
+  if (StringPtr == NULL || *StringPtr == L'\0' || Number == NULL || Len == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
 
   Buf = NULL;
 
@@ -632,37 +633,6 @@ MergeDefaultString (
   
   FreePool (AltConfigHdr);
   return EFI_SUCCESS;  
-}
-
-/**
-  This function finds the matched DefaultName for the input DefaultId
-
-  @param  DefaultIdArray    Array stores the map table between DefaultId and DefaultName.
-  @param  VarDefaultId      Default Id
-  @param  VarDefaultName    Default Name string ID for the input default ID.
-  
-  @retval EFI_SUCCESS       The mapped default name string ID is found.
-  @retval EFI_NOT_FOUND     The mapped default name string ID is not found.
-**/
-EFI_STATUS
-FindDefaultName (
-  IN  IFR_DEFAULT_DATA *DefaultIdArray, 
-  IN  UINT16           VarDefaultId, 
-  OUT EFI_STRING_ID    *VarDefaultName
-  )
-{
-  LIST_ENTRY        *Link;
-  IFR_DEFAULT_DATA  *DefaultData;
-
-  for (Link = DefaultIdArray->Entry.ForwardLink; Link != &DefaultIdArray->Entry; Link = Link->ForwardLink) {
-    DefaultData = BASE_CR (Link, IFR_DEFAULT_DATA, Entry);
-    if (DefaultData->DefaultId == VarDefaultId) {
-      *VarDefaultName = DefaultData->DefaultName;
-      return EFI_SUCCESS;
-    }
-  }
-  
-  return EFI_NOT_FOUND;
 }
 
 /**
@@ -860,6 +830,7 @@ ParseIfrData (
   EFI_STRING               NameStr;
   EFI_STRING               TempStr;
   UINTN                    LengthString;
+  BOOLEAN                  FirstOneOfOption;
 
   LengthString     = 0;
   Status           = EFI_SUCCESS;
@@ -869,6 +840,7 @@ ParseIfrData (
   BlockData        = NULL;
   DefaultData      = NULL;
   VarDefaultName   = 0;
+  FirstOneOfOption = FALSE;
 
   //
   // Go through the form package to parse OpCode one by one.
@@ -945,7 +917,6 @@ ParseIfrData (
         goto Done;
       }
       DefaultData->DefaultId   = ((EFI_IFR_DEFAULTSTORE *) IfrOpHdr)->DefaultId;
-      DefaultData->DefaultName = ((EFI_IFR_DEFAULTSTORE *) IfrOpHdr)->DefaultName;
       InsertTailList (&DefaultIdArray->Entry, &DefaultData->Entry);
       DefaultData = NULL;
       break;
@@ -1023,6 +994,54 @@ ParseIfrData (
       // Add Block Data into VarStorageData BlockEntry
       //
       InsertBlockData (&VarStorageData->BlockEntry, &BlockData);
+      
+      if (IfrOpHdr->OpCode == EFI_IFR_ONE_OF_OP) {
+        //
+        // Set this flag to TRUE for the first oneof option.
+        //
+        FirstOneOfOption = TRUE;
+      } else if (IfrOpHdr->OpCode == EFI_IFR_NUMERIC_OP) {
+        //
+        // Numeric minimum value will be used as default value when no default is specified. 
+        //
+
+        //
+        // Set standard ID
+        //
+        VarDefaultId = EFI_HII_DEFAULT_CLASS_STANDARD;
+        //
+        // Prepare new DefaultValue
+        //
+        DefaultData = (IFR_DEFAULT_DATA *) AllocateZeroPool (sizeof (IFR_DEFAULT_DATA));
+        if (DefaultData == NULL) {
+          Status = EFI_OUT_OF_RESOURCES;
+          goto Done;
+        }
+        DefaultData->OpCode      = IfrOpHdr->OpCode;
+        DefaultData->DefaultId   = VarDefaultId;
+
+        switch (IfrOneOf->Flags & EFI_IFR_NUMERIC_SIZE) {
+        case EFI_IFR_NUMERIC_SIZE_1:
+          DefaultData->Value = (UINT64) IfrOneOf->data.u8.MinValue;
+          break;
+  
+        case EFI_IFR_NUMERIC_SIZE_2:
+          CopyMem (&DefaultData->Value, &IfrOneOf->data.u16.MinValue, sizeof (UINT16));
+          break;
+  
+        case EFI_IFR_NUMERIC_SIZE_4:
+          CopyMem (&DefaultData->Value, &IfrOneOf->data.u32.MinValue, sizeof (UINT32));
+          break;
+  
+        case EFI_IFR_NUMERIC_SIZE_8:
+          CopyMem (&DefaultData->Value, &IfrOneOf->data.u64.MinValue, sizeof (UINT64));
+          break;
+        }
+        //
+        // Add DefaultValue into current BlockData
+        //
+        InsertDefaultValue (BlockData, DefaultData);      
+      }
       break;
 
     case EFI_IFR_ORDERED_LIST_OP:
@@ -1139,61 +1158,64 @@ ParseIfrData (
       InsertBlockData (&VarStorageData->BlockEntry, &BlockData);
       
       //
-      // Add default value by CheckBox Flags 
+      // Add default value for standard ID by CheckBox Flag
       //
+      VarDefaultId = EFI_HII_DEFAULT_CLASS_STANDARD;
+      //
+      // Prepare new DefaultValue
+      //
+      DefaultData = (IFR_DEFAULT_DATA *) AllocateZeroPool (sizeof (IFR_DEFAULT_DATA));
+      if (DefaultData == NULL) {
+        Status = EFI_OUT_OF_RESOURCES;
+        goto Done;
+      }
+      DefaultData->OpCode      = IfrOpHdr->OpCode;
+      DefaultData->DefaultId   = VarDefaultId;
       if ((IfrCheckBox->Flags & EFI_IFR_CHECKBOX_DEFAULT) == EFI_IFR_CHECKBOX_DEFAULT) {
         //
-        // Set standard ID to Manufacture ID and Get DefaultName String ID
+        // When flag is set, defautl value is TRUE.
         //
-        VarDefaultId = EFI_HII_DEFAULT_CLASS_STANDARD;
-        Status       = FindDefaultName (DefaultIdArray, VarDefaultId, &VarDefaultName);
-        if (EFI_ERROR (Status)) {
-          goto Done;
-        }
+        DefaultData->Value    = 1;
+      } else {
         //
-        // Prepare new DefaultValue
+        // When flag is not set, defautl value is FASLE.
         //
-        DefaultData = (IFR_DEFAULT_DATA *) AllocateZeroPool (sizeof (IFR_DEFAULT_DATA));
-        if (DefaultData == NULL) {
-          Status = EFI_OUT_OF_RESOURCES;
-          goto Done;
-        }
-        DefaultData->OpCode      = IfrOpHdr->OpCode;
-        DefaultData->DefaultId   = VarDefaultId;
-        DefaultData->DefaultName = VarDefaultName;
-        DefaultData->Value       = 1;
-        //
-        // Add DefaultValue into current BlockData
-        //
-        InsertDefaultValue (BlockData, DefaultData);
+        DefaultData->Value    = 0;
       }
+      //
+      // Add DefaultValue into current BlockData
+      //
+      InsertDefaultValue (BlockData, DefaultData);
 
+      //
+      // Add default value for Manufacture ID by CheckBox Flag
+      //
+      VarDefaultId = EFI_HII_DEFAULT_CLASS_MANUFACTURING;
+      //
+      // Prepare new DefaultValue
+      //
+      DefaultData = (IFR_DEFAULT_DATA *) AllocateZeroPool (sizeof (IFR_DEFAULT_DATA));
+      if (DefaultData == NULL) {
+        Status = EFI_OUT_OF_RESOURCES;
+        goto Done;
+      }
+      DefaultData->OpCode      = IfrOpHdr->OpCode;
+      DefaultData->DefaultId   = VarDefaultId;
       if ((IfrCheckBox->Flags & EFI_IFR_CHECKBOX_DEFAULT_MFG) == EFI_IFR_CHECKBOX_DEFAULT_MFG) {
         //
-        // Set standard ID to Manufacture ID and Get DefaultName String ID
+        // When flag is set, defautl value is TRUE.
         //
-        VarDefaultId = EFI_HII_DEFAULT_CLASS_MANUFACTURING;
-        Status       = FindDefaultName (DefaultIdArray, VarDefaultId, &VarDefaultName);
-        if (EFI_ERROR (Status)) {
-          goto Done;
-        }
+        DefaultData->Value    = 1;
+      } else {
         //
-        // Prepare new DefaultValue
+        // When flag is not set, defautl value is FASLE.
         //
-        DefaultData = (IFR_DEFAULT_DATA *) AllocateZeroPool (sizeof (IFR_DEFAULT_DATA));
-        if (DefaultData == NULL) {
-          Status = EFI_OUT_OF_RESOURCES;
-          goto Done;
-        }
-        DefaultData->OpCode      = IfrOpHdr->OpCode;
-        DefaultData->DefaultId   = VarDefaultId;
-        DefaultData->DefaultName = VarDefaultName;
-        DefaultData->Value       = 1;
-        //
-        // Add DefaultValue into current BlockData
-        //
-        InsertDefaultValue (BlockData, DefaultData);
+        DefaultData->Value    = 0;
       }
+      //
+      // Add DefaultValue into current BlockData
+      //
+      InsertDefaultValue (BlockData, DefaultData);
       break;
 
     case EFI_IFR_STRING_OP:
@@ -1402,15 +1424,17 @@ ParseIfrData (
         break;
       }
 
-      if ((IfrOneOfOption->Flags & EFI_IFR_OPTION_DEFAULT) == EFI_IFR_OPTION_DEFAULT) {
+      if (((IfrOneOfOption->Flags & EFI_IFR_OPTION_DEFAULT) == EFI_IFR_OPTION_DEFAULT) ||
+          (BlockData->OpCode == EFI_IFR_ONE_OF_OP && FirstOneOfOption)) {
         //
-        // Set standard ID to Manufacture ID and Get DefaultName String ID
+        // This flag is used to specify whether this option is the first. Set it to FALSE for the following options. 
+        // The first oneof option value will be used as default value when no default value is specified. 
+        //
+        FirstOneOfOption = FALSE;
+        //
+        // Set standard ID to Manufacture ID
         //
         VarDefaultId = EFI_HII_DEFAULT_CLASS_STANDARD;
-        Status       = FindDefaultName (DefaultIdArray, VarDefaultId, &VarDefaultName);
-        if (EFI_ERROR (Status)) {
-          goto Done;
-        }
         //
         // Prepare new DefaultValue
         //
@@ -1421,7 +1445,6 @@ ParseIfrData (
         }
         DefaultData->OpCode      = IfrOpHdr->OpCode;
         DefaultData->DefaultId   = VarDefaultId;
-        DefaultData->DefaultName = VarDefaultName;
         DefaultData->Value       = IfrOneOfOption->Value.u64;
         //
         // Add DefaultValue into current BlockData
@@ -1431,13 +1454,9 @@ ParseIfrData (
 
       if ((IfrOneOfOption->Flags & EFI_IFR_OPTION_DEFAULT_MFG) == EFI_IFR_OPTION_DEFAULT_MFG) {
         //
-        // Set default ID to Manufacture ID and Get DefaultName String ID
+        // Set default ID to Manufacture ID
         //
         VarDefaultId = EFI_HII_DEFAULT_CLASS_MANUFACTURING;
-        Status       = FindDefaultName (DefaultIdArray, VarDefaultId, &VarDefaultName);
-        if (EFI_ERROR (Status)) {
-          goto Done;
-        }
         //
         // Prepare new DefaultValue
         //
@@ -1448,7 +1467,6 @@ ParseIfrData (
         }
         DefaultData->OpCode      = IfrOpHdr->OpCode;
         DefaultData->DefaultId   = VarDefaultId;
-        DefaultData->DefaultName = VarDefaultName;
         DefaultData->Value       = IfrOneOfOption->Value.u64;
         //
         // Add DefaultValue into current BlockData
@@ -1475,14 +1493,10 @@ ParseIfrData (
         break;
       }
       //
-      // Get the DefaultId and DefaultName String ID
+      // Get the DefaultId
       //
       IfrDefault     = (EFI_IFR_DEFAULT *) IfrOpHdr;
       VarDefaultId   = IfrDefault->DefaultId;
-      Status       = FindDefaultName (DefaultIdArray, VarDefaultId, &VarDefaultName);
-      if (EFI_ERROR (Status)) {
-        goto Done;
-      }
       //
       // Prepare new DefaultValue
       //
@@ -1493,7 +1507,6 @@ ParseIfrData (
       }
       DefaultData->OpCode      = IfrOpHdr->OpCode;
       DefaultData->DefaultId   = VarDefaultId;
-      DefaultData->DefaultName = VarDefaultName;
       DefaultData->Value       = IfrDefault->Value.u64;
       //
       // Add DefaultValue into current BlockData
@@ -2066,7 +2079,7 @@ GetFullStringFromHiiFormPackages (
       (1 + StrLen (ConfigHdr) + 8 + 4 + 1) * sizeof (CHAR16), 
       L"&%s&ALTCFG=%04X", 
       ConfigHdr, 
-      DefaultId->DefaultName
+      DefaultId->DefaultId
       );
     StringPtr += StrLen (StringPtr);
     
@@ -3042,7 +3055,7 @@ HiiBlockToConfig (
     // Get Offset
     //
     Status = GetValueOfNumber (StringPtr, &TmpBuffer, &Length);
-    if (Status == EFI_OUT_OF_RESOURCES) {
+    if (EFI_ERROR (Status)) {
       *Progress = ConfigRequest;
       goto Exit;
     }
@@ -3066,7 +3079,7 @@ HiiBlockToConfig (
     // Get Width
     //
     Status = GetValueOfNumber (StringPtr, &TmpBuffer, &Length);
-    if (Status == EFI_OUT_OF_RESOURCES) {
+    if (EFI_ERROR (Status)) {
       *Progress = ConfigRequest;
       goto Exit;
     }
@@ -3333,7 +3346,7 @@ HiiConfigToBlock (
     // Get Width
     //
     Status = GetValueOfNumber (StringPtr, &TmpBuffer, &Length);
-    if (Status == EFI_OUT_OF_RESOURCES) {
+    if (EFI_ERROR (Status)) {
       *Progress = ConfigResp;
       goto Exit;
     }

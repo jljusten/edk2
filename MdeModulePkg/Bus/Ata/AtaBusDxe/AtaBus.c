@@ -44,6 +44,13 @@ ATA_DEVICE gAtaDeviceTemplate = {
     AtaBlockIoWriteBlocks,
     AtaBlockIoFlushBlocks
   },
+  {                            // BlockIo2
+    NULL,
+    AtaBlockIoResetEx,
+    AtaBlockIoReadBlocksEx,
+    AtaBlockIoWriteBlocksEx,
+    AtaBlockIoFlushBlocksEx
+  },
   {                            // BlockMedia
     0,                         // MediaId
     FALSE,                     // RemovableMedia
@@ -65,6 +72,10 @@ ATA_DEVICE gAtaDeviceTemplate = {
     AtaDiskInfoWhichIde
   },
   NULL,                        // DevicePath
+  {
+    AtaStorageSecurityReceiveData,
+    AtaStorageSecuritySendData
+  },
   NULL,                        // AtaBusDriverData
   0,                           // Port
   0,                           // PortMultiplierPort
@@ -75,7 +86,8 @@ ATA_DEVICE gAtaDeviceTemplate = {
   FALSE,                       // Lba48Bit
   NULL,                        // IdentifyData
   NULL,                        // ControllerNameTable
-  {L'\0', }                    // ModelName
+  {L'\0', },                   // ModelName
+  {NULL, NULL}                 // AtaTaskList
 };
 
 /**
@@ -135,12 +147,34 @@ ReleaseAtaResources (
   IN ATA_DEVICE  *AtaDevice
   )
 {
+  ATA_BUS_ASYN_TASK *Task;
+  LIST_ENTRY        *Entry;
+  LIST_ENTRY        *DelEntry;
+  EFI_TPL           OldTpl;
+
   FreeUnicodeStringTable (AtaDevice->ControllerNameTable);
-  FreeAlignedBuffer (AtaDevice->Asb, sizeof (*AtaDevice->Asb));
-  FreeAlignedBuffer (AtaDevice->IdentifyData, sizeof (*AtaDevice->IdentifyData));
+  FreeAlignedBuffer (AtaDevice->Asb, sizeof (EFI_ATA_STATUS_BLOCK));
+  FreeAlignedBuffer (AtaDevice->IdentifyData, sizeof (ATA_IDENTIFY_DATA));
   if (AtaDevice->DevicePath != NULL) {
     FreePool (AtaDevice->DevicePath);
   }
+  OldTpl = gBS->RaiseTPL (TPL_NOTIFY);
+  if (!IsListEmpty (&AtaDevice->AtaTaskList)) {
+    //
+    // Free the Subtask list.
+    //
+    for(Entry = AtaDevice->AtaTaskList.ForwardLink; 
+        Entry != (&AtaDevice->AtaTaskList);
+       ) {
+      DelEntry = Entry;
+      Entry    = Entry->ForwardLink;
+      Task     = ATA_AYNS_TASK_FROM_ENTRY (DelEntry);
+      
+      RemoveEntryList (DelEntry);
+      FreeAtaSubTask (Task);
+    }
+  }
+  gBS->RestoreTPL (OldTpl);
   FreePool (AtaDevice);
 }
 
@@ -209,7 +243,7 @@ RegisterAtaDevice (
   //
   // Allocate ATA device from the template.
   //
-  AtaDevice = AllocateCopyPool (sizeof (gAtaDeviceTemplate), &gAtaDeviceTemplate);
+  AtaDevice = AllocateCopyPool (sizeof (ATA_DEVICE), &gAtaDeviceTemplate);
   if (AtaDevice == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
@@ -218,21 +252,27 @@ RegisterAtaDevice (
   //
   // Initializes ATA device structures and allocates the required buffer.
   //
-  AtaDevice->BlockIo.Media = &AtaDevice->BlockMedia;
-  AtaDevice->AtaBusDriverData = AtaBusDriverData;
-  AtaDevice->DevicePath = DevicePath;
-  AtaDevice->Port = Port;
+  AtaDevice->BlockIo.Media      = &AtaDevice->BlockMedia;
+  AtaDevice->BlockIo2.Media     = &AtaDevice->BlockMedia;
+  AtaDevice->AtaBusDriverData   = AtaBusDriverData;
+  AtaDevice->DevicePath         = DevicePath;
+  AtaDevice->Port               = Port;
   AtaDevice->PortMultiplierPort = PortMultiplierPort;
-  AtaDevice->Asb = AllocateAlignedBuffer (AtaDevice, sizeof (*AtaDevice->Asb));
+  AtaDevice->Asb = AllocateAlignedBuffer (AtaDevice, sizeof (EFI_ATA_STATUS_BLOCK));
   if (AtaDevice->Asb == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
   }
-  AtaDevice->IdentifyData = AllocateAlignedBuffer (AtaDevice, sizeof (*AtaDevice->IdentifyData));
+  AtaDevice->IdentifyData = AllocateAlignedBuffer (AtaDevice, sizeof (ATA_IDENTIFY_DATA));
   if (AtaDevice->IdentifyData == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
   }
+
+  //
+  // Initial Ata Task List
+  //
+  InitializeListHead (&AtaDevice->AtaTaskList);
 
   //
   // Try to identify the ATA device via the ATA pass through command. 
@@ -241,7 +281,7 @@ RegisterAtaDevice (
   if (EFI_ERROR (Status)) {
     goto Done;
   }
-  
+
   //
   // Build controller name for Component Name (2) protocol.
   //
@@ -281,12 +321,31 @@ RegisterAtaDevice (
                   AtaDevice->DevicePath,
                   &gEfiBlockIoProtocolGuid,
                   &AtaDevice->BlockIo,
+                  &gEfiBlockIo2ProtocolGuid,
+                  &AtaDevice->BlockIo2,
                   &gEfiDiskInfoProtocolGuid,
                   &AtaDevice->DiskInfo,
                   NULL
                   );
   if (EFI_ERROR (Status)) {
     goto Done;
+  }
+
+  //
+  // See if the ata device support trust computing feature or not.
+  // If yes, then install Storage Security Protocol at the ata device handle.
+  //
+  if ((AtaDevice->IdentifyData->trusted_computing_support & BIT0) != 0) {
+    DEBUG ((EFI_D_INFO, "Found TCG support in Port %x PortMultiplierPort %x\n", Port, PortMultiplierPort));
+    Status = gBS->InstallProtocolInterface (
+                    &AtaDevice->Handle,
+                    &gEfiStorageSecurityCommandProtocolGuid,
+                    EFI_NATIVE_INTERFACE,
+                    &AtaDevice->StorageSecurity
+                    );
+    if (EFI_ERROR (Status)) {
+      goto Done;
+    }
   }
 
   gBS->OpenProtocol (
@@ -332,10 +391,15 @@ UnregisterAtaDevice (
   IN  EFI_HANDLE                     Handle
   )
 {
-  EFI_STATUS                  Status;
-  EFI_BLOCK_IO_PROTOCOL       *BlockIo;
-  ATA_DEVICE                  *AtaDevice;
-  EFI_ATA_PASS_THRU_PROTOCOL  *AtaPassThru;
+  EFI_STATUS                               Status;
+  EFI_BLOCK_IO_PROTOCOL                    *BlockIo;
+  EFI_BLOCK_IO2_PROTOCOL                   *BlockIo2;
+  ATA_DEVICE                               *AtaDevice;
+  EFI_ATA_PASS_THRU_PROTOCOL               *AtaPassThru;
+  EFI_STORAGE_SECURITY_COMMAND_PROTOCOL    *StorageSecurity;
+
+  BlockIo2             =     NULL;
+  BlockIo              =     NULL;
 
   Status = gBS->OpenProtocol (
                   Handle,
@@ -346,10 +410,30 @@ UnregisterAtaDevice (
                   EFI_OPEN_PROTOCOL_GET_PROTOCOL
                   );
   if (EFI_ERROR (Status)) {
-    return Status;
+    //
+    // Locate BlockIo2 protocol
+    //
+    Status = gBS->OpenProtocol (
+                    Handle,
+                    &gEfiBlockIo2ProtocolGuid,
+                    (VOID **) &BlockIo2,
+                    This->DriverBindingHandle,
+                    Controller,
+                    EFI_OPEN_PROTOCOL_GET_PROTOCOL
+                    );
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
   }
 
-  AtaDevice = ATA_DEVICE_FROM_BLOCK_IO (BlockIo);
+  //
+  // Get AtaDevice data.
+  //
+  if (BlockIo != NULL) {
+    AtaDevice = ATA_DEVICE_FROM_BLOCK_IO (BlockIo);
+  } else {
+    AtaDevice = ATA_DEVICE_FROM_BLOCK_IO2 (BlockIo2);
+  } 
 
   //
   // Close the child handle
@@ -361,12 +445,18 @@ UnregisterAtaDevice (
          Handle
          );
 
+  //
+  // The Ata Bus driver installs the BlockIo and BlockIo2 in the DriverBindingStart().
+  // Here should uninstall both of them.
+  //
   Status = gBS->UninstallMultipleProtocolInterfaces (
                   Handle,
                   &gEfiDevicePathProtocolGuid,
                   AtaDevice->DevicePath,
                   &gEfiBlockIoProtocolGuid,
                   &AtaDevice->BlockIo,
+                  &gEfiBlockIo2ProtocolGuid,
+                  &AtaDevice->BlockIo2,
                   &gEfiDiskInfoProtocolGuid,
                   &AtaDevice->DiskInfo,
                   NULL
@@ -384,8 +474,38 @@ UnregisterAtaDevice (
     return Status;
   }
 
-  ReleaseAtaResources (AtaDevice);
+  //
+  // If Storage Security Command Protocol is installed, then uninstall this protocol.
+  //
+  Status = gBS->OpenProtocol (
+                  Handle,
+                  &gEfiStorageSecurityCommandProtocolGuid,
+                  (VOID **) &StorageSecurity,
+                  This->DriverBindingHandle,
+                  Controller,
+                  EFI_OPEN_PROTOCOL_GET_PROTOCOL
+                  );
 
+  if (!EFI_ERROR (Status)) {
+    Status = gBS->UninstallProtocolInterface (
+                    Handle,
+                    &gEfiStorageSecurityCommandProtocolGuid,
+                    &AtaDevice->StorageSecurity
+                    );
+    if (EFI_ERROR (Status)) {
+      gBS->OpenProtocol (
+        Controller,
+        &gEfiAtaPassThruProtocolGuid,
+        (VOID **) &AtaPassThru,
+        This->DriverBindingHandle,
+        Handle,
+        EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER
+        );
+      return Status;
+    }
+  }
+
+  ReleaseAtaResources (AtaDevice);
   return Status;
 }
 
@@ -446,7 +566,7 @@ AtaBusDriverBindingSupported (
   EFI_ATA_PASS_THRU_PROTOCOL        *AtaPassThru;
   UINT16                            Port;
   UINT16                            PortMultiplierPort;
- 
+
   //
   // Test EFI_ATA_PASS_THRU_PROTOCOL on controller handle.
   //
@@ -522,7 +642,7 @@ AtaBusDriverBindingSupported (
   @param[in]  RemainingDevicePath  A pointer to the remaining portion of a device path.  This 
                                    parameter is ignored by device drivers, and is optional for bus 
                                    drivers. For a bus driver, if this parameter is NULL, then handles 
-                                   for all the children of Controller are created by this driver.  
+                                   for all the children of Controller are created by this driver.
                                    If this parameter is not NULL and the first Device Path Node is 
                                    not the End of Device Path Node, then only the handle for the 
                                    child device specified by the first Device Path Node of 
@@ -589,7 +709,7 @@ AtaBusDriverBindingStart (
     }
 
     AtaBusDriverData->AtaPassThru = AtaPassThru;
-    AtaBusDriverData->Controller = Controller;
+    AtaBusDriverData->Controller  = Controller;
     AtaBusDriverData->ParentDevicePath = ParentDevicePath;
     AtaBusDriverData->DriverBindingHandle = This->DriverBindingHandle;
 
@@ -628,7 +748,7 @@ AtaBusDriverBindingStart (
         //
         break;
       }
-      
+
       PortMultiplierPort = 0xFFFF;
       while (TRUE) {
         Status = AtaPassThru->GetNextDevice (AtaPassThru, Port, &PortMultiplierPort);
@@ -649,7 +769,7 @@ AtaBusDriverBindingStart (
       Status = RegisterAtaDevice (AtaBusDriverData,Port, PortMultiplierPort);
     }
   }
-  
+
   return Status;
 
 ErrorExit:
@@ -789,7 +909,7 @@ AtaBlockIoReset (
 
   AtaDevice = ATA_DEVICE_FROM_BLOCK_IO (This);
 
-  Status = ResetAtaDevice (AtaDevice);  
+  Status = ResetAtaDevice (AtaDevice);
 
   if (EFI_ERROR (Status)) {
     Status = EFI_DEVICE_ERROR;
@@ -803,13 +923,18 @@ AtaBlockIoReset (
 /**
   Read/Write BufferSize bytes from Lba from/into Buffer.
 
-  @param  This       Indicates a pointer to the calling context.
-  @param  MediaId    The media ID that the read/write request is for.
-  @param  Lba        The starting logical block address to be read/written. The caller is
-                     responsible for reading/writing to only legitimate locations.
-  @param  BufferSize Size of Buffer, must be a multiple of device block size.
-  @param  Buffer     A pointer to the destination/source buffer for the data.
-  @param  IsWrite    Indicates whether it is a write operation.
+  @param[in]       This       Indicates a pointer to the calling context. Either be
+                              block I/O or block I/O2. 
+  @param[in]       MediaId    The media ID that the read/write request is for.
+  @param[in]       Lba        The starting logical block address to be read/written.
+                              The caller is responsible for reading/writing to only
+                              legitimate locations.
+  @param[in, out]  Token      A pointer to the token associated with the transaction.
+  @param[in]       BufferSize Size of Buffer, must be a multiple of device block size.
+  @param[out]      Buffer     A pointer to the destination/source buffer for the data.
+  @param[in]       IsBlockIo2 Indicate the calling is from BlockIO or BlockIO2. TURE is
+                              from BlockIO2, FALSE is for BlockIO.
+  @param[in]       IsWrite    Indicates whether it is a write operation.
 
   @retval EFI_SUCCESS           The data was read/written correctly to the device.
   @retval EFI_WRITE_PROTECTED   The device can not be read/written to.
@@ -823,12 +948,14 @@ AtaBlockIoReset (
 **/
 EFI_STATUS
 BlockIoReadWrite (
-  IN  EFI_BLOCK_IO_PROTOCOL   *This,
-  IN  UINT32                  MediaId,
-  IN  EFI_LBA                 Lba,
-  IN  UINTN                   BufferSize,
-  OUT VOID                    *Buffer,
-  IN  BOOLEAN                 IsWrite
+  IN     VOID                    *This,
+  IN     UINT32                  MediaId,
+  IN     EFI_LBA                 Lba,
+  IN OUT EFI_BLOCK_IO2_TOKEN     *Token,
+  IN     UINTN                   BufferSize,
+  OUT    VOID                    *Buffer,
+  IN     BOOLEAN                 IsBlockIo2,
+  IN     BOOLEAN                 IsWrite
   )
 {
   ATA_DEVICE                        *AtaDevice;
@@ -839,6 +966,18 @@ BlockIoReadWrite (
   UINTN                             NumberOfBlocks;
   UINTN                             IoAlign;
 
+  if (IsBlockIo2) {
+   Media     = ((EFI_BLOCK_IO2_PROTOCOL *) This)->Media;
+   AtaDevice = ATA_DEVICE_FROM_BLOCK_IO2 (This);
+  } else {
+   Media     = ((EFI_BLOCK_IO_PROTOCOL *) This)->Media;
+   AtaDevice = ATA_DEVICE_FROM_BLOCK_IO (This);
+  }
+
+  if (MediaId != Media->MediaId) {
+    return EFI_MEDIA_CHANGED;
+  }
+
   //
   // Check parameters.
   //
@@ -848,12 +987,7 @@ BlockIoReadWrite (
 
   if (BufferSize == 0) {
     return EFI_SUCCESS;
-  }
-
-  Media = This->Media;
-  if (MediaId != Media->MediaId) {
-    return EFI_MEDIA_CHANGED;
-  }
+  }  
 
   BlockSize = Media->BlockSize;
   if ((BufferSize % BlockSize) != 0) {
@@ -871,13 +1005,11 @@ BlockIoReadWrite (
   }
 
   OldTpl = gBS->RaiseTPL (TPL_CALLBACK);
-
-  AtaDevice = ATA_DEVICE_FROM_BLOCK_IO (This);
   
   //
   // Invoke low level AtaDevice Access Routine.
   //
-  Status = AccessAtaDevice (AtaDevice, Buffer, Lba, NumberOfBlocks, IsWrite);
+  Status = AccessAtaDevice (AtaDevice, Buffer, Lba, NumberOfBlocks, IsWrite, Token);
  
   gBS->RestoreTPL (OldTpl);
 
@@ -914,7 +1046,7 @@ AtaBlockIoReadBlocks (
   OUT VOID                    *Buffer
   )
 {
-  return BlockIoReadWrite (This, MediaId, Lba, BufferSize, Buffer, FALSE);
+  return BlockIoReadWrite ((VOID *) This, MediaId, Lba, NULL, BufferSize, Buffer, FALSE, FALSE);
 }
 
 
@@ -948,7 +1080,7 @@ AtaBlockIoWriteBlocks (
   IN  VOID                    *Buffer
   )
 {
-  return BlockIoReadWrite (This, MediaId, Lba, BufferSize, Buffer, TRUE);
+  return BlockIoReadWrite ((VOID *) This, MediaId, Lba, NULL, BufferSize, Buffer, FALSE, TRUE);
 }
 
 
@@ -974,7 +1106,147 @@ AtaBlockIoFlushBlocks (
   return EFI_SUCCESS;
 }
 
+/**
+  Reset the Block Device.
 
+  @param[in]  This                 Indicates a pointer to the calling context.
+  @param[in]  ExtendedVerification Driver may perform diagnostics on reset.
+
+  @retval EFI_SUCCESS          The device was reset.
+  @retval EFI_DEVICE_ERROR     The device is not functioning properly and could
+                               not be reset.
+
+**/
+EFI_STATUS
+EFIAPI
+AtaBlockIoResetEx (
+  IN  EFI_BLOCK_IO2_PROTOCOL  *This,
+  IN  BOOLEAN                 ExtendedVerification
+  )
+{
+  EFI_STATUS      Status;
+  ATA_DEVICE      *AtaDevice;
+  EFI_TPL         OldTpl;
+
+  OldTpl = gBS->RaiseTPL (TPL_CALLBACK);
+
+  AtaDevice = ATA_DEVICE_FROM_BLOCK_IO2 (This);
+
+  Status = ResetAtaDevice (AtaDevice);
+
+  if (EFI_ERROR (Status)) {
+    Status = EFI_DEVICE_ERROR;
+  }
+
+  gBS->RestoreTPL (OldTpl);
+  return Status;
+}
+
+/**
+  Read BufferSize bytes from Lba into Buffer.
+
+  @param[in]       This       Indicates a pointer to the calling context.
+  @param[in]       MediaId    Id of the media, changes every time the media is replaced.
+  @param[in]       Lba        The starting Logical Block Address to read from.
+  @param[in, out]  Token      A pointer to the token associated with the transaction.
+  @param[in]       BufferSize Size of Buffer, must be a multiple of device block size.
+  @param[out]      Buffer     A pointer to the destination buffer for the data. The caller is
+                              responsible for either having implicit or explicit ownership of the buffer.
+
+  @retval EFI_SUCCESS           The read request was queued if Event is not NULL.
+                                The data was read correctly from the device if
+                                the Event is NULL.
+  @retval EFI_DEVICE_ERROR      The device reported an error while performing
+                                the read.
+  @retval EFI_NO_MEDIA          There is no media in the device.
+  @retval EFI_MEDIA_CHANGED     The MediaId is not for the current media.
+  @retval EFI_BAD_BUFFER_SIZE   The BufferSize parameter is not a multiple of the
+                                intrinsic block size of the device.
+  @retval EFI_INVALID_PARAMETER The read request contains LBAs that are not valid, 
+                                or the buffer is not on proper alignment.
+  @retval EFI_OUT_OF_RESOURCES  The request could not be completed due to a lack
+                                of resources.
+
+**/
+EFI_STATUS
+EFIAPI
+AtaBlockIoReadBlocksEx (
+  IN  EFI_BLOCK_IO2_PROTOCOL  *This,
+  IN  UINT32                  MediaId,
+  IN  EFI_LBA                 Lba,
+  IN OUT EFI_BLOCK_IO2_TOKEN  *Token,
+  IN  UINTN                   BufferSize,
+  OUT VOID                    *Buffer
+  )
+{
+  return BlockIoReadWrite ((VOID *) This, MediaId, Lba, Token, BufferSize, Buffer, TRUE, FALSE);
+}
+
+
+/**
+  Write BufferSize bytes from Lba into Buffer.
+
+  @param[in]       This       Indicates a pointer to the calling context.
+  @param[in]       MediaId    The media ID that the write request is for.
+  @param[in]       Lba        The starting logical block address to be written. The
+                              caller is responsible for writing to only legitimate
+                              locations.
+  @param[in, out]  Token      A pointer to the token associated with the transaction.
+  @param[in]       BufferSize Size of Buffer, must be a multiple of device block size.
+  @param[in]       Buffer     A pointer to the source buffer for the data.
+
+  @retval EFI_SUCCESS           The data was written correctly to the device.
+  @retval EFI_WRITE_PROTECTED   The device can not be written to.
+  @retval EFI_DEVICE_ERROR      The device reported an error while performing the write.
+  @retval EFI_NO_MEDIA          There is no media in the device.
+  @retval EFI_MEDIA_CHNAGED     The MediaId does not matched the current device.
+  @retval EFI_BAD_BUFFER_SIZE   The Buffer was not a multiple of the block size of the device.
+  @retval EFI_INVALID_PARAMETER The write request contains LBAs that are not valid, 
+                                or the buffer is not on proper alignment.
+
+**/
+EFI_STATUS
+EFIAPI
+AtaBlockIoWriteBlocksEx (
+  IN  EFI_BLOCK_IO2_PROTOCOL  *This,
+  IN  UINT32                  MediaId,
+  IN  EFI_LBA                 Lba,
+  IN OUT EFI_BLOCK_IO2_TOKEN  *Token,
+  IN  UINTN                   BufferSize,
+  IN  VOID                    *Buffer
+  )
+{
+  return BlockIoReadWrite ((VOID *) This, MediaId, Lba, Token, BufferSize, Buffer, TRUE, TRUE);
+}
+
+
+/**
+  Flush the Block Device.
+
+  @param[in]       This       Indicates a pointer to the calling context.
+  @param[in, out]  Token      A pointer to the token associated with the transaction.
+
+  @retval EFI_SUCCESS       All outstanding data was written to the device
+  @retval EFI_DEVICE_ERROR  The device reported an error while writing back the data
+  @retval EFI_NO_MEDIA      There is no media in the device.
+
+**/
+EFI_STATUS
+EFIAPI
+AtaBlockIoFlushBlocksEx (
+  IN  EFI_BLOCK_IO2_PROTOCOL  *This,
+  IN OUT EFI_BLOCK_IO2_TOKEN  *Token
+  )
+{
+  //
+  // Signal event and return directly.
+  //
+  if (Token != NULL && Token->Event != NULL) {
+    Token->TransactionStatus = EFI_SUCCESS;
+    gBS->SignalEvent (Token->Event);
+  }
+  return EFI_SUCCESS;
+}
 /**
   Provides inquiry information for the controller type.
   
@@ -1035,11 +1307,11 @@ AtaDiskInfoIdentify (
   AtaDevice = ATA_DEVICE_FROM_DISK_INFO (This);
 
   Status = EFI_BUFFER_TOO_SMALL;
-  if (*IdentifyDataSize >= sizeof (*AtaDevice->IdentifyData)) {
+  if (*IdentifyDataSize >= sizeof (ATA_IDENTIFY_DATA)) {
     Status = EFI_SUCCESS;
-    CopyMem (IdentifyData, AtaDevice->IdentifyData, sizeof (*AtaDevice->IdentifyData));
+    CopyMem (IdentifyData, AtaDevice->IdentifyData, sizeof (ATA_IDENTIFY_DATA));
   }
-  *IdentifyDataSize = sizeof (*AtaDevice->IdentifyData);
+  *IdentifyDataSize = sizeof (ATA_IDENTIFY_DATA);
 
   return Status;
 }
@@ -1103,6 +1375,232 @@ AtaDiskInfoWhichIde (
   return EFI_SUCCESS;
 }
 
+/**
+  Send a security protocol command to a device that receives data and/or the result
+  of one or more commands sent by SendData.
+
+  The ReceiveData function sends a security protocol command to the given MediaId.
+  The security protocol command sent is defined by SecurityProtocolId and contains
+  the security protocol specific data SecurityProtocolSpecificData. The function
+  returns the data from the security protocol command in PayloadBuffer.
+
+  For devices supporting the SCSI command set, the security protocol command is sent
+  using the SECURITY PROTOCOL IN command defined in SPC-4.
+
+  For devices supporting the ATA command set, the security protocol command is sent
+  using one of the TRUSTED RECEIVE commands defined in ATA8-ACS if PayloadBufferSize
+  is non-zero.
+
+  If the PayloadBufferSize is zero, the security protocol command is sent using the
+  Trusted Non-Data command defined in ATA8-ACS.
+
+  If PayloadBufferSize is too small to store the available data from the security
+  protocol command, the function shall copy PayloadBufferSize bytes into the
+  PayloadBuffer and return EFI_WARN_BUFFER_TOO_SMALL.
+
+  If PayloadBuffer or PayloadTransferSize is NULL and PayloadBufferSize is non-zero,
+  the function shall return EFI_INVALID_PARAMETER.
+
+  If the given MediaId does not support security protocol commands, the function shall
+  return EFI_UNSUPPORTED. If there is no media in the device, the function returns
+  EFI_NO_MEDIA. If the MediaId is not the ID for the current media in the device,
+  the function returns EFI_MEDIA_CHANGED.
+
+  If the security protocol fails to complete within the Timeout period, the function
+  shall return EFI_TIMEOUT.
+
+  If the security protocol command completes without an error, the function shall
+  return EFI_SUCCESS. If the security protocol command completes with an error, the
+  function shall return EFI_DEVICE_ERROR.
+
+  @param  This                         Indicates a pointer to the calling context.
+  @param  MediaId                      ID of the medium to receive data from.
+  @param  Timeout                      The timeout, in 100ns units, to use for the execution
+                                       of the security protocol command. A Timeout value of 0
+                                       means that this function will wait indefinitely for the
+                                       security protocol command to execute. If Timeout is greater
+                                       than zero, then this function will return EFI_TIMEOUT
+                                       if the time required to execute the receive data command
+                                       is greater than Timeout.
+  @param  SecurityProtocolId           The value of the "Security Protocol" parameter of
+                                       the security protocol command to be sent.
+  @param  SecurityProtocolSpecificData The value of the "Security Protocol Specific" parameter
+                                       of the security protocol command to be sent.
+  @param  PayloadBufferSize            Size in bytes of the payload data buffer.
+  @param  PayloadBuffer                A pointer to a destination buffer to store the security
+                                       protocol command specific payload data for the security
+                                       protocol command. The caller is responsible for having
+                                       either implicit or explicit ownership of the buffer.
+  @param  PayloadTransferSize          A pointer to a buffer to store the size in bytes of the
+                                       data written to the payload data buffer.
+
+  @retval EFI_SUCCESS                  The security protocol command completed successfully.
+  @retval EFI_WARN_BUFFER_TOO_SMALL    The PayloadBufferSize was too small to store the available
+                                       data from the device. The PayloadBuffer contains the truncated data.
+  @retval EFI_UNSUPPORTED              The given MediaId does not support security protocol commands.
+  @retval EFI_DEVICE_ERROR             The security protocol command completed with an error.
+  @retval EFI_NO_MEDIA                 There is no media in the device.
+  @retval EFI_MEDIA_CHANGED            The MediaId is not for the current media.
+  @retval EFI_INVALID_PARAMETER        The PayloadBuffer or PayloadTransferSize is NULL and
+                                       PayloadBufferSize is non-zero.
+  @retval EFI_TIMEOUT                  A timeout occurred while waiting for the security
+                                       protocol command to execute.
+
+**/
+EFI_STATUS
+EFIAPI
+AtaStorageSecurityReceiveData (
+  IN EFI_STORAGE_SECURITY_COMMAND_PROTOCOL    *This,
+  IN UINT32                                   MediaId,
+  IN UINT64                                   Timeout,
+  IN UINT8                                    SecurityProtocolId,
+  IN UINT16                                   SecurityProtocolSpecificData,
+  IN UINTN                                    PayloadBufferSize,
+  OUT VOID                                    *PayloadBuffer,
+  OUT UINTN                                   *PayloadTransferSize
+  )
+{
+  EFI_STATUS                       Status;
+  ATA_DEVICE                       *Private;
+  EFI_TPL                          OldTpl;
+
+  DEBUG ((EFI_D_INFO, "EFI Storage Security Protocol - Read"));
+  if ((PayloadBuffer == NULL || PayloadTransferSize == NULL) && PayloadBufferSize != 0) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  Status  = EFI_SUCCESS;
+  Private = ATA_DEVICE_FROM_STORAGE_SECURITY (This);
+
+  if (MediaId != Private->BlockIo.Media->MediaId) {
+    return EFI_MEDIA_CHANGED;
+  }
+
+  if (!Private->BlockIo.Media->MediaPresent) {
+    return EFI_NO_MEDIA;
+  }
+
+  OldTpl = gBS->RaiseTPL (TPL_CALLBACK);
+
+  Status = TrustTransferAtaDevice (
+             Private,
+             PayloadBuffer,
+             SecurityProtocolId,
+             SecurityProtocolSpecificData,
+             PayloadBufferSize,
+             FALSE,
+             Timeout,
+             PayloadTransferSize
+             );
+
+  gBS->RestoreTPL (OldTpl);
+  return Status;
+}
+
+/**
+  Send a security protocol command to a device.
+
+  The SendData function sends a security protocol command containing the payload
+  PayloadBuffer to the given MediaId. The security protocol command sent is
+  defined by SecurityProtocolId and contains the security protocol specific data
+  SecurityProtocolSpecificData. If the underlying protocol command requires a
+  specific padding for the command payload, the SendData function shall add padding
+  bytes to the command payload to satisfy the padding requirements.
+
+  For devices supporting the SCSI command set, the security protocol command is sent
+  using the SECURITY PROTOCOL OUT command defined in SPC-4.
+
+  For devices supporting the ATA command set, the security protocol command is sent
+  using one of the TRUSTED SEND commands defined in ATA8-ACS if PayloadBufferSize
+  is non-zero. If the PayloadBufferSize is zero, the security protocol command is
+  sent using the Trusted Non-Data command defined in ATA8-ACS.
+
+  If PayloadBuffer is NULL and PayloadBufferSize is non-zero, the function shall
+  return EFI_INVALID_PARAMETER.
+
+  If the given MediaId does not support security protocol commands, the function
+  shall return EFI_UNSUPPORTED. If there is no media in the device, the function
+  returns EFI_NO_MEDIA. If the MediaId is not the ID for the current media in the
+  device, the function returns EFI_MEDIA_CHANGED.
+
+  If the security protocol fails to complete within the Timeout period, the function
+  shall return EFI_TIMEOUT.
+
+  If the security protocol command completes without an error, the function shall return
+  EFI_SUCCESS. If the security protocol command completes with an error, the function
+  shall return EFI_DEVICE_ERROR.
+
+  @param  This                         Indicates a pointer to the calling context.
+  @param  MediaId                      ID of the medium to receive data from.
+  @param  Timeout                      The timeout, in 100ns units, to use for the execution
+                                       of the security protocol command. A Timeout value of 0
+                                       means that this function will wait indefinitely for the
+                                       security protocol command to execute. If Timeout is greater
+                                       than zero, then this function will return EFI_TIMEOUT
+                                       if the time required to execute the receive data command
+                                       is greater than Timeout.
+  @param  SecurityProtocolId           The value of the "Security Protocol" parameter of
+                                       the security protocol command to be sent.
+  @param  SecurityProtocolSpecificData The value of the "Security Protocol Specific" parameter
+                                       of the security protocol command to be sent.
+  @param  PayloadBufferSize            Size in bytes of the payload data buffer.
+  @param  PayloadBuffer                A pointer to a destination buffer to store the security
+                                       protocol command specific payload data for the security
+                                       protocol command.
+
+  @retval EFI_SUCCESS                  The security protocol command completed successfully.
+  @retval EFI_UNSUPPORTED              The given MediaId does not support security protocol commands.
+  @retval EFI_DEVICE_ERROR             The security protocol command completed with an error.
+  @retval EFI_NO_MEDIA                 There is no media in the device.
+  @retval EFI_MEDIA_CHANGED            The MediaId is not for the current media.
+  @retval EFI_INVALID_PARAMETER        The PayloadBuffer is NULL and PayloadBufferSize is non-zero.
+  @retval EFI_TIMEOUT                  A timeout occurred while waiting for the security
+                                       protocol command to execute.
+
+**/
+EFI_STATUS
+EFIAPI
+AtaStorageSecuritySendData (
+  IN EFI_STORAGE_SECURITY_COMMAND_PROTOCOL    *This,
+  IN UINT32                                   MediaId,
+  IN UINT64                                   Timeout,
+  IN UINT8                                    SecurityProtocolId,
+  IN UINT16                                   SecurityProtocolSpecificData,
+  IN UINTN                                    PayloadBufferSize,
+  IN VOID                                     *PayloadBuffer
+  )
+{
+  EFI_STATUS                       Status;
+  ATA_DEVICE                       *Private;
+  EFI_TPL                          OldTpl;
+
+  DEBUG ((EFI_D_INFO, "EFI Storage Security Protocol - Send"));
+  if ((PayloadBuffer == NULL) && (PayloadBufferSize != 0)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  Status  = EFI_SUCCESS;
+  Private = ATA_DEVICE_FROM_STORAGE_SECURITY (This);
+
+  if (MediaId != Private->BlockIo.Media->MediaId) {
+    return EFI_MEDIA_CHANGED;
+  }
+
+  OldTpl = gBS->RaiseTPL (TPL_CALLBACK);
+  Status = TrustTransferAtaDevice (
+             Private,
+             PayloadBuffer,
+             SecurityProtocolId,
+             SecurityProtocolSpecificData,
+             PayloadBufferSize,
+             TRUE,
+             Timeout,
+             NULL
+             );
+
+  gBS->RestoreTPL (OldTpl);
+  return Status;
+}
 
 /**
   The user Entry Point for module AtaBus. The user code starts with this function.

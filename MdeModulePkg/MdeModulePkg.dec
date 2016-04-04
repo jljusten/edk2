@@ -72,7 +72,7 @@
 
   ##  @libraryclass    Provides a set of interfaces to abstract the policy of security measurement.
   #
-  SecurityManagementLib|MdeModulePkg/Include/Library/SecurityManagementLib.h
+  SecurityManagementLib|Include/Library/SecurityManagementLib.h
 
   ##  @libraryclass  OEM status code libary is used to report status code to OEM device.
   #
@@ -131,6 +131,9 @@
   #  Include/Guid/VariableFormat.h
   gEfiVariableGuid           = { 0xddcf3616, 0x3275, 0x4164, { 0x98, 0xb6, 0xfe, 0x85, 0x70, 0x7f, 0xfe, 0x7d }}
 
+  #  Include/Guid/VariableIndexTable.h
+  gEfiVariableIndexTableGuid  = { 0x8cfdb8c8, 0xd6b2, 0x40f3, { 0x8e, 0x97, 0x02, 0x30, 0x7c, 0xc9, 0x8b, 0x7c }}
+
   ## Guid is defined for SMM variable module to notify SMM variable wrapper module when variable write service was ready.
   #  Include/Guid/SmmVariableCommon.h
   gSmmVariableWriteGuid  = { 0x93ba1826, 0xdffb, 0x45dd, { 0x82, 0xa7, 0xe7, 0xdc, 0xaa, 0x3b, 0xbd, 0xf3 }}
@@ -166,6 +169,26 @@
   # Include/Guid/DebugMask.h  
   gEfiGenericVariableGuid = { 0x59d1c24f, 0x50f1, 0x401a, {0xb1, 0x01, 0xf3, 0x3e, 0x0d, 0xae, 0xd4, 0x43} }
   
+  ##  Event for the DXE Core to signal idle events
+  #  Include/Guid/EventIdle.h
+  gIdleLoopEventGuid  = { 0x3c8d294c, 0x5fc3, 0x4451, { 0xbb, 0x31, 0xc4, 0xc0, 0x32, 0x29, 0x5e, 0x6c } }
+
+[Ppis]
+  ## Include/Ppi/AtaController.h
+  gPeiAtaControllerPpiGuid       = { 0xa45e60d1, 0xc719, 0x44aa, { 0xb0, 0x7a, 0xaa, 0x77, 0x7f, 0x85, 0x90, 0x6d }}
+
+  ## Include/Ppi/UsbHostController.h
+  gPeiUsbHostControllerPpiGuid   = { 0x652B38A9, 0x77F4, 0x453F, { 0x89, 0xD5, 0xE7, 0xBD, 0xC3, 0x52, 0xFC, 0x53 }}
+
+  ## Include/Ppi/Usb2HostController.h
+  gPeiUsb2HostControllerPpiGuid  = { 0xfedd6305, 0xe2d7, 0x4ed5, { 0x9f, 0xaa, 0xda, 0x8, 0xe, 0x33, 0x6c, 0x22   }}
+
+  ## Include/Ppi/UsbController.h
+  gPeiUsbControllerPpiGuid       = { 0x3BC1F6DE, 0x693E, 0x4547, { 0xA3, 0x00, 0x21, 0x82, 0x3C, 0xA4, 0x20, 0xB2 }}
+
+  ## Include/Ppi/UsbIo.h
+  gPeiUsbIoPpiGuid               = { 0x7C29785C, 0x66B9, 0x49FC, { 0xB7, 0x97, 0x1C, 0xA5, 0x55, 0x0E, 0xF2, 0x83 }}
+
 [Protocols]
   ## Load File protocol provides capability to load and unload EFI image into memory and execute it.
   #  Include/Protocol/LoadPe32Image.h
@@ -382,7 +405,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingSize|0x0|UINT32|0x30000011
 
   ## FFS filename to find the ACPI tables
-  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiTableStorageFile|{ 0x25, 0x4e, 0x37, 0x7e, 0x01, 0x8e, 0xee, 0x4f, 0x87, 0xf2, 0x39, 0xc, 0x23, 0xc6, 0x6, 0xcd }|VOID*|16
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiTableStorageFile|{ 0x25, 0x4e, 0x37, 0x7e, 0x01, 0x8e, 0xee, 0x4f, 0x87, 0xf2, 0x39, 0xc, 0x23, 0xc6, 0x6, 0xcd }|VOID*|0x30000016
 
   ## Single root I/O virtualization virtual function memory BAR alignment
   #  BITN set indicates 2 of n+12 power
@@ -397,7 +420,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdLoadModuleAtFixAddressEnable|0|UINT64|0x30001015
   
   ## Smbios version
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion|0x0206|UINT16|0x00010055
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmbiosVersion|0x0207|UINT16|0x00010055
 
   ## TFTP BlockSize. Initial value 0 means using default block size which is (MTU-IP_HEADER-UDP_HEADER-TFTP_HEADER)
   #  to handle all link layers. If the value is non zero, the PCD value will be used as block size.
@@ -444,7 +467,9 @@
   #    BIT0       - FIFO Enable.  0 = Disable FIFOs.  1 = Enable FIFOs.
   #    BIT1       - Clear receive FIFO.  1 = Clear FIFO.
   #    BIT2       - Clear transmit FIFO.  1 = Clear FIFO.
-  #    BIT7..BIT3 - Reserved.  Must be 0.
+  #    BIT4..BIT3 - Reserved.  Must be 0.
+  #    BIT5       - Enable 64-byte FIFO.  0 = Disable 64-byte FIFO.  1 = Enable 64-byte FIFO
+  #    BIT7..BIT6 - Reserved.  Must be 0.
   #
   # Default is to enable and clear all FIFOs.
   #
@@ -461,14 +486,14 @@
   #
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxEfiSystemTablePointerAddress|0x0|UINT64|0x30001027
   
-[PcdsPatchableInModule,PcdsDynamic]
+[PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
   ## This PCD defines the Console output column and the default value is 25 according to UEFI spec
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow|25|UINT32|0x40000006
 
   ## This PCD defines the Console output row and the default value is 80 according to UEFI spec
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutColumn|80|UINT32|0x40000007
 
-[PcdsFixedAtBuild,PcdsDynamic]
+[PcdsFixedAtBuild, PcdsDynamic, PcdsDynamicEx]
   ## Base address of the NV variable range in flash device
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase|0x0|UINT32|0x30000001
 
@@ -504,7 +529,7 @@
   ## This PCD specifies whether the Multi Root I/O virtualization support.
   gEfiMdeModulePkgTokenSpaceGuid.PcdMrIovSupport|FALSE|BOOLEAN|0x10000046
 
-[PcdsFixedAtBuild,PcdsPatchableInModule,PcdsDynamic]
+[PcdsFixedAtBuild, PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
   ## This PCD defines the times to print hello world string.
   #  This PCD is a sample to explain FixedAtBuild UINT32 PCD usage.
   gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintTimes|1|UINT32|0x40000005
@@ -609,6 +634,9 @@
   #  0x60 (EFI_BACKGROUND_BROWN)
   #  0x70 (EFI_BACKGROUND_LIGHTGRAY)
   gEfiMdeModulePkgTokenSpaceGuid.PcdBrowserFieldBackgroundHighlightColor|0x00|UINT8|0x0001005A
+
+  ## Time in second to delay for SATA devices to spin-up for recovery.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSataSpinUpDelayInSecForRecoveryPath|15|UINT16|0x0001005B
 
 [PcdsPatchableInModule]
   ## Specify  memory size with page number for PEI code when 

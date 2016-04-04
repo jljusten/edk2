@@ -34,6 +34,8 @@ GCC_ASM_EXPORT (ArmDisableInstructionCache)
 GCC_ASM_EXPORT (ArmEnableSWPInstruction)
 GCC_ASM_EXPORT (ArmEnableBranchPrediction)
 GCC_ASM_EXPORT (ArmDisableBranchPrediction)
+GCC_ASM_EXPORT (ArmSetLowVectors)
+GCC_ASM_EXPORT (ArmSetHighVectors)
 GCC_ASM_EXPORT (ArmV7AllDataCachesOperation)
 GCC_ASM_EXPORT (ArmDataMemoryBarrier)
 GCC_ASM_EXPORT (ArmDataSyncronizationBarrier)
@@ -50,6 +52,8 @@ GCC_ASM_EXPORT (ArmReadAuxCr)
 GCC_ASM_EXPORT (ArmReadCbar)
 GCC_ASM_EXPORT (ArmInvalidateInstructionAndDataTlb)
 GCC_ASM_EXPORT (ArmReadMpidr)
+GCC_ASM_EXPORT (ArmReadTpidrurw)
+GCC_ASM_EXPORT (ArmWriteTpidrurw)
 
 .set DC_ON, (0x1<<2)
 .set IC_ON, (0x1<<12)
@@ -199,6 +203,19 @@ ASM_PFX(ArmDisableBranchPrediction):
   isb
   bx      LR
 
+ASM_PFX(ArmSetLowVectors):
+  mrc     p15, 0, r0, c1, c0, 0 @ Read SCTLR into R0 (Read control register configuration data)
+  bic     r0, r0, #0x00002000   @ clear V bit
+  mcr     p15, 0, r0, c1, c0, 0 @ Write R0 into SCTLR (Write control register configuration data)
+  isb
+  bx      LR
+
+ASM_PFX(ArmSetHighVectors):
+  mrc     p15, 0, r0, c1, c0, 0 @ Read SCTLR into R0 (Read control register configuration data)
+  orr     r0, r0, #0x00002000   @ clear V bit
+  mcr     p15, 0, r0, c1, c0, 0 @ Write R0 into SCTLR (Write control register configuration data)
+  isb
+  bx      LR
 
 ASM_PFX(ArmV7AllDataCachesOperation):
   stmfd SP!,{r4-r12, LR}
@@ -287,7 +304,13 @@ ASM_PFX(ArmWriteVMBar):
   bx      lr
 
 ASM_PFX(ArmWriteVBar):
+  # Set the Address of the Vector Table in the VBAR register
   mcr     p15, 0, r0, c12, c0, 0 
+  # Ensure the SCTLR.V bit is clear
+  mrc     p15, 0, r0, c1, c0, 0 @ Read SCTLR into R0 (Read control register configuration data)
+  bic     r0, r0, #0x00002000   @ clear V bit
+  mcr     p15, 0, r0, c1, c0, 0 @ Write R0 into SCTLR (Write control register configuration data)
+  isb
   bx      lr
 
 ASM_PFX(ArmWriteCPACR):
@@ -295,21 +318,24 @@ ASM_PFX(ArmWriteCPACR):
   bx      lr
 
 ASM_PFX(ArmEnableVFP):
-  // Enable VFP registers
+  # Read CPACR (Coprocessor Access Control Register)
   mrc     p15, 0, r0, c1, c0, 2
-  orr     r0, r0, #0x00f00000   // Enable VPF access (V* instructions)
+  # Enable VPF access (Full Access to CP10, CP11) (V* instructions)
+  orr     r0, r0, #0x00f00000
+  # Write back CPACR (Coprocessor Access Control Register)
   mcr     p15, 0, r0, c1, c0, 2
-  mov     r0, #0x40000000       // Set EN bit in FPEXC
-  mcr     p10,#0x7,r0,c8,c0,#0  // msr     FPEXC,r0 in ARM assembly
+  # Set EN bit in FPEXC. The Advanced SIMD and VFP extensions are enabled and operate normally.
+  mov     r0, #0x40000000
+  mcr     p10,#0x7,r0,c8,c0,#0
   bx      lr
 
 ASM_PFX(ArmCallWFI):
   wfi
   bx      lr
 
-//Note: Return 0 in Uniprocessor implementation
+#Note: Return 0 in Uniprocessor implementation
 ASM_PFX(ArmReadCbar):
-  mrc     p15, 4, r0, c15, c0, 0  //Read Configuration Base Address Register
+  mrc     p15, 4, r0, c15, c0, 0  @ Read Configuration Base Address Register
   bx      lr
 
 ASM_PFX(ArmInvalidateInstructionAndDataTlb):
@@ -319,6 +345,14 @@ ASM_PFX(ArmInvalidateInstructionAndDataTlb):
 
 ASM_PFX(ArmReadMpidr):
   mrc     p15, 0, r0, c0, c0, 5       @ read MPIDR
+  bx      lr
+  
+ASM_PFX(ArmReadTpidrurw):
+  mrc     p15, 0, r0, c13, c0, 2    @ read TPIDRURW
+  bx      lr
+
+ASM_PFX(ArmWriteTpidrurw):
+  mcr     p15, 0, r0, c13, c0, 2    @ write TPIDRURW
   bx      lr
 
 ASM_FUNCTION_REMOVE_IF_UNREFERENCED

@@ -185,6 +185,11 @@
   MdeModulePkg/Bus/Pci/IncompatiblePciDeviceSupportDxe/IncompatiblePciDeviceSupportDxe.inf
   MdeModulePkg/Bus/Pci/EhciDxe/EhciDxe.inf
   MdeModulePkg/Bus/Pci/UhciDxe/UhciDxe.inf
+  MdeModulePkg/Bus/Pci/UhciPei/UhciPei.inf
+  MdeModulePkg/Bus/Pci/EhciPei/EhciPei.inf
+  MdeModulePkg/Bus/Pci/IdeBusPei/IdeBusPei.inf
+  MdeModulePkg/Bus/Usb/UsbBusPei/UsbBusPei.inf
+  MdeModulePkg/Bus/Usb/UsbBotPei/UsbBotPei.inf
   MdeModulePkg/Bus/Ata/AtaBusDxe/AtaBusDxe.inf
   MdeModulePkg/Bus/Ata/AtaAtapiPassThru/AtaAtapiPassThru.inf
   MdeModulePkg/Bus/Scsi/ScsiBusDxe/ScsiBusDxe.inf
@@ -225,6 +230,7 @@
   MdeModulePkg/Library/RuntimeDxeReportStatusCodeLib/RuntimeDxeReportStatusCodeLib.inf
   MdeModulePkg/Library/BaseSerialPortLib16550/BaseSerialPortLib16550.inf
   MdeModulePkg/Library/BasePlatformHookLibNull/BasePlatformHookLibNull.inf
+  MdeModulePkg/Library/DxeDebugPrintErrorLevelLib/DxeDebugPrintErrorLevelLib.inf
 
   MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
   MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf

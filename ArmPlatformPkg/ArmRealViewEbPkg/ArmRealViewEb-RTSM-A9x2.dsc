@@ -36,6 +36,7 @@
   UncachedMemoryAllocationLib|ArmPkg/Library/UncachedMemoryAllocationLib/UncachedMemoryAllocationLib.inf
 #  UncachedMemoryAllocationLib|ArmPkg/Library/DebugUncachedMemoryAllocationLib/DebugUncachedMemoryAllocationLib.inf
 !endif
+  DebugPrintErrorLevelLib|MdePkg/Library/BaseDebugPrintErrorLevelLib/BaseDebugPrintErrorLevelLib.inf
 
   ArmLib|ArmPkg/Library/ArmLib/ArmV7/ArmV7MPCoreLib.inf
   ArmPlatformLib|ArmPlatformPkg/ArmRealViewEbPkg/Library/ArmRealViewEbLibRTSM/ArmRealViewEbLib.inf
@@ -43,6 +44,7 @@
   
   BaseLib|MdePkg/Library/BaseLib/BaseLib.inf
   BaseMemoryLib|ArmPkg/Library/BaseMemoryLibStm/BaseMemoryLibStm.inf
+  SynchronizationLib|MdePkg/Library/BaseSynchronizationLib/BaseSynchronizationLib.inf
 
   EfiResetSystemLib|ArmPlatformPkg/ArmRealViewEbPkg/Library/ResetSystemLib/ResetSystemLib.inf
   PerformanceLib|MdePkg/Library/BasePerformanceLibNull/BasePerformanceLibNull.inf
@@ -52,6 +54,9 @@
   EfiFileLib|EmbeddedPkg/Library/EfiFileLib/EfiFileLib.inf
   PeCoffGetEntryPointLib|MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
   
+  HiiLib|MdeModulePkg/Library/UefiHiiLib/UefiHiiLib.inf
+  UefiHiiServicesLib|MdeModulePkg/Library/UefiHiiServicesLib/UefiHiiServicesLib.inf
+
   #
   # Uncomment (and comment out the next line) For RealView Debugger. The Standard IO window 
   # in the debugger will show load and unload commands for symbols. You can cut and paste this
@@ -107,12 +112,19 @@
   GdbSerialLib|ArmPlatformPkg/ArmRealViewEbPkg/Library/GdbSerialLib/GdbSerialLib.inf
   DmaLib|ArmPkg/Library/ArmDmaLib/ArmDmaLib.inf
   
+  # ARM PL011 UART Driver
+  PL011UartLib|ArmPlatformPkg/Drivers/PL011Uart/PL011Uart.inf
+
   BdsLib|ArmPkg/Library/BdsLib/BdsLib.inf
+  
+  ArmPlatformSysConfigLib|ArmPlatformPkg/ArmRealViewEbPkg/Library/SysConfigArmRealViewEbLib/SysConfigArmRealViewEbLib.inf
+  NorFlashPlatformLib|ArmPlatformPkg/ArmRealViewEbPkg/Library/NorFlashArmRealViewEbLib/NorFlashArmRealViewEbLib.inf
+  LcdPlatformLib|ArmPlatformPkg/ArmRealViewEbPkg/Library/PL111LcdArmRealViewEbLib/PL111LcdArmRealViewEbLib.inf
 
 [LibraryClasses.common.SEC]
   ArmLib|ArmPkg/Library/ArmLib/ArmV7/ArmV7MPCoreLibSec.inf
-  PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   ArmPlatformLib|ArmPlatformPkg/ArmRealViewEbPkg/Library/ArmRealViewEbLibRTSM/ArmRealViewEbSecLib.inf
+  PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   
   # 1/123 faster than Stm or Vstm version
   BaseMemoryLib|MdePkg/Library/BaseMemoryLib/BaseMemoryLib.inf
@@ -139,8 +151,6 @@
   ReportStatusCodeLib|MdeModulePkg/Library/PeiReportStatusCodeLib/PeiReportStatusCodeLib.inf
   OemHookStatusCodeLib|MdeModulePkg/Library/OemHookStatusCodeLibNull/OemHookStatusCodeLibNull.inf
   PeCoffGetEntryPointLib|MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
-  DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
-  PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
   UefiDecompressLib|MdePkg/Library/BaseUefiDecompressLib/BaseUefiDecompressLib.inf
   ExtractGuidedSectionLib|MdePkg/Library/PeiExtractGuidedSectionLib/PeiExtractGuidedSectionLib.inf
 
@@ -157,8 +167,6 @@
   ReportStatusCodeLib|MdeModulePkg/Library/PeiReportStatusCodeLib/PeiReportStatusCodeLib.inf
   OemHookStatusCodeLib|MdeModulePkg/Library/OemHookStatusCodeLibNull/OemHookStatusCodeLibNull.inf
   PeCoffGetEntryPointLib|MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
-  DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
-  PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
   PeiResourcePublicationLib|MdePkg/Library/PeiResourcePublicationLib/PeiResourcePublicationLib.inf
   UefiDecompressLib|MdePkg/Library/BaseUefiDecompressLib/BaseUefiDecompressLib.inf
   ExtractGuidedSectionLib|MdePkg/Library/PeiExtractGuidedSectionLib/PeiExtractGuidedSectionLib.inf
@@ -171,9 +179,7 @@
   ExtractGuidedSectionLib|MdePkg/Library/DxeExtractGuidedSectionLib/DxeExtractGuidedSectionLib.inf
   UefiDecompressLib|MdePkg/Library/BaseUefiDecompressLib/BaseUefiDecompressLib.inf
   DxeServicesLib|MdePkg/Library/DxeServicesLib/DxeServicesLib.inf
-
   PerformanceLib|MdeModulePkg/Library/DxeCorePerformanceLib/DxeCorePerformanceLib.inf
-  
 
 [LibraryClasses.common.DXE_DRIVER]
   ReportStatusCodeLib|IntelFrameworkModulePkg/Library/DxeReportStatusCodeLibFramework/DxeReportStatusCodeLib.inf
@@ -181,7 +187,6 @@
   SecurityManagementLib|MdeModulePkg/Library/DxeSecurityManagementLib/DxeSecurityManagementLib.inf
   PerformanceLib|MdeModulePkg/Library/DxePerformanceLib/DxePerformanceLib.inf
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
-
 
 [LibraryClasses.common.UEFI_APPLICATION]
   ReportStatusCodeLib|IntelFrameworkModulePkg/Library/DxeReportStatusCodeLibFramework/DxeReportStatusCodeLib.inf
@@ -201,8 +206,6 @@
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
   ReportStatusCodeLib|IntelFrameworkModulePkg/Library/DxeReportStatusCodeLibFramework/DxeReportStatusCodeLib.inf
   CapsuleLib|MdeModulePkg/Library/DxeCapsuleLibNull/DxeCapsuleLibNull.inf
-#  PeCoffLib|MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
-  MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
 
 [LibraryClasses.ARM]
   #
@@ -254,8 +257,14 @@
   gArmTokenSpaceGuid.PcdSkipPeiCore|TRUE
 !endif
 
+  ## If TRUE, Graphics Output Protocol will be installed on virtual handle created by ConsplitterDxe.
+  #  It could be set FALSE to save size.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConOutGopSupport|TRUE
+
 [PcdsFixedAtBuild.common]
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedPrompt|"ArmRealViewEb %a"
+  gArmPlatformTokenSpaceGuid.PcdFirmwareVendor|"ARM RealView Emulation Board"
+  
+  gEmbeddedTokenSpaceGuid.PcdEmbeddedPrompt|"ArmRealViewEb-A9x2"
   gEmbeddedTokenSpaceGuid.PcdPrePiCpuMemorySize|32
   gEmbeddedTokenSpaceGuid.PcdPrePiCpuIoSize|0
   gEfiMdePkgTokenSpaceGuid.PcdMaximumUnicodeStringLength|1000000
@@ -294,6 +303,16 @@
   gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x8000000F
 
   gEfiMdePkgTokenSpaceGuid.PcdReportStatusCodePropertyMask|0x07
+  
+  #
+  # NV Storage PCDs. Use base of 0x43F00000 for NOR0
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase|0x43F00000
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize|0x000C0000
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingBase|0x43FC0000
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingSize|0x00020000
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareBase|0x43FE0000
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareSize|0x00020000
 
   gEmbeddedTokenSpaceGuid.PcdEmbeddedAutomaticBootCommand|""
   gEmbeddedTokenSpaceGuid.PcdEmbeddedDefaultTextColor|0x07
@@ -324,13 +343,17 @@
   # Stacks for MPCores in Normal World
   gArmPlatformTokenSpaceGuid.PcdCPUCoresNonSecStackBase|0x48000000	# Top of SEC Stack for Normal World
   gArmPlatformTokenSpaceGuid.PcdCPUCoresNonSecStackSize|0x20000	# Stack for each of the 4 CPU cores
-  gArmPlatformTokenSpaceGuid.PcdPeiServicePtrAddr|0x48020004        # Pei Services Ptr just above stack
 
-  # Non Sec UEFI Firmware: These two PCDs must match PcdFlashFvMainBase/PcdFlashFvMainSize
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedFdBaseAddress|0x40050000       # Must be equal to gEmbeddedTokenSpaceGuid.PcdFlashFvMainBase
-  gEmbeddedTokenSpaceGuid.PcdEmbeddedFdSize|0x00100000              # Must be equal to gEmbeddedTokenSpaceGuid.PcdFlashFvMainSize
+  # System Memory (256MB) 
+  gArmTokenSpaceGuid.PcdSystemMemoryBase|0x70000000
+  gArmTokenSpaceGuid.PcdSystemMemorySize|0x10000000
   
+  # Size of the region used by UEFI in permanent memory (Reserved 64MB)
+  gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize|0x04000000
+  
+  gEmbeddedTokenSpaceGuid.PcdEmbeddedPerformanceCounterFrequencyInHz|1000000
   gEmbeddedTokenSpaceGuid.PcdTimerPeriod|100000        # expressed in 100ns units, 100,000 x 100 ns = 10,000,000 ns = 10 ms
+  gArmPlatformTokenSpaceGuid.PcdSP804Timer0InterruptNum|33
   
   #
   # ARM Pcds
@@ -343,19 +366,30 @@
   gArmRealViewEbPkgTokenSpaceGuid.PcdGdbUartBase|0x1000a000
   
   #
+  # ARM PL011 - Serial Terminal
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterBase|0x10009000
+  
+  #
   # ARM PL390 General Interrupt Controller
   #
-  gArmTokenSpaceGuid.PcdGicDistributorBase|0x10041000
-  gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase|0x10040000
+  gArmTokenSpaceGuid.PcdGicDistributorBase|0x1F001000
+  gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase|0x1F000100
+  gArmTokenSpaceGuid.PcdGicNumInterrupts|96
 
   #
   # ARM OS Loader
   #
-  # Versatile Express machine type (ARM VERSATILE EXPRESS = 2272) required for ARM Linux: 
-  gArmTokenSpaceGuid.PcdArmMachineType|2272
-  gArmTokenSpaceGuid.PcdLinuxKernelDP|L"VenHw(02118005-9DA7-443a-92D5-781F022AEDBB)/MemoryMapped(0,0x46000000,0x46400000)"
-  gArmTokenSpaceGuid.PcdLinuxAtag|"rdinit=/bin/ash debug earlyprintk console=ttyAMA0,38400 mem=1G"
-  gArmTokenSpaceGuid.PcdFdtDP|L""
+  gArmTokenSpaceGuid.PcdArmMachineType|827
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootDescription|L"SemiHosting"
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootDevicePath|L"VenHw(C5B9C74A-6D72-4719-99AB-C59F199091EB)/zImage"
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|"rdinit=/bin/ash debug earlyprintk console=ttyAMA0,38400 mem=128M"
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootType|1
+  
+  # Use the Serial console (ConIn & ConOut) and the Graphic driver (ConOut)
+  gArmPlatformTokenSpaceGuid.PcdDefaultConOutPaths|L"VenHw(D3987D4B-971A-435F-8CAF-4967EB627241)/Uart(115200,8,N,1)/VenPcAnsi();VenHw(407B4008-BF5B-11DF-9547-CF16E0D72085)"
+  gArmPlatformTokenSpaceGuid.PcdDefaultConInPaths|L"VenHw(D3987D4B-971A-435F-8CAF-4967EB627241)/Uart(115200,8,N,1)/VenPcAnsi()"
+  gArmPlatformTokenSpaceGuid.PcdPlatformBootTimeOut|10
   
   #
   # ARM L2x0 PCDs
@@ -419,18 +453,27 @@
   MdeModulePkg/Universal/SecurityStubDxe/SecurityStubDxe.inf
   MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
   MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
-  MdeModulePkg/Universal/Variable/EmuRuntimeDxe/EmuVariableRuntimeDxe.inf
+  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
+  MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
   EmbeddedPkg/EmbeddedMonotonicCounter/EmbeddedMonotonicCounter.inf  
   
   EmbeddedPkg/ResetRuntimeDxe/ResetRuntimeDxe.inf
   EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
   EmbeddedPkg/MetronomeDxe/MetronomeDxe.inf
-  
-  EmbeddedPkg/SimpleTextInOutSerial/SimpleTextInOutSerial.inf
 
-  ArmPlatformPkg/ArmRealViewEbPkg/FvbDxe/FvbDxe.inf
-  ArmPlatformPkg/ArmRealViewEbPkg/InterruptDxe/InterruptDxe.inf
+  MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
+  MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+  ArmPlatformPkg/Drivers/LcdGraphicsOutputDxe/PL111LcdGraphicsOutputDxe.inf
+
+  MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
+  MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+  MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
+  EmbeddedPkg/SerialDxe/SerialDxe.inf
+
+  ArmPkg/Drivers/PL390Gic/PL390GicDxe.inf
   ArmPlatformPkg/Drivers/SP804TimerDxe/SP804TimerDxe.inf
+  
+  ArmPlatformPkg/Drivers/NorFlashDxe/NorFlashDxe.inf
 
   #
   # Semi-hosting filesystem

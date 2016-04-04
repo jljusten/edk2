@@ -3,7 +3,7 @@
   Implement ReadOnly Variable Services required by PEIM and install
   PEI ReadOnly Varaiable2 PPI. These services operates the non volatile storage space.
 
-Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -32,8 +32,32 @@ EFI_PEI_PPI_DESCRIPTOR     mPpiListVariable = {
   &mVariablePpi
 };
 
-EFI_GUID mEfiVariableIndexTableGuid = EFI_VARIABLE_INDEX_TABLE_GUID;
 
+/**
+  Check if it runs in Recovery mode.
+  
+  @param  PeiServices  General purpose services available to every PEIM.
+
+  @retval TRUE         It's in Recovery mode.
+  @retval FALSE        It's not in Recovery mode.
+
+**/
+BOOLEAN
+IsInRecoveryMode (
+  IN CONST EFI_PEI_SERVICES          **PeiServices
+  )
+{
+  EFI_STATUS              Status;
+  EFI_BOOT_MODE           BootMode;
+
+  Status = (*PeiServices)->GetBootMode (PeiServices, &BootMode);
+  ASSERT_EFI_ERROR (Status);
+  
+  if (BootMode == BOOT_IN_RECOVERY_MODE) {
+    return TRUE;
+  }
+  return FALSE;
+}
 
 /**
   Provide the functionality of the variable services.
@@ -53,23 +77,7 @@ PeimInitializeVariableServices (
   IN CONST EFI_PEI_SERVICES          **PeiServices
   )
 {
-  EFI_BOOT_MODE BootMode;
-  EFI_STATUS    Status;
-
-  //
-  // Check if this is recovery boot path. If no, publish the variable access capability
-  // to other modules. If yes, the content of variable area is not reliable. Therefore,
-  // in this case we should not provide variable service to other pei modules. 
-  // 
-  Status = (*PeiServices)->GetBootMode (PeiServices, &BootMode);
-  ASSERT_EFI_ERROR (Status);
-  
-  if (BootMode == BOOT_IN_RECOVERY_MODE) {
-    return EFI_UNSUPPORTED;
-  }
-
   return PeiServicesInstallPpi (&mPpiListVariable);
-
 }
 
 /**
@@ -383,7 +391,7 @@ FindVariable (
   MaxIndex = 0;
   StopRecord = FALSE;
 
-  GuidHob = GetFirstGuidHob (&mEfiVariableIndexTableGuid);
+  GuidHob = GetFirstGuidHob (&gEfiVariableIndexTableGuid);
   if (GuidHob == NULL) {
     //
     // If it's the first time to access variable region in flash, create a guid hob to record
@@ -391,7 +399,7 @@ FindVariable (
     // Note that as the resource of PEI phase is limited, only store the number of 
     // VARIABLE_INDEX_TABLE_VOLUME of VAR_ADDED type variables to reduce access time.
     //
-    IndexTable = BuildGuidHob (&mEfiVariableIndexTableGuid, sizeof (VARIABLE_INDEX_TABLE));
+    IndexTable = BuildGuidHob (&gEfiVariableIndexTableGuid, sizeof (VARIABLE_INDEX_TABLE));
     IndexTable->Length      = 0;
     IndexTable->StartPtr    = NULL;
     IndexTable->EndPtr      = NULL;
@@ -551,6 +559,16 @@ PeiGetVariable (
   if (VariableName == NULL || VariableGuid == NULL || DataSize == NULL) {
     return EFI_INVALID_PARAMETER;
   }
+
+  //
+  // Check if this is recovery boot path.
+  // If yes, the content of variable area is not reliable. Therefore we directly
+  // return EFI_NOT_FOUND. 
+  // 
+  if (IsInRecoveryMode(PeiServices)) {
+    return EFI_NOT_FOUND;
+  }
+
   //
   // Find existing variable
   //
@@ -627,6 +645,15 @@ PeiGetNextVariableName (
   PeiServices = GetPeiServicesTablePointer ();
   if (VariableName == NULL || VariableGuid == NULL || VariableNameSize == NULL) {
     return EFI_INVALID_PARAMETER;
+  }
+
+  //
+  // Check if this is recovery boot path.
+  // If yes, the content of variable area is not reliable. Therefore we directly
+  // return EFI_NOT_FOUND. 
+  //   
+  if (IsInRecoveryMode(PeiServices)) {
+    return EFI_NOT_FOUND;
   }
 
   Status = FindVariable (PeiServices, VariableName, VariableGuid, &Variable);

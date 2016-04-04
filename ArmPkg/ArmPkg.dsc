@@ -47,6 +47,7 @@
   BaseMemoryLib|MdePkg/Library/BaseMemoryLib/BaseMemoryLib.inf
   CacheMaintenanceLib|ArmPkg/Library/ArmCacheMaintenanceLib/ArmCacheMaintenanceLib.inf
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
+  HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
   MemoryAllocationLib|MdePkg/Library/UefiMemoryAllocationLib/UefiMemoryAllocationLib.inf
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   PrintLib|MdePkg/Library/BasePrintLib/BasePrintLib.inf
@@ -70,7 +71,7 @@
   ArmTrustZoneLib|ArmPkg/Library/ArmTrustZoneLib/ArmTrustZoneLib.inf
   ArmMPCoreMailBoxLib|ArmPkg/Library/ArmMPCoreMailBoxLib/ArmMPCoreMailBoxLib.inf
   
-  PL354SmcSecLib|ArmPkg/Drivers/PL35xSmc/PL354SmcSec.inf
+  PL354SmcLib|ArmPkg/Drivers/PL35xSmc/PL354SmcSec.inf
   PL341DmcLib|ArmPkg/Drivers/PL34xDmc/PL341Dmc.inf
   PL301AxiLib|ArmPkg/Drivers/PL301Axi/PL301Axi.inf
   PL310L2CacheSecLib|ArmPkg/Drivers/PL310L2Cache/PL310L2CacheSec.inf
@@ -133,6 +134,5 @@
   ArmPkg/Drivers/PL390Gic/PL390GicNonSec.inf
   ArmPkg/Drivers/PL390Gic/PL390GicSec.inf
   ArmPkg/Filesystem/SemihostFs/SemihostFs.inf
-  ArmPkg/Universal/MmcDxe/MmcDxe.inf
 
 

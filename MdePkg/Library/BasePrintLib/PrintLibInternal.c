@@ -1,7 +1,7 @@
 /** @file
   Print Library internal worker functions.
 
-  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -323,6 +323,9 @@ BasePrintLibSPrintMarker (
   UINTN             Digits;
   UINTN             Radix;
   RETURN_STATUS     Status;
+  UINT32            GuidData1;
+  UINT16            GuidData2;
+  UINT16            GuidData3;
 
   if (BufferSize == 0) {
     return 0;
@@ -631,14 +634,17 @@ BasePrintLibSPrintMarker (
         if (TmpGuid == NULL) {
           ArgumentString = "<null guid>";
         } else {
+          GuidData1 = ReadUnaligned32 (&(TmpGuid->Data1));
+          GuidData2 = ReadUnaligned16 (&(TmpGuid->Data2));
+          GuidData3 = ReadUnaligned16 (&(TmpGuid->Data3));
           BasePrintLibSPrint (
             ValueBuffer,
             MAXIMUM_VALUE_CHARACTERS, 
             0,
             "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-            TmpGuid->Data1,
-            TmpGuid->Data2,
-            TmpGuid->Data3,
+            GuidData1,
+            GuidData2,
+            GuidData3,
             TmpGuid->Data4[0],
             TmpGuid->Data4[1],
             TmpGuid->Data4[2],

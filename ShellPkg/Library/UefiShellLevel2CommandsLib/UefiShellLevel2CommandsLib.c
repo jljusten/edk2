@@ -16,12 +16,13 @@
   rm,
   reset,
   set,
-  timezone*
+  timezone*,
+  vol
 
   * functions are non-interactive only
 
 
-  Copyright (c) 2009 - 2010, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -40,6 +41,11 @@ CONST EFI_GUID gShellLevel2HiiGuid = \
     0xf95a7ccc, 0x4c55, 0x4426, { 0xa7, 0xb4, 0xdc, 0x89, 0x61, 0x95, 0xb, 0xae } \
   };
 
+/**
+  Get the filename to get help text from if not using HII.
+
+  @retval The filename.
+**/
 CONST CHAR16*
 EFIAPI
 ShellCommandGetManFileNameLevel2 (
@@ -71,7 +77,7 @@ ShellLevel2CommandsLibConstructor (
   // if shell level is less than 2 do nothing
   //
   if (PcdGet8(PcdShellSupportLevel) < 2) {
-    return (EFI_UNSUPPORTED);
+    return (EFI_SUCCESS);
   }
 
   gShellLevel2HiiHandle = HiiAddPackages (&gShellLevel2HiiGuid, gImageHandle, UefiShellLevel2CommandsLibStrings, NULL);
@@ -94,6 +100,7 @@ ShellLevel2CommandsLibConstructor (
   ShellCommandRegisterCommandName(L"set",      ShellCommandRunSet     , ShellCommandGetManFileNameLevel2, 2, L"", TRUE, gShellLevel2HiiHandle, STRING_TOKEN(STR_GET_HELP_SET)    );
   ShellCommandRegisterCommandName(L"ls",       ShellCommandRunLs      , ShellCommandGetManFileNameLevel2, 2, L"", TRUE, gShellLevel2HiiHandle, STRING_TOKEN(STR_GET_HELP_LS)     );
   ShellCommandRegisterCommandName(L"rm",       ShellCommandRunRm      , ShellCommandGetManFileNameLevel2, 2, L"", TRUE, gShellLevel2HiiHandle, STRING_TOKEN(STR_GET_HELP_RM)     );
+  ShellCommandRegisterCommandName(L"vol",      ShellCommandRunVol     , ShellCommandGetManFileNameLevel2, 2, L"", TRUE, gShellLevel2HiiHandle, STRING_TOKEN(STR_GET_HELP_VOL)    );
 
   //
   // support for permenant (built in) aliases
@@ -104,6 +111,7 @@ ShellLevel2CommandsLibConstructor (
   ShellCommandRegisterAlias(L"mkdir", L"md");
   ShellCommandRegisterAlias(L"cd ..", L"cd..");
   ShellCommandRegisterAlias(L"cd \\", L"cd\\");
+  ShellCommandRegisterAlias(L"ren", L"mv");
   //
   // These are installed in level 2 or 3...
   //
@@ -144,54 +152,6 @@ ShellLevel2CommandsLibDestructor (
     HiiRemovePackages(gShellLevel2HiiHandle);
   }
   return (EFI_SUCCESS);
-}
-
-/**
-  Function to clean up paths.  Removes the following items:
-    single periods in the path (no need for the current directory tag)
-    double periods in the path and removes a single parent directory.
-
-  This will be done inline and the resultant string may be be 'too big'.
-
-  @param[in] PathToReturn  The pointer to the string containing the path.
-
-  @return PathToReturn is always returned.
-**/
-CHAR16*
-EFIAPI
-CleanPath(
-  IN CHAR16 *PathToReturn
-  )
-{
-  CHAR16  *TempString;
-  UINTN   TempSize;
-  if (PathToReturn==NULL) {
-    return(NULL);
-  }
-  //
-  // Fix up the directory name
-  //
-  while ((TempString = StrStr(PathToReturn, L"\\..\\")) != NULL) {
-    *TempString = CHAR_NULL;
-    TempString  += 4;
-    ChopLastSlash(PathToReturn);
-    TempSize = StrSize(TempString);
-    CopyMem(PathToReturn+StrLen(PathToReturn), TempString, TempSize);
-  }
-  if ((TempString = StrStr(PathToReturn, L"\\..")) != NULL && *(TempString + 3) == CHAR_NULL) {
-    *TempString = CHAR_NULL;
-    ChopLastSlash(PathToReturn);
-  }
-  while ((TempString = StrStr(PathToReturn, L"\\.\\")) != NULL) {
-    *TempString = CHAR_NULL;
-    TempString  += 2;
-    TempSize = StrSize(TempString);
-    CopyMem(PathToReturn+StrLen(PathToReturn), TempString, TempSize);
-  }
-  if ((TempString = StrStr(PathToReturn, L"\\.")) != NULL && *(TempString + 2) == CHAR_NULL) {
-    *TempString = CHAR_NULL;
-  }
-  return (PathToReturn);
 }
 
 /**
@@ -295,13 +255,29 @@ VerifyIntermediateDirectories (
   return (Status);
 }
 
-// be lazy and borrow from baselib.
+/**
+  Be lazy and borrow from baselib.
+
+  @param[in] Char   The character to convert to upper case.
+
+  @return Char as an upper case character.
+**/
 CHAR16
 EFIAPI
 InternalCharToUpper (
   IN CONST CHAR16                    Char
   );
 
+/**
+  String comparison without regard to case for a limited number of characters.
+
+  @param[in] Source   The first item to compare.
+  @param[in] Target   The second item to compare.
+  @param[in] Count    How many characters to compare.
+
+  @retval NULL Source and Target are identical strings without regard to case.
+  @return The location in Source where there is a difference.
+**/
 CONST CHAR16*
 EFIAPI
 StrniCmp(
