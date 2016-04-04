@@ -1,8 +1,8 @@
 /** @file
   Provides interface to advanced shell functionality for parsing both handle and protocol database.
 
-  Copyright (c) 2013 Hewlett-Packard Development Company, L.P.
-  Copyright (c) 2010 - 2013, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2013 - 2014, Hewlett-Packard Development Company, L.P.
+  Copyright (c) 2010 - 2014, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -18,6 +18,70 @@
 
 EFI_HANDLE mHandleParsingHiiHandle;
 HANDLE_INDEX_LIST mHandleList = {{{NULL,NULL},0,0},0};
+
+/**
+  Function to translate the EFI_MEMORY_TYPE into a string.
+
+  @param[in] Memory     The memory type.
+
+  @retval               A string representation of the type allocated from BS Pool.
+**/
+CHAR16*
+EFIAPI
+ConvertMemoryType (
+  IN CONST EFI_MEMORY_TYPE Memory
+  )
+{
+  CHAR16 *RetVal;
+  RetVal = NULL;
+
+  switch (Memory) {
+  case EfiReservedMemoryType:       StrnCatGrow(&RetVal, NULL, L"EfiReservedMemoryType", 0);        break;
+  case EfiLoaderCode:               StrnCatGrow(&RetVal, NULL, L"EfiLoaderCode", 0);                break;
+  case EfiLoaderData:               StrnCatGrow(&RetVal, NULL, L"EfiLoaderData", 0);                break;
+  case EfiBootServicesCode:         StrnCatGrow(&RetVal, NULL, L"EfiBootServicesCode", 0);          break;
+  case EfiBootServicesData:         StrnCatGrow(&RetVal, NULL, L"EfiBootServicesData", 0);          break;
+  case EfiRuntimeServicesCode:      StrnCatGrow(&RetVal, NULL, L"EfiRuntimeServicesCode", 0);       break;
+  case EfiRuntimeServicesData:      StrnCatGrow(&RetVal, NULL, L"EfiRuntimeServicesData", 0);       break;
+  case EfiConventionalMemory:       StrnCatGrow(&RetVal, NULL, L"EfiConventionalMemory", 0);        break;
+  case EfiUnusableMemory:           StrnCatGrow(&RetVal, NULL, L"EfiUnusableMemory", 0);            break;
+  case EfiACPIReclaimMemory:        StrnCatGrow(&RetVal, NULL, L"EfiACPIReclaimMemory", 0);         break;
+  case EfiACPIMemoryNVS:            StrnCatGrow(&RetVal, NULL, L"EfiACPIMemoryNVS", 0);             break;
+  case EfiMemoryMappedIO:           StrnCatGrow(&RetVal, NULL, L"EfiMemoryMappedIO", 0);            break;
+  case EfiMemoryMappedIOPortSpace:  StrnCatGrow(&RetVal, NULL, L"EfiMemoryMappedIOPortSpace", 0);   break;
+  case EfiPalCode:                  StrnCatGrow(&RetVal, NULL, L"EfiPalCode", 0);                   break;
+  case EfiMaxMemoryType:            StrnCatGrow(&RetVal, NULL, L"EfiMaxMemoryType", 0);             break;
+  default: ASSERT(FALSE);
+  }
+  return (RetVal);
+}
+
+/**
+  Function to translate the EFI_GRAPHICS_PIXEL_FORMAT into a string.
+
+  @param[in] Fmt     The format type.
+
+  @retval               A string representation of the type allocated from BS Pool.
+**/
+CHAR16*
+EFIAPI
+ConvertPixelFormat (
+  IN CONST EFI_GRAPHICS_PIXEL_FORMAT Fmt
+  )
+{
+  CHAR16 *RetVal;
+  RetVal = NULL;
+
+  switch (Fmt) {
+  case PixelRedGreenBlueReserved8BitPerColor: StrnCatGrow(&RetVal, NULL, L"PixelRedGreenBlueReserved8BitPerColor", 0);  break;
+  case PixelBlueGreenRedReserved8BitPerColor: StrnCatGrow(&RetVal, NULL, L"PixelBlueGreenRedReserved8BitPerColor", 0);  break;
+  case PixelBitMask:                          StrnCatGrow(&RetVal, NULL, L"PixelBitMask", 0);                           break;
+  case PixelBltOnly:                          StrnCatGrow(&RetVal, NULL, L"PixelBltOnly", 0);                           break;
+  case PixelFormatMax:                        StrnCatGrow(&RetVal, NULL, L"PixelFormatMax", 0);                         break;
+  default: ASSERT(FALSE);
+  }
+  return (RetVal);
+}
 
 /**
   Constructor for the library.
@@ -63,7 +127,16 @@ HandleParsingLibDestructor (
   return (EFI_SUCCESS);
 }
 
-/*
+/**
+  Function to dump information about LoadedImage.
+
+  This will allocate the return buffer from boot services pool.
+
+  @param[in] TheHandle      The handle that has LoadedImage installed.
+  @param[in] Verbose        TRUE for additional information, FALSE otherwise.
+
+  @retval A poitner to a string containing the information.
+**/
 CHAR16*
 EFIAPI
 LoadedImageProtocolDumpInformation(
@@ -71,96 +144,140 @@ LoadedImageProtocolDumpInformation(
   IN CONST BOOLEAN    Verbose
   )
 {
-  EFI_LOADED_IMAGE_PROTOCOL         *Image;
+  EFI_LOADED_IMAGE_PROTOCOL         *LoadedImage;
   EFI_STATUS                        Status;
-  EFI_DEVICE_PATH_PROTOCOL          *DevPath;
-  EFI_DEVICE_PATH_PROTOCOL          *DevPathNode;
-  VOID                              *Buffer;
-  UINTN                             BufferSize;
-  UINT32                            AuthenticationStatus;
-  EFI_GUID                          *NameGuid;
-  EFI_FIRMWARE_VOLUME_PROTOCOL      *FV;
-  EFI_FIRMWARE_VOLUME2_PROTOCOL     *FV2;
+  CHAR16                            *RetVal;
+  CHAR16                            *Temp;
+  CHAR16                            *CodeType;
+  CHAR16                            *DataType;
 
-  FV          = NULL;
-  FV2         = NULL;
-  Buffer      = NULL;
-  BufferSize  = 0;
+  if (!Verbose) {
+    return (CatSPrint(NULL, L"LoadedImage"));
+  }
 
-  Status      = HandleProtocol (
-    TheHandle,
-    &gEfiLoadedImageProtocolGuid,
-    &Image);
-  ASSERT_EFI_ERROR(Status);
-
-  DevPath     = UnpackDevicePath (Image->FilePath);
-
-  if (DevPath == NULL) {
+  Temp = HiiGetString(mHandleParsingHiiHandle, STRING_TOKEN(STR_LI_DUMP_MAIN), NULL);
+  RetVal = AllocateZeroPool (PcdGet16 (PcdShellPrintBufferSize));
+  if (Temp == NULL || RetVal == NULL) {
+    SHELL_FREE_NON_NULL(Temp);
+    SHELL_FREE_NON_NULL(RetVal);
     return NULL;
   }
 
-  DevPathNode = DevPath;
+  Status = gBS->OpenProtocol (
+                TheHandle,
+                &gEfiLoadedImageProtocolGuid,
+                (VOID**)&LoadedImage,
+                gImageHandle,
+                NULL,
+                EFI_OPEN_PROTOCOL_GET_PROTOCOL
+               );
 
-  while (!IsDevicePathEnd (DevPathNode)) {
-    //
-    // Find the Fv File path
-    //
-    NameGuid = GetNameGuidFromFwVolDevicePathNode ((MEDIA_FW_VOL_FILEPATH_DEVICE_PATH *)DevPathNode);
-    if (NameGuid != NULL) {
-      Status = BS->HandleProtocol (
-                    Image->DeviceHandle,
-                    &gEfiFirmwareVolumeProtocolGuid,
-                    &FV
-                   );
-      if (!EFI_ERROR (Status)) {
-        Status = FV->ReadSection (
-                      FV,
-                      NameGuid,
-                      EFI_SECTION_USER_INTERFACE,
-                      0,
-                      &Buffer,
-                      &BufferSize,
-                      &AuthenticationStatus
-                     );
-        if (!EFI_ERROR (Status)) {
-          break;
-        }
-
-        Buffer = NULL;
-      } else {
-        Status = BS->HandleProtocol (
-                      Image->DeviceHandle,
-                      &gEfiFirmwareVolume2ProtocolGuid,
-                      &FV2
-                     );
-        if (!EFI_ERROR (Status)) {
-          Status = FV2->ReadSection (
-                          FV2,
-                          NameGuid,
-                          EFI_SECTION_USER_INTERFACE,
-                          0,
-                          &Buffer,
-                          &BufferSize,
-                          &AuthenticationStatus
-                         );
-          if (!EFI_ERROR (Status)) {
-            break;
-          }
-
-          Buffer = NULL;
-        }
-      }
-    }
-    //
-    // Next device path node
-    //
-    DevPathNode = NextDevicePathNode (DevPathNode);
+  if (EFI_ERROR (Status)) {
+    SHELL_FREE_NON_NULL (Temp);
+    SHELL_FREE_NON_NULL (RetVal);
+    return NULL;
   }
 
-  FreePool (DevPath);
-  return Buffer;
+  DataType = ConvertMemoryType(LoadedImage->ImageDataType);
+  CodeType = ConvertMemoryType(LoadedImage->ImageCodeType);
+
+  RetVal = CatSPrint(RetVal,
+                      Temp,
+                      LoadedImage->Revision,
+                      LoadedImage->ParentHandle,
+                      LoadedImage->SystemTable,
+                      LoadedImage->DeviceHandle,
+                      LoadedImage->FilePath,
+                      LoadedImage->LoadOptionsSize,
+                      LoadedImage->LoadOptions,
+                      LoadedImage->ImageBase,
+                      LoadedImage->ImageSize,
+                      CodeType,
+                      DataType,
+                      LoadedImage->Unload);
+
+  
+  SHELL_FREE_NON_NULL(Temp);
+  SHELL_FREE_NON_NULL(CodeType);
+  SHELL_FREE_NON_NULL(DataType);
+
+  return RetVal;
 }
-*/
+
+/**
+  Function to dump information about GOP.
+
+  This will allocate the return buffer from boot services pool.
+
+  @param[in] TheHandle      The handle that has LoadedImage installed.
+  @param[in] Verbose        TRUE for additional information, FALSE otherwise.
+
+  @retval A poitner to a string containing the information.
+**/
+CHAR16*
+EFIAPI
+GraphicsOutputProtocolDumpInformation(
+  IN CONST EFI_HANDLE TheHandle,
+  IN CONST BOOLEAN    Verbose
+  )
+{
+  EFI_GRAPHICS_OUTPUT_PROTOCOL      *GraphicsOutput;
+  EFI_STATUS                        Status;
+  CHAR16                            *RetVal;
+  CHAR16                            *Temp;
+  CHAR16                            *Fmt;
+
+  if (!Verbose) {
+    return (CatSPrint(NULL, L"GraphicsOutput"));
+  }
+
+  Temp = HiiGetString(mHandleParsingHiiHandle, STRING_TOKEN(STR_GOP_DUMP_MAIN), NULL);
+  RetVal = AllocateZeroPool (PcdGet16 (PcdShellPrintBufferSize));
+  if (Temp == NULL || RetVal == NULL) {
+    SHELL_FREE_NON_NULL(Temp);
+    SHELL_FREE_NON_NULL(RetVal);
+    return NULL;
+  }
+
+  Status = gBS->OpenProtocol (
+                TheHandle,
+                &gEfiGraphicsOutputProtocolGuid,
+                (VOID**)&GraphicsOutput,
+                gImageHandle,
+                NULL,
+                EFI_OPEN_PROTOCOL_GET_PROTOCOL
+               );
+
+  if (EFI_ERROR (Status)) {
+    SHELL_FREE_NON_NULL (Temp);
+    SHELL_FREE_NON_NULL (RetVal);
+    return NULL;
+  }
+
+  Fmt = ConvertPixelFormat(GraphicsOutput->Mode->Info->PixelFormat);
+
+  RetVal = CatSPrint(RetVal,
+                      Temp,
+                      GraphicsOutput->Mode->MaxMode,
+                      GraphicsOutput->Mode->Mode,
+                      GraphicsOutput->Mode->FrameBufferBase,
+                      (UINT64)GraphicsOutput->Mode->FrameBufferSize,
+                      (UINT64)GraphicsOutput->Mode->SizeOfInfo,
+                      GraphicsOutput->Mode->Info->Version,
+                      GraphicsOutput->Mode->Info->HorizontalResolution,
+                      GraphicsOutput->Mode->Info->VerticalResolution,
+                      Fmt,
+                      GraphicsOutput->Mode->Info->PixelsPerScanLine,
+                      GraphicsOutput->Mode->Info->PixelFormat!=PixelBitMask?0:GraphicsOutput->Mode->Info->PixelInformation.RedMask,
+                      GraphicsOutput->Mode->Info->PixelFormat!=PixelBitMask?0:GraphicsOutput->Mode->Info->PixelInformation.GreenMask,
+                      GraphicsOutput->Mode->Info->PixelFormat!=PixelBitMask?0:GraphicsOutput->Mode->Info->PixelInformation.BlueMask
+                      );
+  
+  SHELL_FREE_NON_NULL(Temp);
+  SHELL_FREE_NON_NULL(Fmt);
+
+  return RetVal;
+}
 
 /**
   Function to dump information about PciRootBridgeIo.
@@ -463,7 +580,7 @@ STATIC CONST GUID_INFO_BLOCK mGuidStringListNT[] = {
 };
 
 STATIC CONST GUID_INFO_BLOCK mGuidStringList[] = {
-  {STRING_TOKEN(STR_LOADED_IMAGE),          &gEfiLoadedImageProtocolGuid,                     NULL},
+  {STRING_TOKEN(STR_LOADED_IMAGE),          &gEfiLoadedImageProtocolGuid,                     LoadedImageProtocolDumpInformation},
   {STRING_TOKEN(STR_DEVICE_PATH),           &gEfiDevicePathProtocolGuid,                      DevicePathProtocolDumpInformation},
   {STRING_TOKEN(STR_IMAGE_PATH),            &gEfiLoadedImageDevicePathProtocolGuid,           DevicePathProtocolDumpInformation},
   {STRING_TOKEN(STR_DEVICE_PATH_UTIL),      &gEfiDevicePathUtilitiesProtocolGuid,             NULL},
@@ -488,7 +605,7 @@ STATIC CONST GUID_INFO_BLOCK mGuidStringList[] = {
   {STRING_TOKEN(STR_SIM_POINTER),           &gEfiSimplePointerProtocolGuid,                   NULL},
   {STRING_TOKEN(STR_ABS_POINTER),           &gEfiAbsolutePointerProtocolGuid,                 NULL},
   {STRING_TOKEN(STR_SERIAL_IO),             &gEfiSerialIoProtocolGuid,                        NULL},
-  {STRING_TOKEN(STR_GRAPHICS_OUTPUT),       &gEfiGraphicsOutputProtocolGuid,                  NULL},
+  {STRING_TOKEN(STR_GRAPHICS_OUTPUT),       &gEfiGraphicsOutputProtocolGuid,                  GraphicsOutputProtocolDumpInformation},
   {STRING_TOKEN(STR_EDID_DISCOVERED),       &gEfiEdidDiscoveredProtocolGuid,                  NULL},
   {STRING_TOKEN(STR_EDID_ACTIVE),           &gEfiEdidActiveProtocolGuid,                      NULL},
   {STRING_TOKEN(STR_EDID_OVERRIDE),         &gEfiEdidOverrideProtocolGuid,                    NULL},
@@ -625,6 +742,7 @@ STATIC CONST GUID_INFO_BLOCK mGuidStringList[] = {
 // UEFI 2.4
 //
   {STRING_TOKEN(STR_DISK_IO2),              &gEfiDiskIo2ProtocolGuid,                         NULL},
+  {STRING_TOKEN(STR_ADAPTER_INFO),          &gEfiAdapterInformationProtocolGuid,              NULL},
 
 //
 // PI Spec ones

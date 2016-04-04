@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2011-2013, ARM Limited. All rights reserved.
+#  Copyright (c) 2011-2014, ARM Limited. All rights reserved.
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -26,6 +26,11 @@
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
   FLASH_DEFINITION               = ArmPlatformPkg/ArmVExpressPkg/ArmVExpress-FVP-AArch64.fdf
+
+!ifndef ARM_FVP_RUN_NORFLASH
+  DEFINE EDK2_SKIP_PEICORE=1
+!endif
+
 
 !include ArmPlatformPkg/ArmVExpressPkg/ArmVExpress.dsc.inc
 
@@ -75,8 +80,14 @@
   gArmPlatformTokenSpaceGuid.PcdFirmwareVendor|"ARM Fixed Virtual Platform"
   gEmbeddedTokenSpaceGuid.PcdEmbeddedPrompt|"ARM-FVP"
 
+!ifndef ARM_FOUNDATION_FVP
   # Up to 8 cores on Base models. This works fine if model happens to have less.
   gArmPlatformTokenSpaceGuid.PcdCoreCount|8
+  gArmPlatformTokenSpaceGuid.PcdClusterCount|2
+!else
+  # Up to 4 cores on Foundation models. This works fine if model happens to have less.
+  gArmPlatformTokenSpaceGuid.PcdCoreCount|4
+!endif
 
   #
   # NV Storage PCDs. Use base of 0x0C000000 for NOR1
@@ -101,11 +112,11 @@
   # Non-Trusted SRAM
   gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|0x2E000000
   gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize|0x4000
-  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecondaryStackSize|0x800
+  gArmPlatformTokenSpaceGuid.PcdCPUCoreSecondaryStackSize|0x1000
 
-  # System Memory (2GB)
+  # System Memory (2GB - 16MB of Trusted DRAM at the top of the 32bit address space)
   gArmTokenSpaceGuid.PcdSystemMemoryBase|0x80000000
-  gArmTokenSpaceGuid.PcdSystemMemorySize|0x80000000
+  gArmTokenSpaceGuid.PcdSystemMemorySize|0x7F000000
 
   # Size of the region used by UEFI in permanent memory (Reserved 64MB)
   gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize|0x04000000
@@ -169,10 +180,10 @@
   gArmPlatformTokenSpaceGuid.PcdDefaultConInPaths|L"VenHw(D3987D4B-971A-435F-8CAF-4967EB627241)/Uart(38400,8,N,1)/VenPcAnsi()"
 
   #
-  # ARM Architectual Timer Frequency
+  # ARM Architectural Timer Frequency
   #
-  # Set tick frequency value to 120Mhz
-  gArmTokenSpaceGuid.PcdArmArchTimerFreqInHz|120000000
+  # Set tick frequency value to 100Mhz
+  gArmTokenSpaceGuid.PcdArmArchTimerFreqInHz|100000000
 
 ################################################################################
 #
@@ -193,6 +204,16 @@
   #
   # PEI Phase modules
   #
+!ifdef EDK2_SKIP_PEICORE
+  # UEFI is placed in RAM by bootloader
+  ArmPlatformPkg/PrePi/PeiMPCore.inf {
+    <LibraryClasses>
+      ArmLib|ArmPkg/Library/ArmLib/AArch64/AArch64Lib.inf
+      ArmPlatformLib|ArmPlatformPkg/ArmVExpressPkg/Library/ArmVExpressLibRTSM/ArmVExpressLib.inf
+      ArmPlatformGlobalVariableLib|ArmPlatformPkg/Library/ArmPlatformGlobalVariableLib/PrePi/PrePiArmPlatformGlobalVariableLib.inf
+  }
+!else
+  # UEFI lives in FLASH and copies itself to RAM
   ArmPlatformPkg/PrePeiCore/PrePeiCoreMPCore.inf {
     <LibraryClasses>
       ArmPlatformGlobalVariableLib|ArmPlatformPkg/Library/ArmPlatformGlobalVariableLib/Pei/PeiArmPlatformGlobalVariableLib.inf
@@ -212,6 +233,7 @@
     <LibraryClasses>
       NULL|IntelFrameworkModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
   }
+!endif
 
   #
   # DXE
@@ -268,7 +290,7 @@
   #
   # Platform Driver
   #
-  ArmPlatformPkg/ArmVExpressPkg/ArmFvpDxe/ArmFvpDxe.inf
+  ArmPlatformPkg/ArmVExpressPkg/ArmVExpressDxe/ArmFvpDxe.inf
   OvmfPkg/VirtioBlkDxe/VirtioBlk.inf
 
   #

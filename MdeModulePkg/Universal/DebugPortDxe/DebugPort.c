@@ -65,7 +65,7 @@ GetDebugPortVariable (
   EFI_DEVICE_PATH_PROTOCOL  *DebugPortVariable;
   EFI_DEVICE_PATH_PROTOCOL  *DevicePath;
 
-  GetVariable2 (EFI_DEBUGPORT_VARIABLE_NAME, &gEfiDebugPortVariableGuid, &DebugPortVariable, &DataSize);
+  GetVariable2 (EFI_DEBUGPORT_VARIABLE_NAME, &gEfiDebugPortVariableGuid, (VOID **) &DebugPortVariable, &DataSize);
   if (DebugPortVariable == NULL) {
     return NULL;
   }
@@ -142,7 +142,7 @@ InitializeDebugPortDriver (
              );
   ASSERT_EFI_ERROR (Status);
 
-  return EFI_SUCCESS;
+  return Status;
 }
 
 /**
@@ -241,14 +241,14 @@ DebugPortSupported (
     return Status;
   }
 
-  gBS->CloseProtocol (
-        ControllerHandle,
-        &gEfiSerialIoProtocolGuid,
-        This->DriverBindingHandle,
-        ControllerHandle
-        );
+  Status = gBS->CloseProtocol (
+                  ControllerHandle,
+                  &gEfiSerialIoProtocolGuid,
+                  This->DriverBindingHandle,
+                  ControllerHandle
+                  );
 
-  return EFI_SUCCESS;
+  return Status;
 }
 
 /**

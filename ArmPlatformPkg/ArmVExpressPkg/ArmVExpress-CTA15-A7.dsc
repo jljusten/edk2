@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2012, ARM Limited. All rights reserved.
+#  Copyright (c) 2012-2014, ARM Limited. All rights reserved.
 #  
 #  This program and the accompanying materials                          
 #  are licensed and made available under the terms and conditions of the BSD License         
@@ -56,9 +56,9 @@
   GCC:*_*_ARM_PP_FLAGS  = -DARM_BIGLITTLE_TC2=1
 !endif
 
-  RVCT:*_*_ARM_PLATFORM_FLAGS == --cpu Cortex-A15 --fpu=softvfp -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include/Platform/CTA15-A7
+  RVCT:*_*_ARM_PLATFORM_FLAGS == --cpu Cortex-A15 -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include/Platform/CTA15-A7
 
-  GCC:*_*_ARM_PLATFORM_FLAGS == -mcpu=cortex-a15 -mfpu=neon -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include/Platform/CTA15-A7
+  GCC:*_*_ARM_PLATFORM_FLAGS == -mcpu=cortex-a15 -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include/Platform/CTA15-A7
   
   XCODE:*_*_ARM_PLATFORM_FLAGS = -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include/Platform/CTA15-A7
 
@@ -167,7 +167,13 @@
   #
   gArmTokenSpaceGuid.PcdGicDistributorBase|0x2C001000
   gArmTokenSpaceGuid.PcdGicInterruptInterfaceBase|0x2C002000
-  
+
+  # ISP1761 USB OTG Controller
+  gEmbeddedTokenSpaceGuid.PcdIsp1761BaseAddress|0x1B000000
+
+  # Ethernet (SMSC LAN9118)
+  gEmbeddedTokenSpaceGuid.PcdLan9118DxeBaseAddress|0x1A000000
+
   #
   # ARM OS Loader
   #
@@ -248,7 +254,12 @@
   ArmPlatformPkg/Drivers/LcdGraphicsOutputDxe/HdLcdGraphicsOutputDxe.inf
   ArmPkg/Drivers/TimerDxe/TimerDxe.inf
   ArmPlatformPkg/Drivers/SP805WatchdogDxe/SP805WatchdogDxe.inf
- 
+
+  #
+  # Platform
+  #
+  ArmPlatformPkg/ArmVExpressPkg/ArmVExpressDxe/ArmHwDxe.inf
+
   #
   # Filesystems
   #
@@ -261,7 +272,10 @@
   #
   EmbeddedPkg/Universal/MmcDxe/MmcDxe.inf
   ArmPlatformPkg/Drivers/PL180MciDxe/PL180MciDxe.inf
-  
+
+  # SMSC LAN 9118
+  EmbeddedPkg/Drivers/Lan9118Dxe/Lan9118Dxe.inf
+
   #
   # FAT filesystem + GPT/MBR partitioning
   #

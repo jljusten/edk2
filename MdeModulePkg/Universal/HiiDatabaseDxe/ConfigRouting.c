@@ -1,7 +1,7 @@
 /** @file
 Implementation of interfaces function for EFI_HII_CONFIG_ROUTING_PROTOCOL.
 
-Copyright (c) 2007 - 2013, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -3083,7 +3083,7 @@ GetFullStringFromHiiFormPackages (
 
   Status = GetFormPackageData (DataBaseRecord, &HiiFormPackage, &PackageSize);
   if (EFI_ERROR (Status)) {
-    return Status;
+    goto Done;
   }
 
   //
@@ -4480,12 +4480,11 @@ HiiBlockToConfig (
   }
   if (*StringPtr == 0) {
     *Progress = StringPtr;
-    Status = EFI_SUCCESS;
 
     AppendToMultiString(Config, ConfigRequest);
     HiiToLower (*Config);
 
-    goto Exit;
+    return EFI_SUCCESS;
   }
   //
   // Skip '&'

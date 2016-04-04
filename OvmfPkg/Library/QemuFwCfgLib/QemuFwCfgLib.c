@@ -278,7 +278,7 @@ QemuFwCfgFindFile (
     UINT32 FileSize;
     UINT16 FileSelect;
     UINT16 FileReserved;
-    CHAR8  FName[56];
+    CHAR8  FName[QEMU_FW_CFG_FNAME_SIZE];
 
     FileSize     = QemuFwCfgRead32 ();
     FileSelect   = QemuFwCfgRead16 ();
@@ -293,4 +293,32 @@ QemuFwCfgFindFile (
   }
 
   return RETURN_NOT_FOUND;
+}
+
+
+/**
+  Determine if S3 support is explicitly enabled.
+
+  @retval  TRUE   if S3 support is explicitly enabled.
+           FALSE  otherwise. This includes unavailability of the firmware
+                  configuration interface.
+**/
+BOOLEAN
+EFIAPI
+QemuFwCfgS3Enabled (
+  VOID
+  )
+{
+  RETURN_STATUS        Status;
+  FIRMWARE_CONFIG_ITEM FwCfgItem;
+  UINTN                FwCfgSize;
+  UINT8                SystemStates[6];
+
+  Status = QemuFwCfgFindFile ("etc/system-states", &FwCfgItem, &FwCfgSize);
+  if (Status != RETURN_SUCCESS || FwCfgSize != sizeof SystemStates) {
+    return FALSE;
+  }
+  QemuFwCfgSelectItem (FwCfgItem);
+  QemuFwCfgReadBytes (sizeof SystemStates, SystemStates);
+  return (BOOLEAN) (SystemStates[3] & BIT7);
 }

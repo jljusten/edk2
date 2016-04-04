@@ -2,7 +2,7 @@
   Support a Semi Host file system over a debuggers JTAG
 
   Copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
-  Portions copyright (c) 2011 - 2013, ARM Ltd. All rights reserved.<BR>
+  Portions copyright (c) 2011 - 2014, ARM Ltd. All rights reserved.<BR>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -66,10 +66,10 @@ typedef struct {
 
 SEMIHOST_DEVICE_PATH gDevicePath = {
   {
-    { HARDWARE_DEVICE_PATH, HW_VENDOR_DP, sizeof (VENDOR_DEVICE_PATH), 0 },
+    { HARDWARE_DEVICE_PATH, HW_VENDOR_DP, { sizeof (VENDOR_DEVICE_PATH), 0 } },
     EFI_CALLER_ID_GUID
   },
-  { END_DEVICE_PATH_TYPE, END_ENTIRE_DEVICE_PATH_SUBTYPE, sizeof (EFI_DEVICE_PATH_PROTOCOL), 0}
+  { END_DEVICE_PATH_TYPE, END_ENTIRE_DEVICE_PATH_SUBTYPE, { sizeof (EFI_DEVICE_PATH_PROTOCOL), 0 } }
 };
 
 typedef struct {
@@ -544,7 +544,9 @@ FileSetInfo (
   if (CompareGuid (InformationType, &gEfiFileSystemInfoGuid) != 0) {
     //Status = SetFilesystemInfo (Fcb, BufferSize, Buffer);
   } else if (CompareGuid (InformationType, &gEfiFileInfoGuid) != 0) {
-    //Status = SetFileInfo (Fcb, BufferSize, Buffer);
+    // Semihosting does not give us access to setting file info, but
+    // if we fail here we cannot create new files.
+    Status = EFI_SUCCESS;
   } else if (CompareGuid (InformationType, &gEfiFileSystemVolumeLabelInfoIdGuid) != 0) {
     if (StrSize (Buffer) > 0) {
       FreePool (mSemihostFsLabel);

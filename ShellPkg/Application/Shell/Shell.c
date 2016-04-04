@@ -2,7 +2,7 @@
   This is THE shell (application)
 
   Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
-  Copyright (c) 2013, Hewlett-Packard Development Company, L.P.
+  (C) Copyright 2013-2014, Hewlett-Packard Development Company, L.P.
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -244,6 +244,9 @@ UefiMain (
   UINTN                           Size;
   EFI_HANDLE                      ConInHandle;
   EFI_SIMPLE_TEXT_INPUT_PROTOCOL  *OldConIn;
+  UINTN                           ExitDataSize;
+  CHAR16                          *ExitData;
+  SHELL_STATUS                    ExitStatus;
 
   if (PcdGet8(PcdShellSupportLevel) > 3) {
     return (EFI_UNSUPPORTED);
@@ -297,6 +300,12 @@ UefiMain (
   // install our console logger.  This will keep a log of the output for back-browsing
   //
   Status = ConsoleLoggerInstall(ShellInfoObject.LogScreenCount, &ShellInfoObject.ConsoleInfo);
+  if(EFI_ERROR (Status)) {
+    ExitStatus = (SHELL_STATUS) (Status & (~MAX_BIT));
+  } else {
+    ExitStatus = SHELL_SUCCESS;
+  }
+	
   if (!EFI_ERROR(Status)) {
     //
     // Enable the cursor to be visible
@@ -319,7 +328,8 @@ UefiMain (
         ///@todo Add our package into Framework HII
       }
       if (ShellInfoObject.HiiHandle == NULL) {
-        return (EFI_NOT_STARTED);
+        Status = EFI_NOT_STARTED;
+        goto FreeResources;
       }
     }
 
@@ -349,7 +359,10 @@ UefiMain (
     //
     // Check the command line
     //
-    Status = ProcessCommandLine();
+    Status = ProcessCommandLine ();
+    if (EFI_ERROR (Status)) {
+      goto FreeResources;
+    }
 
     //
     // If shell support level is >= 1 create the mappings and paths
@@ -406,7 +419,7 @@ UefiMain (
     // Display the mapping
     //
     if (PcdGet8(PcdShellSupportLevel) >= 2 && !ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoMap) {
-      Status = RunCommand(L"map");
+      Status = RunCommand(L"map", NULL);
       ASSERT_EFI_ERROR(Status);
     }
 
@@ -472,7 +485,11 @@ UefiMain (
         //
         // process the startup script or launch the called app.
         //
-        Status = DoStartupScript(ShellInfoObject.ImageDevPath, ShellInfoObject.FileDevPath);
+        Status = DoStartupScript(
+                  ShellInfoObject.ImageDevPath,
+                  ShellInfoObject.FileDevPath,
+                  &ExitStatus
+                  );
       }
 
       if (!ShellInfoObject.ShellInitSettings.BitUnion.Bits.Exit && !ShellCommandGetExit() && (PcdGet8(PcdShellSupportLevel) >= 3 || PcdGetBool(PcdShellForceConsole)) && !EFI_ERROR(Status) && !ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleIn) {
@@ -505,6 +522,7 @@ UefiMain (
           //
           Status = DoShellPrompt();
         } while (!ShellCommandGetExit());
+        ExitStatus = (SHELL_STATUS) ShellCommandGetExitCode();
       }
       if (OldConIn != NULL && ConInHandle != NULL) {
         CloseSimpleTextInOnFile (gST->ConIn);
@@ -514,6 +532,7 @@ UefiMain (
     }
   }
 
+FreeResources:
   //
   // uninstall protocols / free memory / etc...
   //
@@ -575,10 +594,33 @@ UefiMain (
     DEBUG_CODE(ShellInfoObject.ConsoleInfo = NULL;);
   }
 
-  if (ShellCommandGetExit()) {
-    return ((EFI_STATUS)ShellCommandGetExitCode());
+  if (!EFI_ERROR (Status)) {
+    // If the command exited with an error, we pass this error out in the ExitData
+    // so that it can be retrieved by the EfiShellExecute function (which may
+    // start the shell with gBS->StartImage)
+    if (ExitStatus != SHELL_SUCCESS) {
+      // Allocate a buffer for exit data to pass to gBS->Exit().
+      // This buffer will contain the empty string immediately followed by
+      // the shell's exit status. (The empty string is required by the UEFI spec)
+      ExitDataSize = (sizeof (CHAR16) + sizeof (SHELL_STATUS));
+      ExitData = AllocatePool (ExitDataSize);
+      if (ExitData == NULL) {
+        return EFI_OUT_OF_RESOURCES;
+      }
+      ExitData[0] = '\0';
+      // Use CopyMem to avoid alignment faults
+      CopyMem ((ExitData + 1), &ExitStatus, sizeof (ExitStatus));
+
+      gBS->Exit (ImageHandle, EFI_ABORTED, ExitDataSize, ExitData);
+
+      ASSERT (FALSE);
+      return EFI_SUCCESS;
+    } else {
+      return EFI_SUCCESS;
+    }
+  } else {
+    return Status;
   }
-  return (Status);
 }
 
 /**
@@ -726,20 +768,6 @@ GetDevicePathsForImageAndFile (
   return (Status);
 }
 
-STATIC CONST SHELL_PARAM_ITEM mShellParamList[] = {
-  {L"-nostartup",     TypeFlag},
-  {L"-startup",       TypeFlag},
-  {L"-noconsoleout",  TypeFlag},
-  {L"-noconsolein",   TypeFlag},
-  {L"-nointerrupt",   TypeFlag},
-  {L"-nomap",         TypeFlag},
-  {L"-noversion",     TypeFlag},
-  {L"-startup",       TypeFlag},
-  {L"-delay",         TypeValue},
-  {L"-_exit",         TypeFlag},
-  {NULL, TypeMax}
-  };
-
 /**
   Process all Uefi Shell 2.0 command line options.
 
@@ -773,95 +801,182 @@ ProcessCommandLine(
   VOID
   )
 {
-  EFI_STATUS    Status;
-  LIST_ENTRY    *Package;
-  UINTN         Size;
-  CONST CHAR16  *TempConst;
-  UINTN         Count;
-  UINTN         LoopVar;
-  CHAR16        *ProblemParam;
-  UINT64        Intermediate;
+  UINTN                           Size;
+  UINTN                           LoopVar;
+  CHAR16                          *CurrentArg;
+  CHAR16                          *DelayValueStr;
+  UINT64                          DelayValue;
+  EFI_STATUS                      Status;
+  EFI_UNICODE_COLLATION_PROTOCOL  *UnicodeCollation;
 
-  Package       = NULL;
-  ProblemParam  = NULL;
-  
-  Status = ShellCommandLineParse (mShellParamList, &Package, NULL, FALSE);
+  // `file-name-options` will contain arguments to `file-name` that we don't
+  // know about. This would cause ShellCommandLineParse to error, so we parse
+  // arguments manually, ignoring those after the first thing that doesn't look
+  // like a shell option (which is assumed to be `file-name`).
 
-  Count = 1;
-  Size = 0;
-  TempConst = ShellCommandLineGetRawValue(Package, Count++);
-  if (TempConst != NULL && StrLen(TempConst)) {
-    ShellInfoObject.ShellInitSettings.FileName = AllocateZeroPool(StrSize(TempConst));
-    if (ShellInfoObject.ShellInitSettings.FileName == NULL) {
-      return (EFI_OUT_OF_RESOURCES);
+  Status = gBS->LocateProtocol (
+                  &gEfiUnicodeCollationProtocolGuid,
+                  NULL,
+                  (VOID **) &UnicodeCollation
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  // Set default options
+  ShellInfoObject.ShellInitSettings.BitUnion.Bits.Startup      = FALSE;
+  ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoStartup    = FALSE;
+  ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleOut = FALSE;
+  ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleIn  = FALSE;
+  ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoInterrupt  = FALSE;
+  ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoMap        = FALSE;
+  ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoVersion    = FALSE;
+  ShellInfoObject.ShellInitSettings.BitUnion.Bits.Delay        = FALSE;
+  ShellInfoObject.ShellInitSettings.BitUnion.Bits.Exit         = FALSE;
+  ShellInfoObject.ShellInitSettings.Delay = 5;
+
+  //
+  // Start LoopVar at 0 to parse only optional arguments at Argv[0]
+  // and parse other parameters from Argv[1].  This is for use case that
+  // UEFI Shell boot option is created, and OptionalData is provided
+  // that starts with shell command-line options.
+  //
+  for (LoopVar = 0 ; LoopVar < gEfiShellParametersProtocol->Argc ; LoopVar++) {
+    CurrentArg = gEfiShellParametersProtocol->Argv[LoopVar];
+    if (UnicodeCollation->StriColl (
+                            UnicodeCollation,
+                            L"-startup",
+                            CurrentArg
+                            ) == 0) {
+      ShellInfoObject.ShellInitSettings.BitUnion.Bits.Startup      = TRUE;
     }
-    StrCpy(ShellInfoObject.ShellInitSettings.FileName, TempConst);
-    ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoStartup = 1;
-    for (LoopVar = 0 ; LoopVar < gEfiShellParametersProtocol->Argc ; LoopVar++) {
-      if (StrCmp(gEfiShellParametersProtocol->Argv[LoopVar], ShellInfoObject.ShellInitSettings.FileName)==0) {
-        LoopVar++;
-        //
-        // We found the file... add the rest of the params...
-        //
-        for ( ; LoopVar < gEfiShellParametersProtocol->Argc ; LoopVar++) {
-          ASSERT((ShellInfoObject.ShellInitSettings.FileOptions == NULL && Size == 0) || (ShellInfoObject.ShellInitSettings.FileOptions != NULL));
-          StrnCatGrow(&ShellInfoObject.ShellInitSettings.FileOptions,
-                      &Size,
-                      L" ",
-                      0);
-          if (ShellInfoObject.ShellInitSettings.FileOptions == NULL) {
-            SHELL_FREE_NON_NULL(ShellInfoObject.ShellInitSettings.FileName);
-            return (EFI_OUT_OF_RESOURCES);
-          }
-          StrnCatGrow(&ShellInfoObject.ShellInitSettings.FileOptions,
-                      &Size,
-                      gEfiShellParametersProtocol->Argv[LoopVar],
-                      0);
-          if (ShellInfoObject.ShellInitSettings.FileOptions == NULL) {
-            SHELL_FREE_NON_NULL(ShellInfoObject.ShellInitSettings.FileName);
-            return (EFI_OUT_OF_RESOURCES);
-          }
+    else if (UnicodeCollation->StriColl (
+                                 UnicodeCollation,
+                                 L"-nostartup",
+                                 CurrentArg
+                                 ) == 0) {
+      ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoStartup    = TRUE;
+    }
+    else if (UnicodeCollation->StriColl (
+                                 UnicodeCollation,
+                                 L"-noconsoleout",
+                                 CurrentArg
+                                 ) == 0) {
+      ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleOut = TRUE;
+    }
+    else if (UnicodeCollation->StriColl (
+                                 UnicodeCollation,
+                                 L"-noconsolein",
+                                 CurrentArg
+                                 ) == 0) {
+      ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleIn  = TRUE;
+    }
+    else if (UnicodeCollation->StriColl (
+                                 UnicodeCollation,
+                                 L"-nointerrupt",
+                                 CurrentArg
+                                 ) == 0) {
+      ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoInterrupt  = TRUE;
+    }
+    else if (UnicodeCollation->StriColl (
+                                 UnicodeCollation,
+                                 L"-nomap",
+                                 CurrentArg
+                                 ) == 0) {
+      ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoMap        = TRUE;
+    }
+    else if (UnicodeCollation->StriColl (
+                                 UnicodeCollation,
+                                 L"-noversion",
+                                 CurrentArg
+                                 ) == 0) {
+      ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoVersion    = TRUE;
+    }
+    else if (UnicodeCollation->StriColl (
+                                 UnicodeCollation,
+                                 L"-delay",
+                                 CurrentArg
+                                 ) == 0) {
+      ShellInfoObject.ShellInitSettings.BitUnion.Bits.Delay        = TRUE;
+      // Check for optional delay value following "-delay"
+      DelayValueStr = gEfiShellParametersProtocol->Argv[LoopVar + 1];
+      if (DelayValueStr != NULL){
+        if (*DelayValueStr == L':') {
+          DelayValueStr++;
+        }
+        if (!EFI_ERROR(ShellConvertStringToUint64 (
+                        DelayValueStr,
+                        &DelayValue,
+                        FALSE,
+                        FALSE
+                        ))) {
+          ShellInfoObject.ShellInitSettings.Delay = (UINTN)DelayValue;
+          LoopVar++;
+        }
+      }
+    } else if (UnicodeCollation->StriColl (
+                                   UnicodeCollation,
+                                   L"-_exit",
+                                   CurrentArg
+                                   ) == 0) {
+      ShellInfoObject.ShellInitSettings.BitUnion.Bits.Exit         = TRUE;
+    } else if (StrnCmp (L"-", CurrentArg, 1) == 0) {
+      // Unrecognised option
+      ShellPrintHiiEx(-1, -1, NULL,
+        STRING_TOKEN (STR_GEN_PROBLEM),
+        ShellInfoObject.HiiHandle,
+        CurrentArg
+        );
+      return EFI_INVALID_PARAMETER;
+    } else {
+      //
+      // First argument should be Shell.efi image name
+      //
+      if (LoopVar == 0) {
+        continue;
+      }
+
+      ShellInfoObject.ShellInitSettings.FileName = AllocateZeroPool(StrSize(CurrentArg));
+      if (ShellInfoObject.ShellInitSettings.FileName == NULL) {
+        return (EFI_OUT_OF_RESOURCES);
+      }
+      //
+      // We found `file-name`.
+      //
+      ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoStartup = 1;
+
+      StrCpy (ShellInfoObject.ShellInitSettings.FileName, CurrentArg);
+      LoopVar++;
+
+      // Add `file-name-options`
+      for (Size = 0 ; LoopVar < gEfiShellParametersProtocol->Argc ; LoopVar++) {
+        ASSERT((ShellInfoObject.ShellInitSettings.FileOptions == NULL && Size == 0) || (ShellInfoObject.ShellInitSettings.FileOptions != NULL));
+        StrnCatGrow(&ShellInfoObject.ShellInitSettings.FileOptions,
+                    &Size,
+                    L" ",
+                    0);
+        if (ShellInfoObject.ShellInitSettings.FileOptions == NULL) {
+          SHELL_FREE_NON_NULL(ShellInfoObject.ShellInitSettings.FileName);
+          return (EFI_OUT_OF_RESOURCES);
+        }
+        StrnCatGrow(&ShellInfoObject.ShellInitSettings.FileOptions,
+                    &Size,
+                    gEfiShellParametersProtocol->Argv[LoopVar],
+                    0);
+        if (ShellInfoObject.ShellInitSettings.FileOptions == NULL) {
+          SHELL_FREE_NON_NULL(ShellInfoObject.ShellInitSettings.FileName);
+          return (EFI_OUT_OF_RESOURCES);
         }
       }
     }
-  } else {
-    ShellCommandLineFreeVarList(Package);
-    Package = NULL;
-    Status = ShellCommandLineParse (mShellParamList, &Package, &ProblemParam, FALSE);
-    if (EFI_ERROR(Status)) {
-      ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_GEN_PROBLEM), ShellInfoObject.HiiHandle, ProblemParam);
-      FreePool(ProblemParam);
-      ShellCommandLineFreeVarList(Package);
-      return (EFI_INVALID_PARAMETER);
-    }
   }
 
-  ShellInfoObject.ShellInitSettings.BitUnion.Bits.Startup      = ShellCommandLineGetFlag(Package, L"-startup");
-  ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoStartup    = ShellCommandLineGetFlag(Package, L"-nostartup");
-  ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleOut = ShellCommandLineGetFlag(Package, L"-noconsoleout");
-  ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoConsoleIn  = ShellCommandLineGetFlag(Package, L"-noconsolein");
-  ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoInterrupt  = ShellCommandLineGetFlag(Package, L"-nointerrupt");
-  ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoMap        = ShellCommandLineGetFlag(Package, L"-nomap");
-  ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoVersion    = ShellCommandLineGetFlag(Package, L"-noversion");
-  ShellInfoObject.ShellInitSettings.BitUnion.Bits.Delay        = ShellCommandLineGetFlag(Package, L"-delay");
-  ShellInfoObject.ShellInitSettings.BitUnion.Bits.Exit         = ShellCommandLineGetFlag(Package, L"-_exit");
-
-  ShellInfoObject.ShellInitSettings.Delay = 5;
-
+  // "-nointerrupt" overrides "-delay"
   if (ShellInfoObject.ShellInitSettings.BitUnion.Bits.NoInterrupt) {
     ShellInfoObject.ShellInitSettings.Delay = 0;
-  } else if (ShellInfoObject.ShellInitSettings.BitUnion.Bits.Delay) {
-    TempConst = ShellCommandLineGetValue(Package, L"-delay");
-    if (TempConst != NULL && *TempConst == L':') {
-      TempConst++;
-    }
-    if (TempConst != NULL && !EFI_ERROR(ShellConvertStringToUint64(TempConst, &Intermediate, FALSE, FALSE))) {
-      ShellInfoObject.ShellInitSettings.Delay = (UINTN)Intermediate;
-    }
   }
-  ShellCommandLineFreeVarList(Package);
 
-  return (Status);
+  return EFI_SUCCESS;
 }
 
 /**
@@ -872,13 +987,16 @@ ProcessCommandLine(
   @param ImagePath              the path to the image for shell.  first place to look for the startup script
   @param FilePath               the path to the file for shell.  second place to look for the startup script.
 
+  @param[out] ExitStatus      The exit code of the script. Ignored if NULL.
+
   @retval EFI_SUCCESS           the variable is initialized.
 **/
 EFI_STATUS
 EFIAPI
 DoStartupScript(
-  EFI_DEVICE_PATH_PROTOCOL *ImagePath,
-  EFI_DEVICE_PATH_PROTOCOL *FilePath
+  IN  EFI_DEVICE_PATH_PROTOCOL *ImagePath,
+  IN  EFI_DEVICE_PATH_PROTOCOL *FilePath,
+  OUT SHELL_STATUS             *ExitStatus
   )
 {
   EFI_STATUS                    Status;
@@ -913,7 +1031,7 @@ DoStartupScript(
       StrCat(FileStringPath, L" ");
       StrCat(FileStringPath, ShellInfoObject.ShellInitSettings.FileOptions);
     }
-    Status = RunCommand(FileStringPath);
+    Status = RunCommand(FileStringPath, ExitStatus);
     FreePool(FileStringPath);
     return (Status);
 
@@ -990,7 +1108,13 @@ DoStartupScript(
   // If we got a file, run it
   //
   if (!EFI_ERROR(Status) && FileHandle != NULL) {
-    Status = RunScriptFileHandle (FileHandle, mStartupScript);
+    Status = RunScriptFile (
+              mStartupScript,
+              FileHandle,
+              L"",
+              ShellInfoObject.NewShellParametersProtocol,
+              ExitStatus
+              );
     ShellInfoObject.NewEfiShellProtocol->CloseFile(FileHandle);
   } else {
     FileStringPath = ShellFindFilePath(mStartupScript);
@@ -1001,7 +1125,13 @@ DoStartupScript(
       Status = EFI_SUCCESS;
       ASSERT(FileHandle == NULL);
     } else {
-      Status = RunScriptFile(FileStringPath);
+      Status = RunScriptFile(
+                FileStringPath,
+                NULL,
+                L"",
+                ShellInfoObject.NewShellParametersProtocol,
+                ExitStatus
+                );
       FreePool(FileStringPath);
     }
   }
@@ -1066,7 +1196,7 @@ DoShellPrompt (
   //
   if (!EFI_ERROR (Status)) {
     CmdLine[BufferSize / sizeof (CHAR16)] = CHAR_NULL;
-    Status = RunCommand(CmdLine);
+    Status = RunCommand(CmdLine, NULL);
     }
 
   //
@@ -1158,6 +1288,113 @@ ShellConvertAlias(
 }
 
 /**
+  Parse for the next instance of one string within another string. Can optionally make sure that 
+  the string was not escaped (^ character) per the shell specification.
+
+  @param[in] SourceString             The string to search within
+  @param[in] FindString               The string to look for
+  @param[in] CheckForEscapeCharacter  TRUE to skip escaped instances of FinfString, otherwise will return even escaped instances
+**/
+CHAR16*
+EFIAPI
+FindNextInstance(
+  IN CONST CHAR16   *SourceString,
+  IN CONST CHAR16   *FindString,
+  IN CONST BOOLEAN  CheckForEscapeCharacter
+  )
+{
+  CHAR16 *Temp;
+  if (SourceString == NULL) {
+    return (NULL);
+  }
+  Temp = StrStr(SourceString, FindString);
+
+  //
+  // If nothing found, or we dont care about escape characters
+  //
+  if (Temp == NULL || !CheckForEscapeCharacter) {
+    return (Temp);
+  }
+
+  //
+  // If we found an escaped character, try again on the remainder of the string
+  //
+  if ((Temp > (SourceString)) && *(Temp-1) == L'^') {
+    return FindNextInstance(Temp+1, FindString, CheckForEscapeCharacter);
+  }
+
+  //
+  // we found the right character
+  //
+  return (Temp);
+}
+
+/**
+  This function will eliminate unreplaced (and therefore non-found) environment variables.
+
+  @param[in,out] CmdLine   The command line to update.
+**/
+EFI_STATUS
+EFIAPI
+StripUnreplacedEnvironmentVariables(
+  IN OUT CHAR16 *CmdLine
+  )
+{
+  CHAR16 *FirstPercent;
+  CHAR16 *FirstQuote;
+  CHAR16 *SecondPercent;
+  CHAR16 *SecondQuote;
+  CHAR16 *CurrentLocator;
+
+  for (CurrentLocator = CmdLine ; CurrentLocator != NULL ; ) {
+    FirstQuote = FindNextInstance(CurrentLocator, L"\"", TRUE);
+    FirstPercent = FindNextInstance(CurrentLocator, L"%", TRUE);
+    SecondPercent = FirstPercent!=NULL?FindNextInstance(FirstPercent+1, L"%", TRUE):NULL;
+    if (FirstPercent == NULL || SecondPercent == NULL) {
+      //
+      // If we ever dont have 2 % we are done.
+      //
+      break;
+    }
+
+    if (FirstQuote < FirstPercent) {
+      SecondQuote = FirstQuote!= NULL?FindNextInstance(FirstQuote+1, L"\"", TRUE):NULL;
+      //
+      // Quote is first found
+      //
+
+      if (SecondQuote < FirstPercent) {
+        //
+        // restart after the pair of "
+        //
+        CurrentLocator = SecondQuote + 1;
+      } else /* FirstPercent < SecondQuote */{
+        //
+        // Restart on the first percent
+        //
+        CurrentLocator = FirstPercent;
+      }
+      continue;
+    }
+    ASSERT(FirstPercent < FirstQuote);
+    if (SecondPercent < FirstQuote) {
+      FirstPercent[0] = L'\"';
+      SecondPercent[0] = L'\"';
+
+      //
+      // We need to remove from FirstPercent to SecondPercent
+      //
+      CopyMem(FirstPercent + 1, SecondPercent, StrSize(SecondPercent));
+      CurrentLocator = FirstPercent + 2;
+      continue;
+    }
+    ASSERT(FirstQuote < SecondPercent);
+    CurrentLocator = FirstQuote;
+  }
+  return (EFI_SUCCESS);
+}
+
+/**
   Function allocates a new command line and replaces all instances of environment
   variable names that are correctly preset to their values.
 
@@ -1179,7 +1416,6 @@ ShellConvertVariables (
   CHAR16              *NewCommandLine1;
   CHAR16              *NewCommandLine2;
   CHAR16              *Temp;
-  CHAR16              *Temp2;
   UINTN               ItemSize;
   CHAR16              *ItemTemp;
   SCRIPT_FILE         *CurrentScriptFile;
@@ -1272,39 +1508,7 @@ ShellConvertVariables (
     //
     // Remove non-existant environment variables in scripts only
     //
-    for (Temp = NewCommandLine1 ; Temp != NULL ; ) {
-      Temp = StrStr(Temp, L"%");
-      if (Temp == NULL) {
-        break;
-      }
-      while (*(Temp - 1) == L'^') {
-        Temp = StrStr(Temp + 1, L"%");
-        if (Temp == NULL) {
-          break;
-       }
-      }
-      if (Temp == NULL) {
-        break;
-      }
-      
-      Temp2 = StrStr(Temp + 1, L"%");
-      if (Temp2 == NULL) {
-        break;
-      }
-      while (*(Temp2 - 1) == L'^') {
-        Temp2 = StrStr(Temp2 + 1, L"%");
-        if (Temp2 == NULL) {
-          break;
-        }
-      }
-      if (Temp2 == NULL) {
-        break;
-      }
-      
-      Temp2++;
-      CopyMem(Temp, Temp2, StrSize(Temp2));
-    }
-
+    StripUnreplacedEnvironmentVariables(NewCommandLine1);
   }
 
   //
@@ -1326,6 +1530,9 @@ ShellConvertVariables (
   @param[in] StdIn          The pointer to the Standard input.
   @param[in] StdOut         The pointer to the Standard output.
 
+  @param[out] ExitStatus      The exit code of the last command in the pipeline.
+                              Ignored if NULL.
+
   @retval EFI_SUCCESS       The split command is executed successfully.
   @retval other             Some error occurs when executing the split command.
 **/
@@ -1334,7 +1541,8 @@ EFIAPI
 RunSplitCommand(
   IN CONST CHAR16             *CmdLine,
   IN       SHELL_FILE_HANDLE  *StdIn,
-  IN       SHELL_FILE_HANDLE  *StdOut
+  IN       SHELL_FILE_HANDLE  *StdOut,
+  OUT      SHELL_STATUS       *ExitStatus
   )
 {
   EFI_STATUS        Status;
@@ -1388,7 +1596,7 @@ RunSplitCommand(
   ASSERT(Split->SplitStdOut != NULL);
   InsertHeadList(&ShellInfoObject.SplitList.Link, &Split->Link);
 
-  Status = RunCommand(OurCommandLine);
+  Status = RunCommand(OurCommandLine, NULL);
 
   //
   // move the output from the first to the in to the second.
@@ -1403,7 +1611,7 @@ RunSplitCommand(
   ShellInfoObject.NewEfiShellProtocol->SetFilePosition(ConvertShellHandleToEfiFileProtocol(Split->SplitStdIn), 0);
 
   if (!EFI_ERROR(Status)) {
-    Status = RunCommand(NextCommandLine);
+    Status = RunCommand(NextCommandLine, ExitStatus);
   }
 
   //
@@ -1554,10 +1762,12 @@ GetOperationType(
   }
 
   //
-  // Test for file system change request.  anything ending with : and cant have spaces.
+  // Test for file system change request.  anything ending with first : and cant have spaces.
   //
   if (CmdName[(StrLen(CmdName)-1)] == L':') {
-    if (StrStr(CmdName, L" ") != NULL) {
+    if ( StrStr(CmdName, L" ") != NULL 
+      || StrLen(StrStr(CmdName, L":")) > 1
+      ) {
       return (Unknown_Invalid);
     }
     return (File_Sys_Change);
@@ -1695,7 +1905,9 @@ VerifySplit(
 /**
   Process a split based operation.
 
-  @param[in] CmdLine    pointer to the command line to process
+  @param[in] CmdLine      Pointer to the command line to process
+  @param[out] ExitStatus  The exit status of the command. Ignored if NULL.
+                          Invalid if this function returns an error.
 
   @retval EFI_SUCCESS   The operation was successful
   @return               an error occured.
@@ -1703,7 +1915,8 @@ VerifySplit(
 EFI_STATUS
 EFIAPI
 ProcessNewSplitCommandLine(
-  IN CONST CHAR16 *CmdLine
+  IN CONST CHAR16       *CmdLine,
+  OUT      SHELL_STATUS *ExitStatus
   )
 {
   SPLIT_LIST                *Split;
@@ -1724,9 +1937,14 @@ ProcessNewSplitCommandLine(
   }
 
   if (Split == NULL) {
-    Status = RunSplitCommand(CmdLine, NULL, NULL);
+    Status = RunSplitCommand(CmdLine, NULL, NULL, ExitStatus);
   } else {
-    Status = RunSplitCommand(CmdLine, Split->SplitStdIn, Split->SplitStdOut);
+    Status = RunSplitCommand(
+              CmdLine,
+              Split->SplitStdIn,
+              Split->SplitStdOut,
+              ExitStatus
+              );
   }
   if (EFI_ERROR(Status)) {
     ShellPrintHiiEx(-1, -1, NULL, STRING_TOKEN (STR_SHELL_INVALID_SPLIT), ShellInfoObject.HiiHandle, CmdLine);
@@ -1901,6 +2119,8 @@ ProcessCommandLineToFinal(
   @param[in] FirstParameter   the first parameter on the command line
   @param[in] ParamProtocol    the shell parameters protocol pointer
 
+  @param[out] ExitStatus      The exit code of the command. Ignored if NULL.
+
   @retval EFI_SUCCESS     The command was completed.
   @retval EFI_ABORTED     The command's operation was aborted.
 **/
@@ -1909,7 +2129,8 @@ EFIAPI
 RunInternalCommand(
   IN CONST CHAR16                   *CmdLine,
   IN       CHAR16                   *FirstParameter,
-  IN EFI_SHELL_PARAMETERS_PROTOCOL  *ParamProtocol
+  IN EFI_SHELL_PARAMETERS_PROTOCOL  *ParamProtocol,
+  OUT      SHELL_STATUS             *ExitStatus OPTIONAL
 )
 {
   EFI_STATUS                Status;
@@ -1935,6 +2156,9 @@ RunInternalCommand(
       //
       if (LastError) {
         SetLastError(CommandReturnedStatus);
+      }
+      if (ExitStatus != NULL) {
+        *ExitStatus = CommandReturnedStatus;
       }
 
       //
@@ -1990,6 +2214,9 @@ RunInternalCommand(
   @param[in] FirstParameter   the first parameter on the command line
   @param[in] ParamProtocol    the shell parameters protocol pointer
 
+  @param[out] ExitStatus      The exit code of the command or file.
+                              Ignored if NULL.
+
   @retval EFI_SUCCESS     The command was completed.
   @retval EFI_ABORTED     The command's operation was aborted.
 **/
@@ -1999,21 +2226,29 @@ RunCommandOrFile(
   IN       SHELL_OPERATION_TYPES    Type,
   IN CONST CHAR16                   *CmdLine,
   IN       CHAR16                   *FirstParameter,
-  IN EFI_SHELL_PARAMETERS_PROTOCOL  *ParamProtocol
+  IN EFI_SHELL_PARAMETERS_PROTOCOL  *ParamProtocol,
+  OUT      SHELL_STATUS             *ExitStatus
 )
 {
   EFI_STATUS                Status;
-  EFI_STATUS                StatusCode;
+  EFI_STATUS                StartStatus;
   CHAR16                    *CommandWithPath;
   EFI_DEVICE_PATH_PROTOCOL  *DevPath;
+  SHELL_STATUS              CalleeExitStatus;
 
   Status            = EFI_SUCCESS;
   CommandWithPath   = NULL;
   DevPath           = NULL;
+  CalleeExitStatus  = SHELL_INVALID_PARAMETER;
 
   switch (Type) {
     case   Internal_Command:
-      Status = RunInternalCommand(CmdLine, FirstParameter, ParamProtocol);
+      Status = RunInternalCommand(
+                CmdLine,
+                FirstParameter,
+                ParamProtocol,
+                &CalleeExitStatus
+                );
       break;
     case   Script_File_Name:
     case   Efi_Application:
@@ -2048,7 +2283,13 @@ RunCommandOrFile(
       }
       switch (Type) {
         case   Script_File_Name:
-          Status = RunScriptFile (CommandWithPath);
+          Status = RunScriptFile (
+                    CommandWithPath,
+                    NULL,
+                    CmdLine,
+                    ParamProtocol,
+                    &CalleeExitStatus
+                    );
           break;
         case   Efi_Application:
           //
@@ -2068,15 +2309,24 @@ RunCommandOrFile(
             DevPath,
             CmdLine,
             NULL,
-            &StatusCode
+            &StartStatus,
+            NULL,
+            NULL
            );
 
           SHELL_FREE_NON_NULL(DevPath);
 
+          if(EFI_ERROR (Status)) {
+            CalleeExitStatus = (SHELL_STATUS) (Status & (~MAX_BIT));
+          } else {
+            CalleeExitStatus = (SHELL_STATUS) StartStatus;
+          }
+
           //
           // Update last error status.
           //
-          SetLastError((SHELL_STATUS) StatusCode);
+          // Status is an EFI_STATUS. Clear top bit to convert to SHELL_STATUS
+          SetLastError(CalleeExitStatus);
           break;
         default:
           //
@@ -2094,6 +2344,10 @@ RunCommandOrFile(
 
   SHELL_FREE_NON_NULL(CommandWithPath);
 
+  if (ExitStatus != NULL) {
+    *ExitStatus = CalleeExitStatus;
+  }
+
   return (Status);
 }
 
@@ -2105,16 +2359,20 @@ RunCommandOrFile(
   @param[in] FirstParameter   the first parameter on the command line.
   @param[in] ParamProtocol    the shell parameters protocol pointer
 
+  @param[out] ExitStatus      The exit code of the command or file.
+                              Ignored if NULL.
+
   @retval EFI_SUCCESS     The command was completed.
   @retval EFI_ABORTED     The command's operation was aborted.
 **/
 EFI_STATUS
 EFIAPI
 SetupAndRunCommandOrFile(
-  IN SHELL_OPERATION_TYPES          Type,
-  IN CHAR16                         *CmdLine,
-  IN CHAR16                         *FirstParameter,
-  IN EFI_SHELL_PARAMETERS_PROTOCOL  *ParamProtocol
+  IN   SHELL_OPERATION_TYPES          Type,
+  IN   CHAR16                         *CmdLine,
+  IN   CHAR16                         *FirstParameter,
+  IN   EFI_SHELL_PARAMETERS_PROTOCOL  *ParamProtocol,
+  OUT  SHELL_STATUS                   *ExitStatus
 )
 {
   EFI_STATUS                Status;
@@ -2133,7 +2391,13 @@ SetupAndRunCommandOrFile(
   // Now run the command, script, or application
   //
   if (!EFI_ERROR(Status)) {
-    Status = RunCommandOrFile(Type, CmdLine, FirstParameter, ParamProtocol);
+    Status = RunCommandOrFile(
+              Type,
+              CmdLine,
+              FirstParameter,
+              ParamProtocol,
+              ExitStatus
+              );
   }
 
   //
@@ -2158,6 +2422,7 @@ SetupAndRunCommandOrFile(
   command or dispatch an external application.
 
   @param[in] CmdLine      The command line to parse.
+  @param[out] ExitStatus  The exit code of the command. Ignored if NULL.
 
   @retval EFI_SUCCESS     The command was completed.
   @retval EFI_ABORTED     The command's operation was aborted.
@@ -2165,7 +2430,8 @@ SetupAndRunCommandOrFile(
 EFI_STATUS
 EFIAPI
 RunCommand(
-  IN CONST CHAR16   *CmdLine
+  IN CONST CHAR16         *CmdLine,
+  OUT      SHELL_STATUS   *ExitStatus
   )
 {
   EFI_STATUS                Status;
@@ -2207,7 +2473,7 @@ RunCommand(
   // We dont do normal processing with a split command line (output from one command input to another)
   //
   if (ContainsSplit(CleanOriginal)) {
-    Status = ProcessNewSplitCommandLine(CleanOriginal);
+    Status = ProcessNewSplitCommandLine(CleanOriginal, ExitStatus);
     SHELL_FREE_NON_NULL(CleanOriginal);
     return (Status);
   } 
@@ -2228,12 +2494,18 @@ RunCommand(
   //
   switch (Type = GetOperationType(FirstParameter)) {
     case   File_Sys_Change:
-      Status = ChangeMappedDrive(CleanOriginal);
+      Status = ChangeMappedDrive (FirstParameter);
       break;
     case   Internal_Command:
     case   Script_File_Name:
     case   Efi_Application:
-      Status = SetupAndRunCommandOrFile(Type, CleanOriginal, FirstParameter, ShellInfoObject.NewShellParametersProtocol);
+      Status = SetupAndRunCommandOrFile(
+                Type,
+                CleanOriginal,
+                FirstParameter,
+                ShellInfoObject.NewShellParametersProtocol,
+                ExitStatus
+                );
       break;
     default:
       //
@@ -2288,13 +2560,16 @@ IsValidCommandName(
   @param[in] Handle             The handle to the already opened file.
   @param[in] Name               The name of the script file.
 
+  @param[out] ExitStatus      The exit code of the script. Ignored if NULL.
+
   @retval EFI_SUCCESS           the script completed sucessfully
 **/
 EFI_STATUS
 EFIAPI
 RunScriptFileHandle (
-  IN SHELL_FILE_HANDLE  Handle,
-  IN CONST CHAR16       *Name
+  IN  SHELL_FILE_HANDLE  Handle,
+  IN  CONST CHAR16       *Name,
+  OUT SHELL_STATUS       *ExitStatus
   )
 {
   EFI_STATUS          Status;
@@ -2310,8 +2585,11 @@ RunScriptFileHandle (
   CONST CHAR16        *CurDir;
   UINTN               LineCount;
   CHAR16              LeString[50];
+  SHELL_STATUS        CalleeExitStatus;
 
   ASSERT(!ShellCommandGetScriptExit());
+  
+  CalleeExitStatus = SHELL_SUCCESS;
 
   PreScriptEchoState = ShellCommandGetEchoState();
 
@@ -2495,7 +2773,7 @@ RunScriptFileHandle (
             //
             PreCommandEchoState = ShellCommandGetEchoState();
             ShellCommandSetEchoState(FALSE);
-            Status = RunCommand(CommandLine3+1);
+            Status = RunCommand(CommandLine3+1, NULL);
 
             //
             // If command was "@echo -off" or "@echo -on" then don't restore echo state
@@ -2517,7 +2795,7 @@ RunScriptFileHandle (
               }
               ShellPrintEx(-1, -1, L"%s\r\n", CommandLine2);
             }
-            Status = RunCommand(CommandLine3);
+            Status = RunCommand(CommandLine3, NULL);
           }
         }
 
@@ -2525,7 +2803,8 @@ RunScriptFileHandle (
           //
           // ShellCommandGetExitCode() always returns a UINT64
           //
-          UnicodeSPrint(LeString, sizeof(LeString), L"0x%Lx", ShellCommandGetExitCode());
+          CalleeExitStatus = (SHELL_STATUS) ShellCommandGetExitCode();
+          UnicodeSPrint(LeString, sizeof(LeString), L"0x%Lx", CalleeExitStatus);
           DEBUG_CODE(InternalEfiShellSetEnv(L"debuglasterror", LeString, TRUE););
           InternalEfiShellSetEnv(L"lasterror", LeString, TRUE);
 
@@ -2537,9 +2816,11 @@ RunScriptFileHandle (
           break;
         }
         if (EFI_ERROR(Status)) {
+          CalleeExitStatus = (SHELL_STATUS) Status;
           break;
         }
         if (ShellCommandGetExit()) {
+          CalleeExitStatus = (SHELL_STATUS) ShellCommandGetExitCode();
           break;
         }
       }
@@ -2571,6 +2852,11 @@ RunScriptFileHandle (
   if (ShellCommandGetCurrentScriptFile()==NULL) {
     ShellCommandSetEchoState(PreScriptEchoState);
   }
+
+  if (ExitStatus != NULL) {
+    *ExitStatus = CalleeExitStatus;
+  }
+
   return (EFI_SUCCESS);
 }
 
@@ -2578,30 +2864,65 @@ RunScriptFileHandle (
   Function to process a NSH script file.
 
   @param[in] ScriptPath         Pointer to the script file name (including file system path).
+  @param[in] Handle             the handle of the script file already opened.
+  @param[in] CmdLine            the command line to run.
+  @param[in] ParamProtocol      the shell parameters protocol pointer
+
+  @param[out] ExitStatus      The exit code of the script. Ignored if NULL.
 
   @retval EFI_SUCCESS           the script completed sucessfully
 **/
 EFI_STATUS
 EFIAPI
 RunScriptFile (
-  IN CONST CHAR16 *ScriptPath
+  IN  CONST CHAR16                   *ScriptPath,
+  IN  SHELL_FILE_HANDLE              Handle OPTIONAL,
+  IN  CONST CHAR16                   *CmdLine,
+  IN  EFI_SHELL_PARAMETERS_PROTOCOL  *ParamProtocol,
+  OUT SHELL_STATUS                   *ExitStatus
   )
 {
   EFI_STATUS          Status;
   SHELL_FILE_HANDLE   FileHandle;
+  UINTN                     Argc;
+  CHAR16                    **Argv;
 
   if (ShellIsFile(ScriptPath) != EFI_SUCCESS) {
     return (EFI_INVALID_PARAMETER);
   }
 
-  Status = ShellOpenFileByName(ScriptPath, &FileHandle, EFI_FILE_MODE_READ, 0);
-  if (EFI_ERROR(Status)) {
-    return (Status);
+  //
+  // get the argc and argv updated for scripts
+  //
+  Status = UpdateArgcArgv(ParamProtocol, CmdLine, &Argv, &Argc);
+  if (!EFI_ERROR(Status)) {
+
+    if (Handle == NULL) {
+      //
+      // open the file
+      //
+      Status = ShellOpenFileByName(ScriptPath, &FileHandle, EFI_FILE_MODE_READ, 0);
+      if (!EFI_ERROR(Status)) {
+        //
+        // run it
+        //
+        Status = RunScriptFileHandle(FileHandle, ScriptPath, ExitStatus);
+
+        //
+        // now close the file
+        //
+        ShellCloseFile(&FileHandle);
+      }
+    } else {
+      Status = RunScriptFileHandle(Handle, ScriptPath, ExitStatus);
+    }
   }
 
-  Status = RunScriptFileHandle(FileHandle, ScriptPath);
-
-  ShellCloseFile(&FileHandle);
+  //
+  // This is guarenteed to be called after UpdateArgcArgv no matter what else happened.
+  // This is safe even if the update API failed.  In this case, it may be a no-op.
+  //
+  RestoreArgcArgv(ParamProtocol, &Argv, &Argc);
 
   return (Status);
 }

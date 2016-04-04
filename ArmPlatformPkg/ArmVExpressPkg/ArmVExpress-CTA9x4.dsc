@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2011-2013, ARM Limited. All rights reserved.
+#  Copyright (c) 2011-2014, ARM Limited. All rights reserved.
 #  
 #  This program and the accompanying materials                          
 #  are licensed and made available under the terms and conditions of the BSD License         
@@ -70,9 +70,9 @@
 [BuildOptions]
   RVCT:*_*_ARM_PLATFORM_FLAGS == --cpu Cortex-A9 -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include/Platform/CTA9x4
 
-  GCC:*_*_ARM_PLATFORM_FLAGS == -mcpu=cortex-a9 -mfpu=neon -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include/Platform/CTA9x4
+  GCC:*_*_ARM_PLATFORM_FLAGS == -mcpu=cortex-a9 -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include/Platform/CTA9x4
   
-  XCODE:*_*_ARM_PLATFORM_FLAGS == -mcpu=cortex-a9 -mfpu=neon -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include/Platform/CTA9x4
+  XCODE:*_*_ARM_PLATFORM_FLAGS == -mcpu=cortex-a9 -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include -I$(WORKSPACE)/ArmPlatformPkg/ArmVExpressPkg/Include/Platform/CTA9x4
 
 ################################################################################
 #
@@ -179,7 +179,6 @@
   gArmTokenSpaceGuid.PcdArmMachineType|2272
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDescription|L"NorFlash"
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDevicePath|L"VenHw(1F15DA3C-37FF-4070-B471-BB4AF12A724A)/MemoryMapped(0x0,0x46000000,0x46400000)"
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|""
   gArmPlatformTokenSpaceGuid.PcdDefaultBootType|1
 
   # Use the serial console (ConIn & ConOut) and the Graphic driver (ConOut)
@@ -190,6 +189,12 @@
   # ARM L2x0 PCDs
   #
   gArmTokenSpaceGuid.PcdL2x0ControllerBase|0x1E00A000
+
+  # ISP1761 USB OTG Controller
+  gEmbeddedTokenSpaceGuid.PcdIsp1761BaseAddress|0x4f000000
+
+  # LAN9118 Ethernet Driver PCDs
+  gEmbeddedTokenSpaceGuid.PcdLan9118DxeBaseAddress|0x4E000000
 
 ################################################################################
 #
@@ -277,6 +282,11 @@
   ArmPlatformPkg/Drivers/SP805WatchdogDxe/SP805WatchdogDxe.inf
 
   #
+  # Platform
+  #
+  ArmPlatformPkg/ArmVExpressPkg/ArmVExpressDxe/ArmHwDxe.inf
+
+  #
   # Filesystems
   #
   ArmPkg/Filesystem/SemihostFs/SemihostFs.inf
@@ -286,7 +296,10 @@
   #
   EmbeddedPkg/Universal/MmcDxe/MmcDxe.inf
   ArmPlatformPkg/Drivers/PL180MciDxe/PL180MciDxe.inf
-  
+
+  # SMSC LAN 9118
+  EmbeddedPkg/Drivers/Lan9118Dxe/Lan9118Dxe.inf
+
   #
   # FAT filesystem + GPT/MBR partitioning
   #

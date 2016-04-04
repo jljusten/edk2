@@ -1,6 +1,6 @@
 #/** @file
 #
-#  Copyright (c) 2011-2013, ARM Limited. All rights reserved.
+#  Copyright (c) 2011-2014, ARM Limited. All rights reserved.
 #  
 #  This program and the accompanying materials                          
 #  are licensed and made available under the terms and conditions of the BSD License         
@@ -86,6 +86,9 @@
   # Size to reserve in the primary core stack for SEC Global Variables
   gArmPlatformTokenSpaceGuid.PcdSecGlobalVariableSize|0x0|UINT32|0x00000031
 
+  # Boot Monitor FileSystem
+  gArmPlatformTokenSpaceGuid.PcdBootMonFsSupportedDevicePaths|L""|VOID*|0x0000003A
+
   #
   # ARM Primecells
   #
@@ -128,7 +131,7 @@
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDescription|L"Default Boot Device"|VOID*|0x0000000C
   gArmPlatformTokenSpaceGuid.PcdDefaultBootDevicePath|L""|VOID*|0x0000000D
   gArmPlatformTokenSpaceGuid.PcdDefaultBootInitrdPath|L""|VOID*|0x0000000E
-  gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|""|VOID*|0x000000F
+  gArmPlatformTokenSpaceGuid.PcdDefaultBootArgument|L""|VOID*|0x000000F
   # PcdDefaultBootType define the type of the binary pointed by PcdDefaultBootDevicePath: 
   #  - 0 = an EFI application
   #  - 1 = a Linux kernel with ATAG support

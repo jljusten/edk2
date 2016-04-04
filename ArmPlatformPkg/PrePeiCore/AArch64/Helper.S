@@ -18,8 +18,8 @@
 .text
 .align 3
 
-ASM_GLOBAL ASM_PFX(SetupExceptionLevel1)
-ASM_GLOBAL ASM_PFX(SetupExceptionLevel2)
+GCC_ASM_EXPORT(SetupExceptionLevel1)
+GCC_ASM_EXPORT(SetupExceptionLevel2)
 
 // Setup EL1 while in EL1
 ASM_PFX(SetupExceptionLevel1):
@@ -44,8 +44,5 @@ ASM_PFX(SetupExceptionLevel2):
    msr     cptr_el2, xzr          // Disable copro traps to EL2
 
    ret
-
-dead:
-   b       dead
 
 ASM_FUNCTION_REMOVE_IF_UNREFERENCED

@@ -1,7 +1,7 @@
 /** @file
 Usb Peim definition.
 
-Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved. <BR>
+Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved. <BR>
   
 This program and the accompanying materials
 are licensed and made available under the terms and conditions
@@ -34,6 +34,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <IndustryStandard/Usb.h>
 
 #define MAX_ROOT_PORT             2
+#define MAX_INTERFACE             8
 #define MAX_ENDPOINT              16
 
 #define USB_SLOW_SPEED_DEVICE     0x01
@@ -47,17 +48,19 @@ typedef struct {
   UINT8                         DeviceAddress;
   UINT8                         MaxPacketSize0;
   UINT8                         DeviceSpeed;
-  UINT8                         DataToggle;
   UINT8                         IsHub;
+  UINT16                        DataToggle;
   UINT8                         DownStreamPortNo;
-  UINT8                         Reserved[2];  // Padding for IPF
+  UINT8                         Reserved;  // Padding for IPF
   UINTN                         AllocateAddress;
   PEI_USB_HOST_CONTROLLER_PPI   *UsbHcPpi;
   PEI_USB2_HOST_CONTROLLER_PPI  *Usb2HcPpi;
   UINT8                         ConfigurationData[1024];
   EFI_USB_CONFIG_DESCRIPTOR     *ConfigDesc;
   EFI_USB_INTERFACE_DESCRIPTOR  *InterfaceDesc;
+  EFI_USB_INTERFACE_DESCRIPTOR  *InterfaceDescList[MAX_INTERFACE];
   EFI_USB_ENDPOINT_DESCRIPTOR   *EndpointDesc[MAX_ENDPOINT];
+  EFI_USB_ENDPOINT_DESCRIPTOR   *EndpointDescList[MAX_INTERFACE][MAX_ENDPOINT];
   EFI_USB2_HC_TRANSACTION_TRANSLATOR Translator;  
 } PEI_USB_DEVICE;
 

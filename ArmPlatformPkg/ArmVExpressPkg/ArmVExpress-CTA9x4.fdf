@@ -1,6 +1,5 @@
-# FLASH layout file for ARM VE.
 #
-#  Copyright (c) 2011, ARM Limited. All rights reserved.
+#  Copyright (c) 2011-2014, ARM Limited. All rights reserved.
 #  
 #  This program and the accompanying materials                          
 #  are licensed and made available under the terms and conditions of the BSD License         
@@ -173,6 +172,9 @@ READ_LOCK_STATUS   = TRUE
   INF ArmPlatformPkg/Drivers/SP805WatchdogDxe/SP805WatchdogDxe.inf
 
   #
+  # Platform
+  #
+  INF ArmPlatformPkg/ArmVExpressPkg/ArmVExpressDxe/ArmHwDxe.inf
 
 !if $(EDK2_ARMVE_STANDALONE) != 1
   #
@@ -189,17 +191,49 @@ READ_LOCK_STATUS   = TRUE
   INF FatBinPkg/EnhancedFatDxe/Fat.inf
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
 
+  # Versatile Express FileSystem
+  INF ArmPlatformPkg/FileSystem/BootMonFs/BootMonFs.inf
+
   #
   # Multimedia Card Interface
   #
   INF EmbeddedPkg/Universal/MmcDxe/MmcDxe.inf
   INF ArmPlatformPkg/Drivers/PL180MciDxe/PL180MciDxe.inf
-  
+
   #
-  # UEFI application (Shell Embedded Boot Loader) 
-  #  
-  INF ShellBinPkg/UefiShell/UefiShell.inf 
-    
+  # USB support
+  #
+  INF EmbeddedPkg/Drivers/Isp1761UsbDxe/Isp1761UsbDxe.inf
+
+  #
+  # Android Fastboot
+  #
+  INF EmbeddedPkg/Application/AndroidFastboot/AndroidFastbootApp.inf
+  INF EmbeddedPkg/Drivers/AndroidFastbootTransportUsbDxe/FastbootTransportUsbDxe.inf
+  INF ArmPlatformPkg/ArmVExpressPkg/ArmVExpressFastBootDxe/ArmVExpressFastBootDxe.inf
+
+  #
+  # Networking stack
+  #
+  INF MdeModulePkg/Universal/Network/DpcDxe/DpcDxe.inf
+  INF MdeModulePkg/Universal/Network/ArpDxe/ArpDxe.inf
+  INF MdeModulePkg/Universal/Network/Dhcp4Dxe/Dhcp4Dxe.inf
+  INF MdeModulePkg/Universal/Network/Ip4ConfigDxe/Ip4ConfigDxe.inf
+  INF MdeModulePkg/Universal/Network/Ip4Dxe/Ip4Dxe.inf
+  INF MdeModulePkg/Universal/Network/MnpDxe/MnpDxe.inf
+  INF MdeModulePkg/Universal/Network/VlanConfigDxe/VlanConfigDxe.inf
+  INF MdeModulePkg/Universal/Network/Mtftp4Dxe/Mtftp4Dxe.inf
+  INF MdeModulePkg/Universal/Network/Tcp4Dxe/Tcp4Dxe.inf
+  INF MdeModulePkg/Universal/Network/Udp4Dxe/Udp4Dxe.inf
+  INF MdeModulePkg/Universal/Network/UefiPxeBcDxe/UefiPxeBcDxe.inf
+  INF MdeModulePkg/Universal/Network/IScsiDxe/IScsiDxe.inf
+  INF EmbeddedPkg/Drivers/Lan9118Dxe/Lan9118Dxe.inf
+
+  #
+  # UEFI application (Shell Embedded Boot Loader)
+  #
+  INF ShellBinPkg/UefiShell/UefiShell.inf
+
   #
   # Bds
   #

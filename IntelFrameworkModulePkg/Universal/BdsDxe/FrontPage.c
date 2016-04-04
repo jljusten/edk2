@@ -1,7 +1,7 @@
 /** @file
   FrontPage routines to handle the callbacks and browser calls
 
-Copyright (c) 2004 - 2013, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2014, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -182,7 +182,6 @@ FrontPageCallback (
   CHAR8                         *LangCode;
   CHAR8                         *Lang;
   UINTN                         Index;
-  EFI_STATUS                    Status;
 
   if (Action != EFI_BROWSER_ACTION_CHANGING && Action != EFI_BROWSER_ACTION_CHANGED) {
     //
@@ -226,14 +225,13 @@ FrontPageCallback (
       }
 
       if (Index == Value->u8) {
-        Status = gRT->SetVariable (
+        BdsDxeSetVariableAndReportStatusCodeOnError (
                         L"PlatformLang",
                         &gEfiGlobalVariableGuid,
                         EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
                         AsciiStrSize (Lang),
                         Lang
                         );
-        ASSERT_EFI_ERROR(Status);
       } else {
         ASSERT (FALSE);
       }
@@ -1095,6 +1093,9 @@ PlatformBdsEnterFrontPage (
                     sizeof(UINT64),
                     &OsIndication
                     );
+    //
+    // Changing the content without increasing its size with current variable implementation shouldn't fail.
+    //
     ASSERT_EFI_ERROR (Status);
 
     //
@@ -1142,6 +1143,12 @@ PlatformBdsEnterFrontPage (
   if (!EFI_ERROR (Status) && (BootLogo != NULL)) {
     BootLogo->SetBootLogo (BootLogo, NULL, 0, 0, 0, 0);
   }
+
+  //
+  // Install BM HiiPackages. 
+  // Keep BootMaint HiiPackage, so that it can be covered by global setting. 
+  //
+  InitBMPackage ();
 
   Status = EFI_SUCCESS;
   do {
@@ -1199,9 +1206,19 @@ PlatformBdsEnterFrontPage (
 
     case FRONT_PAGE_KEY_BOOT_MANAGER:
       //
+      // Remove the installed BootMaint HiiPackages when exit.
+      //
+      FreeBMPackage ();
+
+      //
       // User chose to run the Boot Manager
       //
       CallBootManager ();
+
+      //
+      // Reinstall BootMaint HiiPackages after exiting from Boot Manager.
+      //
+      InitBMPackage ();
       break;
 
     case FRONT_PAGE_KEY_DEVICE_MANAGER:
@@ -1231,6 +1248,11 @@ PlatformBdsEnterFrontPage (
   //Will leave browser, check any reset required change is applied? if yes, reset system
   //
   SetupResetReminder ();
+
+  //
+  // Remove the installed BootMaint HiiPackages when exit.
+  //
+  FreeBMPackage ();
 
 Exit:
   //

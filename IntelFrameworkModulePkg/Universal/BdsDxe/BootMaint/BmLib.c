@@ -1,7 +1,7 @@
 /** @file
   Utility routines used by boot maintenance modules.
 
-Copyright (c) 2004 - 2012, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2014, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -178,7 +178,10 @@ EfiLibDeleteVariable (
                     0,
                     NULL
                     );
-    ASSERT (!EFI_ERROR (Status));
+    //
+    // Deleting variable with current variable implementation shouldn't fail.
+    //
+    ASSERT_EFI_ERROR (Status);
     FreePool (VarBuf);
   }
 
@@ -375,3 +378,34 @@ EfiLibStrFromDatahub (
 {
   return NULL;
 }
+
+/**
+
+  Find the first instance of this Protocol
+  in the system and return it's interface.
+
+
+  @param ProtocolGuid    Provides the protocol to search for
+  @param Interface       On return, a pointer to the first interface
+                         that matches ProtocolGuid
+
+  @retval  EFI_SUCCESS      A protocol instance matching ProtocolGuid was found
+  @retval  EFI_NOT_FOUND    No protocol instances were found that match ProtocolGuid
+
+**/
+EFI_STATUS
+EfiLibLocateProtocol (
+  IN  EFI_GUID    *ProtocolGuid,
+  OUT VOID        **Interface
+  )
+{
+  EFI_STATUS  Status;
+
+  Status = gBS->LocateProtocol (
+                  ProtocolGuid,
+                  NULL,
+                  (VOID **) Interface
+                  );
+  return Status;
+}
+

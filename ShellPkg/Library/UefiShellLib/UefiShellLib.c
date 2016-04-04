@@ -1,7 +1,7 @@
 /** @file
   Provides interface to shell functionality for shell commands and applications.
 
-  Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -1175,7 +1175,7 @@ ShellSetEnvironmentVariable (
   The CommandLine is executed from the current working directory on the current
   device.
 
-  The EnvironmentVariables and Status parameters are ignored in a pre-UEFI Shell 2.0
+  The EnvironmentVariables pararemeter is ignored in a pre-UEFI Shell 2.0
   environment.  The values pointed to by the parameters will be unchanged by the
   ShellExecute() function.  The Output parameter has no effect in a
   UEFI Shell 2.0 environment.
@@ -1203,6 +1203,7 @@ ShellExecute (
   OUT EFI_STATUS                *Status OPTIONAL
   )
 {
+  EFI_STATUS                CmdStatus;
   //
   // Check for UEFI Shell 2.0 protocols
   //
@@ -1221,16 +1222,29 @@ ShellExecute (
   //
   if (mEfiShellEnvironment2 != NULL) {
     //
-    // Call EFI Shell version (not using EnvironmentVariables or Status parameters)
+    // Call EFI Shell version.
     // Due to oddity in the EFI shell we want to dereference the ParentHandle here
     //
-    return (mEfiShellEnvironment2->Execute(*ParentHandle,
+    CmdStatus = (mEfiShellEnvironment2->Execute(*ParentHandle,
                                           CommandLine,
                                           Output));
+    //
+    // No Status output parameter so just use the returned status
+    //
+    if (Status != NULL) {
+      *Status = CmdStatus;
+    }
+    //
+    // If there was an error, we can't tell if it was from the command or from
+    // the Execute() function, so we'll just assume the shell ran successfully
+    // and the error came from the command.
+    //
+    return EFI_SUCCESS;
   }
 
   return (EFI_UNSUPPORTED);
 }
+
 /**
   Retreives the current directory path
 
@@ -1447,8 +1461,8 @@ InternalShellConvertFileListType (
   Opens a group of files based on a path.
 
   This function uses the Arg to open all the matching files. Each matched
-  file has a SHELL_FILE_ARG structure to record the file information. These
-  structures are placed on the list ListHead. Users can get the SHELL_FILE_ARG
+  file has a SHELL_FILE_INFO structure to record the file information. These
+  structures are placed on the list ListHead. Users can get the SHELL_FILE_INFO
   structures from ListHead to access each file. This function supports wildcards
   and will process '?' and '*' as such.  the list must be freed with a call to
   ShellCloseFileMetaArg().
@@ -1598,6 +1612,7 @@ ShellCloseFileMetaArg (
       FreePool(((EFI_SHELL_FILE_INFO_NO_CONST*)Node)->Info);
       FreePool((EFI_SHELL_FILE_INFO_NO_CONST*)Node);
     }
+    SHELL_FREE_NON_NULL(*ListHead);
     return EFI_SUCCESS;
   }
 
@@ -3279,7 +3294,9 @@ ShellPromptForResponse (
       //
       gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &EventIndex);
       Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-      ASSERT_EFI_ERROR(Status);
+      if (EFI_ERROR(Status)) {
+        break;
+      }
       ShellPrintEx(-1, -1, L"%c", Key.UnicodeChar);
       if (Key.UnicodeChar == L'Q' || Key.UnicodeChar ==L'q') {
         *Resp = ShellPromptResponseQuit;
@@ -3302,7 +3319,9 @@ ShellPromptForResponse (
         }
         gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &EventIndex);
         Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-        ASSERT_EFI_ERROR(Status);
+        if (EFI_ERROR(Status)) {
+          break;
+        }
         ShellPrintEx(-1, -1, L"%c", Key.UnicodeChar);
         switch (Key.UnicodeChar) {
           case L'Y':
@@ -3334,7 +3353,9 @@ ShellPromptForResponse (
         }
         gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &EventIndex);
         Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-        ASSERT_EFI_ERROR(Status);
+        if (EFI_ERROR(Status)) {
+          break;
+        }
         ShellPrintEx(-1, -1, L"%c", Key.UnicodeChar);
         switch (Key.UnicodeChar) {
           case L'Y':
@@ -3373,7 +3394,9 @@ ShellPromptForResponse (
         gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &EventIndex);
         if (Type == ShellPromptResponseTypeEnterContinue) {
           Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-          ASSERT_EFI_ERROR(Status);
+          if (EFI_ERROR(Status)) {
+            break;
+          }
           ShellPrintEx(-1, -1, L"%c", Key.UnicodeChar);
           if (Key.UnicodeChar == CHAR_CARRIAGE_RETURN) {
             *Resp = ShellPromptResponseContinue;
@@ -3403,7 +3426,9 @@ ShellPromptForResponse (
         }
         gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &EventIndex);
         Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-        ASSERT_EFI_ERROR(Status);
+        if (EFI_ERROR(Status)) {
+          break;
+        }
         ShellPrintEx(-1, -1, L"%c", Key.UnicodeChar);
         switch (Key.UnicodeChar) {
           case L'Y':
@@ -3428,7 +3453,9 @@ ShellPromptForResponse (
         }
         gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &EventIndex);
         Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-        ASSERT_EFI_ERROR(Status);
+        if (EFI_ERROR(Status)) {
+          break;
+        }
         ShellPrintEx(-1, -1, L"%c", Key.UnicodeChar);
         if (Key.UnicodeChar == CHAR_CARRIAGE_RETURN) {
           break;

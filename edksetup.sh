@@ -25,24 +25,51 @@
 # Please reference edk2 user manual for more detail descriptions at https://edk2.tianocore.org/files/documents/64/494/EDKII_UserManual.pdf
 #
 
-if [ \
-     "$1" = "-?" -o \
-     "$1" = "-h" -o \
-     "$1" = "--help" \
-   ]
-then
-  echo BaseTools Usage: \'. edksetup.sh\'
-  echo
+function HelpMsg()
+{
   echo Please note: This script must be \'sourced\' so the environment can be changed.
-  echo \(Either \'. edksetup.sh\' or \'source edksetup.sh\'\)
-  return
-fi
+  echo ". edksetup.sh" 
+  echo "source edksetup.sh"
+  return 1
+}
 
-if [ -z "$WORKSPACE" ]
+function SetupEnv()
+{
+  if [ -z "$WORKSPACE" ]
+  then
+    . BaseTools/BuildEnv $*
+  else
+    . $WORKSPACE/BaseTools/BuildEnv $*
+  fi
+}
+
+function SourceEnv()
+{
+  if [ \
+       "$1" = "-?" -o \
+       "$1" = "-h" -o \
+       "$1" = "--help" \
+     ]
+  then
+    HelpMsg
+  else
+    SetupEnv "$*"
+  fi
+}
+
+if [ $# -gt 1 ]
 then
-  . BaseTools/BuildEnv $*
-else
-  . $WORKSPACE/BaseTools/BuildEnv $*
+  HelpMsg
+elif [ $# -eq 1 ] && [ "$1" != "BaseTools" ]
+then
+  HelpMsg
 fi
 
+RETVAL=$?
+if [ $RETVAL -ne 0 ]
+then
+  return $RETVAL
+fi
+
+SourceEnv "$*"
 

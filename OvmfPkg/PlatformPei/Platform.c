@@ -1,7 +1,7 @@
 /**@file
   Platform PEI driver
 
-  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2014, Intel Corporation. All rights reserved.<BR>
   Copyright (c) 2011, Andrei Warkentin <andreiw@motorola.com>
 
   This program and the accompanying materials
@@ -30,14 +30,11 @@
 #include <Library/PciLib.h>
 #include <Library/PeimEntryPoint.h>
 #include <Library/PeiServicesLib.h>
+#include <Library/QemuFwCfgLib.h>
 #include <Library/ResourcePublicationLib.h>
 #include <Guid/MemoryTypeInformation.h>
 #include <Ppi/MasterBootMode.h>
 #include <IndustryStandard/Pci22.h>
-#include <Guid/XenInfo.h>
-#include <IndustryStandard/E820.h>
-#include <Library/ResourcePublicationLib.h>
-#include <Library/MtrrLib.h>
 
 #include "Platform.h"
 #include "Cmos.h"
@@ -61,6 +58,11 @@ EFI_PEI_PPI_DESCRIPTOR   mPpiBootMode[] = {
     NULL
   }
 };
+
+
+EFI_BOOT_MODE mBootMode = BOOT_WITH_FULL_CONFIGURATION;
+
+BOOLEAN mS3Supported = FALSE;
 
 
 VOID
@@ -168,16 +170,10 @@ AddUntestedMemoryRangeHob (
 }
 
 VOID
-XenMemMapInitialization (
+MemMapInitialization (
   VOID
   )
 {
-  EFI_E820_ENTRY64 *E820Map;
-  UINT32 E820EntriesCount;
-  EFI_STATUS Status;
-
-  DEBUG ((EFI_D_INFO, "Using memory map provided by Xen\n"));
-
   //
   // Create Memory Type Information HOB
   //
@@ -203,84 +199,27 @@ XenMemMapInitialization (
   //
   AddIoMemoryRangeHob (0x0A0000, BASE_1MB);
 
-  //
-  // Parse RAM in E820 map
-  //
-  Status = XenGetE820Map(&E820Map, &E820EntriesCount);
+  if (!mXen) {
+    UINT32  TopOfLowRam;
+    TopOfLowRam = GetSystemMemorySizeBelow4gb ();
 
-  ASSERT_EFI_ERROR (Status);
-
-  if (E820EntriesCount > 0) {
-    EFI_E820_ENTRY64 *Entry;
-    UINT32 Loop;
-
-    for (Loop = 0; Loop < E820EntriesCount; Loop++) {
-      Entry = E820Map + Loop;
-
-      //
-      // Only care about RAM
-      //
-      if (Entry->Type != EfiAcpiAddressRangeMemory) {
-        continue;
-      }
-
-      if (Entry->BaseAddr >= BASE_4GB) {
-        AddUntestedMemoryBaseSizeHob (Entry->BaseAddr, Entry->Length);
-      } else {
-        AddMemoryBaseSizeHob (Entry->BaseAddr, Entry->Length);
-      }
-
-      MtrrSetMemoryAttribute (Entry->BaseAddr, Entry->Length, CacheWriteBack);
-    }
+    //
+    // address       purpose   size
+    // ------------  --------  -------------------------
+    // max(top, 2g)  PCI MMIO  0xFC000000 - max(top, 2g)
+    // 0xFC000000    gap                           44 MB
+    // 0xFEC00000    IO-APIC                        4 KB
+    // 0xFEC01000    gap                         1020 KB
+    // 0xFED00000    HPET                           1 KB
+    // 0xFED00400    gap                         1023 KB
+    // 0xFEE00000    LAPIC                          1 MB
+    //
+    AddIoMemoryRangeHob (TopOfLowRam < BASE_2GB ?
+                         BASE_2GB : TopOfLowRam, 0xFC000000);
+    AddIoMemoryBaseSizeHob (0xFEC00000, SIZE_4KB);
+    AddIoMemoryBaseSizeHob (0xFED00000, SIZE_1KB);
+    AddIoMemoryBaseSizeHob (PcdGet32(PcdCpuLocalApicBaseAddress), SIZE_1MB);
   }
-}
-
-
-VOID
-MemMapInitialization (
-  EFI_PHYSICAL_ADDRESS  TopOfMemory
-  )
-{
-  //
-  // Create Memory Type Information HOB
-  //
-  BuildGuidDataHob (
-    &gEfiMemoryTypeInformationGuid,
-    mDefaultMemoryTypeInformation,
-    sizeof(mDefaultMemoryTypeInformation)
-    );
-
-  //
-  // Add PCI IO Port space available for PCI resource allocations.
-  //
-  BuildResourceDescriptorHob (
-    EFI_RESOURCE_IO,
-    EFI_RESOURCE_ATTRIBUTE_PRESENT     |
-    EFI_RESOURCE_ATTRIBUTE_INITIALIZED,
-    0xC000,
-    0x4000
-    );
-
-  //
-  // Video memory + Legacy BIOS region
-  //
-  AddIoMemoryRangeHob (0x0A0000, BASE_1MB);
-
-  //
-  // address       purpose   size
-  // ------------  --------  -------------------------
-  // max(top, 2g)  PCI MMIO  0xFC000000 - max(top, 2g)
-  // 0xFC000000    gap                           44 MB
-  // 0xFEC00000    IO-APIC                        4 KB
-  // 0xFEC01000    gap                         1020 KB
-  // 0xFED00000    HPET                           1 KB
-  // 0xFED00400    gap                         1023 KB
-  // 0xFEE00000    LAPIC                          1 MB
-  //
-  AddIoMemoryRangeHob (TopOfMemory < BASE_2GB ? BASE_2GB : TopOfMemory, 0xFC000000);
-  AddIoMemoryBaseSizeHob (0xFEC00000, SIZE_4KB);
-  AddIoMemoryBaseSizeHob (0xFED00000, SIZE_1KB);
-  AddIoMemoryBaseSizeHob (PcdGet32(PcdCpuLocalApicBaseAddress), SIZE_1MB);
 }
 
 
@@ -333,11 +272,16 @@ MiscInitialization (
 
 VOID
 BootModeInitialization (
+  VOID
   )
 {
-  EFI_STATUS Status;
+  EFI_STATUS    Status;
 
-  Status = PeiServicesSetBootMode (BOOT_WITH_FULL_CONFIGURATION);
+  if (CmosRead8 (0xF) == 0xFE) {
+    mBootMode = BOOT_ON_S3_RESUME;
+  }
+
+  Status = PeiServicesSetBootMode (mBootMode);
   ASSERT_EFI_ERROR (Status);
 
   Status = PeiServicesInstallPpi (mPpiBootMode);
@@ -409,42 +353,37 @@ InitializePlatform (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  EFI_PHYSICAL_ADDRESS  TopOfMemory;
-  UINT32 XenLeaf;
-
-  TopOfMemory = 0;
-
   DEBUG ((EFI_D_ERROR, "Platform PEIM Loaded\n"));
 
   DebugDumpCmos ();
 
-  XenLeaf = XenDetect ();
+  XenDetect ();
 
-  if (XenLeaf != 0) {
-    PublishPeiMemory ();
-    PcdSetBool (PcdPciDisableBusEnumeration, TRUE);
-  } else {
-    TopOfMemory = MemDetect ();
+  if (QemuFwCfgS3Enabled ()) {
+    DEBUG ((EFI_D_INFO, "S3 support was detected on QEMU\n"));
+    mS3Supported = TRUE;
   }
 
-  if (XenLeaf != 0) {
+  BootModeInitialization ();
+
+  PublishPeiMemory ();
+
+  InitializeRamRegions ();
+
+  if (mXen) {
     DEBUG ((EFI_D_INFO, "Xen was detected\n"));
-    InitializeXen (XenLeaf);
+    InitializeXen ();
   }
 
-  ReserveEmuVariableNvStore ();
+  if (mBootMode != BOOT_ON_S3_RESUME) {
+    ReserveEmuVariableNvStore ();
 
-  PeiFvInitialization ();
+    PeiFvInitialization ();
 
-  if (XenLeaf != 0) {
-    XenMemMapInitialization ();
-  } else {
-    MemMapInitialization (TopOfMemory);
+    MemMapInitialization ();
   }
 
   MiscInitialization ();
-
-  BootModeInitialization ();
 
   return EFI_SUCCESS;
 }

@@ -3,7 +3,7 @@
 #
 #
 # Copyright (c) 2007, Intel Corporation. All rights reserved.<BR>
-# Copyright (c) 2012, ARM Ltd. All rights reserved.<BR>
+# Copyright (c) 2012-2014, ARM Ltd. All rights reserved.<BR>
 #
 #    This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -26,7 +26,7 @@
   PLATFORM_VERSION               = 0.1
   DSC_SPECIFICATION              = 0x00010005
   OUTPUT_DIRECTORY               = Build/Embedded
-  SUPPORTED_ARCHITECTURES        = IA32|X64|IPF|ARM
+  SUPPORTED_ARCHITECTURES        = IA32|X64|IPF|ARM|AARCH64
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
   FLASH_DEFINITION               = EmbeddedPkg/EmbeddedPkg.fdf
@@ -93,12 +93,17 @@
   UefiDriverEntryPoint|MdePkg/Library/UefiDriverEntryPoint/UefiDriverEntryPoint.inf
   UefiApplicationEntryPoint|MdePkg/Library/UefiApplicationEntryPoint/UefiApplicationEntryPoint.inf
 
-
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   EblCmdLib|EmbeddedPkg/Library/EblCmdLibNull/EblCmdLibNull.inf
   
   EblNetworkLib|EmbeddedPkg/Library/EblNetworkLib/EblNetworkLib.inf
-  
+
+  FdtLib|EmbeddedPkg/Library/FdtLib/FdtLib.inf
+
+  # Networking Requirements
+  NetLib|MdeModulePkg/Library/DxeNetLib/DxeNetLib.inf
+  HiiLib|MdeModulePkg/Library/UefiHiiLib/UefiHiiLib.inf
+  UefiHiiServicesLib|MdeModulePkg/Library/UefiHiiServicesLib/UefiHiiServicesLib.inf  
 
 [LibraryClasses.common.DXE_DRIVER]
   PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
@@ -116,11 +121,18 @@
 [LibraryClasses.common.SEC]
   ExtractGuidedSectionLib|EmbeddedPkg/Library/PrePiExtractGuidedSectionLib/PrePiExtractGuidedSectionLib.inf
 
-[LibraryClasses.ARM]
+[LibraryClasses.ARM, LibraryClasses.AARCH64]
+  ArmGicLib|ArmPkg/Drivers/ArmGic/ArmGicLib.inf
+  ArmSmcLib|ArmPkg/Library/ArmSmcLib/ArmSmcLib.inf
+  BdsLib|ArmPkg/Library/BdsLib/BdsLib.inf
   SemihostLib|ArmPkg/Library/SemihostLib/SemihostLib.inf
+  NULL|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
 
 [LibraryClasses.ARM]
-  NULL|ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
+  ArmLib|ArmPkg/Library/ArmLib/ArmV7/ArmV7Lib.inf
+
+[LibraryClasses.AARCH64]
+  ArmLib|ArmPkg/Library/ArmLib/AArch64/AArch64Lib.inf
 
 
 ################################################################################
@@ -213,6 +225,9 @@
 #  RELEASE_*_IA32_DLINK_FLAGS = /ALIGN:4096
 #  *_*_IA32_CC_FLAGS = /D EFI_SPECIFICATION_VERSION=0x0002000A /D TIANO_RELEASE_VERSION=0x00080006
 
+[BuildOptions]
+  RVCT:*_*_ARM_PLATFORM_FLAGS == --cpu=7-A.security
+
 
 ################################################################################
 #
@@ -236,7 +251,6 @@
   EmbeddedPkg/Ebl/Ebl.inf
 ####  EmbeddedPkg/EblExternCmd/EblExternCmd.inf
   EmbeddedPkg/EmbeddedMonotonicCounter/EmbeddedMonotonicCounter.inf
-  EmbeddedPkg/GdbStub/GdbStub.inf
   EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
   EmbeddedPkg/ResetRuntimeDxe/ResetRuntimeDxe.inf
   EmbeddedPkg/SerialDxe/SerialDxe.inf
@@ -244,6 +258,14 @@
   EmbeddedPkg/MetronomeDxe/MetronomeDxe.inf
 
   EmbeddedPkg/Universal/MmcDxe/MmcDxe.inf
-  
-  
 
+  EmbeddedPkg/Application/AndroidFastboot/AndroidFastbootApp.inf
+  EmbeddedPkg/Drivers/AndroidFastbootTransportUsbDxe/FastbootTransportUsbDxe.inf
+  EmbeddedPkg/Drivers/AndroidFastbootTransportTcpDxe/FastbootTransportTcpDxe.inf
+
+  # Drivers
+  EmbeddedPkg/Drivers/Isp1761UsbDxe/Isp1761UsbDxe.inf
+  EmbeddedPkg/Drivers/Lan9118Dxe/Lan9118Dxe.inf
+
+[Components.IA32, Components.X64, Components.IPF, Components.ARM]
+  EmbeddedPkg/GdbStub/GdbStub.inf

@@ -1,7 +1,7 @@
 /** @file
   Initialize TPM2 device and measure FVs before handing off control to DXE.
 
-Copyright (c) 2013, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2013 - 2014, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials 
 are licensed and made available under the terms and conditions of the BSD License 
 which accompanies this distribution.  The full text of the license may be found at 
@@ -16,6 +16,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <IndustryStandard/UefiTcgPlatform.h>
 #include <Ppi/FirmwareVolumeInfo.h>
+#include <Ppi/FirmwareVolumeInfo2.h>
 #include <Ppi/LockPhysicalPresence.h>
 #include <Ppi/TpmInitialized.h>
 #include <Ppi/FirmwareVolume.h>
@@ -110,6 +111,11 @@ EFI_PEI_NOTIFY_DESCRIPTOR           mNotifyList[] = {
   {
     EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK,
     &gEfiPeiFirmwareVolumeInfoPpiGuid,
+    FirmwareVolmeInfoPpiNotifyCallback 
+  },
+  {
+    EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK,
+    &gEfiPeiFirmwareVolumeInfo2PpiGuid,
     FirmwareVolmeInfoPpiNotifyCallback 
   },
   {
@@ -518,6 +524,7 @@ FirmwareVolmeInfoPpiNotifyCallback (
   EFI_PEI_FIRMWARE_VOLUME_INFO_PPI  *Fv;
   EFI_STATUS                        Status;
   EFI_PEI_FIRMWARE_VOLUME_PPI       *FvPpi;
+  UINTN                             Index;
 
   Fv = (EFI_PEI_FIRMWARE_VOLUME_INFO_PPI *) Ppi;
 
@@ -542,6 +549,14 @@ FirmwareVolmeInfoPpiNotifyCallback (
     
     ASSERT (mMeasuredChildFvIndex < FixedPcdGet32 (PcdPeiCoreMaxFvSupported));
     if (mMeasuredChildFvIndex < FixedPcdGet32 (PcdPeiCoreMaxFvSupported)) {
+      //
+      // Check whether FV is in the measured child FV list.
+      //
+      for (Index = 0; Index < mMeasuredChildFvIndex; Index++) {
+        if (mMeasuredChildFvInfo[Index].BlobBase == (EFI_PHYSICAL_ADDRESS) (UINTN) Fv->FvInfo) {
+          return EFI_SUCCESS;
+        }
+      }
       mMeasuredChildFvInfo[mMeasuredChildFvIndex].BlobBase   = (EFI_PHYSICAL_ADDRESS) (UINTN) Fv->FvInfo;
       mMeasuredChildFvInfo[mMeasuredChildFvIndex].BlobLength = Fv->FvInfoSize;
       mMeasuredChildFvIndex++;
@@ -617,10 +632,6 @@ PeimEntryMA (
   if (CompareGuid (PcdGetPtr(PcdTpmInstanceGuid), &gEfiTpmDeviceInstanceNoneGuid) ||
       CompareGuid (PcdGetPtr(PcdTpmInstanceGuid), &gEfiTpmDeviceInstanceTpm12Guid)){
     DEBUG ((EFI_D_ERROR, "No TPM2 instance required!\n"));
-    return EFI_UNSUPPORTED;
-  }
-
-  if (PcdGetBool (PcdHideTpmSupport) && PcdGetBool (PcdHideTpm)) {
     return EFI_UNSUPPORTED;
   }
 

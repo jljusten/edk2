@@ -1478,6 +1478,7 @@ FindTopMenu (
   UI_MENU_OPTION                  *SavedMenuOption;
   UINTN                           TmpValue;
 
+  TmpValue  = 0;
   TopRow    = gStatementDimensions.TopRow    + SCROLL_ARROW_HEIGHT;
   BottomRow = gStatementDimensions.BottomRow - SCROLL_ARROW_HEIGHT;
 
@@ -1521,23 +1522,42 @@ FindTopMenu (
   UpdateOptionSkipLines (SavedMenuOption);
 
   //
-  // If highlight opcode is date/time, keep the highlight row info not change.
+  // FormRefreshEvent != NULL means this form will auto exit at an interval, display engine 
+  // will try to keep highlight on the current position after this form exit and re-enter.
   //
-  if ((SavedMenuOption->ThisTag->OpCode->OpCode == EFI_IFR_DATE_OP || SavedMenuOption->ThisTag->OpCode->OpCode == EFI_IFR_TIME_OP) &&
-      (gHighligthMenuInfo.QuestionId != 0) && 
-      (gHighligthMenuInfo.QuestionId == GetQuestionIdInfo(SavedMenuOption->ThisTag->OpCode))) {
-    //
-    // Still show the highlight menu before exit from display engine.
-    //
-    BottomRow = gHighligthMenuInfo.DisplayRow + SavedMenuOption->Skip;
+  // HiiHandle + QuestionId can find the only one question in the system.
+  //
+  // If this question has question id, save the question id info to find the question.
+  // else save the opcode buffer to find it.
+  //
+  if (gFormData->FormRefreshEvent != NULL && gFormData->HiiHandle == gHighligthMenuInfo.HiiHandle) {
+    if (gHighligthMenuInfo.QuestionId != 0) { 
+      if (gHighligthMenuInfo.QuestionId == GetQuestionIdInfo(SavedMenuOption->ThisTag->OpCode)) {
+        BottomRow = gHighligthMenuInfo.DisplayRow + SavedMenuOption->Skip;
+        //
+        // SkipValue only used for menu at the top of the form.
+        // If Highlight menu is not at the top, this value will be update later.
+        //
+        TmpValue = gHighligthMenuInfo.SkipValue;
+      }
+    } else if (gHighligthMenuInfo.OpCode != NULL){
+      if (!CompareMem (gHighligthMenuInfo.OpCode, SavedMenuOption->ThisTag->OpCode, gHighligthMenuInfo.OpCode->Length)) {
+        BottomRow = gHighligthMenuInfo.DisplayRow + SavedMenuOption->Skip;
+        //
+        // SkipValue only used for menu at the top of the form.
+        // If Highlight menu is not at the top, this value will be update later.
+        //
+        TmpValue = gHighligthMenuInfo.SkipValue;
+      }
+    }
   }
 
   if (SavedMenuOption->Skip >= BottomRow - TopRow) {
-    TmpValue = 0;
     *TopOfScreen = NewPos;
   } else {
     *TopOfScreen = FindTopOfScreenMenu(NewPos, BottomRow - TopRow - SavedMenuOption->Skip, &TmpValue);
   }
+  AdjustDateAndTimePosition(TRUE, TopOfScreen);
 
   *SkipValue   = TmpValue;
 }
@@ -1546,11 +1566,14 @@ FindTopMenu (
   Update highlight menu info.
 
   @param  MenuOption               The menu opton which is highlight.
+  @param  SkipValue                The skipvalue info for this menu.
+                                   SkipValue only used for the menu at the top of the form.
 
 **/
 VOID
 UpdateHighlightMenuInfo (
-  IN UI_MENU_OPTION            *MenuOption
+  IN UI_MENU_OPTION            *MenuOption,
+  IN UINTN                     SkipValue
   )
 {
   FORM_DISPLAY_ENGINE_STATEMENT   *Statement;
@@ -1567,14 +1590,39 @@ UpdateHighlightMenuInfo (
   gSequence = (UINT16) MenuOption->Sequence;
 
   //
-  // Record highlight row info for date/time opcode.
+  // FormRefreshEvent != NULL means this form will auto exit at an interval, display engine 
+  // will try to keep highlight on the current position after this form exit and re-enter.
   //
-  if (Statement->OpCode->OpCode == EFI_IFR_DATE_OP || Statement->OpCode->OpCode == EFI_IFR_TIME_OP) {
+  // HiiHandle + QuestionId can find the only one question in the system.
+  //
+  // If this question has question id, base on the question id info to find the question.
+  // else base on the opcode buffer to find it.
+  //
+  if (gFormData->FormRefreshEvent != NULL) {
+    gHighligthMenuInfo.HiiHandle  = gFormData->HiiHandle;
     gHighligthMenuInfo.QuestionId = GetQuestionIdInfo(Statement->OpCode);
+
+    //
+    // if question id == 0, save the opcode buffer for later use.
+    //
+    if (gHighligthMenuInfo.QuestionId == 0) {
+      if (gHighligthMenuInfo.OpCode != NULL) {
+        FreePool (gHighligthMenuInfo.OpCode);
+      }
+      gHighligthMenuInfo.OpCode = AllocateCopyPool (Statement->OpCode->Length, Statement->OpCode);
+      ASSERT (gHighligthMenuInfo.OpCode != NULL);
+    }
     gHighligthMenuInfo.DisplayRow = (UINT16) MenuOption->Row;
+    gHighligthMenuInfo.SkipValue  = (UINT16) SkipValue;
   } else {
+    gHighligthMenuInfo.HiiHandle  = NULL;
     gHighligthMenuInfo.QuestionId = 0;
+    if (gHighligthMenuInfo.OpCode != NULL) {
+      FreePool (gHighligthMenuInfo.OpCode);
+      gHighligthMenuInfo.OpCode = NULL;
+    }
     gHighligthMenuInfo.DisplayRow = 0;
+    gHighligthMenuInfo.SkipValue  = 0;
   }
 
   RefreshKeyHelp(gFormData, Statement, FALSE);
@@ -2251,7 +2299,7 @@ UiDisplayMenu (
       if (SkipHighLight) {
         MenuOption    = SavedMenuOption;
         SkipHighLight = FALSE;
-        UpdateHighlightMenuInfo (MenuOption);
+        UpdateHighlightMenuInfo (MenuOption, TopOfScreen == &MenuOption->Link ? SkipValue : 0);
         break;
       }
 
@@ -2295,7 +2343,7 @@ UiDisplayMenu (
         MenuOption = MENU_OPTION_FROM_LINK (NewPos);
         Statement = MenuOption->ThisTag;
 
-        UpdateHighlightMenuInfo (MenuOption);
+        UpdateHighlightMenuInfo (MenuOption, Temp2);
 
         if (!IsSelectable (MenuOption)) {
           break;
@@ -3149,23 +3197,58 @@ BrowserStatusProcess (
   VOID
   )
 {
-  CHAR16         *ErrorInfo;
-  EFI_INPUT_KEY  Key;
+  CHAR16             *ErrorInfo;
+  EFI_INPUT_KEY      Key;
+  EFI_EVENT          WaitList[2];
+  EFI_EVENT          RefreshIntervalEvent;
+  EFI_EVENT          TimeOutEvent;
+  UINT8              TimeOut;
+  EFI_STATUS         Status;
+  UINTN              Index;
+  WARNING_IF_CONTEXT EventContext;
+  EFI_IFR_OP_HEADER  *OpCodeBuf;
+  EFI_STRING_ID      StringToken;
 
   if (gFormData->BrowserStatus == BROWSER_SUCCESS) {
     return;
   }
 
-  if (gFormData->ErrorString != NULL) {
+  StringToken          = 0;
+  TimeOutEvent         = NULL;
+  RefreshIntervalEvent = NULL;
+  OpCodeBuf            = NULL;
+  if (gFormData->HighLightedStatement != NULL) {
+    OpCodeBuf = gFormData->HighLightedStatement->OpCode;
+  }
+
+  if (gFormData->BrowserStatus == (BROWSER_WARNING_IF)) {
+    ASSERT (OpCodeBuf != NULL && OpCodeBuf->OpCode == EFI_IFR_WARNING_IF_OP);
+
+    TimeOut     = ((EFI_IFR_WARNING_IF *) OpCodeBuf)->TimeOut;
+    StringToken = ((EFI_IFR_WARNING_IF *) OpCodeBuf)->Warning;
+  } else {
+    TimeOut = 0;
+    if ((gFormData->BrowserStatus == (BROWSER_NO_SUBMIT_IF)) &&
+        (OpCodeBuf != NULL && OpCodeBuf->OpCode == EFI_IFR_NO_SUBMIT_IF_OP)) {
+      StringToken = ((EFI_IFR_NO_SUBMIT_IF *) OpCodeBuf)->Error;
+    } else if ((gFormData->BrowserStatus == (BROWSER_INCONSISTENT_IF)) &&
+               (OpCodeBuf != NULL && OpCodeBuf->OpCode == EFI_IFR_INCONSISTENT_IF_OP)) {
+      StringToken = ((EFI_IFR_INCONSISTENT_IF *) OpCodeBuf)->Error;
+    }
+  }
+
+  if (StringToken != 0) {
+    ErrorInfo = GetToken (StringToken, gFormData->HiiHandle);
+  } else if (gFormData->ErrorString != NULL) {
+    //
+    // Only used to compatible with old setup browser.
+    // Not use this field in new browser core.
+    //
     ErrorInfo = gFormData->ErrorString;
   } else {
     switch (gFormData->BrowserStatus) {
     case BROWSER_SUBMIT_FAIL:
       ErrorInfo = gSaveFailed;
-      break;
-
-    case BROWSER_NO_SUBMIT_IF:
-      ErrorInfo = gNoSubmitIf;
       break;
 
     case BROWSER_FORM_NOT_FOUND:
@@ -3186,12 +3269,60 @@ BrowserStatusProcess (
     }
   }
 
-  //
-  // Error occur, prompt error message.
-  //
-  do {
-    CreateDialog (&Key, gEmptyString, ErrorInfo, gPressEnter, gEmptyString, NULL);
-  } while (Key.UnicodeChar != CHAR_CARRIAGE_RETURN);
+  if (TimeOut == 0) {
+    do {
+      CreateDialog (&Key, gEmptyString, ErrorInfo, gPressEnter, gEmptyString, NULL);
+    } while (Key.UnicodeChar != CHAR_CARRIAGE_RETURN);
+  } else {
+    Status = gBS->CreateEvent (EVT_NOTIFY_WAIT, TPL_CALLBACK, EmptyEventProcess, NULL, &TimeOutEvent);
+    ASSERT_EFI_ERROR (Status);
+
+    EventContext.SyncEvent = TimeOutEvent;
+    EventContext.TimeOut   = &TimeOut;
+    EventContext.ErrorInfo = ErrorInfo;
+
+    Status = gBS->CreateEvent (EVT_TIMER | EVT_NOTIFY_SIGNAL, TPL_CALLBACK, RefreshTimeOutProcess, &EventContext, &RefreshIntervalEvent);
+    ASSERT_EFI_ERROR (Status);
+
+    //
+    // Show the dialog first to avoid long time not reaction.
+    //
+    gBS->SignalEvent (RefreshIntervalEvent);
+
+    Status = gBS->SetTimer (RefreshIntervalEvent, TimerPeriodic, ONE_SECOND);
+    ASSERT_EFI_ERROR (Status);
+
+    while (TRUE) {
+      Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
+      if (!EFI_ERROR (Status) && Key.UnicodeChar == CHAR_CARRIAGE_RETURN) {
+        break;
+      }
+
+      if (Status != EFI_NOT_READY) {
+        continue;
+      }
+
+      WaitList[0] = TimeOutEvent;
+      WaitList[1] = gST->ConIn->WaitForKey;
+
+      Status = gBS->WaitForEvent (2, WaitList, &Index);
+      ASSERT_EFI_ERROR (Status);
+
+      if (Index == 0) {
+        //
+        // Timeout occur, close the hoot time out event.
+        //
+        break;
+      }
+    }
+  }
+
+  gBS->CloseEvent (TimeOutEvent);
+  gBS->CloseEvent (RefreshIntervalEvent);
+
+  if (StringToken != 0) {
+    FreePool (ErrorInfo);
+  }
 }
 
 /**
@@ -3391,6 +3522,10 @@ UnloadDisplayEngine (
   HiiRemovePackages(gHiiHandle);
 
   FreeDisplayStrings ();
+
+  if (gHighligthMenuInfo.OpCode != NULL) {
+    FreePool (gHighligthMenuInfo.OpCode);
+  }
 
   return EFI_SUCCESS;
 }

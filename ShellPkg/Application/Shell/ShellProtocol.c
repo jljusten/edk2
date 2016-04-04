@@ -458,9 +458,22 @@ EfiShellGetFilePathFromDevicePath(
           // append the path part onto the filepath.
           //
           ASSERT((PathForReturn == NULL && PathSize == 0) || (PathForReturn != NULL));
-          PathForReturn = StrnCatGrow(&PathForReturn, &PathSize, L"\\", 1);
 
           AlignedNode = AllocateCopyPool (DevicePathNodeLength(FilePath), FilePath);
+
+          // File Path Device Path Nodes 'can optionally add a "\" separator to
+          //  the beginning and/or the end of the Path Name string.'
+          // (UEFI Spec 2.4 section 9.3.6.4).
+          // If necessary, add a "\", but otherwise don't
+          // (This is specified in the above section, and also implied by the
+          //  UEFI Shell spec section 3.7)
+          if ((PathSize != 0)                        &&
+              (PathForReturn != NULL)                &&
+              (PathForReturn[PathSize - 1] != L'\\') &&
+              (AlignedNode->PathName[0]    != L'\\')) {
+            PathForReturn = StrnCatGrow (&PathForReturn, &PathSize, L"\\", 1);
+          }
+
           PathForReturn = StrnCatGrow(&PathForReturn, &PathSize, AlignedNode->PathName, 0);
           FreePool(AlignedNode);
         }
@@ -1346,17 +1359,20 @@ EfiShellEnablePageBreak (
 /**
   internal worker function to load and run an image via device path.
 
-  @param ParentImageHandle  A handle of the image that is executing the specified
-                            command line.
-  @param DevicePath         device path of the file to execute
-  @param CommandLine        Points to the NULL-terminated UCS-2 encoded string
-                            containing the command line. If NULL then the command-
-                            line will be empty.
-  @param Environment        Points to a NULL-terminated array of environment
-                            variables with the format 'x=y', where x is the
-                            environment variable name and y is the value. If this
-                            is NULL, then the current shell environment is used.
-  @param StatusCode         Points to the status code returned by the command.
+  @param ParentImageHandle      A handle of the image that is executing the specified
+                                command line.
+  @param DevicePath             device path of the file to execute
+  @param CommandLine            Points to the NULL-terminated UCS-2 encoded string
+                                containing the command line. If NULL then the command-
+                                line will be empty.
+  @param Environment            Points to a NULL-terminated array of environment
+                                variables with the format 'x=y', where x is the
+                                environment variable name and y is the value. If this
+                                is NULL, then the current shell environment is used.
+                            
+  @param[out] StartImageStatus  Returned status from gBS->StartImage.
+  @param[out] ExitDataSize      ExitDataSize as returned from gBS->StartImage
+  @param[out] ExitData          ExitData as returned from gBS->StartImage
 
   @retval EFI_SUCCESS       The command executed successfully. The  status code
                             returned by the command is pointed to by StatusCode.
@@ -1371,14 +1387,30 @@ InternalShellExecuteDevicePath(
   IN CONST EFI_DEVICE_PATH_PROTOCOL *DevicePath,
   IN CONST CHAR16                   *CommandLine OPTIONAL,
   IN CONST CHAR16                   **Environment OPTIONAL,
-  OUT EFI_STATUS                    *StatusCode OPTIONAL
+  OUT EFI_STATUS                    *StartImageStatus OPTIONAL,
+  OUT UINTN                         *ExitDataSize OPTIONAL,
+  OUT CHAR16                        **ExitData OPTIONAL
   )
 {
   EFI_STATUS                    Status;
+  EFI_STATUS                    StartStatus;
+  EFI_STATUS                    CleanupStatus;
   EFI_HANDLE                    NewHandle;
   EFI_LOADED_IMAGE_PROTOCOL     *LoadedImage;
   LIST_ENTRY                    OrigEnvs;
   EFI_SHELL_PARAMETERS_PROTOCOL ShellParamsProtocol;
+  UINTN                         InternalExitDataSize;
+  UINTN                         *ExitDataSizePtr;
+  CHAR16                        *ImagePath;
+  UINTN                         Index;
+
+  // ExitDataSize is not OPTIONAL for gBS->BootServices, provide somewhere for
+  // it to be dumped if the caller doesn't want it.
+  if (ExitData == NULL) {
+    ExitDataSizePtr = &InternalExitDataSize;
+  } else {
+    ExitDataSizePtr = ExitDataSize;
+  }
 
   if (ParentImageHandle == NULL) {
     return (EFI_INVALID_PARAMETER);
@@ -1439,39 +1471,81 @@ InternalShellExecuteDevicePath(
     ShellParamsProtocol.StdErr  = ShellInfoObject.NewShellParametersProtocol->StdErr;
     Status = UpdateArgcArgv(&ShellParamsProtocol, CommandLine, NULL, NULL);
     ASSERT_EFI_ERROR(Status);
+    //
+    // Replace Argv[0] with the full path of the binary we're executing:
+    // If the command line was "foo", the binary might be called "foo.efi".
+    // "The first entry in [Argv] is always the full file path of the
+    //  executable" - UEFI Shell Spec section 2.3
+    //
+    ImagePath = EfiShellGetFilePathFromDevicePath (DevicePath);
+    // The image we're executing isn't necessarily in a filesystem - it might
+    // be memory mapped. In this case EfiShellGetFilePathFromDevicePath will
+    // return NULL, and we'll leave Argv[0] as UpdateArgcArgv set it.
+    if (ImagePath != NULL) {
+      if (ShellParamsProtocol.Argv == NULL) {
+        // Command line was empty or null.
+        // (UpdateArgcArgv sets Argv to NULL when CommandLine is "" or NULL)
+        ShellParamsProtocol.Argv = AllocatePool (sizeof (CHAR16 *));
+        if (ShellParamsProtocol.Argv == NULL) {
+          Status = EFI_OUT_OF_RESOURCES;
+          goto UnloadImage;
+        }
+        ShellParamsProtocol.Argc = 1;
+      } else {
+        // Free the string UpdateArgcArgv put in Argv[0];
+        FreePool (ShellParamsProtocol.Argv[0]);
+      }
+      ShellParamsProtocol.Argv[0] = ImagePath;
+    }
+
     Status = gBS->InstallProtocolInterface(&NewHandle, &gEfiShellParametersProtocolGuid, EFI_NATIVE_INTERFACE, &ShellParamsProtocol);
     ASSERT_EFI_ERROR(Status);
 
     ///@todo initialize and install ShellInterface protocol on the new image for compatibility if - PcdGetBool(PcdShellSupportOldProtocols)
 
     //
-    // now start the image and if the caller wanted the return code pass it to them...
+    // now start the image, passing up exit data if the caller requested it
     //
     if (!EFI_ERROR(Status)) {
-      if (StatusCode != NULL) {
-        *StatusCode = gBS->StartImage(NewHandle, NULL, NULL);
-      } else {
-        Status      = gBS->StartImage(NewHandle, NULL, NULL);
+      StartStatus      = gBS->StartImage(
+                          NewHandle,
+                          ExitDataSizePtr,
+                          ExitData
+                          );
+      if (StartImageStatus != NULL) {
+        *StartImageStatus = StartStatus;
       }
+
+      CleanupStatus = gBS->UninstallProtocolInterface(
+                            NewHandle,
+                            &gEfiShellParametersProtocolGuid,
+                            &ShellParamsProtocol
+                            );
+      ASSERT_EFI_ERROR(CleanupStatus);
+
+      goto FreeAlloc;
     }
 
-    //
-    // Cleanup (and dont overwrite errors)
-    //
-    if (EFI_ERROR(Status)) {
-      gBS->UninstallProtocolInterface(NewHandle, &gEfiShellParametersProtocolGuid, &ShellParamsProtocol);
-    } else {
-      Status = gBS->UninstallProtocolInterface(NewHandle, &gEfiShellParametersProtocolGuid, &ShellParamsProtocol);
-      ASSERT_EFI_ERROR(Status);
+UnloadImage:
+    // Unload image - We should only get here if we didn't call StartImage
+    gBS->UnloadImage (NewHandle);
+
+FreeAlloc:
+    // Free Argv (Allocated in UpdateArgcArgv)
+    if (ShellParamsProtocol.Argv != NULL) {
+      for (Index = 0; Index < ShellParamsProtocol.Argc; Index++) {
+        if (ShellParamsProtocol.Argv[Index] != NULL) {
+          FreePool (ShellParamsProtocol.Argv[Index]);
+        }
+      }
+      FreePool (ShellParamsProtocol.Argv);
     }
   }
 
+  // Restore environment variables
   if (!IsListEmpty(&OrigEnvs)) {
-    if (EFI_ERROR(Status)) {
-      SetEnvironmentVariableList(&OrigEnvs);
-    } else {
-      Status = SetEnvironmentVariableList(&OrigEnvs);
-    }
+    CleanupStatus = SetEnvironmentVariableList(&OrigEnvs);
+    ASSERT_EFI_ERROR (CleanupStatus);
   }
 
   return(Status);
@@ -1523,6 +1597,8 @@ EfiShellExecute(
   CHAR16                    *Temp;
   EFI_DEVICE_PATH_PROTOCOL  *DevPath;
   UINTN                     Size;
+  UINTN                     ExitDataSize;
+  CHAR16                    *ExitData;
 
   if ((PcdGet8(PcdShellSupportLevel) < 1)) {
     return (EFI_UNSUPPORTED);
@@ -1550,7 +1626,32 @@ EfiShellExecute(
     DevPath,
     Temp,
     (CONST CHAR16**)Environment,
-    StatusCode);
+    StatusCode,
+    &ExitDataSize,
+    &ExitData);
+
+    if (Status == EFI_ABORTED) {
+      // If the command exited with an error, the shell should put the exit
+      // status in ExitData, preceded by a null-terminated string.
+      ASSERT (ExitDataSize == StrSize (ExitData) + sizeof (SHELL_STATUS));
+
+      if (StatusCode != NULL) {
+        // Skip the null-terminated string
+        ExitData += StrLen (ExitData) + 1;
+
+        // Use CopyMem to avoid alignment faults
+        CopyMem (StatusCode, ExitData, sizeof (SHELL_STATUS));
+
+        // Convert from SHELL_STATUS to EFI_STATUS
+        // EFI_STATUSes have top bit set when they are errors.
+        // (See UEFI Spec Appendix D)
+        if (*StatusCode != SHELL_SUCCESS) {
+          *StatusCode = (EFI_STATUS) *StatusCode | MAX_BIT;
+        }
+      }
+      FreePool (ExitData);
+      Status = EFI_SUCCESS;
+    }
 
   //
   // de-allocate and return
@@ -1620,6 +1721,7 @@ EfiShellFreeFileList(
     InternalFreeShellFileInfoNode(ShellFileListItem);
   }
   InternalFreeShellFileInfoNode(*FileList);
+  *FileList = NULL;
   return(EFI_SUCCESS);
 }
 
@@ -1641,6 +1743,7 @@ EfiShellRemoveDupInFileList(
 {
   EFI_SHELL_FILE_INFO *ShellFileListItem;
   EFI_SHELL_FILE_INFO *ShellFileListItem2;
+  EFI_SHELL_FILE_INFO *TempNode;
 
   if (FileList == NULL || *FileList == NULL) {
     return (EFI_INVALID_PARAMETER);
@@ -1658,13 +1761,33 @@ EfiShellRemoveDupInFileList(
             (CHAR16*)ShellFileListItem->FullName,
             (CHAR16*)ShellFileListItem2->FullName) == 0
          ){
+        TempNode = (EFI_SHELL_FILE_INFO *)GetPreviousNode(
+                                            &(*FileList)->Link,
+                                            &ShellFileListItem2->Link
+                                            );
         RemoveEntryList(&ShellFileListItem2->Link);
         InternalFreeShellFileInfoNode(ShellFileListItem2);
+        // Set ShellFileListItem2 to PreviousNode so we don't access Freed
+        // memory in GetNextNode in the loop expression above.
+        ShellFileListItem2 = TempNode;
       }
     }
   }
   return (EFI_SUCCESS);
 }
+
+//
+// This is the same structure as the external version, but it has no CONST qualifiers.
+//
+typedef struct {
+  LIST_ENTRY        Link;       ///< Linked list members.
+  EFI_STATUS        Status;     ///< Status of opening the file.  Valid only if Handle != NULL.
+        CHAR16      *FullName;  ///< Fully qualified filename.
+        CHAR16      *FileName;  ///< name of this file.
+  SHELL_FILE_HANDLE Handle;     ///< Handle for interacting with the opened file or NULL if closed.
+  EFI_FILE_INFO     *Info;      ///< Pointer to the FileInfo struct for this file or NULL.
+} EFI_SHELL_FILE_INFO_NO_CONST;
+
 /**
   Allocates and duplicates a EFI_SHELL_FILE_INFO node.
 
@@ -1681,7 +1804,12 @@ InternalDuplicateShellFileInfo(
   IN BOOLEAN                   Save
   )
 {
-  EFI_SHELL_FILE_INFO *NewNode;
+  EFI_SHELL_FILE_INFO_NO_CONST *NewNode;
+
+  //
+  // try to confirm that the objects are in sync
+  //
+  ASSERT(sizeof(EFI_SHELL_FILE_INFO_NO_CONST) == sizeof(EFI_SHELL_FILE_INFO));
 
   NewNode = AllocateZeroPool(sizeof(EFI_SHELL_FILE_INFO));
   if (NewNode == NULL) {
@@ -1694,7 +1822,11 @@ InternalDuplicateShellFileInfo(
   if ( NewNode->FullName == NULL
     || NewNode->FileName == NULL
     || NewNode->Info == NULL
-   ){
+  ){
+    SHELL_FREE_NON_NULL(NewNode->FullName);
+    SHELL_FREE_NON_NULL(NewNode->FileName);
+    SHELL_FREE_NON_NULL(NewNode->Info);
+    SHELL_FREE_NON_NULL(NewNode);
     return(NULL);
   }
   NewNode->Status = Node->Status;
@@ -1706,7 +1838,7 @@ InternalDuplicateShellFileInfo(
   StrCpy((CHAR16*)NewNode->FileName, Node->FileName);
   CopyMem(NewNode->Info, Node->Info, (UINTN)Node->Info->Size);
 
-  return(NewNode);
+  return((EFI_SHELL_FILE_INFO*)NewNode);
 }
 
 /**
@@ -1771,7 +1903,7 @@ CreateAndPopulateShellFileInfo(
     TempString = StrnCatGrow(&TempString, &Size, BasePath, 0);
     if (TempString == NULL) {
       FreePool((VOID*)ShellFileListItem->FileName);
-      FreePool(ShellFileListItem->Info);
+      SHELL_FREE_NON_NULL(ShellFileListItem->Info);
       FreePool(ShellFileListItem);
       return (NULL);
     }
@@ -1786,6 +1918,8 @@ CreateAndPopulateShellFileInfo(
       return (NULL);
     }
   }
+
+  TempString = PathCleanUpDirectories(TempString);
 
   ShellFileListItem->FullName = TempString;
   ShellFileListItem->Status   = Status;
@@ -1978,6 +2112,7 @@ ShellSearchHandle(
   EFI_SHELL_FILE_INFO *ShellInfo;
   EFI_SHELL_FILE_INFO *ShellInfoNode;
   EFI_SHELL_FILE_INFO *NewShellNode;
+  EFI_FILE_INFO       *FileInfo;
   BOOLEAN             Directory;
   CHAR16              *NewFullName;
   UINTN               Size;
@@ -2005,30 +2140,44 @@ ShellSearchHandle(
 
   if (CurrentFilePattern[0]   == CHAR_NULL
     &&NextFilePatternStart[0] == CHAR_NULL
-   ){
+    ){
     //
-    // Add the current parameter FileHandle to the list, then end...
+    // we want the parent or root node (if no parent)
     //
     if (ParentNode == NULL) {
-      Status = EFI_INVALID_PARAMETER;
+      //
+      // We want the root node.  create the node.
+      //
+      FileInfo = FileHandleGetInfo(FileHandle);
+      NewShellNode = CreateAndPopulateShellFileInfo(
+        MapName,
+        EFI_SUCCESS,
+        L"\\",
+        FileHandle,
+        FileInfo
+        );
+      SHELL_FREE_NON_NULL(FileInfo);
     } else {
+      //
+      // Add the current parameter FileHandle to the list, then end...
+      //
       NewShellNode = InternalDuplicateShellFileInfo((EFI_SHELL_FILE_INFO*)ParentNode, TRUE);
-      if (NewShellNode == NULL) {
-        Status = EFI_OUT_OF_RESOURCES;
-      } else {
-        NewShellNode->Handle = NULL;
-        if (*FileList == NULL) {
-          *FileList = AllocateZeroPool(sizeof(EFI_SHELL_FILE_INFO));
-          InitializeListHead(&((*FileList)->Link));
-        }
-
-        //
-        // Add to the returning to use list
-        //
-        InsertTailList(&(*FileList)->Link, &NewShellNode->Link);
-
-        Status = EFI_SUCCESS;
+    }
+    if (NewShellNode == NULL) {
+      Status = EFI_OUT_OF_RESOURCES;
+    } else {
+      NewShellNode->Handle = NULL;
+      if (*FileList == NULL) {
+        *FileList = AllocateZeroPool(sizeof(EFI_SHELL_FILE_INFO));
+        InitializeListHead(&((*FileList)->Link));
       }
+
+      //
+      // Add to the returning to use list
+      //
+      InsertTailList(&(*FileList)->Link, &NewShellNode->Link);
+
+      Status = EFI_SUCCESS;
     }
   } else {
     Status = EfiShellFindFilesInDir(FileHandle, &ShellInfo);
@@ -2888,6 +3037,29 @@ InternalEfiShellGetListAlias(
 }
 
 /**
+  Convert a null-terminated unicode string, in-place, to all lowercase.
+  Then return it.
+  
+  @param  Str    The null-terminated string to be converted to all lowercase.
+  
+  @return        The null-terminated string converted into all lowercase.  
+**/
+STATIC CHAR16 *
+ToLower (
+  CHAR16 *Str
+  )
+{
+  UINTN Index;
+
+  for (Index = 0; Str[Index] != L'\0'; Index++) {
+    if (Str[Index] >= L'A' && Str[Index] <= L'Z') {
+      Str[Index] -= (CHAR16)(L'A' - L'a');
+    }
+  }
+  return Str;
+}
+
+/**
   This function returns the command associated with a alias or a list of all
   alias'.
 
@@ -2916,17 +3088,23 @@ EfiShellGetAlias(
   UINTN       RetSize;
   UINT32      Attribs;
   EFI_STATUS  Status;
+  CHAR16      *AliasLower;
 
+  // Convert to lowercase to make aliases case-insensitive
   if (Alias != NULL) {
+    AliasLower = AllocateCopyPool (StrSize (Alias), Alias);
+    ASSERT (AliasLower != NULL);
+    ToLower (AliasLower);
+
     if (Volatile == NULL) {
-      return (AddBufferToFreeList(GetVariable((CHAR16*)Alias, &gShellAliasGuid)));
+      return (AddBufferToFreeList(GetVariable(AliasLower, &gShellAliasGuid)));
     }
     RetSize = 0;
     RetVal = NULL;
-    Status = gRT->GetVariable((CHAR16*)Alias, &gShellAliasGuid, &Attribs, &RetSize, RetVal);
+    Status = gRT->GetVariable(AliasLower, &gShellAliasGuid, &Attribs, &RetSize, RetVal);
     if (Status == EFI_BUFFER_TOO_SMALL) {
       RetVal = AllocateZeroPool(RetSize);
-      Status = gRT->GetVariable((CHAR16*)Alias, &gShellAliasGuid, &Attribs, &RetSize, RetVal);
+      Status = gRT->GetVariable(AliasLower, &gShellAliasGuid, &Attribs, &RetSize, RetVal);
     }
     if (EFI_ERROR(Status)) {
       if (RetVal != NULL) {
@@ -2940,6 +3118,7 @@ EfiShellGetAlias(
       *Volatile = TRUE;
     }
 
+    FreePool (AliasLower);
     return (AddBufferToFreeList(RetVal));
   }
   return (AddBufferToFreeList(InternalEfiShellGetListAlias()));
@@ -2969,6 +3148,18 @@ InternalSetAlias(
   IN BOOLEAN Volatile
   )
 {
+  EFI_STATUS  Status;
+  CHAR16      *AliasLower;
+
+  // Convert to lowercase to make aliases case-insensitive
+  if (Alias != NULL) {
+    AliasLower = AllocateCopyPool (StrSize (Alias), Alias);
+    ASSERT (AliasLower != NULL);
+    ToLower (AliasLower);
+  } else {
+    AliasLower = NULL;
+  }
+
   //
   // We must be trying to remove one if Alias is NULL
   //
@@ -2976,7 +3167,7 @@ InternalSetAlias(
     //
     // remove an alias (but passed in COMMAND parameter)
     //
-    return (gRT->SetVariable((CHAR16*)Command, &gShellAliasGuid, 0, 0, NULL));
+    Status = (gRT->SetVariable((CHAR16*)Command, &gShellAliasGuid, 0, 0, NULL));
   } else {
     //
     // Add and replace are the same
@@ -2985,8 +3176,13 @@ InternalSetAlias(
     // We dont check the error return on purpose since the variable may not exist.
     gRT->SetVariable((CHAR16*)Command, &gShellAliasGuid, 0, 0, NULL);
 
-    return (gRT->SetVariable((CHAR16*)Alias, &gShellAliasGuid, EFI_VARIABLE_BOOTSERVICE_ACCESS|(Volatile?0:EFI_VARIABLE_NON_VOLATILE), StrSize(Command), (VOID*)Command));
+    Status = (gRT->SetVariable((CHAR16*)Alias, &gShellAliasGuid, EFI_VARIABLE_BOOTSERVICE_ACCESS|(Volatile?0:EFI_VARIABLE_NON_VOLATILE), StrSize(Command), (VOID*)Command));
   }
+
+  if (Alias != NULL) {
+    FreePool (AliasLower);
+  }
+  return Status;
 }
 
 /**
@@ -3008,6 +3204,7 @@ InternalSetAlias(
   @retval EFI_NOT_FOUND         the Alias intended to be deleted was not found
   @retval EFI_ACCESS_DENIED     The alias is a built-in alias or already existed and Replace was set to
                                 FALSE.
+  @retval EFI_INVALID_PARAMETER Command is null or the empty string.
 **/
 EFI_STATUS
 EFIAPI
@@ -3018,21 +3215,24 @@ EfiShellSetAlias(
   IN BOOLEAN Volatile
   )
 {
-  //
-  // cant set over a built in alias
-  //
   if (ShellCommandIsOnAliasList(Alias==NULL?Command:Alias)) {
+    //
+    // cant set over a built in alias
+    //
     return (EFI_ACCESS_DENIED);
-  }
-  if (Command == NULL || *Command == CHAR_NULL || StrLen(Command) == 0) {
+  } else if (Command == NULL || *Command == CHAR_NULL || StrLen(Command) == 0) {
+    //
+    // Command is null or empty
+    //
     return (EFI_INVALID_PARAMETER);
-  }
-
-  if (EfiShellGetAlias(Command, NULL) != NULL && !Replace) {
+  } else if (EfiShellGetAlias(Command, NULL) != NULL && !Replace) {
+    //
+    // Alias already exists, Replace not set
+    //
     return (EFI_ACCESS_DENIED);
+  } else {
+    return (InternalSetAlias(Command, Alias, Volatile));
   }
-
-  return (InternalSetAlias(Command, Alias, Volatile));
 }
 
 // Pure FILE_HANDLE operations are passed to FileHandleLib
@@ -3385,3 +3585,4 @@ InernalEfiShellStartMonitor(
   }
   return (Status);
 }
+

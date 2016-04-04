@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 #
 # Copyright (c) 2008 - 2010, Apple Inc. All rights reserved.<BR>
-# Copyright (c) 2011 - 2013, ARM Limited. All rights reserved.
+# Copyright (c) 2011 - 2014, ARM Limited. All rights reserved.
 #
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
@@ -45,7 +45,7 @@ GCC_ASM_EXPORT (ArmDataMemoryBarrier)
 GCC_ASM_EXPORT (ArmDataSyncronizationBarrier)
 GCC_ASM_EXPORT (ArmInstructionSynchronizationBarrier)
 GCC_ASM_EXPORT (ArmWriteVBar)
-GCC_ASM_EXPORT (ArmVFPImplemented)
+GCC_ASM_EXPORT (ArmReadVBar)
 GCC_ASM_EXPORT (ArmEnableVFP)
 GCC_ASM_EXPORT (ArmCallWFI)
 GCC_ASM_EXPORT (ArmInvalidateInstructionAndDataTlb)
@@ -146,7 +146,7 @@ ASM_PFX(ArmDisableMmu):
 2: mrs     x0, sctlr_el2        // Read System Control Register EL2
    b       4f
 3: mrs     x0, sctlr_el3        // Read System Control Register EL3
-4: bic     x0, x0, #CTRL_M_BIT  // Clear MMU enable bit
+4: and     x0, x0, #~CTRL_M_BIT  // Clear MMU enable bit
    EL1_OR_EL2_OR_EL3(x1)
 1: msr     sctlr_el1, x0        // Write back
    tlbi    vmalle1
@@ -168,9 +168,8 @@ ASM_PFX(ArmDisableCachesAndMmu):
 2: mrs     x0, sctlr_el2        // Get control register EL2
    b       4f
 3: mrs     x0, sctlr_el3        // Get control register EL3
-4: bic     x0, x0, #CTRL_M_BIT  // Disable MMU
-   bic     x0, x0, #CTRL_C_BIT  // Disable D Cache
-   bic     x0, x0, #CTRL_I_BIT  // Disable I Cache
+4: mov     x1, #~(CTRL_M_BIT | CTRL_C_BIT | CTRL_I_BIT)  // Disable MMU, D & I caches
+   and     x0, x0, x1
    EL1_OR_EL2_OR_EL3(x1)
 1: msr     sctlr_el1, x0        // Write back control register
    b       4f
@@ -219,7 +218,7 @@ ASM_PFX(ArmDisableDataCache):
 2: mrs     x0, sctlr_el2        // Get control register EL2
    b       4f
 3: mrs     x0, sctlr_el3        // Get control register EL3
-4: bic     x0, x0, #CTRL_C_BIT  // Clear C bit
+4: and     x0, x0, #~CTRL_C_BIT  // Clear C bit
    EL1_OR_EL2_OR_EL3(x1)
 1: msr     sctlr_el1, x0        // Write back control register
    b       4f
@@ -257,7 +256,7 @@ ASM_PFX(ArmDisableInstructionCache):
 2: mrs     x0, sctlr_el2        // Get control register EL2
    b       4f
 3: mrs     x0, sctlr_el3        // Get control register EL3
-4: bic     x0, x0, #CTRL_I_BIT  // Clear I bit
+4: and     x0, x0, #~CTRL_I_BIT  // Clear I bit
    EL1_OR_EL2_OR_EL3(x1)
 1: msr     sctlr_el1, x0        // Write back control register
    b       4f
@@ -291,7 +290,7 @@ ASM_PFX(ArmDisableAlignmentCheck):
 2: mrs     x0, sctlr_el2        // Get control register EL2
    b       4f
 3: mrs     x0, sctlr_el3        // Get control register EL3
-4: bic     x0, x0, #CTRL_A_BIT  // Clear A (alignment check) bit
+4: and     x0, x0, #~CTRL_A_BIT  // Clear A (alignment check) bit
    EL1_OR_EL2_OR_EL3(x1)
 1: msr     sctlr_el1, x0        // Write back control register
    b       4f
@@ -410,6 +409,16 @@ ASM_PFX(ArmWriteVBar):
 4: isb
    ret
 
+ASM_PFX(ArmReadVBar):
+   EL1_OR_EL2_OR_EL3(x1)
+1: mrs   x0, vbar_el1            // Set the Address of the EL1 Vector Table in the VBAR register
+   ret
+2: mrs   x0, vbar_el2            // Set the Address of the EL2 Vector Table in the VBAR register
+   ret
+3: mrs   x0, vbar_el3            // Set the Address of the EL3 Vector Table in the VBAR register
+   ret
+
+
 ASM_PFX(ArmEnableVFP):
   // Check whether floating-point is implemented in the processor.
   mov   x1, x30                 // Save LR
@@ -498,8 +507,5 @@ ASM_PFX(ArmWriteHcr):
 ASM_PFX(ArmReadCurrentEL):
   mrs   x0, CurrentEL
   ret
-
-dead:
-  b     dead
 
 ASM_FUNCTION_REMOVE_IF_UNREFERENCED

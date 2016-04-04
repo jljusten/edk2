@@ -25,7 +25,7 @@ GCC_ASM_IMPORT(ArmPlatformPeiBootAction)
 GCC_ASM_IMPORT(ArmPlatformStackSet)
 GCC_ASM_EXPORT(_ModuleEntryPoint)
 
-StartupAddr:        .dword       ASM_PFX(CEntryPoint)
+StartupAddr:        .8byte ASM_PFX(CEntryPoint)
 
 ASM_PFX(_ModuleEntryPoint):
   // Do early platform specific actions
@@ -42,8 +42,8 @@ _SetSVCMode:
 // at the top of the DRAM)
 _SetupStackPosition:
   // Compute Top of System Memory
-  LoadConstantToReg (FixedPcdGet32(PcdSystemMemoryBase), x1)
-  LoadConstantToReg (FixedPcdGet32(PcdSystemMemorySize), x2)
+  LoadConstantToReg (FixedPcdGet64 (PcdSystemMemoryBase), x1)
+  LoadConstantToReg (FixedPcdGet64 (PcdSystemMemorySize), x2)
   sub   x2, x2, #1
   add   x1, x1, x2      // x1 = SystemMemoryTop = PcdSystemMemoryBase + PcdSystemMemorySize
 

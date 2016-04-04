@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------ 
 #
 # Copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
-# Copyright (c) 2011-2013, ARM Limited. All rights reserved.
+# Copyright (c) 2011 - 2014, ARM Limited. All rights reserved.
 #
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
@@ -23,8 +23,8 @@
 
 .text
 .align 2
-GCC_ASM_EXPORT(Cp15IdCode)
-GCC_ASM_EXPORT(Cp15CacheInfo)
+GCC_ASM_EXPORT(ArmReadMidr)
+GCC_ASM_EXPORT(ArmCacheInfo)
 GCC_ASM_EXPORT(ArmGetInterruptState)
 GCC_ASM_EXPORT(ArmGetFiqState)
 GCC_ASM_EXPORT(ArmGetTTBR0BaseAddress)
@@ -47,14 +47,16 @@ GCC_ASM_EXPORT(ArmWriteHVBar)
 GCC_ASM_EXPORT(ArmCallWFE)
 GCC_ASM_EXPORT(ArmCallSEV)
 GCC_ASM_EXPORT(ArmReadSctlr)
+GCC_ASM_EXPORT(ArmReadCpuActlr)
+GCC_ASM_EXPORT(ArmWriteCpuActlr)
 
 #------------------------------------------------------------------------------
 
-ASM_PFX(Cp15IdCode):
+ASM_PFX(ArmReadMidr):
   mrc     p15,0,R0,c0,c0,0
   bx      LR
 
-ASM_PFX(Cp15CacheInfo):
+ASM_PFX(ArmCacheInfo):
   mrc     p15,0,R0,c0,c0,1
   bx      LR
 
@@ -87,7 +89,7 @@ ASM_PFX(CPSRMaskInsert):    @ on entry, r0 is the mask and r1 is the field to in
   isb
   mov     sp, r3            @ restore stack pointer
   ldmfd   sp!, {r4-r12, lr} @ restore registers
-  bx      lr                @ return (hopefully thumb-safe!)             @ return (hopefully thumb-safe!)
+  bx      lr                @ return (hopefully thumb-safe!)
 
 ASM_PFX(CPSRRead):
   mrs     r0, cpsr
@@ -161,7 +163,6 @@ ASM_PFX(ArmWriteHVBar):
   mcr     p15, 4, r0, c12, c0, 0
   bx      lr
 
-
 ASM_PFX(ArmReadMVBar):
   mrc     p15, 0, r0, c12, c0, 1
   bx      lr
@@ -179,7 +180,17 @@ ASM_PFX(ArmCallSEV):
   bx      lr
 
 ASM_PFX(ArmReadSctlr):
-  mrc     p15, 0, R0, c1, c0, 0      @ Read SCTLR into R0 (Read control register configuration data)
-  bx	  lr
+  mrc     p15, 0, r0, c1, c0, 0      @ Read SCTLR into R0 (Read control register configuration data)
+  bx      lr
+
+ASM_PFX(ArmReadCpuActlr):
+  mrc     p15, 0, r0, c1, c0, 1
+  bx      lr
+
+ASM_PFX(ArmWriteCpuActlr):
+  mcr     p15, 0, r0, c1, c0, 1
+  dsb
+  isb
+  bx      lr
 
 ASM_FUNCTION_REMOVE_IF_UNREFERENCED

@@ -1,7 +1,7 @@
 /** @file
 
   Copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
-  Copyright (c) 2011 - 2012, ARM Ltd. All rights reserved.<BR>
+  Copyright (c) 2011 - 2014, ARM Ltd. All rights reserved.<BR>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -76,7 +76,7 @@ typedef enum {
 typedef struct {
   EFI_PHYSICAL_ADDRESS          PhysicalBase;
   EFI_VIRTUAL_ADDRESS           VirtualBase;
-  UINTN                         Length;
+  UINT64                        Length;
   ARM_MEMORY_REGION_ATTRIBUTES  Attributes;
 } ARM_MEMORY_REGION_DESCRIPTOR;
 
@@ -212,15 +212,9 @@ ArmReadIdPfr1 (
   VOID
   );
 
-UINT32
+UINTN
 EFIAPI
-Cp15IdCode (
-  VOID
-  );
-  
-UINT32
-EFIAPI
-Cp15CacheInfo (
+ArmCacheInfo (
   VOID
   );
 
@@ -281,6 +275,24 @@ ArmCleanInvalidateDataCacheEntryByMVA (
 
 VOID
 EFIAPI
+ArmInvalidateDataCacheEntryBySetWay (
+  IN  UINTN  SetWayFormat
+  );
+
+VOID
+EFIAPI
+ArmCleanDataCacheEntryBySetWay (
+  IN  UINTN  SetWayFormat
+  );
+
+VOID
+EFIAPI
+ArmCleanInvalidateDataCacheEntryBySetWay (
+  IN  UINTN   SetWayFormat
+  );
+
+VOID
+EFIAPI
 ArmEnableDataCache (
   VOID
   );
@@ -317,6 +329,12 @@ ArmDisableMmu (
 
 VOID
 EFIAPI
+ArmEnableCachesAndMmu (
+  VOID
+  );
+
+VOID
+EFIAPI
 ArmDisableCachesAndMmu (
   VOID
   );
@@ -345,15 +363,27 @@ ArmGetInterruptState (
   VOID
   );
 
+VOID
+EFIAPI
+ArmEnableAsynchronousAbort (
+  VOID
+  );
+
 UINTN
 EFIAPI
-ArmDisableIrq (
+ArmDisableAsynchronousAbort (
   VOID
   );
 
 VOID
 EFIAPI
 ArmEnableIrq (
+  VOID
+  );
+
+UINTN
+EFIAPI
+ArmDisableIrq (
   VOID
   );
 
@@ -422,18 +452,6 @@ ArmMmuEnabled (
   
 VOID
 EFIAPI
-ArmSwitchProcessorMode (
-  IN ARM_PROCESSOR_MODE Mode
-  );
-
-ARM_PROCESSOR_MODE
-EFIAPI
-ArmProcessorMode (
-  VOID
-  );
-  
-VOID
-EFIAPI
 ArmEnableBranchPrediction (
   VOID
   );
@@ -458,6 +476,12 @@ ArmSetHighVectors (
 
 VOID
 EFIAPI
+ArmDrainWriteBuffer (
+  VOID
+  );
+
+VOID
+EFIAPI
 ArmDataMemoryBarrier (
   VOID
   );
@@ -477,10 +501,10 @@ ArmInstructionSynchronizationBarrier (
 VOID
 EFIAPI
 ArmWriteVBar (
-  IN  UINT32   VectorBase
+  IN  UINTN   VectorBase
   );
 
-UINT32
+UINTN
 EFIAPI
 ArmReadVBar (
   VOID
@@ -532,6 +556,12 @@ ArmCallWFI (
 UINTN
 EFIAPI
 ArmReadMpidr (
+  VOID
+  );
+
+UINTN
+EFIAPI
+ArmReadMidr (
   VOID
   );
 
@@ -593,6 +623,35 @@ VOID
 EFIAPI
 ArmWriteHVBar (
   IN  UINTN   HypModeVectorBase
+  );
+
+
+//
+// Helper functions for accessing CPU ACTLR
+//
+
+UINTN
+EFIAPI
+ArmReadCpuActlr (
+  VOID
+  );
+
+VOID
+EFIAPI
+ArmWriteCpuActlr (
+  IN  UINTN Val
+  );
+
+VOID
+EFIAPI
+ArmSetCpuActlrBit (
+  IN  UINTN    Bits
+  );
+
+VOID
+EFIAPI
+ArmUnsetCpuActlrBit (
+  IN  UINTN    Bits
   );
 
 #endif // __ARM_LIB__

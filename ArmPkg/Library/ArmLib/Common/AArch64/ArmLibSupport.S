@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 #
 # Copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
-# Copyright (c) 2011 - 2013, ARM Limited. All rights reserved.
+# Copyright (c) 2011 - 2014, ARM Limited. All rights reserved.
 #
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
@@ -17,7 +17,7 @@
 
 .text
 .align 3
-GCC_ASM_EXPORT (ArmMainIdCode)
+GCC_ASM_EXPORT (ArmReadMidr)
 GCC_ASM_EXPORT (ArmCacheInfo)
 GCC_ASM_EXPORT (ArmGetInterruptState)
 GCC_ASM_EXPORT (ArmGetFiqState)
@@ -37,13 +37,15 @@ GCC_ASM_EXPORT (ArmWriteScr)
 GCC_ASM_EXPORT (ArmWriteMVBar)
 GCC_ASM_EXPORT (ArmCallWFE)
 GCC_ASM_EXPORT (ArmCallSEV)
+GCC_ASM_EXPORT (ArmReadCpuActlr)
+GCC_ASM_EXPORT (ArmWriteCpuActlr)
 
 #------------------------------------------------------------------------------
 
 .set DAIF_FIQ_BIT,   (1 << 0)
 .set DAIF_IRQ_BIT,   (1 << 1)
 
-ASM_PFX(ArmiMainIdCode):
+ASM_PFX(ArmReadMidr):
   mrs     x0, midr_el1        // Read from Main ID Register (MIDR)
   ret
 
@@ -74,16 +76,16 @@ ASM_PFX(ArmWriteCpacr):
 ASM_PFX(ArmWriteAuxCr):
   EL1_OR_EL2(x1)
 1:msr     actlr_el1, x0      // Aux Control Reg (ACTLR) at EL1. Also available in EL2 and EL3
-  b       3f
+  ret
 2:msr     actlr_el2, x0      // Aux Control Reg (ACTLR) at EL1. Also available in EL2 and EL3
-3:ret
+  ret
 
 ASM_PFX(ArmReadAuxCr):
   EL1_OR_EL2(x1)
 1:mrs     x0, actlr_el1      // Aux Control Reg (ACTLR) at EL1. Also available in EL2 and EL3
-  b       3f
+  ret
 2:mrs     x0, actlr_el2      // Aux Control Reg (ACTLR) at EL1. Also available in EL2 and EL3
-3:ret
+  ret
 
 ASM_PFX(ArmSetTTBR0):
   EL1_OR_EL2_OR_EL3(x1)
@@ -185,7 +187,7 @@ ASM_PFX(ArmWriteScr):
   ret
 
 ASM_PFX(ArmWriteMVBar):
-  msr    vbar_el3, x0            // Excpetion Vector Base address for Monitor on EL3
+  msr    vbar_el3, x0            // Exception Vector Base address for Monitor on EL3
   ret
 
 ASM_PFX(ArmCallWFE):
@@ -196,7 +198,14 @@ ASM_PFX(ArmCallSEV):
   sev
   ret
 
-dead:
-  b       dead
+ASM_PFX(ArmReadCpuActlr):
+  mrs   x0, S3_1_c15_c2_0
+  ret
+
+ASM_PFX(ArmWriteCpuActlr):
+  msr   S3_1_c15_c2_0, x0
+  dsb   sy
+  isb
+  ret
 
 ASM_FUNCTION_REMOVE_IF_UNREFERENCED

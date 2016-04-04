@@ -1,7 +1,7 @@
 /** @file
 Private MACRO, structure and function definitions for Setup Browser module.
 
-Copyright (c) 2007 - 2013, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -169,7 +169,6 @@ typedef struct {
   BROWSER_STORAGE  *BrowserStorage;
 
   CHAR16           *ConfigRequest; // <ConfigRequest> = <ConfigHdr> + <RequestElement>
-  CHAR16           *ConfigElements;// Elements need to load initial data.
   UINTN            ElementCount;   // Number of <RequestElement> in the <ConfigRequest>
   UINTN            SpareStrLen;    // Spare length of ConfigRequest string buffer
 } FORMSET_STORAGE;
@@ -228,6 +227,7 @@ typedef struct {
   EFI_HII_VALUE     Result;          // Expression evaluation result
 
   UINT8             TimeOut;         // For EFI_IFR_WARNING_IF
+  EFI_IFR_OP_HEADER *OpCode;         // Save the opcode buffer.
 
   LIST_ENTRY        OpCodeListHead;  // OpCodes consist of this expression (EXPRESSION_OPCODE)
 } FORM_EXPRESSION;
@@ -547,7 +547,6 @@ extern EDKII_FORM_DISPLAY_ENGINE_PROTOCOL *mFormDisplay;
 
 extern BOOLEAN               gResetRequired;
 extern BOOLEAN               gExitRequired;
-extern BOOLEAN               gFinishRetrieveCall;
 extern LIST_ENTRY            gBrowserFormSetList;
 extern LIST_ENTRY            gBrowserHotKeyList;
 extern BROWSER_SETTING_SCOPE gBrowserSettingScope;
@@ -710,6 +709,35 @@ IsQuestionValueChanged (
   IN FORM_BROWSER_FORM                *Form,
   IN OUT FORM_BROWSER_STATEMENT       *Question,
   IN GET_SET_QUESTION_VALUE_WITH      GetValueFrom
+  );
+
+/**
+  Validate the FormSet. If the formset is not validate, remove it from the list.
+
+  @param  FormSet                The input FormSet which need to validate.
+
+  @retval TRUE                   The handle is validate.
+  @retval FALSE                  The handle is invalidate.
+
+**/
+BOOLEAN
+ValidateFormSet (
+  FORM_BROWSER_FORMSET    *FormSet
+  );
+
+/**
+  Update the ValueChanged status for questions.
+
+  @param  FormSet                FormSet data structure.
+  @param  Form                   Form data structure.
+  @param  SettingScope           Setting Scope for Default action.
+
+**/
+VOID 
+UpdateStatementStatus (
+  IN FORM_BROWSER_FORMSET             *FormSet,
+  IN FORM_BROWSER_FORM                *Form, 
+  IN BROWSER_SETTING_SCOPE            SettingScope
   );
 
 /**
@@ -1144,19 +1172,6 @@ IsNvUpdateRequiredForFormSet (
   );
 
 /**
-  Check whether the storage data for current form set is changed.
-
-  @param  FormSet           FormSet data structure.
-
-  @retval TRUE              Data is changed.
-  @retval FALSE             Data is not changed.
-**/
-BOOLEAN 
-IsStorageDataChangedForFormSet (
-  IN FORM_BROWSER_FORMSET             *FormSet
-  );
-
-/**
   Call the call back function for the question and process the return action.
 
   @param Selection             On input, Selection tell setup browser the information
@@ -1190,6 +1205,7 @@ ProcessCallBackFunction (
 
   @param ConfigAccess          The config access protocol produced by the hii driver.
   @param Statement             The Question which need to call.
+  @param FormSet               The formset this question belong to.
 
   @retval EFI_SUCCESS          The call back function excutes successfully.
   @return Other value if the call back function failed to excute.  
@@ -1197,7 +1213,8 @@ ProcessCallBackFunction (
 EFI_STATUS 
 ProcessRetrieveForQuestion (
   IN     EFI_HII_CONFIG_ACCESS_PROTOCOL  *ConfigAccess,
-  IN     FORM_BROWSER_STATEMENT          *Statement
+  IN     FORM_BROWSER_STATEMENT          *Statement,
+  IN     FORM_BROWSER_FORMSET            *FormSet
   );
 
 /**
@@ -1333,6 +1350,19 @@ ExecuteAction (
 UINT32
 EFIAPI
 SaveReminder (
+  VOID
+  );
+
+/**
+  Check whether the Reset Required for the browser
+
+  @retval TRUE      Browser required to reset after exit.
+  @retval FALSE     Browser not need to reset after exit.
+
+**/
+BOOLEAN
+EFIAPI
+IsResetRequired (
   VOID
   );
 
@@ -1639,6 +1669,76 @@ EFI_HII_HANDLE
 DevicePathToHiiHandle (
   IN EFI_DEVICE_PATH_PROTOCOL   *DevicePath,
   IN EFI_GUID                   *FormsetGuid
+  );
+
+/**
+  Adjust the config request info, remove the request elements which already in AllConfigRequest string.
+
+  @param  Storage                Form set Storage.
+  @param  Request                The input request string.
+  @param  RespString             Whether the input is ConfigRequest or ConfigResp format.
+
+  @retval TRUE                   Has element not covered by current used elements, need to continue to call ExtractConfig
+  @retval FALSE                  All elements covered by current used elements.
+
+**/
+BOOLEAN 
+ConfigRequestAdjust (
+  IN  BROWSER_STORAGE         *Storage,
+  IN  CHAR16                  *Request,
+  IN  BOOLEAN                 RespString
+  );
+
+/**
+  Perform question check. 
+  
+  If one question has more than one check, process form high priority to low.
+
+  @param  FormSet                FormSet data structure.
+  @param  Form                   Form data structure.
+  @param  Question               The Question to be validated.
+
+  @retval EFI_SUCCESS            Form validation pass.
+  @retval other                  Form validation failed.
+
+**/
+EFI_STATUS
+ValueChangedValidation (
+  IN  FORM_BROWSER_FORMSET            *FormSet,
+  IN  FORM_BROWSER_FORM               *Form,
+  IN  FORM_BROWSER_STATEMENT          *Question
+  );
+
+/**
+  Pop up the error info.
+
+  @param      BrowserStatus    The input browser status.
+  @param      OpCode           The opcode use to get the erro info and timeout value.
+  @param      ErrorString      Error string used by BROWSER_NO_SUBMIT_IF.
+
+**/
+VOID
+PopupErrorMessage (
+  IN UINT32                BrowserStatus,
+  IN EFI_IFR_OP_HEADER     *OpCode, OPTIONAL
+  IN CHAR16                *ErrorString
+  );
+
+/**
+  Check whether the result is TRUE or FALSE.
+
+  For the EFI_HII_VALUE value type is numeric, return TRUE if the
+  value is not 0.
+
+  @param  Result             Input the result data.
+
+  @retval TRUE               The result is TRUE.
+  @retval FALSE              The result is FALSE.
+
+**/
+BOOLEAN
+IsTrue (
+  IN EFI_HII_VALUE     *Result
   );
 
 #endif
