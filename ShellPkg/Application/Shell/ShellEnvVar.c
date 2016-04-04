@@ -12,18 +12,7 @@
 
 **/
 
-#include <Uefi.h>
-#include <ShellBase.h>
-
-#include <Guid/ShellVariableGuid.h>
-
-#include <Library/BaseLib.h>
-#include <Library/UefiRuntimeServicesTableLib.h>
-#include <Library/MemoryAllocationLib.h>
-#include <Library/DebugLib.h>
-#include <Library/BaseMemoryLib.h>
-
-#include "ShellEnvVar.h"
+#include "Shell.h"
 
 /**
   Reports whether an environment variable is Volatile or Non-Volatile.
@@ -105,7 +94,7 @@ FreeEnvironmentVariableList(
   }
 
   for ( Node = (ENV_VAR_LIST*)GetFirstNode(List)
-      ; IsListEmpty(List)
+      ; !IsListEmpty(List)
       ; Node = (ENV_VAR_LIST*)GetFirstNode(List)
      ){
     ASSERT(Node != NULL);

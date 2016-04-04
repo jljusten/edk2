@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
 *  
 *  This program and the accompanying materials                          
 *  are licensed and made available under the terms and conditions of the BSD License         
@@ -43,6 +43,8 @@ ShutdownUefiBootServices (
 
   MemoryMap = NULL;
   MemoryMapSize = 0;
+  Pages = 0;
+
   do {
     Status = gBS->GetMemoryMap (
                     &MemoryMapSize,
@@ -66,17 +68,18 @@ ShutdownUefiBootServices (
                       &DescriptorSize,
                       &DescriptorVersion
                       );
-      // Don't do anything between the GetMemoryMap() and ExitBootServices()
-      if (!EFI_ERROR (Status)) {
-        Status = gBS->ExitBootServices (gImageHandle, MapKey);
-        if (EFI_ERROR (Status)) {
-          FreePages (MemoryMap, Pages);
-          MemoryMap = NULL;
-          MemoryMapSize = 0;
-        }
+    }
+
+    // Don't do anything between the GetMemoryMap() and ExitBootServices()
+    if (!EFI_ERROR(Status)) {
+      Status = gBS->ExitBootServices (gImageHandle, MapKey);
+      if (EFI_ERROR(Status)) {
+        FreePages (MemoryMap, Pages);
+        MemoryMap = NULL;
+        MemoryMapSize = 0;
       }
     }
-  } while (EFI_ERROR (Status));
+  } while (EFI_ERROR(Status));
 
   return Status;
 }

@@ -14,6 +14,7 @@
 ##
 
 ################################################################################
+!ifndef $(FD_SIZE_2MB)
 [FD.OVMF]
 BaseAddress   = 0xFFF00000
 Size          = 0x00100000
@@ -26,17 +27,31 @@ FV = FVMAIN_COMPACT
 
 0x000EC000|0x14000
 FV = SECFV
+!else
+[FD.OVMF]
+BaseAddress   = 0xFFE00000
+Size          = 0x00200000
+ErasePolarity = 1
+BlockSize     = 0x1000
+NumBlocks     = 0x200
+
+0x00000000|0x001CC000
+FV = FVMAIN_COMPACT
+
+0x001CC000|0x34000
+FV = SECFV
+!endif
 
 ################################################################################
 
 [FD.MEMFD]
 BaseAddress   = 0x800000|gUefiOvmfPkgTokenSpaceGuid.PcdOvmfMemFvBase
-Size          = 0x500000|gUefiOvmfPkgTokenSpaceGuid.PcdOvmfMemFvSize
+Size          = 0x600000|gUefiOvmfPkgTokenSpaceGuid.PcdOvmfMemFvSize
 ErasePolarity = 1
 BlockSize     = 0x10000
-NumBlocks     = 0x50
+NumBlocks     = 0x60
 
-0x0|0x500000
+0x0|0x600000
 FV = MAINFV
 
 ################################################################################
@@ -165,12 +180,14 @@ INF  MdeModulePkg/Universal/Metronome/Metronome.inf
 INF  PcAtChipsetPkg/PcatRealTimeClockRuntimeDxe/PcatRealTimeClockRuntimeDxe.inf
 
 INF  OvmfPkg/BlockMmioToBlockIoDxe/BlockIo.inf
+INF  OvmfPkg/VirtioBlkDxe/VirtioBlk.inf
+INF  OvmfPkg/VirtioScsiDxe/VirtioScsi.inf
 INF  OvmfPkg/EmuVariableFvbRuntimeDxe/Fvb.inf
 INF  MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteDxe.inf
 
 !if $(SECURE_BOOT_ENABLE) == TRUE
   INF  SecurityPkg/VariableAuthenticated/RuntimeDxe/VariableRuntimeDxe.inf
-  INF  SecurityPkg/VariableAuthenticated/SecureBootConfigDxe/SecureBootConfigDxe.inf
+  INF  OvmfPkg/SecureBootConfigDxe/SecureBootConfigDxe.inf
 !else
   INF  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
 !endif
@@ -266,6 +283,8 @@ INF  IntelFrameworkModulePkg/Csm/LegacyBiosDxe/LegacyBiosDxe.inf
 INF  RuleOverride=CSM OvmfPkg/Csm/Csm16/Csm16.inf
 !endif
 
+INF  OvmfPkg/QemuVideoDxe/QemuVideoDxe.inf
+
 ################################################################################
 
 [FV.FVMAIN_COMPACT]
@@ -354,7 +373,7 @@ FILE FV_IMAGE = 9E21FD93-9C72-4c15-8C4B-E77F1DB2D792 {
     UI        STRING="$(MODULE_NAME)" Optional
     VERSION   STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
   }
-  
+
 [Rule.Common.UEFI_APPLICATION]
   FILE APPLICATION = $(NAMED_GUID) {
     PE32     PE32                    $(INF_OUTPUT)/$(MODULE_NAME).efi
@@ -368,7 +387,7 @@ FILE FV_IMAGE = 9E21FD93-9C72-4c15-8C4B-E77F1DB2D792 {
     UI        STRING="$(MODULE_NAME)" Optional
     VERSION   STRING="$(INF_VERSION)" Optional BUILD_NUM=$(BUILD_NUMBER)
   }
-  
+
 [Rule.Common.USER_DEFINED.ACPITABLE]
   FILE FREEFORM = $(NAMED_GUID) {
     RAW ACPI               |.acpi
@@ -383,9 +402,4 @@ FILE FV_IMAGE = 9E21FD93-9C72-4c15-8C4B-E77F1DB2D792 {
 [Rule.Common.SEC.RESET_VECTOR]
   FILE RAW = $(NAMED_GUID) {
     RAW RAW                |.raw
-  }
-
-[OptionRom.OvmfVideo]
-INF  OvmfPkg/QemuVideoDxe/QemuVideoDxe.inf {
-    PCI_DEVICE_ID  = 0x00B8
   }

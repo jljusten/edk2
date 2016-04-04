@@ -122,7 +122,7 @@
 
 // Convert the (ClusterId,CoreId) into a Core Position
 // We assume there are 4 cores per cluster
-#define GetCorePositionInStack(Pos, MpId, Tmp) \
+#define GetCorePositionFromMpId(Pos, MpId, Tmp) \
   lsr   Pos, MpId, #6 ;                        \
   and   Tmp, MpId, #3 ;                        \
   add   Pos, Pos, Tmp
@@ -144,6 +144,21 @@ _SetPrimaryStackInitGlobals:          ;             \
   b       _SetPrimaryStackInitGlobals ;             \
 _SetPrimaryStackEnd:
 
+// Initialize the Global Variable with '0'
+#define InitializePrimaryStack(GlobalSize, Tmp1)    \
+  and     Tmp1, GlobalSize, #7        ;             \
+  rsbne   Tmp1, Tmp1, #8              ;             \
+  add     GlobalSize, GlobalSize, Tmp1 ;            \
+                                      ;             \
+  mov     Tmp1, sp                    ;             \
+  sub     sp, GlobalSize              ;             \
+  mov     GlobalSize, #0x0            ;             \
+_InitializePrimaryStackLoop:          ;             \
+  cmp     Tmp1, sp                    ;             \
+  bls     _InitializePrimaryStackEnd  ;             \
+  str     GlobalSize, [Tmp1], #-4     ;             \
+  b       _InitializePrimaryStackLoop ;             \
+_InitializePrimaryStackEnd:
 
 #elif defined (__GNUC__)
 
@@ -193,7 +208,7 @@ _SetPrimaryStackEnd:
 #define LoadConstantToReg(Data, Reg) \
   ldr  Reg, =Data
   
-#define GetCorePositionInStack(Pos, MpId, Tmp) \
+#define GetCorePositionFromMpId(Pos, MpId, Tmp) \
   lsr   Pos, MpId, #6 ;                        \
   and   Tmp, MpId, #3 ;                        \
   add   Pos, Pos, Tmp
@@ -212,6 +227,22 @@ _SetPrimaryStackInitGlobals:          ;             \
   str     GlobalSize, [Tmp], #4       ;             \
   b       _SetPrimaryStackInitGlobals ;             \
 _SetPrimaryStackEnd:
+
+// Initialize the Global Variable with '0'
+#define InitializePrimaryStack(GlobalSize, Tmp1)    \
+  and     Tmp1, GlobalSize, #7        ;             \
+  rsbne   Tmp1, Tmp1, #8              ;             \
+  add     GlobalSize, GlobalSize, Tmp1 ;            \
+                                      ;             \
+  mov     Tmp1, sp                    ;             \
+  sub     sp, GlobalSize              ;             \
+  mov     GlobalSize, #0x0            ;             \
+_InitializePrimaryStackLoop:          ;             \
+  cmp     Tmp1, sp                    ;             \
+  bls     _InitializePrimaryStackEnd  ;             \
+  str     GlobalSize, [Tmp1], #-4     ;             \
+  b       _InitializePrimaryStackLoop ;             \
+_InitializePrimaryStackEnd:
 
 #else
 
@@ -274,9 +305,12 @@ _SetPrimaryStackEnd:
 // conditional load testing eq flag
 #define LoadConstantToRegIfEq(Data, Reg)  LoadConstantToRegIfEqMacro Data, Reg
 
-#define GetCorePositionInStack(Pos, MpId, Tmp)  GetCorePositionInStack Pos, MpId, Tmp
+#define GetCorePositionFromMpId(Pos, MpId, Tmp)  GetCorePositionFromMpId Pos, MpId, Tmp
 
 #define SetPrimaryStack(StackTop,GlobalSize,Tmp) SetPrimaryStack StackTop, GlobalSize, Tmp
+
+// Initialize the Global Variable with '0'
+#define InitializePrimaryStack(GlobalSize, Tmp1) InitializePrimaryStack GlobalSize, Tmp1
 
 #endif
 

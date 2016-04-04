@@ -27,15 +27,17 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 extern EFI_GUID gEfiAuthenticatedVariableGuid;
 extern EFI_GUID gEfiSecureBootEnableDisableGuid;
+extern EFI_GUID gEfiCertDbGuid;
+extern EFI_GUID gEfiCustomModeEnableGuid;
 
 ///
-/// "SecureBootEnable" variable for the Secure boot feature enable/disable.
+/// "SecureBootEnable" variable for the Secure Boot feature enable/disable.
+/// This variable is used for allowing a physically present user to disable
+/// Secure Boot via firmware setup without the possession of PKpriv.
 ///
 #define EFI_SECURE_BOOT_ENABLE_NAME      L"SecureBootEnable"
 #define SECURE_BOOT_ENABLE               1
 #define SECURE_BOOT_DISABLE              0
-
-extern EFI_GUID gEfiCustomModeEnableGuid;
 
 ///
 ///  "CustomMode" variable for two Secure Boot modes feature: "Custom" and "Standard".
@@ -48,15 +50,6 @@ extern EFI_GUID gEfiCustomModeEnableGuid;
 #define EFI_CUSTOM_MODE_NAME          L"CustomMode"
 #define CUSTOM_SECURE_BOOT_MODE       1
 #define STANDARD_SECURE_BOOT_MODE     0
-
-///
-/// "certdb" variable stores the signer's certificates for non PK/KEK/DB/DBX
-/// variables with EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS set.
-/// 
-///
-#define EFI_CERT_DB_NAME L"certdb"
-
-extern EFI_GUID gEfiCertDbGuid;
 
 ///
 /// Alignment of variable name and data, according to the architecture:

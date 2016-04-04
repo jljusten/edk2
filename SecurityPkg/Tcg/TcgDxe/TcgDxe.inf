@@ -56,11 +56,13 @@
   gTcgEventEntryHobGuid
   gEfiEventReadyToBootGuid
   gEfiEventExitBootServicesGuid
+  gEventExitBootServicesFailedGuid              # ALWAYS_CONSUMED
 
 [Protocols]
   gEfiTcgProtocolGuid                           ## PRODUCES
   gEfiAcpiTableProtocolGuid                     # PROTOCOL ALWAYS_CONSUMED
   gEfiDevicePathProtocolGuid                    # PROTOCOL ALWAYS_CONSUMED
+  gEfiMpServiceProtocolGuid                     # PROTOCOL ALWAYS_CONSUMED
 
 [Pcd]
   gEfiSecurityPkgTokenSpaceGuid.PcdTpmPlatformClass

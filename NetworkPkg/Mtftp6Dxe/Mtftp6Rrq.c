@@ -453,6 +453,7 @@ Mtftp6RrqHandleOack (
   MTFTP6_EXT_OPTION_INFO    ExtInfo;
   EFI_STATUS                Status;
   INTN                      Expected;
+  EFI_UDP6_PROTOCOL         *Udp6;
 
   *IsCompleted = FALSE;
 
@@ -547,13 +548,30 @@ Mtftp6RrqHandleOack (
         );
 
       Instance->McastPort  = ExtInfo.McastPort;
-      Instance->McastUdpIo = UdpIoCreateIo (
-                               Instance->Service->Controller,
-                               Instance->Service->Image,
-                               Mtftp6RrqConfigMcastUdpIo,
-                               UDP_IO_UDP6_VERSION,
-                               Instance
-                               );
+      if (Instance->McastUdpIo == NULL) {
+        Instance->McastUdpIo = UdpIoCreateIo (
+                                 Instance->Service->Controller,
+                                 Instance->Service->Image,
+                                 Mtftp6RrqConfigMcastUdpIo,
+                                 UDP_IO_UDP6_VERSION,
+                                 Instance
+                                 );
+        if (Instance->McastUdpIo != NULL) {
+          Status = gBS->OpenProtocol (
+                          Instance->McastUdpIo->UdpHandle,
+                          &gEfiUdp6ProtocolGuid,
+                          (VOID **) &Udp6,
+                          Instance->Service->Image,
+                          Instance->Handle,
+                          EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER
+                          );
+          if (EFI_ERROR (Status)) {
+            UdpIoFreeIo (Instance->McastUdpIo);
+            Instance->McastUdpIo = NULL;
+            return EFI_DEVICE_ERROR;
+          }
+        }
+      }
 
       if (Instance->McastUdpIo == NULL) {
         return EFI_DEVICE_ERROR;

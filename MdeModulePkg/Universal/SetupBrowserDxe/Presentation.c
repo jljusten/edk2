@@ -1287,7 +1287,7 @@ ProcessCallBackFunction (
       // "retrieve" should update to the question's temp buffer.
       //
       if (Action == EFI_BROWSER_ACTION_CHANGING || Action == EFI_BROWSER_ACTION_RETRIEVE) {
-        SetQuestionValue(Selection->FormSet, Selection->Form, Statement, TRUE);
+        SetQuestionValue(Selection->FormSet, Selection->Form, Statement, GetSetValueWithEditBuffer);
       }
     } else {
       //
@@ -1295,7 +1295,7 @@ ProcessCallBackFunction (
       // "retrieve", should restore the question's value.
       //
       if (Action  == EFI_BROWSER_ACTION_CHANGING || Action == EFI_BROWSER_ACTION_RETRIEVE) {
-        GetQuestionValue(Selection->FormSet, Selection->Form, Statement, TRUE);
+        GetQuestionValue(Selection->FormSet, Selection->Form, Statement, GetSetValueWithEditBuffer);
       }
 
       if (Status == EFI_UNSUPPORTED) {
@@ -1319,6 +1319,57 @@ ProcessCallBackFunction (
     FindNextMenu (Selection, NULL, NULL);
   }
 
+  return Status;
+}
+
+/**
+  Call the retrieve type call back function for one question to get the initialize data.
+  
+  This function only used when in the initialize stage, because in this stage, the 
+  Selection->Form is not ready. For other case, use the ProcessCallBackFunction instead.
+
+  @param ConfigAccess          The config access protocol produced by the hii driver.
+  @param Statement             The Question which need to call.
+
+  @retval EFI_SUCCESS          The call back function excutes successfully.
+  @return Other value if the call back function failed to excute.  
+**/
+EFI_STATUS 
+ProcessRetrieveForQuestion (
+  IN     EFI_HII_CONFIG_ACCESS_PROTOCOL  *ConfigAccess,
+  IN     FORM_BROWSER_STATEMENT          *Statement
+  )
+{
+  EFI_STATUS                      Status;
+  EFI_BROWSER_ACTION_REQUEST      ActionRequest;
+  EFI_HII_VALUE                   *HiiValue;
+  EFI_IFR_TYPE_VALUE              *TypeValue;
+
+  Status                = EFI_SUCCESS;
+  ActionRequest         = EFI_BROWSER_ACTION_REQUEST_NONE;
+    
+  if ((Statement->QuestionFlags & EFI_IFR_FLAG_CALLBACK) != EFI_IFR_FLAG_CALLBACK) {
+    return EFI_UNSUPPORTED;
+  }
+
+  HiiValue  = &Statement->HiiValue;
+  TypeValue = &HiiValue->Value;
+  if (HiiValue->Type == EFI_IFR_TYPE_BUFFER) {
+    //
+    // For OrderedList, passing in the value buffer to Callback()
+    //
+    TypeValue = (EFI_IFR_TYPE_VALUE *) Statement->BufferValue;
+  }
+    
+  ActionRequest = EFI_BROWSER_ACTION_REQUEST_NONE;
+  Status = ConfigAccess->Callback (
+                           ConfigAccess,
+                           EFI_BROWSER_ACTION_RETRIEVE,
+                           Statement->QuestionId,
+                           HiiValue->Type,
+                           TypeValue,
+                           &ActionRequest
+                           );
   return Status;
 }
 
@@ -1386,6 +1437,15 @@ SetupBrowser (
 
   do {
     //
+    // IFR is updated, force to reparse the IFR binary
+    //
+    if (mHiiPackageListUpdated) {
+      Selection->Action = UI_ACTION_REFRESH_FORMSET;
+      mHiiPackageListUpdated = FALSE;
+      break;
+    }
+
+    //
     // Initialize Selection->Form
     //
     if (Selection->FormId == 0) {
@@ -1424,11 +1484,6 @@ SetupBrowser (
         goto Done;
       }
     }
-
-    //
-    // Reset FormPackage update flag
-    //
-    mHiiPackageListUpdated = FALSE;
 
     //
     // Before display new form, invoke ConfigAccess.Callback() with EFI_BROWSER_ACTION_FORM_OPEN
@@ -1513,11 +1568,6 @@ SetupBrowser (
         gResetRequired = TRUE;
       }
 
-      //
-      // Reset FormPackage update flag
-      //
-      mHiiPackageListUpdated = FALSE;
-
       if ((ConfigAccess != NULL) && 
           ((Statement->QuestionFlags & EFI_IFR_FLAG_CALLBACK) == EFI_IFR_FLAG_CALLBACK) && 
           (Statement->Operand != EFI_IFR_PASSWORD_OP)) {
@@ -1545,17 +1595,6 @@ SetupBrowser (
         if (!EFI_ERROR (Status) && Statement->Operand != EFI_IFR_REF_OP) {
           ProcessCallBackFunction(Selection, Statement, EFI_BROWSER_ACTION_CHANGED, FALSE);
         }
-      }
-
-      //
-      // Check whether Form Package has been updated during Callback
-      //
-      if (mHiiPackageListUpdated && (Selection->Action == UI_ACTION_REFRESH_FORM)) {
-        //
-        // Force to reparse IFR binary of target Formset
-        //
-        mHiiPackageListUpdated = FALSE;
-        Selection->Action = UI_ACTION_REFRESH_FORMSET;
       }
     }
 

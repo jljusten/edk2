@@ -42,6 +42,12 @@ EblDumpMmu (
   IN UINTN  Argc,
   IN CHAR8  **Argv
   );
+  
+EFI_STATUS
+EblDumpFdt (
+  IN UINTN  Argc,
+  IN CHAR8  **Argv
+  );
 
 /**
   Simple arm disassembler via a library
@@ -223,8 +229,14 @@ EblPerformance (
   UINT64      Start, Stop, TimeStamp;
   UINT64      Delta, TicksPerSecond, Milliseconds, Microseconds;
   UINTN       Index;
+  BOOLEAN     CountUp;
 
-  TicksPerSecond = GetPerformanceCounterProperties (NULL, NULL);
+  TicksPerSecond = GetPerformanceCounterProperties (&Start, &Stop);
+  if (Start < Stop) {
+    CountUp = TRUE;
+  } else {
+    CountUp = FALSE;
+  }
 
   Key       = 0;
   do {
@@ -235,7 +247,7 @@ EblPerformance (
           // The entry for EBL is still running so the stop time will be zero. Skip it
           AsciiPrint ("   running     %a\n", ImageHandleToPdbFileName ((EFI_HANDLE)Handle));
         } else {
-          Delta = Start - Stop;
+          Delta =  CountUp?(Stop - Start):(Start - Stop);
           Microseconds = DivU64x64Remainder (MultU64x32 (Delta, 1000000), TicksPerSecond, NULL);
           AsciiPrint ("%10ld us  %a\n", Microseconds, ImageHandleToPdbFileName ((EFI_HANDLE)Handle));
         }
@@ -252,7 +264,7 @@ EblPerformance (
     if (Key != 0) {
       for (Index = 0; mTokenList[Index] != NULL; Index++) {
         if (AsciiStriCmp (mTokenList[Index], Token) == 0) {
-          Delta = Start - Stop;
+          Delta =  CountUp?(Stop - Start):(Start - Stop);
           TimeStamp += Delta;
           Milliseconds = DivU64x64Remainder (MultU64x32 (Delta, 1000), TicksPerSecond, NULL);
           AsciiPrint ("%6a %6ld ms\n", Token, Milliseconds);
@@ -420,6 +432,12 @@ GLOBAL_REMOVE_IF_UNREFERENCED const EBL_COMMAND_TABLE mLibCmdTemplate[] =
     " list all the Device Paths",
     NULL,
     EblDevicePaths
+  },
+  {
+    "dumpfdt",
+    " dump the current fdt or the one defined in the arguments",
+    NULL,
+    EblDumpFdt
   }
 };
 

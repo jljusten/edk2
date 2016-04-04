@@ -26,7 +26,8 @@
 
 VOID
 CEntryPoint (
-  IN  UINTN                     MpId
+  IN  UINTN                     MpId,
+  IN  UINTN                     SecBootMode
   )
 {
   CHAR8           Buffer[100];
@@ -55,7 +56,7 @@ CEntryPoint (
   ArmPlatformSecInitialize (MpId);
 
   // Primary CPU clears out the SCU tag RAMs, secondaries wait
-  if (IS_PRIMARY_CORE(MpId)) {
+  if (IS_PRIMARY_CORE(MpId) && (SecBootMode == ARM_SEC_COLD_BOOT)) {
     if (ArmIsMpCore()) {
       // Signal for the initial memory is configured (event: BOOT_MEM_INIT)
       ArmCallSEV ();
@@ -78,10 +79,6 @@ CEntryPoint (
     // Initialize the Debug Agent for Source Level Debugging
     InitializeDebugAgent (DEBUG_AGENT_INIT_PREMEM_SEC, NULL, NULL);
     SaveAndSetDebugTimerInterrupt (TRUE);
-
-    // Now we've got UART, make the check:
-    // - The Vector table must be 32-byte aligned
-    ASSERT(((UINT32)SecVectorTable & ((1 << 5)-1)) == 0);
 
     // Enable the GIC distributor and CPU Interface
     // - no other Interrupts are enabled,  doesn't have to worry about the priority.
@@ -109,7 +106,7 @@ CEntryPoint (
             ((PcdGet32(PcdCPUCoresSecMonStackBase) != 0) && (PcdGet32(PcdCPUCoreSecMonStackSize) != 0)));
 
     // Enter Monitor Mode
-    enter_monitor_mode ((UINTN)TrustedWorldInitialization, MpId, (VOID*)(PcdGet32(PcdCPUCoresSecMonStackBase) + (PcdGet32(PcdCPUCoreSecMonStackSize) * (GET_CORE_POS(MpId) + 1))));
+    enter_monitor_mode ((UINTN)TrustedWorldInitialization, MpId, SecBootMode, (VOID*)(PcdGet32(PcdCPUCoresSecMonStackBase) + (PcdGet32(PcdCPUCoreSecMonStackSize) * (GET_CORE_POS(MpId) + 1))));
   } else {
     if (IS_PRIMARY_CORE(MpId)) {
       SerialPrint ("Trust Zone Configuration is disabled\n\r");
@@ -131,7 +128,8 @@ CEntryPoint (
 
 VOID
 TrustedWorldInitialization (
-  IN  UINTN                     MpId
+  IN  UINTN                     MpId,
+  IN  UINTN                     SecBootMode
   )
 {
   UINTN   JumpAddress;
@@ -148,17 +146,19 @@ TrustedWorldInitialization (
   ArmPlatformSecTrustzoneInit (MpId);
 
   // Setup the Trustzone Chipsets
-  if (IS_PRIMARY_CORE(MpId)) {
-    if (ArmIsMpCore()) {
-      // Signal the secondary core the Security settings is done (event: EVENT_SECURE_INIT)
-      ArmCallSEV ();
-    }
-  } else {
-    // The secondary cores need to wait until the Trustzone chipsets configuration is done
-    // before switching to Non Secure World
+  if (SecBootMode == ARM_SEC_COLD_BOOT) {
+    if (IS_PRIMARY_CORE(MpId)) {
+      if (ArmIsMpCore()) {
+        // Signal the secondary core the Security settings is done (event: EVENT_SECURE_INIT)
+        ArmCallSEV ();
+      }
+    } else {
+      // The secondary cores need to wait until the Trustzone chipsets configuration is done
+      // before switching to Non Secure World
 
-    // Wait for the Primary Core to finish the initialization of the Secure World (event: EVENT_SECURE_INIT)
-    ArmCallWFE ();
+      // Wait for the Primary Core to finish the initialization of the Secure World (event: EVENT_SECURE_INIT)
+      ArmCallWFE ();
+    }
   }
 
   // Call the Platform specific function to execute additional actions if required
@@ -193,44 +193,3 @@ NonTrustedWorldTransition (
   ASSERT (FALSE);
 }
 
-VOID
-SecCommonExceptionEntry (
-  IN UINT32 Entry,
-  IN UINT32 LR
-  )
-{
-  CHAR8           Buffer[100];
-  UINTN           CharCount;
-
-  switch (Entry) {
-  case 0:
-    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"Reset Exception at 0x%X\n\r",LR);
-    break;
-  case 1:
-    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"Undefined Exception at 0x%X\n\r",LR);
-    break;
-  case 2:
-    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"SWI Exception at 0x%X\n\r",LR);
-    break;
-  case 3:
-    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"PrefetchAbort Exception at 0x%X\n\r",LR);
-    break;
-  case 4:
-    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"DataAbort Exception at 0x%X\n\r",LR);
-    break;
-  case 5:
-    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"Reserved Exception at 0x%X\n\r",LR);
-    break;
-  case 6:
-    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"IRQ Exception at 0x%X\n\r",LR);
-    break;
-  case 7:
-    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"FIQ Exception at 0x%X\n\r",LR);
-    break;
-  default:
-    CharCount = AsciiSPrint (Buffer,sizeof (Buffer),"Unknown Exception at 0x%X\n\r",LR);
-    break;
-  }
-  SerialPortWrite ((UINT8 *) Buffer, CharCount);
-  while(1);
-}

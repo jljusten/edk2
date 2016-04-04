@@ -23,8 +23,6 @@
   PrePi.c
   ModuleEntryPoint.S   | GCC
   ModuleEntryPoint.asm | RVCT
-  Exception.asm | RVCT
-  Exception.S | GCC
   MainUniCore.c
   
 [Packages]
@@ -49,17 +47,19 @@
   DebugAgentLib
   PrePiLib
   ArmPlatformLib
+  ArmPlatformStackLib
   MemoryAllocationLib
   HobLib
   PrePiHobListPointerLib
   PlatformPeiLib
   MemoryInitPeiLib
 
-[Guids]
-  gArmGlobalVariableGuid
+[Ppis]
+  gArmMpCoreInfoPpiGuid
 
 [Guids]
   gArmGlobalVariableGuid
+  gArmMpCoreInfoGuid
 
 [FeaturePcd]  
   gEmbeddedTokenSpaceGuid.PcdCacheEnable
@@ -86,6 +86,7 @@
   gArmTokenSpaceGuid.PcdSystemMemorySize
   gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize
   
+  gArmPlatformTokenSpaceGuid.PcdCoreCount
   gArmPlatformTokenSpaceGuid.PcdClusterCount
   gArmTokenSpaceGuid.PcdArmPrimaryCoreMask
   gArmTokenSpaceGuid.PcdArmPrimaryCore

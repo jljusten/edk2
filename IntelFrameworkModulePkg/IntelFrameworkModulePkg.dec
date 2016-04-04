@@ -144,8 +144,9 @@
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdIsaBusSupportedFeatures|0x05|UINT8|0x00010040
 
 [PcdsDynamic, PcdsDynamicEx]
-  ## PCD is used to mark if the machine has complete one boot cycle before.
-  #  After the complete boot, the variable BootState will be set to TRUE.
+  ## The PCD is used to mark whether the machine is in first boot cycle.
+  #  TRUE means the machine is in first boot cycle. After completing the first boot,
+  #  the PCD's value will be updated to FALSE.
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdBootState|TRUE|BOOLEAN|0x0001002f
 
   ## Timeout value for displaying progressing bar in before boot OS.
@@ -198,7 +199,20 @@
   ## The value should be a multiple of 4KB.
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdEbdaReservedMemorySize|0x8000|UINT32|0x30000005
 
-  ## The PCD is used to specify memory size with page number for a pre-allocated ACPI NVS memory to be used
+  ## The PCD is used to specify memory base address for OPROM to find free memory.
+  # Some OPROMs do not use EBDA or PMM to allocate memory for its usage, 
+  # instead they find the memory filled with zero from 0x20000.
+  # The value should be a multiple of 4KB.
+  # The range should be below the EBDA reserved range from 
+  # (CONVENTIONAL_MEMORY_TOP - PcdEbdaReservedMemorySize) to CONVENTIONAL_MEMORY_TOP.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdOpromReservedMemoryBase|0x60000|UINT32|0x3000000c
+  
+  ## The PCD is used to specify memory size with bytes for OPROM to find free memory.
+  ## The value should be a multiple of 4KB. And the range should be below the EBDA reserved range from 
+  # (CONVENTIONAL_MEMORY_TOP - PcdEbdaReservedMemorySize) to CONVENTIONAL_MEMORY_TOP.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdOpromReservedMemorySize|0x28000|UINT32|0x3000000d
+
+  ## The PCD is used to specify memory size with page number for a pre-allocated reserved memory to be used
   #  by PEI in S3 phase. The default size 32K. When changing the value of this PCD, the platform
   #  developer should make sure the memory size is large enough to meet PEI requiremnt in S3 phase.
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdS3AcpiReservedMemorySize|0x8000|UINT32|0x30000006
@@ -219,4 +233,7 @@
   ## The PCD is used to specify the high PMM (Post Memory Manager) size with bytes above 1MB.
   #  The value should be a multiple of 4KB.
   gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdHighPmmMemorySize|0x400000|UINT32|0x3000000a
-  
+
+  ## This PCD specifies whether to use the optimized timing for best PS2 detection performance.
+  #  Note this PCD could be set to TRUE for best boot performance and set to FALSE for best device compatibility.
+  gEfiIntelFrameworkModulePkgTokenSpaceGuid.PcdFastPS2Detection|FALSE|BOOLEAN|0x3000000b

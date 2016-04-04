@@ -23,6 +23,7 @@ EFI_HANDLE                                mDecompressHandle = NULL;
 // DXE Core globals for Architecture Protocols
 //
 EFI_SECURITY_ARCH_PROTOCOL        *gSecurity      = NULL;
+EFI_SECURITY2_ARCH_PROTOCOL       *gSecurity2     = NULL;
 EFI_CPU_ARCH_PROTOCOL             *gCpu           = NULL;
 EFI_METRONOME_ARCH_PROTOCOL       *gMetronome     = NULL;
 EFI_TIMER_ARCH_PROTOCOL           *gTimer         = NULL;
@@ -447,7 +448,17 @@ DxeMain (
   //
   // Assert if the Architectural Protocols are not present.
   //
-  ASSERT_EFI_ERROR (CoreAllEfiServicesAvailable ());
+  Status = CoreAllEfiServicesAvailable ();
+  if (EFI_ERROR(Status)) {
+    //
+    // Report Status code that some Architectural Protocols are not present.
+    //
+    REPORT_STATUS_CODE (
+      EFI_ERROR_CODE | EFI_ERROR_MAJOR,
+      (EFI_SOFTWARE_DXE_CORE | EFI_SW_DXE_CORE_EC_NO_ARCH)
+      );    
+  }
+  ASSERT_EFI_ERROR (Status);
 
   //
   // Report Status code before transfer control to BDS
@@ -690,6 +701,10 @@ CoreExitBootServices (
   //
   Status = CoreTerminateMemoryMap (MapKey);
   if (EFI_ERROR (Status)) {
+    //
+    // Notify other drivers that ExitBootServices fail 
+    //
+    CoreNotifySignalList (&gEventExitBootServicesFailedGuid);
     return Status;
   }
 

@@ -55,14 +55,17 @@
   PeiServicesTablePointerLib
   PeimEntryPoint
   MtrrLib
+  PcdLib
 
 [Pcd]
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfMemFvBase
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfMemFvSize
+  gUefiOvmfPkgTokenSpaceGuid.PcdAcpiPmBaseAddress
   gEfiMdeModulePkgTokenSpaceGuid.PcdVariableStoreSize
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareSize
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize
   gEfiMdeModulePkgTokenSpaceGuid.PcdEmuVariableNvStoreReserved
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuLocalApicBaseAddress
 
 [Ppis]
   gEfiPeiMasterBootModePpiGuid

@@ -1,7 +1,7 @@
 /** @file
 Implementation of interfaces function for EFI_HII_CONFIG_ROUTING_PROTOCOL.
 
-Copyright (c) 2007 - 2011, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2007 - 2012, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -997,6 +997,8 @@ ParseIfrData (
   EFI_IFR_CHECKBOX         *IfrCheckBox;
   EFI_IFR_PASSWORD         *IfrPassword;
   EFI_IFR_STRING           *IfrString;
+  EFI_IFR_DATE             *IfrDate;
+  EFI_IFR_TIME             *IfrTime;
   IFR_DEFAULT_DATA         DefaultData;
   IFR_DEFAULT_DATA         *DefaultDataPtr;
   IFR_BLOCK_DATA           *BlockData;
@@ -1505,6 +1507,140 @@ ParseIfrData (
       InsertDefaultValue (BlockData, &DefaultData);
       break;
 
+    case EFI_IFR_DATE_OP:
+      //
+      // offset by question header
+      // width MaxSize * sizeof (CHAR16)
+      // no default value, only block array
+      //
+
+      //
+      // Date question is not in IFR Form. This IFR form is not valid. 
+      //
+      if (VarStorageData->Size == 0) {
+        Status = EFI_INVALID_PARAMETER;
+        goto Done;
+      }
+      //
+      // Check whether this question is for the requested varstore.
+      //
+      IfrDate = (EFI_IFR_DATE *) IfrOpHdr;
+      if (IfrDate->Question.VarStoreId != VarStorageData->VarStoreId) {
+        break;
+      }
+
+      //
+      // Get Offset/Width by Question header and OneOf Flags
+      //
+      VarOffset = IfrDate->Question.VarStoreInfo.VarOffset;
+      VarWidth  = (UINT16) sizeof (EFI_HII_DATE);
+
+      //
+      // Check whether this question is in requested block array.
+      //
+      if (!BlockArrayCheck (RequestBlockArray, VarOffset, VarWidth)) {
+        //
+        // This question is not in the requested array. Skip it.
+        //
+        break;
+      }
+
+      //
+      // Check this var question is in the var storage 
+      //
+      if ((VarOffset + VarWidth) > VarStorageData->Size) {
+        Status = EFI_INVALID_PARAMETER;
+        goto Done;
+      }
+
+      //
+      // Set Block Data
+      //
+      BlockData = (IFR_BLOCK_DATA *) AllocateZeroPool (sizeof (IFR_BLOCK_DATA));
+      if (BlockData == NULL) {
+        Status = EFI_OUT_OF_RESOURCES;
+        goto Done;
+      }
+      BlockData->Offset     = VarOffset;
+      BlockData->Width      = VarWidth;
+      BlockData->QuestionId = IfrDate->Question.QuestionId;
+      BlockData->OpCode     = IfrOpHdr->OpCode;
+      BlockData->Scope      = IfrOpHdr->Scope;
+      InitializeListHead (&BlockData->DefaultValueEntry);
+
+      //
+      // Add Block Data into VarStorageData BlockEntry
+      //
+      InsertBlockData (&VarStorageData->BlockEntry, &BlockData);
+      break;
+
+    case EFI_IFR_TIME_OP:
+      //
+      // offset by question header
+      // width MaxSize * sizeof (CHAR16)
+      // no default value, only block array
+      //
+
+      //
+      // Time question is not in IFR Form. This IFR form is not valid. 
+      //
+      if (VarStorageData->Size == 0) {
+        Status = EFI_INVALID_PARAMETER;
+        goto Done;
+      }
+      //
+      // Check whether this question is for the requested varstore.
+      //
+      IfrTime = (EFI_IFR_TIME *) IfrOpHdr;
+      if (IfrTime->Question.VarStoreId != VarStorageData->VarStoreId) {
+        break;
+      }
+
+      //
+      // Get Offset/Width by Question header and OneOf Flags
+      //
+      VarOffset = IfrTime->Question.VarStoreInfo.VarOffset;
+      VarWidth  = (UINT16) sizeof (EFI_HII_TIME);
+
+      //
+      // Check whether this question is in requested block array.
+      //
+      if (!BlockArrayCheck (RequestBlockArray, VarOffset, VarWidth)) {
+        //
+        // This question is not in the requested array. Skip it.
+        //
+        break;
+      }
+
+      //
+      // Check this var question is in the var storage 
+      //
+      if ((VarOffset + VarWidth) > VarStorageData->Size) {
+        Status = EFI_INVALID_PARAMETER;
+        goto Done;
+      }
+
+      //
+      // Set Block Data
+      //
+      BlockData = (IFR_BLOCK_DATA *) AllocateZeroPool (sizeof (IFR_BLOCK_DATA));
+      if (BlockData == NULL) {
+        Status = EFI_OUT_OF_RESOURCES;
+        goto Done;
+      }
+      BlockData->Offset     = VarOffset;
+      BlockData->Width      = VarWidth;
+      BlockData->QuestionId = IfrTime->Question.QuestionId;
+      BlockData->OpCode     = IfrOpHdr->OpCode;
+      BlockData->Scope      = IfrOpHdr->Scope;
+      InitializeListHead (&BlockData->DefaultValueEntry);
+
+        //
+      // Add Block Data into VarStorageData BlockEntry
+      //
+      InsertBlockData (&VarStorageData->BlockEntry, &BlockData);
+      break;
+
     case EFI_IFR_STRING_OP:
       //
       // offset by question header
@@ -1786,7 +1922,7 @@ ParseIfrData (
       //
       DefaultData.Type        = DefaultValueFromOpcode;
       DefaultData.DefaultId   = VarDefaultId;
-      CopyMem (&DefaultData.Value, &IfrDefault->Value, sizeof (EFI_IFR_TYPE_VALUE));
+      CopyMem (&DefaultData.Value, &IfrDefault->Value, IfrDefault->Header.Length - OFFSET_OF (EFI_IFR_DEFAULT, Value));
       
       // If the value field is expression, set the cleaned flag.
       if (IfrDefault->Type ==  EFI_IFR_TYPE_OTHER) {
@@ -3783,18 +3919,14 @@ HiiConfigToBlock (
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
-  //
-  // Skip '&'
-  //
-  StringPtr++;
 
   //
   // Parse each <ConfigElement> if exists
-  // Only <BlockConfig> format is supported by this help function.
+  // Only '&'<BlockConfig> format is supported by this help function.
   // <BlockConfig> ::= 'OFFSET='<Number>&'WIDTH='<Number>&'VALUE='<Number>
   //
-  while (*StringPtr != 0 && StrnCmp (StringPtr, L"OFFSET=", StrLen (L"OFFSET=")) == 0) {
-    StringPtr += StrLen (L"OFFSET=");
+  while (*StringPtr != 0 && StrnCmp (StringPtr, L"&OFFSET=", StrLen (L"&OFFSET=")) == 0) {
+    StringPtr += StrLen (L"&OFFSET=");
     //
     // Get Offset
     //
@@ -3813,7 +3945,7 @@ HiiConfigToBlock (
 
     StringPtr += Length;
     if (StrnCmp (StringPtr, L"&WIDTH=", StrLen (L"&WIDTH=")) != 0) {
-      *Progress = StringPtr - Length - StrLen (L"OFFSET=") - 1;
+      *Progress = StringPtr - Length - StrLen (L"&OFFSET=");
       Status = EFI_INVALID_PARAMETER;
       goto Exit;
     }
@@ -3854,7 +3986,7 @@ HiiConfigToBlock (
 
     StringPtr += Length;
     if (*StringPtr != 0 && *StringPtr != L'&') {
-      *Progress = StringPtr - Length - 7;
+      *Progress = StringPtr - Length - StrLen (L"&VALUE=");
       Status = EFI_INVALID_PARAMETER;
       goto Exit;
     }
@@ -3873,20 +4005,18 @@ HiiConfigToBlock (
     Value = NULL;
 
     //
-    // If '\0', parsing is finished. Otherwise skip '&' to continue
+    // If '\0', parsing is finished.
     //
     if (*StringPtr == 0) {
       break;
     }
-
-    StringPtr++;
   }
   
   //
-  // The input string is ConfigAltResp format.
+  // The input string is not ConfigResp format, return error.
   //
-  if ((*StringPtr != 0) && (StrnCmp (StringPtr, L"&GUID=", StrLen (L"&GUID=")) != 0)) {
-    *Progress = StringPtr - 1;
+  if (*StringPtr != 0) {
+    *Progress = StringPtr;
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }

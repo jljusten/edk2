@@ -34,6 +34,7 @@
   ArmLib|ArmPkg/Library/ArmLib/ArmV7/ArmV7Lib.inf
   ArmPlatformLib|BeagleBoardPkg/Library/BeagleBoardLib/BeagleBoardLib.inf
   ArmCpuLib|ArmPkg/Drivers/ArmCpuLib/ArmCortexA8Lib/ArmCortexA8Lib.inf
+  ArmPlatformStackLib|ArmPlatformPkg/Library/ArmPlatformStackLib/ArmPlatformStackLib.inf
   
   HiiLib|MdeModulePkg/Library/UefiHiiLib/UefiHiiLib.inf
   UefiHiiServicesLib|MdeModulePkg/Library/UefiHiiServicesLib/UefiHiiServicesLib.inf
@@ -58,8 +59,6 @@
   PciLib|MdePkg/Library/BasePciLibCf8/BasePciLibCf8.inf
   PerformanceLib|MdePkg/Library/BasePerformanceLibNull/BasePerformanceLibNull.inf
   PrintLib|MdePkg/Library/BasePrintLib/BasePrintLib.inf
-  
-  EblCmdLib|ArmPlatformPkg/Library/EblCmdLib/EblCmdLib.inf
   
   EfiFileLib|EmbeddedPkg/Library/EfiFileLib/EfiFileLib.inf
   
@@ -108,15 +107,12 @@
   UefiRuntimeLib|MdePkg/Library/UefiRuntimeLib/UefiRuntimeLib.inf
   
   UefiUsbLib|MdePkg/Library/UefiUsbLib/UefiUsbLib.inf
-  EblAddExternalCommandLib|EmbeddedPkg/Library/EblAddExternalCommandLib/EblAddExternalCommandLib.inf
-  
 
   CpuLib|MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
 
   TimerLib|Omap35xxPkg/Library/Omap35xxTimerLib/Omap35xxTimerLib.inf  
   OmapLib|Omap35xxPkg/Library/OmapLib/OmapLib.inf
   OmapDmaLib|Omap35xxPkg/Library/OmapDmaLib/OmapDmaLib.inf
-  EblNetworkLib|EmbeddedPkg/Library/EblNetworkLib/EblNetworkLib.inf
   DebugAgentTimerLib|Omap35xxPkg/Library/DebugAgentTimerLib/DebugAgentTimerLib.inf
 
   GdbSerialLib|Omap35xxPkg/Library/GdbSerialLib/GdbSerialLib.inf
@@ -125,6 +121,7 @@
   DmaLib|ArmPkg/Library/ArmDmaLib/ArmDmaLib.inf
 
   BdsLib|ArmPkg/Library/BdsLib/BdsLib.inf
+  FdtLib|EmbeddedPkg/Library/FdtLib/FdtLib.inf
 
 [LibraryClasses.common.SEC]
   ArmLib|ArmPkg/Library/ArmLib/ArmV7/ArmV7LibPrePi.inf
@@ -189,6 +186,7 @@
   UefiDecompressLib|IntelFrameworkModulePkg/Library/BaseUefiTianoCustomDecompressLib/BaseUefiTianoCustomDecompressLib.inf
   ExtractGuidedSectionLib|MdePkg/Library/DxeExtractGuidedSectionLib/DxeExtractGuidedSectionLib.inf
   PerformanceLib|MdeModulePkg/Library/DxePerformanceLib/DxePerformanceLib.inf
+  DxeServicesLib|MdePkg/Library/DxeServicesLib/DxeServicesLib.inf
 
 [LibraryClasses.common.DXE_RUNTIME_DRIVER]
   HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
@@ -425,7 +423,6 @@
   #
   MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
   MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
-  FatPkg/EnhancedFatDxe/Fat.inf
   MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
 
   #
@@ -471,11 +468,6 @@
   # Power IC
   #
   Omap35xxPkg/TPS65950Dxe/TPS65950.inf
-  
-  #
-  # Application
-  #  
-  EmbeddedPkg/Ebl/Ebl.inf
   
   #
   # Bds

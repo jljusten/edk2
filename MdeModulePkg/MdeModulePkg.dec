@@ -200,7 +200,7 @@
   gRecoveryOnDataCdGuid              = { 0x5CAC0099, 0x0DC9, 0x48E5, { 0x80, 0x68, 0xBB, 0x95, 0xF5, 0x40, 0x0A, 0x9F }}
 
   ## Include/Guid/SmmLockBox.h
-  gEfiSmmLockBoxCommunicationGuid       = { 0x2a3cfebd, 0x27e8, 0x4d0a, { 0x8b, 0x79, 0xd6, 0x88, 0xc2, 0xa3, 0xe1, 0xc0 }}
+  gEfiSmmLockBoxCommunicationGuid    = { 0x2a3cfebd, 0x27e8, 0x4d0a, { 0x8b, 0x79, 0xd6, 0x88, 0xc2, 0xa3, 0xe1, 0xc0 }}
 
   ## Include/Guid/AcpiS3Context.h
   gEfiAcpiVariableGuid               = { 0xAF9FFD67, 0xEC10, 0x488A, { 0x9D, 0xFC, 0x6C, 0xBF, 0x5E, 0xE2, 0x2C, 0x2E }}
@@ -245,7 +245,13 @@
 
   ## Guid for Firmware Performance Data Table (FPDT) implementation.
   #  Include/Guid/FirmwarePerformance.h
-  gEfiFirmwarePerformanceGuid = { 0xc095791a, 0x3001, 0x47b2, { 0x80, 0xc9, 0xea, 0xc7, 0x31, 0x9f, 0x2f, 0xa4 }}
+  gEfiFirmwarePerformanceGuid        = { 0xc095791a, 0x3001, 0x47b2, { 0x80, 0xc9, 0xea, 0xc7, 0x31, 0x9f, 0x2f, 0xa4 }}
+
+  ## Include/Guid/ExitBootServiceFailed.h
+  gEventExitBootServicesFailedGuid   = { 0x4f6c5507, 0x232f, 0x4787, { 0xb9, 0x5e, 0x72, 0xf8, 0x62, 0x49, 0xc, 0xb1 } }
+
+  ## Include/Guid/ConnectConInEvent.h
+  gConnectConInEventGuid             = { 0xdb4e8151, 0x57ed, 0x4bed, { 0x88, 0x33, 0x67, 0x51, 0xb5, 0xd1, 0xa8, 0xd7 }}
 
 [Ppis]
   ## Include/Ppi/AtaController.h
@@ -462,9 +468,6 @@
   ## If TRUE, S3 performance data will be supported in ACPI FPDT table.
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwarePerformanceDataTableS3Support|TRUE|BOOLEAN|0x00010064
 
-  ## This PCD specified whether the S.M.A.R.T feature of attached ATA hard disks are enabled.
-  gEfiMdeModulePkgTokenSpaceGuid.PcdAtaSmartEnable|TRUE|BOOLEAN|0x00010065
-
 [PcdsFeatureFlag.IA32, PcdsFeatureFlag.X64]
   ##
   # This feature flag specifies whether DxeIpl switches to long mode to enter DXE phase.
@@ -636,7 +639,7 @@
   #  boundary as close to the top of memory as feasible.
   #
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxEfiSystemTablePointerAddress|0x0|UINT64|0x30001027
-  
+
 [PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
   ## This PCD defines the Console output column and the default value is 25 according to UEFI spec.
   #  This PCD could be set to 0 then console output could be at max column and max row.
@@ -817,6 +820,14 @@
   #  the extension FPDT boot records got after ReadyToBoot and before ExitBootService.
   gEfiMdeModulePkgTokenSpaceGuid.PcdExtFpdtBootRecordPadSize|0x0|UINT32|0x0001005F
 
+  ## This PCD specifies whether ConIn device are connected on demand. If TRUE, ConIn
+  #  device are not connected during BDS and ReadKeyStroke/ReadKeyStrokeEx produced
+  #  by Consplitter should be called before any real key read operation.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdConInConnectOnDemand|FALSE|BOOLEAN|0x10000060
+
+  ## This PCD specified whether the S.M.A.R.T feature of attached ATA hard disks are enabled.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdAtaSmartEnable|TRUE|BOOLEAN|0x00010065
+
 [PcdsPatchableInModule]
   ## Specify  memory size with page number for PEI code when 
   #  the feature of Loading Module at Fixed Address is enabled
@@ -840,4 +851,10 @@
   #  only for DxeS3BootScriptLib instance implementation purpose. The platform developer should make sure the
   #  default value is set to Zero. And the PCD is assumed ONLY to be accessed in DxeS3BootScriptLib Library.
   gEfiMdeModulePkgTokenSpaceGuid.PcdS3BootScriptTablePrivateDataPtr|0x0|UINT64|0x00030000
+
+  ## This dynamic PCD hold an address to point to private data structure SMM copy used in DxeS3BootScriptLib library
+  #  instance which records the S3 boot script table start address, length, etc. To introduce this PCD is
+  #  only for DxeS3BootScriptLib instance implementation purpose. The platform developer should make sure the
+  #  default value is set to Zero. And the PCD is assumed ONLY to be accessed in DxeS3BootScriptLib Library.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdS3BootScriptTablePrivateSmmDataPtr|0x0|UINT64|0x00030001
 

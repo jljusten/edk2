@@ -13,8 +13,7 @@
 
 **/
 
-#include "ShellParametersProtocol.h"
-#include "ConsoleWrappers.h"
+#include "Shell.h"
 
 /**
   return the next parameter from a command line string;
@@ -192,6 +191,7 @@ ParseCommandLineToArgs(
   //
   (*Argv) = AllocateZeroPool((Count)*sizeof(CHAR16*));
   if (*Argv == NULL) {
+    SHELL_FREE_NON_NULL(TempParameter);
     return (EFI_OUT_OF_RESOURCES);
   }
 
@@ -207,6 +207,7 @@ ParseCommandLineToArgs(
     (*Argc)++;
   }
   ASSERT(Count >= (*Argc));
+  SHELL_FREE_NON_NULL(TempParameter);
   return (EFI_SUCCESS);
 }
 
@@ -609,8 +610,8 @@ UpdateStdInStdOutStdErr(
   SystemTableInfo->ConInHandle    = gST->ConsoleInHandle;
   SystemTableInfo->ConOut         = gST->ConOut;
   SystemTableInfo->ConOutHandle   = gST->ConsoleOutHandle;
-  SystemTableInfo->ConErr         = gST->StdErr;
-  SystemTableInfo->ConErrHandle   = gST->StandardErrorHandle;
+  SystemTableInfo->ErrOut         = gST->StdErr;
+  SystemTableInfo->ErrOutHandle   = gST->StandardErrorHandle;
   *OldStdIn                       = ShellParameters->StdIn;
   *OldStdOut                      = ShellParameters->StdOut;
   *OldStdErr                      = ShellParameters->StdErr;
@@ -1200,10 +1201,10 @@ RestoreStdInStdOutStdErr (
     gST->ConOut               = SystemTableInfo->ConOut;
     gST->ConsoleOutHandle     = SystemTableInfo->ConOutHandle;
   }
-  if (gST->StdErr != SystemTableInfo->ConErr) {
+  if (gST->StdErr != SystemTableInfo->ErrOut) {
     CloseSimpleTextOutOnFile(gST->StdErr);
-    gST->StdErr               = SystemTableInfo->ConErr;
-    gST->StandardErrorHandle  = SystemTableInfo->ConErrHandle;
+    gST->StdErr               = SystemTableInfo->ErrOut;
+    gST->StandardErrorHandle  = SystemTableInfo->ErrOutHandle;
   }
 
   CalculateEfiHdrCrc(&gST->Hdr);

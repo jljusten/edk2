@@ -1,6 +1,14 @@
 /** @file
   Authenticode Portable Executable Signature Verification over OpenSSL.
 
+  Caution: This module requires additional review when modified.
+  This library will have external input - signature (e.g. PE/COFF Authenticode).
+  This external input must be validated carefully to avoid security issue like
+  buffer overflow, integer overflow.
+
+  AuthenticodeVerify() will get PE/COFF Authenticode and will do basic check for
+  data structure.
+
 Copyright (c) 2011 - 2012, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
@@ -18,6 +26,12 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <openssl/x509.h>
 #include <openssl/pkcs7.h>
 
+//
+// OID ASN.1 Value for SPC_INDIRECT_DATA_OBJID
+//
+UINT8 mSpcIndirectOidValue[] = {
+  0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x02, 0x01, 0x04
+  };
 
 /**
   Verifies the validility of a PE/COFF Authenticode Signature as described in "Windows
@@ -25,6 +39,10 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
   If AuthData is NULL, then return FALSE.
   If ImageHash is NULL, then return FALSE.
+
+  Caution: This function may receive untrusted input.
+  PE/COFF Authenticode is external input, so this function will do basic check for
+  Authenticode data structure.
 
   @param[in]  AuthData     Pointer to the Authenticode Signature retrieved from signed
                            PE/COFF image to be verified.
@@ -58,6 +76,7 @@ AuthenticodeVerify (
   UINT8        *SpcIndirectDataContent;
   UINT8        Asn1Byte;
   UINTN        ContentSize;
+  UINT8        *SpcIndirectDataOid;
 
   //
   // Check input parameters.
@@ -94,6 +113,19 @@ AuthenticodeVerify (
   //       some authenticode-specific structure. Use opaque ASN.1 string to retrieve
   //       PKCS#7 ContentInfo here.
   //
+  SpcIndirectDataOid = (UINT8 *)(Pkcs7->d.sign->contents->type->data);
+  if (CompareMem (
+        SpcIndirectDataOid,
+        mSpcIndirectOidValue,
+        sizeof (mSpcIndirectOidValue)
+        ) != 0) {
+    //
+    // Un-matched SPC_INDIRECT_DATA_OBJID.
+    //
+    goto _Exit;
+  }  
+
+
   SpcIndirectDataContent = (UINT8 *)(Pkcs7->d.sign->contents->d.other->value.asn1_string->data);
 
   //

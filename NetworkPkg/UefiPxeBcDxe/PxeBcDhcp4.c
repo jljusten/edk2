@@ -1,7 +1,7 @@
 /** @file
   Functions implementation related with DHCPv4 for UefiPxeBc Driver.
 
-  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2012, Intel Corporation. All rights reserved.<BR>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -532,7 +532,7 @@ PxeBcParseDhcp4Packet (
             (Offer->Dhcp4.Header.BootFileName[0] != 0)) {
     //
     // If the bootfile is not present and bootfilename is present in DHCPv4 packet, just parse it.
-    // Do not count dhcp option header here, or else will destory the serverhostname.
+    // Do not count dhcp option header here, or else will destroy the serverhostname.
     //
     Options[PXEBC_DHCP4_TAG_INDEX_BOOTFILE] = (EFI_DHCP4_PACKET_OPTION *)
                                                 (&Offer->Dhcp4.Header.BootFileName[0] -
@@ -1443,7 +1443,7 @@ PxeBcDhcp4Discover (
           break;
         }
         if ((SrvList[SrvIndex].Type == Type) &&
-            EFI_IP4_EQUAL (&Response->Dhcp4.Header.ServerAddr, &Private->ServerIp)) {
+            EFI_IP4_EQUAL (&Response->Dhcp4.Header.ServerAddr, &SrvList[SrvIndex].IpAddr)) {
           break;
         }
         SrvIndex++;
@@ -1587,6 +1587,7 @@ PxeBcDhcp4Dora (
   AsciiPrint ("\n  Station IP address is ");
 
   PxeBcShowIp4Addr (&Private->StationIp.v4);
+  AsciiPrint ("\n");
 
 ON_EXIT:
   if (EFI_ERROR (Status)) {

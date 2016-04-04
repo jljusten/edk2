@@ -682,6 +682,7 @@ LegacyBiosInstall (
   LEGACY_BIOS_INSTANCE               *Private;
   EFI_TO_COMPATIBILITY16_INIT_TABLE  *EfiToLegacy16InitTable;
   EFI_PHYSICAL_ADDRESS               MemoryAddress;
+  EFI_PHYSICAL_ADDRESS               EbdaReservedBaseAddress;
   VOID                               *MemoryPtr;
   EFI_PHYSICAL_ADDRESS               MemoryAddressUnder1MB;
   UINTN                              Index;
@@ -695,6 +696,7 @@ LegacyBiosInstall (
   UINT32                             MemorySize;
   EFI_GCD_MEMORY_SPACE_DESCRIPTOR    Descriptor;
   UINT64                             Length;
+  UINT8                              *SecureBoot;
 
   //
   // Load this driver's image to memory
@@ -702,6 +704,20 @@ LegacyBiosInstall (
   Status = RelocateImageUnder4GIfNeeded (ImageHandle, SystemTable);
   if (EFI_ERROR (Status)) {
     return Status;
+  }
+
+  //
+  // When UEFI Secure Boot is enabled, CSM module will not start any more.
+  //
+  SecureBoot = NULL;
+  GetEfiGlobalVariable2 (EFI_SECURE_BOOT_MODE_NAME, (VOID**)&SecureBoot, NULL);
+  if ((SecureBoot != NULL) && (*SecureBoot == SECURE_BOOT_MODE_ENABLE)) {
+    FreePool (SecureBoot);
+    return EFI_SECURITY_VIOLATION;
+  }
+  
+  if (SecureBoot != NULL) {
+    FreePool (SecureBoot);
   }
 
   Private = &mPrivateData;
@@ -865,9 +881,21 @@ LegacyBiosInstall (
   //
   // Allocate all 32k chunks from 0x60000 ~ 0x88000 for Legacy OPROMs that
   // don't use PMM but look for zeroed memory. Note that various non-BBS
-  // SCSIs expect different areas to be free
+  // OpROMs expect different areas to be free
   //
-  for (MemStart = 0x60000; MemStart < 0x88000; MemStart += 0x1000) {
+  EbdaReservedBaseAddress = MemoryAddress;
+  MemoryAddress = PcdGet32 (PcdOpromReservedMemoryBase);
+  MemorySize    = PcdGet32 (PcdOpromReservedMemorySize);
+  //
+  // Check if base address and size for reserved memory are 4KB aligned.
+  //
+  ASSERT ((MemoryAddress & 0xFFF) == 0);
+  ASSERT ((MemorySize & 0xFFF) == 0);
+  //
+  // Check if the reserved memory is below EBDA reserved range.
+  //
+  ASSERT ((MemoryAddress < EbdaReservedBaseAddress) && ((MemoryAddress + MemorySize - 1) < EbdaReservedBaseAddress));
+  for (MemStart = MemoryAddress; MemStart < MemoryAddress + MemorySize; MemStart += 0x1000) {
     Status = AllocateLegacyMemory (
                AllocateAddress,
                MemStart,

@@ -1,6 +1,7 @@
 #/** @file
 #  
 #  Copyright (c) 2011-2012, ARM Ltd. All rights reserved.<BR>
+#  
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution.  The full text of the license may be found at
@@ -22,8 +23,6 @@
   PrePi.c
   ModuleEntryPoint.S   | GCC
   ModuleEntryPoint.asm | RVCT
-  Exception.S | GCC
-  Exception.asm | RVCT
   MainMPCore.c
   
 [Packages]
@@ -49,6 +48,7 @@
   DebugAgentLib
   PrePiLib
   ArmPlatformLib
+  ArmPlatformStackLib
   MemoryAllocationLib
   HobLib
   PrePiHobListPointerLib
@@ -60,6 +60,7 @@
 
 [Guids]
   gArmGlobalVariableGuid
+  gArmMpCoreInfoGuid
 
 [FeaturePcd]  
   gEmbeddedTokenSpaceGuid.PcdCacheEnable
@@ -77,7 +78,6 @@
   gArmTokenSpaceGuid.PcdFvBaseAddress
   gArmTokenSpaceGuid.PcdFvSize
 
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase
   gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize
   gArmPlatformTokenSpaceGuid.PcdCPUCoreSecondaryStackSize
 
@@ -91,6 +91,7 @@
   gArmTokenSpaceGuid.PcdSystemMemorySize
   gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize
   
+  gArmPlatformTokenSpaceGuid.PcdCoreCount
   gArmPlatformTokenSpaceGuid.PcdClusterCount
   gArmTokenSpaceGuid.PcdArmPrimaryCoreMask
   gArmTokenSpaceGuid.PcdArmPrimaryCore

@@ -76,8 +76,9 @@ BOOLEAN  mInLegacyBoot = FALSE;
 //
 SMM_CORE_SMI_HANDLERS  mSmmCoreSmiHandlers[] = {
   { SmmDriverDispatchHandler, &gEfiEventDxeDispatchGuid,          NULL, TRUE  },
-  { SmmReadyToLockHandler,    &gEfiDxeSmmReadyToLockProtocolGuid, NULL, FALSE }, 
+  { SmmReadyToLockHandler,    &gEfiDxeSmmReadyToLockProtocolGuid, NULL, TRUE }, 
   { SmmLegacyBootHandler,     &gEfiEventLegacyBootGuid,           NULL, FALSE },
+  { SmmEndOfDxeHandler,       &gEfiEndOfDxeEventGroupGuid,        NULL, FALSE },
   { NULL,                     NULL,                               NULL, FALSE }
 };
 
@@ -229,6 +230,46 @@ SmmReadyToLockHandler (
 }
 
 /**
+  Software SMI handler that is called when the EndOfDxe event is signalled.
+  This function installs the SMM EndOfDxe Protocol so SMM Drivers are informed that
+  platform code will invoke 3rd part code.
+
+  @param  DispatchHandle  The unique handle assigned to this handler by SmiHandlerRegister().
+  @param  Context         Points to an optional handler context which was specified when the handler was registered.
+  @param  CommBuffer      A pointer to a collection of data in memory that will
+                          be conveyed from a non-SMM environment into an SMM environment.
+  @param  CommBufferSize  The size of the CommBuffer.
+
+  @return Status Code
+
+**/
+EFI_STATUS
+EFIAPI
+SmmEndOfDxeHandler (
+  IN     EFI_HANDLE  DispatchHandle,
+  IN     CONST VOID  *Context,        OPTIONAL
+  IN OUT VOID        *CommBuffer,     OPTIONAL
+  IN OUT UINTN       *CommBufferSize  OPTIONAL
+  )
+{
+  EFI_STATUS  Status;
+  EFI_HANDLE  SmmHandle;
+
+  DEBUG ((EFI_D_INFO, "SmmEndOfDxeHandler\n"));
+  //
+  // Install SMM EndOfDxe protocol
+  //
+  SmmHandle = NULL;
+  Status = SmmInstallProtocolInterface (
+             &SmmHandle,
+             &gEfiSmmEndOfDxeProtocolGuid,
+             EFI_NATIVE_INTERFACE,
+             NULL
+             );
+  return EFI_SUCCESS;
+}
+
+/**
   The main entry point to SMM Foundation.
 
   Note: This function is only used by SMRAM invocation.  It is never used by DXE invocation.
@@ -245,6 +286,7 @@ SmmEntryPoint (
 {
   EFI_STATUS                  Status;
   EFI_SMM_COMMUNICATE_HEADER  *CommunicateHeader;
+  BOOLEAN                     InLegacyBoot;
 
   PERF_START (NULL, "SMM", NULL, 0) ;
 
@@ -261,49 +303,44 @@ SmmEntryPoint (
   //
   // If a legacy boot has occured, then make sure gSmmCorePrivate is not accessed
   //
-  if (mInLegacyBoot) {
+  InLegacyBoot = mInLegacyBoot;
+  if (!InLegacyBoot) {
     //
-    // Asynchronous SMI
+    // Mark the InSmm flag as TRUE, it will be used by SmmBase2 protocol
     //
-    SmiManage (NULL, NULL, NULL, NULL);
-    return;
+    gSmmCorePrivate->InSmm = TRUE;
+
+    //
+    // Check to see if this is a Synchronous SMI sent through the SMM Communication 
+    // Protocol or an Asynchronous SMI
+    //
+    if (gSmmCorePrivate->CommunicationBuffer != NULL) {
+      //
+      // Synchronous SMI for SMM Core or request from Communicate protocol
+      //
+      CommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)gSmmCorePrivate->CommunicationBuffer;
+      gSmmCorePrivate->BufferSize -= OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
+      Status = SmiManage (
+                 &CommunicateHeader->HeaderGuid, 
+                 NULL, 
+                 CommunicateHeader->Data, 
+                 &gSmmCorePrivate->BufferSize
+                 );
+
+      //
+      // Update CommunicationBuffer, BufferSize and ReturnStatus
+      // Communicate service finished, reset the pointer to CommBuffer to NULL
+      //
+      gSmmCorePrivate->BufferSize += OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
+      gSmmCorePrivate->CommunicationBuffer = NULL;
+      gSmmCorePrivate->ReturnStatus = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
+    }
   }
 
   //
-  // Mark the InSmm flag as TRUE, it will be used by SmmBase2 protocol
+  // Process Asynchronous SMI sources
   //
-  gSmmCorePrivate->InSmm = TRUE;
-
-  //
-  // Check to see if this is a Synchronous SMI sent through the SMM Communication 
-  // Protocol or an Asynchronous SMI
-  //
-  if (gSmmCorePrivate->CommunicationBuffer != NULL) {
-    //
-    // Synchronous SMI for SMM Core or request from Communicate protocol
-    //
-    CommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)gSmmCorePrivate->CommunicationBuffer;
-    gSmmCorePrivate->BufferSize -= OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
-    Status = SmiManage (
-               &CommunicateHeader->HeaderGuid, 
-               NULL, 
-               CommunicateHeader->Data, 
-               &gSmmCorePrivate->BufferSize
-               );
-
-    //
-    // Update CommunicationBuffer, BufferSize and ReturnStatus
-    // Communicate service finished, reset the pointer to CommBuffer to NULL
-    //
-    gSmmCorePrivate->BufferSize += OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
-    gSmmCorePrivate->CommunicationBuffer = NULL;
-    gSmmCorePrivate->ReturnStatus = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
-  } else {
-    //
-    // Asynchronous SMI
-    //
-    SmiManage (NULL, NULL, NULL, NULL);
-  }
+  SmiManage (NULL, NULL, NULL, NULL);
   
   //
   // Call platform hook after Smm Dispatch
@@ -311,9 +348,14 @@ SmmEntryPoint (
   PlatformHookAfterSmmDispatch ();
 
   //
-  // Clear the InSmm flag as we are going to leave SMM
+  // If a legacy boot has occured, then make sure gSmmCorePrivate is not accessed
   //
-  gSmmCorePrivate->InSmm = FALSE;
+  if (!InLegacyBoot) {
+    //
+    // Clear the InSmm flag as we are going to leave SMM
+    //
+    gSmmCorePrivate->InSmm = FALSE;
+  }
 
   PERF_END (NULL, "SMM", NULL, 0) ;
 }

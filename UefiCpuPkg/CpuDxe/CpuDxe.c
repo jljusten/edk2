@@ -17,7 +17,7 @@
 //
 // Global Variables
 //
-IA32_IDT_GATE_DESCRIPTOR  gIdtTable[INTERRUPT_VECTOR_NUMBER] = { 0 };
+IA32_IDT_GATE_DESCRIPTOR  gIdtTable[INTERRUPT_VECTOR_NUMBER] = { { { 0 } } };
 
 EFI_CPU_INTERRUPT_HANDLER ExternalVectorTable[0x100];
 BOOLEAN                   InterruptState = FALSE;
@@ -1164,7 +1164,7 @@ InitInterruptDescriptorTable (
       IntHandler =
         (VOID*) (
           OldIdt[Index].Bits.OffsetLow +
-          (OldIdt[Index].Bits.OffsetHigh << 16)
+          (((UINTN) OldIdt[Index].Bits.OffsetHigh) << 16)
 #if defined (MDE_CPU_X64)
             + (((UINTN) OldIdt[Index].Bits.OffsetUpper) << 32)
 #endif
@@ -1246,6 +1246,8 @@ InitializeCpu (
 {
   EFI_STATUS  Status;
   EFI_EVENT   IdleLoopEvent;
+
+  InitializeFloatingPointUnits ();
 
   //
   // Make sure interrupts are disabled

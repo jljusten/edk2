@@ -120,7 +120,7 @@ LookupPoolHead (
   POOL            *Pool;
   UINTN           Index;
 
-  if (MemoryType >= 0 && MemoryType < EfiMaxMemoryType) {
+  if ((UINT32)MemoryType < EfiMaxMemoryType) {
     return &mPoolHead[MemoryType];
   }
 
@@ -128,7 +128,7 @@ LookupPoolHead (
   // MemoryType values in the range 0x80000000..0xFFFFFFFF are reserved for use by UEFI 
   // OS loaders that are provided by operating system vendors
   //
-  if (MemoryType >= (INT32)0x80000000 && MemoryType <= (INT32)0xffffffff) {
+  if ((INT32)MemoryType < 0) {
 
     for (Link = mPoolHeadList.ForwardLink; Link != &mPoolHeadList; Link = Link->ForwardLink) {
       Pool = CR(Link, POOL, Link, POOL_SIGNATURE);
@@ -550,7 +550,7 @@ CoreFreePoolI (
   // portion of that memory type has been freed.  If it has, then free the
   // list entry for that memory type
   //
-  if (Pool->MemoryType < 0 && Pool->Used == 0) {
+  if ((INT32)Pool->MemoryType < 0 && Pool->Used == 0) {
     RemoveEntryList (&Pool->Link);
     CoreFreePoolI (Pool);
   }

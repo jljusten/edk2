@@ -47,6 +47,9 @@
   ## Include/Guid/TcgEventHob.h
   gTcgEventEntryHobGuid              = { 0x2e3044ac, 0x879f, 0x490f, {0x97, 0x60, 0xbb, 0xdf, 0xaf, 0x69, 0x5f, 0x50 }}
 
+  ## Include/Guid/MeasuredFvHob.h
+  gMeasuredFvHobGuid                 = { 0xb2360b42, 0x7173, 0x420a, { 0x86, 0x96, 0x46, 0xca, 0x6b, 0xab, 0x10, 0x60 }}
+
   ## Include/Guid/PhysicalPresenceData.h
   gEfiPhysicalPresenceGuid           = { 0xf6499b1, 0xe9ad, 0x493d, { 0xb9, 0xc2, 0x2f, 0x90, 0x81, 0x5c, 0x6c, 0xbc }}
   
@@ -140,10 +143,21 @@
   ## The PCD is used to control whether to hide the TPM.
   gEfiSecurityPkgTokenSpaceGuid.PcdHideTpm|FALSE|BOOLEAN|0x00010002
 
-  ## The PCD is used to specify whether or not MOR (MemoryOverwriteControl) feature is enabled.
-  gEfiSecurityPkgTokenSpaceGuid.PcdMorEnable|FALSE|BOOLEAN|0x00010000
-
 [PcdsFixedAtBuild, PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
   ## This PCD indicates the presence or absence of the platform operator.
   gEfiSecurityPkgTokenSpaceGuid.PcdTpmPhysicalPresence|TRUE|BOOLEAN|0x00010001
 
+[PcdsFixedAtBuild, PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
+  ## This PCD indicates whether to set TPM physicalPresenceLifetimeLock bit.
+  ## Once this bit is set, it can not be cleared (It is locked for TPM life time).
+  gEfiSecurityPkgTokenSpaceGuid.PcdPhysicalPresenceLifetimeLock|FALSE|BOOLEAN|0x00010003
+  
+[PcdsFixedAtBuild, PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
+  ## This PCD is used to specify the default value for physicalPresenceCMDEnable bit when setting physicalPresenceLifetimeLock bit.
+  ## If PcdPhysicalPresenceCmdEnable is set to TRUE, physicalPresenceCMDEnable bit will be set, else this bit will be cleared.
+  gEfiSecurityPkgTokenSpaceGuid.PcdPhysicalPresenceCmdEnable|TRUE|BOOLEAN|0x00010004
+  
+[PcdsFixedAtBuild, PcdsPatchableInModule, PcdsDynamic, PcdsDynamicEx]
+  ## This PCD is used to specify the default value for physicalPresenceHWEnable bit when setting physicalPresenceLifetimeLock bit.
+  ## If PcdPhysicalPresenceHwEnable is set to TRUE, physicalPresenceHWEnable bit will be set, else this bit will be cleared.
+  gEfiSecurityPkgTokenSpaceGuid.PcdPhysicalPresenceHwEnable|TRUE|BOOLEAN|0x00010005

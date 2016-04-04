@@ -1,7 +1,7 @@
 /** @file
   Initialize TPM device and measure FVs before handing off control to DXE.
 
-Copyright (c) 2005 - 2011, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2005 - 2012, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials 
 are licensed and made available under the terms and conditions of the BSD License 
 which accompanies this distribution.  The full text of the license may be found at 
@@ -20,7 +20,11 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Ppi/LockPhysicalPresence.h>
 #include <Ppi/TpmInitialized.h>
 #include <Ppi/FirmwareVolume.h>
+#include <Ppi/EndOfPeiPhase.h>
+
 #include <Guid/TcgEventHob.h>
+#include <Guid/MeasuredFvHob.h>
+
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/PeiServicesLib.h>
@@ -29,6 +33,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/HobLib.h>
 #include <Library/PcdLib.h>
 #include <Library/PeiServicesTablePointerLib.h>
+#include <Library/BaseLib.h>
 
 #include "TpmComm.h"
 
@@ -39,6 +44,12 @@ EFI_PEI_PPI_DESCRIPTOR  mTpmInitializedPpiList = {
   &gPeiTpmInitializedPpiGuid,
   NULL
 };
+
+EFI_PLATFORM_FIRMWARE_BLOB mMeasuredBaseFvInfo[FixedPcdGet32 (PcdPeiCoreMaxFvSupported)];
+UINT32 mMeasuredBaseFvIndex = 0;
+
+EFI_PLATFORM_FIRMWARE_BLOB mMeasuredChildFvInfo[FixedPcdGet32 (PcdPeiCoreMaxFvSupported)];
+UINT32 mMeasuredChildFvIndex = 0;
 
 /**
   Lock physical presence if needed.
@@ -77,6 +88,25 @@ FirmwareVolmeInfoPpiNotifyCallback (
   IN VOID                          *Ppi
   );
 
+/**
+  Record all measured Firmware Volum Information into a Guid Hob
+
+  @param[in] PeiServices       An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation.
+  @param[in] NotifyDescriptor  Address of the notification descriptor data structure.
+  @param[in] Ppi               Address of the PPI that was installed.
+
+  @retval EFI_SUCCESS          The FV Info is measured and recorded to TPM.
+  @return Others               Fail to measure FV.
+
+**/
+EFI_STATUS
+EFIAPI
+EndofPeiSignalNotifyCallBack (
+  IN EFI_PEI_SERVICES              **PeiServices,
+  IN EFI_PEI_NOTIFY_DESCRIPTOR     *NotifyDescriptor,
+  IN VOID                          *Ppi
+  );
+
 EFI_PEI_NOTIFY_DESCRIPTOR           mNotifyList[] = {
   {
     EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK,
@@ -84,16 +114,71 @@ EFI_PEI_NOTIFY_DESCRIPTOR           mNotifyList[] = {
     PhysicalPresencePpiNotifyCallback
   },
   {
-    (EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
+    EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK,
     &gEfiPeiFirmwareVolumeInfoPpiGuid,
     FirmwareVolmeInfoPpiNotifyCallback 
+  },
+  {
+    (EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
+    &gEfiEndOfPeiSignalPpiGuid,
+    EndofPeiSignalNotifyCallBack
   }
 };
 
-CHAR8 mSCrtmVersion[] = "{D20BC7C6-A1A5-415c-AE85-38290AB6BE04}";
+/**
+  Record all measured Firmware Volum Information into a Guid Hob
+  Guid Hob payload layout is 
 
-EFI_PLATFORM_FIRMWARE_BLOB mMeasuredFvInfo[FixedPcdGet32 (PcdPeiCoreMaxFvSupported)];
-UINT32 mMeasuredFvIndex = 0;
+     UINT32 *************************** FIRMWARE_BLOB number
+     EFI_PLATFORM_FIRMWARE_BLOB******** BLOB Array
+
+  @param[in] PeiServices       An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation.
+  @param[in] NotifyDescriptor  Address of the notification descriptor data structure.
+  @param[in] Ppi               Address of the PPI that was installed.
+
+  @retval EFI_SUCCESS          The FV Info is measured and recorded to TPM.
+  @return Others               Fail to measure FV.
+
+**/
+EFI_STATUS
+EFIAPI
+EndofPeiSignalNotifyCallBack (
+  IN EFI_PEI_SERVICES              **PeiServices,
+  IN EFI_PEI_NOTIFY_DESCRIPTOR     *NotifyDescriptor,
+  IN VOID                          *Ppi
+  )
+{  
+  MEASURED_HOB_DATA *MeasuredHobData;
+
+  MeasuredHobData = NULL;
+
+  //
+  // Create a Guid hob to save all measured Fv 
+  //
+  MeasuredHobData = BuildGuidHob(
+                      &gMeasuredFvHobGuid,
+                      sizeof(UINTN) + sizeof(EFI_PLATFORM_FIRMWARE_BLOB) * (mMeasuredBaseFvIndex + mMeasuredChildFvIndex)
+                      );
+
+  if (MeasuredHobData != NULL){
+    //
+    // Save measured FV info enty number
+    //
+    MeasuredHobData->Num = mMeasuredBaseFvIndex + mMeasuredChildFvIndex;
+
+    //
+    // Save measured base Fv info
+    //
+    CopyMem (MeasuredHobData->MeasuredFvBuf, mMeasuredBaseFvInfo, sizeof(EFI_PLATFORM_FIRMWARE_BLOB) * (mMeasuredBaseFvIndex));
+
+    //
+    // Save measured child Fv info
+    //
+    CopyMem (&MeasuredHobData->MeasuredFvBuf[mMeasuredBaseFvIndex] , mMeasuredChildFvInfo, sizeof(EFI_PLATFORM_FIRMWARE_BLOB) * (mMeasuredChildFvIndex));
+  }
+
+  return EFI_SUCCESS;
+}
 
 /**
   Do a hash operation on a data buffer, extend a specific TPM PCR with the hash result,
@@ -180,20 +265,21 @@ MeasureCRTMVersion (
   TCG_PCR_EVENT_HDR                 TcgEventHdr;
 
   //
-  // Here, only a static GUID is measured instead of real CRTM version.
+  // Use FirmwareVersion string to represent CRTM version.
   // OEMs should get real CRTM version string and measure it.
   //
 
   TcgEventHdr.PCRIndex  = 0;
   TcgEventHdr.EventType = EV_S_CRTM_VERSION;
-  TcgEventHdr.EventSize = sizeof (mSCrtmVersion);
+  TcgEventHdr.EventSize = (UINT32) StrSize((CHAR16*)PcdGetPtr (PcdFirmwareVersionString));
+
   return HashLogExtendEvent (
            PeiServices,
-           (UINT8*)&mSCrtmVersion,
+           (UINT8*)PcdGetPtr (PcdFirmwareVersionString),
            TcgEventHdr.EventSize,
            TpmHandle,
            &TcgEventHdr,
-           (UINT8*)&mSCrtmVersion
+           (UINT8*)PcdGetPtr (PcdFirmwareVersionString)
            );
 }
 
@@ -228,8 +314,8 @@ MeasureFvImage (
   //
   // Check whether FV is in the measured FV list.
   //
-  for (Index = 0; Index < mMeasuredFvIndex; Index ++) {
-    if (mMeasuredFvInfo[Index].BlobBase == FvBase) {
+  for (Index = 0; Index < mMeasuredBaseFvIndex; Index ++) {
+    if (mMeasuredBaseFvInfo[Index].BlobBase == FvBase) {
       return EFI_SUCCESS;
     }
   }
@@ -260,10 +346,11 @@ MeasureFvImage (
   //
   // Add new FV into the measured FV list.
   //
-  ASSERT (mMeasuredFvIndex < FixedPcdGet32 (PcdPeiCoreMaxFvSupported));
-  if (mMeasuredFvIndex < FixedPcdGet32 (PcdPeiCoreMaxFvSupported)) {
-    mMeasuredFvInfo[mMeasuredFvIndex].BlobBase   = FvBase;
-    mMeasuredFvInfo[mMeasuredFvIndex++].BlobLength = FvLength;
+  ASSERT (mMeasuredBaseFvIndex < FixedPcdGet32 (PcdPeiCoreMaxFvSupported));
+  if (mMeasuredBaseFvIndex < FixedPcdGet32 (PcdPeiCoreMaxFvSupported)) {
+    mMeasuredBaseFvInfo[mMeasuredBaseFvIndex].BlobBase   = FvBase;
+    mMeasuredBaseFvInfo[mMeasuredBaseFvIndex].BlobLength = FvLength;
+    mMeasuredBaseFvIndex++;
   }
 
   return Status;
@@ -369,9 +456,16 @@ FirmwareVolmeInfoPpiNotifyCallback (
   
   //
   // This is an FV from an FFS file, and the parent FV must have already been measured,
-  // No need to measure twice, so just returns
+  // No need to measure twice, so just record the FV and return
   //
   if (Fv->ParentFvName != NULL || Fv->ParentFileName != NULL ) {
+    
+    ASSERT (mMeasuredChildFvIndex < FixedPcdGet32 (PcdPeiCoreMaxFvSupported));
+    if (mMeasuredChildFvIndex < FixedPcdGet32 (PcdPeiCoreMaxFvSupported)) {
+      mMeasuredChildFvInfo[mMeasuredChildFvIndex].BlobBase   = (EFI_PHYSICAL_ADDRESS) (UINTN) Fv->FvInfo;
+      mMeasuredChildFvInfo[mMeasuredChildFvIndex].BlobLength = Fv->FvInfoSize;
+      mMeasuredChildFvIndex++;
+    }
     return EFI_SUCCESS;
   }
 
@@ -379,7 +473,8 @@ FirmwareVolmeInfoPpiNotifyCallback (
 }
 
 /**
-  Lock physical presence if needed.
+  Set physicalPresenceLifetimeLock, physicalPresenceHWEnable and physicalPresenceCMDEnable bit by corresponding PCDs.
+  And lock physical presence if needed.
 
   @param[in] PeiServices        An indirect pointer to the EFI_PEI_SERVICES table published by the PEI Foundation
   @param[in] NotifyDescriptor   Address of the notification descriptor data structure.
@@ -403,21 +498,54 @@ PhysicalPresencePpiNotifyCallback (
   BOOLEAN                           LifetimeLock;
   BOOLEAN                           CmdEnable;
   TIS_TPM_HANDLE                    TpmHandle;
+  TPM_PHYSICAL_PRESENCE             PhysicalPresenceValue;
 
   TpmHandle        = (TIS_TPM_HANDLE) (UINTN) TPM_BASE_ADDRESS;
-  LockPhysicalPresencePpi = (PEI_LOCK_PHYSICAL_PRESENCE_PPI *) Ppi;
-
-  if (!LockPhysicalPresencePpi->LockPhysicalPresence ((CONST EFI_PEI_SERVICES**) PeiServices)) {
-    return EFI_SUCCESS;
-  }
-
-  //
-  // Lock TPM physical presence.
-  //
 
   Status = TpmCommGetCapability (PeiServices, TpmHandle, NULL, &LifetimeLock, &CmdEnable);
   if (EFI_ERROR (Status)) {
     return Status;
+  }
+
+  //
+  // 1. Set physicalPresenceLifetimeLock, physicalPresenceHWEnable and physicalPresenceCMDEnable bit by PCDs.
+  //
+  if (PcdGetBool (PcdPhysicalPresenceLifetimeLock) && !LifetimeLock) {
+    //
+    // Lock TPM LifetimeLock is required, and LifetimeLock is not locked yet. 
+    //
+    PhysicalPresenceValue = TPM_PHYSICAL_PRESENCE_LIFETIME_LOCK;
+
+    if (PcdGetBool (PcdPhysicalPresenceCmdEnable)) {
+      PhysicalPresenceValue |= TPM_PHYSICAL_PRESENCE_CMD_ENABLE;
+      CmdEnable = TRUE;
+    } else {
+      PhysicalPresenceValue |= TPM_PHYSICAL_PRESENCE_CMD_DISABLE;
+      CmdEnable = FALSE;
+    }
+
+    if (PcdGetBool (PcdPhysicalPresenceHwEnable)) {
+      PhysicalPresenceValue |= TPM_PHYSICAL_PRESENCE_HW_ENABLE;
+    } else {
+      PhysicalPresenceValue |= TPM_PHYSICAL_PRESENCE_HW_DISABLE;
+    }      
+     
+    Status = TpmCommPhysicalPresence (
+               PeiServices,
+               TpmHandle,
+               PhysicalPresenceValue
+               );
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+  }
+  
+  //
+  // 2. Lock physical presence if it is required.
+  //
+  LockPhysicalPresencePpi = (PEI_LOCK_PHYSICAL_PRESENCE_PPI *) Ppi;
+  if (!LockPhysicalPresencePpi->LockPhysicalPresence ((CONST EFI_PEI_SERVICES**) PeiServices)) {
+    return EFI_SUCCESS;
   }
 
   if (!CmdEnable) {
@@ -549,20 +677,25 @@ PeimEntryMA (
     return EFI_UNSUPPORTED;
   }
 
-  Status = (**PeiServices).RegisterForShadow(FileHandle);
-  if (Status == EFI_ALREADY_STARTED) {
-    mImageInMemory = TRUE;
-  } else if (Status == EFI_NOT_FOUND) {
-    ASSERT_EFI_ERROR (Status);
+  //
+  // Initialize TPM device
+  //
+  Status = PeiServicesGetBootMode (&BootMode);
+  ASSERT_EFI_ERROR (Status);
+
+  //
+  // In S3 path, skip shadow logic. no measurement is required
+  //
+  if (BootMode != BOOT_ON_S3_RESUME) {
+    Status = (**PeiServices).RegisterForShadow(FileHandle);
+    if (Status == EFI_ALREADY_STARTED) {
+      mImageInMemory = TRUE;
+    } else if (Status == EFI_NOT_FOUND) {
+      ASSERT_EFI_ERROR (Status);
+    }
   }
 
   if (!mImageInMemory) {
-    //
-    // Initialize TPM device
-    //
-    Status = PeiServicesGetBootMode (&BootMode);
-    ASSERT_EFI_ERROR (Status);
-
     TpmHandle = (TIS_TPM_HANDLE)(UINTN)TPM_BASE_ADDRESS;
     Status = TisPcRequestUseTpm ((TIS_PC_REGISTERS_PTR)TpmHandle);
     if (EFI_ERROR (Status)) {
@@ -574,10 +707,17 @@ PeimEntryMA (
     if (EFI_ERROR (Status) ) {
       return Status;
     }
-    Status = TpmCommContinueSelfTest ((EFI_PEI_SERVICES**)PeiServices, TpmHandle);
-    if (EFI_ERROR (Status)) {
-      return Status;
+
+    //
+    // TpmSelfTest is optional on S3 path, skip it to save S3 time
+    //
+    if (BootMode != BOOT_ON_S3_RESUME) {
+      Status = TpmCommContinueSelfTest ((EFI_PEI_SERVICES**)PeiServices, TpmHandle);
+      if (EFI_ERROR (Status)) {
+        return Status;
+      }
     }
+
     Status = PeiServicesInstallPpi (&mTpmInitializedPpiList);
     ASSERT_EFI_ERROR (Status);
   }

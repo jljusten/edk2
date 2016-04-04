@@ -22,10 +22,8 @@
   IMPORT  ArmPlatformSecBootMemoryInit
   IMPORT  ArmDisableInterrupts
   IMPORT  ArmDisableCachesAndMmu
-  IMPORT  ArmWriteVBar
   IMPORT  ArmReadMpidr
   IMPORT  ArmCallWFE
-  IMPORT  SecVectorTable
   EXPORT  _ModuleEntryPoint
 
   PRESERVE8
@@ -33,19 +31,18 @@
   
 StartupAddr        DCD      CEntryPoint
 
-_ModuleEntryPoint
+_ModuleEntryPoint FUNCTION
   // First ensure all interrupts are disabled
   blx   ArmDisableInterrupts
 
   // Ensure that the MMU and caches are off
   blx   ArmDisableCachesAndMmu
 
+  // By default, we are doing a cold boot
+  mov   r10, #ARM_SEC_COLD_BOOT
+
   // Jump to Platform Specific Boot Action function
   blx   ArmPlatformSecBootAction
-
-  // Set VBAR to the start of the exception vectors in Secure Mode
-  ldr   r0, =SecVectorTable
-  blx   ArmWriteVBar
 
 _IdentifyCpu 
   // Identify CPU ID
@@ -61,12 +58,21 @@ _IdentifyCpu
   beq   _InitMem
   
 _WaitInitMem
+  // If we are not doing a cold boot in this case we should assume the Initial Memory to be already initialized
+  // Otherwise we have to wait the Primary Core to finish the initialization
+  cmp   r10, #ARM_SEC_COLD_BOOT
+  bne   _SetupSecondaryCoreStack
+
   // Wait for the primary core to initialize the initial memory (event: BOOT_MEM_INIT)
   bl    ArmCallWFE
   // Now the Init Mem is initialized, we setup the secondary core stacks
   b     _SetupSecondaryCoreStack
   
 _InitMem
+  // If we are not doing a cold boot in this case we should assume the Initial Memory to be already initialized
+  cmp   r10, #ARM_SEC_COLD_BOOT
+  bne   _SetupPrimaryCoreStack
+
   // Initialize Init Boot Memory
   bl    ArmPlatformSecBootMemoryInit
   
@@ -93,7 +99,7 @@ _SetupSecondaryCoreStack
   add   r1, r1, r2
 
   // Get the Core Position (ClusterId * 4) + CoreId
-  GetCorePositionInStack(r0, r5, r2)
+  GetCorePositionFromMpId(r0, r5, r2)
   // The stack starts at the top of the stack region. Add '1' to the Core Position to get the top of the stack
   add   r0, r0, #1
 
@@ -110,8 +116,11 @@ _PrepareArguments
   
   // Jump to SEC C code
   //    r0 = mp_id
+  //    r1 = Boot Mode
   mov   r0, r5
+  mov   r1, r10
   blx   r3
+  ENDFUNC
   
 _NeverReturn
   b _NeverReturn

@@ -66,6 +66,8 @@
 [PcdsFixedAtBuild.common]
   gArmPlatformTokenSpaceGuid.PcdFirmwareVendor|"ARM RealView Emulation Board"
   gEmbeddedTokenSpaceGuid.PcdEmbeddedPrompt|"ArmRealViewEb-A9x2"
+
+  gArmPlatformTokenSpaceGuid.PcdCoreCount|2
   
   #
   # NV Storage PCDs. Use base of 0x43F00000 for NOR0
@@ -224,14 +226,8 @@
   #
   MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
   MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
-  FatPkg/EnhancedFatDxe/Fat.inf
   MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
   
-  #
-  # Application
-  #  
-  EmbeddedPkg/Ebl/Ebl.inf
-
   #
   # Bds
   #

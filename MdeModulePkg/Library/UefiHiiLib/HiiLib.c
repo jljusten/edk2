@@ -794,7 +794,6 @@ InternalHiiGetBufferFromString (
 
   default:
     return EFI_INVALID_PARAMETER;
-    break;
   }
 
   return EFI_SUCCESS;
@@ -2665,7 +2664,7 @@ HiiCreateDefaultOpCode (
   OpCode.DefaultId = DefaultId;
   CopyMem (&OpCode.Value, &Value, mHiiDefaultTypeToWidth[Type]);
 
-  return InternalHiiCreateOpCode (OpCodeHandle, &OpCode, EFI_IFR_DEFAULT_OP, sizeof (OpCode));
+  return InternalHiiCreateOpCode (OpCodeHandle, &OpCode, EFI_IFR_DEFAULT_OP, OFFSET_OF(EFI_IFR_DEFAULT, Value) + mHiiDefaultTypeToWidth[Type]);
 }
 
 /**

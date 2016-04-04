@@ -181,7 +181,7 @@ InitializeConsole (
   ASSERT_EFI_ERROR (Status);
   Status = GetConsoleDevicePathFromVariable (L"ConIn", (CHAR16*)PcdGetPtr(PcdDefaultConInPaths), &ConInDevicePaths);
   ASSERT_EFI_ERROR (Status);
-  Status = GetConsoleDevicePathFromVariable (L"ConErr", (CHAR16*)PcdGetPtr(PcdDefaultConOutPaths), &ConErrDevicePaths);
+  Status = GetConsoleDevicePathFromVariable (L"ErrOut", (CHAR16*)PcdGetPtr(PcdDefaultConOutPaths), &ConErrDevicePaths);
   ASSERT_EFI_ERROR (Status);
 
   // Initialize the Consoles
@@ -307,8 +307,8 @@ StartDefaultBootOnTimeout (
   UINTN               BootOrderSize;
   UINTN               Index;
   CHAR16              BootVariableName[9];
-  EFI_STATUS           Status;
-  EFI_INPUT_KEY   Key;
+  EFI_STATUS          Status;
+  EFI_INPUT_KEY       Key;
 
   Size = sizeof(UINT16);
   Timeout = (UINT16)PcdGet16 (PcdPlatformBootTimeOut);

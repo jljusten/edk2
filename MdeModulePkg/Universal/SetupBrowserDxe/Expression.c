@@ -891,7 +891,7 @@ IdToQuestion (
       // to keep synchronous, always reload the Question Value.
       //
       if (Question->Storage->Type == EFI_HII_VARSTORE_EFI_VARIABLE) {
-        GetQuestionValue (FormSet, Form, Question, FALSE);
+        GetQuestionValue (FormSet, Form, Question, GetSetValueWithHiiDriver);
       }
 
       return Question;
@@ -1071,7 +1071,7 @@ IfrToString (
       CopyMem (TmpBuf, Value.Buffer, Value.BufferLen * sizeof (CHAR16));
       PrintFormat = L"%s";  
     }
-    UnicodeSPrint (Buffer, MAXIMUM_VALUE_CHARACTERS, PrintFormat, Value.Buffer);  
+    UnicodeSPrint (Buffer, sizeof (Buffer), PrintFormat, Value.Buffer);  
     String = Buffer; 
     FreePool (TmpBuf);
     FreePool (Value.Buffer);
@@ -2142,7 +2142,7 @@ GetQuestionValueFromForm (
   //
   // Get the question value.
   //
-  Status = GetQuestionValue(FormSet, Form, Question, FALSE);
+  Status = GetQuestionValue(FormSet, Form, Question, GetSetValueWithHiiDriver);
   if (EFI_ERROR (Status)) {
     GetTheVal = FALSE;
     goto Done;
@@ -2210,6 +2210,7 @@ EvaluateExpression (
   UINT8                   *TempBuffer;
   EFI_TIME                EfiTime;
   EFI_HII_VALUE           QuestionVal;
+  EFI_DEVICE_PATH_PROTOCOL *DevicePath;
 
   //
   // Save current stack offset.
@@ -2343,7 +2344,7 @@ EvaluateExpression (
             //
             // Get value from string except for STRING value.
             //
-            Status = GetValueByName (OpCode->VarStorage, OpCode->ValueName, &StrPtr);
+            Status = GetValueByName (OpCode->VarStorage, OpCode->ValueName, &StrPtr, GetSetValueWithEditBuffer);
             if (!EFI_ERROR (Status)) {
               ASSERT (StrPtr != NULL);
               TempLength = StrLen (StrPtr);
@@ -2475,11 +2476,17 @@ EvaluateExpression (
           break;
         }
 
-        if (!GetQuestionValueFromForm((EFI_DEVICE_PATH_PROTOCOL*)StrPtr, NULL, &OpCode->Guid, Value->Value.u16, &QuestionVal)){
+        DevicePath = ConvertDevicePathFromText(StrPtr);
+
+        if (!GetQuestionValueFromForm(DevicePath, NULL, &OpCode->Guid, Value->Value.u16, &QuestionVal)){
           Value->Type = EFI_IFR_TYPE_UNDEFINED;
-          break;
+        } else {
+          Value = &QuestionVal;
         }
-        Value = &QuestionVal;
+
+        if (DevicePath != NULL) {
+          FreePool (DevicePath);
+        }
       } else if (CompareGuid (&OpCode->Guid, &gZeroGuid) != 0) {
         if (!GetQuestionValueFromForm(NULL, FormSet->HiiHandle, &OpCode->Guid, Value->Value.u16, &QuestionVal)){
           Value->Type = EFI_IFR_TYPE_UNDEFINED;
@@ -2796,7 +2803,7 @@ EvaluateExpression (
             for (Index = 0; Index < OpCode->ValueWidth; Index ++, TempBuffer --) {
               StrPtr += UnicodeValueToString (StrPtr, PREFIX_ZERO | RADIX_HEX, *TempBuffer, 2);
             }
-            Status = SetValueByName (OpCode->VarStorage, OpCode->ValueName, NameValue, TRUE);
+            Status = SetValueByName (OpCode->VarStorage, OpCode->ValueName, NameValue, GetSetValueWithEditBuffer);
             FreePool (NameValue);
             if (!EFI_ERROR (Status)) {
               Data1.Value.b = TRUE;

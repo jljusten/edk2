@@ -579,6 +579,26 @@ SetArrayData (
   );
 
 /**
+  Check whether this value already in the array, if yes, return the index.
+
+  @param  Array                  The data array.
+  @param  Type                   Type of the data in this array.
+  @param  Value                  The value to be find.
+  @param  Index                  The index in the array which has same value with Value.
+  
+  @retval   TRUE Found the value in the array.
+  @retval   FALSE Not found the value.
+
+**/
+BOOLEAN 
+FindArrayData (
+  IN VOID                     *Array,
+  IN UINT8                    Type,
+  IN UINT64                   Value,
+  OUT UINTN                   *Index OPTIONAL
+  );
+
+/**
   Process a Question's Option (whether selected or un-selected).
 
   @param  Selection              Pointer to UI_MENU_SELECTION.
@@ -1026,6 +1046,19 @@ EvaluateExpressionList (
   IN BOOLEAN              Evaluate,
   IN FORM_BROWSER_FORMSET *FormSet, OPTIONAL
   IN FORM_BROWSER_FORM    *Form OPTIONAL
+  );
+
+/**
+  Transfer the device path string to binary format.
+
+  @param   StringPtr     The device path string info.
+
+  @retval  Device path binary info.
+
+**/
+EFI_DEVICE_PATH_PROTOCOL *
+ConvertDevicePathFromText (
+  IN CHAR16  *StringPtr
   );
 
 #endif // _UI_H

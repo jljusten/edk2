@@ -18,12 +18,14 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 
 #include <FrameworkDxe.h>
+#include <IndustryStandard/Pci.h>
 
 #include <Guid/SmBios.h>
 #include <Guid/Acpi.h>
 #include <Guid/DxeServices.h>
 #include <Guid/LegacyBios.h>
 #include <Guid/StatusCodeDataTypeId.h>
+#include <Guid/ImageAuthentication.h>
 
 #include <Protocol/BlockIo.h>
 #include <Protocol/LoadedImage.h>
@@ -131,6 +133,10 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define LEGACY_PCI_TRACE_00E LEGACY_PCI_TRACE + 0x0E
 #define LEGACY_PCI_TRACE_00F LEGACY_PCI_TRACE + 0x0F
 
+#define BDA_VIDEO_MODE      0x49
+
+#define IDE_PI_REGISTER_PNE     BIT0
+#define IDE_PI_REGISTER_SNE     BIT2
 
 typedef struct {
   UINTN   PciSegment;

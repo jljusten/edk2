@@ -68,8 +68,9 @@ HASH_TABLE mHash[] = {
   { L"SHA512", 64, &mHashOidValue[40], 9, NULL,                NULL,       NULL,          NULL       }
 };
 
-
-// Variable Definitions                                           
+//
+// Variable Definitions 
+//                                          
 UINT32            mPeCoffHeaderOffset = 0;
 WIN_CERTIFICATE   *mCertificate = NULL;
 IMAGE_TYPE        mImageType;
@@ -81,6 +82,39 @@ EFI_GUID          mCertType;
 EFI_IMAGE_SECURITY_DATA_DIRECTORY    *mSecDataDir = NULL;
 EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION  mNtHeader;
 
+//
+// Possible DER-encoded certificate file suffixes, end with NULL pointer.
+//
+CHAR16* mDerEncodedSuffix[] = {
+  L".cer",
+  L".der",
+  L".crt",
+  NULL
+};
+CHAR16* mSupportX509Suffix = L"*.cer/der/crt";
+
+/**
+  This code checks if the FileSuffix is one of the possible DER-encoded certificate suffix.
+
+  @param[in] FileSuffix            The suffix of the input certificate file
+
+  @retval    TRUE           It's a DER-encoded certificate.
+  @retval    FALSE          It's NOT a DER-encoded certificate.
+
+**/
+BOOLEAN
+IsDerEncodeCertificate (
+  IN CONST CHAR16         *FileSuffix
+)
+{
+  UINTN     Index; 
+  for (Index = 0; mDerEncodedSuffix[Index] != NULL; Index++) {
+    if (StrCmp (FileSuffix, mDerEncodedSuffix[Index]) == 0) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
 
 /**
   Set Secure Boot option into variable space.
@@ -347,11 +381,11 @@ EnrollPlatformKey (
   PkCert = NULL;
 
   //
-  // Parse the file's postfix. Only support *.cer(X509) files.
+  // Parse the file's postfix. Only support DER encoded X.509 certificate files.
   //
   FilePostFix = Private->FileContext->FileName + StrLen (Private->FileContext->FileName) - 4;
-  if (CompareMem (FilePostFix, L".cer",4)) {
-    DEBUG ((EFI_D_ERROR, "Don't support the file, only *.cer is supported."));
+  if (!IsDerEncodeCertificate(FilePostFix)) {
+    DEBUG ((EFI_D_ERROR, "Unsupported file type, only DER encoded certificate (%s) is supported.", mSupportX509Suffix));
     return EFI_INVALID_PARAMETER;
   }
   DEBUG ((EFI_D_INFO, "FileName= %s\n", Private->FileContext->FileName));
@@ -738,11 +772,11 @@ EnrollKeyExchangeKey (
   }
 
   //
-  // Parse the file's postfix. Supports .cer and .der file as X509 certificate, 
+  // Parse the file's postfix. Supports DER-encoded X509 certificate, 
   // and .pbk as RSA public key file.
   //
   FilePostFix = Private->FileContext->FileName + StrLen (Private->FileContext->FileName) - 4;
-  if ((CompareMem (FilePostFix, L".cer",4) == 0) || (CompareMem (FilePostFix, L".der",4) == 0)) {
+  if (IsDerEncodeCertificate(FilePostFix)) {
     return EnrollX509ToKek (Private);
   } else if (CompareMem (FilePostFix, L".pbk",4) == 0) {
     return EnrollRsa2048ToKek (Private);
@@ -1483,9 +1517,9 @@ EnrollSignatureDatabase (
   // Parse the file's postfix. 
   //
   FilePostFix = Private->FileContext->FileName + StrLen (Private->FileContext->FileName) - 4;
-  if ((CompareMem (FilePostFix, L".cer",4) == 0) || (CompareMem (FilePostFix, L".der",4) == 0)) {
+  if (IsDerEncodeCertificate(FilePostFix)) {
     //
-    // Supports .cer and .der file as X509 certificate.
+    // Supports DER-encoded X509 certificate.
     //
     return EnrollX509toSigDB (Private, VariableName);
   }
@@ -2069,27 +2103,25 @@ SecureBootExtractConfigFromVariable (
 {
   UINT8   *SecureBootEnable;
   UINT8   *SetupMode;
+  UINT8   *SecureBoot;
   UINT8   *SecureBootMode;
 
   SecureBootEnable = NULL;
   SetupMode        = NULL;
+  SecureBoot       = NULL;
   SecureBootMode   = NULL;
   
-  //
-  // Get the SecureBootEnable Variable
-  //
-  GetVariable2 (EFI_SECURE_BOOT_ENABLE_NAME, &gEfiSecureBootEnableDisableGuid, (VOID**)&SecureBootEnable, NULL);
-
   //
   // If the SecureBootEnable Variable doesn't exist, hide the SecureBoot Enable/Disable
   // Checkbox.
   //
+  GetVariable2 (EFI_SECURE_BOOT_ENABLE_NAME, &gEfiSecureBootEnableDisableGuid, (VOID**)&SecureBootEnable, NULL);
   if (SecureBootEnable == NULL) {
     ConfigData->HideSecureBoot = TRUE;
   } else {
     ConfigData->HideSecureBoot = FALSE;
-    ConfigData->SecureBootState = *SecureBootEnable;
   }
+  
   //
   // If it is Physical Presence User, set the PhysicalPresent to true.
   //
@@ -2103,10 +2135,20 @@ SecureBootExtractConfigFromVariable (
   // If there is no PK then the Delete Pk button will be gray.
   //
   GetVariable2 (EFI_SETUP_MODE_NAME, &gEfiGlobalVariableGuid, (VOID**)&SetupMode, NULL);
-  if (SetupMode == NULL || (*SetupMode) == 1) {
+  if (SetupMode == NULL || (*SetupMode) == SETUP_MODE) {
     ConfigData->HasPk = FALSE;
   } else  {
     ConfigData->HasPk = TRUE;
+  }
+  
+  //
+  // If the value of SecureBoot variable is 1, the platform is operating in secure boot mode.
+  //
+  GetVariable2 (EFI_SECURE_BOOT_MODE_NAME, &gEfiGlobalVariableGuid, (VOID**)&SecureBoot, NULL);
+  if (SecureBoot != NULL && *SecureBoot == SECURE_BOOT_MODE_ENABLE) {
+    ConfigData->SecureBootState = TRUE;
+  } else {
+    ConfigData->SecureBootState = FALSE;
   }
 
   //
@@ -2313,6 +2355,7 @@ SecureBootCallback (
   SECUREBOOT_CONFIGURATION        *IfrNvData;
   UINT16                          LabelId;
   UINT8                           *SecureBootEnable;
+  CHAR16                          PromptString[100];
 
   SecureBootEnable = NULL;
 
@@ -2353,6 +2396,13 @@ SecureBootCallback (
             NULL
             );
           Status = EFI_UNSUPPORTED;
+        } else {
+          CreatePopUp (
+            EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE,
+            &Key,
+            L"Secure boot configuration is changed, please reset the platform to take effect!",
+            NULL
+            );
         }
         *ActionRequest = EFI_BROWSER_ACTION_REQUEST_FORM_APPLY; 
       }
@@ -2501,15 +2551,22 @@ SecureBootCallback (
       break;  
     case KEY_VALUE_SAVE_AND_EXIT_PK:
       Status = EnrollPlatformKey (Private);
+      UnicodeSPrint (
+        PromptString,
+        sizeof (PromptString),
+        L"Only DER encoded certificate file (%s) is supported.",
+        mSupportX509Suffix
+        );
       if (EFI_ERROR (Status)) {
         CreatePopUp (
           EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE,
           &Key,
-          L"ERROR: Unsupported file type, only *.cer is supported!",
+          L"ERROR: Unsupported file type!",
+          PromptString,
           NULL
           );
       } else {
-        *ActionRequest = EFI_BROWSER_ACTION_REQUEST_EXIT; 
+        *ActionRequest = EFI_BROWSER_ACTION_REQUEST_RESET; 
       }        
       break;
 

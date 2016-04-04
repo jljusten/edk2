@@ -1,7 +1,7 @@
 /** @file
   Provides the basic interfaces to abstract a PCI Host Bridge Resource Allocation
 
-Copyright (c) 2008 - 2010, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2008 - 2012, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials are
 licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -22,25 +22,38 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 //
 UINTN RootBridgeNumber[1] = { 1 };
 
-UINT64 RootBridgeAttribute[1][1] = { EFI_PCI_HOST_BRIDGE_COMBINE_MEM_PMEM };
+UINT64 RootBridgeAttribute[1][1] = { { EFI_PCI_HOST_BRIDGE_COMBINE_MEM_PMEM } };
 
 EFI_PCI_ROOT_BRIDGE_DEVICE_PATH mEfiPciRootBridgeDevicePath[1][1] = {
   {
-    ACPI_DEVICE_PATH,
-    ACPI_DP,
-    (UINT8) (sizeof(ACPI_HID_DEVICE_PATH)),
-    (UINT8) ((sizeof(ACPI_HID_DEVICE_PATH)) >> 8),
-    EISA_PNP_ID(0x0A03),
-    0,
-    END_DEVICE_PATH_TYPE,
-    END_ENTIRE_DEVICE_PATH_SUBTYPE,
-    END_DEVICE_PATH_LENGTH,
-    0
+    {
+      {
+        {
+          ACPI_DEVICE_PATH,
+          ACPI_DP,
+          {
+            (UINT8) (sizeof(ACPI_HID_DEVICE_PATH)),
+            (UINT8) ((sizeof(ACPI_HID_DEVICE_PATH)) >> 8)
+          }
+        },
+        EISA_PNP_ID(0x0A03),
+        0
+      },
+  
+      {
+        END_DEVICE_PATH_TYPE,
+        END_ENTIRE_DEVICE_PATH_SUBTYPE,
+        {
+          END_DEVICE_PATH_LENGTH,
+          0
+        }
+      }
+    }
   }
 };
 
 PCI_ROOT_BRIDGE_RESOURCE_APPETURE  mResAppeture[1][1] = {
-  {0, 0xff, 0x80000000, 0xffffffff, 0, 0xffff}
+  {{0, 0xff, 0x80000000, 0xffffffff, 0, 0xffff}}
 };
 
 EFI_HANDLE mDriverImageHandle;
@@ -1180,7 +1193,7 @@ PreprocessController (
     return EFI_INVALID_PARAMETER;
   }
 
-  if (Phase < EfiPciBeforeChildBusEnumeration || Phase > EfiPciBeforeResourceCollection) {
+  if ((UINT32)Phase > EfiPciBeforeResourceCollection) {
     return EFI_INVALID_PARAMETER;
   }
 

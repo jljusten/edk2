@@ -2,6 +2,12 @@
   It updates TPM items in ACPI table and registers SMI callback
   functions for physical presence and ClearMemory.
 
+  Caution: This module requires additional review when modified.
+  This driver will have external input - variable and ACPINvs data in SMM mode.
+  This external input must be validated carefully to avoid security issue.
+
+  PhysicalPresenceCallback() and MemoryClearCallback() will receive untrusted input and do some check.
+
 Copyright (c) 2011 - 2012, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials 
 are licensed and made available under the terms and conditions of the BSD License 
@@ -20,6 +26,10 @@ TCG_NVS                    *mTcgNvs;
 
 /**
   Software SMI callback for TPM physical presence which is called from ACPI method.
+
+  Caution: This function may receive untrusted input.
+  Variable and ACPINvs are external input, so this function will validate
+  its data structure to be valid value.
 
   @param[in]      DispatchHandle  The unique handle assigned to this handler by SmiHandlerRegister().
   @param[in]      Context         Points to an optional handler context which was specified when the
@@ -161,6 +171,10 @@ PhysicalPresenceCallback (
 /**
   Software SMI callback for MemoryClear which is called from ACPI method.
 
+  Caution: This function may receive untrusted input.
+  Variable and ACPINvs are external input, so this function will validate
+  its data structure to be valid value.
+
   @param[in]      DispatchHandle  The unique handle assigned to this handler by SmiHandlerRegister().
   @param[in]      Context         Points to an optional handler context which was specified when the
                                   handler was registered.
@@ -294,6 +308,20 @@ PublishAcpiTable (
              &TableSize
              );
   ASSERT_EFI_ERROR (Status);
+
+
+  //
+  // Measure to PCR[0] with event EV_POST_CODE ACPI DATA
+  //
+  TpmMeasureAndLogData(
+    0,
+    EV_POST_CODE,
+    EV_POSTCODE_INFO_ACPI_DATA,
+    ACPI_DATA_LEN,
+    Table,
+    TableSize
+    );
+
 
   ASSERT (Table->OemTableId == SIGNATURE_64 ('T', 'c', 'g', 'T', 'a', 'b', 'l', 'e'));
   mTcgNvs = AssignOpRegion (Table, SIGNATURE_32 ('T', 'N', 'V', 'S'), (UINT16) sizeof (TCG_NVS));

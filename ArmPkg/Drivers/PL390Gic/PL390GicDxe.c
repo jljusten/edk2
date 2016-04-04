@@ -118,11 +118,11 @@ EnableInterruptSource (
     return EFI_UNSUPPORTED;
   }
   
-  // calculate enable register offset and bit position
+  // Calculate enable register offset and bit position
   RegOffset = Source / 32;
   RegShift = Source % 32;
 
-  // write set-enable register
+  // Write set-enable register
   MmioWrite32 (PcdGet32(PcdGicDistributorBase) + ARM_GIC_ICDISER + (4*RegOffset), 1 << RegShift);
   
   return EFI_SUCCESS;
@@ -343,7 +343,15 @@ InterruptDxeInitialize (
   UINT32                  RegOffset;
   UINTN                   RegShift;
   EFI_CPU_ARCH_PROTOCOL   *Cpu;
+  UINT32                  CpuTarget;
   
+  // Check PcdGicPrimaryCoreId has been set in case the Primary Core is not the core 0 of Cluster 0
+  DEBUG_CODE_BEGIN();
+  if ((PcdGet32(PcdArmPrimaryCore) != 0) && (PcdGet32 (PcdGicPrimaryCoreId) == 0)) {
+    DEBUG((EFI_D_WARN,"Warning: the PCD PcdGicPrimaryCoreId does not seem to be set up for the configuration.\n"));
+  }
+  DEBUG_CODE_END();
+
   // Make sure the Interrupt Controller Protocol is not already installed in the system.
   ASSERT_PROTOCOL_ALREADY_INSTALLED (NULL, &gHardwareInterruptProtocolGuid);
 
@@ -362,9 +370,11 @@ InterruptDxeInitialize (
       );
   }
 
-  // Configure interrupts for cpu 0
+  // Configure interrupts for Primary Cpu
+  CpuTarget = (1 << PcdGet32 (PcdGicPrimaryCoreId));
+  CpuTarget |= (CpuTarget << 24) | (CpuTarget << 16) | (CpuTarget << 8);
   for (Index = 0; Index < (mGicNumInterrupts / 4); Index++) {
-    MmioWrite32 (PcdGet32(PcdGicDistributorBase) + ARM_GIC_ICDIPTR + (Index*4), 0x01010101);
+    MmioWrite32 (PcdGet32(PcdGicDistributorBase) + ARM_GIC_ICDIPTR + (Index*4), CpuTarget);
   }
 
   // Set binary point reg to 0x7 (no preemption)

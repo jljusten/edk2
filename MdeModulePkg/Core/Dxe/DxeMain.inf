@@ -93,6 +93,7 @@
   DxeServicesLib
   DebugAgentLib
   CpuExceptionHandlerLib
+  PcdLib
 
 [Guids]
   gEfiEventMemoryMapChangeGuid                  ## CONSUMES ## Event
@@ -110,6 +111,7 @@
   gEfiEventDxeDispatchGuid                      ## CONSUMES ## GUID
   gLoadFixedAddressConfigurationTableGuid       ## SOMETIMES_CONSUMES
   gIdleLoopEventGuid                            ## CONSUMES ## GUID
+  gEventExitBootServicesFailedGuid              ## CONSUMES ## GUID
 
 [Protocols]
   gEfiStatusCodeRuntimeProtocolGuid             ## SOMETIMES_CONSUMES
@@ -124,6 +126,7 @@
   gEfiRuntimeArchProtocolGuid                   ## CONSUMES
   gEfiWatchdogTimerArchProtocolGuid             ## CONSUMES
   gEfiSecurityArchProtocolGuid                  ## CONSUMES
+  gEfiSecurity2ArchProtocolGuid                 ## CONSUMES
   gEfiVariableArchProtocolGuid                  ## CONSUMES
   gEfiBdsArchProtocolGuid                       ## CONSUMES
   gEfiVariableWriteArchProtocolGuid             ## CONSUMES

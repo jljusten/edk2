@@ -65,242 +65,6 @@ IsKeyOptionValid (
 }
 
 /**
-  Create Key#### for the given hotkey.
-
-  @param KeyOption       The Hot Key Option to be added.
-  @param KeyOptionNumber The key option number for Key#### (optional).
-
-  @retval  EFI_SUCCESS            Register hotkey successfully.
-  @retval  EFI_INVALID_PARAMETER  The hotkey option is invalid.
-  @retval  EFI_OUT_OF_RESOURCES   Fail to allocate memory resource.
-
-**/
-EFI_STATUS
-RegisterHotkey (
-  IN EFI_KEY_OPTION     *KeyOption,
-  OUT UINT16            *KeyOptionNumber
-)
-{
-  UINT16          KeyOptionName[10];
-  UINT16          *KeyOrder;
-  UINTN           KeyOrderSize;
-  UINT16          *NewKeyOrder;
-  UINTN           Index;
-  UINT16          MaxOptionNumber;
-  UINT16          RegisterOptionNumber;
-  EFI_KEY_OPTION  *TempOption;
-  UINTN           TempOptionSize;
-  EFI_STATUS      Status;
-  UINTN           KeyOptionSize;
-  BOOLEAN         UpdateBootOption;
-
-  //
-  // Validate the given key option
-  //
-  if (!IsKeyOptionValid (KeyOption)) {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  KeyOptionSize = sizeof (EFI_KEY_OPTION) + KeyOption->KeyData.Options.InputKeyCount * sizeof (EFI_INPUT_KEY);
-  UpdateBootOption = FALSE;
-
-  //
-  // Check whether HotKey conflict with keys used by Setup Browser
-  //
-  KeyOrder = BdsLibGetVariableAndSize (
-               VAR_KEY_ORDER,
-               &gEfiGlobalVariableGuid,
-               &KeyOrderSize
-               );
-  if (KeyOrder == NULL) {
-    KeyOrderSize = 0;
-  }
-
-  //
-  // Find free key option number
-  //
-  MaxOptionNumber = 0;
-  TempOption = NULL;
-  for (Index = 0; Index < KeyOrderSize / sizeof (UINT16); Index++) {
-    if (MaxOptionNumber < KeyOrder[Index]) {
-      MaxOptionNumber = KeyOrder[Index];
-    }
-
-    UnicodeSPrint (KeyOptionName, sizeof (KeyOptionName), L"Key%04x", KeyOrder[Index]);
-    TempOption = BdsLibGetVariableAndSize (
-                   KeyOptionName,
-                   &gEfiGlobalVariableGuid,
-                   &TempOptionSize
-                   );
-    ASSERT (TempOption != NULL);
-
-    if (CompareMem (TempOption, KeyOption, TempOptionSize) == 0) {
-      //
-      // Got the option, so just return
-      //
-      FreePool (TempOption);
-      FreePool (KeyOrder);
-      return EFI_SUCCESS;
-    }
-
-    if (KeyOption->KeyData.PackedValue == TempOption->KeyData.PackedValue) {
-      if (KeyOption->KeyData.Options.InputKeyCount == 0 ||
-          CompareMem (
-            ((UINT8 *) TempOption) + sizeof (EFI_KEY_OPTION),
-            ((UINT8 *) KeyOption) + sizeof (EFI_KEY_OPTION),
-            KeyOptionSize - sizeof (EFI_KEY_OPTION)
-            ) == 0) {
-          //
-          // Hotkey is the same but BootOption changed, need update
-          //
-          UpdateBootOption = TRUE;
-          break;
-      }
-    }
-
-    FreePool (TempOption);
-  }
-
-  if (UpdateBootOption) {
-    RegisterOptionNumber = KeyOrder[Index];
-    FreePool (TempOption);
-  } else {
-    RegisterOptionNumber = (UINT16) (MaxOptionNumber + 1);
-  }
-
-  if (KeyOptionNumber != NULL) {
-    *KeyOptionNumber = RegisterOptionNumber;
-  }
-
-  //
-  // Create variable Key####
-  //
-  UnicodeSPrint (KeyOptionName, sizeof (KeyOptionName), L"Key%04x", RegisterOptionNumber);
-  Status = gRT->SetVariable (
-                  KeyOptionName,
-                  &gEfiGlobalVariableGuid,
-                  EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE,
-                  KeyOptionSize,
-                  KeyOption
-                  );
-  if (EFI_ERROR (Status)) {
-    FreePool (KeyOrder);
-    return Status;
-  }
-
-  //
-  // Update the key order variable - "KeyOrder"
-  //
-  if (!UpdateBootOption) {
-    Index = KeyOrderSize / sizeof (UINT16);
-    KeyOrderSize += sizeof (UINT16);
-  }
-
-  NewKeyOrder = AllocatePool (KeyOrderSize);
-  if (NewKeyOrder == NULL) {
-    FreePool (KeyOrder);
-    return EFI_OUT_OF_RESOURCES;
-  }
-
-  if (KeyOrder != NULL) {
-    CopyMem (NewKeyOrder, KeyOrder, KeyOrderSize);
-  }
-
-  NewKeyOrder[Index] = RegisterOptionNumber;
-
-  Status = gRT->SetVariable (
-                  VAR_KEY_ORDER,
-                  &gEfiGlobalVariableGuid,
-                  EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE,
-                  KeyOrderSize,
-                  NewKeyOrder
-                  );
-
-  FreePool (KeyOrder);
-  FreePool (NewKeyOrder);
-
-  return Status;
-}
-
-/**
-
-  Delete Key#### for the given Key Option number.
-
-  @param KeyOptionNumber Key option number for Key####
-
-  @retval  EFI_SUCCESS            Unregister hotkey successfully.
-  @retval  EFI_NOT_FOUND          No Key#### is found for the given Key Option number.
-
-**/
-EFI_STATUS
-UnregisterHotkey (
-  IN UINT16     KeyOptionNumber
-)
-{
-  UINT16      KeyOption[10];
-  UINTN       Index;
-  EFI_STATUS  Status;
-  UINTN       Index2Del;
-  UINT16      *KeyOrder;
-  UINTN       KeyOrderSize;
-
-  //
-  // Delete variable Key####
-  //
-  UnicodeSPrint (KeyOption, sizeof (KeyOption), L"Key%04x", KeyOptionNumber);
-  gRT->SetVariable (
-         KeyOption,
-         &gEfiGlobalVariableGuid,
-         EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE,
-         0,
-         NULL
-         );
-
-  //
-  // Adjust key order array
-  //
-  KeyOrder = BdsLibGetVariableAndSize (
-               VAR_KEY_ORDER,
-               &gEfiGlobalVariableGuid,
-               &KeyOrderSize
-               );
-  if (KeyOrder == NULL) {
-    return EFI_SUCCESS;
-  }
-
-  Index2Del = 0;
-  for (Index = 0; Index < KeyOrderSize / sizeof (UINT16); Index++) {
-    if (KeyOrder[Index] == KeyOptionNumber) {
-      Index2Del = Index;
-      break;
-    }
-  }
-
-  if (Index != KeyOrderSize / sizeof (UINT16)) {
-    //
-    // KeyOptionNumber found in "KeyOrder", delete it
-    //
-    for (Index = Index2Del; Index < KeyOrderSize / sizeof (UINT16) - 1; Index++) {
-      KeyOrder[Index] = KeyOrder[Index + 1];
-    }
-
-    KeyOrderSize -= sizeof (UINT16);
-  }
-
-  Status = gRT->SetVariable (
-                  VAR_KEY_ORDER,
-                  &gEfiGlobalVariableGuid,
-                  EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE,
-                  KeyOrderSize,
-                  KeyOrder
-                  );
-
-  FreePool (KeyOrder);
-
-  return Status;
-}
-
-/**
   Try to boot the boot option triggered by hotkey.
   @retval  EFI_SUCCESS             There is HotkeyBootOption & it is processed
   @retval  EFI_NOT_FOUND           There is no HotkeyBootOption
@@ -551,7 +315,6 @@ HotkeyInsertList (
   BDS_HOTKEY_OPTION  *HotkeyLeft;
   BDS_HOTKEY_OPTION  *HotkeyRight;
   UINTN              Index;
-  EFI_BOOT_KEY_DATA  KeyOptions;
   UINT32             KeyShiftStateLeft;
   UINT32             KeyShiftStateRight;
   EFI_INPUT_KEY      *InputKey;
@@ -564,34 +327,30 @@ HotkeyInsertList (
 
   HotkeyLeft->Signature = BDS_HOTKEY_OPTION_SIGNATURE;
   HotkeyLeft->BootOptionNumber = KeyOption->BootOption;
-
-  KeyOptions = KeyOption->KeyData;
-
-  HotkeyLeft->CodeCount = (UINT8) KeyOptions.Options.InputKeyCount;
+  HotkeyLeft->CodeCount = (UINT8) KEY_OPTION_INPUT_KEY_COUNT (KeyOption);
 
   //
   // Map key shift state from KeyOptions to EFI_KEY_DATA.KeyState
   //
   KeyShiftStateRight = EFI_SHIFT_STATE_VALID;
-  if (KeyOptions.Options.ShiftPressed) {
+  if (KEY_OPTION_SHIFT_PRESSED (KeyOption)) {
     KeyShiftStateRight |= EFI_RIGHT_SHIFT_PRESSED;
   }
-  if (KeyOptions.Options.ControlPressed) {
+  if (KEY_OPTION_CONTROL_PRESSED (KeyOption)) {
     KeyShiftStateRight |= EFI_RIGHT_CONTROL_PRESSED;
   }
-  if (KeyOptions.Options.AltPressed) {
+  if (KEY_OPTION_ALT_PRESSED (KeyOption)) {
     KeyShiftStateRight |= EFI_RIGHT_ALT_PRESSED;
   }
-  if (KeyOptions.Options.LogoPressed) {
+  if (KEY_OPTION_LOGO_PRESSED (KeyOption)) {
     KeyShiftStateRight |= EFI_RIGHT_LOGO_PRESSED;
   }
-  if (KeyOptions.Options.MenuPressed) {
+  if (KEY_OPTION_MENU_PRESSED (KeyOption)) {
     KeyShiftStateRight |= EFI_MENU_KEY_PRESSED;
   }
-  if (KeyOptions.Options.SysReqPressed) {
+  if (KEY_OPTION_SYS_REQ_PRESSED (KeyOption)) {
     KeyShiftStateRight |= EFI_SYS_REQ_PRESSED;
   }
-
 
   KeyShiftStateLeft = (KeyShiftStateRight & 0xffffff00) | ((KeyShiftStateRight & 0xff) << 1);
 
@@ -641,11 +400,120 @@ HotkeyInsertList (
 }
 
 /**
+  Return TRUE when the variable pointed by Name and Guid is a Key#### variable.
+
+  @param Name         The name of the variable.
+  @param Guid         The GUID of the variable.
+  @param OptionNumber Return the option number parsed from the Name.
+
+  @retval TRUE  The variable pointed by Name and Guid is a Key#### variable.
+  @retval FALSE The variable pointed by Name and Guid isn't a Key#### variable.
+**/
+BOOLEAN
+IsKeyOptionVariable (
+  CHAR16        *Name,
+  EFI_GUID      *Guid,
+  UINT16        *OptionNumber
+  )
+{
+  UINTN         Index;
+  
+  if (!CompareGuid (Guid, &gEfiGlobalVariableGuid) ||
+      (StrSize (Name) != sizeof (L"Key####")) ||
+      (StrnCmp (Name, L"Key", 3) != 0)
+     ) {
+    return FALSE;
+  }
+
+  *OptionNumber = 0;
+  for (Index = 3; Index < 7; Index++) {
+    if ((Name[Index] >= L'0') && (Name[Index] <= L'9')) {
+      *OptionNumber = *OptionNumber * 10 + Name[Index] - L'0';
+    } else if ((Name[Index] >= L'A') && (Name[Index] <= L'F')) {
+      *OptionNumber = *OptionNumber * 10 + Name[Index] - L'A';
+    } else {
+      return FALSE;
+    }
+  }
+
+  return TRUE;
+}
+
+/**
+  Return an array of key option numbers.
+
+  @param Count       Return the count of key option numbers.
+
+  @return UINT16*    Pointer to an array of key option numbers;
+**/
+UINT16 *
+EFIAPI
+HotkeyGetOptionNumbers (
+  OUT UINTN     *Count
+  )
+{
+  EFI_STATUS                  Status;
+  UINTN                       Index;
+  CHAR16                      *Name;
+  EFI_GUID                    Guid;
+  UINTN                       NameSize;
+  UINTN                       NewNameSize;
+  UINT16                      *OptionNumbers;
+  UINT16                      OptionNumber;
+
+  if (Count == NULL) {
+    return NULL;
+  }
+
+  *Count        = 0;
+  OptionNumbers = NULL;
+
+  NameSize = sizeof (CHAR16);
+  Name     = AllocateZeroPool (NameSize);
+  ASSERT (Name != NULL);
+  while (TRUE) {
+    NewNameSize = NameSize;
+    Status = gRT->GetNextVariableName (&NewNameSize, Name, &Guid);
+    if (Status == EFI_BUFFER_TOO_SMALL) {
+      Name = ReallocatePool (NameSize, NewNameSize, Name);
+      ASSERT (Name != NULL);
+      Status = gRT->GetNextVariableName (&NewNameSize, Name, &Guid);
+      NameSize = NewNameSize;
+    }
+
+    if (Status == EFI_NOT_FOUND) {
+      break;
+    }
+    ASSERT_EFI_ERROR (Status);
+
+    if (IsKeyOptionVariable (Name ,&Guid, &OptionNumber)) {
+      OptionNumbers = ReallocatePool (
+                        *Count * sizeof (UINT16),
+                        (*Count + 1) * sizeof (UINT16),
+                        OptionNumbers
+                        );
+      ASSERT (OptionNumbers != NULL);
+      for (Index = 0; Index < *Count; Index++) {
+        if (OptionNumber < OptionNumbers[Index]) {
+          break;
+        }
+      }
+      CopyMem (&OptionNumbers[Index + 1], &OptionNumbers[Index], (*Count - Index) * sizeof (UINT16));
+      OptionNumbers[Index] = OptionNumber;
+      (*Count)++;
+    }
+  }
+
+  FreePool (Name);
+
+  return OptionNumbers;
+}
+
+/**
 
   Process all the "Key####" variables, associate Hotkeys with corresponding Boot Options.
 
   @retval  EFI_SUCCESS    Hotkey services successfully initialized.
-  @retval  EFI_NOT_FOUND  Can not find the "KeyOrder" variable
 **/
 EFI_STATUS
 InitializeHotkeyService (
@@ -654,19 +522,23 @@ InitializeHotkeyService (
 {
   EFI_STATUS      Status;
   UINT32          BootOptionSupport;
-  UINT16          *KeyOrder;
-  UINTN           KeyOrderSize;
+  UINT16          *KeyOptionNumbers;
+  UINTN           KeyOptionCount;
   UINTN           Index;
-  UINT16          KeyOptionName[8];
-  UINTN           KeyOptionSize;
+  CHAR16          KeyOptionName[8];
   EFI_KEY_OPTION  *KeyOption;
 
   //
-  // Export our capability - EFI_BOOT_OPTION_SUPPORT_KEY and EFI_BOOT_OPTION_SUPPORT_APP
+  // Export our capability - EFI_BOOT_OPTION_SUPPORT_KEY and EFI_BOOT_OPTION_SUPPORT_APP.
   // with maximum number of key presses of 3
+  // Do not report the hotkey capability if PcdConInConnectOnDemand is enabled.
   //
-  BootOptionSupport = EFI_BOOT_OPTION_SUPPORT_KEY | EFI_BOOT_OPTION_SUPPORT_APP;
-  SET_BOOT_OPTION_SUPPORT_KEY_COUNT (BootOptionSupport, 3);
+  BootOptionSupport = EFI_BOOT_OPTION_SUPPORT_APP;
+  if (!PcdGetBool (PcdConInConnectOnDemand)) {
+    BootOptionSupport |= EFI_BOOT_OPTION_SUPPORT_KEY;
+    SET_BOOT_OPTION_SUPPORT_KEY_COUNT (BootOptionSupport, 3);
+  }
+
   Status = gRT->SetVariable (
                   L"BootOptionSupport",
                   &gEfiGlobalVariableGuid,
@@ -674,33 +546,21 @@ InitializeHotkeyService (
                   sizeof (UINT32),
                   &BootOptionSupport
                   );
+  ASSERT_EFI_ERROR (Status);
 
-  //
-  // Get valid Key Option List from private EFI variable "KeyOrder"
-  //
-  KeyOrder = BdsLibGetVariableAndSize (
-               VAR_KEY_ORDER,
-               &gEfiGlobalVariableGuid,
-               &KeyOrderSize
-               );
-
-  if (KeyOrder == NULL) {
-    return EFI_NOT_FOUND;
-  }
-
-  for (Index = 0; Index < KeyOrderSize / sizeof (UINT16); Index ++) {
-    UnicodeSPrint (KeyOptionName, sizeof (KeyOptionName), L"Key%04x", KeyOrder[Index]);
-    KeyOption = BdsLibGetVariableAndSize (
-                  KeyOptionName,
-                  &gEfiGlobalVariableGuid,
-                  &KeyOptionSize
-                  );
-
-    if (KeyOption == NULL || !IsKeyOptionValid (KeyOption)) {
-      UnregisterHotkey (KeyOrder[Index]);
-    } else {
+  KeyOptionNumbers = HotkeyGetOptionNumbers (&KeyOptionCount);
+  for (Index = 0; Index < KeyOptionCount; Index ++) {
+    UnicodeSPrint (KeyOptionName, sizeof (KeyOptionName), L"Key%04x", KeyOptionNumbers[Index]);
+    GetEfiGlobalVariable2 (KeyOptionName, (VOID **) &KeyOption, NULL);
+    ASSERT (KeyOption != NULL);
+    if (IsKeyOptionValid (KeyOption)) {
       HotkeyInsertList (KeyOption);
     }
+    FreePool (KeyOption);
+  }
+
+  if (KeyOptionNumbers != NULL) {
+    FreePool (KeyOptionNumbers);
   }
 
   //

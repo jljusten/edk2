@@ -112,11 +112,10 @@ DEBUG_CODE_END();
   string  = gMD->NCmdLine;
   for(count = 0; count < Argc; ++count) {
     nArgv[count] = string;
-    AVsz = wcstombs(string, Argv[count], nArgvSize);
-    string[AVsz] = 0;   /* NULL terminate the argument */
+    AVsz = wcstombs(string, Argv[count], nArgvSize) + 1;
     DEBUG((DEBUG_INFO, "Cvt[%d] %d \"%s\" --> \"%a\"\n", (INT32)count, (INT32)AVsz, Argv[count], nArgv[count]));
-    string += AVsz + 1;
-    nArgvSize -= AVsz + 1;
+    string += AVsz;
+    nArgvSize -= AVsz;
     if(nArgvSize < 0) {
       Print(L"ABORTING: Internal Argv[%d] conversion error.\n", count);
       exit(EXIT_FAILURE);
@@ -159,9 +158,9 @@ ShellAppMain (
       mfd[i].MyFD = (UINT16)i;
     }
 
-    i = open("stdin:", O_RDONLY, 0444);
+    i = open("stdin:", (O_RDONLY | O_TTY_INIT), 0444);
     if(i == 0) {
-      i = open("stdout:", O_WRONLY, 0222);
+      i = open("stdout:", (O_WRONLY | O_TTY_INIT), 0222);
       if(i == 1) {
         i = open("stderr:", O_WRONLY, 0222);
       }

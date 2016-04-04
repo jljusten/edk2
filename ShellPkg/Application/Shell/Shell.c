@@ -23,22 +23,24 @@ SHELL_INFO ShellInfoObject = {
   FALSE,
   FALSE,
   {
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
+    {{
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    }},
     0,
     NULL,
     NULL
   },
-  {0,0},
+  {{NULL, NULL}, NULL},
   {
-    {0,0},
+    {{NULL, NULL}, NULL},
     0,
     0,
     TRUE
@@ -50,8 +52,12 @@ SHELL_INFO ShellInfoObject = {
   NULL,
   NULL,
   NULL,
-  {0,0,NULL,NULL},
-  {0,0},
+  {{NULL, NULL}, NULL, NULL},
+  {{NULL, NULL}, NULL, NULL},
+  NULL,
+  NULL,
+  NULL,
+  NULL,
   NULL,
   NULL,
   NULL,
@@ -435,7 +441,7 @@ UefiMain (
   }
   if (ShellInfoObject.NewEfiShellProtocol != NULL){
     if (ShellInfoObject.NewEfiShellProtocol->IsRootShell()){
-      ShellInfoObject.NewEfiShellProtocol->SetEnv(L"cwd", L"", TRUE);
+      InternalEfiShellSetEnv(L"cwd", NULL, TRUE);
     }
     CleanUpShellProtocol(ShellInfoObject.NewEfiShellProtocol);
     DEBUG_CODE(ShellInfoObject.NewEfiShellProtocol = NULL;);
@@ -1872,6 +1878,9 @@ RunScriptFileHandle (
 
           ShellCommandRegisterExit(FALSE, 0);
           Status = EFI_SUCCESS;
+          break;
+        }
+        if (ShellGetExecutionBreakFlag()) {
           break;
         }
         if (EFI_ERROR(Status)) {

@@ -95,6 +95,8 @@
   gArmPlatformTokenSpaceGuid.PcdFirmwareVendor|"ARM Versatile Express"  
   gEmbeddedTokenSpaceGuid.PcdEmbeddedPrompt|"ArmVExpress"
 
+  gArmPlatformTokenSpaceGuid.PcdCoreCount|4
+
   #
   # NV Storage PCDs. Use base of 0x43FC0000 for NOR0 or 0x47FC0000 for NOR1 on Versatile Express
   #
@@ -268,7 +270,7 @@
   ArmPlatformPkg/Drivers/SP805WatchdogDxe/SP805WatchdogDxe.inf
 
   #
-  # Semi-hosting filesystem
+  # Filesystems
   #
   ArmPkg/Filesystem/SemihostFs/SemihostFs.inf
   
@@ -283,13 +285,7 @@
   #
   MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
   MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
-  FatPkg/EnhancedFatDxe/Fat.inf
   MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
-
-  #
-  # Application
-  #  
-  EmbeddedPkg/Ebl/Ebl.inf
 
   #
   # Bds

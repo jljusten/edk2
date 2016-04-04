@@ -759,17 +759,21 @@ AhciPioTransfer (
     Status = EFI_TIMEOUT;
     Delay  = (UINT32) (DivU64x32 (Timeout, 1000) + 1);
     do {
-      Offset = EFI_AHCI_PORT_START + Port * EFI_AHCI_PORT_REG_WIDTH + EFI_AHCI_PORT_TFD;
-      PortTfd = AhciReadReg (PciIo, (UINT32) Offset);
-
-      if ((PortTfd & EFI_AHCI_PORT_TFD_ERR) != 0) {
-        Status = EFI_DEVICE_ERROR;
-        break;
-      }
       Offset = FisBaseAddr + EFI_AHCI_PIO_FIS_OFFSET;
 
       Status = AhciCheckMemSet (Offset, EFI_AHCI_FIS_TYPE_MASK, EFI_AHCI_FIS_PIO_SETUP, 0);
       if (!EFI_ERROR (Status)) {
+        Offset = EFI_AHCI_PORT_START + Port * EFI_AHCI_PORT_REG_WIDTH + EFI_AHCI_PORT_TFD;
+        PortTfd = AhciReadReg (PciIo, (UINT32) Offset);
+        //
+        // PxTFD will be updated if there is a D2H or SetupFIS received. 
+        // For PIO IN transfer, D2H means a device error. Therefore we only need to check the TFD after receiving a SetupFIS.
+        //
+        if ((PortTfd & EFI_AHCI_PORT_TFD_ERR) != 0) {
+          Status = EFI_DEVICE_ERROR;
+          break;
+        }
+
         PrdCount = *(volatile UINT32 *) (&(AhciRegisters->AhciCmdList[0].AhciCmdPrdbc));
         if (PrdCount == DataCount) {
           break;
@@ -1904,6 +1908,7 @@ AhciCreateTransferDescriptor (
   VOID                  *Buffer;
 
   UINT32                Capability;
+  UINT32                PortImplementBitMap;
   UINT8                 MaxPortNumber;
   UINT8                 MaxCommandSlotNumber;
   BOOLEAN               Support64Bit;
@@ -1919,12 +1924,20 @@ AhciCreateTransferDescriptor (
   // Collect AHCI controller information
   //
   Capability           = AhciReadReg(PciIo, EFI_AHCI_CAPABILITY_OFFSET);
-  MaxPortNumber        = (UINT8) ((Capability & 0x1F) + 1);
   //
   // Get the number of command slots per port supported by this HBA.
   //
   MaxCommandSlotNumber = (UINT8) (((Capability & 0x1F00) >> 8) + 1);
   Support64Bit         = (BOOLEAN) (((Capability & BIT31) != 0) ? TRUE : FALSE);
+  
+  PortImplementBitMap  = AhciReadReg(PciIo, EFI_AHCI_PI_OFFSET);
+  //
+  // Get the highest bit of implemented ports which decides how many bytes are allocated for recived FIS.
+  //
+  MaxPortNumber        = (UINT8)(UINTN)(HighBitSet32(PortImplementBitMap) + 1);
+  if (MaxPortNumber == 0) {
+    return EFI_DEVICE_ERROR;
+  }
 
   MaxReceiveFisSize    = MaxPortNumber * sizeof (EFI_AHCI_RECEIVED_FIS);
   Status = PciIo->AllocateBuffer (
@@ -2198,8 +2211,19 @@ AhciModeInitialization (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  for (Port = 0; Port < MaxPortNumber; Port ++) {
+  for (Port = 0; Port < EFI_AHCI_MAX_PORTS; Port ++) {
     if ((PortImplementBitMap & (BIT0 << Port)) != 0) {
+      //
+      // According to AHCI spec, MaxPortNumber should be equal or greater than the number of implemented ports.
+      //
+      if ((MaxPortNumber--) == 0) {
+        //
+        // Should never be here.
+        //
+        ASSERT (FALSE);
+        return EFI_SUCCESS;
+      }
+
       IdeInit->NotifyPhase (IdeInit, EfiIdeBeforeChannelEnumeration, Port);
 
       //

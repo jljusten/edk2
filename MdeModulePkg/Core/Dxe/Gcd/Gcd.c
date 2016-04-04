@@ -3,7 +3,7 @@
   The GCD services are used to manage the memory and I/O regions that
   are accessible to the CPU that is executing the DXE core.
 
-Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2012, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -148,7 +148,7 @@ CoreDumpGcdMemorySpaceMap (
     UINTN                            Index;
    
     Status = CoreGetMemorySpaceMap (&NumberOfDescriptors, &MemorySpaceMap);
-    ASSERT_EFI_ERROR (Status);
+    ASSERT (Status == EFI_SUCCESS && MemorySpaceMap != NULL);
 
     if (InitialMap) {
       DEBUG ((DEBUG_GCD, "GCD:Initial GCD Memory Space Map\n"));
@@ -190,7 +190,7 @@ CoreDumpGcdIoSpaceMap (
     UINTN                        Index;
     
     Status = CoreGetIoSpaceMap (&NumberOfDescriptors, &IoSpaceMap);
-    ASSERT_EFI_ERROR (Status);
+    ASSERT (Status == EFI_SUCCESS && IoSpaceMap != NULL);
     
     if (InitialMap) {
       DEBUG ((DEBUG_GCD, "GCD:Initial GCD I/O Space Map\n"));
@@ -1012,15 +1012,15 @@ CoreAllocateSpace (
   //
   // Make sure parameters are valid
   //
-  if (GcdAllocateType < 0 || GcdAllocateType >= EfiGcdMaxAllocateType) {
+  if ((UINT32)GcdAllocateType >= EfiGcdMaxAllocateType) {
     DEBUG ((DEBUG_GCD, "  Status = %r\n", EFI_INVALID_PARAMETER));
     return EFI_INVALID_PARAMETER;
   }
-  if (GcdMemoryType < 0 || GcdMemoryType >= EfiGcdMemoryTypeMaximum) {
+  if ((UINT32)GcdMemoryType >= EfiGcdMemoryTypeMaximum) {
     DEBUG ((DEBUG_GCD, "  Status = %r\n", EFI_INVALID_PARAMETER));
     return EFI_INVALID_PARAMETER;
   }
-  if (GcdIoType < 0 || GcdIoType >= EfiGcdIoTypeMaximum) {
+  if ((UINT32)GcdIoType >= EfiGcdIoTypeMaximum) {
     DEBUG ((DEBUG_GCD, "  Status = %r\n", EFI_INVALID_PARAMETER));
     return EFI_INVALID_PARAMETER;
   }

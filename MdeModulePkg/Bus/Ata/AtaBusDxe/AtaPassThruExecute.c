@@ -133,6 +133,10 @@ AtaDevicePassThru (
   if (TaskPacket != NULL) {
     Packet = TaskPacket;
     Packet->Asb = AllocateAlignedBuffer (AtaDevice, sizeof (EFI_ATA_STATUS_BLOCK));
+    if (Packet->Asb == NULL) {
+      return EFI_OUT_OF_RESOURCES;
+    }
+
     CopyMem (Packet->Asb, AtaDevice->Asb, sizeof (EFI_ATA_STATUS_BLOCK));
     Packet->Acb = AllocateCopyPool (sizeof (EFI_ATA_COMMAND_BLOCK), &AtaDevice->Acb);
   } else {
@@ -180,6 +184,15 @@ ResetAtaDevice (
   EFI_ATA_PASS_THRU_PROTOCOL              *AtaPassThru;
 
   AtaPassThru = AtaDevice->AtaBusDriverData->AtaPassThru;
+
+  //
+  // Report Status Code to indicate reset happens
+  //
+  REPORT_STATUS_CODE_WITH_DEVICE_PATH (
+    EFI_PROGRESS_CODE,
+    (EFI_IO_BUS_ATA_ATAPI | EFI_IOB_PC_RESET),
+    AtaDevice->AtaBusDriverData->ParentDevicePath
+    );
 
   return AtaPassThru->ResetDevice (
                         AtaPassThru,
@@ -420,9 +433,7 @@ DiscoverAtaDevice (
       // The command is issued successfully
       //
       Status = IdentifyAtaDevice (AtaDevice);
-      if (!EFI_ERROR (Status)) {
-        return Status;
-      }
+      return Status;
     }
   } while (Retry-- > 0);
 
@@ -939,6 +950,10 @@ TrustTransferAtaDevice (
     AtaPassThru = AtaDevice->AtaBusDriverData->AtaPassThru;
     if ((AtaPassThru->Mode->IoAlign > 1) && !IS_ALIGNED (Buffer, AtaPassThru->Mode->IoAlign)) {
       NewBuffer = AllocateAlignedBuffer (AtaDevice, TransferLength);
+      if (NewBuffer == NULL) {
+        return EFI_OUT_OF_RESOURCES;
+      }
+
       CopyMem (NewBuffer, Buffer, TransferLength);
       FreePool (Buffer);
       Buffer = NewBuffer;

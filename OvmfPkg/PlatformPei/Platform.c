@@ -33,6 +33,7 @@
 #include <Library/ResourcePublicationLib.h>
 #include <Guid/MemoryTypeInformation.h>
 #include <Ppi/MasterBootMode.h>
+#include <IndustryStandard/Pci22.h>
 
 #include "Platform.h"
 #include "Cmos.h"
@@ -189,34 +190,31 @@ MemMapInitialization (
     );
 
   //
-  // Add PCI MMIO space available to PCI resource allocations
-  //
-  if (TopOfMemory < BASE_2GB) {
-    AddIoMemoryBaseSizeHob (BASE_2GB, 0xFC000000 - BASE_2GB);
-  } else {
-    AddIoMemoryBaseSizeHob (TopOfMemory, 0xFC000000 - TopOfMemory);
-  }
-
-  //
-  // Local APIC range
-  //
-  AddIoMemoryBaseSizeHob (0xFEC80000, SIZE_512KB);
-
-  //
-  // I/O APIC range
-  //
-  AddIoMemoryBaseSizeHob (0xFEC00000, SIZE_512KB);
-
-  //
   // Video memory + Legacy BIOS region
   //
   AddIoMemoryRangeHob (0x0A0000, BASE_1MB);
+
+  //
+  // address       purpose   size
+  // ------------  --------  -------------------------
+  // max(top, 2g)  PCI MMIO  0xFC000000 - max(top, 2g)
+  // 0xFC000000    gap                           44 MB
+  // 0xFEC00000    IO-APIC                        4 KB
+  // 0xFEC01000    gap                         1020 KB
+  // 0xFED00000    HPET                           1 KB
+  // 0xFED00400    gap                         1023 KB
+  // 0xFEE00000    LAPIC                          1 MB
+  //
+  AddIoMemoryRangeHob (TopOfMemory < BASE_2GB ? BASE_2GB : TopOfMemory, 0xFC000000);
+  AddIoMemoryBaseSizeHob (0xFEC00000, SIZE_4KB);
+  AddIoMemoryBaseSizeHob (0xFED00000, SIZE_1KB);
+  AddIoMemoryBaseSizeHob (PcdGet32(PcdCpuLocalApicBaseAddress), SIZE_1MB);
 }
 
 
 VOID
 MiscInitialization (
-  BOOLEAN Xen
+  VOID
   )
 {
   //
@@ -229,11 +227,34 @@ MiscInitialization (
   //
   BuildCpuHob (36, 16);
 
-  if (!Xen) {
+  //
+  // If PMREGMISC/PMIOSE is set, assume the ACPI PMBA has been configured (for
+  // example by Xen) and skip the setup here. This matches the logic in
+  // AcpiTimerLibConstructor ().
+  //
+  if ((PciRead8 (PCI_LIB_ADDRESS (0, 1, 3, 0x80)) & 0x01) == 0) {
     //
-    // Set the PM I/O base address to 0x400
+    // The PEI phase should be exited with fully accessibe PIIX4 IO space:
+    // 1. set PMBA
     //
-    PciAndThenOr32 (PCI_LIB_ADDRESS (0, 1, 3, 0x40), (UINT32) ~0xfc0, 0x400);
+    PciAndThenOr32 (
+      PCI_LIB_ADDRESS (0, 1, 3, 0x40),
+      (UINT32) ~0xFFC0,
+      PcdGet16 (PcdAcpiPmBaseAddress)
+      );
+
+    //
+    // 2. set PCICMD/IOSE
+    //
+    PciOr8 (
+      PCI_LIB_ADDRESS (0, 1, 3, PCI_COMMAND_OFFSET),
+      EFI_PCI_COMMAND_IO_SPACE
+      );
+
+    //
+    // 3. set PMREGMISC/PMIOSE
+    //
+    PciOr8 (PCI_LIB_ADDRESS (0, 1, 3, 0x80), 0x01);
   }
 }
 
@@ -315,9 +336,7 @@ InitializePlatform (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  EFI_STATUS            Status;
   EFI_PHYSICAL_ADDRESS  TopOfMemory;
-  BOOLEAN               Xen;
 
   DEBUG ((EFI_D_ERROR, "Platform PEIM Loaded\n"));
 
@@ -325,8 +344,7 @@ InitializePlatform (
 
   TopOfMemory = MemDetect ();
 
-  Status = InitializeXen ();
-  Xen = EFI_ERROR (Status) ? FALSE : TRUE;
+  InitializeXen ();
 
   ReserveEmuVariableNvStore ();
 
@@ -334,7 +352,7 @@ InitializePlatform (
 
   MemMapInitialization (TopOfMemory);
 
-  MiscInitialization (Xen);
+  MiscInitialization ();
 
   BootModeInitialization ();
 

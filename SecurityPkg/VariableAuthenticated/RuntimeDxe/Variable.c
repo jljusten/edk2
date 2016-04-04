@@ -2,6 +2,20 @@
   The common variable operation routines shared by DXE_RUNTIME variable
   module and DXE_SMM variable module.
 
+  Caution: This module requires additional review when modified.
+  This driver will have external input - variable data. They may be input in SMM mode.
+  This external input must be validated carefully to avoid security issue like
+  buffer overflow, integer overflow.
+
+  VariableServiceGetNextVariableName () and VariableServiceQueryVariableInfo() are external API.
+  They need check input parameter.
+
+  VariableServiceGetVariable() and VariableServiceSetVariable() are external API
+  to receive datasize and data buffer. The size should be checked carefully.
+
+  VariableServiceSetVariable() should also check authenticate data to avoid buffer overflow,
+  integer overflow. It should also check attribute to avoid authentication bypass.
+
 Copyright (c) 2009 - 2012, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
@@ -539,15 +553,13 @@ Reclaim (
   EFI_STATUS            Status;
   CHAR16                *VariableNamePtr;
   CHAR16                *UpdatingVariableNamePtr;
+  UINTN                 CommonVariableTotalSize;
+  UINTN                 HwErrVariableTotalSize;
 
   VariableStoreHeader = (VARIABLE_STORE_HEADER *) ((UINTN) VariableBase);
-  //
-  // Recalculate the total size of Common/HwErr type variables in non-volatile area.
-  //
-  if (!IsVolatile) {
-    mVariableModuleGlobal->CommonVariableTotalSize = 0;
-    mVariableModuleGlobal->HwErrVariableTotalSize  = 0;
-  }
+
+  CommonVariableTotalSize = 0;
+  HwErrVariableTotalSize  = 0;
 
   //
   // Start Pointers for the variable.
@@ -614,9 +626,9 @@ Reclaim (
       CopyMem (CurrPtr, (UINT8 *) Variable, VariableSize);
       CurrPtr += VariableSize;
       if ((!IsVolatile) && ((Variable->Attributes & EFI_VARIABLE_HARDWARE_ERROR_RECORD) == EFI_VARIABLE_HARDWARE_ERROR_RECORD)) {
-        mVariableModuleGlobal->HwErrVariableTotalSize += VariableSize;
+        HwErrVariableTotalSize += VariableSize;
       } else if ((!IsVolatile) && ((Variable->Attributes & EFI_VARIABLE_HARDWARE_ERROR_RECORD) != EFI_VARIABLE_HARDWARE_ERROR_RECORD)) {
-        mVariableModuleGlobal->CommonVariableTotalSize += VariableSize;
+        CommonVariableTotalSize += VariableSize;
       }
     }
     Variable = NextVariable;
@@ -630,9 +642,9 @@ Reclaim (
     CopyMem (CurrPtr, (UINT8 *) UpdatingVariable, VariableSize);
     CurrPtr += VariableSize;
     if ((!IsVolatile) && ((UpdatingVariable->Attributes & EFI_VARIABLE_HARDWARE_ERROR_RECORD) == EFI_VARIABLE_HARDWARE_ERROR_RECORD)) {
-        mVariableModuleGlobal->HwErrVariableTotalSize += VariableSize;
+        HwErrVariableTotalSize += VariableSize;
     } else if ((!IsVolatile) && ((UpdatingVariable->Attributes & EFI_VARIABLE_HARDWARE_ERROR_RECORD) != EFI_VARIABLE_HARDWARE_ERROR_RECORD)) {
-        mVariableModuleGlobal->CommonVariableTotalSize += VariableSize;
+        CommonVariableTotalSize += VariableSize;
     }
   }
 
@@ -676,9 +688,9 @@ Reclaim (
         ((VARIABLE_HEADER *) CurrPtr)->State = VAR_ADDED;
         CurrPtr += VariableSize;
         if ((!IsVolatile) && ((Variable->Attributes & EFI_VARIABLE_HARDWARE_ERROR_RECORD) == EFI_VARIABLE_HARDWARE_ERROR_RECORD)) {
-          mVariableModuleGlobal->HwErrVariableTotalSize += VariableSize;
+          HwErrVariableTotalSize += VariableSize;
         } else if ((!IsVolatile) && ((Variable->Attributes & EFI_VARIABLE_HARDWARE_ERROR_RECORD) != EFI_VARIABLE_HARDWARE_ERROR_RECORD)) {
-          mVariableModuleGlobal->CommonVariableTotalSize += VariableSize;
+          CommonVariableTotalSize += VariableSize;
         }
       }
     }
@@ -706,8 +718,23 @@ Reclaim (
   }
   if (!EFI_ERROR (Status)) {
     *LastVariableOffset = (UINTN) (CurrPtr - (UINT8 *) ValidBuffer);
+    if (!IsVolatile) {
+      mVariableModuleGlobal->HwErrVariableTotalSize = HwErrVariableTotalSize;
+      mVariableModuleGlobal->CommonVariableTotalSize = CommonVariableTotalSize;
+    }
   } else {
-    *LastVariableOffset = 0;
+    NextVariable  = GetStartPointer ((VARIABLE_STORE_HEADER *)(UINTN)VariableBase);
+    while (IsValidVariableHeader (NextVariable)) {
+      VariableSize = NextVariable->NameSize + NextVariable->DataSize + sizeof (VARIABLE_HEADER);
+      if ((!IsVolatile) && ((Variable->Attributes & EFI_VARIABLE_HARDWARE_ERROR_RECORD) == EFI_VARIABLE_HARDWARE_ERROR_RECORD)) {
+        mVariableModuleGlobal->HwErrVariableTotalSize += HEADER_ALIGN (VariableSize);
+      } else if ((!IsVolatile) && ((Variable->Attributes & EFI_VARIABLE_HARDWARE_ERROR_RECORD) != EFI_VARIABLE_HARDWARE_ERROR_RECORD)) {
+        mVariableModuleGlobal->CommonVariableTotalSize += HEADER_ALIGN (VariableSize);
+      }
+
+      NextVariable = GetNextVariablePtr (NextVariable);
+    }
+    *LastVariableOffset = (UINTN) NextVariable - (UINTN) VariableBase;
   }
 
   FreePool (ValidBuffer);
@@ -1942,8 +1969,39 @@ IsHwErrRecVariable (
 }
 
 /**
+  This code checks if variable should be treated as read-only variable.
+
+  @param[in]      VariableName            Name of the Variable.
+  @param[in]      VendorGuid              GUID of the Variable.
+
+  @retval TRUE      This variable is read-only variable.
+  @retval FALSE     This variable is NOT read-only variable.
+  
+**/
+BOOLEAN
+IsReadOnlyVariable (
+  IN     CHAR16         *VariableName,
+  IN     EFI_GUID       *VendorGuid
+  )
+{
+  if (CompareGuid (VendorGuid, &gEfiGlobalVariableGuid)) {
+    if ((StrCmp (VariableName, EFI_SETUP_MODE_NAME) == 0) ||
+        (StrCmp (VariableName, EFI_SIGNATURE_SUPPORT_NAME) == 0) ||
+        (StrCmp (VariableName, EFI_SECURE_BOOT_MODE_NAME) == 0)) {
+      return TRUE;
+    }
+  }
+  
+  return FALSE;
+}
+
+/**
 
   This code finds variable in storage blocks (Volatile or Non-Volatile).
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize is external input.
+  This function will do basic validation, before parse the data.
 
   @param VariableName               Name of Variable to be found.
   @param VendorGuid                 Variable vendor GUID.
@@ -2021,6 +2079,9 @@ Done:
 /**
 
   This code Finds the Next available variable.
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode. This function will do basic validation, before parse the data.
 
   @param VariableNameSize           Size of the variable name.
   @param VariableName               Pointer to variable name.
@@ -2167,6 +2228,13 @@ Done:
 
   This code sets variable in storage blocks (Volatile or Non-Volatile).
 
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize and data are external input.
+  This function will do basic validation, before parse the data.
+  This function will parse the authentication carefully to avoid security issues, like
+  buffer overflow, integer overflow.
+  This function will check attribute carefully to avoid authentication bypass.
+
   @param VariableName                     Name of Variable to be found.
   @param VendorGuid                       Variable vendor GUID.
   @param Attributes                       Attribute value of the variable found
@@ -2204,7 +2272,18 @@ VariableServiceSetVariable (
     return EFI_INVALID_PARAMETER;
   }
 
+  if (IsReadOnlyVariable (VariableName, VendorGuid)) {
+    return EFI_WRITE_PROTECTED;
+  }
+
   if (DataSize != 0 && Data == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  //
+  // Check for reserverd bit in variable attribute.
+  //
+  if ((Attributes & (~EFI_VARIABLE_ATTRIBUTES_MASK)) != 0) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -2321,7 +2400,10 @@ VariableServiceSetVariable (
     Status = ProcessVarWithPk (VariableName, VendorGuid, Data, DataSize, &Variable, Attributes, FALSE);
   } else if (CompareGuid (VendorGuid, &gEfiImageSecurityDatabaseGuid) && 
           ((StrCmp (VariableName, EFI_IMAGE_SECURITY_DATABASE) == 0) || (StrCmp (VariableName, EFI_IMAGE_SECURITY_DATABASE1) == 0))) {
-    Status = ProcessVarWithKek (VariableName, VendorGuid, Data, DataSize, &Variable, Attributes);
+    Status = ProcessVarWithPk (VariableName, VendorGuid, Data, DataSize, &Variable, Attributes, FALSE);
+    if (EFI_ERROR (Status)) {
+      Status = ProcessVarWithKek (VariableName, VendorGuid, Data, DataSize, &Variable, Attributes);
+    }
   } else {
     Status = ProcessVariable (VariableName, VendorGuid, Data, DataSize, &Variable, Attributes);
   }
@@ -2335,6 +2417,9 @@ VariableServiceSetVariable (
 /**
 
   This code returns information about the EFI variables.
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode. This function will do basic validation, before parse the data.
 
   @param Attributes                     Attributes bitmask to specify the type of variables
                                         on which to return information.
@@ -2496,6 +2581,9 @@ VariableServiceQueryVariableInfo (
 
 /**
   This function reclaims variable storage if free size is below the threshold.
+
+  Caution: This function may be invoked at SMM mode.
+  Care must be taken to make sure not security issue.
 
 **/
 VOID

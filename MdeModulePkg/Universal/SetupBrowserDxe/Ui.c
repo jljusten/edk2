@@ -439,7 +439,7 @@ RefreshQuestion (
   Selection = MenuRefreshEntry->Selection;
   Question = MenuRefreshEntry->MenuOption->ThisTag;
 
-  Status = GetQuestionValue (Selection->FormSet, Selection->Form, Question, FALSE);
+  Status = GetQuestionValue (Selection->FormSet, Selection->Form, Question, GetSetValueWithHiiDriver);
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -767,7 +767,9 @@ UiAddMenuOption (
         //
         MenuOption->GrayOut = TRUE;
       }
-
+      //
+      // break skipped on purpose
+      //
     default:
       MenuOption->IsQuestion = FALSE;
       break;
@@ -955,6 +957,9 @@ CreateDialog (
           TempString[Index - 1] = CHAR_NULL;
           StrCpy (StringBuffer, TempString);
         }
+        //
+        // break skipped on purpose
+        //
 
       default:
         //
@@ -1450,7 +1455,7 @@ GetLineByWidth (
     // Skip the space info at the begin of next line.
     //  
     *Index = (UINT16) (*Index + StrOffset + 1);
-  } else if ((InputString[*Index + StrOffset] == CHAR_LINEFEED)) {
+  } else if (InputString[*Index + StrOffset] == CHAR_LINEFEED) {
     //
     // Skip the /n or /n/r info.
     //
@@ -1459,7 +1464,7 @@ GetLineByWidth (
     } else {
       *Index = (UINT16) (*Index + StrOffset + 1);
     }
-  } else if ((InputString[*Index + StrOffset] == CHAR_CARRIAGE_RETURN)) {
+  } else if (InputString[*Index + StrOffset] == CHAR_CARRIAGE_RETURN) {
     //
     // Skip the /r or /r/n info.
     //  
@@ -1949,6 +1954,55 @@ FormSetGuidToHiiHandle (
 }
 
 /**
+  Transfer the device path string to binary format.
+
+  @param   StringPtr     The device path string info.
+
+  @retval  Device path binary info.
+
+**/
+EFI_DEVICE_PATH_PROTOCOL *
+ConvertDevicePathFromText (
+  IN CHAR16  *StringPtr
+  )
+{
+  UINTN                           BufferSize;
+  EFI_DEVICE_PATH_PROTOCOL        *DevicePath;
+  CHAR16                          TemStr[2];
+  UINT8                           *DevicePathBuffer;
+  UINTN                           Index;
+  UINT8                           DigitUint8;
+
+  ASSERT (StringPtr != NULL);
+
+  BufferSize = StrLen (StringPtr) / 2;
+  DevicePath = AllocatePool (BufferSize);
+  ASSERT (DevicePath != NULL);
+  
+  //
+  // Convert from Device Path String to DevicePath Buffer in the reverse order.
+  //
+  DevicePathBuffer = (UINT8 *) DevicePath;
+  for (Index = 0; StringPtr[Index] != L'\0'; Index ++) {
+    TemStr[0] = StringPtr[Index];
+    DigitUint8 = (UINT8) StrHexToUint64 (TemStr);
+    if (DigitUint8 == 0 && TemStr[0] != L'0') {
+      //
+      // Invalid Hex Char as the tail.
+      //
+      break;
+    }
+    if ((Index & 1) == 0) {
+      DevicePathBuffer [Index/2] = DigitUint8;
+    } else {
+      DevicePathBuffer [Index/2] = (UINT8) ((DevicePathBuffer [Index/2] << 4) + DigitUint8);
+    }
+  }
+
+  return DevicePath;
+}
+
+/**
   Process the goto op code, update the info in the selection structure.
 
   @param Statement    The statement belong to goto op code.
@@ -1968,13 +2022,7 @@ ProcessGotoOpCode (
   )
 {
   CHAR16                          *StringPtr;
-  UINTN                           StringLen;
-  UINTN                           BufferSize;
   EFI_DEVICE_PATH_PROTOCOL        *DevicePath;
-  CHAR16                          TemStr[2];
-  UINT8                           *DevicePathBuffer;
-  UINTN                           Index;
-  UINT8                           DigitUint8;
   FORM_BROWSER_FORM               *RefForm;
   EFI_INPUT_KEY                   Key;
   EFI_STATUS                      Status;
@@ -1984,22 +2032,18 @@ ProcessGotoOpCode (
   Status = EFI_SUCCESS;
   UpdateFormInfo = TRUE;
   StringPtr = NULL;
-  StringLen = 0;
 
   //
   // Prepare the device path check, get the device path info first.
   //
   if (Statement->HiiValue.Value.ref.DevicePath != 0) {
     StringPtr = GetToken (Statement->HiiValue.Value.ref.DevicePath, Selection->FormSet->HiiHandle);
-    if (StringPtr != NULL) {
-      StringLen = StrLen (StringPtr);
-    }
   }
 
   //
   // Check whether the device path string is a valid string.
   //
-  if (Statement->HiiValue.Value.ref.DevicePath != 0 && StringPtr != NULL && StringLen != 0) {
+  if (Statement->HiiValue.Value.ref.DevicePath != 0 && StringPtr != NULL) {
     if (Selection->Form->ModalForm) {
       return Status;
     }
@@ -2007,33 +2051,11 @@ ProcessGotoOpCode (
     // Goto another Hii Package list
     //
     Selection->Action = UI_ACTION_REFRESH_FORMSET;
-    BufferSize = StrLen (StringPtr) / 2;
-    DevicePath = AllocatePool (BufferSize);
-    ASSERT (DevicePath != NULL);
-
-    //
-    // Convert from Device Path String to DevicePath Buffer in the reverse order.
-    //
-    DevicePathBuffer = (UINT8 *) DevicePath;
-    for (Index = 0; StringPtr[Index] != L'\0'; Index ++) {
-      TemStr[0] = StringPtr[Index];
-      DigitUint8 = (UINT8) StrHexToUint64 (TemStr);
-      if (DigitUint8 == 0 && TemStr[0] != L'0') {
-        //
-        // Invalid Hex Char as the tail.
-        //
-        break;
-      }
-      if ((Index & 1) == 0) {
-        DevicePathBuffer [Index/2] = DigitUint8;
-      } else {
-        DevicePathBuffer [Index/2] = (UINT8) ((DevicePathBuffer [Index/2] << 4) + DigitUint8);
-      }
-    }
-    FreePool (StringPtr);
+    DevicePath = ConvertDevicePathFromText (StringPtr);
 
     Selection->Handle = DevicePathToHiiHandle (DevicePath);
     FreePool (DevicePath);
+    FreePool (StringPtr);
 
     if (Selection->Handle == NULL) {
       //
@@ -3088,25 +3110,33 @@ UiDisplayMenu (
       //
       // Wait for user's selection
       //
-      do {
-        Status = UiWaitForSingleEvent (gST->ConIn->WaitForKey, 0, MinRefreshInterval);
-      } while (Status == EFI_TIMEOUT);
+      while (TRUE) {
+        Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
+        if (!EFI_ERROR (Status)) {
+          break;
+        }
 
-      if (Selection->Action == UI_ACTION_REFRESH_FORMSET) {
         //
-        // IFR is updated in Callback of refresh opcode, re-parse it
+        // If we encounter error, continue to read another key in.
         //
-        ControlFlag = CfCheckSelection;
-        Selection->Statement = NULL;
-        break;
+        if (Status != EFI_NOT_READY) {
+          continue;
+        }
+
+        Status = UiWaitForSingleEvent (gST->ConIn->WaitForKey, 0, MinRefreshInterval);
+        ASSERT_EFI_ERROR (Status);
+
+        if (Selection->Action == UI_ACTION_REFRESH_FORMSET) {
+          //
+          // IFR is updated in Callback of refresh opcode, re-parse it
+          //
+          ControlFlag = CfCheckSelection;
+          Selection->Statement = NULL;
+          break;
+        }
       }
 
-      Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-      //
-      // If we encounter error, continue to read another key in.
-      //
-      if (EFI_ERROR (Status)) {
-        ControlFlag = CfReadKey;
+      if (ControlFlag == CfCheckSelection) {
         break;
       }
 
@@ -3787,7 +3817,7 @@ UiDisplayMenu (
       // Reterieve default setting. After it. NV flag will be showed.
       //
       if ((HotKey->Action & BROWSER_ACTION_DEFAULT) == BROWSER_ACTION_DEFAULT) {
-        Status = ExtractDefault (Selection->FormSet, Selection->Form, HotKey->DefaultId, gBrowserSettingScope);
+        Status = ExtractDefault (Selection->FormSet, Selection->Form, HotKey->DefaultId, gBrowserSettingScope, GetDefaultForAll, NULL, FALSE);
         if (!EFI_ERROR (Status)) {
           Selection->Action = UI_ACTION_REFRESH_FORM;
           Selection->Statement = NULL;
@@ -3865,7 +3895,7 @@ UiDisplayMenu (
       //
       // Reset to default value for all forms in the whole system.
       //
-      Status = ExtractDefault (Selection->FormSet, NULL, DefaultId, FormSetLevel);
+      Status = ExtractDefault (Selection->FormSet, NULL, DefaultId, FormSetLevel, GetDefaultForAll, NULL, FALSE);
 
       if (!EFI_ERROR (Status)) {
         Selection->Action = UI_ACTION_REFRESH_FORM;

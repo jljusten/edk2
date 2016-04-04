@@ -43,6 +43,13 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Guid/HardwareErrorVariable.h>
 
 #define VARIABLE_RECLAIM_THRESHOLD (1024)
+#define EFI_VARIABLE_ATTRIBUTES_MASK (EFI_VARIABLE_NON_VOLATILE | \
+                                      EFI_VARIABLE_BOOTSERVICE_ACCESS | \
+                                      EFI_VARIABLE_RUNTIME_ACCESS | \
+                                      EFI_VARIABLE_HARDWARE_ERROR_RECORD | \
+                                      EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS | \
+                                      EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS | \
+                                      EFI_VARIABLE_APPEND_WRITE)
 
 ///
 /// The size of a 3 character ISO639 language code.
@@ -402,6 +409,10 @@ GetFvbInfoByAddress (
 
   This code finds variable in storage blocks (Volatile or Non-Volatile).
 
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize and data are external input.
+  This function will do basic validation, before parse the data.
+
   @param VariableName               Name of Variable to be found.
   @param VendorGuid                 Variable vendor GUID.
   @param Attributes                 Attribute value of the variable found.
@@ -429,6 +440,9 @@ VariableServiceGetVariable (
 
   This code Finds the Next available variable.
 
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode. This function will do basic validation, before parse the data.
+
   @param VariableNameSize           Size of the variable name.
   @param VariableName               Pointer to variable name.
   @param VendorGuid                 Variable Vendor Guid.
@@ -450,6 +464,13 @@ VariableServiceGetNextVariableName (
 /**
 
   This code sets variable in storage blocks (Volatile or Non-Volatile).
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize and data are external input.
+  This function will do basic validation, before parse the data.
+  This function will parse the authentication carefully to avoid security issues, like
+  buffer overflow, integer overflow.
+  This function will check attribute carefully to avoid authentication bypass.
 
   @param VariableName                     Name of Variable to be found.
   @param VendorGuid                       Variable vendor GUID.
@@ -478,6 +499,9 @@ VariableServiceSetVariable (
 /**
 
   This code returns information about the EFI variables.
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode. This function will do basic validation, before parse the data.
 
   @param Attributes                     Attributes bitmask to specify the type of variables
                                         on which to return information.

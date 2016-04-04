@@ -137,14 +137,14 @@ TimerDriverSetTimerPeriod (
 {
   UINT64      TimerTicks;
   
-  // always disable the timer
+  // Always disable the timer
   ArmArchTimerDisableTimer ();
 
   if (TimerPeriod != 0) {
     // Convert TimerPeriod to micro sec units
     TimerTicks = DivU64x32 (TimerPeriod, 10);
 
-    TimerTicks = MultU64x32 (TimerPeriod, (PcdGet32(PcdArmArchTimerFreqInHz)/1000000));
+    TimerTicks = MultU64x32 (TimerTicks, (PcdGet32(PcdArmArchTimerFreqInHz)/1000000));
 
     ArmArchTimerSetTimerVal((UINTN)TimerTicks);
 

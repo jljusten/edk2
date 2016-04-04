@@ -36,13 +36,20 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 /// "AuthVarKeyDatabase" variable for the Public Key store.
 ///
 #define AUTHVAR_KEYDB_NAME      L"AuthVarKeyDatabase"
-#define AUTHVAR_KEYDB_NAME_SIZE 38
 
 ///
 /// Max size of public key database, restricted by max individal EFI varible size, exclude variable header and name size.
 ///
-#define MAX_KEYDB_SIZE  (FixedPcdGet32 (PcdMaxVariableSize) - sizeof (VARIABLE_HEADER) - AUTHVAR_KEYDB_NAME_SIZE)
+#define MAX_KEYDB_SIZE  (FixedPcdGet32 (PcdMaxVariableSize) - sizeof (VARIABLE_HEADER) - sizeof (AUTHVAR_KEYDB_NAME))
 #define MAX_KEY_NUM     (MAX_KEYDB_SIZE / EFI_CERT_TYPE_RSA2048_SIZE)
+
+///
+/// "certdb" variable stores the signer's certificates for non PK/KEK/DB/DBX
+/// variables with EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS set.
+/// 
+///
+#define EFI_CERT_DB_NAME        L"certdb"
+#define MAX_CERTDB_SIZE (FixedPcdGet32 (PcdMaxVariableSize) - sizeof (VARIABLE_HEADER) - sizeof (EFI_CERT_DB_NAME))
 
 ///
 /// Struct to record signature requirement defined by UEFI spec.
@@ -59,7 +66,8 @@ typedef struct {
 typedef enum {
   AuthVarTypePk,
   AuthVarTypeKek,
-  AuthVarTypePriv
+  AuthVarTypePriv,
+  AuthVarTypePayload
 } AUTHVAR_TYPE;
 
 #pragma pack(1)
@@ -75,6 +83,13 @@ typedef struct {
 
 /**
   Process variable with EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS/EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS set.
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize and data are external input.
+  This function will do basic validation, before parse the data.
+  This function will parse the authentication carefully to avoid security issues, like
+  buffer overflow, integer overflow.
+  This function will check attribute carefully to avoid authentication bypass.
 
   @param[in]  VariableName                Name of Variable to be found.
   @param[in]  VendorGuid                  Variable vendor GUID.
@@ -162,6 +177,13 @@ CheckSignatureListFormat(
 /**
   Process variable with platform key for verification.
 
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize and data are external input.
+  This function will do basic validation, before parse the data.
+  This function will parse the authentication carefully to avoid security issues, like
+  buffer overflow, integer overflow.
+  This function will check attribute carefully to avoid authentication bypass.
+
   @param[in]  VariableName                Name of Variable to be found.
   @param[in]  VendorGuid                  Variable vendor GUID.
   @param[in]  Data                        Data pointer.
@@ -190,6 +212,13 @@ ProcessVarWithPk (
 
 /**
   Process variable with key exchange key for verification.
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize and data are external input.
+  This function will do basic validation, before parse the data.
+  This function will parse the authentication carefully to avoid security issues, like
+  buffer overflow, integer overflow.
+  This function will check attribute carefully to avoid authentication bypass.
 
   @param[in]  VariableName                Name of Variable to be found.
   @param[in]  VendorGuid                  Variable vendor GUID.
@@ -256,6 +285,12 @@ CompareTimeStamp (
 
 /**
   Process variable with EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS set
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize and data are external input.
+  This function will do basic validation, before parse the data.
+  This function will parse the authentication carefully to avoid security issues, like
+  buffer overflow, integer overflow.
 
   @param[in]  VariableName                Name of Variable to be found.
   @param[in]  VendorGuid                  Variable vendor GUID.

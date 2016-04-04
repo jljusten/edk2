@@ -1,6 +1,17 @@
 /** @file
   Implement image verification services for secure boot service in UEFI2.3.1.
 
+  Caution: This file requires additional review when modified.
+  This library will have external input - PE/COFF image.
+  This external input must be validated carefully to avoid security issue like
+  buffer overflow, integer overflow.
+
+  DxeImageVerificationLibImageRead() function will make sure the PE/COFF image content
+  read is within the image buffer.
+
+  DxeImageVerificationHandler(), HashPeImageByType(), HashPeImage() function will accept
+  untrusted PE/COFF image and validate its data structure within this image buffer before use.
+
 Copyright (c) 2009 - 2012, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
@@ -14,14 +25,21 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "DxeImageVerificationLib.h"
 
+//
+// Caution: This is used by a function which may receive untrusted input.
+// These global variables hold PE/COFF image data, and they should be validated before use.
+//
 EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION mNtHeader;
-UINTN                               mImageSize;
 UINT32                              mPeCoffHeaderOffset;
+EFI_GUID                            mCertType;
+
+//
+// Information on current PE/COFF image
+//
+UINTN                               mImageSize;
+UINT8                               *mImageBase       = NULL;
 UINT8                               mImageDigest[MAX_DIGEST_SIZE];
 UINTN                               mImageDigestSize;
-EFI_IMAGE_DATA_DIRECTORY            *mSecDataDir      = NULL;
-UINT8                               *mImageBase       = NULL;
-EFI_GUID                            mCertType;
 
 //
 // Notify string for authorization UI.
@@ -38,7 +56,6 @@ CONST UINT8 mRsaE[] = { 0x01, 0x00, 0x01 };
 // OID ASN.1 Value for Hash Algorithms
 //
 UINT8 mHashOidValue[] = {
-  0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x02, 0x05,         // OBJ_md5
   0x2B, 0x0E, 0x03, 0x02, 0x1A,                           // OBJ_sha1
   0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04,   // OBJ_sha224
   0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,   // OBJ_sha256
@@ -47,15 +64,19 @@ UINT8 mHashOidValue[] = {
   };
 
 HASH_TABLE mHash[] = {
-  { L"SHA1",   20, &mHashOidValue[8],  5, Sha1GetContextSize,  Sha1Init,   Sha1Update,    Sha1Final  },
-  { L"SHA224", 28, &mHashOidValue[13], 9, NULL,                NULL,       NULL,          NULL       },
-  { L"SHA256", 32, &mHashOidValue[22], 9, Sha256GetContextSize,Sha256Init, Sha256Update,  Sha256Final},
-  { L"SHA384", 48, &mHashOidValue[31], 9, NULL,                NULL,       NULL,          NULL       },
-  { L"SHA512", 64, &mHashOidValue[40], 9, NULL,                NULL,       NULL,          NULL       }
+  { L"SHA1",   20, &mHashOidValue[0],  5, Sha1GetContextSize,  Sha1Init,   Sha1Update,    Sha1Final  },
+  { L"SHA224", 28, &mHashOidValue[5],  9, NULL,                NULL,       NULL,          NULL       },
+  { L"SHA256", 32, &mHashOidValue[14], 9, Sha256GetContextSize,Sha256Init, Sha256Update,  Sha256Final},
+  { L"SHA384", 48, &mHashOidValue[23], 9, NULL,                NULL,       NULL,          NULL       },
+  { L"SHA512", 64, &mHashOidValue[32], 9, NULL,                NULL,       NULL,          NULL       }
 };
 
 /**
   Reads contents of a PE/COFF image in memory buffer.
+
+  Caution: This function may receive untrusted input.
+  PE/COFF image is external input, so this function will make sure the PE/COFF image content
+  read is within the image buffer.
 
   @param  FileHandle      Pointer to the file handle to read the PE/COFF image.
   @param  FileOffset      Offset into the PE/COFF image to begin the read operation.
@@ -117,6 +138,10 @@ GetImageType (
   EFI_HANDLE                        DeviceHandle;
   EFI_DEVICE_PATH_PROTOCOL          *TempDevicePath;
   EFI_BLOCK_IO_PROTOCOL             *BlockIo;
+
+  if (File == NULL) {
+    return IMAGE_UNKNOWN;
+  }
 
   //
   // First check to see if File is from a Firmware Volume
@@ -228,6 +253,10 @@ GetImageType (
 /**
   Caculate hash of Pe/Coff image based on the authenticode image hashing in
   PE/COFF Specification 8.0 Appendix A
+
+  Caution: This function may receive untrusted input.
+  PE/COFF image is external input, so this function will validate its data structure
+  within this image buffer before use.
 
   @param[in]    HashAlg   Hash algorithm type.
 
@@ -550,23 +579,24 @@ Done:
   Pe/Coff image based on the authenticode image hashing in PE/COFF Specification
   8.0 Appendix A
 
+  Caution: This function may receive untrusted input.
+  PE/COFF image is external input, so this function will validate its data structure
+  within this image buffer before use.
+
+  @param[in]  AuthData            Pointer to the Authenticode Signature retrieved from signed image.
+  @param[in]  AuthDataSize        Size of the Authenticode Signature in bytes.
+  
   @retval EFI_UNSUPPORTED             Hash algorithm is not supported.
   @retval EFI_SUCCESS                 Hash successfully.
 
 **/
 EFI_STATUS
 HashPeImageByType (
-  VOID
+  IN UINT8              *AuthData,
+  IN UINTN              AuthDataSize
   )
 {
   UINT8                     Index;
-  WIN_CERTIFICATE_EFI_PKCS  *PkcsCertData;
-
-  PkcsCertData = (WIN_CERTIFICATE_EFI_PKCS *) (mImageBase + mSecDataDir->VirtualAddress);
-
-  if (PkcsCertData->Hdr.dwLength < sizeof (WIN_CERTIFICATE_EFI_PKCS) + 32) {
-    return EFI_UNSUPPORTED;
-  }
 
   for (Index = 0; Index < HASHALG_MAX; Index++) {
     //
@@ -581,18 +611,18 @@ HashPeImageByType (
     //    This field has the fixed offset (+32) in final Authenticode ASN.1 data.
     //    Fixed offset (+32) is calculated based on two bytes of length encoding.
     //
-    if ((*(PkcsCertData->CertData + 1) & TWO_BYTE_ENCODE) != TWO_BYTE_ENCODE) {
+    if ((*(AuthData + 1) & TWO_BYTE_ENCODE) != TWO_BYTE_ENCODE) {
       //
       // Only support two bytes of Long Form of Length Encoding.
       //
       continue;
     }
 
-    if (PkcsCertData->Hdr.dwLength < sizeof (WIN_CERTIFICATE_EFI_PKCS) + 32 + mHash[Index].OidLength) {
+    if (AuthDataSize < 32 + mHash[Index].OidLength) {
       return EFI_UNSUPPORTED;
     }
 
-    if (CompareMem (PkcsCertData->CertData + 32, mHash[Index].OidValue, mHash[Index].OidLength) == 0) {
+    if (CompareMem (AuthData + 32, mHash[Index].OidValue, mHash[Index].OidLength) == 0) {
       break;
     }
   }
@@ -685,14 +715,15 @@ AddImageExeInfo (
 
   if (Name != NULL) {
     NameStringLen = StrSize (Name);
+  } else {
+    NameStringLen = sizeof (CHAR16);
   }
 
-  ImageExeInfoTable = NULL;
   EfiGetSystemConfigurationTable (&gEfiImageSecurityDatabaseGuid, (VOID **) &ImageExeInfoTable);
   if (ImageExeInfoTable != NULL) {
     //
     // The table has been found!
-    // We must enlarge the table to accmodate the new exe info entry.
+    // We must enlarge the table to accomodate the new exe info entry.
     //
     ImageExeInfoTableSize = GetImageExeInfoTableSize (ImageExeInfoTable);
   } else {
@@ -725,6 +756,8 @@ AddImageExeInfo (
 
   if (Name != NULL) {
     CopyMem ((UINT8 *) &ImageExeInfoEntry->InfoSize + sizeof (UINT32), Name, NameStringLen);
+  } else {
+    ZeroMem ((UINT8 *) &ImageExeInfoEntry->InfoSize + sizeof (UINT32), sizeof (CHAR16));
   }
   CopyMem (
     (UINT8 *) &ImageExeInfoEntry->InfoSize + sizeof (UINT32) + NameStringLen,
@@ -749,60 +782,6 @@ AddImageExeInfo (
   if (ImageExeInfoTable != NULL) {
     FreePool (ImageExeInfoTable);
   }
-}
-
-/**
-  Discover if the UEFI image is authorized by user's policy setting.
-
-  @param[in]    Policy            Specify platform's policy setting.
-
-  @retval EFI_ACCESS_DENIED       Image is not allowed to run.
-  @retval EFI_SECURITY_VIOLATION  Image is deferred.
-  @retval EFI_SUCCESS             Image is authorized to run.
-
-**/
-EFI_STATUS
-ImageAuthorization (
-  IN UINT32     Policy
-  )
-{
-  EFI_STATUS    Status;
-  EFI_INPUT_KEY Key;
-
-  Status = EFI_ACCESS_DENIED;
-
-  switch (Policy) {
-
-  case QUERY_USER_ON_SECURITY_VIOLATION:
-    do {
-      CreatePopUp (EFI_LIGHTGRAY | EFI_BACKGROUND_BLUE, &Key, mNotifyString1, mNotifyString2, NULL);
-      if (Key.UnicodeChar == L'Y' || Key.UnicodeChar == L'y') {
-        Status = EFI_SUCCESS;
-        break;
-      } else if (Key.UnicodeChar == L'N' || Key.UnicodeChar == L'n') {
-        Status = EFI_ACCESS_DENIED;
-        break;
-      } else if (Key.UnicodeChar == L'D' || Key.UnicodeChar == L'd') {
-        Status = EFI_SECURITY_VIOLATION;
-        break;
-      }
-    } while (TRUE);
-    break;
-
-  case ALLOW_EXECUTE_ON_SECURITY_VIOLATION:
-    Status = EFI_SUCCESS;
-    break;
-
-  case DEFER_EXECUTE_ON_SECURITY_VIOLATION:
-    Status = EFI_SECURITY_VIOLATION;
-    break;
-
-  case DENY_EXECUTE_ON_SECURITY_VIOLATION:
-    Status = EFI_ACCESS_DENIED;
-    break;
-  }
-
-  return Status;
 }
 
 /**
@@ -894,8 +873,10 @@ Done:
   Verify PKCS#7 SignedData using certificate found in Variable which formatted
   as EFI_SIGNATURE_LIST. The Variable may be PK, KEK, DB or DBX.
 
-  @param VariableName  Name of Variable to search for Certificate.
-  @param VendorGuid    Variable vendor GUID.
+  @param[in]  AuthData      Pointer to the Authenticode Signature retrieved from signed image.
+  @param[in]  AuthDataSize  Size of the Authenticode Signature in bytes.
+  @param[in]  VariableName  Name of Variable to search for Certificate.
+  @param[in]  VendorGuid    Variable vendor GUID.
 
   @retval TRUE         Image pass verification.
   @retval FALSE        Image fail verification.
@@ -903,13 +884,14 @@ Done:
 **/
 BOOLEAN
 IsPkcsSignedDataVerifiedBySignatureList (
+  IN UINT8              *AuthData,
+  IN UINTN              AuthDataSize,
   IN CHAR16             *VariableName,
   IN EFI_GUID           *VendorGuid
   )
 {
   EFI_STATUS                Status;
   BOOLEAN                   VerifyStatus;
-  WIN_CERTIFICATE_EFI_PKCS  *PkcsCertData;
   EFI_SIGNATURE_LIST        *CertList;
   EFI_SIGNATURE_DATA        *Cert;
   UINTN                     DataSize;
@@ -925,7 +907,6 @@ IsPkcsSignedDataVerifiedBySignatureList (
   RootCert     = NULL;
   RootCertSize = 0;
   VerifyStatus = FALSE;
-  PkcsCertData = (WIN_CERTIFICATE_EFI_PKCS *) (mImageBase + mSecDataDir->VirtualAddress);
 
   DataSize = 0;
   Status   = gRT->GetVariable (VariableName, VendorGuid, NULL, &DataSize, NULL);
@@ -953,14 +934,14 @@ IsPkcsSignedDataVerifiedBySignatureList (
           // Iterate each Signature Data Node within this CertList for verify.
           //
           RootCert      = Cert->SignatureData;
-          RootCertSize  = CertList->SignatureSize;
+          RootCertSize  = CertList->SignatureSize - sizeof (EFI_GUID);
 
           //
           // Call AuthenticodeVerify library to Verify Authenticode struct.
           //
           VerifyStatus = AuthenticodeVerify (
-                           PkcsCertData->CertData,
-                           PkcsCertData->Hdr.dwLength - sizeof(PkcsCertData->Hdr),
+                           AuthData,
+                           AuthDataSize,
                            RootCert,
                            RootCertSize,
                            mImageDigest,
@@ -988,19 +969,23 @@ Done:
 /**
   Verify certificate in WIN_CERT_TYPE_PKCS_SIGNED_DATA format.
 
+  @param[in]  AuthData      Pointer to the Authenticode Signature retrieved from signed image.
+  @param[in]  AuthDataSize  Size of the Authenticode Signature in bytes.
+
   @retval EFI_SUCCESS                 Image pass verification.
   @retval EFI_SECURITY_VIOLATION      Image fail verification.
 
 **/
 EFI_STATUS
 VerifyCertPkcsSignedData (
-  VOID
+  IN UINT8              *AuthData,
+  IN UINTN              AuthDataSize
   )
 {
   //
   // 1: Find certificate from DBX forbidden database for revoked certificate.
   //
-  if (IsPkcsSignedDataVerifiedBySignatureList (EFI_IMAGE_SECURITY_DATABASE1, &gEfiImageSecurityDatabaseGuid)) {
+  if (IsPkcsSignedDataVerifiedBySignatureList (AuthData, AuthDataSize, EFI_IMAGE_SECURITY_DATABASE1, &gEfiImageSecurityDatabaseGuid)) {
     //
     // DBX is forbidden database, if Authenticode verification pass with
     // one of the certificate in DBX, this image should be rejected.
@@ -1009,149 +994,9 @@ VerifyCertPkcsSignedData (
   }
 
   //
-  // 2: Find certificate from KEK database and try to verify authenticode struct.
+  // 2: Find certificate from DB database and try to verify authenticode struct.
   //
-  if (IsPkcsSignedDataVerifiedBySignatureList (EFI_KEY_EXCHANGE_KEY_NAME, &gEfiGlobalVariableGuid)) {
-    return EFI_SUCCESS;
-  }
-
-  //
-  // 3: Find certificate from DB database and try to verify authenticode struct.
-  //
-  if (IsPkcsSignedDataVerifiedBySignatureList (EFI_IMAGE_SECURITY_DATABASE, &gEfiImageSecurityDatabaseGuid)) {
-    return EFI_SUCCESS;
-  } else {
-    return EFI_SECURITY_VIOLATION;
-  }
-}
-
-/**
-  Verify certificate in WIN_CERTIFICATE_UEFI_GUID format.
-
-  @retval EFI_SUCCESS                 Image pass verification.
-  @retval EFI_SECURITY_VIOLATION      Image fail verification.
-  @retval other error value
-
-**/
-EFI_STATUS
-VerifyCertUefiGuid (
-  VOID
-  )
-{
-  BOOLEAN                         Status;
-  WIN_CERTIFICATE_UEFI_GUID       *EfiCert;
-  EFI_SIGNATURE_LIST              *KekList;
-  EFI_SIGNATURE_DATA              *KekItem;
-  EFI_CERT_BLOCK_RSA_2048_SHA256  *CertBlock;
-  VOID                            *Rsa;
-  UINTN                           KekCount;
-  UINTN                           Index;
-  UINTN                           KekDataSize;
-  BOOLEAN                         IsFound;
-  EFI_STATUS                      Result;
-
-  EfiCert   = NULL;
-  KekList   = NULL;
-  KekItem   = NULL;
-  CertBlock = NULL;
-  Rsa       = NULL;
-  Status    = FALSE;
-  IsFound   = FALSE;
-  KekDataSize = 0;
-
-  EfiCert   = (WIN_CERTIFICATE_UEFI_GUID *) (mImageBase + mSecDataDir->VirtualAddress);
-  CertBlock = (EFI_CERT_BLOCK_RSA_2048_SHA256 *) EfiCert->CertData;
-  if (!CompareGuid (&EfiCert->CertType, &gEfiCertTypeRsa2048Sha256Guid)) {
-    //
-    // Invalid Certificate Data Type.
-    //
-    return EFI_SECURITY_VIOLATION;
-  }
-
-  //
-  // Get KEK database variable data size
-  //
-  Result = gRT->GetVariable (EFI_KEY_EXCHANGE_KEY_NAME, &gEfiGlobalVariableGuid, NULL, &KekDataSize, NULL);
-  if (Result != EFI_BUFFER_TOO_SMALL) {
-    return EFI_SECURITY_VIOLATION;
-  }
-
-  //
-  // Get KEK database variable.
-  //
-  GetEfiGlobalVariable2 (EFI_KEY_EXCHANGE_KEY_NAME, (VOID**)&KekList, NULL);
-  if (KekList == NULL) {
-    return EFI_SECURITY_VIOLATION;
-  }
-
-  //
-  // Enumerate all Kek items in this list to verify the variable certificate data.
-  // If anyone is authenticated successfully, it means the variable is correct!
-  //
-  while ((KekDataSize > 0) && (KekDataSize >= KekList->SignatureListSize)) {
-    if (CompareGuid (&KekList->SignatureType, &gEfiCertRsa2048Guid)) {
-      KekItem   = (EFI_SIGNATURE_DATA *) ((UINT8 *) KekList + sizeof (EFI_SIGNATURE_LIST) + KekList->SignatureHeaderSize);
-      KekCount  = (KekList->SignatureListSize - sizeof (EFI_SIGNATURE_LIST) - KekList->SignatureHeaderSize) / KekList->SignatureSize;
-      for (Index = 0; Index < KekCount; Index++) {
-        if (CompareMem (KekItem->SignatureData, CertBlock->PublicKey, EFI_CERT_TYPE_RSA2048_SIZE) == 0) {
-          IsFound = TRUE;
-          break;
-        }
-        KekItem = (EFI_SIGNATURE_DATA *) ((UINT8 *) KekItem + KekList->SignatureSize);
-      }
-    }
-    KekDataSize -= KekList->SignatureListSize;
-    KekList = (EFI_SIGNATURE_LIST *) ((UINT8 *) KekList + KekList->SignatureListSize);
-  }
-
-  if (!IsFound) {
-    //
-    // Signed key is not a trust one.
-    //
-    goto Done;
-  }
-
-  //
-  // Now, we found the corresponding security policy.
-  // Verify the data payload.
-  //
-  Rsa = RsaNew ();
-  if (Rsa == NULL) {
-    Status = FALSE;
-    goto Done;
-  }
-
-  //
-  // Set RSA Key Components.
-  // NOTE: Only N and E are needed to be set as RSA public key for signature verification.
-  //
-  Status = RsaSetKey (Rsa, RsaKeyN, CertBlock->PublicKey, EFI_CERT_TYPE_RSA2048_SIZE);
-  if (!Status) {
-    goto Done;
-  }
-  Status = RsaSetKey (Rsa, RsaKeyE, mRsaE, sizeof (mRsaE));
-  if (!Status) {
-    goto Done;
-  }
-  //
-  // Verify the signature.
-  //
-  Status = RsaPkcs1Verify (
-             Rsa,
-             mImageDigest,
-             mImageDigestSize,
-             CertBlock->Signature,
-             EFI_CERT_TYPE_RSA2048_SHA256_SIZE
-             );
-
-Done:
-  if (KekList != NULL) {
-    FreePool (KekList);
-  }
-  if (Rsa != NULL ) {
-    RsaFree (Rsa);
-  }
-  if (Status) {
+  if (IsPkcsSignedDataVerifiedBySignatureList (AuthData, AuthDataSize, EFI_IMAGE_SECURITY_DATABASE, &gEfiImageSecurityDatabaseGuid)) {
     return EFI_SUCCESS;
   } else {
     return EFI_SECURITY_VIOLATION;
@@ -1167,22 +1012,28 @@ Done:
   Executables from FV is bypass, so pass in AuthenticationStatus is ignored.
 
   The image verification process is:
-    Is the Image signed?
-      If yes,
-        Does the image verify against a certificate (root or intermediate) in the allowed db?
-          Run it
-        Image verification fail
-          Is the Image's Hash not in forbidden database and the Image's Hash in allowed db?
-            Run it
-      If no,
-        Is the Image's Hash in the forbidden database (DBX)?
-          if yes,
-            Error out
-        Is the Image's Hash in the allowed database (DB)?
-          If yes,
-            Run it
-          If no,
-            Error out
+    If the image is signed,
+      If the image's certificate verifies against a certificate (root or intermediate) in the allowed 
+      database (DB) and not in the forbidden database (DBX), the certificate verification is passed.
+        If the image's hash digest is in DBX,
+          deny execution.
+        If not,
+          run it.
+      If the Image's certificate verification failed.
+        If the Image's Hash is in DB and not in DBX,
+          run it.
+        Otherwise,
+          deny execution.
+    Otherwise, the image is not signed,
+      Is the Image's Hash in DBX?
+        If yes, deny execution.
+        If not, is the Image's Hash in DB?
+          If yes, run it.
+          If not, deny execution.
+
+  Caution: This function may receive untrusted input.
+  PE/COFF image is external input, so this function will validate its data structure
+  within this image buffer before use.
 
   @param[in]    AuthenticationStatus
                            This is the authentication status returned from the security
@@ -1191,19 +1042,23 @@ Done:
                            being dispatched. This will optionally be used for logging.
   @param[in]    FileBuffer File buffer matches the input file device path.
   @param[in]    FileSize   Size of File buffer matches the input file device path.
+  @param[in]    BootPolicy A boot policy that was used to call LoadImage() UEFI service.
 
-  @retval EFI_SUCCESS            The file specified by File did authenticate, and the
-                                 platform policy dictates that the DXE Core may use File.
-  @retval EFI_INVALID_PARAMETER  Input argument is incorrect.
+  @retval EFI_SUCCESS            The file specified by DevicePath and non-NULL
+                                 FileBuffer did authenticate, and the platform policy dictates
+                                 that the DXE Foundation may use the file.
+  @retval EFI_SUCCESS            The device path specified by NULL device path DevicePath
+                                 and non-NULL FileBuffer did authenticate, and the platform
+                                 policy dictates that the DXE Foundation may execute the image in
+                                 FileBuffer.
   @retval EFI_OUT_RESOURCE       Fail to allocate memory.
   @retval EFI_SECURITY_VIOLATION The file specified by File did not authenticate, and
                                  the platform policy dictates that File should be placed
-                                 in the untrusted state. A file may be promoted from
-                                 the untrusted to the trusted state at a future time
-                                 with a call to the Trust() DXE Service.
-  @retval EFI_ACCESS_DENIED      The file specified by File did not authenticate, and
-                                 the platform policy dictates that File should not be
-                                 used for any purpose.
+                                 in the untrusted state. The image has been added to the file
+                                 execution table.
+  @retval EFI_ACCESS_DENIED      The file specified by File and FileBuffer did not
+                                 authenticate, and the platform policy dictates that the DXE
+                                 Foundation many not use File.
 
 **/
 EFI_STATUS
@@ -1212,32 +1067,35 @@ DxeImageVerificationHandler (
   IN  UINT32                           AuthenticationStatus,
   IN  CONST EFI_DEVICE_PATH_PROTOCOL   *File,
   IN  VOID                             *FileBuffer,
-  IN  UINTN                            FileSize
+  IN  UINTN                            FileSize,
+  IN  BOOLEAN                          BootPolicy
   )
 {
   EFI_STATUS                           Status;
   UINT16                               Magic;
   EFI_IMAGE_DOS_HEADER                 *DosHdr;
   EFI_STATUS                           VerifyStatus;
-  UINT8                                *SetupMode;
   EFI_SIGNATURE_LIST                   *SignatureList;
   UINTN                                SignatureListSize;
   EFI_SIGNATURE_DATA                   *Signature;
   EFI_IMAGE_EXECUTION_ACTION           Action;
   WIN_CERTIFICATE                      *WinCertificate;
   UINT32                               Policy;
-  UINT8                                *SecureBootEnable;
+  UINT8                                *SecureBoot;
   PE_COFF_LOADER_IMAGE_CONTEXT         ImageContext;
   UINT32                               NumberOfRvaAndSizes;
   UINT32                               CertSize;
-
-  if (File == NULL) {
-    return EFI_INVALID_PARAMETER;
-  }
+  WIN_CERTIFICATE_EFI_PKCS             *PkcsCertData;
+  WIN_CERTIFICATE_UEFI_GUID            *WinCertUefiGuid;
+  UINT8                                *AuthData;
+  UINTN                                AuthDataSize;
+  EFI_IMAGE_DATA_DIRECTORY             *SecDataDir;
 
   SignatureList     = NULL;
   SignatureListSize = 0;
   WinCertificate    = NULL;
+  SecDataDir        = NULL;
+  PkcsCertData      = NULL;
   Action            = EFI_IMAGE_EXECUTION_AUTH_UNTESTED;
   Status            = EFI_ACCESS_DENIED;
   //
@@ -1274,43 +1132,22 @@ DxeImageVerificationHandler (
     return EFI_ACCESS_DENIED;
   }
 
-  GetVariable2 (EFI_SECURE_BOOT_ENABLE_NAME, &gEfiSecureBootEnableDisableGuid, (VOID**)&SecureBootEnable, NULL);
+  GetEfiGlobalVariable2 (EFI_SECURE_BOOT_MODE_NAME, (VOID**)&SecureBoot, NULL);
   //
-  // Skip verification if SecureBootEnable variable doesn't exist.
+  // Skip verification if SecureBoot variable doesn't exist.
   //
-  if (SecureBootEnable == NULL) {
+  if (SecureBoot == NULL) {
     return EFI_SUCCESS;
   }
 
   //
-  // Skip verification if SecureBootEnable is disabled.
+  // Skip verification if SecureBoot is disabled.
   //
-  if (*SecureBootEnable == SECURE_BOOT_DISABLE) {
-    FreePool (SecureBootEnable);
+  if (*SecureBoot == SECURE_BOOT_MODE_DISABLE) {
+    FreePool (SecureBoot);
     return EFI_SUCCESS;
   }
-
-  FreePool (SecureBootEnable);
-
-  GetEfiGlobalVariable2 (EFI_SETUP_MODE_NAME, (VOID**)&SetupMode, NULL);
-
-  //
-  // SetupMode doesn't exist means no AuthVar driver is dispatched,
-  // skip verification.
-  //
-  if (SetupMode == NULL) {
-    return EFI_SUCCESS;
-  }
-
-  //
-  // If platform is in SETUP MODE, skip verification.
-  //
-  if (*SetupMode == SETUP_MODE) {
-    FreePool (SetupMode);
-    return EFI_SUCCESS;
-  }
-
-  FreePool (SetupMode);
+  FreePool (SecureBoot);
 
   //
   // Read the Dos header.
@@ -1381,7 +1218,7 @@ DxeImageVerificationHandler (
     //
     NumberOfRvaAndSizes = mNtHeader.Pe32->OptionalHeader.NumberOfRvaAndSizes;
     if (NumberOfRvaAndSizes > EFI_IMAGE_DIRECTORY_ENTRY_SECURITY) {
-      mSecDataDir = (EFI_IMAGE_DATA_DIRECTORY *) &mNtHeader.Pe32->OptionalHeader.DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_SECURITY];
+      SecDataDir = (EFI_IMAGE_DATA_DIRECTORY *) &mNtHeader.Pe32->OptionalHeader.DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_SECURITY];
     }        
   } else {
     //
@@ -1389,11 +1226,11 @@ DxeImageVerificationHandler (
     //
     NumberOfRvaAndSizes = mNtHeader.Pe32Plus->OptionalHeader.NumberOfRvaAndSizes;
     if (NumberOfRvaAndSizes > EFI_IMAGE_DIRECTORY_ENTRY_SECURITY) {
-      mSecDataDir = (EFI_IMAGE_DATA_DIRECTORY *) &mNtHeader.Pe32Plus->OptionalHeader.DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_SECURITY];
+      SecDataDir = (EFI_IMAGE_DATA_DIRECTORY *) &mNtHeader.Pe32Plus->OptionalHeader.DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_SECURITY];
     }
   }
 
-  if ((mSecDataDir == NULL) || ((mSecDataDir != NULL) && (mSecDataDir->Size == 0))) {
+  if ((SecDataDir == NULL) || ((SecDataDir != NULL) && (SecDataDir->Size == 0))) {
     //
     // This image is not signed.
     //
@@ -1424,76 +1261,75 @@ DxeImageVerificationHandler (
   //
   // Verify signature of executables.
   //
-  WinCertificate = (WIN_CERTIFICATE *) (mImageBase + mSecDataDir->VirtualAddress);
+  WinCertificate = (WIN_CERTIFICATE *) (mImageBase + SecDataDir->VirtualAddress);
 
   CertSize = sizeof (WIN_CERTIFICATE);
 
-  if ((mSecDataDir->Size <= CertSize) || (mSecDataDir->Size < WinCertificate->dwLength)) {
+  if ((SecDataDir->Size <= CertSize) || (SecDataDir->Size < WinCertificate->dwLength)) {
     goto Done;
   }
 
-  switch (WinCertificate->wCertificateType) {
-
-  case WIN_CERT_TYPE_EFI_GUID:
-    CertSize = sizeof (WIN_CERTIFICATE_UEFI_GUID) + sizeof (EFI_CERT_BLOCK_RSA_2048_SHA256) - sizeof (UINT8);
-    if (WinCertificate->dwLength < CertSize) {
+  //
+  // Verify the image's Authenticode signature, only DER-encoded PKCS#7 signed data is supported.
+  //
+  if (WinCertificate->wCertificateType == WIN_CERT_TYPE_PKCS_SIGNED_DATA) {
+    //
+    // The certificate is formatted as WIN_CERTIFICATE_EFI_PKCS which is described in the 
+    // Authenticode specification.
+    //
+    PkcsCertData = (WIN_CERTIFICATE_EFI_PKCS *) WinCertificate;
+    if (PkcsCertData->Hdr.dwLength <= sizeof (PkcsCertData->Hdr)) {
       goto Done;
     }
-
-    //
-    // Verify UEFI GUID type.
-    //
-    if (!HashPeImage (HASHALG_SHA256)) {
-      goto Done;
-    }
-
-    VerifyStatus = VerifyCertUefiGuid ();
-    break;
-
-  case WIN_CERT_TYPE_PKCS_SIGNED_DATA:
-    //
-    // Verify Pkcs signed data type.
-    //
-    Status = HashPeImageByType();
+    AuthData   = PkcsCertData->CertData;
+    AuthDataSize = PkcsCertData->Hdr.dwLength - sizeof(PkcsCertData->Hdr);
+    
+    Status = HashPeImageByType (AuthData, AuthDataSize);
     if (EFI_ERROR (Status)) {
       goto Done;
     }
 
-    VerifyStatus = VerifyCertPkcsSignedData ();
-
+    VerifyStatus = VerifyCertPkcsSignedData (AuthData, AuthDataSize);
+  } else if (WinCertificate->wCertificateType == WIN_CERT_TYPE_EFI_GUID) {
     //
-    // For image verification against enrolled certificate(root or intermediate),
-    // no need to check image's hash in the allowed database.
+    // The certificate is formatted as WIN_CERTIFICATE_UEFI_GUID which is described in UEFI Spec.
     //
-    if (!EFI_ERROR (VerifyStatus)) {
-      if (!IsSignatureFoundInDatabase (EFI_IMAGE_SECURITY_DATABASE1, mImageDigest, &mCertType, mImageDigestSize)) {
-        return EFI_SUCCESS;
-      }
+    WinCertUefiGuid = (WIN_CERTIFICATE_UEFI_GUID *) WinCertificate;
+    if (!CompareGuid(&WinCertUefiGuid->CertType, &gEfiCertPkcs7Guid) ||
+        (WinCertUefiGuid->Hdr.dwLength <= OFFSET_OF(WIN_CERTIFICATE_UEFI_GUID, CertData))) {
+      goto Done;
     }
-    break;
+    AuthData = WinCertUefiGuid->CertData;
+    AuthDataSize = WinCertUefiGuid->Hdr.dwLength - OFFSET_OF(WIN_CERTIFICATE_UEFI_GUID, CertData);
+    
+    Status = HashPeImageByType (AuthData, AuthDataSize);
+    if (EFI_ERROR (Status)) {
+      goto Done;
+    }
+    VerifyStatus = VerifyCertPkcsSignedData (AuthData, AuthDataSize);
+  } else {
+    goto Done;
+  }
 
-  default:
-    goto Done;
-  }
-  //
-  // Get image hash value as executable's signature.
-  //
-  SignatureListSize = sizeof (EFI_SIGNATURE_LIST) + sizeof (EFI_SIGNATURE_DATA) - 1 + mImageDigestSize;
-  SignatureList     = (EFI_SIGNATURE_LIST *) AllocateZeroPool (SignatureListSize);
-  if (SignatureList == NULL) {
-    Status = EFI_OUT_OF_RESOURCES;
-    goto Done;
-  }
-  SignatureList->SignatureHeaderSize  = 0;
-  SignatureList->SignatureListSize    = (UINT32) SignatureListSize;
-  SignatureList->SignatureSize        = (UINT32) mImageDigestSize;
-  CopyMem (&SignatureList->SignatureType, &mCertType, sizeof (EFI_GUID));
-  Signature = (EFI_SIGNATURE_DATA *) ((UINT8 *) SignatureList + sizeof (EFI_SIGNATURE_LIST));
-  CopyMem (Signature->SignatureData, mImageDigest, mImageDigestSize);
-  //
-  // Signature database check after verification.
-  //
-  if (EFI_ERROR (VerifyStatus)) {
+  if (!EFI_ERROR (VerifyStatus)) {
+    //
+    // Verification is passed.
+    // Continue to check the image digest in signature database.
+    //
+    if (IsSignatureFoundInDatabase (EFI_IMAGE_SECURITY_DATABASE1, mImageDigest, &mCertType, mImageDigestSize)) {
+      //
+      // Executable signature verification passes, but is found in forbidden signature database.
+      //
+      Action = EFI_IMAGE_EXECUTION_AUTH_SIG_FOUND;
+      Status = EFI_ACCESS_DENIED;
+    } else {
+      //
+      // For image verification against enrolled X.509 certificate(root or intermediate),
+      // no need to check image's hash in the allowed database.
+      //
+      return EFI_SUCCESS;
+    }
+  } else {
     //
     // Verification failure.
     //
@@ -1508,24 +1344,24 @@ DxeImageVerificationHandler (
       Action = EFI_IMAGE_EXECUTION_AUTH_SIG_FAILED;
       Status = EFI_ACCESS_DENIED;
     }
-  } else if (IsSignatureFoundInDatabase (EFI_IMAGE_SECURITY_DATABASE1, Signature->SignatureData, &mCertType, mImageDigestSize)) {
+  }
+
+  if (EFI_ERROR (Status)) {
     //
-    // Executable signature verification passes, but is found in forbidden signature database.
+    // Get image hash value as executable's signature.
     //
-    Action = EFI_IMAGE_EXECUTION_AUTH_SIG_FOUND;
-    Status = EFI_ACCESS_DENIED;
-  } else if (IsSignatureFoundInDatabase (EFI_IMAGE_SECURITY_DATABASE, Signature->SignatureData, &mCertType, mImageDigestSize)) {
-    //
-    // Executable signature is found in authorized signature database.
-    //
-    Status = EFI_SUCCESS;
-  } else {
-    //
-    // Executable signature verification passes, but cannot be found in authorized signature database.
-    // Get platform policy to determine the action.
-    //
-    Action = EFI_IMAGE_EXECUTION_AUTH_SIG_PASSED;
-    Status = ImageAuthorization (Policy);
+    SignatureListSize = sizeof (EFI_SIGNATURE_LIST) + sizeof (EFI_SIGNATURE_DATA) - 1 + mImageDigestSize;
+    SignatureList     = (EFI_SIGNATURE_LIST *) AllocateZeroPool (SignatureListSize);
+    if (SignatureList == NULL) {
+      Status = EFI_OUT_OF_RESOURCES;
+      goto Done;
+    }
+    SignatureList->SignatureHeaderSize  = 0;
+    SignatureList->SignatureListSize    = (UINT32) SignatureListSize;
+    SignatureList->SignatureSize        = (UINT32) mImageDigestSize;
+    CopyMem (&SignatureList->SignatureType, &mCertType, sizeof (EFI_GUID));
+    Signature = (EFI_SIGNATURE_DATA *) ((UINT8 *) SignatureList + sizeof (EFI_SIGNATURE_LIST));
+    CopyMem (Signature->SignatureData, mImageDigest, mImageDigestSize);
   }
 
 Done:
@@ -1534,6 +1370,7 @@ Done:
     // Policy decides to defer or reject the image; add its information in image executable information table.
     //
     AddImageExeInfo (Action, NULL, File, SignatureList, SignatureListSize);
+    Status = EFI_SECURITY_VIOLATION;
   }
 
   if (SignatureList != NULL) {
@@ -1618,7 +1455,7 @@ DxeImageVerificationLibConstructor (
     &Registration
     );
 
-  return RegisterSecurityHandler (
+  return RegisterSecurity2Handler (
           DxeImageVerificationHandler,
           EFI_AUTH_OPERATION_VERIFY_IMAGE | EFI_AUTH_OPERATION_IMAGE_REQUIRED
           );

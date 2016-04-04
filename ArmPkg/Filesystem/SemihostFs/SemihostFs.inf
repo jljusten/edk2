@@ -1,4 +1,3 @@
-
 #/** @file
 #  Support a Semi Host file system over a debuggers JTAG
 #
@@ -21,7 +20,6 @@
   VERSION_STRING                 = 1.0
 
   ENTRY_POINT                    = SemihostFsEntryPoint
-
 
 [Sources.ARM]
   Arm/SemihostFs.c

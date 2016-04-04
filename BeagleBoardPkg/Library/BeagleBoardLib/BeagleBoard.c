@@ -114,3 +114,22 @@ ArmPlatformInitializeSystemMemory (
 {
   // We do not need to initialize the System Memory on RTSM
 }
+
+VOID
+ArmPlatformGetPlatformPpiList (
+  OUT UINTN                   *PpiListSize,
+  OUT EFI_PEI_PPI_DESCRIPTOR  **PpiList
+  )
+{
+  *PpiListSize = 0;
+  *PpiList = NULL;
+}
+
+UINTN
+ArmPlatformGetCorePosition (
+  IN UINTN MpId
+  )
+{
+  return 1;
+}
+
