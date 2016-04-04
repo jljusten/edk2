@@ -1,7 +1,7 @@
 /** @file
   Main file for cp shell level 2 function.
 
-  Copyright (c) 2009 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2013, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -146,14 +146,16 @@ CopySingleFile(
     Size          = 0;
     StrnCatGrow(&TempName, &Size, Source, 0);
     StrnCatGrow(&TempName, &Size, L"\\*", 0);
-    ShellOpenFileMetaArg((CHAR16*)TempName, EFI_FILE_MODE_READ, &List);
-    TempName = NULL;
-    StrnCatGrow(&TempName, &Size, Dest, 0);
-    StrnCatGrow(&TempName, &Size, L"\\", 0);
-    ShellStatus = ValidateAndCopyFiles(List, TempName, SilentMode, TRUE, Resp);
-    ShellCloseFileMetaArg(&List);
-    FreePool(TempName);
-    Size = 0;
+    if (TempName != NULL) {
+      ShellOpenFileMetaArg((CHAR16*)TempName, EFI_FILE_MODE_READ, &List);
+      *TempName = CHAR_NULL;
+      StrnCatGrow(&TempName, &Size, Dest, 0);
+      StrnCatGrow(&TempName, &Size, L"\\", 0);
+      ShellStatus = ValidateAndCopyFiles(List, TempName, SilentMode, TRUE, Resp);
+      ShellCloseFileMetaArg(&List);
+      SHELL_FREE_NON_NULL(TempName);
+      Size = 0;
+    }
   } else {
     //
     // open file with create enabled

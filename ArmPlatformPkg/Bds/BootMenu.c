@@ -1,6 +1,6 @@
 /** @file
 *
-*  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
+*  Copyright (c) 2011-2013, ARM Limited. All rights reserved.
 *
 *  This program and the accompanying materials
 *  are licensed and made available under the terms and conditions of the BSD License
@@ -14,8 +14,11 @@
 
 #include "BdsInternal.h"
 
+#include <Guid/ArmGlobalVariableHob.h>
+
 extern EFI_HANDLE mImageHandle;
 extern BDS_LOAD_OPTION_SUPPORT *BdsLoadOptionSupportList;
+
 
 EFI_STATUS
 SelectBootDevice (
@@ -102,7 +105,7 @@ SelectBootDevice (
     }
     Index++;
   }
-  
+
 EXIT:
   BootDeviceListSupportedFree (&SupportedDeviceList, *SupportedBootDevice);
   return Status;
@@ -122,8 +125,8 @@ BootMenuAddBootOption (
   ARM_BDS_LOADER_TYPE       BootType;
   BDS_LOAD_OPTION_ENTRY     *BdsLoadOptionEntry;
   EFI_DEVICE_PATH           *DevicePath;
-  EFI_DEVICE_PATH_PROTOCOL  *DevicePathNode;
-  EFI_DEVICE_PATH_PROTOCOL  *InitrdPathNode;
+  EFI_DEVICE_PATH_PROTOCOL  *DevicePathNodes;
+  EFI_DEVICE_PATH_PROTOCOL  *InitrdPathNodes;
   EFI_DEVICE_PATH_PROTOCOL  *InitrdPath;
   UINTN                     CmdLineSize;
   BOOLEAN                   InitrdSupport;
@@ -140,13 +143,17 @@ BootMenuAddBootOption (
   }
 
   // Create the specific device path node
-  Status = SupportedBootDevice->Support->CreateDevicePathNode (L"EFI Application or the kernel", &DevicePathNode, &BootType, &Attributes);
+  Status = SupportedBootDevice->Support->CreateDevicePathNode (L"EFI Application or the kernel", &DevicePathNodes, &BootType, &Attributes);
   if (EFI_ERROR(Status)) {
     Status = EFI_ABORTED;
     goto EXIT;
   }
-  // Append the Device Path node to the select device path
-  DevicePath = AppendDevicePathNode (SupportedBootDevice->DevicePathProtocol, (CONST EFI_DEVICE_PATH_PROTOCOL *)DevicePathNode);
+  // Append the Device Path to the selected device path
+  DevicePath = AppendDevicePath (SupportedBootDevice->DevicePathProtocol, (CONST EFI_DEVICE_PATH_PROTOCOL *)DevicePathNodes);
+  if (DevicePath == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto EXIT;
+  }
 
   if ((BootType == BDS_LOADER_KERNEL_LINUX_ATAG) || (BootType == BDS_LOADER_KERNEL_LINUX_FDT)) {
     Print(L"Add an initrd: ");
@@ -158,15 +165,19 @@ BootMenuAddBootOption (
 
     if (InitrdSupport) {
       // Create the specific device path node
-      Status = SupportedBootDevice->Support->CreateDevicePathNode (L"initrd", &InitrdPathNode, NULL, NULL);
+      Status = SupportedBootDevice->Support->CreateDevicePathNode (L"initrd", &InitrdPathNodes, NULL, NULL);
       if (EFI_ERROR(Status) && Status != EFI_NOT_FOUND) { // EFI_NOT_FOUND is returned on empty input string, but we can boot without an initrd
         Status = EFI_ABORTED;
         goto EXIT;
       }
 
-      if (InitrdPathNode != NULL) {
-        // Append the Device Path node to the select device path
-        InitrdPath = AppendDevicePathNode (SupportedBootDevice->DevicePathProtocol, (CONST EFI_DEVICE_PATH_PROTOCOL *)InitrdPathNode);
+      if (InitrdPathNodes != NULL) {
+        // Append the Device Path to the selected device path
+        InitrdPath = AppendDevicePath (SupportedBootDevice->DevicePathProtocol, (CONST EFI_DEVICE_PATH_PROTOCOL *)InitrdPathNodes);
+        if (InitrdPath == NULL) {
+          Status = EFI_OUT_OF_RESOURCES;
+          goto EXIT;
+        }
       } else {
         InitrdPath = NULL;
       }
@@ -185,7 +196,7 @@ BootMenuAddBootOption (
     InitrdSize = GetDevicePathSize (InitrdPath);
 
     BootArguments = (ARM_BDS_LOADER_ARGUMENTS*)AllocatePool (sizeof(ARM_BDS_LOADER_ARGUMENTS) + CmdLineSize + InitrdSize);
-    
+
     BootArguments->LinuxArguments.CmdLineSize = CmdLineSize;
     BootArguments->LinuxArguments.InitrdSize = InitrdSize;
     CopyMem ((VOID*)(&BootArguments->LinuxArguments + 1), CmdLine, CmdLineSize);
@@ -211,7 +222,6 @@ BootMenuAddBootOption (
 FREE_DEVICE_PATH:
   FreePool (DevicePath);
 
-  
 EXIT:
   if (Status == EFI_ABORTED) {
     Print(L"\n");
@@ -278,7 +288,7 @@ BootMenuSelectBootOption (
   if (BootOptionCount == 0) {
     if (StrCmp (InputStatement, DELETE_BOOT_ENTRY) == 0) {
       Print (L"Nothing to remove!\n");
-    }else if (StrCmp (InputStatement, UPDATE_BOOT_ENTRY) == 0) {
+    } else if (StrCmp (InputStatement, UPDATE_BOOT_ENTRY) == 0) {
       Print (L"Couldn't find valid boot entries\n");
     } else{
       Print (L"No supported Boot Entry.\n");
@@ -359,7 +369,7 @@ BootMenuUpdateBootOption (
   ARM_BDS_LOADER_TYPE           BootType;
   ARM_BDS_LOADER_OPTIONAL_DATA* OptionalData;
   ARM_BDS_LINUX_ARGUMENTS*      LinuxArguments;
-  EFI_DEVICE_PATH               *InitrdPathNode;
+  EFI_DEVICE_PATH               *InitrdPathNodes;
   EFI_DEVICE_PATH               *InitrdPath;
   UINTN                         InitrdSize;
   UINTN                         CmdLineSize;
@@ -416,20 +426,24 @@ BootMenuUpdateBootOption (
       } else {
         // Case we create the initrd device path
 
-        Status = DeviceSupport->CreateDevicePathNode (L"initrd", &InitrdPathNode, NULL, NULL);
+        Status = DeviceSupport->CreateDevicePathNode (L"initrd", &InitrdPathNodes, NULL, NULL);
         if (EFI_ERROR(Status) && Status != EFI_NOT_FOUND) { // EFI_NOT_FOUND is returned on empty input string, but we can boot without an initrd
           Status = EFI_ABORTED;
           goto EXIT;
         }
 
-        if (InitrdPathNode != NULL) {
+        if (InitrdPathNodes != NULL) {
           // Duplicate Linux kernel Device Path
           TempInitrdPath = DuplicateDevicePath (BootOption->FilePathList);
           // Replace Linux kernel Node by EndNode
           SetDevicePathEndNode (GetLastDevicePathNode (TempInitrdPath));
-          // Append the Device Path node to the select device path
-          InitrdPath = AppendDevicePathNode (TempInitrdPath, (CONST EFI_DEVICE_PATH_PROTOCOL *)InitrdPathNode);
+          // Append the Device Path to the selected device path
+          InitrdPath = AppendDevicePath (TempInitrdPath, (CONST EFI_DEVICE_PATH_PROTOCOL *)InitrdPathNodes);
           FreePool (TempInitrdPath);
+          if (InitrdPath == NULL) {
+            Status = EFI_OUT_OF_RESOURCES;
+            goto EXIT;
+          }
           InitrdSize = GetDevicePathSize (InitrdPath);
         } else {
           InitrdPath = NULL;
@@ -439,7 +453,7 @@ BootMenuUpdateBootOption (
       InitrdSize = 0;
     }
 
-    Print(L"Arguments to pass to the binary: "); 
+    Print(L"Arguments to pass to the binary: ");
     if (CmdLineSize > 0) {
       AsciiStrnCpy(CmdLine, (CONST CHAR8*)(LinuxArguments + 1), CmdLineSize);
     } else {
@@ -491,7 +505,7 @@ UpdateFdtPath (
   EFI_STATUS                Status;
   UINTN                     FdtDevicePathSize;
   BDS_SUPPORTED_DEVICE      *SupportedBootDevice;
-  EFI_DEVICE_PATH_PROTOCOL  *FdtDevicePathNode;
+  EFI_DEVICE_PATH_PROTOCOL  *FdtDevicePathNodes;
   EFI_DEVICE_PATH_PROTOCOL  *FdtDevicePath;
 
   Status = SelectBootDevice (&SupportedBootDevice);
@@ -501,20 +515,32 @@ UpdateFdtPath (
   }
 
   // Create the specific device path node
-  Status = SupportedBootDevice->Support->CreateDevicePathNode (L"FDT blob", &FdtDevicePathNode, NULL, NULL);
+  Status = SupportedBootDevice->Support->CreateDevicePathNode (L"FDT blob", &FdtDevicePathNodes, NULL, NULL);
   if (EFI_ERROR(Status)) {
     Status = EFI_ABORTED;
     goto EXIT;
   }
 
-  if (FdtDevicePathNode != NULL) {
+  if (FdtDevicePathNodes != NULL) {
     // Append the Device Path node to the select device path
-    FdtDevicePath = AppendDevicePathNode (SupportedBootDevice->DevicePathProtocol, FdtDevicePathNode);
+    FdtDevicePath = AppendDevicePath (SupportedBootDevice->DevicePathProtocol, FdtDevicePathNodes);
     FdtDevicePathSize = GetDevicePathSize (FdtDevicePath);
-    Status = gRT->SetVariable ((CHAR16*)L"Fdt", &gEfiGlobalVariableGuid, (EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS ), FdtDevicePathSize, FdtDevicePath);
+    Status = gRT->SetVariable (
+                    (CHAR16*)L"Fdt",
+                    &gArmGlobalVariableGuid,
+                    EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
+                    FdtDevicePathSize,
+                    FdtDevicePath
+                    );
     ASSERT_EFI_ERROR(Status);
   } else {
-    gRT->SetVariable ((CHAR16*)L"Fdt", &gEfiGlobalVariableGuid, (EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS ), 0, NULL);
+    gRT->SetVariable (
+           (CHAR16*)L"Fdt",
+           &gArmGlobalVariableGuid,
+           EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS,
+           0,
+           NULL
+           );
     ASSERT_EFI_ERROR(Status);
   }
 
@@ -661,7 +687,23 @@ BootMenuMain (
             }
             Print(L"\t- Arguments: %a\n", (&OptionalData->Arguments.LinuxArguments + 1));
           }
-          Print(L"\t- LoaderType: %d\n", LoaderType);
+
+          switch (LoaderType) {
+            case BDS_LOADER_EFI_APPLICATION:
+              Print(L"\t- LoaderType: EFI Application\n");
+              break;
+
+            case BDS_LOADER_KERNEL_LINUX_ATAG:
+              Print(L"\t- LoaderType: Linux kernel with ATAG support\n");
+              break;
+
+            case BDS_LOADER_KERNEL_LINUX_FDT:
+              Print(L"\t- LoaderType: Linux kernel with FDT support\n");
+              break;
+
+            default:
+              Print(L"\t- LoaderType: Not recognized (%d)\n", LoaderType);
+          }
         }
         FreePool(DevicePathTxt);
       DEBUG_CODE_END();

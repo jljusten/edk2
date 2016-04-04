@@ -314,10 +314,22 @@ EFIAPI
 ArmDisableInterrupts (
   VOID
   );
-  
+
 BOOLEAN
 EFIAPI
 ArmGetInterruptState (
+  VOID
+  );
+
+UINTN
+EFIAPI
+ArmDisableIrq (
+  VOID
+  );
+
+VOID
+EFIAPI
+ArmEnableIrq (
   VOID
   );
 
@@ -556,6 +568,18 @@ UINT32
 EFIAPI
 ArmReadSctlr (
   VOID
+  );
+
+UINTN
+EFIAPI
+ArmReadHVBar (
+  VOID
+  );
+
+VOID
+EFIAPI
+ArmWriteHVBar (
+  IN  UINTN   HypModeVectorBase
   );
 
 #endif // __ARM_LIB__

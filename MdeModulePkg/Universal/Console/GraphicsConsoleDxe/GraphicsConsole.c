@@ -1,7 +1,7 @@
 /** @file
   This is the main routine for initializing the Graphics Console support routines.
 
-Copyright (c) 2006 - 2012, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -453,8 +453,8 @@ GraphicsConsoleControllerDriverStart (
                            &Info
                            );
         if (!EFI_ERROR (Status)) {
-          if ((Info->HorizontalResolution >= HorizontalResolution) &&
-              (Info->VerticalResolution >= VerticalResolution)) {
+          if ((Info->HorizontalResolution > HorizontalResolution) ||
+              ((Info->HorizontalResolution == HorizontalResolution) && (Info->VerticalResolution > VerticalResolution))) {
             HorizontalResolution = Info->HorizontalResolution;
             VerticalResolution   = Info->VerticalResolution;
             ModeNumber           = ModeIndex;
@@ -495,6 +495,19 @@ GraphicsConsoleControllerDriverStart (
           VerticalResolution = Mode->Info->VerticalResolution;
           ModeNumber = Mode->Mode;
         }
+      }
+    }
+    if (ModeNumber != Private->GraphicsOutput->Mode->Mode) {
+      //
+      // Current graphics mode is not set or is not set to the mode which we has found,
+      // set the new graphic mode.
+      //
+      Status = Private->GraphicsOutput->SetMode (Private->GraphicsOutput, ModeNumber);
+      if (EFI_ERROR (Status)) {
+        //
+        // The mode set operation failed
+        //
+        goto Error;
       }
     }
   } else if (FeaturePcdGet (PcdUgaConsumeSupport)) {

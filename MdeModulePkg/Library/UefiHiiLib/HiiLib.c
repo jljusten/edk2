@@ -1,7 +1,7 @@
 /** @file
   HII Library implementation that uses DXE protocols and services.
 
-  Copyright (c) 2006 - 2011, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -946,6 +946,7 @@ InternalHiiValidateCurrentSetting (
   UINT16                       Offset;
   UINT16                       Width;
   UINT64                       VarValue;
+  EFI_IFR_TYPE_VALUE           TmpValue;
   LIST_ENTRY                   *Link;
   UINT8                        *VarBuffer;
   UINTN                        MaxBufferSize;
@@ -1510,7 +1511,10 @@ InternalHiiValidateCurrentSetting (
             //
             // Check current value is the value of one of option.
             //
-            if (VarValue == IfrOneOfOption->Value.u64) {
+            ASSERT (IfrOneOfOption->Type <= EFI_IFR_TYPE_NUM_SIZE_64);
+            ZeroMem (&TmpValue, sizeof (EFI_IFR_TYPE_VALUE));
+            CopyMem (&TmpValue, &IfrOneOfOption->Value, IfrOneOfOption->Header.Length - OFFSET_OF (EFI_IFR_ONE_OF_OPTION, Value));
+            if (VarValue == TmpValue.u64) {
               //
               // The value is one of option value.
               // Set OpCode to Zero, don't need check again.
@@ -2628,7 +2632,7 @@ HiiCreateOneOfOptionOpCode (
   OpCode.Type   = Type;
   CopyMem (&OpCode.Value, &Value, mHiiDefaultTypeToWidth[Type]);
 
-  return InternalHiiCreateOpCode (OpCodeHandle, &OpCode, EFI_IFR_ONE_OF_OPTION_OP, sizeof (OpCode));
+  return InternalHiiCreateOpCode (OpCodeHandle, &OpCode, EFI_IFR_ONE_OF_OPTION_OP, OFFSET_OF(EFI_IFR_ONE_OF_OPTION, Value) + mHiiDefaultTypeToWidth[Type]);
 }
 
 /**
@@ -2855,6 +2859,82 @@ HiiCreateGotoOpCode (
 }
 
 /**
+  Create EFI_IFR_REF_OP, EFI_IFR_REF2_OP, EFI_IFR_REF3_OP and EFI_IFR_REF4_OP opcode.
+
+  When RefDevicePath is not zero, EFI_IFR_REF4 opcode will be created. 
+  When RefDevicePath is zero and RefFormSetId is not NULL, EFI_IFR_REF3 opcode will be created.
+  When RefDevicePath is zero, RefFormSetId is NULL and RefQuestionId is not zero, EFI_IFR_REF2 opcode will be created.
+  When RefDevicePath is zero, RefFormSetId is NULL and RefQuestionId is zero, EFI_IFR_REF opcode will be created.
+
+  If OpCodeHandle is NULL, then ASSERT().
+  If any reserved bits are set in QuestionFlags, then ASSERT().
+
+  @param[in]  OpCodeHandle   The handle to the buffer of opcodes.
+  @param[in]  RefFormId      The Destination Form ID.
+  @param[in]  Prompt         The string ID for Prompt.
+  @param[in]  Help           The string ID for Help.
+  @param[in]  QuestionFlags  The flags in Question Header
+  @param[in]  QuestionId     Question ID.
+  @param[in]  RefQuestionId  The question on the form to which this link is referring. 
+                             If its value is zero, then the link refers to the top of the form.
+  @param[in]  RefFormSetId   The form set to which this link is referring. If its value is NULL, and RefDevicePath is 
+                             zero, then the link is to the current form set.
+  @param[in]  RefDevicePath  The string identifier that specifies the string containing the text representation of 
+                             the device path to which the form set containing the form specified by FormId.
+                             If its value is zero, then the link refers to the current page.
+
+  @retval NULL   There is not enough space left in Buffer to add the opcode.
+  @retval Other  A pointer to the created opcode.
+
+**/
+UINT8 *
+EFIAPI
+HiiCreateGotoExOpCode (
+  IN VOID             *OpCodeHandle,
+  IN EFI_FORM_ID      RefFormId,
+  IN EFI_STRING_ID    Prompt,
+  IN EFI_STRING_ID    Help,
+  IN UINT8            QuestionFlags,
+  IN EFI_QUESTION_ID  QuestionId,
+  IN EFI_QUESTION_ID  RefQuestionId,
+  IN EFI_GUID         *RefFormSetId,    OPTIONAL
+  IN EFI_STRING_ID    RefDevicePath
+  )
+{
+  EFI_IFR_REF4  OpCode;
+  UINTN         OpCodeSize;
+
+  ASSERT ((QuestionFlags & (~(EFI_IFR_FLAG_READ_ONLY | EFI_IFR_FLAG_CALLBACK | EFI_IFR_FLAG_RESET_REQUIRED))) == 0);
+
+  ZeroMem (&OpCode, sizeof (OpCode));
+  OpCode.Question.Header.Prompt = Prompt;
+  OpCode.Question.Header.Help   = Help;
+  OpCode.Question.QuestionId    = QuestionId;
+  OpCode.Question.Flags         = QuestionFlags;
+  OpCode.FormId                 = RefFormId;
+  OpCode.QuestionId             = RefQuestionId;
+  OpCode.DevicePath             = RefDevicePath;
+  if (RefFormSetId != NULL) {
+    CopyMem (&OpCode.FormSetId, RefFormSetId, sizeof (OpCode.FormSetId));
+  }
+
+  //
+  // Cacluate OpCodeSize based on the input Ref value.
+  // Try to use the small OpCode to save size.
+  //
+  OpCodeSize = sizeof (EFI_IFR_REF);
+  if (RefDevicePath != 0) {
+    OpCodeSize = sizeof (EFI_IFR_REF4);
+  } else if (RefFormSetId != NULL) {
+    OpCodeSize = sizeof (EFI_IFR_REF3);
+  } else if (RefQuestionId != 0) {
+    OpCodeSize = sizeof (EFI_IFR_REF2);
+  }
+
+  return InternalHiiCreateOpCode (OpCodeHandle, &OpCode, EFI_IFR_REF_OP, OpCodeSize);
+}
+
+/**
   Create EFI_IFR_CHECKBOX_OP opcode.
 
   If OpCodeHandle is NULL, then ASSERT().
@@ -2959,9 +3039,11 @@ HiiCreateNumericOpCode (
 {
   EFI_IFR_NUMERIC  OpCode;
   UINTN            Position;
+  UINTN            Length;
 
   ASSERT ((QuestionFlags & (~(EFI_IFR_FLAG_READ_ONLY | EFI_IFR_FLAG_CALLBACK | EFI_IFR_FLAG_RESET_REQUIRED))) == 0);
 
+  Length  = 0;
   ZeroMem (&OpCode, sizeof (OpCode));
   OpCode.Question.QuestionId             = QuestionId;
   OpCode.Question.VarStoreId             = VarStoreId;
@@ -2976,33 +3058,39 @@ HiiCreateNumericOpCode (
     OpCode.data.u8.MinValue = (UINT8)Minimum;
     OpCode.data.u8.MaxValue = (UINT8)Maximum;
     OpCode.data.u8.Step     = (UINT8)Step;
+    Length                  = 3;
     break;
 
   case EFI_IFR_NUMERIC_SIZE_2:
     OpCode.data.u16.MinValue = (UINT16)Minimum;
     OpCode.data.u16.MaxValue = (UINT16)Maximum;
     OpCode.data.u16.Step     = (UINT16)Step;
+    Length                   = 6;
     break;
 
   case EFI_IFR_NUMERIC_SIZE_4:
     OpCode.data.u32.MinValue = (UINT32)Minimum;
     OpCode.data.u32.MaxValue = (UINT32)Maximum;
     OpCode.data.u32.Step     = (UINT32)Step;
+    Length                   = 12;
     break;
 
   case EFI_IFR_NUMERIC_SIZE_8:
     OpCode.data.u64.MinValue = Minimum;
     OpCode.data.u64.MaxValue = Maximum;
     OpCode.data.u64.Step     = Step;
+    Length                   = 24;
     break;
   }
 
+  Length += OFFSET_OF (EFI_IFR_NUMERIC, data);
+
   if (DefaultsOpCodeHandle == NULL) {
-    return InternalHiiCreateOpCode (OpCodeHandle, &OpCode, EFI_IFR_NUMERIC_OP, sizeof (OpCode));
+    return InternalHiiCreateOpCode (OpCodeHandle, &OpCode, EFI_IFR_NUMERIC_OP, Length);
   }
 
   Position = InternalHiiOpCodeHandlePosition (OpCodeHandle);
-  InternalHiiCreateOpCodeExtended (OpCodeHandle, &OpCode, EFI_IFR_NUMERIC_OP, sizeof (OpCode), 0, 1);
+  InternalHiiCreateOpCodeExtended (OpCodeHandle, &OpCode, EFI_IFR_NUMERIC_OP, Length, 0, 1);
   InternalHiiAppendOpCodes (OpCodeHandle, DefaultsOpCodeHandle);
   HiiCreateEndOpCode (OpCodeHandle);
   return InternalHiiOpCodeHandleBuffer (OpCodeHandle) + Position;
@@ -3115,6 +3203,7 @@ HiiCreateOneOfOpCode (
 {
   EFI_IFR_ONE_OF  OpCode;
   UINTN           Position;
+  UINTN           Length;
 
   ASSERT (OptionsOpCodeHandle != NULL);
   ASSERT ((QuestionFlags & (~(EFI_IFR_FLAG_READ_ONLY | EFI_IFR_FLAG_CALLBACK | EFI_IFR_FLAG_RESET_REQUIRED | EFI_IFR_FLAG_OPTIONS_ONLY))) == 0);
@@ -3128,8 +3217,11 @@ HiiCreateOneOfOpCode (
   OpCode.Question.Flags                  = QuestionFlags;
   OpCode.Flags                           = OneOfFlags;
 
+  Length  = OFFSET_OF (EFI_IFR_ONE_OF, data);
+  Length += (1 << (OneOfFlags & EFI_IFR_NUMERIC_SIZE)) * 3;
+
   Position = InternalHiiOpCodeHandlePosition (OpCodeHandle);
-  InternalHiiCreateOpCodeExtended (OpCodeHandle, &OpCode, EFI_IFR_ONE_OF_OP, sizeof (OpCode), 0, 1);
+  InternalHiiCreateOpCodeExtended (OpCodeHandle, &OpCode, EFI_IFR_ONE_OF_OP, Length, 0, 1);
   InternalHiiAppendOpCodes (OpCodeHandle, OptionsOpCodeHandle);
   if (DefaultsOpCodeHandle != NULL) {
     InternalHiiAppendOpCodes (OpCodeHandle, DefaultsOpCodeHandle);

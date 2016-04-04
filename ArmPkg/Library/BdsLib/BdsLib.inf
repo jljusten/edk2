@@ -1,6 +1,6 @@
 #/* @file
 #  
-#  Copyright (c) 2011-2012, ARM Limited. All rights reserved.
+#  Copyright (c) 2011-2013, ARM Limited. All rights reserved.
 #  
 #  This program and the accompanying materials                          
 #  are licensed and made available under the terms and conditions of the BSD License         
@@ -25,18 +25,21 @@
   BdsAppLoader.c
   BdsHelper.c
   BdsLoadOption.c
-
-  BdsLinuxLoader.c
-  BdsLinuxAtag.c
   BdsLinuxFdt.c
+
+[Sources.ARM]
+  Arm/BdsLinuxLoader.c
+  Arm/BdsLinuxAtag.c
 
 [Packages]
   MdePkg/MdePkg.dec
   EmbeddedPkg/EmbeddedPkg.dec
   ArmPkg/ArmPkg.dec
+  ArmPlatformPkg/ArmPlatformPkg.dec
 
 [LibraryClasses]
   ArmLib
+  ArmSmcLib
   BaseLib
   DebugLib
   DevicePathLib
@@ -44,10 +47,12 @@
   PerformanceLib
   SerialPortLib
   FdtLib
+  TimerLib
 
 [Guids]
   gEfiFileInfoGuid
   gArmMpCoreInfoGuid
+  gArmGlobalVariableGuid
 
 [Protocols]
   gEfiBdsArchProtocolGuid                       
@@ -60,8 +65,10 @@
   gEfiDiskIoProtocolGuid
   gEfiUsbIoProtocolGuid
   gEfiLoadedImageProtocolGuid
+  gEfiSimpleNetworkProtocolGuid
     
-[FeaturePcd]  
+[FeaturePcd]
+  gArmTokenSpaceGuid.PcdArmPsciSupport
 
 [FixedPcd]
   gArmTokenSpaceGuid.PcdSystemMemoryBase

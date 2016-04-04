@@ -2,6 +2,7 @@
 # ARM processor package.
 #
 # Copyright (c) 2009 - 2010, Apple Inc. All rights reserved.<BR>
+# Copyright (c) 2011 - 2013, ARM Ltd. All rights reserved.<BR>
 #
 #    This program and the accompanying materials
 #    are licensed and made available under the terms and conditions of the BSD License
@@ -62,13 +63,12 @@
 
   ArmLib|ArmPkg/Library/ArmLib/ArmV7/ArmV7Lib.inf
   CpuLib|MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
+  ArmSmcLib|ArmPkg/Library/ArmSmcLib/ArmSmcLib.inf
   ArmDisassemblerLib|ArmPkg/Library/ArmDisassemblerLib/ArmDisassemblerLib.inf
   DmaLib|ArmPkg/Library/ArmDmaLib/ArmDmaLib.inf
-  ArmTrustZoneLib|ArmPkg/Library/ArmTrustZoneLib/ArmTrustZoneLib.inf
 
   UefiApplicationEntryPoint|MdePkg/Library/UefiApplicationEntryPoint/UefiApplicationEntryPoint.inf
   PerformanceLib|MdePkg/Library/BasePerformanceLibNull/BasePerformanceLibNull.inf
-  # TODO: Check if we cannot remove this dependancy (Mayve using the SerialLibNull implementation makes the EFI application do not print)
   SerialPortLib|MdePkg/Library/BaseSerialPortLibNull/BaseSerialPortLibNull.inf
 
   BdsLib|ArmPkg/Library/BdsLib/BdsLib.inf
@@ -106,6 +106,7 @@
   ArmPkg/Library/BasePeCoffLib/BasePeCoffLib.inf
   ArmPkg/Library/BdsLib/BdsLib.inf
   ArmPkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib.inf
+  ArmPkg/Library/DebugAgentSymbolsBaseLib/DebugAgentSymbolsBaseLib.inf
   ArmPkg/Library/DebugPeCoffExtraActionLib/DebugPeCoffExtraActionLib.inf
   ArmPkg/Library/DebugUncachedMemoryAllocationLib/DebugUncachedMemoryAllocationLib.inf
   ArmPkg/Library/DefaultExceptionHandlerLib/DefaultExceptionHandlerLib.inf
@@ -124,6 +125,9 @@
   ArmPkg/Drivers/PL390Gic/PL390GicLib.inf
   ArmPkg/Drivers/PL390Gic/PL390GicSecLib.inf
   ArmPkg/Drivers/TimerDxe/TimerDxe.inf
+
+  ArmPkg/Library/ArmSmcLib/ArmSmcLib.inf
+  ArmPkg/Library/ArmSmcLibNull/ArmSmcLibNull.inf
 
   ArmPkg/Filesystem/SemihostFs/SemihostFs.inf
 

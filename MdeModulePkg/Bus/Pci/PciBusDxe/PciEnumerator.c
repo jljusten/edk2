@@ -1,7 +1,7 @@
 /** @file
   PCI eunmeration implementation on entire PCI bus system for PCI Bus module.
 
-Copyright (c) 2006 - 2012, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -794,7 +794,6 @@ RejectPciDevice (
     if (Temp == PciDevice) {
       InitializePciDevice (Temp);
       RemoveEntryList (CurrentLink);
-      FreePciDevice (Temp);
       return EFI_SUCCESS;
     }
 
@@ -1035,6 +1034,11 @@ PciHostBridgeAdjustAllocation (
     //
     Status = RejectPciDevice (PciResNode->PciDev);
     if (Status == EFI_SUCCESS) {
+      DEBUG ((
+        EFI_D_ERROR,
+        "PciBus: [%02x|%02x|%02x] was rejected due to resource confliction.\n",
+        PciResNode->PciDev->BusNumber, PciResNode->PciDev->DeviceNumber, PciResNode->PciDev->FunctionNumber
+        ));
 
       //
       // Raise the EFI_IOB_EC_RESOURCE_CONFLICT status code
@@ -1867,7 +1871,7 @@ NotifyPhase (
                             );
   }
 
-  return EFI_SUCCESS;
+  return Status;
 }
 
 /**
