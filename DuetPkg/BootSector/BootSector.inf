@@ -25,9 +25,9 @@
   DuetPkg/DuetPkg.dec
 
 [Sources]
-  bootsect.asm | INTEL
-  bootsect.asm | MSFT
-  bootsect.S   | GCC 
+  bootsect.nasm| INTEL
+  bootsect.nasm| MSFT
+  bootsect.nasm| GCC
 
   bs16.asm     | INTEL
   bs16.asm     | MSFT
