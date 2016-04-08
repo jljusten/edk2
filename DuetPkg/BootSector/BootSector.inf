@@ -73,7 +73,7 @@
   st32_64.nasm | MSFT
   st32_64.nasm | GCC
 
-  efi64.asm    | INTEL
-  efi64.asm    | MSFT
-  efi64.S      | GCC
+  efi64.nasm   | INTEL
+  efi64.nasm   | MSFT
+  efi64.nasm   | GCC
 
