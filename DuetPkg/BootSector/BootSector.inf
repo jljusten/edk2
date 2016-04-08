@@ -45,9 +45,9 @@
   Mbr.nasm     | MSFT
   Mbr.nasm     | GCC
 
-  start.asm    | INTEL
-  start.asm    | MSFT
-  start.S      | GCC
+  start.nasm   | INTEL
+  start.nasm   | MSFT
+  start.nasm   | GCC
 
   start16.asm  | INTEL
   start16.asm  | MSFT
