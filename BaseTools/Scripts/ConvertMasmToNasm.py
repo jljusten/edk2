@@ -263,6 +263,7 @@ class ConvertAsmFile(CommonUtils):
     def Convert(self, lines):
         self.proc = None
         self.anonLabelCount = -1
+        self.uses = tuple()
         output = self.output
         self.oldAsmEmptyLineCount = 0
         self.newAsmEmptyLineCount = 0
