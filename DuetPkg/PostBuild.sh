@@ -17,6 +17,8 @@
 #
 ##
 
+set -e
+
 if [ -z "$EDK_TOOLS_PATH" ]
 then
 export BASETOOLS_DIR=$WORKSPACE/Conf/BaseToolsSource/Source/C/bin
