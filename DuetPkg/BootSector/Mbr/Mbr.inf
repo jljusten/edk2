@@ -1,0 +1,32 @@
+## @file
+#  Master Boot Record
+#
+#  Copyright (c) 2006 - 2016, Intel Corporation. All rights reserved.<BR>
+#
+#  This program and the accompanying materials
+#  are licensed and made available under the terms and conditions of the BSD License
+#  which accompanies this distribution. The full text of the license may be found at
+#  http://opensource.org/licenses/bsd-license.php
+#  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = Mbr
+  FILE_GUID                      = 58210982-fdd9-11e5-a58a-8fa8a183e9ac
+  MODULE_TYPE                    = SEC
+  VERSION_STRING                 = 1.1
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  Mbr.nasmb
+
+[Packages]
+  MdePkg/MdePkg.dec

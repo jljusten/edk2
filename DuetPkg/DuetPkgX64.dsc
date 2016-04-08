@@ -153,6 +153,7 @@
 ###################################################################################################
 [Components]
   DuetPkg/BootSector/Gpt/Gpt.inf
+  DuetPkg/BootSector/Mbr/Mbr.inf
   DuetPkg/DxeIpl/DxeIpl.inf {
     <LibraryClasses>
       #
