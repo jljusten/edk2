@@ -126,7 +126,7 @@ then
 
 				## Linux version of GenBootSector has not pass build yet.
 				$BASETOOLS_DIR/GnuGenBootSector -i $EFI_BOOT_MEDIA -o $EFI_BOOT_MEDIA.bs0
-				cp $BOOTSECTOR_BIN_DIR/bootsect.com $EFI_BOOT_MEDIA.bs1
+				cp $BUILD_DIR/$PROCESSOR/DuetPkg/BootSector/Unified/BootSectors/OUTPUT/Fat12BootSector.bin $EFI_BOOT_MEDIA.bs1
 				$BASETOOLS_DIR/BootSectImage -g $EFI_BOOT_MEDIA.bs0 $EFI_BOOT_MEDIA.bs1
 				$BASETOOLS_DIR/GnuGenBootSector -o $EFI_BOOT_MEDIA -i $EFI_BOOT_MEDIA.bs1
 				rm $EFI_BOOT_MEDIA.bs[0-1]
