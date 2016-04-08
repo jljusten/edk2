@@ -69,9 +69,9 @@
   st16_64.nasm | MSFT
   st16_64.nasm | GCC
 
-  st32_64.asm  | INTEL
-  st32_64.asm  | MSFT
-  st32_64.S    | GCC
+  st32_64.nasm | INTEL
+  st32_64.nasm | MSFT
+  st32_64.nasm | GCC
 
   efi64.asm    | INTEL
   efi64.asm    | MSFT
