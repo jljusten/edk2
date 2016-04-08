@@ -33,9 +33,9 @@
   bs16.nasm    | MSFT
   bs16.nasm    | GCC
 
-  bs32.asm     | INTEL
-  bs32.asm     | MSFT
-  bs32.S       | GCC
+  bs32.nasm    | INTEL
+  bs32.nasm    | MSFT
+  bs32.nasm    | GCC
  
   Gpt.asm      | INTEL
   Gpt.asm      | MSFT
