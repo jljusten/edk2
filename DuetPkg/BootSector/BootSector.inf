@@ -41,9 +41,9 @@
   Gpt.nasm     | MSFT
   Gpt.nasm     | GCC
 
-  Mbr.asm      | INTEL
-  Mbr.asm      | MSFT
-  Mbr.S        | GCC
+  Mbr.nasm     | INTEL
+  Mbr.nasm     | MSFT
+  Mbr.nasm     | GCC
 
   start.asm    | INTEL
   start.asm    | MSFT
