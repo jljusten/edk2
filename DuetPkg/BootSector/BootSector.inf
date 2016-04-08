@@ -37,9 +37,9 @@
   bs32.nasm    | MSFT
   bs32.nasm    | GCC
  
-  Gpt.asm      | INTEL
-  Gpt.asm      | MSFT
-  Gpt.S        | GCC
+  Gpt.nasm     | INTEL
+  Gpt.nasm     | MSFT
+  Gpt.nasm     | GCC
 
   Mbr.asm      | INTEL
   Mbr.asm      | MSFT
