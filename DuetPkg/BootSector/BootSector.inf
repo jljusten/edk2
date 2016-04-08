@@ -53,9 +53,9 @@
   start16.nasm | MSFT
   start16.nasm | GCC
 
-  start32.asm  | INTEL
-  start32.asm  | MSFT
-  start32.S    | GCC
+  start32.nasm | INTEL
+  start32.nasm | MSFT
+  start32.nasm | GCC
 
   efi32.asm    | INTEL
   efi32.asm    | MSFT
