@@ -65,9 +65,9 @@
   start64.nasm | MSFT
   start64.nasm | GCC
 
-  st16_64.asm  | INTEL
-  st16_64.asm  | MSFT
-  st16_64.S    | GCC
+  st16_64.nasm | INTEL
+  st16_64.nasm | MSFT
+  st16_64.nasm | GCC
 
   st32_64.asm  | INTEL
   st32_64.asm  | MSFT
