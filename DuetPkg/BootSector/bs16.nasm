@@ -1,60 +1,58 @@
 ;------------------------------------------------------------------------------
 ;*
 ;*   Copyright (c) 2006 - 2007, Intel Corporation. All rights reserved.<BR>
-;*   This program and the accompanying materials                          
-;*   are licensed and made available under the terms and conditions of the BSD License         
-;*   which accompanies this distribution.  The full text of the license may be found at        
-;*   http://opensource.org/licenses/bsd-license.php                                            
-;*                                                                                             
-;*   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-;*   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
-;*   
-;*    bs16.asm
-;*  
+;*   This program and the accompanying materials
+;*   are licensed and made available under the terms and conditions of the BSD License
+;*   which accompanies this distribution.  The full text of the license may be found at
+;*   http://opensource.org/licenses/bsd-license.php
+;*
+;*   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+;*   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+;*
+;*    bs16.nasm
+;*
 ;*   Abstract:
 ;*
 ;------------------------------------------------------------------------------
 
-        .model  small
         .stack
-        .486p
-        .code
+        SECTION .text
 
-FAT_DIRECTORY_ENTRY_SIZE  EQU     020h
-FAT_DIRECTORY_ENTRY_SHIFT EQU     5
-BLOCK_SIZE                EQU     0200h
-BLOCK_MASK                EQU     01ffh
-BLOCK_SHIFT               EQU     9
+%define FAT_DIRECTORY_ENTRY_SIZE 0x20
+%define FAT_DIRECTORY_ENTRY_SHIFT 5
+%define BLOCK_SIZE 0x200
+%define BLOCK_MASK 0x1ff
+%define BLOCK_SHIFT 9
                                                ; "EFILDR_____"
-LOADER_FILENAME_PART1     EQU     04c494645h   ; "EFIL"
-LOADER_FILENAME_PART2     EQU     036315244h   ; "DR16"
-LOADER_FILENAME_PART3     EQU     020202036h   ; "6___"
+%define LOADER_FILENAME_PART1 0x4c494645   ; "EFIL"
+%define LOADER_FILENAME_PART2 0x36315244   ; "DR16"
+%define LOADER_FILENAME_PART3 0x20202036   ; "6___"
 
-        org 0h
+        org 0x0
 Ia32Jump:
   jmp   BootSectorEntryPoint  ; JMP inst                  - 3 bytes
   nop
 
-OemId             db  "INTEL   "    ; OemId               - 8 bytes
+OemId: db "INTEL   "    ; OemId               - 8 bytes
 ; BPB data below will be fixed by tool
-SectorSize        dw  0             ; Sector Size         - 16 bits
-SectorsPerCluster db  0             ; Sector Per Cluster  - 8 bits
-ReservedSectors   dw  0             ; Reserved Sectors    - 16 bits
-NoFats            db  0             ; Number of FATs      - 8 bits
-RootEntries       dw  0             ; Root Entries        - 16 bits
-Sectors           dw  0             ; Number of Sectors   - 16 bits
-Media             db  0             ; Media               - 8 bits  - ignored
-SectorsPerFat     dw  0             ; Sectors Per FAT     - 16 bits
-SectorsPerTrack   dw  0             ; Sectors Per Track   - 16 bits - ignored
-Heads             dw  0             ; Heads               - 16 bits - ignored
-HiddenSectors     dd  0             ; Hidden Sectors      - 32 bits - ignored
-LargeSectors      dd  0             ; Large Sectors       - 32 bits 
-PhysicalDrive     db  0             ; PhysicalDriveNumber - 8 bits  - ignored
-CurrentHead       db  0             ; Current Head        - 8 bits
-Signature         db  0             ; Signature           - 8 bits  - ignored
-Id                db  "    "        ; Id                  - 4 bytes
-FatLabel          db  "           " ; Label               - 11 bytes
-SystemId          db  "FAT16   "    ; SystemId            - 8 bytes
+SectorSize: dw 0             ; Sector Size         - 16 bits
+SectorsPerCluster: db 0             ; Sector Per Cluster  - 8 bits
+ReservedSectors: dw 0             ; Reserved Sectors    - 16 bits
+NoFats: db 0             ; Number of FATs      - 8 bits
+RootEntries: dw 0             ; Root Entries        - 16 bits
+Sectors: dw 0             ; Number of Sectors   - 16 bits
+Media: db 0             ; Media               - 8 bits  - ignored
+SectorsPerFat: dw 0             ; Sectors Per FAT     - 16 bits
+SectorsPerTrack: dw 0             ; Sectors Per Track   - 16 bits - ignored
+Heads: dw 0             ; Heads               - 16 bits - ignored
+HiddenSectors: dd 0             ; Hidden Sectors      - 32 bits - ignored
+LargeSectors: dd 0             ; Large Sectors       - 32 bits
+PhysicalDrive: db 0             ; PhysicalDriveNumber - 8 bits  - ignored
+CurrentHead: db 0             ; Current Head        - 8 bits
+Signature: db 0             ; Signature           - 8 bits  - ignored
+Id: db "    "        ; Id                  - 4 bytes
+FatLabel: db "           " ; Label               - 11 bytes
+SystemId: db "FAT16   "    ; SystemId            - 8 bytes
 
 BootSectorEntryPoint:
         ASSUME  ds:@code
@@ -72,24 +70,24 @@ BootSectorEntryPoint:
 
   mov   ax,cs         ; ax = 0
   mov   ss,ax         ; ss = 0
-  add   ax,1000h
+  add   ax,0x1000
   mov   ds,ax
 
-  mov   sp,07c00h     ; sp = 0x7c00
+  mov   sp,0x7c00     ; sp = 0x7c00
   mov   bp,sp         ; bp = 0x7c00
 
   mov   ah,8                                ; ah = 8 - Get Drive Parameters Function
-  mov   byte ptr [bp+PhysicalDrive],dl      ; BBS defines that BIOS would pass the booting driver number to the loader through DL
-  int   13h                                 ; Get Drive Parameters
+  mov   byte [bp+PhysicalDrive],dl      ; BBS defines that BIOS would pass the booting driver number to the loader through DL
+  int   0x13                                 ; Get Drive Parameters
   xor   ax,ax                   ; ax = 0
   mov   al,dh                   ; al = dh
   inc   al                      ; MaxHead = al + 1
   push  ax                      ; 0000:7bfe = MaxHead
   mov   al,cl                   ; al = cl
-  and   al,03fh                 ; MaxSector = al & 0x3f
+  and   al,0x3f                 ; MaxSector = al & 0x3f
   push  ax                      ; 0000:7bfc = MaxSector
 
-  cmp   word ptr [bp+SectorSignature],0aa55h  ; Verify Boot Sector Signature
+  cmp   word [bp+SectorSignature],0xaa55  ; Verify Boot Sector Signature
   jne   BadBootSector
   mov   cx,word ptr [bp+RootEntries]      ; cx = RootEntries
   shl   cx,FAT_DIRECTORY_ENTRY_SHIFT      ; cx = cx * 32 = cx * sizeof(FAT_DIRECTORY_ENTRY) = Size of Root Directory in bytes
@@ -100,14 +98,14 @@ BootSectorEntryPoint:
   shr   bx,BLOCK_SHIFT                    ; bx = size of Root Directory in sectors
   mov   al,byte ptr [bp+NoFats]           ; al = NoFats
   xor   ah,ah                             ; ah = 0  ==> ax = NoFats
-  mul   word ptr [bp+SectorsPerFat]       ; ax = NoFats * SectorsPerFat
+  mul   word [bp+SectorsPerFat]       ; ax = NoFats * SectorsPerFat
   add   ax,word ptr [bp+ReservedSectors]  ; ax = NoFats * SectorsPerFat + ReservedSectors = RootLBA
   push  ds
   pop   es
   xor   di,di                             ; Store directory in es:di = 1000:0000
   call  ReadBlocks                        ; Read entire Root Directory
   add   ax,bx                             ; ax = NoFats * SectorsPerFat + ReservedSectors + RootDirSectors = FirstClusterLBA (FirstDataSector)
-  mov   word ptr [bp],ax                  ; Save FirstClusterLBA (FirstDataSector) for later use
+  mov   word [bp],ax                  ; Save FirstClusterLBA (FirstDataSector) for later use
 
   ; dx - variable storage (initial value is 0)
   ; bx - loader (initial value is 0)
@@ -115,31 +113,31 @@ BootSectorEntryPoint:
   xor   bx, bx
 
 FindEFILDR:
-  cmp   dword ptr [di],LOADER_FILENAME_PART1         ; Compare to "EFIL"
+  cmp   dword [di],LOADER_FILENAME_PART1         ; Compare to "EFIL"
   jne   FindVARSTORE
-  cmp   dword ptr [di+4],LOADER_FILENAME_PART2
+  cmp   dword [di+4],LOADER_FILENAME_PART2
   jne   FindVARSTORE
-  cmp   dword ptr [di+7],LOADER_FILENAME_PART3
+  cmp   dword [di+7],LOADER_FILENAME_PART3
   jne   FindVARSTORE
-  mov   bx, word ptr [di+26]              ; bx = Start Cluster for EFILDR  <----------------------------------
+  mov   bx, word [di+26]              ; bx = Start Cluster for EFILDR  <----------------------------------
   test  dx, dx
   je    FindNext                          ; Efivar.bin is not loaded
   jmp   FoundAll
 
 FindVARSTORE:
   ; if the file is not loader file, see if it's "EFIVAR  BIN"
-  cmp   dword ptr [di], 056494645h        ; Compare to "EFIV"
+  cmp   dword [di], 0x56494645        ; Compare to "EFIV"
   jne   FindNext
-  cmp   dword ptr [di+4], 020205241h      ; Compare to "AR  "
+  cmp   dword [di+4], 0x20205241      ; Compare to "AR  "
   jne   FindNext
-  cmp   dword ptr [di+7], 04e494220h      ; Compare to " BIN"
+  cmp   dword [di+7], 0x4e494220      ; Compare to " BIN"
   jne   FindNext
   mov   dx, di                            ; dx = Offset of Start Cluster for Efivar.bin <---------------------
   add   dx, 26
   test  bx, bx
   je    FindNext                          ; Efildr is not loaded
   jmp   FoundAll
-  
+
 FindNext:
   ; go to next find
   add   di,FAT_DIRECTORY_ENTRY_SIZE       ; Increment di
@@ -152,37 +150,36 @@ FoundAll:
 FoundEFILDR:
   mov     cx,bx                               ; cx = Start Cluster for EFILDR  <----------------------------------
   mov     ax,cs                               ; Destination = 2000:0000
-  add     ax,2000h
+  add     ax,0x2000
   mov     es,ax
   xor     di,di
 ReadFirstClusterOfEFILDR:
   mov     ax,cx                               ; ax = StartCluster
   sub     ax,2                                ; ax = StartCluster - 2
-  xor     bh,bh                               
+  xor     bh,bh
   mov     bl,byte ptr [bp+SectorsPerCluster]  ; bx = SectorsPerCluster
   push    dx
   mul     bx
   pop     dx                                  ; ax = (StartCluster - 2) * SectorsPerCluster
-  add     ax, word ptr [bp]                   ; ax = FirstClusterLBA + (StartCluster-2)*SectorsPerCluster
+  add     ax, word [bp]                   ; ax = FirstClusterLBA + (StartCluster-2)*SectorsPerCluster
   xor     bh,bh
   mov     bl,byte ptr [bp+SectorsPerCluster]  ; bx = Number of Sectors in a cluster
   push    es
   call    ReadBlocks
   pop     ax
 JumpIntoFirstSectorOfEFILDR:
-  mov     word ptr [bp+JumpSegment],ax
+  mov     word [bp+JumpSegment],ax
 JumpFarInstruction:
-  db      0eah
+  db      0xea
 JumpOffset:
-  dw      0000h
+  dw      0x0
 JumpSegment:
-  dw      2000h
-
+  dw      0x2000
 
 PrintString:
-  mov  ax,0b800h
+  mov  ax,0xb800
   mov  es,ax
-  mov  ax, 07c0h
+  mov  ax, 0x7c0
   mov  ds, ax
   mov  cx, 7
   mov  di, 160
@@ -207,7 +204,7 @@ ReadBlocks:
   mov     esi,eax                             ; esi = Start LBA
   mov     cx,bx                               ; cx = Number of blocks to read
 ReadCylinderLoop:
-  mov     bp,07bfch                           ; bp = 0x7bfc
+  mov     bp,0x7bfc                           ; bp = 0x7bfc
   mov     eax,esi                             ; eax = Start LBA
   xor     edx,edx                             ; edx = 0
   movzx   ebx,word ptr [bp]                   ; bx = MaxSector
@@ -222,18 +219,18 @@ LimitTransfer:
   push    cx
   mov     cl,dl                               ; cl = (StartLBA % MaxSector) + 1 = Sector
   xor     dx,dx                               ; dx = 0
-  div     word ptr [bp+2]                     ; ax = ax / (MaxHead + 1) = Cylinder  
+  div     word [bp+2]                     ; ax = ax / (MaxHead + 1) = Cylinder
                                               ; dx = ax % (MaxHead + 1) = Head
 
   push    bx                                  ; Save number of blocks to transfer
   mov     dh,dl                               ; dh = Head
-  mov     bp,07c00h                           ; bp = 0x7c00
+  mov     bp,0x7c00                           ; bp = 0x7c00
   mov     dl,byte ptr [bp+PhysicalDrive]      ; dl = Drive Number
   mov     ch,al                               ; ch = Cylinder
   mov     al,bl                               ; al = Blocks
   mov     ah,2                                ; ah = Function 2
   mov     bx,di                               ; es:bx = Buffer address
-  int     013h
+  int     0x13
   jc      DiskError
   pop     bx
   pop     cx
@@ -264,25 +261,23 @@ Halt:
   jmp   Halt
 
 StartString:
-  db 'B', 0ch, 'S', 0ch, 't', 0ch, 'a', 0ch, 'r', 0ch, 't', 0ch, '!', 0ch
+  db 'B', 0xc, 'S', 0xc, 't', 0xc, 'a', 0xc, 'r', 0xc, 't', 0xc, '!', 0xc
 ErrorString:
-  db 'B', 0ch, 'E', 0ch, 'r', 0ch, 'r', 0ch, 'o', 0ch, 'r', 0ch, '!', 0ch
+  db 'B', 0xc, 'E', 0xc, 'r', 0xc, 'r', 0xc, 'o', 0xc, 'r', 0xc, '!', 0xc
 
 ; ****************************************************************************
 ; LBA Offset for BootSector, need patched by tool for HD boot.
 ; ****************************************************************************
 
-  org 01fah
+  org 0x1fa
 LBAOffsetForBootSector:
-  dd        0h
+  dd        0x0
 
 ; ****************************************************************************
 ; Sector Signature
 ; ****************************************************************************
 
-  org 01feh
+  org 0x1fe
 SectorSignature:
-  dw        0aa55h      ; Boot Sector Signature
+  dw        0xaa55      ; Boot Sector Signature
 
-  end 
-  

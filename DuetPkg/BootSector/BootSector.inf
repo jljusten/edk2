@@ -29,9 +29,9 @@
   bootsect.nasm| MSFT
   bootsect.nasm| GCC
 
-  bs16.asm     | INTEL
-  bs16.asm     | MSFT
-  bs16.S       | GCC 
+  bs16.nasm    | INTEL
+  bs16.nasm    | MSFT
+  bs16.nasm    | GCC
 
   bs32.asm     | INTEL
   bs32.asm     | MSFT
