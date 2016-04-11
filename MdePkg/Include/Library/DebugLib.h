@@ -285,7 +285,7 @@ DebugPrintLevelEnabled (
   @param  Expression  Boolean expression.
 
 **/
-#if !defined(MDEPKG_NDEBUG)       
+#if 0 && !defined(MDEPKG_NDEBUG)       
   #define ASSERT(Expression)        \
     do {                            \
       if (DebugAssertEnabled ()) {  \
