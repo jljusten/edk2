@@ -22,8 +22,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "EfiUtilityMsgs.h"
 #include "ParseInf.h"
 
-#define DEBUG_WARN  0x1
-#define DEBUG_ERROR 0x2
+#define DEBUG_WARN  VERBOSE_LOG_LEVEL
+#define DEBUG_ERROR ERROR_LOG_LEVLE
 
 //
 // Utility Name
