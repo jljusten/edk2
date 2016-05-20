@@ -14,6 +14,8 @@
 #
 ##
 
+set -e
+
 # Set up environment at fisrt.
 
 if [ -z "$EDK_TOOLS_PATH" ]
@@ -129,7 +131,7 @@ then
 				cp $BUILD_DIR/$PROCESSOR/DuetPkg/BootSector/Unified/BootSectors/OUTPUT/Fat12BootSector.bin $EFI_BOOT_MEDIA.bs1
 				$BASETOOLS_DIR/BootSectImage -g $EFI_BOOT_MEDIA.bs0 $EFI_BOOT_MEDIA.bs1
 				$BASETOOLS_DIR/GnuGenBootSector -o $EFI_BOOT_MEDIA -i $EFI_BOOT_MEDIA.bs1
-				rm $EFI_BOOT_MEDIA.bs[0-1]
+				#rm $EFI_BOOT_MEDIA.bs[0-1]
 				echo Done.
 			else
 				echo "Wrong FAT type" $4 "for floppy!"

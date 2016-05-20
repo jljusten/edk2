@@ -120,14 +120,14 @@ Return:
 
   FileHandle = fopen (LongFilePath (FileName), "r+b");
   if (FileHandle == NULL) {
-    DebugMsg (NULL, 0, DEBUG_ERROR, NULL, "Open file: %s", FileName);
+    Error (NULL, 0, 0001, "Error opening file", FileName);
     return 0;
   }
   fseek (FileHandle, 0, SEEK_SET);
 
   result = fwrite (BootSector, 1, 512, FileHandle);
   if (result != 512) {
-    DebugMsg (NULL, 0, DEBUG_ERROR, NULL, "Write file: %s", FileName);
+    Error (NULL, 0, 0001, "Error writing to file", FileName);
     result = 0;
   }
 
@@ -193,6 +193,7 @@ Routine Description:
   }
   return "FAT Unknown";
 }
+
 
 FAT_TYPE
 GetFatType (
@@ -479,6 +480,33 @@ Return:
 }
 
 
+FAT_TYPE
+GetFatTypeFromSig (
+  IN FAT_BPB_STRUCT  *FatBpb
+  )
+{
+  CHAR8    FilSysType[9];
+
+  FilSysType[8] = 0;
+
+  memcpy (FilSysType, FatBpb->Fat12_16.BS_FilSysType, 8);
+  if (strcmp (FilSysType, FAT_FILSYSTYPE) == 0) {
+    return GetFatType (FatBpb);
+  } else if (strcmp (FilSysType, FAT12_FILSYSTYPE) == 0) {
+    return FatTypeFat12;
+  } else if (strcmp (FilSysType, FAT16_FILSYSTYPE) == 0) {
+    return FatTypeFat16;
+  }
+
+  memcpy (FilSysType, FatBpb->Fat32.BS_FilSysType, 8);
+  if (strcmp (FilSysType, FAT32_FILSYSTYPE) == 0) {
+    return FatTypeFat32;
+  }
+
+  return FatTypeUnknown;
+}
+
+
 void
 ParseBootSector (
   char *FileName
@@ -636,15 +664,18 @@ Arguments:
   CHAR8           FilSysType[8];
   
   if (ReadFromFile ((void *)&DestFatBpb, DestFileName) == 0) {
+    Error (NULL, 0, 3004, "Failed to read BPB: Dest - %s", DestFileName);
     return ;
   }
   if (ReadFromFile ((void *)&SourceFatBpb, SourceFileName) == 0) {
+    Error (NULL, 0, 3004, "Failed to read BPB: Source - %s", SourceFileName);
     return ;
   }
   
-  DestFatType = GetFatType (&DestFatBpb);
+  DestFatType = GetFatTypeFromSig (&DestFatBpb);
   SourceFatType = GetFatType (&SourceFatBpb);
 
+  printf ("Patching BPB\n");
   if (DestFatType != SourceFatType) {
     //
     // FAT type mismatch
@@ -659,11 +690,13 @@ Arguments:
     }
   }
 
+  printf ("Patching BPB\n");
   if (SourceFatType <= FatTypeUnknown || SourceFatType >= FatTypeMax) {
     DebugMsg (NULL, 0, DEBUG_ERROR, NULL, "ERROR: E3002: Unknown FAT Type!\n");
     return;
   }
 
+  printf ("Patching BPB\n");
   //
   // Copy BPB/boot data (excluding BS_jmpBoot, BS_OEMName, BootCode and Signature) from SourceFatBpb to DestFatBpb
   //
