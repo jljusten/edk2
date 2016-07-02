@@ -832,21 +832,10 @@ class Build():
     #
     def LoadConfiguration(self):
         #
-        # Check target.txt and tools_def.txt and Init them
+        # Check target.txt
         #
         BuildConfigurationFile = os.path.normpath(os.path.join(GlobalData.gConfDirectory, gBuildConfiguration))
-        if os.path.isfile(BuildConfigurationFile) == True:
-            StatusCode = self.TargetTxt.LoadTargetTxtFile(BuildConfigurationFile)
-
-            ToolDefinitionFile = self.TargetTxt.TargetTxtDictionary[DataType.TAB_TAT_DEFINES_TOOL_CHAIN_CONF]
-            if ToolDefinitionFile == '':
-                ToolDefinitionFile = gToolsDefinition
-                ToolDefinitionFile = os.path.normpath(mws.join(self.WorkspaceDir, 'Conf', ToolDefinitionFile))
-            if os.path.isfile(ToolDefinitionFile) == True:
-                StatusCode = self.ToolDef.LoadToolDefFile(ToolDefinitionFile)
-            else:
-                EdkLogger.error("build", FILE_NOT_FOUND, ExtraData=ToolDefinitionFile)
-        else:
+        if not os.path.isfile(BuildConfigurationFile):
             EdkLogger.error("build", FILE_NOT_FOUND, ExtraData=BuildConfigurationFile)
 
         # if no ARCH given in command line, get it from target.txt
@@ -863,6 +852,21 @@ class Build():
             self.ToolChainList = self.TargetTxt.TargetTxtDictionary[DataType.TAB_TAT_DEFINES_TOOL_CHAIN_TAG]
             if self.ToolChainList == None or len(self.ToolChainList) == 0:
                 EdkLogger.error("build", RESOURCE_NOT_AVAILABLE, ExtraData="No toolchain given. Don't know how to build.\n")
+
+        #
+        # Check tools_def and load tools_def files
+        #
+        if os.path.isfile(BuildConfigurationFile) == True:
+            StatusCode = self.TargetTxt.LoadTargetTxtFile(BuildConfigurationFile)
+
+            ToolDefinitionFile = self.TargetTxt.TargetTxtDictionary[DataType.TAB_TAT_DEFINES_TOOL_CHAIN_CONF]
+            if ToolDefinitionFile == '':
+                ToolDefinitionFile = gToolsDefinition
+                ToolDefinitionFile = os.path.normpath(mws.join(self.WorkspaceDir, 'Conf', ToolDefinitionFile))
+            if os.path.isfile(ToolDefinitionFile) == True:
+                StatusCode = self.ToolDef.LoadToolDefFile(ToolDefinitionFile)
+            else:
+                EdkLogger.error("build", FILE_NOT_FOUND, ExtraData=ToolDefinitionFile)
 
         # check if the tool chains are defined or not
         NewToolChainList = []
