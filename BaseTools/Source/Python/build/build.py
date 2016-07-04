@@ -761,7 +761,7 @@ class Build():
         self.SpawnMode      = True
         self.BuildReport    = BuildReport(BuildOptions.ReportFile, BuildOptions.ReportType)
         self.TargetTxt      = TargetTxtClassObject()
-        self.ToolDef        = ToolDefClassObject()
+        self.ToolChainToolDef = {}
         GlobalData.BuildOptionPcd     = BuildOptions.OptionPcd
         #Set global flag for build mode
         GlobalData.gIgnoreSource = BuildOptions.IgnoreSources
@@ -862,15 +862,29 @@ class Build():
         if ToolDefinitionFile == '':
             ToolDefinitionFile = gToolsDefinition
             ToolDefinitionFile = os.path.normpath(mws.join(self.WorkspaceDir, 'Conf', ToolDefinitionFile))
-        if os.path.isfile(ToolDefinitionFile) == True:
-            StatusCode = self.ToolDef.LoadToolDefFile(ToolDefinitionFile)
-        else:
-            EdkLogger.error("build", FILE_NOT_FOUND, ExtraData=ToolDefinitionFile)
+
+        ToolChainFile = {}
+        for ToolChain in self.ToolChainList:
+            FileName = ToolDefinitionFile.replace('$(TOOLCHAIN)', ToolChain)
+            ToolChainFile[ToolChain] = FileName
+            if not os.path.isfile(FileName):
+                EdkLogger.error("build", FILE_NOT_FOUND, ExtraData=FileName)
+
+        ToolDefForFile = {}
+        for ToolChain in self.ToolChainList:
+            if not ToolChainFile[ToolChain] in ToolDefForFile:
+                ToolDef = ToolDefClassObject()
+                ToolDef.LoadToolDefFile(ToolChainFile[ToolChain])
+                ToolDefForFile[ToolChainFile[ToolChain]] = ToolDef
+            else:
+                ToolDef = ToolDefForFile[ToolChainFile[ToolChain]]
+            self.ToolChainToolDef[ToolChain] = ToolDef
 
         # check if the tool chains are defined or not
         NewToolChainList = []
         for ToolChain in self.ToolChainList:
-            if ToolChain not in self.ToolDef.ToolsDefTxtDatabase[TAB_TOD_DEFINES_TOOL_CHAIN_TAG]:
+            ToolsDefDb = self.ToolChainToolDef[ToolChain].ToolsDefTxtDatabase
+            if ToolChain not in ToolsDefDb[TAB_TOD_DEFINES_TOOL_CHAIN_TAG]:
                 EdkLogger.warn("build", "Tool chain [%s] is not defined" % ToolChain)
             else:
                 NewToolChainList.append(ToolChain)
@@ -1613,7 +1627,7 @@ class Build():
                         self.ArchList,
                         self.BuildDatabase,
                         self.TargetTxt,
-                        self.ToolDef,
+                        self.ToolChainToolDef[ToolChain],
                         self.Fdf,
                         self.FdList,
                         self.FvList,
@@ -1697,7 +1711,7 @@ class Build():
                         self.ArchList,
                         self.BuildDatabase,
                         self.TargetTxt,
-                        self.ToolDef,
+                        self.ToolChainToolDef[ToolChain],
                         self.Fdf,
                         self.FdList,
                         self.FvList,
@@ -1787,7 +1801,7 @@ class Build():
                         self.ArchList,
                         self.BuildDatabase,
                         self.TargetTxt,
-                        self.ToolDef,
+                        self.ToolChainToolDef[ToolChain],
                         self.Fdf,
                         self.FdList,
                         self.FvList,
@@ -1936,7 +1950,7 @@ class Build():
                         self.ArchList,
                         self.BuildDatabase,
                         self.TargetTxt,
-                        self.ToolDef,
+                        self.ToolChainToolDef[ToolChain],
                         self.Fdf,
                         self.FdList,
                         self.FvList,
@@ -1954,16 +1968,17 @@ class Build():
 
                     # Look through the tool definitions for GUIDed tools
                     guidAttribs = []
-                    for (attrib, value) in self.ToolDef.ToolsDefTxtDictionary.iteritems():
+                    ToolDef = self.ToolChainToolDef[ToolChain]
+                    for (attrib, value) in ToolDef.ToolsDefTxtDictionary.iteritems():
                         if attrib.upper().endswith('_GUID'):
                             split = attrib.split('_')
                             thisPrefix = '_'.join(split[0:3]) + '_'
                             if thisPrefix == prefix:
-                                guid = self.ToolDef.ToolsDefTxtDictionary[attrib]
+                                guid = ToolDef.ToolsDefTxtDictionary[attrib]
                                 guid = guid.lower()
                                 toolName = split[3]
                                 path = '_'.join(split[0:4]) + '_PATH'
-                                path = self.ToolDef.ToolsDefTxtDictionary[path]
+                                path = ToolDef.ToolsDefTxtDictionary[path]
                                 path = self.GetFullPathOfTool(path)
                                 guidAttribs.append((guid, toolName, path))
 
