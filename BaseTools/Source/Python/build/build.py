@@ -856,17 +856,16 @@ class Build():
         #
         # Check tools_def and load tools_def files
         #
-        if os.path.isfile(BuildConfigurationFile) == True:
-            StatusCode = self.TargetTxt.LoadTargetTxtFile(BuildConfigurationFile)
+        StatusCode = self.TargetTxt.LoadTargetTxtFile(BuildConfigurationFile)
 
-            ToolDefinitionFile = self.TargetTxt.TargetTxtDictionary[DataType.TAB_TAT_DEFINES_TOOL_CHAIN_CONF]
-            if ToolDefinitionFile == '':
-                ToolDefinitionFile = gToolsDefinition
-                ToolDefinitionFile = os.path.normpath(mws.join(self.WorkspaceDir, 'Conf', ToolDefinitionFile))
-            if os.path.isfile(ToolDefinitionFile) == True:
-                StatusCode = self.ToolDef.LoadToolDefFile(ToolDefinitionFile)
-            else:
-                EdkLogger.error("build", FILE_NOT_FOUND, ExtraData=ToolDefinitionFile)
+        ToolDefinitionFile = self.TargetTxt.TargetTxtDictionary[DataType.TAB_TAT_DEFINES_TOOL_CHAIN_CONF]
+        if ToolDefinitionFile == '':
+            ToolDefinitionFile = gToolsDefinition
+            ToolDefinitionFile = os.path.normpath(mws.join(self.WorkspaceDir, 'Conf', ToolDefinitionFile))
+        if os.path.isfile(ToolDefinitionFile) == True:
+            StatusCode = self.ToolDef.LoadToolDefFile(ToolDefinitionFile)
+        else:
+            EdkLogger.error("build", FILE_NOT_FOUND, ExtraData=ToolDefinitionFile)
 
         # check if the tool chains are defined or not
         NewToolChainList = []
