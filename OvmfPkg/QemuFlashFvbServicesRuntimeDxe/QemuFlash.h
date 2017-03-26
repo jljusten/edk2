@@ -19,6 +19,20 @@
 extern UINT8 *mFlashBase;
 
 /**
+  Detect if QEMU Flash is available and writable
+
+  Note: This function does not use read or write global variables.
+
+  @retval TRUE  Flash is writable
+
+**/
+BOOLEAN
+QemuFlashDetected (
+  VOID
+  );
+
+
+/**
   Read from QEMU Flash
 
   @param[in] Lba      The starting logical block index to read from.

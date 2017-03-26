@@ -16,6 +16,7 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PcdLib.h>
+#include <Uefi.h>
 
 #include "QemuFlash.h"
 
@@ -37,12 +38,25 @@ STATIC UINTN       mFdBlockCount = 0;
 
 STATIC
 volatile UINT8*
+QemuFlashPtrEx (
+  UINT8     *FlashBase,
+  UINTN     BlockSize,
+  IN        EFI_LBA                             Lba,
+  IN        UINTN                               Offset
+  )
+{
+  return FlashBase + ((UINTN)Lba * BlockSize) + Offset;
+}
+
+
+STATIC
+volatile UINT8*
 QemuFlashPtr (
   IN        EFI_LBA                             Lba,
   IN        UINTN                               Offset
   )
 {
-  return mFlashBase + ((UINTN)Lba * mFdBlockSize) + Offset;
+  return QemuFlashPtrEx (mFlashBase, mFdBlockSize, Lba, Offset);
 }
 
 
@@ -53,7 +67,6 @@ QemuFlashPtr (
   @retval TRUE    The QEMU flash device is present.
 
 **/
-STATIC
 BOOLEAN
 QemuFlashDetected (
   VOID
@@ -66,11 +79,15 @@ QemuFlashDetected (
   UINT8 OriginalUint8;
   UINT8 ProbeUint8;
 
-  FlashDetected = FALSE;
-  Ptr = QemuFlashPtr (0, 0);
+  UINT8 *FlashBase = (UINT8*)(UINTN) PcdGet32 (PcdOvmfFdBaseAddress);
+  UINTN BlockSize = PcdGet32 (PcdOvmfFirmwareBlockSize);
+  ASSERT(PcdGet32 (PcdOvmfFirmwareFdSize) % BlockSize == 0);
 
-  for (Offset = 0; Offset < mFdBlockSize; Offset++) {
-    Ptr = QemuFlashPtr (0, Offset);
+  FlashDetected = FALSE;
+  Ptr = QemuFlashPtrEx (FlashBase, BlockSize, 0, 0);
+
+  for (Offset = 0; Offset < BlockSize; Offset++) {
+    Ptr = QemuFlashPtrEx (FlashBase, BlockSize, 0, Offset);
     ProbeUint8 = *Ptr;
     if (ProbeUint8 != CLEAR_STATUS_CMD &&
         ProbeUint8 != READ_STATUS_CMD &&
@@ -79,7 +96,7 @@ QemuFlashDetected (
     }
   }
 
-  if (Offset >= mFdBlockSize) {
+  if (Offset >= BlockSize) {
     DEBUG ((EFI_D_INFO, "QEMU Flash: Failed to find probe location\n"));
     return FALSE;
   }
