@@ -1,7 +1,7 @@
 /** @file
   OVMF support for QEMU system firmware flash device
 
-  Copyright (c) 2009 - 2013, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2017, Intel Corporation. All rights reserved.<BR>
 
   This program and the accompanying materials are licensed and made available
   under the terms and conditions of the BSD License which accompanies this
@@ -16,8 +16,6 @@
 #ifndef __QEMU_FLASH_H__
 #define __QEMU_FLASH_H__
 
-#include <Protocol/FirmwareVolumeBlock.h>
-
 extern UINT8 *mFlashBase;
 
 /**
@@ -30,7 +28,7 @@ extern UINT8 *mFlashBase;
   @param[in] Buffer   Pointer to the buffer to read into.
 
 **/
-EFI_STATUS
+RETURN_STATUS
 QemuFlashRead (
   IN        EFI_LBA                              Lba,
   IN        UINTN                                Offset,
@@ -49,7 +47,7 @@ QemuFlashRead (
   @param[in] Buffer   Pointer to the data to write.
 
 **/
-EFI_STATUS
+RETURN_STATUS
 QemuFlashWrite (
   IN        EFI_LBA                              Lba,
   IN        UINTN                                Offset,
@@ -64,7 +62,7 @@ QemuFlashWrite (
   @param Lba    The logical block index to erase.
 
 **/
-EFI_STATUS
+RETURN_STATUS
 QemuFlashEraseBlock (
   IN   EFI_LBA      Lba
   );
@@ -73,11 +71,11 @@ QemuFlashEraseBlock (
 /**
   Initializes QEMU flash memory support
 
-  @retval EFI_WRITE_PROTECTED   The QEMU flash device is not present.
-  @retval EFI_SUCCESS           The QEMU flash device is supported.
+  @retval RETURN_WRITE_PROTECTED   The QEMU flash device is not present.
+  @retval RETURN_SUCCESS           The QEMU flash device is supported.
 
 **/
-EFI_STATUS
+RETURN_STATUS
 QemuFlashInitialize (
   VOID
   );

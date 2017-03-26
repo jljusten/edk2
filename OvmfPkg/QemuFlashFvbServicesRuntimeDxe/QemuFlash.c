@@ -1,7 +1,7 @@
 /** @file
   OVMF support for QEMU system firmware flash device
 
-  Copyright (c) 2009 - 2013, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2017, Intel Corporation. All rights reserved.<BR>
 
   This program and the accompanying materials are licensed and made available
   under the terms and conditions of the BSD License which accompanies this
@@ -124,7 +124,7 @@ QemuFlashDetected (
   @param[in] Buffer   Pointer to the buffer to read into.
 
 **/
-EFI_STATUS
+RETURN_STATUS
 QemuFlashRead (
   IN        EFI_LBA                              Lba,
   IN        UINTN                                Offset,
@@ -139,7 +139,7 @@ QemuFlashRead (
   // block into the flash memory.
   //
   if (Lba >= mFdBlockCount) {
-    return EFI_INVALID_PARAMETER;
+    return RETURN_INVALID_PARAMETER;
   }
 
   //
@@ -149,7 +149,7 @@ QemuFlashRead (
 
   CopyMem (Buffer, Ptr, *NumBytes);
 
-  return EFI_SUCCESS;
+  return RETURN_SUCCESS;
 }
 
 
@@ -163,7 +163,7 @@ QemuFlashRead (
   @param[in] Buffer   Pointer to the data to write.
 
 **/
-EFI_STATUS
+RETURN_STATUS
 QemuFlashWrite (
   IN        EFI_LBA                             Lba,
   IN        UINTN                               Offset,
@@ -179,7 +179,7 @@ QemuFlashWrite (
   // block into the flash memory.
   //
   if (Lba >= mFdBlockCount) {
-    return EFI_INVALID_PARAMETER;
+    return RETURN_INVALID_PARAMETER;
   }
 
   //
@@ -199,7 +199,7 @@ QemuFlashWrite (
     *(Ptr - 1) = READ_ARRAY_CMD;
   }
 
-  return EFI_SUCCESS;
+  return RETURN_SUCCESS;
 }
 
 
@@ -209,7 +209,7 @@ QemuFlashWrite (
   @param Lba    The logical block index to erase.
 
 **/
-EFI_STATUS
+RETURN_STATUS
 QemuFlashEraseBlock (
   IN   EFI_LBA      Lba
   )
@@ -217,24 +217,24 @@ QemuFlashEraseBlock (
   volatile UINT8  *Ptr;
 
   if (Lba >= mFdBlockCount) {
-    return EFI_INVALID_PARAMETER;
+    return RETURN_INVALID_PARAMETER;
   }
 
   Ptr = QemuFlashPtr (Lba, 0);
   *Ptr = BLOCK_ERASE_CMD;
   *Ptr = BLOCK_ERASE_CONFIRM_CMD;
-  return EFI_SUCCESS;
+  return RETURN_SUCCESS;
 }
 
 
 /**
   Initializes QEMU flash memory support
 
-  @retval EFI_WRITE_PROTECTED   The QEMU flash device is not present.
-  @retval EFI_SUCCESS           The QEMU flash device is supported.
+  @retval RETURN_WRITE_PROTECTED   The QEMU flash device is not present.
+  @retval RETURN_SUCCESS           The QEMU flash device is supported.
 
 **/
-EFI_STATUS
+RETURN_STATUS
 QemuFlashInitialize (
   VOID
   )
@@ -246,9 +246,9 @@ QemuFlashInitialize (
 
   if (!QemuFlashDetected ()) {
     ASSERT (!FeaturePcdGet (PcdSmmSmramRequire));
-    return EFI_WRITE_PROTECTED;
+    return RETURN_WRITE_PROTECTED;
   }
 
-  return EFI_SUCCESS;
+  return RETURN_SUCCESS;
 }
 
