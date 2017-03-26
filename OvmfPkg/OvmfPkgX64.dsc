@@ -565,6 +565,8 @@
   OvmfPkg/SmmAccess/SmmAccessPei.inf
 !endif
   UefiCpuPkg/CpuMpPei/CpuMpPei.inf
+  MdeModulePkg/Universal/FaultTolerantWritePei/FaultTolerantWritePei.inf
+  MdeModulePkg/Universal/Variable/Pei/VariablePei.inf
 
   #
   # DXE Phase modules

@@ -1,7 +1,7 @@
 ## @file
 #  Open Virtual Machine Firmware: FDF
 #
-#  Copyright (c) 2006 - 2016, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2006 - 2017, Intel Corporation. All rights reserved.<BR>
 #  (C) Copyright 2016 Hewlett Packard Enterprise Development LP<BR>
 #
 #  This program and the accompanying materials
@@ -148,6 +148,7 @@ READ_LOCK_STATUS   = TRUE
 
 APRIORI PEI {
   INF  MdeModulePkg/Universal/PCD/Pei/Pcd.inf
+  INF  OvmfPkg/PlatformPei/PlatformPei.inf
 }
 
 #
@@ -164,6 +165,8 @@ INF  UefiCpuPkg/Universal/Acpi/S3Resume2Pei/S3Resume2Pei.inf
 INF  OvmfPkg/SmmAccess/SmmAccessPei.inf
 !endif
 INF  UefiCpuPkg/CpuMpPei/CpuMpPei.inf
+INF  MdeModulePkg/Universal/FaultTolerantWritePei/FaultTolerantWritePei.inf
+INF  MdeModulePkg/Universal/Variable/Pei/VariablePei.inf
 
 ################################################################################
 
