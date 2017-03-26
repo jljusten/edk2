@@ -50,6 +50,7 @@ THREADNUMBER=1
 LAST_ARG=
 RUN_QEMU=no
 ENABLE_FLASH=no
+DISABLE_FLASH=no
 
 #
 # Pick a default tool type for a given OS
@@ -126,6 +127,9 @@ do
         RUN_QEMU=yes
         shift
         break
+        ;;
+      --disable-flash)
+        DISABLE_FLASH=yes
         ;;
       --enable-flash)
         ENABLE_FLASH=yes
@@ -228,7 +232,9 @@ if [[ "$RUN_QEMU" == "yes" ]]; then
                      awk '{print $2}')
   case $qemu_version in
     1.[6-9].*|1.[1-9][0-9].*|2.*.*)
-      ENABLE_FLASH=yes
+      if [[ "$DISABLE_FLASH" != "yes" ]]; then
+        ENABLE_FLASH=yes
+      fi
       ;;
   esac
 
@@ -283,7 +289,7 @@ if [[ "$RUN_QEMU" == "yes" ]]; then
   if [[ "$ENABLE_FLASH" == "yes" ]]; then
     QEMU_COMMAND="$QEMU_COMMAND -pflash $QEMU_FIRMWARE_DIR/bios.bin"
   else
-    QEMU_COMMAND="$QEMU_COMMAND -L $QEMU_FIRMWARE_DIR"
+    QEMU_COMMAND="$QEMU_COMMAND -L $QEMU_FIRMWARE_DIR -bios $QEMU_FIRMWARE_DIR/bios.bin"
   fi
   if [[ "$ADD_QEMU_HDA" == "yes" ]]; then
     QEMU_COMMAND="$QEMU_COMMAND -hda fat:$BUILD_ROOT_ARCH"
