@@ -1,7 +1,7 @@
 /**@file
   Platform PEI driver
 
-  Copyright (c) 2006 - 2016, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2017, Intel Corporation. All rights reserved.<BR>
   Copyright (c) 2011, Andrei Warkentin <andreiw@motorola.com>
 
   This program and the accompanying materials
@@ -499,35 +499,6 @@ BootModeInitialization (
 
 
 VOID
-ReserveEmuVariableNvStore (
-  )
-{
-  EFI_PHYSICAL_ADDRESS VariableStore;
-  RETURN_STATUS        PcdStatus;
-
-  //
-  // Allocate storage for NV variables early on so it will be
-  // at a consistent address.  Since VM memory is preserved
-  // across reboots, this allows the NV variable storage to survive
-  // a VM reboot.
-  //
-  VariableStore =
-    (EFI_PHYSICAL_ADDRESS)(UINTN)
-      AllocateAlignedRuntimePages (
-        EFI_SIZE_TO_PAGES (2 * PcdGet32 (PcdFlashNvStorageFtwSpareSize)),
-        PcdGet32 (PcdFlashNvStorageFtwSpareSize)
-        );
-  DEBUG ((EFI_D_INFO,
-          "Reserved variable store memory: 0x%lX; size: %dkb\n",
-          VariableStore,
-          (2 * PcdGet32 (PcdFlashNvStorageFtwSpareSize)) / 1024
-        ));
-  PcdStatus = PcdSet64S (PcdEmuVariableNvStoreReserved, VariableStore);
-  ASSERT_RETURN_ERROR (PcdStatus);
-}
-
-
-VOID
 DebugDumpCmos (
   VOID
   )
@@ -660,8 +631,9 @@ InitializePlatform (
   //
   mHostBridgeDevId = PciRead16 (OVMF_HOSTBRIDGE_DID);
 
+  SetupVariables ();
+
   if (mBootMode != BOOT_ON_S3_RESUME) {
-    ReserveEmuVariableNvStore ();
     PeiFvInitialization ();
     MemMapInitialization ();
     NoexecDxeInitialization ();
