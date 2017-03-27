@@ -965,9 +965,9 @@ FvbInitialize (
   EFI_PHYSICAL_ADDRESS                BaseAddress;
   UINTN                               Length;
   UINTN                               NumOfBlocks;
-  RETURN_STATUS                       PcdStatus;
 
-  if (EFI_ERROR (QemuFlashInitialize ())) {
+  if (!PcdGetBool (PcdOvmfFlashVariablesEnable)) {
+    ASSERT (!FeaturePcdGet (PcdSmmSmramRequire));
     //
     // Return an error so image will be unloaded
     //
@@ -975,6 +975,9 @@ FvbInitialize (
       "QEMU flash was not detected. Writable FVB is not being installed.\n"));
     return EFI_WRITE_PROTECTED;
   }
+
+  Status = QemuFlashInitialize ();
+  ASSERT_RETURN_ERROR (Status);
 
   //
   // Allocate runtime services data for global variable, which contains
@@ -1093,25 +1096,6 @@ FvbInitialize (
 
   MarkMemoryRangeForRuntimeAccess (BaseAddress, Length);
 
-  //
-  // Set several PCD values to point to flash
-  //
-  PcdStatus = PcdSet64S (
-    PcdFlashNvStorageVariableBase64,
-    (UINTN) PcdGet32 (PcdOvmfFlashNvStorageVariableBase)
-    );
-  ASSERT_RETURN_ERROR (PcdStatus);
-  PcdStatus = PcdSet32S (
-    PcdFlashNvStorageFtwWorkingBase,
-    PcdGet32 (PcdOvmfFlashNvStorageFtwWorkingBase)
-    );
-  ASSERT_RETURN_ERROR (PcdStatus);
-  PcdStatus = PcdSet32S (
-    PcdFlashNvStorageFtwSpareBase,
-    PcdGet32 (PcdOvmfFlashNvStorageFtwSpareBase)
-    );
-  ASSERT_RETURN_ERROR (PcdStatus);
-
   FwhInstance = (EFI_FW_VOL_INSTANCE *)
     (
       (UINTN) ((UINT8 *) FwhInstance) + FwVolHeader->HeaderLength +
@@ -1123,7 +1107,5 @@ FvbInitialize (
   //
   InstallVirtualAddressChangeHandler ();
 
-  PcdStatus = PcdSetBoolS (PcdOvmfFlashVariablesEnable, TRUE);
-  ASSERT_RETURN_ERROR (PcdStatus);
   return EFI_SUCCESS;
 }

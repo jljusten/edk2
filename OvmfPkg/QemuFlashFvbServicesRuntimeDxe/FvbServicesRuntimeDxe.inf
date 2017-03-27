@@ -78,11 +78,7 @@
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFirmwareBlockSize
 
 [Pcd]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingBase
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareBase
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFlashNvStorageEventLogBase
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase64
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFlashVariablesEnable
 
 [FeaturePcd]
