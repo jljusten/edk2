@@ -2,7 +2,7 @@
   Firmware Block Services to support emulating non-volatile variables
   by pretending that a memory buffer is storage for the NV variables.
 
-  Copyright (c) 2006 - 2013, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2006 - 2017, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -820,7 +820,7 @@ FvbInitialize (
     return EFI_INVALID_PARAMETER;
   }
 
-  if (PcdGet64 (PcdFlashNvStorageVariableBase64) != 0) {
+  if (PcdGetBool (PcdOvmfFlashVariablesEnable)) {
     DEBUG ((EFI_D_INFO, "Disabling EMU Variable FVB since "
                         "flash variables appear to be supported.\n"));
     return EFI_ABORTED;
