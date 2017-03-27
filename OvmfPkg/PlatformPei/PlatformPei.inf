@@ -50,6 +50,7 @@
 
 [LibraryClasses]
   BaseLib
+  BaseMemoryLib
   DebugLib
   HobLib
   IoLib
