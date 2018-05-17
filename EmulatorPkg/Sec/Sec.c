@@ -17,9 +17,17 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "Sec.h"
 
 
+EFI_STATUS
+EFIAPI
+TemporaryRamMigration (
+  IN CONST EFI_PEI_SERVICES   **PeiServices,
+  IN EFI_PHYSICAL_ADDRESS     TemporaryMemoryBase,
+  IN EFI_PHYSICAL_ADDRESS     PermanentMemoryBase,
+  IN UINTN                    CopySize
+  );
 
 EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI mSecTemporaryRamSupportPpi = {
-  SecTemporaryRamSupport
+  TemporaryRamMigration
 };
 
 
@@ -31,6 +39,54 @@ EFI_PEI_PPI_DESCRIPTOR  gPrivateDispatchTable[] = {
   }
 };
 
+EFI_STATUS
+EFIAPI
+TemporaryRamMigration (
+  IN CONST EFI_PEI_SERVICES   **PeiServices,
+  IN EFI_PHYSICAL_ADDRESS     TemporaryMemoryBase,
+  IN EFI_PHYSICAL_ADDRESS     PermanentMemoryBase,
+  IN UINTN                    CopySize
+  )
+{
+  BASE_LIBRARY_JUMP_BUFFER         JumpBuffer;
+  INTN                             OldToNewStackDelta;
+
+  DEBUG ((EFI_D_INFO,
+    "TemporaryRamMigration(0x%Lx, 0x%Lx, 0x%Lx)\n",
+    TemporaryMemoryBase,
+    PermanentMemoryBase,
+    (UINT64)CopySize
+    ));
+
+  OldToNewStackDelta = (INTN)PermanentMemoryBase - (INTN)TemporaryMemoryBase;
+
+  CopyMem (
+    (VOID*)(UINTN) PermanentMemoryBase,
+    (VOID*)(UINTN) TemporaryMemoryBase,
+    CopySize
+    );
+
+  //
+  // Use SetJump()/LongJump() to switch to a new stack.
+  //
+  if (SetJump (&JumpBuffer) == 0) {
+#if defined (MDE_CPU_IA32)
+    JumpBuffer.Esp = JumpBuffer.Esp + OldToNewStackDelta;
+    JumpBuffer.Ebp = JumpBuffer.Ebp + OldToNewStackDelta;
+    *(INT32*)JumpBuffer.Ebp += OldToNewStackDelta;
+#endif
+#if defined (MDE_CPU_X64)
+    JumpBuffer.Rsp = JumpBuffer.Rsp + OldToNewStackDelta;
+    JumpBuffer.Rbp = JumpBuffer.Rbp + OldToNewStackDelta;
+    *(INT64*)JumpBuffer.Rbp += OldToNewStackDelta;
+#endif
+    LongJump (&JumpBuffer, (UINTN)-1);
+  }
+
+  ZeroMem ((VOID*)(UINTN)TemporaryMemoryBase, CopySize);
+
+  return EFI_SUCCESS;
+}
 
 
 /**
