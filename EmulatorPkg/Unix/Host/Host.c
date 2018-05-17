@@ -216,7 +216,7 @@ main (
   for (StackPointer = (UINTN*) (UINTN) InitialStackMemory;
      StackPointer < (UINTN*)(UINTN)((UINTN) InitialStackMemory + (UINT64) InitialStackMemorySize);
      StackPointer ++) {
-    *StackPointer = 0x5AA55AA5;
+    *StackPointer = PcdGet32 (PcdInitValueInTempStack);
   }
 
   //

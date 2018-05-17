@@ -109,6 +109,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingSize
   gEmulatorPkgTokenSpaceGuid.PcdEmuFlashNvStorageFtwSpareBase
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareSize
+  gEfiMdeModulePkgTokenSpaceGuid.PcdInitValueInTempStack
   gEmulatorPkgTokenSpaceGuid.PcdPeiServicesTablePage
 
 [FeaturePcd]
