@@ -39,6 +39,13 @@ EFI_PEI_PPI_DESCRIPTOR  gPrivateDispatchTable[] = {
   }
 };
 
+#ifdef __GNUC__
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+#else
+#pragma optimize ("", off)
+#endif
+
 EFI_STATUS
 EFIAPI
 TemporaryRamMigration (
@@ -88,6 +95,11 @@ TemporaryRamMigration (
   return EFI_SUCCESS;
 }
 
+#ifdef __GNUC__
+#pragma GCC pop_options
+#else
+#pragma optimize ("", on)
+#endif
 
 /**
   The entry point of PE/COFF Image for the PEI Core, that has been hijacked by this
