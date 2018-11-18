@@ -206,7 +206,7 @@ do
 done
 
 PLATFORMFILE=$WORKSPACE/EmulatorPkg/EmulatorPkg.dsc
-BUILD_DIR=$BUILD_OUTPUT_DIR/DEBUG_"$TARGET_TOOLS"
+BUILD_DIR=$BUILD_OUTPUT_DIR/"$BUILDTARGET"_"$TARGET_TOOLS"
 BUILD_ROOT_ARCH=$BUILD_DIR/$PROCESSOR
 
 if  [[ ! -f `which build` || ! -f `which GenFv` ]];
@@ -236,11 +236,11 @@ if [[ "$RUN_EMULATOR" == "yes" ]]; then
       then
       # only older versions of Xcode support -ccc-host-tripe, for newer versions
       # it is -target
-        cp $WORKSPACE/EmulatorPkg/Unix/lldbefi.py $BUILD_OUTPUT_DIR/DEBUG_"$TARGET_TOOLS"/$PROCESSOR
+        cp $WORKSPACE/EmulatorPkg/Unix/lldbefi.py $BUILD_OUTPUT_DIR/"$BUILDTARGET"_"$TARGET_TOOLS"/$PROCESSOR
         cd $BUILD_ROOT_ARCH; /usr/bin/lldb --source $WORKSPACE/EmulatorPkg/Unix/lldbinit Host
         exit $? 
       else
-        cp $WORKSPACE/EmulatorPkg/Unix/.gdbinit $BUILD_OUTPUT_DIR/DEBUG_"$TARGET_TOOLS"/$PROCESSOR
+        cp $WORKSPACE/EmulatorPkg/Unix/.gdbinit $BUILD_OUTPUT_DIR/"$BUILDTARGET"_"$TARGET_TOOLS"/$PROCESSOR
       fi
       ;;
   esac
@@ -273,7 +273,7 @@ if [[ $HOST_TOOLS == $TARGET_TOOLS ]]; then
 else
   build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc $BUILD_OPTIONS -a $PROCESSOR -b $BUILDTARGET -t $HOST_TOOLS  -D BUILD_$ARCH_SIZE -D UNIX_SEC_BUILD -D SKIP_MAIN_BUILD -n 3 modules
   build -p $WORKSPACE/EmulatorPkg/EmulatorPkg.dsc $BUILD_OPTIONS -a $PROCESSOR -b $BUILDTARGET -t $TARGET_TOOLS -D BUILD_$ARCH_SIZE $NETWORK_SUPPORT $BUILD_NEW_SHELL $BUILD_FAT -n 3
-  cp $BUILD_OUTPUT_DIR/DEBUG_"$HOST_TOOLS"/$PROCESSOR/Host $BUILD_ROOT_ARCH
+  cp $BUILD_OUTPUT_DIR/"$BUILDTARGET"_"$HOST_TOOLS"/$PROCESSOR/Host $BUILD_ROOT_ARCH
 fi
 exit $?
 
