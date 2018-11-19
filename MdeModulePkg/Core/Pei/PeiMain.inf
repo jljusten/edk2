@@ -59,6 +59,9 @@
 [Sources.Ia32]
   Dispatcher/Ia32/TemporaryRamMigration.nasm
 
+[Sources.X64]
+  Dispatcher/X64/TemporaryRamMigration.nasm
+
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
