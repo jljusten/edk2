@@ -45,13 +45,24 @@
   FwVol/FwVol.c
   FwVol/FwVol.h
   Dispatcher/Dispatcher.c
-  Dispatcher/TemporaryRamMigration.c
   Dependency/Dependency.c
   Dependency/Dependency.h
   BootMode/BootMode.c
   CpuIo/CpuIo.c
   PciCfg2/PciCfg2.c
   PeiMain.h
+
+[Sources.Ia32]
+  Dispatcher/TemporaryRamMigration.c
+
+[Sources.X64]
+  Dispatcher/X64/TemporaryRamMigration.nasm
+
+[Sources.ARM]
+  Dispatcher/TemporaryRamMigration.c
+
+[Sources.AARCH64]
+  Dispatcher/TemporaryRamMigration.c
 
 [Packages]
   MdePkg/MdePkg.dec
