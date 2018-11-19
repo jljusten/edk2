@@ -682,6 +682,7 @@ PeiCheckAndSwitchStack (
   EFI_PHYSICAL_ADDRESS                  TempBase2;
   UINTN                                 TempSize2;
   UINTN                                 Index;
+  PEI_CORE_TEMPORARY_RAM_TRANSITION     TempRamTransitionData;
 
   PeiServices = (CONST EFI_PEI_SERVICES **) &Private->Ps;
 
@@ -816,30 +817,20 @@ PeiCheckAndSwitchStack (
         Private = (PEI_CORE_INSTANCE *)((UINTN)(VOID *)Private - StackOffset);
       }
 
-      //
-      // Temporary Ram Support PPI is provided by platform, it will copy
-      // temporary memory to permanent memory and do stack switching.
-      // After invoking Temporary Ram Support PPI, the following code's
-      // stack is in permanent memory.
-      //
-      TemporaryRamSupportPpi->TemporaryRamMigration (
-                                PeiServices,
-                                TemporaryRamBase,
-                                (EFI_PHYSICAL_ADDRESS)(UINTN)(TopOfNewStack - TemporaryStackSize),
-                                TemporaryRamSize
-                                );
+      TempRamTransitionData.TemporaryRamMigration =
+        TemporaryRamSupportPpi->TemporaryRamMigration;
+      TempRamTransitionData.PeiServices = PeiServices;
+      TempRamTransitionData.TemporaryMemoryBase = TemporaryRamBase;
+      TempRamTransitionData.PermanentMemoryBase =
+        (EFI_PHYSICAL_ADDRESS)(UINTN)(TopOfNewStack - TemporaryStackSize);
+      TempRamTransitionData.CopySize = TemporaryRamSize;
+      TempRamTransitionData.Private = Private;
+      TempRamTransitionData.SecCoreData = SecCoreData;
 
       //
-      // Migrate memory pages allocated in pre-memory phase.
-      // It could not be called before calling TemporaryRamSupportPpi->TemporaryRamMigration()
-      // as the migrated memory pages may be overridden by TemporaryRamSupportPpi->TemporaryRamMigration().
+      // Migrate Temporary RAM and enter PEI Phase 2
       //
-      MigrateMemoryPages (Private, TRUE);
-
-      //
-      // Entry PEI Phase 2
-      //
-      PeiCore (SecCoreData, NULL, Private);
+      PeiTemporaryRamMigration(&TempRamTransitionData);
     } else {
       //
       // Migrate memory pages allocated in pre-memory phase.
@@ -950,6 +941,32 @@ PeiCheckAndSwitchStack (
     //
     ASSERT (FALSE);
   }
+}
+
+VOID
+EFIAPI
+PeiTemporaryRamMigrated (
+  IN  VOID  *CallbackContext
+  )
+{
+  PEI_CORE_TEMPORARY_RAM_TRANSITION *TempRamTransitionData =
+    (PEI_CORE_TEMPORARY_RAM_TRANSITION*)CallbackContext;
+
+  //
+  // Migrate memory pages allocated in pre-memory phase.
+  // It could not be called before calling TemporaryRamSupportPpi->TemporaryRamMigration()
+  // as the migrated memory pages may be overridden by TemporaryRamSupportPpi->TemporaryRamMigration().
+  //
+  MigrateMemoryPages (TempRamTransitionData->Private, TRUE);
+
+  //
+  // Entry PEI Phase 2
+  //
+  PeiCore (
+    TempRamTransitionData->SecCoreData,
+    NULL,
+    TempRamTransitionData->Private
+    );
 }
 
 /**
