@@ -1865,4 +1865,56 @@ PeiReinitializeFv (
   IN  PEI_CORE_INSTANCE           *PrivateData
   );
 
+#pragma pack(1)
+typedef struct {
+  /**
+    These fields are used by PeiTemporaryRamMigration to call the
+    TemporaryRamMigration PPI.
+  **/
+  TEMPORARY_RAM_MIGRATION       TemporaryRamMigration;
+  CONST EFI_PEI_SERVICES        **PeiServices;
+  EFI_PHYSICAL_ADDRESS          TemporaryMemoryBase;
+  EFI_PHYSICAL_ADDRESS          PermanentMemoryBase;
+  UINTN                         CopySize;
+
+  /**
+    These fields are used by PeiTemporaryRamMigrated.
+  **/
+  PEI_CORE_INSTANCE             *Private;
+  CONST EFI_SEC_PEI_HAND_OFF    *SecCoreData;
+} PEI_CORE_TEMPORARY_RAM_TRANSITION;
+#pragma pack()
+
+/**
+  To call the TemporaryRamMigration PPI, we might not be able to rely
+  on C code's handling of the stack. In these cases we use an assembly
+  function to make sure the old stack is not used after the
+  TemporaryRamMigration PPI is used.
+
+  After calling the TemporaryRamMigration PPI, this function calls
+  PeiTemporaryRamMigrated.
+
+  @param TempRamTransitionData
+**/
+VOID
+EFIAPI
+PeiTemporaryRamMigration (
+  IN  PEI_CORE_TEMPORARY_RAM_TRANSITION  *TempRamTransitionData
+  );
+
+/**
+  After PeiTemporaryRamMigration has called the TemporaryRamMigration
+  PPI, it will call this C based function to allow PEI to continue
+  after the migration using the new stack in the migrated RAM.
+
+  @param CallbackContext   Pointer to PEI_CORE_TEMPORARY_RAM_TRANSITION
+                           data.
+**/
+VOID
+EFIAPI
+PeiTemporaryRamMigrated (
+  IN  VOID  *CallbackContext
+  );
+
+
 #endif
