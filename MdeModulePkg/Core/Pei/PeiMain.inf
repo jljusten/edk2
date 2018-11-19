@@ -45,6 +45,7 @@
   FwVol/FwVol.c
   FwVol/FwVol.h
   Dispatcher/Dispatcher.c
+  Dispatcher/TemporaryRamMigration.c
   Dependency/Dependency.c
   Dependency/Dependency.h
   BootMode/BootMode.c
