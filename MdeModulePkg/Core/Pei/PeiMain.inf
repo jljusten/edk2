@@ -111,6 +111,7 @@
   gEfiPeiLoadFilePpiGuid
   gEfiPeiSecurity2PpiGuid                       ## NOTIFY
   gEfiTemporaryRamSupportPpiGuid                ## SOMETIMES_CONSUMES
+  gEfiTemporaryRamSupport2PpiGuid               ## SOMETIMES_CONSUMES
   gEfiTemporaryRamDonePpiGuid                   ## SOMETIMES_CONSUMES
   gEfiPeiReset2PpiGuid                          ## SOMETIMES_CONSUMES
   gEfiSecHobDataPpiGuid                         ## SOMETIMES_CONSUMES

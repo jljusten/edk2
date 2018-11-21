@@ -29,6 +29,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Ppi/LoadFile.h>
 #include <Ppi/Security2.h>
 #include <Ppi/TemporaryRamSupport.h>
+#include <Ppi/TemporaryRamSupport2.h>
 #include <Ppi/TemporaryRamDone.h>
 #include <Ppi/SecHobData.h>
 #include <Ppi/PeiCoreFvLocation.h>

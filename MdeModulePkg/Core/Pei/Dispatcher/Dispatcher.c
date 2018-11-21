@@ -679,6 +679,7 @@ PeiCheckAndSwitchStack (
   UINTN                                 PeiTemporaryRamSize;
   VOID                                  *PeiTemporaryRamBase;
   EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI     *TemporaryRamSupportPpi;
+  EFI_PEI_TEMPORARY_RAM_SUPPORT2_PPI    *TemporaryRamSupport2Ppi;
   EFI_PHYSICAL_ADDRESS                  BaseOfNewHeap;
   EFI_PHYSICAL_ADDRESS                  HoleMemBase;
   UINTN                                 HoleMemSize;
@@ -791,12 +792,23 @@ PeiCheckAndSwitchStack (
     //
     // TemporaryRamSupportPpi is produced by platform's SEC
     //
+    TemporaryRamSupportPpi = NULL;
+    TemporaryRamSupport2Ppi = NULL;
     Status = PeiServicesLocatePpi (
-               &gEfiTemporaryRamSupportPpiGuid,
+               &gEfiTemporaryRamSupport2PpiGuid,
                0,
                NULL,
-               (VOID**)&TemporaryRamSupportPpi
+               (VOID**)&TemporaryRamSupport2Ppi
                );
+    if (EFI_ERROR (Status)) {
+      Status = PeiServicesLocatePpi (
+                 &gEfiTemporaryRamSupportPpiGuid,
+                 0,
+                 NULL,
+                 (VOID**)&TemporaryRamSupportPpi
+                 );
+    }
+
     if (!EFI_ERROR (Status)) {
       //
       // Heap Offset
@@ -823,8 +835,6 @@ PeiCheckAndSwitchStack (
         Private = (PEI_CORE_INSTANCE *)((UINTN)(VOID *)Private - StackOffset);
       }
 
-      TempRamTransitionData.TemporaryRamMigration =
-        TemporaryRamSupportPpi->TemporaryRamMigration;
       TempRamTransitionData.PeiServices = PeiServices;
       TempRamTransitionData.TemporaryMemoryBase = TemporaryRamBase;
       TempRamTransitionData.PermanentMemoryBase =
@@ -836,7 +846,20 @@ PeiCheckAndSwitchStack (
       //
       // Migrate Temporary RAM and enter PEI Phase 2
       //
-      PeiTemporaryRamMigration(&TempRamTransitionData);
+      if (TemporaryRamSupport2Ppi) {
+        TemporaryRamSupport2Ppi->TemporaryRamMigration (
+                                   PeiServices,
+                                   TemporaryRamBase,
+                                   TempRamTransitionData.PermanentMemoryBase,
+                                   TemporaryRamSize,
+                                   PeiTemporaryRamMigrated,
+                                   &TempRamTransitionData
+                                   );
+      } else {
+        TempRamTransitionData.TemporaryRamMigration =
+          TemporaryRamSupportPpi->TemporaryRamMigration;
+        PeiTemporaryRamMigration (&TempRamTransitionData);
+      }
     } else {
       //
       // Migrate memory pages allocated in pre-memory phase.
