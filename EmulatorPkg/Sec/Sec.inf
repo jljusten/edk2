@@ -38,7 +38,7 @@
   BaseMemoryLib
 
 [Ppis]
-  gEfiTemporaryRamSupportPpiGuid
+  gEfiTemporaryRamSupport2PpiGuid
 
 [Pcd]
   gEmulatorPkgTokenSpaceGuid.PcdPeiServicesTablePage

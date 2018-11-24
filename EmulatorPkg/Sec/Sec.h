@@ -25,7 +25,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/PeCoffGetEntryPointLib.h>
 #include <Library/BaseMemoryLib.h>
 
-#include <Ppi/TemporaryRamSupport.h>
+#include <Ppi/TemporaryRamSupport2.h>
 
 
 //

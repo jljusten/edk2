@@ -20,13 +20,15 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 EFI_STATUS
 EFIAPI
 TemporaryRamMigration (
-  IN CONST EFI_PEI_SERVICES   **PeiServices,
-  IN EFI_PHYSICAL_ADDRESS     TemporaryMemoryBase,
-  IN EFI_PHYSICAL_ADDRESS     PermanentMemoryBase,
-  IN UINTN                    CopySize
+  IN CONST EFI_PEI_SERVICES             **PeiServices,
+  IN EFI_PHYSICAL_ADDRESS               TemporaryMemoryBase,
+  IN EFI_PHYSICAL_ADDRESS               PermanentMemoryBase,
+  IN UINTN                              CopySize,
+  IN TEMPORARY_RAM_MIGRATION_CALLBACK   Callback,
+  IN VOID                               *Context
   );
 
-EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI mSecTemporaryRamSupportPpi = {
+EFI_PEI_TEMPORARY_RAM_SUPPORT2_PPI mSecTemporaryRamSupport2Ppi = {
   TemporaryRamMigration
 };
 
@@ -34,8 +36,8 @@ EFI_PEI_TEMPORARY_RAM_SUPPORT_PPI mSecTemporaryRamSupportPpi = {
 EFI_PEI_PPI_DESCRIPTOR  gPrivateDispatchTable[] = {
   {
     EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
-    &gEfiTemporaryRamSupportPpiGuid,
-    &mSecTemporaryRamSupportPpi
+    &gEfiTemporaryRamSupport2PpiGuid,
+    &mSecTemporaryRamSupport2Ppi
   }
 };
 
@@ -49,13 +51,14 @@ EFI_PEI_PPI_DESCRIPTOR  gPrivateDispatchTable[] = {
 EFI_STATUS
 EFIAPI
 TemporaryRamMigration (
-  IN CONST EFI_PEI_SERVICES   **PeiServices,
-  IN EFI_PHYSICAL_ADDRESS     TemporaryMemoryBase,
-  IN EFI_PHYSICAL_ADDRESS     PermanentMemoryBase,
-  IN UINTN                    CopySize
+  IN CONST EFI_PEI_SERVICES             **PeiServices,
+  IN EFI_PHYSICAL_ADDRESS               TemporaryMemoryBase,
+  IN EFI_PHYSICAL_ADDRESS               PermanentMemoryBase,
+  IN UINTN                              CopySize,
+  IN TEMPORARY_RAM_MIGRATION_CALLBACK   Callback,
+  IN VOID                               *Context
   )
 {
-  BASE_LIBRARY_JUMP_BUFFER         JumpBuffer;
   INTN                             OldToNewStackDelta;
 
   DEBUG ((EFI_D_INFO,
@@ -73,24 +76,7 @@ TemporaryRamMigration (
     CopySize
     );
 
-  //
-  // Use SetJump()/LongJump() to switch to a new stack.
-  //
-  if (SetJump (&JumpBuffer) == 0) {
-#if defined (MDE_CPU_IA32)
-    JumpBuffer.Esp = JumpBuffer.Esp + OldToNewStackDelta;
-    JumpBuffer.Ebp = JumpBuffer.Ebp + OldToNewStackDelta;
-    *(INT32*)JumpBuffer.Ebp += OldToNewStackDelta;
-#endif
-#if defined (MDE_CPU_X64)
-    JumpBuffer.Rsp = JumpBuffer.Rsp + OldToNewStackDelta;
-    JumpBuffer.Rbp = JumpBuffer.Rbp + OldToNewStackDelta;
-    *(INT64*)JumpBuffer.Rbp += OldToNewStackDelta;
-#endif
-    LongJump (&JumpBuffer, (UINTN)-1);
-  }
-
-  ZeroMem ((VOID*)(UINTN)TemporaryMemoryBase, CopySize);
+  MigrateStack (Callback, Context, OldToNewStackDelta);
 
   return EFI_SUCCESS;
 }
