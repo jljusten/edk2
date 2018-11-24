@@ -338,6 +338,32 @@ InternalSwitchStack (
   IN      VA_LIST                   Marker
   );
 
+/**
+  Transfers control to a function after adjusting the stack location.
+
+  Transfers control to the function specified by EntryPoint using the
+  new stack location which is adjusted relative to the current stack
+  location by adding StackAdjustment to the stack location. The
+  EntryPoint is called passing in the parameters specified by Context
+  pointer. Context is optional and may be NULL. The function
+  EntryPoint must never return.
+
+  If EntryPoint is NULL, then ASSERT().
+
+  @param  EntryPoint    A pointer to function to call with the new stack.
+  @param  Context       A pointer to the context to pass into the EntryPoint
+                        function.
+  @param  StackAdjust   A value to adjust (add to) the stack location.
+
+**/
+VOID
+EFIAPI
+InternalMigrateStack (
+  IN      MIGRATE_STACK_ENTRY_POINT     EntryPoint,
+  IN      VOID                          *Context,  OPTIONAL
+  IN      INTN                          StackAdjustment
+  );
+
 
 /**
   Worker function that returns a bit field from Operand.
