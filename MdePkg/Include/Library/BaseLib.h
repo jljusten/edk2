@@ -4971,6 +4971,20 @@ VOID
 
 
 /**
+  Function entry point used when a stack switch is requested with
+  MigrateStack()
+
+  @param  Context        Context parameter passed into MigrateStack().
+
+**/
+typedef
+VOID
+(EFIAPI *MIGRATE_STACK_ENTRY_POINT)(
+  IN      VOID                      *Context  OPTIONAL
+  );
+
+
+/**
   Used to serialize load and store operations.
 
   All loads and stores that proceed calls to this function are guaranteed to be
@@ -5135,6 +5149,33 @@ VOID
 EFIAPI
 CpuPause (
   VOID
+  );
+
+
+/**
+  Transfers control to a function after adjusting the stack location.
+
+  Transfers control to the function specified by EntryPoint using the
+  new stack location which is adjusted relative to the current stack
+  location by adding StackAdjustment to the stack location. The
+  EntryPoint is called passing in the parameters specified by Context
+  pointer. Context is optional and may be NULL. The function
+  EntryPoint must never return.
+
+  If EntryPoint is NULL, then ASSERT().
+
+  @param  EntryPoint    A pointer to function to call with the new stack.
+  @param  Context       A pointer to the context to pass into the EntryPoint
+                        function.
+  @param  StackAdjust   A value to adjust (add to) the stack location.
+
+**/
+VOID
+EFIAPI
+MigrateStack (
+  IN      MIGRATE_STACK_ENTRY_POINT     EntryPoint,
+  IN      VOID                          *Context,  OPTIONAL
+  IN      INTN                          StackAdjustment
   );
 
 
