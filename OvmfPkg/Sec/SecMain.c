@@ -873,6 +873,13 @@ SecStartupPhase2(
   CpuDeadLoop ();
 }
 
+#ifdef __GNUC__
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+#else
+#pragma optimize ("", off)
+#endif
+
 EFI_STATUS
 EFIAPI
 TemporaryRamMigration (
@@ -946,3 +953,8 @@ TemporaryRamMigration (
   return EFI_SUCCESS;
 }
 
+#ifdef __GNUC__
+#pragma GCC pop_options
+#else
+#pragma optimize ("", on)
+#endif
