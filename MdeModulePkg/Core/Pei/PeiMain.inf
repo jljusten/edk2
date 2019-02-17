@@ -53,7 +53,8 @@
   PeiMain.h
 
 [Sources.Ia32]
-  Dispatcher/TemporaryRamMigration.c
+  Dispatcher/Ia32/TemporaryRamMigration.nasm
+  Dispatcher/Ia32/TemporaryRamMigration.S
 
 [Sources.X64]
   Dispatcher/X64/TemporaryRamMigration.nasm
