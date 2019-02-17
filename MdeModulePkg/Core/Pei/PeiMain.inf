@@ -56,6 +56,9 @@
   Dispatcher/Arm/TemporaryRamMigration.asm | MSFT
   Dispatcher/Arm/TemporaryRamMigration.S   | GCC
 
+[Sources.Ia32]
+  Dispatcher/Ia32/TemporaryRamMigration.nasm
+
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
