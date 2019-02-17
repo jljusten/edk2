@@ -57,7 +57,7 @@ ASM_PFX(_ModuleEntryPoint):
     ; Load temporary RAM stack based on PCDs
     ;
     %define SEC_TOP_OF_STACK (FixedPcdGet32 (PcdOvmfSecPeiTempRamBase) + \
-                          FixedPcdGet32 (PcdOvmfSecPeiTempRamSize))
+                          (FixedPcdGet32 (PcdOvmfSecPeiTempRamSize) / 2))
     mov     eax, SEC_TOP_OF_STACK
     mov     esp, eax
     nop

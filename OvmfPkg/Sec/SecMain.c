@@ -1,7 +1,7 @@
 /** @file
   Main SEC phase code.  Transitions to PEI.
 
-  Copyright (c) 2008 - 2015, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2008 - 2019, Intel Corporation. All rights reserved.<BR>
   (C) Copyright 2016 Hewlett Packard Enterprise Development LP<BR>
 
   This program and the accompanying materials
@@ -779,15 +779,15 @@ SecCoreStartupWithStack (
 #endif
 
   //
-  // |-------------|       <-- TopOfCurrentStack
-  // |   Stack     | 32k
   // |-------------|
   // |    Heap     | 32k
+  // |-------------|       <-- TopOfCurrentStack
+  // |   Stack     | 32k
   // |-------------|       <-- SecCoreData.TemporaryRamBase
   //
 
   ASSERT ((UINTN) (PcdGet32 (PcdOvmfSecPeiTempRamBase) +
-                   PcdGet32 (PcdOvmfSecPeiTempRamSize)) ==
+                   (PcdGet32 (PcdOvmfSecPeiTempRamSize) / 2)) ==
           (UINTN) TopOfCurrentStack);
 
   //
@@ -795,14 +795,17 @@ SecCoreStartupWithStack (
   //
   SecCoreData.DataSize = sizeof(EFI_SEC_PEI_HAND_OFF);
 
-  SecCoreData.TemporaryRamSize       = (UINTN) PcdGet32 (PcdOvmfSecPeiTempRamSize);
-  SecCoreData.TemporaryRamBase       = (VOID*)((UINT8 *)TopOfCurrentStack - SecCoreData.TemporaryRamSize);
+  SecCoreData.TemporaryRamBase =
+    (VOID*)(UINTN) PcdGet32 (PcdOvmfSecPeiTempRamBase);
+  SecCoreData.TemporaryRamSize = (UINTN) PcdGet32 (PcdOvmfSecPeiTempRamSize);
 
-  SecCoreData.PeiTemporaryRamBase    = SecCoreData.TemporaryRamBase;
-  SecCoreData.PeiTemporaryRamSize    = SecCoreData.TemporaryRamSize >> 1;
+  SecCoreData.PeiTemporaryRamBase =
+    (UINT8*)(VOID*)(UINTN) PcdGet32 (PcdOvmfSecPeiTempRamBase) +
+    ((UINTN) PcdGet32 (PcdOvmfSecPeiTempRamSize) / 2);
+  SecCoreData.PeiTemporaryRamSize = PcdGet32 (PcdOvmfSecPeiTempRamSize) / 2;
 
-  SecCoreData.StackBase              = (UINT8 *)SecCoreData.TemporaryRamBase + SecCoreData.PeiTemporaryRamSize;
-  SecCoreData.StackSize              = SecCoreData.TemporaryRamSize >> 1;
+  SecCoreData.StackBase = (VOID*)(UINTN) PcdGet32 (PcdOvmfSecPeiTempRamBase);
+  SecCoreData.StackSize = PcdGet32 (PcdOvmfSecPeiTempRamSize) / 2;
 
   SecCoreData.BootFirmwareVolumeBase = BootFv;
   SecCoreData.BootFirmwareVolumeSize = (UINTN) BootFv->FvLength;
@@ -895,10 +898,10 @@ TemporaryRamMigration (
     (UINT64)CopySize
     ));
   
-  OldHeap = (VOID*)(UINTN)TemporaryMemoryBase;
+  OldHeap = (VOID*)((UINTN)TemporaryMemoryBase + (CopySize >> 1));
   NewHeap = (VOID*)((UINTN)PermanentMemoryBase + (CopySize >> 1));
   
-  OldStack = (VOID*)((UINTN)TemporaryMemoryBase + (CopySize >> 1));
+  OldStack = (VOID*)(UINTN)TemporaryMemoryBase;
   NewStack = (VOID*)(UINTN)PermanentMemoryBase;
 
   DebugAgentContext.HeapMigrateOffset = (UINTN)NewHeap - (UINTN)OldHeap;
@@ -908,15 +911,13 @@ TemporaryRamMigration (
   InitializeDebugAgent (DEBUG_AGENT_INIT_POSTMEM_SEC, (VOID *) &DebugAgentContext, NULL);
 
   //
-  // Migrate Heap
+  // Migrate the whole temporary memory to permenent memory.
   //
-  CopyMem (NewHeap, OldHeap, CopySize >> 1);
+  CopyMem(
+    (VOID*)(UINTN)PermanentMemoryBase,
+    (VOID*)(UINTN)TemporaryMemoryBase,
+    CopySize);
 
-  //
-  // Migrate Stack
-  //
-  CopyMem (NewStack, OldStack, CopySize >> 1);
-  
   //
   // Rebase IDT table in permanent memory
   //
