@@ -948,6 +948,14 @@ TemporaryRamMigration (
     LongJump (&JumpBuffer, (UINTN)-1);
   }
 
+  //
+  // Initialize Temporary RAM to a bad value to make sure it will not
+  // be used after migration.
+  //
+  SetMem32 (
+    (VOID*)(UINTN)TemporaryMemoryBase, CopySize,
+    PcdGet32 (PcdInitValueInTempStack));
+
   SaveAndSetDebugTimerInterrupt (OldStatus);
 
   return EFI_SUCCESS;
