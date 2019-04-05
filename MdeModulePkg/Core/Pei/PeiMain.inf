@@ -51,6 +51,11 @@
   Dispatcher/AArch64/TemporaryRamMigration.asm | MSFT
   Dispatcher/AArch64/TemporaryRamMigration.S   | GCC
 
+[Sources.ARM]
+  Dispatcher/Arm/TemporaryRamMigration.asm | RVCT
+  Dispatcher/Arm/TemporaryRamMigration.asm | MSFT
+  Dispatcher/Arm/TemporaryRamMigration.S   | GCC
+
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
