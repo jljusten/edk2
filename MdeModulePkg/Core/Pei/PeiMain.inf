@@ -47,6 +47,10 @@
   PciCfg2/PciCfg2.c
   PeiMain.h
 
+[Sources.AARCH64]
+  Dispatcher/AArch64/TemporaryRamMigration.asm | MSFT
+  Dispatcher/AArch64/TemporaryRamMigration.S   | GCC
+
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
